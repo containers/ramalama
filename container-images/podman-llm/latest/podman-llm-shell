@@ -1,5 +1,9 @@
 #!/bin/bash
 
+sigint_handler() {
+  echo -e "\nUse Ctrl + d or /bye to exit.\n>>> "
+}
+
 trim() {
   shopt -s extglob
   set -- "${1##+([[:space:]])}"
@@ -34,6 +38,8 @@ chat_completion() {
       stream: true
   }')"
 
+  echo "$Data"
+
   ANSWER=''
 
   while IFS= read -r LINE; do
@@ -57,6 +63,8 @@ chat_completion() {
 
 main () {
   set -e -o pipefail
+
+  trap sigint_handler SIGINT
 
   API_URL="${API_URL:-http://127.0.0.1:8080}"
 
