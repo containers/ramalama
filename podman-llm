@@ -1,0 +1,29 @@
+#!/bin/bash
+
+available() {
+  command -v $1 > /dev/null
+}
+
+select_container_manager() {
+  if available podman; then
+    CONMAN="podman"
+  elif available docker; then
+    CONMAN="docker"
+  else
+    CONMAN="podman"
+  fi
+}
+
+main() {
+  set -ex -o pipefail
+
+  select_container_manager
+
+  if [ "$1" = "run" ]; then
+     shift 1
+     $CONMAN run --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp "$@"
+  fi
+}
+
+main "$@"
+
