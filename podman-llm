@@ -15,7 +15,7 @@ select_container_manager() {
 }
 
 main() {
-  set -ex -o pipefail
+  set -e -o pipefail
 
   select_container_manager
 
