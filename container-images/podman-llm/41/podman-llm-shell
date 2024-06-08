@@ -10,5 +10,6 @@ while true; do
   fi
 
   llama-cpp-main "$@" -p "$sentence" 2> /dev/null
+  echo
 done
 
