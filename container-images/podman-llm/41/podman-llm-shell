@@ -1,15 +1,78 @@
 #!/bin/bash
 
-set -e -o pipefail
+API_URL="${API_URL:-http://127.0.0.1:8080}"
 
-while true; do
-  printf ">>> "
-  read sentence
-  if [ "$sentence" = "/bye" ]; then
-    break
-  fi
+CHAT=()
 
-  llama-cpp-main "$@" -p "$sentence" 2> /dev/null
-  echo
-done
+trim() {
+    shopt -s extglob
+    set -- "${1##+([[:space:]])}"
+    printf "%s" "${1%%+([[:space:]])}"
+}
+
+trim_trailing() {
+    shopt -s extglob
+    printf "%s" "${1%%+([[:space:]])}"
+}
+
+format_prompt() {
+    echo -n "${INSTRUCTION}"
+    printf "\n### Human: %s\n### Assistant: %s" "${CHAT[@]}" "$1"
+}
+
+tokenize() {
+    curl \
+        --silent \
+        --request POST \
+        --url "${API_URL}/tokenize" \
+        --header "Content-Type: application/json" \
+        --data-raw "$(jq -ns --arg content "$1" '{content:$content}')" \
+    | jq '.tokens[]'
+}
+
+chat_completion() {
+    PROMPT="$(trim_trailing "$(format_prompt "$1")")"
+    DATA="$(echo -n "$PROMPT" | jq -Rs '{
+        prompt: .,
+        stop: ["\n### Human:"],
+        stream: true
+    }')"
+
+    ANSWER=''
+
+    while IFS= read -r LINE; do
+        if [[ $LINE = data:* ]]; then
+            CONTENT="$(echo "${LINE:5}" | jq -r '.content')"
+            printf "%s" "${CONTENT}"
+            ANSWER+="${CONTENT}"
+        fi
+    done < <(curl \
+        --silent \
+        --no-buffer \
+        --request POST \
+        --url "${API_URL}/completion" \
+        --header "Content-Type: application/json" \
+        --data-raw "${DATA}")
+
+    printf "\n"
+
+    CHAT+=("$1" "$(trim "$ANSWER")")
+}
+
+main () {
+  set -e -o pipefail
+
+  llama-cpp-server -m /granite-3b-code-instruct.Q4_K_M.gguf > /dev/null 2>&1 &
+
+  while true; do
+    read -r -e -p ">>> " QUESTION
+    if [ "$QUESTION" = "/bye" ]; then
+        break
+    fi
+
+    chat_completion "${QUESTION}"
+  done
+}
+
+main
 
