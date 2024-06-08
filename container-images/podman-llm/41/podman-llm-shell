@@ -9,6 +9,6 @@ while true; do
     break
   fi
 
-  llama-cpp "$@" -p "$sentence" 2> /dev/null
+  llama-cpp-main "$@" -p "$sentence" 2> /dev/null
 done
 
