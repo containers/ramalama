@@ -22,7 +22,10 @@ main() {
   if [ "$1" = "run" ]; then
      shift 1
      $CONMAN run --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp "$@"
+     exit 0
   fi
+
+  podman "$@"
 }
 
 main "$@"

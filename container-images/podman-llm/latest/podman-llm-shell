@@ -70,7 +70,7 @@ main () {
 
   CHAT=()
 
-  llama-cpp-server -m /granite-3b-code-instruct.Q4_K_M.gguf > /dev/null 2>&1 &
+  llama-cpp-server -m "$1" > /dev/null 2>&1 &
 
   while true; do
     read -r -e -p ">>> " QUESTION
@@ -82,5 +82,5 @@ main () {
   done
 }
 
-main
+main "$@"
 
