@@ -1,6 +1,0 @@
-FROM fedora:41
-
-RUN dnf install -y rocminfo rocm-opencl rocm-clinfo rocm-hip git 'dnf5-command(builddep)' && dnf builddep -y llama-cpp
-RUN git clone https://github.com/ggerganov/llama.cpp.git && cd llama.cpp && git reset --hard 5921b8f089d3b7bda86aac5a66825df6a6c10603 && LLAMA_CURL=1 make -j $(nproc)
-RUN cd llama.cpp && mv main /usr/bin/llama.cpp
-

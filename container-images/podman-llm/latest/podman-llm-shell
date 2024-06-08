@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e -o pipefail
+
+while true; do
+  printf ">>> "
+  read sentence
+  if [ "$sentence" = "/bye" ]; then
+    break
+  fi
+
+  llama-cpp "$@" -p "$sentence" 2> /dev/null
+done
+

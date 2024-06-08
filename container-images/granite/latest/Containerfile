@@ -1,0 +1,4 @@
+FROM podman-llm
+
+CMD ["podman-llm-shell", "--hf-repo", "ibm-granite/granite-3b-code-instruct-GGUF", "-m", "granite-3b-code-instruct.Q4_K_M.gguf", "-n", "128"]
+
