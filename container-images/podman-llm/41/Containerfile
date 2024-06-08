@@ -1,6 +1,6 @@
 FROM fedora:41
 
-RUN dnf install -y rocminfo rocm-opencl rocm-clinfo rocm-hip git jq procps-ng vim 'dnf5-command(builddep)' && dnf builddep -y llama-cpp
+RUN dnf install -y rocminfo rocm-opencl rocm-clinfo rocm-hip git jq procps-ng vim clblast-devel 'dnf5-command(builddep)' && dnf builddep -y llama-cpp
 
 ENV LLAMA_CLBLAST=1
 ENV LLAMA_CURL=1
