@@ -1,0 +1,5 @@
+FROM podman-llm
+
+RUN llama-cpp-main --hf-repo bartowski/Llama-3-8B-Instruct-Gradient-1048k-GGUF -m Llama-3-8B-Instruct-Gradient-1048k-IQ1_M.gguf
+
+ENTRYPOINT llama-cpp-main --instruct -m /Llama-3-8B-Instruct-Gradient-1048k-IQ1_M.gguf 2> /dev/null
