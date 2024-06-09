@@ -5,8 +5,7 @@ RUN dnf install -y rocminfo rocm-opencl rocm-clinfo rocm-hip git jq procps-ng vi
 ENV LLAMA_CURL=1
 ENV LLAMA_VULKAN=1
 
-RUN git clone https://github.com/ggerganov/llama.cpp.git
-RUN cd llama.cpp && git reset --hard 5921b8f089d3b7bda86aac5a66825df6a6c10603 && cmake -B build -DLLAMA_VULKAN=1 -DLLAMA_CURL=1 && cmake --build build --config Release -j $(nproc)
+RUN git clone -b podman-llm https://github.com/ericcurtin/llama.cpp.git
+RUN cd llama.cpp && cmake -B build -DLLAMA_VULKAN=1 -DLLAMA_CURL=1 && cmake --build build --config Release -j $(nproc)
 RUN cd llama.cpp/build/bin && for file in *; do if [ -f "$file" ] && [ -x "$file" ]; then echo "$file"; mv "$file" /usr/bin/llama-cpp-"$file"; fi; done
-COPY podman-llm-shell /usr/bin
 
