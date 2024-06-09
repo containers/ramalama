@@ -9,8 +9,6 @@ declare -A models=(
   ["opt/2.7B"]="facebook/opt-2.7b-GGUF opt-2.7b.Q4_K_M.gguf"
   ["t5/3b"]="google/t5-3b-GGUF t5-3b.Q4_K_M.gguf"
   ["t5/11b"]="google/t5-11b-GGUF t5-11b.Q4_K_M.gguf"
-  ["bloom/560m"]="bigscience/bloom-560m-GGUF bloom-560m.Q4_K_M.gguf"
-  ["bloom/1b1"]="bigscience/bloom-1b1-GGUF bloom-1b1.Q4_K_M.gguf"
 )
 
 # Function to create directory and Containerfile
