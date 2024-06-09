@@ -16,7 +16,7 @@ declare -A models=(
 
 # Function to create directory and Containerfile
 generate_containerfile() {
-  local model_dir=$1
+  local model_dir="$(echo $1 | tr '[:upper:]' '[:lower:]')"
   local hf_repo=$2
   local model_file=$3
 
