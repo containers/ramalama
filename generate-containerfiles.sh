@@ -5,7 +5,6 @@ declare -A models=(
   ["granite/3b"]="ibm-granite/granite-3b-code-instruct-GGUF granite-3b-code-instruct.Q4_K_M.gguf"
   ["t5/3b"]="google/t5-3b-GGUF t5-3b.Q4_K_M.gguf"
   ["t5/11b"]="google/t5-11b-GGUF t5-11b.Q4_K_M.gguf"
-  ["gemma/2b"]="google/gemma-2b gemma-2b.gguf"
   ["llama3/8b"]="bartowski/Llama-3-8B-Instruct-Gradient-1048k-GGUF Llama-3-8B-Instruct-Gradient-1048k-IQ1_M.gguf"
 )
 

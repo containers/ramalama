@@ -1,5 +1,0 @@
-FROM podman-llm
-
-RUN llama-cpp-main --hf-repo google/gemma-2b -m gemma-2b.gguf
-
-ENTRYPOINT llama-cpp-main --instruct -m /gemma-2b.gguf 2> /dev/null
