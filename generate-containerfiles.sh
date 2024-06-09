@@ -11,7 +11,6 @@ declare -A models=(
   ["t5/11b"]="google/t5-11b-GGUF t5-11b.Q4_K_M.gguf"
   ["bloom/560m"]="bigscience/bloom-560m-GGUF bloom-560m.Q4_K_M.gguf"
   ["bloom/1b1"]="bigscience/bloom-1b1-GGUF bloom-1b1.Q4_K_M.gguf"
-  ["gpt-2/1.5B"]="openai/gpt-2-1.5b-GGUF gpt-2-1.5b.Q4_K_M.gguf"
 )
 
 # Function to create directory and Containerfile
