@@ -1,0 +1,5 @@
+FROM podman-llm
+
+RUN llama-cpp-main --hf-repo google/t5-11b-GGUF -m t5-11b.Q4_K_M.gguf
+
+ENTRYPOINT llama-cpp-main --instruct -m /t5-11b.Q4_K_M.gguf 2> /dev/null
