@@ -2,5 +2,5 @@ FROM podman-llm
 
 RUN llama-cpp-main --hf-repo ibm-granite/granite-3b-code-instruct-GGUF -m granite-3b-code-instruct.Q4_K_M.gguf
 
-ENTRYPOINT ["llama-cpp-main-wrapper", "-m", "/granite-3b-code-instruct.Q4_K_M.gguf"]
+ENTRYPOINT ["llama-cpp-main", "-m", "/granite-3b-code-instruct.Q4_K_M.gguf", "--log-disable"]
 CMD ["--instruct"]

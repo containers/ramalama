@@ -1,6 +1,0 @@
-#!/bin/bash
-
-set -eu -o pipefail
-
-llama-cpp-main "$@" 2> /dev/null
-

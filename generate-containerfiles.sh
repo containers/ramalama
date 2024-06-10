@@ -19,7 +19,7 @@ FROM podman-llm
 
 RUN llama-cpp-main --hf-repo $hf_repo -m $model_file
 
-ENTRYPOINT ["llama-cpp-main-wrapper", "-m", "/$model_file"]
+ENTRYPOINT ["llama-cpp-main", "-m", "/$model_file", "--log-disable"]
 CMD ["--instruct"]
 EOF
 }

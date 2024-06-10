@@ -18,5 +18,3 @@ RUN git clone -b podman-llm https://github.com/ericcurtin/llama.cpp.git && \
     done; \
     cd / && \
     rm -rf llama.cpp
-
-COPY llama-cpp-main-wrapper /usr/bin/
