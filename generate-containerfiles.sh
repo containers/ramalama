@@ -19,7 +19,8 @@ FROM podman-llm
 
 RUN llama-cpp-main --hf-repo $hf_repo -m $model_file
 
-ENTRYPOINT llama-cpp-main --instruct -m /$model_file 2> /dev/null
+ENTRYPOINT ["llama-cpp-main-wrapper", "-m", "/$model_file"]
+CMD ["--instruct"]
 EOF
 }
 
