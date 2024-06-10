@@ -3,8 +3,7 @@
 # List of models to generate Containerfiles for
 declare -A models=(
   ["granite/3b"]="ibm-granite/granite-3b-code-instruct-GGUF granite-3b-code-instruct.Q4_K_M.gguf"
-  ["t5/3b"]="google/t5-3b-GGUF t5-3b.Q4_K_M.gguf"
-  ["t5/11b"]="google/t5-11b-GGUF t5-11b.Q4_K_M.gguf"
+  ["mistral/7b"]="TheBloke/Mistral-7B-Instruct-v0.1-GGUF mistral-7b-instruct-v0.1.Q2_K.gguf"
 )
 
 # Function to create directory and Containerfile
