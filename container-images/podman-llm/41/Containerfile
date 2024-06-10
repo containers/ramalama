@@ -1,12 +1,22 @@
 FROM fedora:41
 
-RUN dnf install -y rocminfo rocm-opencl rocm-clinfo rocm-hip git jq procps-ng vim clblast-devel vulkan-headers vulkan-loader-devel glslc glslang 'dnf5-command(builddep)' && dnf builddep -y llama-cpp
+RUN dnf install -y rocminfo rocm-opencl rocm-clinfo rocm-hip git jq procps-ng vim clblast-devel vulkan-headers vulkan-loader-devel glslc glslang 'dnf5-command(builddep)' && dnf builddep -y llama-cpp && dnf clean all && /var/cache/yum
 
 ENV LLAMA_CURL=1
 ENV LLAMA_VULKAN=1
 
-RUN git clone -b podman-llm https://github.com/ericcurtin/llama.cpp.git
-RUN cd llama.cpp && cmake -B build -DLLAMA_VULKAN=1 -DLLAMA_CURL=1 && cmake --build build --config Release -j $(nproc)
-RUN cd llama.cpp/build/bin && for file in *; do if [ -f "$file" ] && [ -x "$file" ]; then echo "$file"; mv "$file" /usr/bin/llama-cpp-"$file"; fi; done
+RUN git clone -b podman-llm https://github.com/ericcurtin/llama.cpp.git && \
+    cd llama.cpp && \
+    cmake -B build -DLLAMA_VULKAN=1 -DLLAMA_CURL=1 && \
+    cmake --build build --config Release -j $(nproc) && \
+    cd build/bin && \
+    for file in *; do \
+      if [ -f "$file" ] && [ -x "$file" ]; then \
+        echo "$file" && \
+        mv "$file" /usr/bin/llama-cpp-"$file"; \
+      fi; \
+    done; \
+    cd / && \
+    rm -rf llama.cpp
 
 COPY llama-cpp-main-wrapper /usr/bin/
