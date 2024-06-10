@@ -9,3 +9,4 @@ RUN git clone -b podman-llm https://github.com/ericcurtin/llama.cpp.git
 RUN cd llama.cpp && cmake -B build -DLLAMA_VULKAN=1 -DLLAMA_CURL=1 && cmake --build build --config Release -j $(nproc)
 RUN cd llama.cpp/build/bin && for file in *; do if [ -f "$file" ] && [ -x "$file" ]; then echo "$file"; mv "$file" /usr/bin/llama-cpp-"$file"; fi; done
 
+COPY llama-cpp-main-wrapper /usr/bin/
