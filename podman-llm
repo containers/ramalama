@@ -14,15 +14,86 @@ select_container_manager() {
   fi
 }
 
+# Function to create directory and Containerfile
+generate_containerfile() {
+  local model_dir="$(echo $1 | tr '[:upper:]' '[:lower:]')"
+  local hf_repo=$2
+  local model_file=$3
+
+  mkdir -p "container-images/$model_dir"
+
+  cat <<EOF > "container-images/$model_dir/Containerfile"
+FROM podman-llm/podman-llm:41
+
+RUN llama-cpp-main --hf-repo $hf_repo -m $model_file
+
+ENTRYPOINT ["llama-cpp-main", "-m", "/$model_file", "--log-disable"]
+CMD ["--instruct"]
+EOF
+}
+
+generate_containerfiles() {
+  # Iterate over the models and generate Containerfiles
+  for model_dir in "${!models[@]}"; do
+    IFS=' ' read -r -a model_info <<< "${models[$model_dir]}"
+    hf_repo=${model_info[0]}
+    model_file=${model_info[1]}
+
+    generate_containerfile "$model_dir" "$hf_repo" "$model_file"
+  done
+
+  echo "Containerfiles have been generated successfully."
+}
+
+# Function to check and replace model names
+replace_model() {
+  declare -a run_models=(
+    "granite:3b"
+    "mistral:7b"
+  )
+
+  local prefix="quay.io/podman-llm"
+  local arg=$1
+  for model in "${run_models[@]}"; do
+    if [[ "$arg" == "$model" ]]; then
+      echo "$prefix/$arg"
+      return
+    fi
+  done
+
+  echo "$arg"
+}
+
+
 main() {
   set -e -o pipefail
 
   select_container_manager
 
+  # List of models to generate Containerfiles for
+  declare -A models=(
+    ["granite/3b"]="ibm-granite/granite-3b-code-instruct-GGUF granite-3b-code-instruct.Q4_K_M.gguf"
+    ["mistral/7b"]="TheBloke/Mistral-7B-Instruct-v0.1-GGUF mistral-7b-instruct-v0.1.Q2_K.gguf"
+  )
+
   if [ "$1" = "run" ]; then
-     shift 1
-     $CONMAN run --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp "$@"
-     exit 0
+    shift 1
+
+    new_args=()
+
+    # Loop through all arguments and replace them if necessary
+    for arg in "$@"; do
+      new_args+=("$(replace_model "$arg")")
+    done
+
+    # Update the positional parameters
+    set -- "${new_args[@]}"
+
+    $CONMAN run --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp "$@"
+    exit 0
+  elif [ "$1" = "generate-containerfiles" ]; then
+    generate_containerfiles
+    exit 0
   fi
 
   podman "$@"
