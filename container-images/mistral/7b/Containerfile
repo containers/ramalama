@@ -1,4 +1,4 @@
-FROM podman-llm
+FROM podman-llm/podman-llm:41
 
 RUN llama-cpp-main --hf-repo TheBloke/Mistral-7B-Instruct-v0.1-GGUF -m mistral-7b-instruct-v0.1.Q2_K.gguf
 

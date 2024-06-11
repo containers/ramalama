@@ -15,7 +15,7 @@ generate_containerfile() {
   mkdir -p "container-images/$model_dir"
 
   cat <<EOF > "container-images/$model_dir/Containerfile"
-FROM podman-llm
+FROM podman-llm/podman-llm:41
 
 RUN llama-cpp-main --hf-repo $hf_repo -m $model_file
 
