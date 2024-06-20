@@ -1,0 +1,4 @@
+granite:3b ibm-granite/granite-3b-code-instruct-GGUF granite-3b-code-instruct.Q4_K_M.gguf
+granite    ibm-granite/granite-3b-code-instruct-GGUF granite-3b-code-instruct.Q4_K_M.gguf
+mistral:7b TheBloke/Mistral-7B-Instruct-v0.1-GGUF    mistral-7b-instruct-v0.1.Q2_K.gguf
+mistral    TheBloke/Mistral-7B-Instruct-v0.1-GGUF    mistral-7b-instruct-v0.1.Q2_K.gguf
