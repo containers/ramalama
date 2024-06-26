@@ -43,9 +43,9 @@ main() {
   new_args=()
 
   # Loop through all arguments and replace them if necessary
-  for arg in "$1"; do
+  for arg in "$@"; do
     if [ -n "${hf_repos[$1]}" ]; then
-      tag="podman-llm/$1"
+      tag="podman-llm/$2"
 
       containerfile="$(cat <<-END
 FROM quay.io/podman-llm/podman-llm:41
