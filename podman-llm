@@ -45,14 +45,14 @@ main() {
     fi
   done <<< "$(curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/main/hf-db.txt)"
 
-  new_args=()
+  local new_args=()
 
   # Loop through all arguments and replace them if necessary
   for arg in "$@"; do
-    if [ -n "${hf_repos[$1]}" ]; then
-      tag="podman-llm/$2"
+    if [ -n "${hf_repos[$2]}" ]; then
+      local tag="podman-llm/$2"
 
-      containerfile="$(cat <<-END
+      local containerfile="$(cat <<-END
 FROM quay.io/podman-llm/podman-llm:41
 
 RUN llama-main --hf-repo ${hf_repos[$1]} -m ${model_files[$1]}
