@@ -36,9 +36,14 @@ main() {
   declare -A hf_repos
   declare -A model_files
   while read -r id hf_repo model_file; do
-    hf_repos["$id"]="$hf_repo"
-    model_files["$id"]="$model_file"
-  done <<< "$(curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/test/hf-db.txt)"
+    if [ -n "${hf_repos[$hf_repo]}" ]; then
+      hf_repos["$id"]="${hf_repos[$hf_repo]}"
+      model_files["$id"]="${model_files[$hf_repo]}"
+    else
+      hf_repos["$id"]="$hf_repo"
+      model_files["$id"]="$model_file"
+    fi
+  done <<< "$(curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/main/hf-db.txt)"
 
   new_args=()
 
