@@ -1,6 +1,14 @@
 FROM fedora:41
 
-RUN dnf install -y rocminfo rocm-opencl rocm-clinfo rocm-hip git jq procps-ng vim clblast-devel vulkan-headers vulkan-loader-devel glslc glslang 'dnf5-command(builddep)' && dnf builddep -y llama-cpp && dnf clean all && rm -rf /var/cache/*dnf*
+RUN if [ "$(uname -m)" != "aarch64" ]; then \
+      dnf install -y rocminfo rocm-opencl rocm-clinfo rocm-hip; \
+    fi; \
+        \
+    dnf install -y git jq procps-ng vim clblast-devel vulkan-headers \
+      vulkan-loader-devel glslc glslang 'dnf5-command(builddep)' && \
+    dnf builddep -y llama-cpp && \
+    dnf clean all && \
+    rm -rf /var/cache/*dnf*
 
 ENV LLAMA_CURL=1
 ENV LLAMA_VULKAN=1
@@ -13,7 +21,7 @@ RUN git clone -b podman-llm https://github.com/ericcurtin/llama.cpp.git && \
     for file in *; do \
       if [ -f "$file" ] && [ -x "$file" ]; then \
         echo "$file" && \
-        mv "$file" /usr/bin/llama-cpp-"$file"; \
+        mv "$file" /usr/bin/llama-"$file"; \
       fi; \
     done; \
     cd / && \

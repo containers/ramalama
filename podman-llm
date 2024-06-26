@@ -50,9 +50,9 @@ main() {
       containerfile="$(cat <<-END
 FROM quay.io/podman-llm/podman-llm:41
 
-RUN llama-cpp-main --hf-repo ${hf_repos[$1]} -m ${model_files[$1]}
+RUN llama-main --hf-repo ${hf_repos[$1]} -m ${model_files[$1]}
 
-ENTRYPOINT ["llama-cpp-main", "-m", "/${model_files[$1]}", "--log-disable"]
+ENTRYPOINT ["llama-main", "-m", "/${model_files[$1]}", "--log-disable"]
 CMD ["--instruct"]
 END
 

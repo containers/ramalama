@@ -21,7 +21,7 @@ RUN git clone -b podman-llm https://github.com/ericcurtin/llama.cpp.git && \
     for file in *; do \
       if [ -f "$file" ] && [ -x "$file" ]; then \
         echo "$file" && \
-        mv "$file" /usr/bin/llama-cpp-"$file"; \
+        mv "$file" /usr/bin/llama-"$file"; \
       fi; \
     done; \
     cd / && \
