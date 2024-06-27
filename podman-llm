@@ -14,20 +14,6 @@ select_container_manager() {
   fi
 }
 
-# Function to check and replace model names
-replace_model() {
-  local prefix="quay.io/podman-llm"
-  local arg=$1
-  for model in "${run_models[@]}"; do
-    if [[ "$arg" == "$model" ]]; then
-      echo "$prefix/$arg"
-      return
-    fi
-  done
-
-  echo "$arg"
-}
-
 main() {
   set -e -o pipefail
 
