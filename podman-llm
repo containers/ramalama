@@ -14,6 +14,29 @@ select_container_manager() {
   fi
 }
 
+check_if_in_hf_db() {
+  local image_name="$1"
+
+  local image_data
+  if image_data="$(curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/main/hf-db/$image_name)"; then
+    local hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
+    local model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
+    image_name="podman-llm/$image_name"
+    local containerfile="$(cat <<-END
+FROM quay.io/podman-llm/podman-llm:41
+LABEL model=/$model
+RUN llama-main --hf-repo $hf_repo -m $model
+END
+)"
+
+    if [ -z "$($conman images -q $image_name 2> /dev/null)" ]; then
+      echo "$containerfile" | $conman build -t $image_name -
+    fi
+  fi
+
+  echo "$image_name"
+}
+
 main() {
   set -e -o pipefail
 
@@ -27,22 +50,7 @@ main() {
 
   local image_name="$2"
 
-  local image_data
-  if image_data="$(curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/main/hf-db/$image_name)"; then
-    local hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
-    local model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
-    image_name="podman-llm/$2"
-    local containerfile="$(cat <<-END
-FROM quay.io/podman-llm/podman-llm:41
-LABEL model=/$model
-RUN llama-main --hf-repo $hf_repo -m $model
-END
-)"
-
-    if [ -z "$($conman images -q $image_name 2> /dev/null)" ]; then
-      echo "$containerfile" | $conman build -t $image_name -
-    fi
-  fi
+  image_name="$(check_if_in_hf_db "$image_name")"
 
   local gguf
   if [ "$1" = "run" ] || [ "$1" = "serve" ]; then
