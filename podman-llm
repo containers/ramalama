@@ -16,25 +16,23 @@ select_container_manager() {
 
 check_if_in_hf_db() {
   local image_name="$1"
-
+  local oci_image_name="podman-llm/$image_name"
   local image_data
-  if image_data="$(curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/main/hf-db/$image_name)"; then
+  if [ -z "$($conman images -q $oci_image_name 2> /dev/null)" ] && image_data="$(curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/main/hf-db/$image_name)"; then
     local hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
-    local model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
-    image_name="podman-llm/$image_name"
+    MODEL="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
     local containerfile="$(cat <<-END
 FROM quay.io/podman-llm/podman-llm:41
-LABEL model=/$model
-RUN llama-main --hf-repo $hf_repo -m $model
+LABEL MODEL=/$MODEL
+RUN llama-main --hf-repo $hf_repo -m $MODEL
 END
 )"
 
-    if [ -z "$($conman images -q $image_name 2> /dev/null)" ]; then
-      echo "$containerfile" | $conman build -t $image_name -
-    fi
+    MODEL="/$MODEL"
+    echo "$containerfile" | $conman build -t $oci_image_name -
   fi
 
-  echo "$image_name"
+  echo "$oci_image_name"
 }
 
 main() {
@@ -52,19 +50,18 @@ main() {
 
   image_name="$(check_if_in_hf_db "$image_name")"
 
-  local gguf
-  if [ "$1" = "run" ] || [ "$1" = "serve" ]; then
-    gguf="$(podman inspect -f '{{ index .Config.Labels "model"}}' $image_name)"
+  if [ -z "$MODEL" ] && [ "$1" = "run" ] || [ "$1" = "serve" ]; then
+    MODEL="$(podman inspect -f '{{ index .Config.Labels "model"}}' $image_name)"
   fi
 
   if [ "$1" = "run" ]; then
-    $conman run --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp $image_name llama-main -m $gguf --log-disable --instruct
+    $conman run --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp $image_name llama-main -m $MODEL --log-disable --instruct
   elif [ "$1" = "pull" ]; then
     if [ -z "$($conman images -q $image_name 2> /dev/null)" ]; then
       $conman pull $image_name
     fi
   elif [ "$1" = "serve" ]; then
-    $conman run -p 8080:8080 --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp $image_name llama-server -m $gguf
+    $conman run -p 8080:8080 --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp $image_name llama-server -m $MODEL
   fi
 }
 
