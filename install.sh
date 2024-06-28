@@ -29,7 +29,7 @@ main() {
   TMP="$(mktemp -d)"
   trap cleanup EXIT
   local from="podman-llm"
-  local url="raw.githubusercontent.com/ericcurtin/podman-llm/main/$FROM"
+  local url="raw.githubusercontent.com/ericcurtin/podman-llm/main/$from"
   local from="$TMP/$from"
   curl -fsSL -o "$from" "https://$url"
   install -D -m755 "$from" "$bindir/"
