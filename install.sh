@@ -30,9 +30,9 @@ main() {
   trap cleanup EXIT
   local from="podman-llm"
   local url="raw.githubusercontent.com/ericcurtin/podman-llm/main/$FROM"
-  local from="$TMP/$FROM"
-  curl -fsSL -o "$FROM" "https://$url"
-  install -D -m755 "$FROM" "$TO"
+  local from="$TMP/$from"
+  curl -fsSL -o "$from" "https://$url"
+  install -D -m755 "$from" "$bindir/"
 }
 
 main "$@"
