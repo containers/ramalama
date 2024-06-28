@@ -60,3 +60,30 @@ And we build via:
 podman build -t granite podman-llm/granite:3b
 ```
 
+## Diagram
+
+```
++------------------------+    +--------------------+    +------------------+
+|                        |    | Pull runtime layer |    | Pull model layer |
+|    podman-llm run      | -> | with llama.cpp     | -> | with granite     |
+|                        |    |                    |    |                  |
++------------------------+    +--------------------+    |------------------|
+                                                        | Repo options:    |
+                                                        +------------------+
+                                                            |          |
+                                                            v          v
+                                                    +--------------+ +---------+
+                                                    | Hugging Face | | quay.io |
+                                                    +--------------+ +---------+
+                                                            \          /
+                                                             \        /
+                                                              \      /
+                                                               v    v
+                                                        +-----------------+
+                                                        | Start container |
+                                                        | with llama.cpp  |
+                                                        | and granite     |
+                                                        | model           |
+                                                        +-----------------+
+```
+
