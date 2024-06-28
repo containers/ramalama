@@ -60,7 +60,7 @@ END
       $CONMAN pull $image_name
     fi
   elif [ "$1" = "serve" ]; then
-    $CONMAN run -p 8080:8080 --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp $image_name llama-server -m /granite-3b-code-instruct.Q4_K_M.gguf
+    $CONMAN run -p 8080:8080 --rm -it --security-opt=label=disable -v"$HOME":"$HOME" -v/tmp:/tmp $image_name llama-server -m /${model_files[$2]}
   fi
 }
 
