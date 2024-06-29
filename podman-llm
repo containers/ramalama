@@ -31,7 +31,6 @@ LABEL MODEL=/$model
 RUN llama-main --hf-repo $hf_repo -m $model
 END
 )"
-
     echo "$containerfile" | $conman build -t $oci_image_name -
   fi
 
@@ -46,9 +45,7 @@ get_model() {
 
 main() {
   set -e -o pipefail
-
   local conman="$(select_container_manager)"
-
   if [ "$#" -ne "2" ] || [ "$1" != "run" ] && [ "$1" != "pull" ] && \
      [ "$1" != "serve" ]; then
     echo "Usage: podman-llm [run|pull|serve] image_name"
@@ -56,9 +53,7 @@ main() {
   fi
 
   IMAGE_NAME="$2"
-
   check_if_in_hf_db
-
   if [ "$1" = "run" ] || [ "$1" = "serve" ]; then
     local model="$(get_model)"
   fi
