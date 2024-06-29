@@ -5,10 +5,13 @@ RUN if [ "$(uname -m)" != "aarch64" ]; then \
     fi; \
         \
     dnf install -y git jq procps-ng vim clblast-devel vulkan-headers \
-      vulkan-loader-devel glslc glslang 'dnf5-command(builddep)' && \
+      vulkan-loader-devel glslc glslang 'dnf5-command(builddep)' \
+      python3-pip && \
     dnf builddep -y llama-cpp && \
     dnf clean all && \
     rm -rf /var/cache/*dnf*
+
+RUN pip install -U "huggingface_hub[cli]"
 
 ENV LLAMA_CURL=1
 ENV LLAMA_VULKAN=1
