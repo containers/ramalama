@@ -25,12 +25,10 @@ check_if_in_hf_db() {
   if ! image_available && local image_data="$(curl -fsSL $url)"; then
     local hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
     local model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
-    local containerfile="$(cat <<-END
-FROM quay.io/podman-llm/podman-llm:41
-RUN llama-main --hf-repo $hf_repo -m $model
-LABEL MODEL=/$model
-END
-)"
+    local containerfile="$(echo "FROM quay.io/podman-llm/podman-llm:41
+RUN huggingface-cli download $hf_repo $model
+RUN ln -s \$(huggingface-cli download $hf_repo $model) $model
+LABEL MODEL=/$model")"
     echo "$containerfile" | $conman build -t $oci_image_name -
   fi
 
