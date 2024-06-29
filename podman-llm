@@ -27,8 +27,8 @@ check_if_in_hf_db() {
     local model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
     local containerfile="$(cat <<-END
 FROM quay.io/podman-llm/podman-llm:41
-LABEL MODEL=/$model
 RUN llama-main --hf-repo $hf_repo -m $model
+LABEL MODEL=/$model
 END
 )"
     echo "$containerfile" | $conman build -t $oci_image_name -

@@ -48,11 +48,11 @@ Here is an example Containerfile:
 
 ```
 FROM quay.io/podman-llm/podman-llm:41
-LABEL model=/granite-3b-code-instruct.Q4_K_M.gguf
 RUN llama-main --hf-repo ibm-granite/granite-3b-code-instruct-GGUF -m granite-3b-code-instruct.Q4_K_M.gguf
+LABEL MODEL=/granite-3b-code-instruct.Q4_K_M.gguf
 ```
 
-`LABEL model` is important so we know where to find the .gguf file.
+`LABEL MODEL` is important so we know where to find the .gguf file.
 
 And we build via:
 
