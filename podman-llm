@@ -29,7 +29,8 @@ check_if_in_hf_db() {
 RUN huggingface-cli download $hf_repo $model
 RUN ln -s \$(huggingface-cli download $hf_repo $model) $model
 LABEL MODEL=/$model")"
-    echo "$containerfile" | $conman build -t $oci_image_name -
+    local vol="-v$HOME/.cache/huggingface/:/root/.cache/huggingface/"
+    echo "$containerfile" | $conman build $vol -t $oci_image_name -
   fi
 
   if image_available; then
