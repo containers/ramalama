@@ -19,6 +19,7 @@ image_available() {
 }
 
 check_if_in_hf_db() {
+  local vol="$1"
   local oci_image_name="podman-llm/$IMAGE_NAME"
   local host="raw.githubusercontent.com"
   local url="https://$host/ericcurtin/podman-llm/main/hf-db/$IMAGE_NAME"
@@ -29,7 +30,6 @@ check_if_in_hf_db() {
 RUN huggingface-cli download $hf_repo $model
 RUN ln -s \$(huggingface-cli download $hf_repo $model) $model
 LABEL MODEL=/$model")"
-    local vol="-v$HOME/.cache/huggingface/:/root/.cache/huggingface/"
     echo "$containerfile" | $conman build $vol -t $oci_image_name -
   fi
 
@@ -51,16 +51,25 @@ main() {
     return 1
   fi
 
-  IMAGE_NAME="$2"
-  check_if_in_hf_db
+  local vol="-v$HOME/.cache/huggingface/:/root/.cache/huggingface/"
   if [ "$1" = "run" ] || [ "$1" = "serve" ]; then
-    local model="$(get_model)"
+    IMAGE_NAME="$2"
+    if [ "$IMAGE_NAME" != "bash" ]; then
+      check_if_in_hf_db "$vol"
+      local model="$(get_model)"
+    fi
   fi
 
   local conman_run="$conman run --rm -it --security-opt=label=disable"
-  conman_run+=" -v"$HOME":"$HOME" -v/tmp:/tmp"
+  conman_run+=" -v"$HOME":"$HOME" -v/tmp:/tmp $vol"
   if [ "$1" = "run" ]; then
-    $conman_run $IMAGE_NAME llama-main -m $model --log-disable --instruct
+    local args="llama-main -m $model --log-disable --instruct"
+    if [ "$IMAGE_NAME" == "bash" ]; then
+      args="/bin/bash"
+      IMAGE_NAME="podman-llm"
+    fi
+
+    $conman_run $IMAGE_NAME $args
   elif [ "$1" = "pull" ]; then
     $conman pull $IMAGE_NAME
   elif [ "$1" = "serve" ]; then
