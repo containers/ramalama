@@ -87,6 +87,9 @@ main() {
     check_if_in_hf_db "$vol"
   elif [ "$1" = "serve" ]; then
     IMAGE_NAME="$2"
+    check_if_in_hf_db "$vol"
+    local model="$(get_model)"
+    args="llama-main -m $model --log-disable --instruct"
     $conman_run -p 8080:8080 $IMAGE_NAME llama-server -m $model
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
     $conman images | grep -v "/podman-llm/"
