@@ -15,12 +15,11 @@ select_container_manager() {
 }
 
 image_available() {
-  [ -n "$($conman images -q $oci_image_name 2> /dev/null)" ]
+  [ -n "$($conman images -q $IMAGE_NAME 2> /dev/null)" ]
 }
 
 check_if_in_hf_db() {
   local vol="$1"
-  local oci_image_name="podman-llm/$IMAGE_NAME"
   local host="raw.githubusercontent.com"
   local url="https://$host/ericcurtin/podman-llm/main/hf-db/$IMAGE_NAME"
   if ! image_available && local image_data="$(curl -fsSL $url)"; then
@@ -28,52 +27,75 @@ check_if_in_hf_db() {
     local model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
     local containerfile="$(echo "FROM quay.io/podman-llm/podman-llm:41
 RUN huggingface-cli download $hf_repo $model
-RUN ln -s \$(huggingface-cli download $hf_repo $model) $model
-LABEL MODEL=/$model")"
-    echo "$containerfile" | $conman build $vol -t $oci_image_name -
-  fi
-
-  if image_available; then
-    IMAGE_NAME="$oci_image_name"
+RUN ln -s \$(huggingface-cli download $hf_repo $model) /root/$model
+LABEL MODEL=/root/$model")"
+    echo "$containerfile" | $conman build $vol -t $IMAGE_NAME -
   fi
 }
 
 get_model() {
-  podman inspect -f '{{ index .Config.Labels "MODEL"}}' $IMAGE_NAME
+  $conman inspect -f '{{ index .Config.Labels "MODEL"}}' $IMAGE_NAME
+}
+
+rm_cli() {
+  local model="$(get_model)"
+
+  # To be completed, only delete the directory once all associated images, 3b,
+  # latest, etc. are removed
+  if false; then
+    local dir_to_rm=$($conman_run $IMAGE_NAME readlink -f $model | xargs dirname | xargs dirname)
+    $conman_run $IMAGE_NAME rm -rf "$dir_to_rm" || true
+  fi
+
+  $conman rmi -f "$IMAGE_NAME"
+  $conman rmi -f $($conman images --filter "dangling=true" -q --no-trunc)
+}
+
+get_llm_store() {
+  local llm_store="--root"
+  if [ "$EUID" -eq 0 ]; then
+    llm_store+=" /var/lib/podman-llm/storage"
+  else
+    llm_store+=" $HOME/.local/share/podman-llm/storage"
+  fi
+
+  echo "$llm_store"
 }
 
 main() {
-  set -e -o pipefail
-  local conman="$(select_container_manager)"
-  if [ "$#" -ne "2" ] || [ "$1" != "run" ] && [ "$1" != "pull" ] && \
-     [ "$1" != "serve" ]; then
-    echo "Usage: podman-llm [run|pull|serve] image_name"
-    return 1
-  fi
+  set -eu -o pipefail
 
+  local llm_store="$(get_llm_store)"
+  local conman="$(select_container_manager) $llm_store"
   local vol="-v$HOME/.cache/huggingface/:/root/.cache/huggingface/"
-  if [ "$1" = "run" ] || [ "$1" = "serve" ]; then
-    IMAGE_NAME="$2"
-    if [ "$IMAGE_NAME" != "bash" ]; then
-      check_if_in_hf_db "$vol"
-      local model="$(get_model)"
-    fi
-  fi
-
   local conman_run="$conman run --rm -it --security-opt=label=disable"
   conman_run+=" -v"$HOME":"$HOME" -v/tmp:/tmp $vol"
   if [ "$1" = "run" ]; then
-    local args="llama-main -m $model --log-disable --instruct"
-    if [ "$IMAGE_NAME" == "bash" ]; then
-      args="/bin/bash"
-      IMAGE_NAME="podman-llm"
+    IMAGE_NAME="$2"
+    local args=""
+    if [ "$#" -gt 2 ] && [ -n "$3" ]; then
+      args="$3"
+    else
+      check_if_in_hf_db "$vol"
+      local model="$(get_model)"
+      args="llama-main -m $model --log-disable --instruct"
     fi
 
     $conman_run $IMAGE_NAME $args
   elif [ "$1" = "pull" ]; then
-    $conman pull $IMAGE_NAME
+    IMAGE_NAME="$2"
+    check_if_in_hf_db "$vol"
   elif [ "$1" = "serve" ]; then
+    IMAGE_NAME="$2"
     $conman_run -p 8080:8080 $IMAGE_NAME llama-server -m $model
+  elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
+    $conman images | grep -v "/podman-llm/"
+  elif [ "$1" = "rm" ]; then
+    IMAGE_NAME="$2"
+    rm_cli
+  else
+    echo "Usage: podman-llm [run|pull|serve|list|rm] [image_name]"
+    return 1
   fi
 }
 

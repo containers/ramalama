@@ -87,3 +87,5 @@ podman build -t granite podman-llm/granite:3b
                                                         +-----------------+
 ```
 
+Pulling from OCI registry via quay.io not complete yet. Currently just Hugging Face is supported.
+
