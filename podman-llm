@@ -38,6 +38,7 @@ get_model() {
 }
 
 rm_cli() {
+  IMAGE_NAME="$1"
   local model="$(get_model)"
 
   # To be completed, only delete the directory once all associated images, 3b,
@@ -49,6 +50,11 @@ rm_cli() {
 
   $conman rmi -f "$IMAGE_NAME"
   $conman rmi -f $($conman images --filter "dangling=true" -q --no-trunc)
+}
+
+build_cli() {
+  IMAGE_NAME="$1"
+  $conman build $vol -t $IMAGE_NAME .
 }
 
 get_llm_store() {
@@ -94,11 +100,9 @@ main() {
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
     $conman images | grep -v "/podman-llm/"
   elif [ "$1" = "rm" ]; then
-    IMAGE_NAME="$2"
-    rm_cli
+    rm_cli "$2"
   elif [ "$1" = "build" ]; then
-    IMAGE_NAME="$2"
-    $conman build $vol -t $IMAGE_NAME .
+    build_cli "$2"
   else
     echo "Usage: podman-llm [run|pull|serve|list|rm|build] [image_name]"
     return 1
