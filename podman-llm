@@ -96,6 +96,9 @@ main() {
   elif [ "$1" = "rm" ]; then
     IMAGE_NAME="$2"
     rm_cli
+  elif [ "$1" = "build" ]; then
+    IMAGE_NAME="$2"
+    $conman build $vol -t $IMAGE_NAME .
   else
     echo "Usage: podman-llm [run|pull|serve|list|rm] [image_name]"
     return 1

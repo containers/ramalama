@@ -57,7 +57,7 @@ LABEL MODEL=/granite-3b-code-instruct.Q4_K_M.gguf
 And we build via:
 
 ```
-podman build -t granite podman-llm/granite:3b
+podman-llm build granite
 ```
 
 ## Diagram
