@@ -49,7 +49,7 @@ rm_cli() {
   fi
 
   $conman rmi -f "$IMAGE_NAME"
-  $conman rmi -f $($conman images --filter "dangling=true" -q --no-trunc)
+  $conman images --filter "dangling=true" -q --no-trunc | xargs $conman rmi -f
 }
 
 build_cli() {
