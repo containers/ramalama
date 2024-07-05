@@ -98,7 +98,7 @@ main() {
     args="llama-main -m $model --log-disable --instruct"
     $conman_run -p 8080:8080 $IMAGE_NAME llama-server -m $model
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
-    $conman images | grep -v "/podman-llm/"
+    $conman images -flabel=MODEL
   elif [ "$1" = "rm" ]; then
     rm_cli "$2"
   elif [ "$1" = "build" ]; then
