@@ -75,7 +75,7 @@ main() {
   local conman="$(select_container_manager) $llm_store"
   local host_hf="$HOME/.cache/huggingface/"
   mkdir -p "$host_hf"
-  local vol="-v$HOME/.cache/huggingface/:/root/.cache/huggingface/"
+  local vol="-v$host_hf:/root/.cache/huggingface/"
   local conman_run="$conman run --rm -it --security-opt=label=disable"
   conman_run+=" -v"$HOME":"$HOME" -v/tmp:/tmp $vol"
   if [ "$1" = "run" ]; then
