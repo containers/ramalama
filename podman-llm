@@ -100,7 +100,7 @@ main() {
     IMAGE_NAME="$2"
     $conman build $vol -t $IMAGE_NAME .
   else
-    echo "Usage: podman-llm [run|pull|serve|list|rm] [image_name]"
+    echo "Usage: podman-llm [run|pull|serve|list|rm|build] [image_name]"
     return 1
   fi
 }
