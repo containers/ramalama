@@ -1,7 +1,7 @@
 #!/bin/bash
 
 available() {
-  command -v $1 > /dev/null
+  command -v "$1" > /dev/null
 }
 
 select_container_manager() {
@@ -15,46 +15,72 @@ select_container_manager() {
 }
 
 image_available() {
-  [ -n "$($conman images -q $IMAGE_NAME 2> /dev/null)" ]
+  [ -n "$($conman images -q "$IMAGE_NAME" 2> /dev/null)" ]
 }
 
 check_if_in_hf_db() {
   local vol="$1"
   local host="raw.githubusercontent.com"
   local url="https://$host/ericcurtin/podman-llm/main/hf-db/$IMAGE_NAME"
-  if ! image_available && local image_data="$(curl -fsSL $url)"; then
-    local hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
-    local model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
+  local image_data
+  if ! image_available && image_data="$(curl -fsSL "$url")"; then
+    local hf_repo
+    hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
+    local model
+    model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
     local containerfile="FROM quay.io/podman-llm/podman-llm:41
 RUN huggingface-cli download $hf_repo $model
 RUN ln -s \$(huggingface-cli download $hf_repo $model) /root/$model
 LABEL MODEL=/root/$model"
-    echo "$containerfile" | $conman build $vol -t $IMAGE_NAME -
+    echo "$containerfile" | $conman build "$vol" -t "$IMAGE_NAME" -
   fi
 }
 
 get_model() {
-  $conman inspect -f '{{ index .Config.Labels "MODEL"}}' $IMAGE_NAME
+  $conman inspect -f '{{ index .Config.Labels "MODEL"}}' "$IMAGE_NAME"
+}
+
+get_dangling_images() {
+  $conman images --filter "dangling=true" -q --no-trunc
+}
+
+get_model_dir() {
+  local conman_run="$1"
+  local model="$2"
+
+  $conman_run "$IMAGE_NAME" readlink -f "$model" | xargs dirname | xargs dirname
 }
 
 rm_cli() {
   IMAGE_NAME="$1"
-  local model="$(get_model)"
+  local model
+  model="$(get_model)"
 
   # To be completed, only delete the directory once all associated images, 3b,
   # latest, etc. are removed
   if false; then
-    local dir_to_rm=$($conman_run $IMAGE_NAME readlink -f $model | xargs dirname | xargs dirname)
-    $conman_run $IMAGE_NAME rm -rf "$dir_to_rm" || true
+    local dir_to_rm
+    dir_to_rm=$(get_model_dir "$conman_run" "$model")
+    $conman_run "$IMAGE_NAME" rm -rf "$dir_to_rm" || true
   fi
 
   $conman rmi -f "$IMAGE_NAME"
-  $conman images --filter "dangling=true" -q --no-trunc | xargs -r $conman rmi -f
+  get_dangling_images | xargs -r "$conman" rmi -f
 }
 
 build_cli() {
   IMAGE_NAME="$1"
-  $conman build $vol -t $IMAGE_NAME .
+  $conman build "$vol" -t "$IMAGE_NAME" .
+}
+
+serve_cli() {
+  IMAGE_NAME="$1"
+  local vol="$2"
+  local conman_run="$3"
+  check_if_in_hf_db "$vol"
+  local model
+  model="$(get_model)"
+  $conman_run -p 8080:8080 "$IMAGE_NAME" llama-server -m "$model"
 }
 
 get_llm_store() {
@@ -71,13 +97,15 @@ get_llm_store() {
 main() {
   set -eu -o pipefail
 
-  local llm_store="$(get_llm_store)"
-  local conman="$(select_container_manager) $llm_store"
+  local llm_store
+  llm_store="$(get_llm_store)"
+  local conman
+  conman="$(select_container_manager) $llm_store"
   local host_hf="$HOME/.cache/huggingface/"
   mkdir -p "$host_hf"
   local vol="-v$host_hf:/root/.cache/huggingface/"
   local conman_run="$conman run --rm -it --security-opt=label=disable"
-  conman_run+=" -v"$HOME":"$HOME" -v/tmp:/tmp $vol"
+  conman_run+=" -v$HOME:$HOME -v/tmp:/tmp $vol"
   if [ "$1" = "run" ]; then
     IMAGE_NAME="$2"
     local args=""
@@ -85,20 +113,17 @@ main() {
       args="$3"
     else
       check_if_in_hf_db "$vol"
-      local model="$(get_model)"
+      local model
+      model="$(get_model)"
       args="llama-main -m $model --log-disable --instruct"
     fi
 
-    $conman_run $IMAGE_NAME $args
+    $conman_run "$IMAGE_NAME" $args
   elif [ "$1" = "pull" ]; then
     IMAGE_NAME="$2"
     check_if_in_hf_db "$vol"
   elif [ "$1" = "serve" ]; then
-    IMAGE_NAME="$2"
-    check_if_in_hf_db "$vol"
-    local model="$(get_model)"
-    args="llama-main -m $model --log-disable --instruct"
-    $conman_run -p 8080:8080 $IMAGE_NAME llama-server -m $model
+    serve_cli "$2" "$vol" "$conman_run"
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
     $conman images -flabel=MODEL
   elif [ "$1" = "rm" ]; then
