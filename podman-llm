@@ -31,7 +31,7 @@ check_if_in_hf_db() {
 RUN huggingface-cli download $hf_repo $model
 RUN ln -s \$(huggingface-cli download $hf_repo $model) /root/$model
 LABEL MODEL=/root/$model"
-    echo "$containerfile" | "${conman[@]}" build "$vol" -t "$image_name" -
+    echo "$containerfile" | "${conman[@]}" build "$VOL" -t "$image_name" -
   fi
 }
 
@@ -48,7 +48,16 @@ rm_dir() {
 }
 
 get_model_dir() {
-  "${conman_run[@]}" "$image_name" readlink -f "$model" | rm_dir | rm_dir
+  "${CONMAN_RUN[@]}" "$image_name" readlink -f "$model" | rm_dir | rm_dir
+}
+
+run_prep() {
+  local host_hf="$HOME/.cache/huggingface/"
+  mkdir -p "$host_hf"
+  VOL="-v$host_hf:/root/.cache/huggingface/"
+  CONMAN_RUN=("${conman[@]}" "run" "--rm" "-it")
+  CONMAN_RUN+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
+  CONMAN_RUN+=("$VOL")
 }
 
 rm_cli() {
@@ -61,7 +70,7 @@ rm_cli() {
   if false; then
     local dir_to_rm
     dir_to_rm=$(get_model_dir)
-    "${conman_run[@]}" "$image_name" rm -rf "$dir_to_rm" || true
+    "${CONMAN_RUN[@]}" "$image_name" rm -rf "$dir_to_rm" || true
   fi
 
   "${conman[@]}" rmi -f "$image_name"
@@ -70,15 +79,21 @@ rm_cli() {
 
 build_cli() {
   local image_name="$1"
-  "${conman[@]}" build "$vol" -t "$image_name" .
+
+  run_prep
+
+  "${conman[@]}" build "$VOL" -t "$image_name" .
 }
 
 serve_cli() {
   local image_name="$1"
+
+  run_prep
+
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  "${conman_run[@]}" -p 8080:8080 "$image_name" llama-server -m "$model"
+  "${CONMAN_RUN[@]}" -p 8080:8080 "$image_name" llama-server -m "$model"
 }
 
 get_llm_store() {
@@ -96,7 +111,10 @@ pull_cli() {
 }
 
 run_cli() {
-  local image_name=$2
+  local image_name="$2"
+
+  run_prep
+
   local args=""
   if [ "$#" -gt 2 ] && [ -n "$3" ]; then
     args=("$3")
@@ -107,19 +125,13 @@ run_cli() {
     args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
   fi
 
-  "${conman_run[@]}" "$image_name" "${args[@]}"
+  "${CONMAN_RUN[@]}" "$image_name" "${args[@]}"
 }
 
 main() {
   set -eu -o pipefail
 
   local conman=("$(select_container_manager)" "--root" "$(get_llm_store)")
-  local host_hf="$HOME/.cache/huggingface/"
-  mkdir -p "$host_hf"
-  local vol="-v$host_hf:/root/.cache/huggingface/"
-  local conman_run=("${conman[@]}" "run" "--rm" "-it")
-  conman_run+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
-  conman_run+=("$vol")
   if [ "$1" = "run" ]; then
     run_cli "$@"
   elif [ "$1" = "pull" ]; then
