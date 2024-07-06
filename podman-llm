@@ -81,7 +81,6 @@ build_cli() {
   local image_name="$1"
 
   run_prep
-
   "${conman[@]}" build "$VOL" -t "$image_name" .
 }
 
@@ -89,7 +88,6 @@ serve_cli() {
   local image_name="$1"
 
   run_prep
-
   check_if_in_hf_db
   local model
   model="$(get_model)"
@@ -107,6 +105,8 @@ get_llm_store() {
 
 pull_cli() {
   local image_name="$1"
+
+  run_prep
   check_if_in_hf_db
 }
 
