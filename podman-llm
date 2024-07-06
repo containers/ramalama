@@ -19,7 +19,6 @@ image_available() {
 }
 
 check_if_in_hf_db() {
-  local vol="$1"
   local host="raw.githubusercontent.com"
   local url="https://$host/ericcurtin/podman-llm/main/hf-db/$IMAGE_NAME"
   local image_data
@@ -45,10 +44,6 @@ get_dangling_images() {
 }
 
 get_model_dir() {
-  local model="$1"
-  shift
-  local conman_run=("$@")
-
   "${conman_run[@]}" "$IMAGE_NAME" readlink -f "$model" | xargs dirname | xargs dirname
 }
 
@@ -61,7 +56,7 @@ rm_cli() {
   # latest, etc. are removed
   if false; then
     local dir_to_rm
-    dir_to_rm=$(get_model_dir "$model" "${conman_run[@]}")
+    dir_to_rm=$(get_model_dir)
     "${conman_run[@]}" "$IMAGE_NAME" rm -rf "$dir_to_rm" || true
   fi
 
@@ -76,11 +71,7 @@ build_cli() {
 
 serve_cli() {
   IMAGE_NAME="$1"
-  local vol="$2"
-  shift
-  shift
-  local conman_run=("$@")
-  check_if_in_hf_db "$vol"
+  check_if_in_hf_db
   local model
   model="$(get_model)"
   "${conman_run[@]}" -p 8080:8080 "$IMAGE_NAME" llama-server -m "$model"
@@ -95,6 +86,26 @@ get_llm_store() {
   echo "$HOME/.local/share/podman-llm/storage"
 }
 
+pull_cli() {
+  IMAGE_NAME="$1"
+  check_if_in_hf_db
+}
+
+run_cli() {
+  IMAGE_NAME=$2
+  local args=""
+  if [ "$#" -gt 2 ] && [ -n "$3" ]; then
+    args=("$3")
+  else
+    check_if_in_hf_db
+    local model
+    model="$(get_model)"
+    args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
+  fi
+
+  "${conman_run[@]}" "$IMAGE_NAME" "${args[@]}"
+}
+
 main() {
   set -eu -o pipefail
 
@@ -106,23 +117,11 @@ main() {
   conman_run+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
   conman_run+=("$vol")
   if [ "$1" = "run" ]; then
-    IMAGE_NAME="$2"
-    local args=""
-    if [ "$#" -gt 2 ] && [ -n "$3" ]; then
-      args=("$3")
-    else
-      check_if_in_hf_db "$vol"
-      local model
-      model="$(get_model)"
-      args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
-    fi
-
-    "${conman_run[@]}" "$IMAGE_NAME" "${args[@]}"
+    run_cli "$@"
   elif [ "$1" = "pull" ]; then
-    IMAGE_NAME="$2"
-    check_if_in_hf_db "$vol"
+    pull_cli "$2"
   elif [ "$1" = "serve" ]; then
-    serve_cli "$2" "$vol" "${conman_run[@]}"
+    serve_cli "$2"
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
     "${conman[@]}" images -flabel=MODEL
   elif [ "$1" = "rm" ]; then
