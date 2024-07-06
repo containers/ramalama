@@ -15,12 +15,12 @@ select_container_manager() {
 }
 
 image_available() {
-  [ -n "$("${conman[@]}" images -q "$IMAGE_NAME" 2> /dev/null)" ]
+  [ -n "$("${conman[@]}" images -q "$image_name" 2> /dev/null)" ]
 }
 
 check_if_in_hf_db() {
   local host="raw.githubusercontent.com"
-  local url="https://$host/ericcurtin/podman-llm/main/hf-db/$IMAGE_NAME"
+  local url="https://$host/ericcurtin/podman-llm/main/hf-db/$image_name"
   local image_data
   if ! image_available && image_data="$(curl -fsSL "$url")"; then
     local hf_repo
@@ -31,12 +31,12 @@ check_if_in_hf_db() {
 RUN huggingface-cli download $hf_repo $model
 RUN ln -s \$(huggingface-cli download $hf_repo $model) /root/$model
 LABEL MODEL=/root/$model"
-    echo "$containerfile" | "${conman[@]}" build "$vol" -t "$IMAGE_NAME" -
+    echo "$containerfile" | "${conman[@]}" build "$vol" -t "$image_name" -
   fi
 }
 
 get_model() {
-  "${conman[@]}" inspect -f '{{ index .Config.Labels "MODEL"}}' "$IMAGE_NAME"
+  "${conman[@]}" inspect -f '{{ index .Config.Labels "MODEL"}}' "$image_name"
 }
 
 get_dangling_images() {
@@ -48,11 +48,11 @@ rm_dir() {
 }
 
 get_model_dir() {
-  "${conman_run[@]}" "$IMAGE_NAME" readlink -f "$model" | rm_dir | rm_dir
+  "${conman_run[@]}" "$image_name" readlink -f "$model" | rm_dir | rm_dir
 }
 
 rm_cli() {
-  IMAGE_NAME="$1"
+  local image_name="$1"
   local model
   model="$(get_model)"
 
@@ -61,24 +61,24 @@ rm_cli() {
   if false; then
     local dir_to_rm
     dir_to_rm=$(get_model_dir)
-    "${conman_run[@]}" "$IMAGE_NAME" rm -rf "$dir_to_rm" || true
+    "${conman_run[@]}" "$image_name" rm -rf "$dir_to_rm" || true
   fi
 
-  "${conman[@]}" rmi -f "$IMAGE_NAME"
+  "${conman[@]}" rmi -f "$image_name"
   get_dangling_images | xargs -r "${conman[@]}" rmi -f
 }
 
 build_cli() {
-  IMAGE_NAME="$1"
-  "${conman[@]}" build "$vol" -t "$IMAGE_NAME" .
+  local image_name="$1"
+  "${conman[@]}" build "$vol" -t "$image_name" .
 }
 
 serve_cli() {
-  IMAGE_NAME="$1"
+  local image_name="$1"
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  "${conman_run[@]}" -p 8080:8080 "$IMAGE_NAME" llama-server -m "$model"
+  "${conman_run[@]}" -p 8080:8080 "$image_name" llama-server -m "$model"
 }
 
 get_llm_store() {
@@ -91,12 +91,12 @@ get_llm_store() {
 }
 
 pull_cli() {
-  IMAGE_NAME="$1"
+  local image_name="$1"
   check_if_in_hf_db
 }
 
 run_cli() {
-  IMAGE_NAME=$2
+  local image_name=$2
   local args=""
   if [ "$#" -gt 2 ] && [ -n "$3" ]; then
     args=("$3")
@@ -107,7 +107,7 @@ run_cli() {
     args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
   fi
 
-  "${conman_run[@]}" "$IMAGE_NAME" "${args[@]}"
+  "${conman_run[@]}" "$image_name" "${args[@]}"
 }
 
 main() {
