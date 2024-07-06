@@ -13,6 +13,7 @@ main() {
   podman-llm pull granite
   podman-llm list | grep granite
   podman-llm rm granite
+  shellcheck "$(command -v podman-llm)"
 }
 
 main
