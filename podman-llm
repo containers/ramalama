@@ -43,8 +43,12 @@ get_dangling_images() {
   "${conman[@]}" images --filter "dangling=true" -q --no-trunc
 }
 
+rm_dir(){
+  xargs dirname
+}
+
 get_model_dir() {
-  "${conman_run[@]}" "$IMAGE_NAME" readlink -f "$model" | xargs dirname | xargs dirname
+  "${conman_run[@]}" "$IMAGE_NAME" readlink -f "$model" | rm_dir | rm_dir
 }
 
 rm_cli() {
