@@ -128,6 +128,19 @@ run_cli() {
   "${CONMAN_RUN[@]}" "$image_name" "${args[@]}"
 }
 
+usage() {
+  echo "Usage:"
+  echo "  $(basename "$0") COMMAND"
+  echo
+  echo "Commands:"
+  echo "  run MODEL      Run the specified model"
+  echo "  pull MODEL     Pull the specified model"
+  echo "  serve MODEL    Serve the specified model on port 8080"
+  echo "  list|ls        List all models"
+  echo "  rm MODEL       Remove the specified model"
+  echo "  build MODEL    Build a new model with the specified name"
+}
+
 main() {
   set -eu -o pipefail
 
@@ -145,7 +158,7 @@ main() {
   elif [ "$1" = "build" ]; then
     build_cli "$2"
   else
-    echo "Usage: podman-llm [run|pull|serve|list|rm|build] [image_name]"
+    usage
     return 1
   fi
 }
