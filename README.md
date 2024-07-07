@@ -7,7 +7,7 @@ The goal of podman-llm is to make AI even more boring.
 Install podman-llm by running this one-liner:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/s/install.sh | sudo bash
 ```
 
 ## Usage
