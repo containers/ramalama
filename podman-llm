@@ -133,12 +133,12 @@ usage() {
   echo "  $(basename "$0") COMMAND"
   echo
   echo "Commands:"
-  echo "  run MODEL      Run the specified model"
-  echo "  pull MODEL     Pull the specified model"
-  echo "  serve MODEL    Serve the specified model on port 8080"
-  echo "  list|ls        List all models"
-  echo "  rm MODEL       Remove the specified model"
-  echo "  build MODEL    Build a new model with the specified name"
+  echo "  run MODEL      Run a model"
+  echo "  pull MODEL     Pull a model"
+  echo "  serve MODEL    Serve a model on port 8080"
+  echo "  list|ls        List models"
+  echo "  rm MODEL       Remove a model"
+  echo "  build MODEL    Build a model from a Containerfile"
 }
 
 main() {
