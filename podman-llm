@@ -53,6 +53,12 @@ get_model_dir() {
   "${conman_run[@]}" "$image_name" readlink -f "$model" | rm_dir | rm_dir
 }
 
+add_dri() {
+  if [ -e "/dev/dri" ]; then
+    conman_run+=("--device" "/dev/dri")
+  fi
+}
+
 run_prep() {
   local host_hf="$HOME/.cache/huggingface/"
   mkdir -p "$host_hf"
@@ -60,6 +66,15 @@ run_prep() {
   conman_run=("${conman[@]}" "run" "--rm" "-it")
   conman_run+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
   conman_run+=("$VOL")
+
+  if [ -e "/proc/driver/nvidia/gpus" ]; then
+    conman_run+=("--gpus=all" "--device" "nvidia.com/gpu=all")
+  fi
+
+  if [ -e "/dev/kfd" ]; then
+    conman_run+=("--device" "/dev/kfd")
+    add_dri
+  fi
 }
 
 rm_cli() {
