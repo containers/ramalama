@@ -6,12 +6,14 @@ available() {
 
 select_container_manager() {
   if available podman; then
-    echo "podman"
+    conman_bin="podman"
+    return 0
   elif available docker; then
-    echo "docker"
-  else
-    echo "podman"
+    conman_bin="docker"
+    return 0
   fi
+
+  conman_bin="podman"
 }
 
 image_available() {
@@ -48,16 +50,16 @@ rm_dir() {
 }
 
 get_model_dir() {
-  "${CONMAN_RUN[@]}" "$image_name" readlink -f "$model" | rm_dir | rm_dir
+  "${conman_run[@]}" "$image_name" readlink -f "$model" | rm_dir | rm_dir
 }
 
 run_prep() {
   local host_hf="$HOME/.cache/huggingface/"
   mkdir -p "$host_hf"
   VOL="-v$host_hf:/root/.cache/huggingface/"
-  CONMAN_RUN=("${conman[@]}" "run" "--rm" "-it")
-  CONMAN_RUN+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
-  CONMAN_RUN+=("$VOL")
+  conman_run=("${conman[@]}" "run" "--rm" "-it")
+  conman_run+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
+  conman_run+=("$VOL")
 }
 
 rm_cli() {
@@ -70,7 +72,7 @@ rm_cli() {
   if false; then
     local dir_to_rm
     dir_to_rm=$(get_model_dir)
-    "${CONMAN_RUN[@]}" "$image_name" rm -rf "$dir_to_rm" || true
+    "${conman_run[@]}" "$image_name" rm -rf "$dir_to_rm" || true
   fi
 
   "${conman[@]}" rmi -f "$image_name"
@@ -91,16 +93,16 @@ serve_cli() {
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  exec "${CONMAN_RUN[@]}" -p 8080:8080 "$image_name" llama-server -m "$model"
+  exec "${conman_run[@]}" -p 8080:8080 "$image_name" llama-server -m "$model"
 }
 
 get_llm_store() {
   if [ "$EUID" -eq 0 ]; then
-    echo "/var/lib/podman-llm/storage"
+    llm_store="/var/lib/podman-llm/storage"
     return 0
   fi
 
-  echo "$HOME/.local/share/podman-llm/storage"
+  llm_store="$HOME/.local/share/podman-llm/storage"
 }
 
 pull_cli() {
@@ -125,7 +127,7 @@ run_cli() {
     args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
   fi
 
-  exec "${CONMAN_RUN[@]}" "$image_name" "${args[@]}"
+  exec "${conman_run[@]}" "$image_name" "${args[@]}"
 }
 
 usage() {
@@ -144,7 +146,12 @@ usage() {
 main() {
   set -eu -o pipefail
 
-  local conman=("$(select_container_manager)" "--root" "$(get_llm_store)")
+  local conman_bin
+  select_container_manager
+  local llm_store
+  get_llm_store
+  local conman=("$conman_bin" "--root" "$llm_store")
+  local conman_run
   if [ "$1" = "run" ]; then
     run_cli "$@"
   elif [ "$1" = "pull" ]; then
