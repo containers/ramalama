@@ -141,6 +141,8 @@ usage() {
   echo "  list|ls        List models"
   echo "  rm MODEL       Remove a model"
   echo "  build MODEL    Build a model from a Containerfile"
+
+  return 1
 }
 
 main() {
@@ -152,6 +154,11 @@ main() {
   get_llm_store
   local conman=("$conman_bin" "--root" "$llm_store")
   local conman_run
+
+  if [ "$#" -lt 1 ]; then
+    usage
+  fi
+
   if [ "$1" = "run" ]; then
     run_cli "$@"
   elif [ "$1" = "pull" ]; then
@@ -166,7 +173,6 @@ main() {
     build_cli "$2"
   else
     usage
-    return 1
   fi
 }
 
