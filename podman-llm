@@ -180,6 +180,9 @@ main() {
     pull_cli "$2"
   elif [ "$1" = "serve" ]; then
     serve_cli "$2"
+  elif [ "$1" = "podman" ] || [ "$1" = "docker" ]; then
+    shift 1
+    exec "${conman[@]}" "$@"
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
     exec "${conman[@]}" images -flabel=MODEL
   elif [ "$1" = "rm" ]; then

@@ -5,7 +5,31 @@ cleanup() {
 }
 
 available() {
-  command -v $1 >/dev/null
+  command -v "$1" >/dev/null
+}
+
+nvidia_lshw() {
+  lshw -c display -numeric -disable network | grep -q 'vendor: .* \[10DE\]'
+}
+
+amd_lshw() {
+  lshw -c display -numeric -disable network | grep -q 'vendor: .* \[1002\]'
+}
+
+gpu_check() {
+  if available lspci && lspci -d '10de:' | grep -q 'NVIDIA'; then
+    nvidia_available="true"
+  elif available lshw && nvidia_lshw; then
+    nvidia_available="true"
+  elif available nvidia-smi; then
+    nvidia_available="true"
+  fi
+
+  if available lspci && lspci -d '1002:' | grep -q 'AMD'; then
+    amd_available="true"
+  elif available lshw && amd_lshw; then
+    amd_available="true"
+  fi
 }
 
 main() {
@@ -23,7 +47,9 @@ main() {
 
   local bindir
   for bindir in /usr/local/bin /usr/bin /bin; do
-    echo $PATH | grep -q $bindir && break || continue
+    if echo "$PATH" | grep -q $bindir; then
+      break
+    fi
   done
 
   TMP="$(mktemp -d)"
@@ -33,6 +59,12 @@ main() {
   local from="$TMP/$from"
   curl -fsSL -o "$from" "https://$url"
   install -D -m755 "$from" "$bindir/"
+
+  if false; then # to be done
+    local nvidia_available="false"
+    local amd_available="false"
+    gpu_check
+  fi
 }
 
 main "$@"
