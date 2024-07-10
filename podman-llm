@@ -110,13 +110,16 @@ build_cli() {
 }
 
 serve_cli() {
-  local image_name="$1"
+  if [ "$#" -lt 1 ]; then
+    serve_usage
+  fi
 
+  local image_name="$1"
   run_prep
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  exec "${conman_run[@]}" -p 8080:8080 "$image_name" llama-server -m "$model"
+  exec "${conman_run[@]}" -p "${PODMAN_LLM_HOST:-8080}":8080 "$image_name" llama-server -m "$model"
 }
 
 get_llm_store() {
@@ -133,6 +136,19 @@ pull_cli() {
 
   run_prep
   check_if_in_hf_db
+}
+
+serve_usage() {
+  echo "Usage:"
+  echo "  $(basename "$0") serve MODEL"
+  echo
+  echo "Aliases:"
+  echo "  serve, start"
+  echo
+  echo "Environment Variables:"
+  echo "  PODMAN_LLM_HOST  The host:port to bind to (default \"0.0.0.0:8080\")"
+
+  return 1
 }
 
 run_cli() {
@@ -156,12 +172,12 @@ usage() {
   echo "  $(basename "$0") COMMAND"
   echo
   echo "Commands:"
-  echo "  run MODEL      Run a model"
-  echo "  pull MODEL     Pull a model"
-  echo "  serve MODEL    Serve a model on port 8080"
-  echo "  list|ls        List models"
-  echo "  rm MODEL       Remove a model"
-  echo "  build MODEL    Build a model from a Containerfile"
+  echo "  run MODEL        Run a model"
+  echo "  pull MODEL       Pull a model"
+  echo "  serve MODEL      Serve a model on port 8080"
+  echo "  list             List models"
+  echo "  rm MODEL         Remove a model"
+  echo "  build MODEL      Build a model from a Containerfile"
 
   return 1
 }
@@ -183,8 +199,9 @@ main() {
     run_cli "$@"
   elif [ "$1" = "pull" ]; then
     pull_cli "$2"
-  elif [ "$1" = "serve" ]; then
-    serve_cli "$2"
+  elif [ "$1" = "serve" ] || [ "$1" = "start" ]; then
+    shift 1
+    serve_cli "$@"
   elif [ "$1" = "podman" ] || [ "$1" = "docker" ]; then
     conman_cli "$@"
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
