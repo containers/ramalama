@@ -1,5 +1,9 @@
 #!/bin/bash
 
+available() {
+  command -v "$1" >/dev/null
+}
+
 select_container_manager() {
   if available podman; then
     conman_bin="podman"
