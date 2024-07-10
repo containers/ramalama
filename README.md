@@ -65,11 +65,11 @@ podman-llm build granite
 ```
 +------------------------+    +--------------------+    +------------------+
 |                        |    | Pull runtime layer |    | Pull model layer |
-|    podman-llm run      | -> | with llama.cpp     | -> | with granite     |
-|                        |    |                    |    |                  |
-+------------------------+    +--------------------+    |------------------|
-                                                        | Repo options:    |
-                                                        +------------------+
+|    podman-llm run      | -> | for llama.cpp      | -> | with granite     |
+|                        |    | (CPU, Vulkan, AMD, |    |                  |
++------------------------+    |  Nvidia, Intel or  |    |------------------|
+                              |  Apple Silicon)    |    | Repo options:    |
+                              +--------------------+    +------------------+
                                                             |          |
                                                             v          v
                                                     +--------------+ +---------+
