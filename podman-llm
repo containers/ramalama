@@ -131,20 +131,18 @@ pull_cli() {
 
 run_cli() {
   local image_name="$2"
-
   run_prep
-
-  local args=""
-  if [ "$#" -gt 2 ] && [ -n "$3" ]; then
-    args=("$3")
-  else
-    check_if_in_hf_db
-    local model
-    model="$(get_model)"
-    args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
-  fi
-
+  check_if_in_hf_db
+  local model
+  model="$(get_model)"
+  args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
   exec "${conman_run[@]}" "$image_name" "${args[@]}"
+}
+
+conman_cli() {
+  conman=("$1" "--root" "$llm_store")
+  shift 1
+  exec "${conman[@]}" "$@"
 }
 
 usage() {
@@ -171,7 +169,6 @@ main() {
   get_llm_store
   local conman=("$conman_bin" "--root" "$llm_store")
   local conman_run
-
   if [ "$#" -lt 1 ]; then
     usage
   fi
@@ -183,8 +180,7 @@ main() {
   elif [ "$1" = "serve" ]; then
     serve_cli "$2"
   elif [ "$1" = "podman" ] || [ "$1" = "docker" ]; then
-    shift 1
-    exec "${conman[@]}" "$@"
+    conman_cli "$@"
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
     exec "${conman[@]}" images -flabel=MODEL
   elif [ "$1" = "rm" ]; then
