@@ -20,11 +20,18 @@ image_available() {
   [ -n "$("${conman[@]}" images -q "$image_name" 2> /dev/null)" ]
 }
 
+wcurl() {
+  local wcurl_cmd=("curl" "--globoff" "--location" "--no-clobber")
+  wcurl_cmd+=("--proto-default" "https" "--remote-time" "--retry" "10")
+  wcurl_cmd+=("--retry-max-time" "10" "$url")
+  "${wcurl_cmd[@]}"
+}
+
 check_if_in_hf_db() {
   local host="raw.githubusercontent.com"
   local url="https://$host/ericcurtin/podman-llm/main/hf-db/$image_name"
   local image_data
-  if ! image_available && image_data="$(curl -fsSL "$url")"; then
+  if ! image_available && image_data="$(wcurl)"; then
     local hf_repo
     hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
     local model

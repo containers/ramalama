@@ -32,6 +32,13 @@ gpu_check() {
   fi
 }
 
+download() {
+  local curl_cmd=("curl" "--globoff" "--location" "--no-clobber")
+  curl_cmd+=("--proto-default" "https" "-o" "$from" "--remote-time")
+  curl_cmd+=("--retry" "10" "--retry-max-time" "10" "https://$url")
+  "${curl_cmd[@]}"
+}
+
 main() {
   set -e -o pipefail
 
@@ -57,7 +64,7 @@ main() {
   local from="podman-llm"
   local url="raw.githubusercontent.com/ericcurtin/podman-llm/s/$from"
   local from="$TMP/$from"
-  curl -fsSL -o "$from" "https://$url"
+  download
   install -D -m755 "$from" "$bindir/"
 
   if false; then # to be done
