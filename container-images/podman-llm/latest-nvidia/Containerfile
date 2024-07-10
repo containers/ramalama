@@ -1,0 +1,31 @@
+FROM fedora:39
+
+RUN dnf install -y git jq procps-ng vim clblast-devel vulkan-headers \
+      vulkan-loader-devel glslc glslang 'dnf-command(config-manager)' \
+      python3-pip cmake gcc-c++ && \
+    dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/fedora39/x86_64/cuda-fedora39.repo \
+    dnf install -y cuda && \
+    dnf clean all && \
+    rm -rf /var/cache/*dnf*
+
+RUN pip install -U "huggingface_hub[cli]"
+
+ENV LLAMA_CCACHE=0
+ENV LLAMA_CURL=1
+ENV LLAMA_VULKAN=1
+ENV GGML_CUDA=1
+
+RUN git clone -b podman-llm https://github.com/ericcurtin/llama.cpp.git && \
+    cd llama.cpp && \
+    cmake -B build -DLLAMA_CCACHE=0 -DLLAMA_VULKAN=1 -DLLAMA_CURL=1 \
+      -DGGML_CUDA=1 && \
+    cmake --build build --config Release -j $(nproc) && \
+    cd build/bin && \
+    for file in *; do \
+      if [ -f "$file" ] && [ -x "$file" ]; then \
+        echo "$file" && \
+        mv "$file" /usr/bin/llama-"$file"; \
+      fi; \
+    done; \
+    cd / && \
+    rm -rf llama.cpp
