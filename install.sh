@@ -33,9 +33,9 @@ gpu_check() {
 }
 
 download() {
-  local curl_cmd=("curl" "--globoff" "--location" "--no-clobber")
-  curl_cmd+=("--proto-default" "https" "-o" "$from" "--remote-time")
-  curl_cmd+=("--retry" "10" "--retry-max-time" "10" "https://$url")
+  local curl_cmd=("curl" "--globoff" "--location" "--proto-default" "https")
+  curl_cmd+=("-o" "$from" "--remote-time" "--retry" "10" "--retry-max-time")
+  curl_cmd+=("10" "https://$url")
   "${curl_cmd[@]}"
 }
 

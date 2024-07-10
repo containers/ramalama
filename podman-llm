@@ -21,9 +21,8 @@ image_available() {
 }
 
 wcurl() {
-  local wcurl_cmd=("curl" "--globoff" "--location" "--no-clobber")
-  wcurl_cmd+=("--proto-default" "https" "--remote-time" "--retry" "10")
-  wcurl_cmd+=("--retry-max-time" "10" "$url")
+  local wcurl_cmd=("curl" "--globoff" "--location" "--proto-default" "https")
+  wcurl_cmd+=("--remote-time" "--retry" "10" "--retry-max-time" "10" "$url")
   "${wcurl_cmd[@]}"
 }
 
