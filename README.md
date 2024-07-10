@@ -63,18 +63,18 @@ podman-llm build granite
 ## Diagram
 
 ```
-+------------------------+    +--------------------+    +------------------+
-|                        |    | Pull runtime layer |    | Pull model layer |
-|    podman-llm run      | -> | for llama.cpp      | -> | with granite     |
-|                        |    | (CPU, Vulkan, AMD, |    |                  |
-+------------------------+    |  Nvidia, Intel or  |    |------------------|
-                              |  Apple Silicon)    |    | Repo options:    |
-                              +--------------------+    +------------------+
++---------------------+    +-----------------------+    +------------------+
+|                     |    | Pull runtime layer    |    | Pull model layer |
+|    podman-llm run   | -> | for llama.cpp         | -> | with granite     |
+|                     |    | (CPU, Vulkan, AMD,    |    |                  |
++---------------------+    |  Nvidia, Intel,       |    |------------------|
+                           |  Apple Silicon, etc.) |    | Repo options:    |
+                           +-----------------------+    +------------------+
                                                             |          |
                                                             v          v
-                                                    +--------------+ +---------+
-                                                    | Hugging Face | | quay.io |
-                                                    +--------------+ +---------+
+                                                   +--------------+ +---------+
+                                                   | Hugging Face | | quay.io |
+                                                   +--------------+ +---------+
                                                             \          /
                                                              \        /
                                                               \      /
