@@ -39,7 +39,7 @@ check_if_in_hf_db() {
 RUN huggingface-cli download $hf_repo $model
 RUN ln -s \$(huggingface-cli download $hf_repo $model) /root/$model
 LABEL MODEL=/root/$model"
-    echo "$containerfile" | "${conman[@]}" build "$VOL" -t "$image_name" -
+    echo "$containerfile" | "${conman[@]}" build "$vol" -t "$image_name" -
   fi
 }
 
@@ -68,10 +68,10 @@ add_dri() {
 run_prep() {
   local host_hf="$HOME/.cache/huggingface/"
   mkdir -p "$host_hf"
-  VOL="-v$host_hf:/root/.cache/huggingface/"
+  vol="-v$host_hf:/root/.cache/huggingface/:z"
   conman_run=("${conman[@]}" "run" "--rm" "-it")
   conman_run+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
-  conman_run+=("$VOL")
+  conman_run+=("$vol")
 
   if [ -e "/proc/driver/nvidia/gpus" ] || available nvidia-smi; then
     conman_run+=("--gpus=all" "--device" "nvidia.com/gpu=all")
@@ -104,7 +104,7 @@ build_cli() {
   local image_name="$1"
 
   run_prep
-  exec "${conman[@]}" build "$VOL" -t "$image_name" .
+  exec "${conman[@]}" build "$vol" -t "$image_name" .
 }
 
 serve_cli() {
@@ -189,6 +189,7 @@ main() {
   get_llm_store
   local conman=("$conman_bin" "--root" "$llm_store")
   local conman_run
+  local vol
   if [ "$#" -lt 1 ]; then
     usage
   fi
