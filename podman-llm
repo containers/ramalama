@@ -73,15 +73,13 @@ run_prep() {
   conman_run+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
   conman_run+=("$VOL")
 
-  if false; then
-    if [ -e "/proc/driver/nvidia/gpus" ] || available nvidia-smi; then
-      conman_run+=("--gpus=all" "--device" "nvidia.com/gpu=all")
-    fi
-
-    if [ -e "/dev/kfd" ]; then
-      conman_run+=("--device" "/dev/kfd")
-      add_dri
-    fi
+  if [ -e "/proc/driver/nvidia/gpus" ] || available nvidia-smi; then
+    conman_run+=("--gpus=all" "--device" "nvidia.com/gpu=all")
+  elif [ -e "/dev/kfd" ]; then
+    conman_run+=("--device" "/dev/kfd")
+    add_dri
+  elif [ "$(uname -m)" != "x86_64" ]; then # Don't do this on x86_64, slow perf
+    add_dri
   fi
 }
 
