@@ -37,8 +37,8 @@ check_if_in_hf_db() {
     model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
     local containerfile="FROM quay.io/podman-llm/podman-llm:latest
 RUN huggingface-cli download $hf_repo $model
-RUN ln -s \$(huggingface-cli download $hf_repo $model) /root/$model
-LABEL MODEL=/root/$model"
+RUN ln -s \$(huggingface-cli download $hf_repo $model) /models/$model
+LABEL MODEL=/models/$model"
     echo "$containerfile" | "${conman[@]}" build "$vol" -t "$image_name" -
   fi
 }

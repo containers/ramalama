@@ -1,5 +1,6 @@
 FROM fedora:39
 
+RUN mkdir -p /models
 RUN dnf install -y git jq procps-ng vim clblast-devel vulkan-headers \
       vulkan-loader-devel glslc glslang python3-pip dnf-plugins-core \
       python3-dnf-plugin-versionlock cmake gcc-c++ libcurl-devel && \

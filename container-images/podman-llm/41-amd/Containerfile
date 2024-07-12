@@ -1,5 +1,6 @@
 FROM fedora:41
 
+RUN mkdir -p /models
 RUN if [ "$(uname -m)" != "aarch64" ]; then \
       dnf install -y rocminfo rocm-opencl rocm-clinfo rocm-hip hipblas \
         hipblas-devel; \
