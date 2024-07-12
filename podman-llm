@@ -112,7 +112,18 @@ serve_cli() {
     serve_usage
   fi
 
-  local image_name="$1"
+  while [ $# -gt 0 ]; do
+    case $1 in
+      -*)
+        serve_usage
+        ;;
+      *)
+        local image_name="$1"
+        shift # past argument
+        ;;
+    esac
+  done
+
   run_prep
   check_if_in_hf_db
   local model
@@ -177,7 +188,7 @@ usage() {
   echo "Commands:"
   echo "  run MODEL        Run a model"
   echo "  pull MODEL       Pull a model"
-  echo "  serve MODEL      Serve a model on port 8080"
+  echo "  serve MODEL      Serve a model"
   echo "  list             List models"
   echo "  rm MODEL         Remove a model"
   echo "  build MODEL      Build a model from a Containerfile"
