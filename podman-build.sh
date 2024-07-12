@@ -29,14 +29,7 @@ build() {
   cd "$1"
   local image_name
   image_name=$(echo "$1" | sed "s#/#:#g" | sed "s#container-images:##g")
-  local platform="linux/amd64"
-  if [ "$(uname -m)" = "aarch64" ]; then
-    platform="linux/arm64"
-  fi
-
-  conman+=("build" "--platform" "$platform")
-  conman+=("-t" "quay.io/podman-llm/$image_name" ".")
-  "${conman[@]}"
+  "${conman[@]}" -t quay.io/podman-llm/$image_name .
   cd -
 }
 
@@ -48,6 +41,12 @@ main() {
   local llm_store
   get_llm_store
   local conman=("$conman_bin" "--root" "$llm_store")
+  local platform="linux/amd64"
+  if [ "$(uname -m)" = "aarch64" ]; then
+    platform="linux/arm64"
+  fi
+
+  conman+=("build" "--platform" "$platform")
   for i in container-images/*/*; do
     build "$i"
   done
