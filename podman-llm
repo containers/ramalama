@@ -156,7 +156,7 @@ run_cli() {
   local model
   model="$(get_model)"
   local args
-  args=("llama-main" "-m" "$model" "--log-disable" "-ngl" "33" "--instruct")
+  args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
   if [ "$(uname -m)" = "aarch64" ]; then # for Apple Silicon
     args+=("-ngl" "33")
   fi
