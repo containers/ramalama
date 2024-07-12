@@ -155,7 +155,12 @@ run_cli() {
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
+  local args
+  args=("llama-main" "-m" "$model" "--log-disable" "-ngl" "33" "--instruct")
+  if [ "$(uname -m)" = "aarch64" ]; then # for Apple Silicon
+    args+=("-ngl" "33")
+  fi
+
   exec "${conman_run[@]}" "$image_name" "${args[@]}"
 }
 
