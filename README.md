@@ -63,27 +63,29 @@ podman-llm build granite
 ## Diagram
 
 ```
-+---------------------+    +-----------------------+    +------------------+
-|                     |    | Pull runtime layer    |    | Pull model layer |
-|    podman-llm run   | -> | for llama.cpp         | -> | with granite     |
-|                     |    | (CPU, Vulkan, AMD,    |    |                  |
-+---------------------+    |  Nvidia, Intel,       |    |------------------|
-                           |  Apple Silicon, etc.) |    | Repo options:    |
-                           +-----------------------+    +------------------+
-                                                            |          |
-                                                            v          v
-                                                   +--------------+ +---------+
-                                                   | Hugging Face | | quay.io |
-                                                   +--------------+ +---------+
-                                                            \          /
-                                                             \        /
-                                                              \      /
-                                                               v    v
-                                                        +-----------------+
-                                                        | Start container |
-                                                        | with llama.cpp  |
-                                                        | and granite     |
-                                                        | model           |
-                                                        +-----------------+
++----------------+    +-----------------------+    +------------------+
+|                |    | Pull runtime layer    |    | Pull model layer |
+| podman-llm run | -> | for llama.cpp         | -> | with granite     |
+|                |    | (CPU, Vulkan, AMD,    |    |                  |
++----------------+    |  Nvidia, Intel,       |    |------------------|
+                      |  Apple Silicon, etc.) |    | Repo options:    |
+                      +-----------------------+    +------------------+
+                                                     |       |      |
+                                                     v       v      v
+                                             +---------+ +------+ +----------+
+                                             | Hugging | | quay | | Ollama   |
+                                             | Face    | |      | | Registry |
+                                             +---------+ +------+ +----------+
+                                                   \         |        /
+                                                    \        |       /
+                                                     \       |      /
+                                                      v      v     v
+                                                    +-----------------+
+                                                    | Start container |
+                                                    | with llama.cpp  |
+                                                    | and granite     |
+                                                    | model           |
+                                                    +-----------------+
+
 ```
 
