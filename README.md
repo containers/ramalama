@@ -76,16 +76,16 @@ podman-llm build granite
                                              | Hugging | | quay | | Ollama   |
                                              | Face    | |      | | Registry |
                                              +---------+ +------+ +----------+
-                                                   \         |        /
-                                                    \        |       /
-                                                     \       |      /
-                                                      v      v     v
-                                                    +-----------------+
-                                                    | Start container |
-                                                    | with llama.cpp  |
-                                                    | and granite     |
-                                                    | model           |
-                                                    +-----------------+
+                                                     |       |      |
+                                                     |       |      |
+                                                     |       |      |
+                                                     v       v      v
+                                                   +------------------+
+                                                   | Start container  |
+                                                   | with llama.cpp   |
+                                                   | and granite      |
+                                                   | model            |
+                                                   +------------------+
 
 ```
 
