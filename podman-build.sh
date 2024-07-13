@@ -29,12 +29,17 @@ build() {
   cd "$1"
   local image_name
   image_name=$(echo "$1" | sed "s#/#:#g" | sed "s#container-images:##g")
-  "${conman[@]}" -t quay.io/podman-llm/$image_name .
-  cd -
+  if [ -n "$2" ]; then
+    echo "${conman[@]} -t quay.io/podman-llm/$image_name ."
+  else
+    "${conman[@]}" -t quay.io/podman-llm/$image_name .
+  fi
+
+  cd - > /dev/null
 }
 
 main() {
-  set -exu -o pipefail
+  set -eu -o pipefail
 
   local conman_bin
   select_container_manager
@@ -48,9 +53,9 @@ main() {
 
   conman+=("build" "--platform" "$platform")
   for i in container-images/*/*; do
-    build "$i"
+    build "$i" "$@"
   done
 }
 
-main
+main "@"
 
