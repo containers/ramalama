@@ -76,10 +76,18 @@ run_prep() {
   if [ -e "/proc/driver/nvidia/gpus" ] || available nvidia-smi; then
     conman_run+=("--gpus=all" "--device" "nvidia.com/gpu=all")
   elif [ -e "/dev/kfd" ]; then
-    conman_run+=("--device" "/dev/kfd")
+    for i in /sys/bus/pci/devices/*/mem_info_vram_total; do
+      # AMD GPU needs more than 512M VRAM
+      if [ "$(< "$i")" -gt "600000000" ]; then
+        conman_run+=("--device" "/dev/kfd")
+        add_dri
+        ngl="true"
+        break
+      fi
+    done
+  elif [ "$(uname -m)" = "aarch64" ]; then # Don't do this on x86_64, slow perf
     add_dri
-  elif [ "$(uname -m)" != "x86_64" ]; then # Don't do this on x86_64, slow perf
-    add_dri
+    ngl="true"
   fi
 }
 
@@ -209,7 +217,7 @@ run_cli() {
   model="$(get_model)"
   conman_run+=("$image_name" "llama-main" "-m" "$model" "--log-disable")
   conman_run+=("--instruct")
-  if [ "$(uname -m)" = "aarch64" ]; then # for Apple Silicon
+  if $ngl; then
     conman_run+=("-ngl" "999")
   fi
 
@@ -252,6 +260,7 @@ main() {
   local conman=("$conman_bin" "--root" "$llm_store")
   local conman_run
   local vol
+  local ngl="false"
   if [ "$#" -lt 1 ]; then
     usage
   fi
