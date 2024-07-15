@@ -108,12 +108,18 @@ build_cli() {
 }
 
 serve_cli() {
+  shift 1
   if [ "$#" -lt 1 ]; then
     serve_usage
   fi
 
+  local dryrun="false"
   while [ $# -gt 0 ]; do
     case $1 in
+      -d|--dryrun)
+        dryrun="true"
+        shift 1
+        ;;
       -*)
         serve_usage
         ;;
@@ -128,7 +134,14 @@ serve_cli() {
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  exec "${conman_run[@]}" -p "${PODMAN_LLM_HOST:-8080}":8080 "$image_name" llama-server -m "$model"
+  conman_run+=("-p" "${PODMAN_LLM_HOST:-8080}:8080" "$image_name")
+  conman_run+=("llama-server" "-m" "$model")
+  if $dryrun; then
+    echo "${conman_run[@]}"
+    return 0
+  fi
+
+  exec "${conman_run[@]}"
 }
 
 get_llm_store() {
@@ -160,19 +173,52 @@ serve_usage() {
   return 1
 }
 
+run_usage() {
+  echo "Usage:"
+  echo "  $(basename "$0") run MODEL"
+
+  return 1
+}
+
 run_cli() {
-  local image_name="$2"
+  shift 1
+  if [ "$#" -lt 1 ]; then
+    run_usage
+  fi
+
+  local dryrun="false"
+  while [ $# -gt 0 ]; do
+    case $1 in
+      -d|--dryrun)
+        dryrun="true"
+        shift 1
+        ;;
+      -*)
+        run_usage
+        ;;
+      *)
+        local image_name="$1"
+        shift # past argument
+        ;;
+    esac
+  done
+
   run_prep
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  local args
-  args=("llama-main" "-m" "$model" "--log-disable" "--instruct")
+  conman_run+=("$image_name" "llama-main" "-m" "$model" "--log-disable")
+  conman_run+=("--instruct")
   if [ "$(uname -m)" = "aarch64" ]; then # for Apple Silicon
-    args+=("-ngl" "33")
+    conman_run+=("-ngl" "999")
   fi
 
-  exec "${conman_run[@]}" "$image_name" "${args[@]}"
+  if $dryrun; then
+    echo "${conman_run[@]}"
+    return 0
+  fi
+
+  exec "${conman_run[@]}"
 }
 
 conman_cli() {
@@ -215,7 +261,6 @@ main() {
   elif [ "$1" = "pull" ]; then
     pull_cli "$2"
   elif [ "$1" = "serve" ] || [ "$1" = "start" ]; then
-    shift 1
     serve_cli "$@"
   elif [ "$1" = "podman" ] || [ "$1" = "docker" ]; then
     conman_cli "$@"
