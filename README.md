@@ -72,7 +72,7 @@ podman-llm build granite
         v
 +----------------+    +-----------------------+    +------------------+
 |                |    | Pull runtime layer    |    | Pull model layer |
-| Auto-detect    +--->| for llama.cpp         +--->| with granite     |
+| Auto-detect    +--->| for llama.cpp         +--->| i.e. granite     |
 | hardware type  |    | (CPU, Vulkan, AMD,    |    |                  |
 |                |    |  Nvidia, Intel,       |    +------------------+
 +----------------+    |  Apple Silicon, etc.) |    | Repo options:    |
