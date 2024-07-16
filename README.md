@@ -63,21 +63,26 @@ podman-llm build granite
 ## Diagram
 
 ```
++----------------+
+|                |
+| podman-llm run |
+|                |
++-------+--------+
+        |
+        v
 +----------------+    +-----------------------+    +------------------+
 |                |    | Pull runtime layer    |    | Pull model layer |
-| podman-llm run | -> | for llama.cpp         | -> | with granite     |
-|                |    | (CPU, Vulkan, AMD,    |    |                  |
-+----------------+    |  Nvidia, Intel,       |    |------------------|
-                      |  Apple Silicon, etc.) |    | Repo options:    |
-                      +-----------------------+    +------------------+
+| Auto-detect    +--->| for llama.cpp         +--->| with granite     |
+| hardware type  |    | (CPU, Vulkan, AMD,    |    |                  |
+|                |    |  Nvidia, Intel,       |    +------------------+
++----------------+    |  Apple Silicon, etc.) |    | Repo options:    |
+                      +-----------------------+    +-+-------+------+-+
                                                      |       |      |
                                                      v       v      v
                                              +---------+ +------+ +----------+
                                              | Hugging | | quay | | Ollama   |
                                              | Face    | |      | | Registry |
-                                             +---------+ +------+ +----------+
-                                                     |       |      |
-                                                     |       |      |
+                                             +-------+-+ +---+--+ +-+--------+
                                                      |       |      |
                                                      v       v      v
                                                    +------------------+
@@ -86,6 +91,5 @@ podman-llm build granite
                                                    | and granite      |
                                                    | model            |
                                                    +------------------+
-
 ```
 
