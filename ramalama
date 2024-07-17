@@ -35,7 +35,7 @@ check_if_in_hf_db() {
     hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
     local model
     model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
-    local containerfile="FROM quay.io/podman-llm/podman-llm:latest
+    local containerfile="FROM quay.io/ramalama/ramalama:latest
 RUN huggingface-cli download $hf_repo $model
 RUN ln -s \$(huggingface-cli download $hf_repo $model) /models/$model
 LABEL MODEL=/models/$model"

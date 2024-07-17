@@ -47,7 +47,7 @@ $ ramalama serve granite
 Here is an example Containerfile:
 
 ```
-FROM quay.io/podman-llm/podman-llm:41
+FROM quay.io/ramalama/ramalama:latest
 RUN llama-main --hf-repo ibm-granite/granite-3b-code-instruct-GGUF -m granite-3b-code-instruct.Q4_K_M.gguf
 LABEL MODEL=/granite-3b-code-instruct.Q4_K_M.gguf
 ```

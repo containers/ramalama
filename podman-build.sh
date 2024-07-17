@@ -25,14 +25,23 @@ get_llm_store() {
   llm_store="$HOME/.local/share/ramalama/storage"
 }
 
+add_build_platform() {
+  conman+=("build" "--platform" "$platform")
+  conman+=("-t" "quay.io/ramalama/$image_name" ".")
+}
+
 build() {
   cd "$1"
   local image_name
   image_name=$(echo "$1" | sed "s#/#:#g" | sed "s#container-images:##g")
-  if [ "$2" == "-d" ]; then
-    echo "${conman[@]} -t quay.io/ramalama/$image_name ."
+  if [ "$2" = "-d" ]; then
+    add_build_platform
+    echo "${conman[@]}"
+  elif [ "$2" = "push" ]; then
+    "${conman[@]}" push "quay.io/ramalama/$image_name"
   else
-    "${conman[@]}" -t quay.io/ramalama/$image_name .
+    add_build_platform
+    "${conman[@]}"
   fi
 
   cd - > /dev/null
@@ -51,11 +60,10 @@ main() {
     platform="linux/arm64"
   fi
 
-  conman+=("build" "--platform" "$platform")
   for i in container-images/*/*; do
     build "$i" "$@"
   done
 }
 
-main "@"
+main "$@"
 
