@@ -250,6 +250,11 @@ usage() {
   return 1
 }
 
+mkdirs() {
+  local repo_base="$llm_store/models/repo"
+  mkdir -p "$repo_base/hf" "$repo_base/ollama" "$repo_base/oci"
+}
+
 main() {
   set -eu -o pipefail
 
@@ -257,6 +262,7 @@ main() {
   select_container_manager
   local llm_store
   get_llm_store
+  mkdirs
   local conman=("$conman_bin" "--root" "$llm_store")
   local conman_run
   local vol
