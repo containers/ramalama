@@ -29,10 +29,10 @@ build() {
   cd "$1"
   local image_name
   image_name=$(echo "$1" | sed "s#/#:#g" | sed "s#container-images:##g")
-  if [ -n "$2" ]; then
-    echo "${conman[@]} -t quay.io/podman-llm/$image_name ."
+  if [ "$2" == "-d" ]; then
+    echo "${conman[@]} -t quay.io/ramalama/$image_name ."
   else
-    "${conman[@]}" -t quay.io/podman-llm/$image_name .
+    "${conman[@]}" -t quay.io/ramalama/$image_name .
   fi
 
   cd - > /dev/null
