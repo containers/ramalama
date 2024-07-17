@@ -26,22 +26,26 @@ get_llm_store() {
 }
 
 add_build_platform() {
-  conman+=("build" "--platform" "$platform")
-  conman+=("-t" "quay.io/ramalama/$image_name" ".")
+  conman_build+=("build" "--platform" "$platform")
+  conman_build+=("-t" "quay.io/ramalama/$image_name" ".")
 }
 
 build() {
   cd "$1"
   local image_name
   image_name=$(echo "$1" | sed "s#/#:#g" | sed "s#container-images:##g")
-  if [ "$2" = "-d" ]; then
+  local conman_build=("${conman[@]}")
+  if [ "$#" -lt 2 ]; then
     add_build_platform
-    echo "${conman[@]}"
+    "${conman_build[@]}"
+  elif [ "$2" = "-d" ]; then
+    add_build_platform
+    echo "${conman_build[@]}"
   elif [ "$2" = "push" ]; then
     "${conman[@]}" push "quay.io/ramalama/$image_name"
   else
     add_build_platform
-    "${conman[@]}"
+    "${conman_build[@]}"
   fi
 
   cd - > /dev/null
