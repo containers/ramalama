@@ -1,13 +1,13 @@
-# podman-llm
+# ramalama
 
-The goal of podman-llm is to make AI even more boring.
+The goal of ramalama is to make AI even more boring.
 
 ## Install
 
-Install podman-llm by running this one-liner:
+Install ramalama by running this one-liner:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/s/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/ericcurtin/ramalama/s/install.sh | sudo bash
 ```
 
 ## Usage
@@ -17,7 +17,7 @@ curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/s/install.sh 
 You can run a model using the `run` command. This will start an interactive session where you can query the model.
 
 ```
-$ podman-llm run granite
+$ ramalama run granite
 > Tell me about podman in less than ten words
 A fast, secure, and private container engine for modern applications.
 >
@@ -28,7 +28,7 @@ A fast, secure, and private container engine for modern applications.
 To serve a model via HTTP, use the `serve` command. This will start an HTTP server that listens for incoming requests to interact with the model.
 
 ```
-$ podman-llm serve granite
+$ ramalama serve granite
 ...
 {"tid":"140477699799168","timestamp":1719579518,"level":"INFO","function":"main","line":3793,"msg":"HTTP server listening","n_threads_http":"11","port":"8080","hostname":"127.0.0.1"}
 ...
@@ -38,9 +38,9 @@ $ podman-llm serve granite
 
 | Model              | Parameters | Run                            |
 | ------------------ | ---------- | ------------------------------ |
-| granite            | 3B         | `podman-llm run granite`       |
-| mistral            | 7B         | `podman-llm run mistral`       |
-| merlinite          | 7B         | `podman-llm run merlinite`     |
+| granite            | 3B         | `ramalama run granite`         |
+| mistral            | 7B         | `ramalama run mistral`         |
+| merlinite          | 7B         | `ramalama run merlinite`       |
 
 ## Containerfile Example
 
@@ -57,7 +57,7 @@ LABEL MODEL=/granite-3b-code-instruct.Q4_K_M.gguf
 And we build via:
 
 ```
-podman-llm build granite
+ramalama build granite
 ```
 
 ## Diagram
@@ -65,7 +65,7 @@ podman-llm build granite
 ```
 +----------------+
 |                |
-| podman-llm run |
+| ramalama run   |
 |                |
 +-------+--------+
         |

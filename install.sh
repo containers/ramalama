@@ -61,8 +61,8 @@ main() {
 
   TMP="$(mktemp -d)"
   trap cleanup EXIT
-  local from="podman-llm"
-  local url="raw.githubusercontent.com/ericcurtin/podman-llm/s/$from"
+  local from="ramalama"
+  local url="raw.githubusercontent.com/ericcurtin/ramalama/s/$from"
   local from="$TMP/$from"
   download
   install -D -m755 "$from" "$bindir/"

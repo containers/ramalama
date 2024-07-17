@@ -18,11 +18,11 @@ select_container_manager() {
 
 get_llm_store() {
   if [ "$EUID" -eq 0 ]; then
-    llm_store="/var/lib/podman-llm/storage"
+    llm_store="/var/lib/ramalama/storage"
     return 0
   fi
 
-  llm_store="$HOME/.local/share/podman-llm/storage"
+  llm_store="$HOME/.local/share/ramalama/storage"
 }
 
 build() {

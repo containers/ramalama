@@ -4,16 +4,16 @@ main() {
   set -ex -o pipefail
 
   ./podman-build.sh
-  curl -fsSL https://raw.githubusercontent.com/ericcurtin/podman-llm/main/install.sh | sudo bash
+  curl -fsSL https://raw.githubusercontent.com/ericcurtin/ramalama/main/install.sh | sudo bash
 
   set +o pipefail
-  podman-llm -h | grep Usage:
+  ramalama -h | grep Usage:
   set -o pipefail
 
-  podman-llm pull granite
-  podman-llm list | grep granite
-  podman-llm rm granite
-  shellcheck "$(command -v podman-llm)"
+  ramalama pull granite
+  ramalama list | grep granite
+  ramalama rm granite
+  shellcheck "$(command -v ramalama)"
 }
 
 main

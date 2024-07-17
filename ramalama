@@ -28,7 +28,7 @@ wcurl() {
 
 check_if_in_hf_db() {
   local host="raw.githubusercontent.com"
-  local url="https://$host/ericcurtin/podman-llm/main/hf-db/$image_name"
+  local url="https://$host/ericcurtin/ramalama/main/hf-db/$image_name"
   local image_data
   if ! image_available && image_data="$(wcurl)"; then
     local hf_repo
@@ -142,7 +142,7 @@ serve_cli() {
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  conman_run+=("-p" "${PODMAN_LLM_HOST:-8080}:8080" "$image_name")
+  conman_run+=("-p" "${RAMALAMA_HOST:-8080}:8080" "$image_name")
   conman_run+=("llama-server" "-m" "$model")
   if $dryrun; then
     echo "${conman_run[@]}"
@@ -154,11 +154,11 @@ serve_cli() {
 
 get_llm_store() {
   if [ "$EUID" -eq 0 ]; then
-    llm_store="/var/lib/podman-llm/storage"
+    llm_store="/var/lib/ramalama/storage"
     return 0
   fi
 
-  llm_store="$HOME/.local/share/podman-llm/storage"
+  llm_store="$HOME/.local/share/ramalama/storage"
 }
 
 pull_cli() {
@@ -176,7 +176,7 @@ serve_usage() {
   echo "  serve, start"
   echo
   echo "Environment Variables:"
-  echo "  PODMAN_LLM_HOST  The host:port to bind to (default \"0.0.0.0:8080\")"
+  echo "  RAMALAMA_HOST  The host:port to bind to (default \"0.0.0.0:8080\")"
 
   return 1
 }
