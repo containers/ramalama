@@ -107,6 +107,7 @@ run_prep() {
 }
 
 rm_cli() {
+  shift
   local model_name="$1"
 
   # To be completed, only delete the directory once all associated images, 3b,
@@ -124,6 +125,7 @@ rm_cli() {
 }
 
 build_cli() {
+  shift
   local model_name="$1"
 
   run_prep
@@ -131,7 +133,7 @@ build_cli() {
 }
 
 serve_cli() {
-  shift 1
+  shift
   if [ "$#" -lt 1 ]; then
     serve_usage
   fi
@@ -141,7 +143,7 @@ serve_cli() {
     case $1 in
       -d|--dryrun)
         dryrun="true"
-        shift 1
+        shift
         ;;
       -*)
         serve_usage
@@ -177,6 +179,7 @@ get_llm_store() {
 }
 
 pull_cli() {
+  shift
   local model_name="$1"
 
   run_prep
@@ -204,7 +207,7 @@ run_usage() {
 }
 
 run_cli() {
-  shift 1
+  shift
   if [ "$#" -lt 1 ]; then
     run_usage
   fi
@@ -214,7 +217,7 @@ run_cli() {
     case $1 in
       -d|--dryrun)
         dryrun="true"
-        shift 1
+        shift
         ;;
       -*)
         run_usage
@@ -246,7 +249,7 @@ run_cli() {
 
 conman_cli() {
   conman=("$1" "--root" "$llm_store")
-  shift 1
+  shift
   exec "${conman[@]}" "$@"
 }
 
@@ -260,7 +263,6 @@ usage() {
   echo "  serve MODEL      Serve a model"
   echo "  list             List models"
   echo "  rm MODEL         Remove a model"
-#  echo "  build MODEL      Build a model from a Containerfile"
 
   return 1
 }
@@ -311,7 +313,7 @@ list_files_by_modification() {
 }
 
 list_cli() {
-  printf "%-20s %-20s %-20s\n" "NAME" "MODIFIED" "SIZE"
+  printf "%-16s %-16s %-16s\n" "NAME" "MODIFIED" "SIZE"
   cd "$llm_store/models/"
   for i in $(list_files_by_modification); do
     if [ -L "$i" ]; then
@@ -325,11 +327,38 @@ list_cli() {
       modified="$(human_duration $diff) ago"
       local size
       size=$(readlink "$i" | xargs du -h | awk '{print $1"\n"}')
-      printf "%-20s %-20s %-20s\n" "$name" "$modified" "$size"
+      printf "%-16s %-16s %-16s\n" "$name" "$modified" "$size"
    fi
   done
 
   cd - > /dev/null
+}
+
+build() {
+  local to="models/$sym_target"
+  local from="/models/$model_name"
+  cd "$llm_store"
+  local containerfile
+  containerfile=$(mktemp)
+  echo "FROM quay.io/ramalama/ramalama:latest AS builder
+RUN mkdir -p /models
+COPY $to $from
+
+FROM scratch
+COPY --from=builder /models /models" > "$containerfile"
+  "${conman[@]}" build -t "$model_name" -f "$containerfile" .
+  rm "$containerfile"
+  cd - > /dev/null
+}
+
+push_cli() {
+  shift
+  local model_name="$1"
+  local to_location="$2"
+  local sym_target
+  sym_target=$(readlink "$llm_store/models/$model_name")
+  build
+  "${conman[@]}" push "$model_name" "$to_location"
 }
 
 main() {
@@ -351,7 +380,9 @@ main() {
   if [ "$1" = "run" ]; then
     run_cli "$@"
   elif [ "$1" = "pull" ]; then
-    pull_cli "$2"
+    pull_cli "$@"
+  elif [ "$1" = "push" ]; then
+    push_cli "$@"
   elif [ "$1" = "serve" ] || [ "$1" = "start" ]; then
     serve_cli "$@"
   elif [ "$1" = "podman" ] || [ "$1" = "docker" ]; then
@@ -359,9 +390,9 @@ main() {
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
     list_cli "$@"
   elif [ "$1" = "rm" ]; then
-    rm_cli "$2"
+    rm_cli "$@"
   elif [ "$1" = "build" ]; then
-    build_cli "$2"
+    build_cli "$@"
   else
     usage
   fi
