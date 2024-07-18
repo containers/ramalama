@@ -285,39 +285,38 @@ mkdirs() {
 }
 
 human_duration() {
-    local d=$1
-
-    if (( d < 1 )); then
-        echo -n "Less than a second"
-    elif (( d == 1 )); then
-        echo -n "1 second"
-    elif (( d < 60 )); then
-        echo -n "$d seconds"
-    elif (( d < 120 )); then
-        echo -n "1 minute"
-    elif (( d < 3600 )); then
-        echo -n "$(( d / 60 )) minutes"
-    elif (( d < 7200 )); then
-        echo -n "1 hour"
-    elif (( d < 86400 )); then
-        echo -n "$(( d / 3600 )) hours"
-    elif (( d < 172800 )); then
-        echo -n "1 day"
-    elif (( d < 604800 )); then
-        echo -n "$(( d / 86400 )) days"
-    elif (( d < 1209600 )); then
-        echo -n "1 week"
-    elif (( d < 2419200 )); then
-        echo -n "$(( d / 604800 )) weeks"
-    elif (( d < 4838400 )); then
-        echo -n "1 month"
-    elif (( d < 31536000 )); then
-        echo -n "$(( d / 2419200 )) months"
-    elif (( d < 63072000 )); then
-        echo -n "1 year"
-    else
-        echo -n "$(( d / 31536000 )) years"
-    fi
+  local d=$1
+  if (( d < 1 )); then
+    echo -n "Less than a second"
+  elif (( d == 1 )); then
+    echo -n "1 second"
+  elif (( d < 60 )); then
+    echo -n "$d seconds"
+  elif (( d < 120 )); then
+    echo -n "1 minute"
+  elif (( d < 3600 )); then
+    echo -n "$(( d / 60 )) minutes"
+  elif (( d < 7200 )); then
+    echo -n "1 hour"
+  elif (( d < 86400 )); then
+    echo -n "$(( d / 3600 )) hours"
+  elif (( d < 172800 )); then
+    echo -n "1 day"
+  elif (( d < 604800 )); then
+    echo -n "$(( d / 86400 )) days"
+  elif (( d < 1209600 )); then
+    echo -n "1 week"
+  elif (( d < 2419200 )); then
+    echo -n "$(( d / 604800 )) weeks"
+  elif (( d < 4838400 )); then
+    echo -n "1 month"
+  elif (( d < 31536000 )); then
+    echo -n "$(( d / 2419200 )) months"
+  elif (( d < 63072000 )); then
+    echo -n "1 year"
+  else
+    echo -n "$(( d / 31536000 )) years"
+  fi
 }
 
 list_files_by_modification() {
