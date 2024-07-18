@@ -1,3 +1,6 @@
+![image](https://github.com/user-attachments/assets/5db944d7-806f-48b7-bca9-4689255b3b0f)
+
+
 # ramalama
 
 The goal of ramalama is to make AI even more boring.
