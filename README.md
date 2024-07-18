@@ -92,5 +92,5 @@ For the vast majority of AI/LLM software we use, under the covers the heavy lift
 
 https://github.com/ggerganov/llama.cpp
 
-so if you like this tool, give llama.cpp repo a star, and hey, give us a star too while you are at it.
+so if you like this tool, give llama.cpp repo a :star:, and hey, give us a :star: too while you are at it.
 
