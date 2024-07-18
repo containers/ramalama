@@ -23,7 +23,7 @@ ENV LLAMA_CURL=1
 ENV LLAMA_VULKAN=1
 ENV GGML_HIPBLAS=1
 
-RUN git clone -b podman-llm https://github.com/ericcurtin/llama.cpp.git && \
+RUN git clone -b ramlama https://github.com/ericcurtin/llama.cpp.git && \
     cd llama.cpp && \
     cmake -B build -DLLAMA_CCACHE=0 -DLLAMA_VULKAN=1 -DLLAMA_CURL=1 \
       -DGGML_HIPBLAS=1 && \
