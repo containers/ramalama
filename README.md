@@ -42,24 +42,6 @@ $ ramalama serve granite
 | mistral            | 7B         | `ramalama run mistral`         |
 | merlinite          | 7B         | `ramalama run merlinite`       |
 
-## Containerfile Example
-
-Here is an example Containerfile:
-
-```
-FROM quay.io/ramalama/ramalama:latest
-RUN llama-main --hf-repo ibm-granite/granite-3b-code-instruct-GGUF -m granite-3b-code-instruct.Q4_K_M.gguf
-LABEL MODEL=/granite-3b-code-instruct.Q4_K_M.gguf
-```
-
-`LABEL MODEL` is important so we know where to find the .gguf file.
-
-And we build via:
-
-```
-ramalama build granite
-```
-
 ## Diagram
 
 ```

@@ -16,8 +16,12 @@ select_container_manager() {
   conman_bin="podman"
 }
 
+exists() {
+  [ -e "$1" ] || [ -L "$1" ]
+}
+
 image_available() {
-  [ -n "$("${conman[@]}" images -q "$image_name" 2> /dev/null)" ]
+  exists "$llm_store/models/$model_name"
 }
 
 wcurl() {
@@ -26,25 +30,38 @@ wcurl() {
   "${wcurl_cmd[@]}"
 }
 
+hf_download() {
+  local conman_hf_download=("${conman_run[@]}" "quay.io/ramalama/ramalama:latest")
+  conman_hf_download+=("huggingface-cli" "download" "$hf_repo" "$model")
+  conman_hf_download+=("--cache-dir" "/models/repo/hf/.cache")
+  conman_hf_download+=("--local-dir" "/models/repo/hf")
+  "${conman_hf_download[@]}"
+}
+
+hf_download_with_trim() {
+  hf_download | sed "s#^/models/##g" | tr -d '\r'
+}
+
 check_if_in_hf_db() {
   local host="raw.githubusercontent.com"
-  local url="https://$host/ericcurtin/ramalama/main/hf-db/$image_name"
+  local url="https://$host/ericcurtin/ramalama/main/hf-db/$model_name"
   local image_data
-  if ! image_available && image_data="$(wcurl)"; then
+  if ! image_available && image_data="$(wcurl 2>&1)"; then
     local hf_repo
     hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
     local model
     model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
-    local containerfile="FROM quay.io/ramalama/ramalama:latest
-RUN huggingface-cli download $hf_repo $model
-RUN ln -s \$(huggingface-cli download $hf_repo $model) /models/$model
-LABEL MODEL=/models/$model"
-    echo "$containerfile" | "${conman[@]}" build "$vol" -t "$image_name" -
+    hf_download
+    local sym_target
+    sym_target=$(hf_download_with_trim)
+    "${conman_run[@]}" "quay.io/ramalama/ramalama:latest" "ln" "-s" "$sym_target" "/models/$model_name"
   fi
 }
 
 get_model() {
-  "${conman[@]}" inspect -f '{{ index .Config.Labels "MODEL"}}' "$image_name"
+  if image_available; then
+    echo "/models/$model_name"
+  fi
 }
 
 get_dangling_images() {
@@ -56,7 +73,7 @@ rm_dir() {
 }
 
 get_model_dir() {
-  "${conman_run[@]}" "$image_name" readlink -f "$model" | rm_dir | rm_dir
+  "${conman_run[@]}" "$model_name" readlink -f "$model" | rm_dir | rm_dir
 }
 
 add_dri() {
@@ -66,9 +83,7 @@ add_dri() {
 }
 
 run_prep() {
-  local host_hf="$HOME/.cache/huggingface/"
-  mkdir -p "$host_hf"
-  vol="-v$host_hf:/root/.cache/huggingface/:z"
+  vol="-v$llm_store/models:/models:z"
   conman_run=("${conman[@]}" "run" "--rm" "-it")
   conman_run+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
   conman_run+=("$vol")
@@ -92,27 +107,27 @@ run_prep() {
 }
 
 rm_cli() {
-  local image_name="$1"
-  local model
-  model="$(get_model)"
+  local model_name="$1"
 
   # To be completed, only delete the directory once all associated images, 3b,
   # latest, etc. are removed
   if false; then
     local dir_to_rm
     dir_to_rm=$(get_model_dir)
-    "${conman_run[@]}" "$image_name" rm -rf "$dir_to_rm" || true
+    "${conman_run[@]}" "$model_name" rm -rf "$dir_to_rm" || true
   fi
 
-  "${conman[@]}" rmi -f "$image_name"
-  get_dangling_images | xargs -r "${conman[@]}" rmi -f
+  local sym_target
+  sym_target=$(readlink "$llm_store/models/$model_name")
+  rm -f "$llm_store/models/$sym_target"
+  rm -f "$llm_store/models/$model_name"
 }
 
 build_cli() {
-  local image_name="$1"
+  local model_name="$1"
 
   run_prep
-  exec "${conman[@]}" build "$vol" -t "$image_name" .
+  exec "${conman[@]}" build "$vol" -t "$model_name" .
 }
 
 serve_cli() {
@@ -132,7 +147,7 @@ serve_cli() {
         serve_usage
         ;;
       *)
-        local image_name="$1"
+        local model_name="$1"
         shift # past argument
         ;;
     esac
@@ -142,7 +157,7 @@ serve_cli() {
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  conman_run+=("-p" "${RAMALAMA_HOST:-8080}:8080" "$image_name")
+  conman_run+=("-p" "${RAMALAMA_HOST:-8080}:8080" "quay.io/ramalama/ramalama:latest")
   conman_run+=("llama-server" "-m" "$model")
   if $dryrun; then
     echo "${conman_run[@]}"
@@ -162,7 +177,7 @@ get_llm_store() {
 }
 
 pull_cli() {
-  local image_name="$1"
+  local model_name="$1"
 
   run_prep
   check_if_in_hf_db
@@ -205,7 +220,7 @@ run_cli() {
         run_usage
         ;;
       *)
-        local image_name="$1"
+        local model_name="$1"
         shift # past argument
         ;;
     esac
@@ -215,7 +230,7 @@ run_cli() {
   check_if_in_hf_db
   local model
   model="$(get_model)"
-  conman_run+=("$image_name" "llama-main" "-m" "$model" "--log-disable")
+  conman_run+=("quay.io/ramalama/ramalama:latest" "llama-main" "-m" "$model" "--log-disable")
   conman_run+=("--instruct")
   if $ngl; then
     conman_run+=("-ngl" "999")
@@ -245,7 +260,7 @@ usage() {
   echo "  serve MODEL      Serve a model"
   echo "  list             List models"
   echo "  rm MODEL         Remove a model"
-  echo "  build MODEL      Build a model from a Containerfile"
+#  echo "  build MODEL      Build a model from a Containerfile"
 
   return 1
 }
@@ -253,6 +268,68 @@ usage() {
 mkdirs() {
   local repo_base="$llm_store/models/repo"
   mkdir -p "$repo_base/hf" "$repo_base/ollama" "$repo_base/oci"
+}
+
+human_duration() {
+    local d=$1
+
+    if (( d < 1 )); then
+        echo -n "Less than a second"
+    elif (( d == 1 )); then
+        echo -n "1 second"
+    elif (( d < 60 )); then
+        echo -n "$d seconds"
+    elif (( d < 120 )); then
+        echo -n "1 minute"
+    elif (( d < 3600 )); then
+        echo -n "$(( d / 60 )) minutes"
+    elif (( d < 7200 )); then
+        echo -n "1 hour"
+    elif (( d < 86400 )); then
+        echo -n "$(( d / 3600 )) hours"
+    elif (( d < 172800 )); then
+        echo -n "1 day"
+    elif (( d < 604800 )); then
+        echo -n "$(( d / 86400 )) days"
+    elif (( d < 1209600 )); then
+        echo -n "1 week"
+    elif (( d < 2419200 )); then
+        echo -n "$(( d / 604800 )) weeks"
+    elif (( d < 4838400 )); then
+        echo -n "1 month"
+    elif (( d < 31536000 )); then
+        echo -n "$(( d / 2419200 )) months"
+    elif (( d < 63072000 )); then
+        echo -n "1 year"
+    else
+        echo -n "$(( d / 31536000 )) years"
+    fi
+}
+
+list_files_by_modification() {
+  ls -t
+}
+
+list_cli() {
+  printf "%-20s %-20s %-20s\n" "NAME" "MODIFIED" "SIZE"
+  cd "$llm_store/models/"
+  for i in $(list_files_by_modification); do
+    if [ -L "$i" ]; then
+      file_info=$(stat -c'%n %Z' "$i")
+      local name
+      name=$(echo "$file_info" | cut -d ' ' -f 1)
+      local file_epoch
+      file_epoch=$(echo "$file_info" | cut -d ' ' -f 2)
+      local diff=$((EPOCHSECONDS - file_epoch))
+      local modified
+      modified="$(human_duration $diff) ago"
+      local size
+      size=$(readlink "$i" | xargs du -h | awk '{print $1"\n"}')
+      printf "%-20s %-20s %-20s\n" "$name" "$modified" "$size"
+   fi
+  done
+
+  cd - > /dev/null
 }
 
 main() {
@@ -280,7 +357,7 @@ main() {
   elif [ "$1" = "podman" ] || [ "$1" = "docker" ]; then
     conman_cli "$@"
   elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
-    exec "${conman[@]}" images -flabel=MODEL
+    list_cli "$@"
   elif [ "$1" = "rm" ]; then
     rm_cli "$2"
   elif [ "$1" = "build" ]; then
