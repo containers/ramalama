@@ -1,5 +1,17 @@
 #!/bin/bash
 
+print_backtrace() {
+    local ec="$?"
+    local i=0
+    echo "${BASH_LINENO[0]} ${BASH_COMMAND}"
+    echo "Backtrace (most recent call first):"
+    while caller $i; do
+        ((i++))
+    done
+
+    exit $ec
+}
+
 available() {
   command -v "$1" > /dev/null
 }
@@ -358,6 +370,8 @@ push_cli() {
 }
 
 main() {
+  trap 'print_backtrace' ERR
+  set -o errtrace
   set -eu -o pipefail
 
   local conman_bin
