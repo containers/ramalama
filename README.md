@@ -86,3 +86,11 @@ rm -rf $HOME/.local/share/ramalama/storage
 
 and install again.
 
+## Credit where credit is due
+
+For the vast majority of AI/LLM software we use, under the covers the heavy lifting is being done by:
+
+https://github.com/ggerganov/llama.cpp
+
+so if you like this tool, give llama.cpp repo a star, and hey, give us a star too while you are at it.
+
