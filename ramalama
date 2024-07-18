@@ -335,17 +335,13 @@ list_cli() {
 }
 
 build() {
-  local to="models/$sym_target"
-  local from="/models/$model_name"
-  cd "$llm_store"
+  local from="$sym_target"
+  local to="/models/$model_name"
+  cd "$llm_store/models"
   local containerfile
   containerfile=$(mktemp)
-  echo "FROM quay.io/ramalama/ramalama:latest AS builder
-RUN mkdir -p /models
-COPY $to $from
-
-FROM scratch
-COPY --from=builder /models /models" > "$containerfile"
+  echo "FROM scratch
+COPY $from $to" > "$containerfile"
   "${conman[@]}" build -t "$model_name" -f "$containerfile" .
   rm "$containerfile"
   cd - > /dev/null
