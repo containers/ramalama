@@ -75,7 +75,7 @@ $ ramalama serve granite
                                                    +------------------+
 ```
 
-## In-development
+## In development
 
 Regard this alpha, everything is under development, so expect breaking changes, luckily it's easy to reset everything and re-install:
 
