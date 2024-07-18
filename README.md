@@ -75,3 +75,14 @@ $ ramalama serve granite
                                                    +------------------+
 ```
 
+## In-development
+
+Regard this alpha, everything is under development, so expect breaking changes, luckily it's easy to reset everything and re-install:
+
+```
+rm -rf /var/lib/ramalama/storage # only required if running as root user
+rm -rf $HOME/.local/share/ramalama/storage
+```
+
+and install again.
+
