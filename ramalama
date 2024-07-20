@@ -368,20 +368,24 @@ push_cli() {
   "${conman[@]}" push "$model_name" "$to_location"
 }
 
+init_rama() {
+  select_container_manager
+  get_llm_store
+  mkdirs
+}
+
 main() {
   trap 'print_backtrace' ERR
   set -o errtrace
   set -eu -o pipefail
 
   local conman_bin
-  select_container_manager
   local llm_store
-  get_llm_store
-  mkdirs
   local conman=("$conman_bin" "--root" "$llm_store")
   local conman_run
   local vol
   local ngl="false"
+  init_rama
   if [ "$#" -lt 1 ]; then
     usage
   fi
