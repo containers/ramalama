@@ -335,7 +335,7 @@ list_cli() {
 
 build() {
   local from="$sym_target"
-  local to="/models/$model_name"
+  local to="/$model_name"
   cd "$llm_store/models"
   local containerfile
   containerfile=$(mktemp)
