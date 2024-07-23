@@ -1,17 +1,5 @@
 #!/bin/bash
 
-print_backtrace() {
-    local ec="$?"
-    local i=0
-    echo "${BASH_LINENO[0]} ${BASH_COMMAND}"
-    echo "Backtrace (most recent call first):"
-    while caller $i; do
-        ((i++))
-    done
-
-    exit $ec
-}
-
 available() {
   command -v "$1" > /dev/null
 }
@@ -375,17 +363,16 @@ init_rama() {
 }
 
 main() {
-  trap 'print_backtrace' ERR
-  set -o errtrace
   set -eu -o pipefail
 
   local conman_bin
   local llm_store
+  init_rama
+
   local conman=("$conman_bin" "--root" "$llm_store")
   local conman_run
   local vol
   local ngl="false"
-  init_rama
   if [ "$#" -lt 1 ]; then
     usage
   fi
