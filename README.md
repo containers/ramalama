@@ -1,6 +1,6 @@
 # Project undergoing rewrite
 
-The project is undergoing a complete rewrite in python3, the dependancy on containers will be removed. It will run on macOS and Linux native at a minimum and will support running and serving from the following types of repos: huggingface, oci, ollama.
+The project is undergoing a complete rewrite in python3, the dependancy on containers will be removed. It will run on macOS and Linux native at a minimum and will support pulling, running and serving models from the following types of repos: huggingface, oci, ollama.
 
 You can still play away with the POC though :)
 
