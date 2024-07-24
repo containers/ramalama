@@ -1,5 +1,8 @@
-![image](https://github.com/user-attachments/assets/5db944d7-806f-48b7-bca9-4689255b3b0f)
+# Project undergoing rewrite
 
+The project is undergoing a complete rewrite in python3, the dependancy on containers will be removed. It will run on macOS and Linux native at a minimum and will support running and serving from the following types of repos: huggingface, oci, ollama.
+
+You can still play away with the POC though :)
 
 # ramalama
 
@@ -10,7 +13,7 @@ The goal of ramalama is to make AI even more boring.
 Install ramalama by running this one-liner:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/ericcurtin/ramalama/s/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | sudo bash
 ```
 
 ## Usage

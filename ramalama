@@ -44,7 +44,7 @@ hf_download_with_trim() {
 
 check_if_in_hf_db() {
   local host="raw.githubusercontent.com"
-  local url="https://$host/ericcurtin/ramalama/main/hf-db/$model_name"
+  local url="https://$host/containers/ramalama/main/hf-db/$model_name"
   local image_data
   if ! image_available && image_data="$(wcurl 2>&1)"; then
     local hf_repo

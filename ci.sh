@@ -4,7 +4,7 @@ main() {
   set -ex -o pipefail
 
   ./podman-build.sh
-  curl -fsSL https://raw.githubusercontent.com/ericcurtin/ramalama/main/install.sh | sudo bash
+  curl -fsSL https://raw.githubusercontent.com/containers/ramalama/main/install.sh | sudo bash
 
   set +o pipefail
   ramalama -h | grep Usage:
