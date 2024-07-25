@@ -10,16 +10,17 @@ RUN dnf install -y git jq procps-ng vim vulkan-headers vulkan-loader-devel \
 
 RUN pip install "huggingface_hub[cli]==0.24.2"
 
-ENV GGML_CCACHE=0
+ENV LLAMA_CCACHE=0
 
 RUN git clone -b ramalama https://github.com/ericcurtin/llama.cpp.git && \
     cd llama.cpp && \
-    cmake -B build -DGGML_CCACHE=0 && \
+    cmake -B build -DLLAMA_CCACHE=0 && \
     cmake --build build --config Release -j $(nproc) && \
     cd build/bin && \
     for file in *; do \
-      if [ -f "$file" ] && [ -x "$file" ] && [[ "$file" == "llama-*" ]]; then \
-        mv "$file" "/usr/bin/$file"; \
+      if [ -f "$file" ] && [ -x "$file" ]; then \
+        echo "$file" && \
+        mv "$file" /usr/bin/llama-"$file"; \
       fi; \
     done; \
     cd / && \
