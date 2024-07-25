@@ -48,9 +48,7 @@ def run_command(args):
     try:
         subprocess.run(args, check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Error running command: {' '.join(args)}")
-        print(e)
-        sys.exit(1)
+        sys.exit(e.returncode)
 
 
 def run_curl_command(args, filename):
@@ -62,7 +60,7 @@ def pull_ollama_manifest(ramalama_store, manifests, accept, registry_head, model
     os.makedirs(os.path.dirname(manifests), exist_ok=True)
     os.makedirs(os.path.join(ramalama_store, "blobs"), exist_ok=True)
     curl_command = [
-        "curl", "-s", "--header", accept,
+        "curl", "-f", "-s", "--header", accept,
         "-o", manifests,
         f"{registry_head}/manifests/{model_tag}"
     ]
@@ -73,7 +71,7 @@ def pull_ollama_config_blob(ramalama_store, accept, registry_head, manifest_data
     cfg_hash = manifest_data["config"]["digest"]
     config_blob_path = os.path.join(ramalama_store, "blobs", cfg_hash)
     curl_command = [
-        "curl", "-s", "-L", "-C", "-", "--header", accept,
+        "curl", "-f", "-s", "-L", "-C", "-", "--header", accept,
         "-o", config_blob_path,
         f"{registry_head}/blobs/{cfg_hash}"
     ]
@@ -82,7 +80,7 @@ def pull_ollama_config_blob(ramalama_store, accept, registry_head, manifest_data
 
 def pull_ollama_blob(ramalama_store, layer_digest, accept, registry_head, ramalama_models, model_name, model_tag, symlink_path):
     layer_blob_path = os.path.join(ramalama_store, "blobs", layer_digest)
-    curl_command = ["curl", "-L", "-C", "-", "--progress-bar", "--header",
+    curl_command = ["curl", "-f", "-L", "-C", "-", "--progress-bar", "--header",
                     accept, "-o", layer_blob_path, f"{registry_head}/blobs/{layer_digest}"]
     run_curl_command(curl_command, layer_blob_path)
     os.makedirs(ramalama_models, exist_ok=True)
