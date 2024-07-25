@@ -1,29 +1,20 @@
-FROM fedora:39
+FROM centos:stream9
 
 RUN mkdir -p /models
-RUN dnf install -y git jq procps-ng vim clblast-devel vulkan-headers \
-      vulkan-loader-devel glslc glslang python3-pip dnf-plugins-core \
-      python3-dnf-plugin-versionlock cmake gcc-c++ libcurl-devel && \
-    if [ "$(uname -m)" = "aarch64" ]; then \
-      dnf copr enable -y slp/mesa-krunkit && \
-      dnf install -y mesa-libOpenCL-23.3.5-102.aarch64 \
-        mesa-vulkan-drivers-23.3.5-102.aarch64 && \
-      dnf versionlock mesa-libOpenCL-23.3.5-102.aarch64 \
-        mesa-vulkan-drivers-23.3.5-102.aarch64; \
-    fi && \
-    dnf install -y vulkan-tools && \
+RUN dnf install -y git jq procps-ng vim vulkan-headers vulkan-loader-devel \
+      glslc glslang python3-pip dnf-plugins-core \
+      python3-dnf-plugin-versionlock cmake gcc-c++ libcurl-devel \
+      vulkan-tools && \
     dnf clean all && \
     rm -rf /var/cache/*dnf*
 
 RUN pip install "huggingface_hub[cli]==0.24.2"
 
-ENV LLAMA_CCACHE=0
-ENV LLAMA_CURL=1
-ENV LLAMA_VULKAN=1
+ENV GGML_CCACHE=0
 
 RUN git clone -b ramalama https://github.com/ericcurtin/llama.cpp.git && \
     cd llama.cpp && \
-    cmake -B build -DLLAMA_CCACHE=0 -DLLAMA_VULKAN=1 -DLLAMA_CURL=1 && \
+    cmake -B build -DGGML_CCACHE=0 && \
     cmake --build build --config Release -j $(nproc) && \
     cd build/bin && \
     for file in *; do \
