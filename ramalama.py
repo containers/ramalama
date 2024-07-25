@@ -13,7 +13,17 @@ def run_command(args):
         print(e)
         sys.exit(1)
 
-def pull_cli(ramalama_store, model):
+def pull_ollama_manifest(ramalama_store, manifests, accept, registry_head, model_tag):
+    os.makedirs(os.path.dirname(manifests), exist_ok=True)
+    os.makedirs(os.path.join(ramalama_store, "blobs"), exist_ok=True)
+    curl_command = [
+        "curl", "-s", "--header", accept,
+        "-o", manifests,
+        f"{registry_head}/manifests/{model_tag}"
+    ]
+    run_command(curl_command)
+
+def pull_cli(ramalama_store, ramalama_models, model):
     registry_scheme = "https"
     registry = "registry.ollama.ai"
     model = "library/" + model
@@ -25,16 +35,8 @@ def pull_cli(ramalama_store, model):
         model_tag = "latest"
 
     manifests = os.path.join(ramalama_store, "manifests", registry, model_name, model_tag)
-    os.makedirs(os.path.dirname(manifests), exist_ok=True)
-    os.makedirs(os.path.join(ramalama_store, "blobs"), exist_ok=True)
-
-    curl_command = [
-        "curl", "-s", "--header", accept,
-        "-o", manifests,
-        f"{registry_scheme}://{registry}/v2/{model_name}/manifests/{model_tag}"
-    ]
-    run_command(curl_command)
-
+    registry_head = f"{registry_scheme}://{registry}/v2/{model_name}"
+    pull_ollama_manifest(ramalama_store, manifests, accept, registry_head, model_tag)
     with open(manifests, 'r') as f:
         manifest_data = json.load(f)
 
@@ -43,25 +45,21 @@ def pull_cli(ramalama_store, model):
     curl_command = [
         "curl", "-s", "-L", "-C", "-", "--header", accept,
         "-o", config_blob_path,
-        f"{registry_scheme}://{registry}/v2/{model_name}/blobs/{cfg_hash}"
+        f"{registry_head}/blobs/{cfg_hash}"
     ]
     run_command(curl_command)
-
-    progress_bar = ""
-    print(manifest_data)
+    progress_bar = False
     for layer in manifest_data["layers"]:
         layer_digest = layer["digest"]
-        if layer["mediaType"] == 'application/vnd.ollama.image.model':
-            progress_bar = "--progress-bar"
+        if layer["mediaType"] != 'application/vnd.ollama.image.model':
+            continue
 
         layer_blob_path = os.path.join(ramalama_store, "blobs", layer_digest)
-        curl_command = [
-            "curl", "-L", "-C", "-", progress_bar, "--header", accept,
-            "-o", layer_blob_path,
-            f"{registry_scheme}://{registry}/v2/{model_name}/blobs/{layer_digest}"
-        ]
+        curl_command = ["curl", "-L", "-C", "-", "--progress-bar", "--header", accept, "-o", layer_blob_path, f"{registry_head}/blobs/{layer_digest}"]
         run_command(curl_command)
-        progress_bar = ""
+        os.makedirs(ramalama_models, exist_ok=True)
+        model_name = os.path.basename(model_name)
+        os.symlink(layer_blob_path, f"{ramalama_models}/{model_name}:{model_tag}")
 
 def usage():
     print("Usage:")
@@ -84,7 +82,7 @@ def main():
     ramalama_store = get_ramalama_store()
     command = sys.argv[1]
     if command == "pull" and len(sys.argv) > 2:
-        pull_cli(ramalama_store + "/repos/ollama", sys.argv[2])
+        pull_cli(ramalama_store + "/repos/ollama", ramalama_store + "/models/ollama", sys.argv[2])
     else:
         usage()
 
