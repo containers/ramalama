@@ -15,21 +15,20 @@ RUN dnf install -y git jq procps-ng vim clblast-devel vulkan-headers \
     dnf clean all && \
     rm -rf /var/cache/*dnf*
 
-RUN pip install -U "huggingface_hub[cli]"
+RUN pip install "huggingface_hub[cli]==0.24.2"
 
 ENV LLAMA_CCACHE=0
 ENV LLAMA_CURL=1
 ENV LLAMA_VULKAN=1
 
-RUN git clone -b ramlama https://github.com/ericcurtin/llama.cpp.git && \
+RUN git clone -b ramalama https://github.com/ericcurtin/llama.cpp.git && \
     cd llama.cpp && \
     cmake -B build -DLLAMA_CCACHE=0 -DLLAMA_VULKAN=1 -DLLAMA_CURL=1 && \
     cmake --build build --config Release -j $(nproc) && \
     cd build/bin && \
     for file in *; do \
-      if [ -f "$file" ] && [ -x "$file" ]; then \
-        echo "$file" && \
-        mv "$file" /usr/bin/llama-"$file"; \
+      if [ -f "$file" ] && [ -x "$file" ] && [[ "$file" == "llama-*" ]]; then \
+        mv "$file" "/usr/bin/$file"; \
       fi; \
     done; \
     cd / && \
