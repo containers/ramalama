@@ -59,7 +59,7 @@ def pull_cli(ramalama_store, ramalama_models, model):
         run_command(curl_command)
         os.makedirs(ramalama_models, exist_ok=True)
         model_name = os.path.basename(model_name)
-        os.symlink(layer_blob_path, f"{ramalama_models}/{model_name}:{model_tag}")
+        run_command(["ln", "-sf", layer_blob_path, f"{ramalama_models}/{model_name}:{model_tag}"])
 
 def usage():
     print("Usage:")
