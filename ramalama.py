@@ -19,7 +19,7 @@ def verify_checksum(filename):
     """
 
     if not os.path.exists(filename):
-        return false
+        return False
 
     # Check if the filename starts with "sha256:"
     fn_base = os.path.basename(filename)
@@ -80,15 +80,12 @@ def pull_ollama_config_blob(ramalama_store, accept, registry_head, manifest_data
     run_curl_command(curl_command, config_blob_path)
 
 
-def pull_ollama_blob(ramalama_store, layer_digest, accept, registry_head, ramalama_models, model_name, model_tag):
+def pull_ollama_blob(ramalama_store, layer_digest, accept, registry_head, ramalama_models, model_name, model_tag, symlink_path):
     layer_blob_path = os.path.join(ramalama_store, "blobs", layer_digest)
     curl_command = ["curl", "-L", "-C", "-", "--progress-bar", "--header",
                     accept, "-o", layer_blob_path, f"{registry_head}/blobs/{layer_digest}"]
     run_curl_command(curl_command, layer_blob_path)
     os.makedirs(ramalama_models, exist_ok=True)
-    model_name = os.path.basename(model_name)
-    symlink_path = os.path.join(
-        ramalama_models, f"{model_name}:{model_tag}")
     relative_target_path = os.path.relpath(
         layer_blob_path, start=os.path.dirname(symlink_path))
     run_command(["ln", "-sf", relative_target_path, symlink_path])
@@ -104,6 +101,11 @@ def pull_cli(ramalama_store, ramalama_models, model):
     else:
         model_name = model
         model_tag = "latest"
+
+    model_base = os.path.basename(model_name)
+    symlink_path = os.path.join(ramalama_models, f"{model_base}:{model_tag}")
+    if os.path.exists(symlink_path):
+        return
 
     manifests = os.path.join(ramalama_store, "manifests",
                              registry, model_name, model_tag)
@@ -121,7 +123,7 @@ def pull_cli(ramalama_store, ramalama_models, model):
             continue
 
         pull_ollama_blob(ramalama_store, layer_digest, accept,
-                         registry_head, ramalama_models, model_name, model_tag)
+                         registry_head, ramalama_models, model_name, model_tag, symlink_path)
 
 
 def usage():
