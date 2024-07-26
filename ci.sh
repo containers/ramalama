@@ -7,10 +7,11 @@ main() {
   curl -fsSL https://raw.githubusercontent.com/containers/ramalama/main/install.sh | sudo bash
 
   set +o pipefail
-  ./ramalama.py -h | grep Usage:
+  ./ramalama -h | grep Usage:
   set -o pipefail
 
-  ramalama.py pull granite-code
+  ramalama pull granite-code
+  autopep8 --exit-code ramalama # Check style is correct
 #  ramalama list | grep granite-code
 #  ramalama rm granite-code
 }
