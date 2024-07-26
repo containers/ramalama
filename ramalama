@@ -1,402 +1,157 @@
-#!/bin/bash
+#!/usr/bin/python3
 
-available() {
-  command -v "$1" > /dev/null
-}
+import os
+import sys
+import subprocess
+import json
+import hashlib
 
-select_container_manager() {
-  if available podman; then
-    conman_bin="podman"
-    return 0
-  elif available docker; then
-    conman_bin="docker"
-    return 0
-  fi
 
-  conman_bin="podman"
-}
+def verify_checksum(filename):
+    """
+    Verifies if the SHA-256 checksum of a file matches the checksum provided in the filename.
 
-exists() {
-  [ -e "$1" ] || [ -L "$1" ]
-}
+    Args:
+    filename (str): The filename containing the checksum prefix (e.g., "sha256:<checksum>")
 
-image_available() {
-  exists "$llm_store/models/$model_name"
-}
+    Returns:
+    bool: True if the checksum matches, False otherwise.
+    """
 
-wcurl() {
-  local wcurl_cmd=("curl" "--globoff" "--location" "--proto-default" "https")
-  wcurl_cmd+=("--remote-time" "--retry" "10" "--retry-max-time" "10" "$url")
-  "${wcurl_cmd[@]}"
-}
+    if not os.path.exists(filename):
+        return False
 
-hf_download() {
-  local conman_hf_download=("${conman_run[@]}" "quay.io/ramalama/ramalama:latest")
-  conman_hf_download+=("huggingface-cli" "download" "$hf_repo" "$model")
-  conman_hf_download+=("--cache-dir" "/models/repo/hf/.cache")
-  conman_hf_download+=("--local-dir" "/models/repo/hf")
-  "${conman_hf_download[@]}"
-}
+    # Check if the filename starts with "sha256:"
+    fn_base = os.path.basename(filename)
+    if not fn_base.startswith("sha256:"):
+        raise ValueError(f"Filename does not start with 'sha256:': {fn_base}")
 
-hf_download_with_trim() {
-  hf_download | sed "s#^/models/##g" | tr -d '\r'
-}
+    # Extract the expected checksum from the filename
+    expected_checksum = fn_base.split(":")[1]
+    if len(expected_checksum) != 64:
+        raise ValueError("Invalid checksum length in filename")
 
-check_if_in_hf_db() {
-  local host="raw.githubusercontent.com"
-  local url="https://$host/containers/ramalama/main/hf-db/$model_name"
-  local image_data
-  if ! image_available && image_data="$(wcurl 2>&1)"; then
-    local hf_repo
-    hf_repo="$(echo "$image_data" | sed -ne "s/^hf-repo\s//pg" | xargs)"
-    local model
-    model="$(echo "$image_data" | sed -ne "s/^model\s//pg" | xargs)"
-    hf_download
-    local sym_target
-    sym_target=$(hf_download_with_trim)
-    "${conman_run[@]}" "quay.io/ramalama/ramalama:latest" "ln" "-s" "$sym_target" "/models/$model_name"
-  fi
-}
+    # Calculate the SHA-256 checksum of the file contents
+    sha256_hash = hashlib.sha256()
+    with open(filename, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
 
-get_model() {
-  if image_available; then
-    echo "/models/$model_name"
-  fi
-}
+    # Get the calculated checksum
+    calculated_checksum = sha256_hash.hexdigest()
 
-get_dangling_images() {
-  "${conman[@]}" images --filter "dangling=true" -q --no-trunc
-}
+    # Compare the checksums
+    return calculated_checksum == expected_checksum
 
-rm_dir() {
-  xargs dirname
-}
 
-get_model_dir() {
-  "${conman_run[@]}" "$model_name" readlink -f "$model" | rm_dir | rm_dir
-}
+def run_command(args):
+    try:
+        subprocess.run(args, check=True)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
 
-add_dri() {
-  if [ -e "/dev/dri" ]; then
-    conman_run+=("--device" "/dev/dri")
-  fi
-}
 
-run_prep() {
-  vol="-v$llm_store/models:/models:z"
-  conman_run=("${conman[@]}" "run" "--rm" "-it")
-  conman_run+=("--security-opt=label=disable" "-v$HOME:$HOME" "-v/tmp:/tmp")
-  conman_run+=("$vol")
+def run_curl_command(args, filename):
+    if not verify_checksum(filename):
+        run_command(args)
 
-  if [ -e "/proc/driver/nvidia/gpus" ] || available nvidia-smi; then
-    conman_run+=("--gpus=all" "--device" "nvidia.com/gpu=all")
-  elif [ -e "/dev/kfd" ]; then
-    for i in /sys/bus/pci/devices/*/mem_info_vram_total; do
-      # AMD GPU needs more than 512M VRAM
-      if [ "$(< "$i")" -gt "600000000" ]; then
-        conman_run+=("--device" "/dev/kfd")
-        add_dri
-        ngl="true"
-        break
-      fi
-    done
-  elif [ "$(uname -m)" = "aarch64" ]; then # Don't do this on x86_64, slow perf
-    add_dri
-    ngl="true"
-  fi
-}
 
-rm_cli() {
-  shift
-  local model_name="$1"
+def pull_ollama_manifest(ramalama_store, manifests, accept, registry_head, model_tag):
+    os.makedirs(os.path.dirname(manifests), exist_ok=True)
+    os.makedirs(os.path.join(ramalama_store, "blobs"), exist_ok=True)
+    curl_command = [
+        "curl", "-f", "-s", "--header", accept,
+        "-o", manifests,
+        f"{registry_head}/manifests/{model_tag}"
+    ]
+    run_command(curl_command)
 
-  # To be completed, only delete the directory once all associated images, 3b,
-  # latest, etc. are removed
-  if false; then
-    local dir_to_rm
-    dir_to_rm=$(get_model_dir)
-    "${conman_run[@]}" "$model_name" rm -rf "$dir_to_rm" || true
-  fi
 
-  local sym_target
-  sym_target=$(readlink "$llm_store/models/$model_name")
-  rm -f "$llm_store/models/$sym_target"
-  rm -f "$llm_store/models/$model_name"
-}
+def pull_ollama_config_blob(ramalama_store, accept, registry_head, manifest_data):
+    cfg_hash = manifest_data["config"]["digest"]
+    config_blob_path = os.path.join(ramalama_store, "blobs", cfg_hash)
+    curl_command = [
+        "curl", "-f", "-s", "-L", "-C", "-", "--header", accept,
+        "-o", config_blob_path,
+        f"{registry_head}/blobs/{cfg_hash}"
+    ]
+    run_curl_command(curl_command, config_blob_path)
 
-build_cli() {
-  shift
-  local model_name="$1"
 
-  run_prep
-  exec "${conman[@]}" build "$vol" -t "$model_name" .
-}
+def pull_ollama_blob(ramalama_store, layer_digest, accept, registry_head, ramalama_models, model_name, model_tag, symlink_path):
+    layer_blob_path = os.path.join(ramalama_store, "blobs", layer_digest)
+    curl_command = ["curl", "-f", "-L", "-C", "-", "--progress-bar", "--header",
+                    accept, "-o", layer_blob_path, f"{registry_head}/blobs/{layer_digest}"]
+    run_curl_command(curl_command, layer_blob_path)
+    os.makedirs(ramalama_models, exist_ok=True)
+    relative_target_path = os.path.relpath(
+        layer_blob_path, start=os.path.dirname(symlink_path))
+    run_command(["ln", "-sf", relative_target_path, symlink_path])
 
-serve_cli() {
-  shift
-  if [ "$#" -lt 1 ]; then
-    serve_usage
-  fi
 
-  local dryrun="false"
-  while [ $# -gt 0 ]; do
-    case $1 in
-      -d|--dryrun)
-        dryrun="true"
-        shift
-        ;;
-      -*)
-        serve_usage
-        ;;
-      *)
-        local model_name="$1"
-        shift # past argument
-        ;;
-    esac
-  done
+def pull_cli(ramalama_store, ramalama_models, model):
+    registry_scheme = "https"
+    registry = "registry.ollama.ai"
+    model = "library/" + model
+    accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
+    if ':' in model:
+        model_name, model_tag = model.split(':', 1)
+    else:
+        model_name = model
+        model_tag = "latest"
 
-  run_prep
-  check_if_in_hf_db
-  local model
-  model="$(get_model)"
-  conman_run+=("-p" "${RAMALAMA_HOST:-8080}:8080" "quay.io/ramalama/ramalama:latest")
-  conman_run+=("llama-server" "-m" "$model")
-  if $dryrun; then
-    echo "${conman_run[@]}"
-    return 0
-  fi
+    model_base = os.path.basename(model_name)
+    symlink_path = os.path.join(ramalama_models, f"{model_base}:{model_tag}")
+    if os.path.exists(symlink_path):
+        return
 
-  exec "${conman_run[@]}"
-}
+    manifests = os.path.join(ramalama_store, "manifests",
+                             registry, model_name, model_tag)
+    registry_head = f"{registry_scheme}://{registry}/v2/{model_name}"
+    pull_ollama_manifest(ramalama_store, manifests,
+                         accept, registry_head, model_tag)
+    with open(manifests, 'r') as f:
+        manifest_data = json.load(f)
 
-get_llm_store() {
-  if [ "$EUID" -eq 0 ]; then
-    llm_store="/var/lib/ramalama/storage"
-    return 0
-  fi
+    pull_ollama_config_blob(ramalama_store, accept,
+                            registry_head, manifest_data)
+    for layer in manifest_data["layers"]:
+        layer_digest = layer["digest"]
+        if layer["mediaType"] != 'application/vnd.ollama.image.model':
+            continue
 
-  llm_store="$HOME/.local/share/ramalama/storage"
-}
+        pull_ollama_blob(ramalama_store, layer_digest, accept,
+                         registry_head, ramalama_models, model_name, model_tag, symlink_path)
 
-pull_cli() {
-  shift
-  local model_name="$1"
 
-  run_prep
-  check_if_in_hf_db
-}
+def usage():
+    print("Usage:")
+    print(f"  {os.path.basename(__file__)} COMMAND")
+    print()
+    print("Commands:")
+    print("  pull MODEL       Pull a model")
+    sys.exit(1)
 
-serve_usage() {
-  echo "Usage:"
-  echo "  $(basename "$0") serve MODEL"
-  echo
-  echo "Aliases:"
-  echo "  serve, start"
-  echo
-  echo "Environment Variables:"
-  echo "  RAMALAMA_HOST  The host:port to bind to (default \"0.0.0.0:8080\")"
 
-  return 1
-}
+def get_ramalama_store():
+    if os.geteuid() == 0:
+        return "/var/lib/ramalama"
 
-run_usage() {
-  echo "Usage:"
-  echo "  $(basename "$0") run MODEL"
+    return os.path.expanduser("~/.local/share/ramalama")
 
-  return 1
-}
 
-run_cli() {
-  shift
-  if [ "$#" -lt 1 ]; then
-    run_usage
-  fi
+def main():
+    if len(sys.argv) < 2:
+        usage()
 
-  local dryrun="false"
-  while [ $# -gt 0 ]; do
-    case $1 in
-      -d|--dryrun)
-        dryrun="true"
-        shift
-        ;;
-      -*)
-        run_usage
-        ;;
-      *)
-        local model_name="$1"
-        shift # past argument
-        ;;
-    esac
-  done
+    ramalama_store = get_ramalama_store()
+    command = sys.argv[1]
+    if command == "pull" and len(sys.argv) > 2:
+        pull_cli(ramalama_store + "/repos/ollama",
+                 ramalama_store + "/models/ollama", sys.argv[2])
+    else:
+        usage()
 
-  run_prep
-  check_if_in_hf_db
-  local model
-  model="$(get_model)"
-  conman_run+=("quay.io/ramalama/ramalama:latest" "llama-main" "-m" "$model" "--log-disable")
-  conman_run+=("--instruct")
-  if $ngl; then
-    conman_run+=("-ngl" "999")
-  fi
 
-  if $dryrun; then
-    echo "${conman_run[@]}"
-    return 0
-  fi
-
-  exec "${conman_run[@]}"
-}
-
-conman_cli() {
-  conman=("$1" "--root" "$llm_store")
-  shift
-  exec "${conman[@]}" "$@"
-}
-
-usage() {
-  echo "Usage:"
-  echo "  $(basename "$0") COMMAND"
-  echo
-  echo "Commands:"
-  echo "  run MODEL        Run a model"
-  echo "  pull MODEL       Pull a model"
-  echo "  serve MODEL      Serve a model"
-  echo "  list             List models"
-  echo "  rm MODEL         Remove a model"
-
-  return 1
-}
-
-mkdirs() {
-  local repo_base="$llm_store/models/repo"
-  mkdir -p "$repo_base/hf" "$repo_base/ollama" "$repo_base/oci"
-}
-
-human_duration() {
-  local d=$1
-  if (( d < 1 )); then
-    echo -n "Less than a second"
-  elif (( d == 1 )); then
-    echo -n "1 second"
-  elif (( d < 60 )); then
-    echo -n "$d seconds"
-  elif (( d < 120 )); then
-    echo -n "1 minute"
-  elif (( d < 3600 )); then
-    echo -n "$(( d / 60 )) minutes"
-  elif (( d < 7200 )); then
-    echo -n "1 hour"
-  elif (( d < 86400 )); then
-    echo -n "$(( d / 3600 )) hours"
-  elif (( d < 172800 )); then
-    echo -n "1 day"
-  elif (( d < 604800 )); then
-    echo -n "$(( d / 86400 )) days"
-  elif (( d < 1209600 )); then
-    echo -n "1 week"
-  elif (( d < 2419200 )); then
-    echo -n "$(( d / 604800 )) weeks"
-  elif (( d < 4838400 )); then
-    echo -n "1 month"
-  elif (( d < 31536000 )); then
-    echo -n "$(( d / 2419200 )) months"
-  elif (( d < 63072000 )); then
-    echo -n "1 year"
-  else
-    echo -n "$(( d / 31536000 )) years"
-  fi
-}
-
-list_files_by_modification() {
-  ls -t
-}
-
-list_cli() {
-  printf "%-16s %-16s %-16s\n" "NAME" "MODIFIED" "SIZE"
-  cd "$llm_store/models/"
-  for i in $(list_files_by_modification); do
-    if [ -L "$i" ]; then
-      file_info=$(stat -c'%n %Z' "$i")
-      local name
-      name=$(echo "$file_info" | cut -d ' ' -f 1)
-      local file_epoch
-      file_epoch=$(echo "$file_info" | cut -d ' ' -f 2)
-      local diff=$((EPOCHSECONDS - file_epoch))
-      local modified
-      modified="$(human_duration $diff) ago"
-      local size
-      size=$(readlink "$i" | xargs du -h | awk '{print $1"\n"}')
-      printf "%-16s %-16s %-16s\n" "$name" "$modified" "$size"
-   fi
-  done
-
-  cd - > /dev/null
-}
-
-build() {
-  local from="$sym_target"
-  local to="/$model_name"
-  cd "$llm_store/models"
-  local containerfile
-  containerfile=$(mktemp)
-  echo "FROM scratch
-COPY $from $to" > "$containerfile"
-  "${conman[@]}" build -t "$model_name" -f "$containerfile" .
-  rm "$containerfile"
-  cd - > /dev/null
-}
-
-push_cli() {
-  shift
-  local model_name="$1"
-  local to_location="$2"
-  local sym_target
-  sym_target=$(readlink "$llm_store/models/$model_name")
-  build
-  "${conman[@]}" push "$model_name" "$to_location"
-}
-
-init_rama() {
-  select_container_manager
-  get_llm_store
-  mkdirs
-}
-
-main() {
-  set -eu -o pipefail
-
-  local conman_bin
-  local llm_store
-  init_rama
-
-  local conman=("$conman_bin" "--root" "$llm_store")
-  local conman_run
-  local vol
-  local ngl="false"
-  if [ "$#" -lt 1 ]; then
-    usage
-  fi
-
-  if [ "$1" = "run" ]; then
-    run_cli "$@"
-  elif [ "$1" = "pull" ]; then
-    pull_cli "$@"
-  elif [ "$1" = "push" ]; then
-    push_cli "$@"
-  elif [ "$1" = "serve" ] || [ "$1" = "start" ]; then
-    serve_cli "$@"
-  elif [ "$1" = "podman" ] || [ "$1" = "docker" ]; then
-    conman_cli "$@"
-  elif [ "$1" = "list" ] || [ "$1" = "ls" ]; then
-    list_cli "$@"
-  elif [ "$1" = "rm" ]; then
-    rm_cli "$@"
-  elif [ "$1" = "build" ]; then
-    build_cli "$@"
-  else
-    usage
-  fi
-}
-
-main "$@"
-
+if __name__ == "__main__":
+    main()
