@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/main/install.sh
 You can pull a model using the `pull` command. By default, it pulls from the ollama registry.
 
 ```
-$ ramalama pull granite-code
+ramalama pull granite-code
 ```
 
 ## Diagram
