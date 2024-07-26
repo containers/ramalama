@@ -29,14 +29,13 @@ ramalama pull granite-code
 |                |
 +-------+--------+
         |
-        v
-+----------------+    +-----------------------+    +------------------+
-|                |    | Pull runtime layer    |    | Pull model layer |
-| Auto-detect    +--->| for llama.cpp         +--->| i.e. granite     |
-| hardware type  |    | (CPU, Vulkan, AMD,    |    |                  |
-|                |    |  Nvidia, Intel,       |    +------------------+
-+----------------+    |  Apple Silicon, etc.) |    | Repo options:    |
-                      +-----------------------+    +-+-------+------+-+
+        |
+        |                                          +------------------+
+        |                                          | Pull model layer |
+        +----------------------------------------->| i.e. granite     |
+                                                   +------------------+
+                                                   | Repo options:    |
+                                                   +-+-------+------+-+
                                                      |       |      |
                                                      v       v      v
                                              +---------+ +------+ +----------+
