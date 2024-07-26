@@ -23,16 +23,16 @@ ramalama pull granite-code
 ## Diagram
 
 ```
-+----------------+
-|                |
-| ramalama run   |
-|                |
-+-------+--------+
++---------------------------+
+|                           |
+| ramalama run granite-code |
+|                           |
++-------+-------------------+
         |
         |
         |                                          +------------------+
         |                                          | Pull model layer |
-        +----------------------------------------->| i.e. granite     |
+        +----------------------------------------->| granite-code     |
                                                    +------------------+
                                                    | Repo options:    |
                                                    +-+-------+------+-+
@@ -47,7 +47,7 @@ ramalama pull granite-code
                                                    +------------------+
                                                    | Start container  |
                                                    | with llama.cpp   |
-                                                   | and granite      |
+                                                   | and granite-code |
                                                    | model            |
                                                    +------------------+
 ```
