@@ -16,12 +16,9 @@ help:
 	@echo
 	@echo "Clean the repository"
 	@echo
-	@echo "  - make test"
+	@echo "  - make clean"
 	@echo
 
-#
-# Create instructlab AI container images
-#
 .PHONY:
 install:
 	./install.sh
