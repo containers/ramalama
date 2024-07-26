@@ -7,8 +7,13 @@ available() {
 main() {
   set -ex -o pipefail
 
+  local maybe_sudo=""
+  if [ "$EUID" -ne 0 ]; then
+    maybe_sudo="sudo"
+  fi
+
   if ! available autopep8 && available apt; then
-    apt install -y python3-autopep8
+    $maybe_sudo apt install -y python3-autopep8
   fi
 
   ./podman-build.sh
