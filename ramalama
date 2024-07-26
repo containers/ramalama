@@ -6,6 +6,7 @@ import subprocess
 import json
 import hashlib
 
+x = False
 
 def verify_checksum(filename):
     """
@@ -45,6 +46,9 @@ def verify_checksum(filename):
 
 
 def run_command(args):
+    if x:
+        print(*args)
+
     try:
         subprocess.run(args, check=True)
     except subprocess.CalledProcessError as e:
