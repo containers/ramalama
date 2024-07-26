@@ -8,6 +8,7 @@ import hashlib
 
 x = False
 
+
 def verify_checksum(filename):
     """
     Verifies if the SHA-256 checksum of a file matches the checksum provided in the filename.
