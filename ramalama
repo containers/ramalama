@@ -46,19 +46,25 @@ def verify_checksum(filename):
     return calculated_checksum == expected_checksum
 
 
+def print_error(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
 def run_command(args):
     if x:
         print(*args)
 
-    try:
-        subprocess.run(args, check=True)
-    except subprocess.CalledProcessError as e:
-        sys.exit(e.returncode)
+    subprocess.run(args, check=True)
 
 
 def run_curl_command(args, filename):
     if not verify_checksum(filename):
-        run_command(args)
+        try:
+            run_command(args)
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 22:
+                print_error(filename + " not found")
+            sys.exit(e.returncode)
 
 
 def pull_ollama_manifest(ramalama_store, manifests, accept, registry_head, model_tag):
@@ -91,7 +97,11 @@ def pull_ollama_blob(ramalama_store, layer_digest, accept, registry_head, ramala
     os.makedirs(ramalama_models, exist_ok=True)
     relative_target_path = os.path.relpath(
         layer_blob_path, start=os.path.dirname(symlink_path))
-    run_command(["ln", "-sf", relative_target_path, symlink_path])
+    try:
+        run_command(["ln", "-sf", relative_target_path, symlink_path])
+    except subprocess.CalledProcessError as e:
+        print_error(e)
+        sys.exit(e.returncode)
 
 
 def pull_cli(ramalama_store, ramalama_models, model):
@@ -113,10 +123,15 @@ def pull_cli(ramalama_store, ramalama_models, model):
     manifests = os.path.join(ramalama_store, "manifests",
                              registry, model_name, model_tag)
     registry_head = f"{registry_scheme}://{registry}/v2/{model_name}"
-    pull_ollama_manifest(ramalama_store, manifests,
-                         accept, registry_head, model_tag)
-    with open(manifests, 'r') as f:
-        manifest_data = json.load(f)
+    try:
+        pull_ollama_manifest(ramalama_store, manifests,
+                             accept, registry_head, model_tag)
+        with open(manifests, 'r') as f:
+            manifest_data = json.load(f)
+    except subprocess.CalledProcessError as e:
+        if e.returncode == 22:
+            print_error(model_name + ":" + model_tag + " not found")
+        sys.exit(e.returncode)
 
     pull_ollama_config_blob(ramalama_store, accept,
                             registry_head, manifest_data)
