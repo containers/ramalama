@@ -65,7 +65,7 @@ and install again.
 
 ## Credit where credit is due
 
-For the vast majority of AI/LLM software we use, under the covers the heavy lifting is being done by:
+For the majority of AI/LLM software we use, under the covers the heavy lifting is being done by:
 
 https://github.com/ggerganov/llama.cpp
 
