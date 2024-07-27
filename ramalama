@@ -5,6 +5,7 @@ import sys
 import subprocess
 import json
 import hashlib
+import shutil
 
 x = False
 
@@ -158,6 +159,27 @@ def get_ramalama_store():
         return "/var/lib/ramalama"
 
     return os.path.expanduser("~/.local/share/ramalama")
+
+
+def in_container():
+    if os.path.exists("/run/.containerenv") or os.path.exists("/.dockerenv") or os.getenv("container"):
+        return True
+
+    return False
+
+
+def available(command):
+    return shutil.which(command) is not None
+
+
+def select_container_manager():
+    if available("podman"):
+        return "podman"
+
+    if available("docker"):
+        return "docker"
+
+    return ""
 
 
 def main():
