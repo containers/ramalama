@@ -45,9 +45,9 @@ ramalama pull granite-code
                                                      |       |      |
                                                      v       v      v
                                                    +------------------+
-                                                   | Start container  |
-                                                   | with llama.cpp   |
-                                                   | and granite-code |
+                                                   | Start with       |
+                                                   | llama.cpp and    |
+                                                   | granite-code     |
                                                    | model            |
                                                    +------------------+
 ```
