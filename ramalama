@@ -6,6 +6,7 @@ import subprocess
 import json
 import hashlib
 import shutil
+import re
 
 x = False
 
@@ -55,7 +56,7 @@ def run_command(args):
     if x:
         print(*args)
 
-    subprocess.run(args, check=True)
+    return subprocess.run(args, check=True, stdout=subprocess.PIPE)
 
 
 def run_curl_command(args, filename):
@@ -68,9 +69,9 @@ def run_curl_command(args, filename):
             sys.exit(e.returncode)
 
 
-def pull_ollama_manifest(ramalama_store, manifests, accept, registry_head, model_tag):
+def pull_ollama_manifest(repos_ollama, manifests, accept, registry_head, model_tag):
     os.makedirs(os.path.dirname(manifests), exist_ok=True)
-    os.makedirs(os.path.join(ramalama_store, "blobs"), exist_ok=True)
+    os.makedirs(os.path.join(repos_ollama, "blobs"), exist_ok=True)
     curl_command = [
         "curl", "-f", "-s", "--header", accept,
         "-o", manifests,
@@ -79,9 +80,9 @@ def pull_ollama_manifest(ramalama_store, manifests, accept, registry_head, model
     run_command(curl_command)
 
 
-def pull_ollama_config_blob(ramalama_store, accept, registry_head, manifest_data):
+def pull_ollama_config_blob(repos_ollama, accept, registry_head, manifest_data):
     cfg_hash = manifest_data["config"]["digest"]
-    config_blob_path = os.path.join(ramalama_store, "blobs", cfg_hash)
+    config_blob_path = os.path.join(repos_ollama, "blobs", cfg_hash)
     curl_command = [
         "curl", "-f", "-s", "-L", "-C", "-", "--header", accept,
         "-o", config_blob_path,
@@ -90,8 +91,8 @@ def pull_ollama_config_blob(ramalama_store, accept, registry_head, manifest_data
     run_curl_command(curl_command, config_blob_path)
 
 
-def pull_ollama_blob(ramalama_store, layer_digest, accept, registry_head, ramalama_models, model_name, model_tag, symlink_path):
-    layer_blob_path = os.path.join(ramalama_store, "blobs", layer_digest)
+def pull_ollama_blob(repos_ollama, layer_digest, accept, registry_head, ramalama_models, model_name, model_tag, symlink_path):
+    layer_blob_path = os.path.join(repos_ollama, "blobs", layer_digest)
     curl_command = ["curl", "-f", "-L", "-C", "-", "--progress-bar", "--header",
                     accept, "-o", layer_blob_path, f"{registry_head}/blobs/{layer_digest}"]
     run_curl_command(curl_command, layer_blob_path)
@@ -105,44 +106,115 @@ def pull_ollama_blob(ramalama_store, layer_digest, accept, registry_head, ramala
         sys.exit(e.returncode)
 
 
-def pull_cli(ramalama_store, ramalama_models, model):
-    registry_scheme = "https"
-    registry = "registry.ollama.ai"
-    model = "library/" + model
-    accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
-    if ':' in model:
-        model_name, model_tag = model.split(':', 1)
-    else:
-        model_name = model
-        model_tag = "latest"
-
-    model_base = os.path.basename(model_name)
-    symlink_path = os.path.join(ramalama_models, f"{model_base}:{model_tag}")
-    if os.path.exists(symlink_path):
-        return
-
-    manifests = os.path.join(ramalama_store, "manifests",
-                             registry, model_name, model_tag)
-    registry_head = f"{registry_scheme}://{registry}/v2/{model_name}"
+def init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_tag, ramalama_models, symlink_path, model):
     try:
-        pull_ollama_manifest(ramalama_store, manifests,
+        pull_ollama_manifest(repos_ollama, manifests,
                              accept, registry_head, model_tag)
         with open(manifests, 'r') as f:
             manifest_data = json.load(f)
     except subprocess.CalledProcessError as e:
         if e.returncode == 22:
-            print_error(model_name + ":" + model_tag + " not found")
+            print_error(model + ":" + model_tag + " not found")
         sys.exit(e.returncode)
 
-    pull_ollama_config_blob(ramalama_store, accept,
+    pull_ollama_config_blob(repos_ollama, accept,
                             registry_head, manifest_data)
     for layer in manifest_data["layers"]:
         layer_digest = layer["digest"]
         if layer["mediaType"] != 'application/vnd.ollama.image.model':
             continue
 
-        pull_ollama_blob(ramalama_store, layer_digest, accept,
+        pull_ollama_blob(repos_ollama, layer_digest, accept,
                          registry_head, ramalama_models, model_name, model_tag, symlink_path)
+
+    return symlink_path
+
+
+def huggingface_download(ramalama_store, model, directory, filename):
+    return run_command(["huggingface-cli", "download", directory, filename, "--cache-dir", ramalama_store + "/repos/huggingface/.cache", "--local-dir", ramalama_store + "/repos/huggingface"])
+
+
+def pull_huggingface(ramalama_store, model, directory, filename):
+    huggingface_download(ramalama_store, model, directory, filename)
+    proc = huggingface_download(ramalama_store, model, directory, filename)
+    return proc.stdout.decode('utf-8')
+
+
+def mkdirs(ramalama_store):
+    # List of directories to create
+    directories = [
+        'models/huggingface',
+        'repos/huggingface',
+        'models/ollama',
+        'repos/ollama'
+    ]
+
+    # Create each directory
+    for directory in directories:
+        full_path = os.path.join(ramalama_store, directory)
+        os.makedirs(full_path, exist_ok=True)
+
+
+def pull_cli(ramalama_store, args):
+    if len(args) < 1:
+        usage()
+
+    mkdirs(ramalama_store)
+    model = args.pop(0)
+    if model.startswith("huggingface://"):
+        model = re.sub(r'^huggingface://', '', model)
+        directory, filename = model.rsplit('/', 1)
+        gguf_path = pull_huggingface(
+            ramalama_store, model, directory, filename)
+        symlink_path = f"{ramalama_store}/models/huggingface/{filename}"
+        relative_target_path = os.path.relpath(
+            gguf_path.rstrip(), start=os.path.dirname(symlink_path))
+        try:
+            run_command(["ln", "-sf", relative_target_path, symlink_path])
+        except subprocess.CalledProcessError as e:
+            print_error(e)
+            sys.exit(e.returncode)
+
+        return symlink_path
+
+    repos_ollama = ramalama_store + "/repos/ollama"
+    ramalama_models = ramalama_store + "/models/ollama"
+    registry_scheme = "https"
+    registry = "registry.ollama.ai"
+    model_full = "library/" + model
+    accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
+    if ':' in model_full:
+        model_name, model_tag = model_full.split(':', 1)
+    else:
+        model_name = model_full
+        model_tag = "latest"
+
+    model_base = os.path.basename(model_name)
+    symlink_path = os.path.join(ramalama_models, f"{model_base}:{model_tag}")
+    if os.path.exists(symlink_path):
+        return symlink_path
+
+    manifests = os.path.join(repos_ollama, "manifests",
+                             registry, model_name, model_tag)
+    registry_head = f"{registry_scheme}://{registry}/v2/{model_name}"
+    return init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_tag, ramalama_models, symlink_path, model)
+
+
+def run_cli(ramalama_store, args):
+    if len(args) < 1:
+        usage()
+
+    symlink_path = pull_cli(ramalama_store, args)
+    os.execlp("llama-main", "llama-main", "-m",
+              symlink_path, "--log-disable", "--instruct")
+
+
+def serve_cli(ramalama_store, args):
+    if len(args) < 1:
+        usage()
+
+    symlink_path = pull_cli(ramalama_store, args)
+    os.execlp("llama-server", "llama-server", "-m", symlink_path)
 
 
 def usage():
@@ -150,7 +222,9 @@ def usage():
     print(f"  {os.path.basename(__file__)} COMMAND")
     print()
     print("Commands:")
+    print("  run MODEL        Run a model")
     print("  pull MODEL       Pull a model")
+    print("  serve MODEL      Serve a model")
     sys.exit(1)
 
 
@@ -182,18 +256,28 @@ def select_container_manager():
     return ""
 
 
-def main():
-    if len(sys.argv) < 2:
+def main(args):
+    conman = select_container_manager()
+    ramalama_store = get_ramalama_store()
+
+    if conman:
+        conman_args = [conman, "run", "--rm", "-it", "--security-opt=label=disable", f"-v{ramalama_store}:/var/lib/ramalama", f"-v{os.path.expanduser('~')}:{os.path.expanduser('~')}", "-v/tmp:/tmp",
+                       f"-v{__file__}:{__file__}", "quay.io/ramalama/ramalama:latest", __file__] + args
+        os.execvp(conman, conman_args)
+
+    if len(args) < 1:
         usage()
 
-    ramalama_store = get_ramalama_store()
-    command = sys.argv[1]
-    if command == "pull" and len(sys.argv) > 2:
-        pull_cli(ramalama_store + "/repos/ollama",
-                 ramalama_store + "/models/ollama", sys.argv[2])
+    command = args.pop(0)
+    if command == "pull":
+        pull_cli(ramalama_store, args)
+    elif command == "run":
+        run_cli(ramalama_store, args)
+    elif command == "serve":
+        serve_cli(ramalama_store, args)
     else:
         usage()
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

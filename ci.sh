@@ -37,6 +37,11 @@ main() {
   set -o pipefail
 
   ./ramalama pull tinyllama
+
+  if [ "$os" = "Linux" ]; then # todo, must install huggingface CLI on macOS
+    ./ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+  fi
+
 #  ramalama list | grep granite-code
 #  ramalama rm granite-code
 }
