@@ -6,6 +6,10 @@ help:
 	@echo
 	@echo "  - make build"
 	@echo
+	@echo "Build docs"
+	@echo
+	@echo "  - make docs"
+	@echo
 	@echo "Install ramalama"
 	@echo
 	@echo "  - make install"
@@ -22,10 +26,14 @@ help:
 .PHONY:
 install:
 	./install.sh
-
+	make -c docs install
 .PHONY:
 build:
 	./container_build.sh
+
+.PHONY: docs
+docs:
+	make -C docs
 
 .PHONY:
 test:
