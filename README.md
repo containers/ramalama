@@ -12,12 +12,35 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/main/install.sh
 
 ## Usage
 
+### Listing Models
+
+You can `list` all models pulled into local storage.
+
+```
+ramalama list
+```
 ### Pulling Models
 
-You can pull a model using the `pull` command. By default, it pulls from the ollama registry.
+You can `pull` a model using the `pull` command. By default, it pulls from the ollama registry.
 
 ```
 ramalama pull granite-code
+```
+
+### Running Models
+
+You can `run` a chatbot on a model using the `run` command. By default, it pulls from the ollama registry.
+
+```
+ramalama run instructlab/merlinite-7b-lab
+```
+
+### Serving Models
+
+You can `serve` a chatbot on a model using the `serve` command. By default, it pulls from the ollama registry.
+
+```
+ramalama serve llama3
 ```
 
 ## Diagram
