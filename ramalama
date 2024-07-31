@@ -215,6 +215,7 @@ def list_cli(ramalama_store, args):
 
 
 funcDict["list"] = list_cli
+funcDict["ls"] = list_cli
 
 
 def pull_huggingface(model, ramalama_store):
@@ -343,6 +344,11 @@ def main(args):
     ramalama_store = get_ramalama_store()
 
     try:
+        cmd = args[0]
+        if conman and (cmd == 'serve' or cmd == 'run'):
+            conman_args = [conman, "run", "--rm", "-it", "--security-opt=label=disable", f"-v{ramalama_store}:/var/lib/ramalama", f"-v{os.path.expanduser('~')}:{os.path.expanduser('~')}", "-v/tmp:/tmp",
+                           f"-v{__file__}:{__file__}", "quay.io/ramalama/ramalama:latest", __file__] + args
+            os.execvp(conman, conman_args)
         cmd = args.pop(0)
         funcDict[cmd](ramalama_store, args)
     except IndexError:

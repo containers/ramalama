@@ -49,6 +49,7 @@ main() {
   local url="raw.githubusercontent.com/containers/ramalama/main/$from"
   local from="$TMP/$from"
   download
+  pip install "huggingface_hub[cli]==0.24.2"
   install -D -m755 "$from" "$bindir/"
 
   if false; then # to be done
