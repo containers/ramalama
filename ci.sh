@@ -24,6 +24,8 @@ main() {
     fi
   fi
 
+  pip install "huggingface_hub[cli]==0.24.2"
+
   chmod +x ramalama install.sh
   if [ "$os" = "Linux" ]; then
     ./container_build.sh
@@ -37,10 +39,7 @@ main() {
   set -o pipefail
 
   ./ramalama pull tinyllama
-
-  if [ "$os" = "Linux" ]; then # todo, must install huggingface CLI on macOS
-    ./ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
-  fi
+  ./ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
 
 #  ramalama list | grep granite-code
 #  ramalama rm granite-code
