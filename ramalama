@@ -12,6 +12,7 @@ import re
 from pathlib import Path
 
 x = False
+funcDict = {}
 
 
 def verify_checksum(filename):
@@ -195,7 +196,9 @@ def list_files_by_modification():
     return sorted(Path().glob('*/*'), key=os.path.getmtime, reverse=True)
 
 
-def list_cli(ramalama_store):
+def list_cli(ramalama_store, args):
+    if len(args) > 0:
+        usage()
     print(f"{'NAME':<40} {'MODIFIED':<16} {'SIZE':<16}")
     mycwd = os.getcwd()
     os.chdir(f"{ramalama_store}/models/")
@@ -209,6 +212,9 @@ def list_cli(ramalama_store):
                                   capture_output=True, text=True).stdout.split()[0]
             print(f"{name:<40} {modified:<16} {size:<16}")
     os.chdir(mycwd)
+
+
+funcDict["list"] = list_cli
 
 
 def pull_cli(ramalama_store, args):
@@ -262,6 +268,9 @@ def pull_cli(ramalama_store, args):
     return init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_tag, ramalama_models, symlink_path, model)
 
 
+funcDict["pull"] = pull_cli
+
+
 def run_cli(ramalama_store, args):
     if len(args) < 1:
         usage()
@@ -269,6 +278,9 @@ def run_cli(ramalama_store, args):
     symlink_path = pull_cli(ramalama_store, args)
     os.execlp("llama-main", "llama-main", "-m",
               symlink_path, "--log-disable", "--instruct")
+
+
+funcDict["run"] = run_cli
 
 
 def serve_cli(ramalama_store, args):
@@ -279,15 +291,18 @@ def serve_cli(ramalama_store, args):
     os.execlp("llama-server", "llama-server", "-m", symlink_path)
 
 
-def usage():
+funcDict["serve"] = serve_cli
+
+
+def usage(cmd=""):
     print("Usage:")
     print(f"  {os.path.basename(__file__)} COMMAND")
     print()
     print("Commands:")
-    print("  run MODEL        Run a model")
-    print("  pull MODEL       Pull a model")
-    print("  serve MODEL      Serve a model")
     print("  list             List models")
+    print("  pull MODEL       Pull a model")
+    print("  run MODEL        Run a model")
+    print("  serve MODEL      Serve a model")
     sys.exit(1)
 
 
@@ -323,24 +338,13 @@ def main(args):
     conman = select_container_manager()
     ramalama_store = get_ramalama_store()
 
-    if conman:
-        conman_args = [conman, "run", "--rm", "-it", "--security-opt=label=disable", f"-v{ramalama_store}:/var/lib/ramalama", f"-v{os.path.expanduser('~')}:{os.path.expanduser('~')}", "-v/tmp:/tmp",
-                       f"-v{__file__}:{__file__}", "quay.io/ramalama/ramalama:latest", __file__] + args
-        os.execvp(conman, conman_args)
-
-    if len(args) < 1:
+    try:
+        cmd = args.pop(0)
+        funcDict[cmd](ramalama_store, args)
+    except IndexError:
         usage()
-
-    cmd = args.pop(0)
-    if cmd == "pull":
-        pull_cli(ramalama_store, args)
-    elif cmd == "run":
-        run_cli(ramalama_store, args)
-    elif cmd == "serve":
-        serve_cli(ramalama_store, args)
-    elif cmd in ("list", "ls"):
-        list_cli(ramalama_store)
-    else:
+    except KeyError:
+        print(cmd + " not valid\n")
         usage()
 
 
