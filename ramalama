@@ -138,7 +138,7 @@ def huggingface_download(ramalama_store, model, directory, filename):
     return run_cmd(["huggingface-cli", "download", directory, filename, "--cache-dir", ramalama_store + "/repos/huggingface/.cache", "--local-dir", ramalama_store + "/repos/huggingface"])
 
 
-def pull_huggingface(ramalama_store, model, directory, filename):
+def try_huggingface_download(ramalama_store, model, directory, filename):
     huggingface_download(ramalama_store, model, directory, filename)
     proc = huggingface_download(ramalama_store, model, directory, filename)
     return proc.stdout.decode('utf-8')
@@ -217,6 +217,23 @@ def list_cli(ramalama_store, args):
 funcDict["list"] = list_cli
 
 
+def pull_huggingface(model, ramalama_store):
+    model = re.sub(r'^huggingface://', '', model)
+    directory, filename = model.rsplit('/', 1)
+    gguf_path = try_huggingface_download(
+        ramalama_store, model, directory, filename)
+    symlink_path = f"{ramalama_store}/models/huggingface/{filename}"
+    relative_target_path = os.path.relpath(
+        gguf_path.rstrip(), start=os.path.dirname(symlink_path))
+    try:
+        run_cmd(["ln", "-sf", relative_target_path, symlink_path])
+    except subprocess.CalledProcessError as e:
+        print_error(e)
+        sys.exit(e.returncode)
+
+    return symlink_path
+
+
 def pull_cli(ramalama_store, args):
     if len(args) < 1:
         usage()
@@ -230,20 +247,7 @@ def pull_cli(ramalama_store, args):
         return matching_files[0]
 
     if model.startswith("huggingface://"):
-        model = re.sub(r'^huggingface://', '', model)
-        directory, filename = model.rsplit('/', 1)
-        gguf_path = pull_huggingface(
-            ramalama_store, model, directory, filename)
-        symlink_path = f"{ramalama_store}/models/huggingface/{filename}"
-        relative_target_path = os.path.relpath(
-            gguf_path.rstrip(), start=os.path.dirname(symlink_path))
-        try:
-            run_cmd(["ln", "-sf", relative_target_path, symlink_path])
-        except subprocess.CalledProcessError as e:
-            print_error(e)
-            sys.exit(e.returncode)
-
-        return symlink_path
+        return pull_huggingface(model, ramalama_store)
 
     repos_ollama = ramalama_store + "/repos/ollama"
     ramalama_models = ramalama_store + "/models/ollama"
