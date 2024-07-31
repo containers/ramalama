@@ -1,12 +1,15 @@
 #!/usr/bin/python3
 
 import os
+import glob
 import sys
 import subprocess
 import json
 import hashlib
 import shutil
+import time
 import re
+from pathlib import Path
 
 x = False
 
@@ -52,17 +55,17 @@ def print_error(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def run_command(args):
+def run_cmd(args):
     if x:
         print(*args)
 
     return subprocess.run(args, check=True, stdout=subprocess.PIPE)
 
 
-def run_curl_command(args, filename):
+def run_curl_cmd(args, filename):
     if not verify_checksum(filename):
         try:
-            run_command(args)
+            run_cmd(args)
         except subprocess.CalledProcessError as e:
             if e.returncode == 22:
                 print_error(filename + " not found")
@@ -72,35 +75,35 @@ def run_curl_command(args, filename):
 def pull_ollama_manifest(repos_ollama, manifests, accept, registry_head, model_tag):
     os.makedirs(os.path.dirname(manifests), exist_ok=True)
     os.makedirs(os.path.join(repos_ollama, "blobs"), exist_ok=True)
-    curl_command = [
+    curl_cmd = [
         "curl", "-f", "-s", "--header", accept,
         "-o", manifests,
         f"{registry_head}/manifests/{model_tag}"
     ]
-    run_command(curl_command)
+    run_cmd(curl_cmd)
 
 
 def pull_ollama_config_blob(repos_ollama, accept, registry_head, manifest_data):
     cfg_hash = manifest_data["config"]["digest"]
     config_blob_path = os.path.join(repos_ollama, "blobs", cfg_hash)
-    curl_command = [
+    curl_cmd = [
         "curl", "-f", "-s", "-L", "-C", "-", "--header", accept,
         "-o", config_blob_path,
         f"{registry_head}/blobs/{cfg_hash}"
     ]
-    run_curl_command(curl_command, config_blob_path)
+    run_curl_cmd(curl_cmd, config_blob_path)
 
 
 def pull_ollama_blob(repos_ollama, layer_digest, accept, registry_head, ramalama_models, model_name, model_tag, symlink_path):
     layer_blob_path = os.path.join(repos_ollama, "blobs", layer_digest)
-    curl_command = ["curl", "-f", "-L", "-C", "-", "--progress-bar", "--header",
-                    accept, "-o", layer_blob_path, f"{registry_head}/blobs/{layer_digest}"]
-    run_curl_command(curl_command, layer_blob_path)
+    curl_cmd = ["curl", "-f", "-L", "-C", "-", "--progress-bar", "--header",
+                accept, "-o", layer_blob_path, f"{registry_head}/blobs/{layer_digest}"]
+    run_curl_cmd(curl_cmd, layer_blob_path)
     os.makedirs(ramalama_models, exist_ok=True)
     relative_target_path = os.path.relpath(
         layer_blob_path, start=os.path.dirname(symlink_path))
     try:
-        run_command(["ln", "-sf", relative_target_path, symlink_path])
+        run_cmd(["ln", "-sf", relative_target_path, symlink_path])
     except subprocess.CalledProcessError as e:
         print_error(e)
         sys.exit(e.returncode)
@@ -131,7 +134,7 @@ def init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_
 
 
 def huggingface_download(ramalama_store, model, directory, filename):
-    return run_command(["huggingface-cli", "download", directory, filename, "--cache-dir", ramalama_store + "/repos/huggingface/.cache", "--local-dir", ramalama_store + "/repos/huggingface"])
+    return run_cmd(["huggingface-cli", "download", directory, filename, "--cache-dir", ramalama_store + "/repos/huggingface/.cache", "--local-dir", ramalama_store + "/repos/huggingface"])
 
 
 def pull_huggingface(ramalama_store, model, directory, filename):
@@ -155,12 +158,71 @@ def mkdirs(ramalama_store):
         os.makedirs(full_path, exist_ok=True)
 
 
+def human_duration(d):
+    if d < 1:
+        return "Less than a second"
+    elif d == 1:
+        return "1 second"
+    elif d < 60:
+        return f"{d} seconds"
+    elif d < 120:
+        return "1 minute"
+    elif d < 3600:
+        return f"{d // 60} minutes"
+    elif d < 7200:
+        return "1 hour"
+    elif d < 86400:
+        return f"{d // 3600} hours"
+    elif d < 172800:
+        return "1 day"
+    elif d < 604800:
+        return f"{d // 86400} days"
+    elif d < 1209600:
+        return "1 week"
+    elif d < 2419200:
+        return f"{d // 604800} weeks"
+    elif d < 4838400:
+        return "1 month"
+    elif d < 31536000:
+        return f"{d // 2419200} months"
+    elif d < 63072000:
+        return "1 year"
+    else:
+        return f"{d // 31536000} years"
+
+
+def list_files_by_modification():
+    return sorted(Path().glob('*/*'), key=os.path.getmtime, reverse=True)
+
+
+def list_cli(ramalama_store):
+    print(f"{'NAME':<40} {'MODIFIED':<16} {'SIZE':<16}")
+    mycwd = os.getcwd()
+    os.chdir(f"{ramalama_store}/models/")
+    for path in list_files_by_modification():
+        if path.is_symlink():
+            name = str(path)
+            file_epoch = path.lstat().st_mtime
+            diff = int(time.time() - file_epoch)
+            modified = human_duration(diff) + " ago"
+            size = subprocess.run(["du", "-h", str(path.resolve())],
+                                  capture_output=True, text=True).stdout.split()[0]
+            print(f"{name:<40} {modified:<16} {size:<16}")
+    os.chdir(mycwd)
+
+
 def pull_cli(ramalama_store, args):
     if len(args) < 1:
         usage()
 
     mkdirs(ramalama_store)
     model = args.pop(0)
+
+    # Use glob to find files matching the pattern
+    matching_files = glob.glob(f"{ramalama_store}/models/*/{model}")
+    if matching_files:
+        return matching_files[0]
+
     if model.startswith("huggingface://"):
         model = re.sub(r'^huggingface://', '', model)
         directory, filename = model.rsplit('/', 1)
@@ -170,7 +232,7 @@ def pull_cli(ramalama_store, args):
         relative_target_path = os.path.relpath(
             gguf_path.rstrip(), start=os.path.dirname(symlink_path))
         try:
-            run_command(["ln", "-sf", relative_target_path, symlink_path])
+            run_cmd(["ln", "-sf", relative_target_path, symlink_path])
         except subprocess.CalledProcessError as e:
             print_error(e)
             sys.exit(e.returncode)
@@ -225,6 +287,7 @@ def usage():
     print("  run MODEL        Run a model")
     print("  pull MODEL       Pull a model")
     print("  serve MODEL      Serve a model")
+    print("  list             List models")
     sys.exit(1)
 
 
@@ -242,8 +305,8 @@ def in_container():
     return False
 
 
-def available(command):
-    return shutil.which(command) is not None
+def available(cmd):
+    return shutil.which(cmd) is not None
 
 
 def select_container_manager():
@@ -268,13 +331,15 @@ def main(args):
     if len(args) < 1:
         usage()
 
-    command = args.pop(0)
-    if command == "pull":
+    cmd = args.pop(0)
+    if cmd == "pull":
         pull_cli(ramalama_store, args)
-    elif command == "run":
+    elif cmd == "run":
         run_cli(ramalama_store, args)
-    elif command == "serve":
+    elif cmd == "serve":
         serve_cli(ramalama_store, args)
+    elif cmd in ("list", "ls"):
+        list_cli(ramalama_store)
     else:
         usage()
 
