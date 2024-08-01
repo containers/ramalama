@@ -1,10 +1,18 @@
 # ramalama
 
-The goal of ramalama is to make AI even more boring.
+The Ramalama project's goal is to make working with AI boring
+through the use of OCI containers.
+
+On first run Ramalama inspects your system for GPU support, falling back to CPU
+support if no GPUs are present. It then uses container engines like Podman to
+pull the appropriate OCI image with all of the software necessary to run an
+AI Model for your systems setup. This eliminates the need for the user to
+configure the system for AI themselves. After the initialization, Ramalama
+will run the AI Models within a container based on the OCI image.
 
 ## Install
 
-Install ramalama by running this one-liner:
+Install Ramalama by running this one-liner:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | sudo bash
@@ -38,8 +46,33 @@ $ ramalama pull granite-code
 
 You can `run` a chatbot on a model using the `run` command. By default, it pulls from the ollama registry.
 
+Note: Ramalama will inspect your machine for native GPU support and then will
+use a container engine like Podman to pull an OCI container image with the
+appropriate code and libraries to run the AI Model. This can take a long time to setup, but only on the first run.
 ```
 $ ramalama run instructlab/merlinite-7b-lab
+Copying blob 5448ec8c0696 [--------------------------------------] 0.0b / 63.6MiB (skipped: 0.0b = 0.00%)
+Copying blob cbd7e392a514 [--------------------------------------] 0.0b / 65.3MiB (skipped: 0.0b = 0.00%)
+Copying blob 5d6c72bcd967 done  208.5MiB / 208.5MiB (skipped: 0.0b = 0.00%)
+Copying blob 9ccfa45da380 [--------------------------------------] 0.0b / 7.6MiB (skipped: 0.0b = 0.00%)
+Copying blob 4472627772b1 [--------------------------------------] 0.0b / 120.0b (skipped: 0.0b = 0.00%)
+>
+```
+
+After the initial container image has been downloaded, you can interact with
+different models, using the container image.x
+```
+$ramalama run granite-code
+> Write a hello world application in python
+
+print("Hello World")
+```
+
+In a different terminal window see the running podman container.
+```
+$ podman ps
+CONTAINER ID  IMAGE                             COMMAND               CREATED        STATUS        PORTS       NAMES
+91df4a39a360  quay.io/ramalama/ramalama:latest  /home/dwalsh/rama...  4 minutes ago  Up 4 minutes              gifted_volhard
 ```
 
 ### Serving Models
