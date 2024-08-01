@@ -17,14 +17,21 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 You can `list` all models pulled into local storage.
 
 ```
-ramalama list
+$ ramalama list
+NAME                                                                MODIFIED     SIZE
+ollama://tiny-llm:latest                                            16 hours ago 5.5M
+huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf 14 hours ago 460M
+ollama://granite-code:3b                                            5 days ago   1.9G
+ollama://granite-code:latest                                        1 day ago    1.9G
+ollama://moondream:latest                                           6 days ago   791M
 ```
 ### Pulling Models
 
 You can `pull` a model using the `pull` command. By default, it pulls from the ollama registry.
 
 ```
-ramalama pull granite-code
+$ ramalama pull granite-code
+###################################################                       32.5%
 ```
 
 ### Running Models
@@ -32,7 +39,7 @@ ramalama pull granite-code
 You can `run` a chatbot on a model using the `run` command. By default, it pulls from the ollama registry.
 
 ```
-ramalama run instructlab/merlinite-7b-lab
+$ ramalama run instructlab/merlinite-7b-lab
 ```
 
 ### Serving Models
@@ -40,7 +47,7 @@ ramalama run instructlab/merlinite-7b-lab
 You can `serve` a chatbot on a model using the `serve` command. By default, it pulls from the ollama registry.
 
 ```
-ramalama serve llama3
+$ ramalama serve llama3
 ```
 
 ## Diagram
