@@ -276,7 +276,7 @@ def pull_cli(ramalama_store, args):
 
     manifests = os.path.join(repos_ollama, "manifests",
                              registry, model_name, model_tag)
-    registry_head = f"{registry_scheme}://{registry}/v2/{model_full}"
+    registry_head = f"{registry_scheme}://{registry}/v2/{model_name}"
     return init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_tag, ramalama_models, symlink_path, model)
 
 
