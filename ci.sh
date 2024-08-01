@@ -40,6 +40,7 @@ main() {
 
   ./ramalama pull tinyllama
   ./ramalama pull ben1t0/tiny-llm
+  ./ramalama pull ollama://tinyllama:1.1b
   ./ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
   ./ramalama list | grep tinyllama
   ./ramalama list | grep tiny-vicuna-1b
