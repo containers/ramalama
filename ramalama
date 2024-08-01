@@ -193,24 +193,24 @@ def human_duration(d):
 
 
 def list_files_by_modification():
-    return sorted(Path().glob('*/*'), key=os.path.getmtime, reverse=True)
+    return sorted(Path().rglob('*'), key=lambda p: os.path.getmtime(p), reverse=True)
 
 
 def list_cli(ramalama_store, args):
     if len(args) > 0:
         usage()
-    print(f"{'NAME':<40} {'MODIFIED':<16} {'SIZE':<16}")
+    print(f"{'NAME':<67} {'MODIFIED':<12} {'SIZE':<6}")
     mycwd = os.getcwd()
     os.chdir(f"{ramalama_store}/models/")
     for path in list_files_by_modification():
         if path.is_symlink():
-            name = str(path)
+            name = str(path).replace('/', '://', 1)
             file_epoch = path.lstat().st_mtime
             diff = int(time.time() - file_epoch)
             modified = human_duration(diff) + " ago"
             size = subprocess.run(["du", "-h", str(path.resolve())],
                                   capture_output=True, text=True).stdout.split()[0]
-            print(f"{name:<40} {modified:<16} {size:<16}")
+            print(f"{name:<67} {modified:<12} {size:<6}")
     os.chdir(mycwd)
 
 
@@ -223,7 +223,9 @@ def pull_huggingface(model, ramalama_store):
     directory, filename = model.rsplit('/', 1)
     gguf_path = try_huggingface_download(
         ramalama_store, model, directory, filename)
-    symlink_path = f"{ramalama_store}/models/huggingface/{filename}"
+    directory = f"{ramalama_store}/models/huggingface/{directory}"
+    os.makedirs(directory, exist_ok=True)
+    symlink_path = f"{directory}/{filename}"
     relative_target_path = os.path.relpath(
         gguf_path.rstrip(), start=os.path.dirname(symlink_path))
     try:
@@ -250,6 +252,7 @@ def pull_cli(ramalama_store, args):
     if model.startswith("huggingface://"):
         return pull_huggingface(model, ramalama_store)
 
+    model = re.sub(r'^ollama://', '', model)
     repos_ollama = ramalama_store + "/repos/ollama"
     ramalama_models = ramalama_store + "/models/ollama"
     registry_scheme = "https"
