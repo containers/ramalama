@@ -46,7 +46,7 @@ main() {
   TMP="$(mktemp -d)"
   trap cleanup EXIT
   local from="ramalama"
-  local url="raw.githubusercontent.com/containers/ramalama/main/$from"
+  local url="raw.githubusercontent.com/containers/ramalama/s/$from"
   local from="$TMP/$from"
   download
   pip install "huggingface_hub[cli]==0.24.2"
