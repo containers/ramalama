@@ -7,7 +7,7 @@ The goal of ramalama is to make AI even more boring.
 Install ramalama by running this one-liner:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/containers/ramalama/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | sudo bash
 ```
 
 ## Usage
