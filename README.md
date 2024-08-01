@@ -95,3 +95,11 @@ https://github.com/ggerganov/llama.cpp
 so if you like this tool, give llama.cpp repo a :star:, and hey, give us a :star: too while you are at it.
 
 ![image](https://github.com/user-attachments/assets/d7a91662-5903-4117-ad41-2b193a852ea1)
+
+## Contributors
+
+Open to contributors
+
+<a href="https://github.com/containers/ramalama/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=containers/ramalama" />
+</a>
