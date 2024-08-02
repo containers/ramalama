@@ -26,7 +26,9 @@ download() {
 main() {
   set -e -o pipefail
 
-  if [ "$(uname -s)" != "Linux" ]; then
+  local os
+  os="$(uname -s)"
+  if [ "$os" != "Linux" ]; then
     echo "This script is intended to run on Linux only"
     return 1
   fi
@@ -49,7 +51,12 @@ main() {
   local url="raw.githubusercontent.com/containers/ramalama/s/$from"
   local from="$TMP/$from"
   download
-  pip install "huggingface_hub[cli]==0.24.2"
+
+  # only for macOS for now, which doesn't have containers
+  if [ "$os" != "Linux" ]; then
+    pip install "huggingface_hub[cli]==0.24.2"
+  fi
+
   install -D -m755 "$from" "$bindir/"
 
   if false; then # to be done

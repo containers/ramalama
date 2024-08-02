@@ -352,7 +352,7 @@ def main(args):
 
     try:
         cmd = args[0]
-        if conman and (cmd == 'serve' or cmd == 'run'):
+        if conman:
             conman_args = [conman, "run", "--rm", "-it", "--security-opt=label=disable", f"-v{ramalama_store}:/var/lib/ramalama", f"-v{os.path.expanduser('~')}:{os.path.expanduser('~')}", "-v/tmp:/tmp",
                            f"-v{__file__}:{__file__}", "quay.io/ramalama/ramalama:latest", __file__] + args
             os.execvp(conman, conman_args)
