@@ -13,7 +13,7 @@ main() {
   fi
 
   local os
-  os="$(uname)"
+  os="$(uname -s)"
   if ! available autopep8; then
     if [ "$os" = "Linux" ]; then
       if available apt; then
@@ -24,7 +24,10 @@ main() {
     fi
   fi
 
-  pip install "huggingface_hub[cli]==0.24.2"
+  # only for macOS for now, which doesn't have containers
+  if [ "$os" != "Linux" ]; then
+    pip install "huggingface_hub[cli]==0.24.2"
+  fi
 
   chmod +x ramalama install.sh
   if [ "$os" = "Linux" ]; then
