@@ -60,7 +60,7 @@ Copying blob 4472627772b1 [--------------------------------------] 0.0b / 120.0b
 ```
 
 After the initial container image has been downloaded, you can interact with
-different models, using the container image.x
+different models, using the container image.
 ```
 $ ramalama run granite-code
 > Write a hello world application in python
