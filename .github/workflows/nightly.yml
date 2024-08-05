@@ -1,0 +1,38 @@
+name: nightly-build
+on:
+    schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run a one-line script
+        run: ./ci.sh
+
+  macos:
+    runs-on: macos-12
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run a one-line script
+        shell: bash
+        run: ./ci.sh
+
+  build:
+    runs-on: ubuntu-lastest
+    needs: [linux, macos]
+    steps:
+        - uses: actions/checkout@v3
+
+        - name: install qemu-user-static
+          run: sudo apt-get install qemu-user-static
+
+        - name: use buildah to build images for amd and aarch64
+          uses: redhat-actions/buildah-build@v2
+          with:
+            image: quay.io/placeholder/placeholder
+            tags: nightly
+            containerfiles: |
+              container-images/ramalama/latest/Containerfile
+            platforms: linux/amd64, linux/arm64
