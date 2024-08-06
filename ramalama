@@ -134,14 +134,15 @@ def init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_
     return symlink_path
 
 
-def huggingface_download(ramalama_store, model, directory, filename):
-    return run_cmd(["huggingface-cli", "download", directory, filename, "--cache-dir", ramalama_store + "/repos/huggingface/.cache", "--local-dir", ramalama_store + "/repos/huggingface"])
+def huggingface_download(ramalama_store, directory, filename, repo_dir):
+    return run_cmd(["huggingface-cli", "download", directory, filename, "--cache-dir", ramalama_store + "/repos/huggingface/.cache", "--local-dir", repo_dir])
 
 
 def try_huggingface_download(ramalama_store, model, directory, filename):
-    huggingface_download(ramalama_store, model, directory, filename)
-    proc = huggingface_download(ramalama_store, model, directory, filename)
-    return proc.stdout.decode('utf-8')
+    repo_dir = f"{ramalama_store}/repos/huggingface/{directory}/{model}"
+    os.makedirs(repo_dir, exist_ok=True)
+    huggingface_download(ramalama_store, directory, filename, repo_dir)
+    return f"{ramalama_store}/repos/huggingface/{directory}/{model}/{filename}"
 
 
 def mkdirs(ramalama_store):
