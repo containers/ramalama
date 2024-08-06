@@ -18,10 +18,12 @@ funcDict = {}
 
 def verify_checksum(filename):
     """
-    Verifies if the SHA-256 checksum of a file matches the checksum provided in the filename.
+    Verifies if the SHA-256 checksum of a file matches the checksum provided in
+    the filename.
 
     Args:
-    filename (str): The filename containing the checksum prefix (e.g., "sha256:<checksum>")
+    filename (str): The filename containing the checksum prefix
+                    (e.g., "sha256:<checksum>")
 
     Returns:
     bool: True if the checksum matches, False otherwise.
@@ -46,11 +48,8 @@ def verify_checksum(filename):
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
 
-    # Get the calculated checksum
-    calculated_checksum = sha256_hash.hexdigest()
-
     # Compare the checksums
-    return calculated_checksum == expected_checksum
+    return sha256_hash.hexdigest() == expected_checksum
 
 
 def print_error(*args, **kwargs):
@@ -62,6 +61,13 @@ def run_cmd(args):
         print(*args)
 
     return subprocess.run(args, check=True, stdout=subprocess.PIPE)
+
+
+def exec_cmd(args):
+    if x:
+        print(*args)
+
+    return os.execvp(args[0], args)
 
 
 def run_curl_cmd(args, filename):
@@ -99,7 +105,8 @@ def pull_ollama_config_blob(repos_ollama, accept, registry_head, manifest_data):
 def pull_ollama_blob(repos_ollama, layer_digest, accept, registry_head, ramalama_models, model_name, model_tag, symlink_path):
     layer_blob_path = os.path.join(repos_ollama, "blobs", layer_digest)
     curl_cmd = ["curl", "-f", "-L", "-C", "-", "--progress-bar", "--header",
-                accept, "-o", layer_blob_path, f"{registry_head}/blobs/{layer_digest}"]
+                accept, "-o", layer_blob_path,
+                f"{registry_head}/blobs/{layer_digest}"]
     run_curl_cmd(curl_cmd, layer_blob_path)
     os.makedirs(ramalama_models, exist_ok=True)
     relative_target_path = os.path.relpath(
@@ -119,7 +126,8 @@ def init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_
             manifest_data = json.load(f)
     except subprocess.CalledProcessError as e:
         if e.returncode == 22:
-            print_error(model + ":" + model_tag + " not found")
+            print_error(f"{model}:{model_tag} not found")
+
         sys.exit(e.returncode)
 
     pull_ollama_config_blob(repos_ollama, accept,
@@ -130,7 +138,8 @@ def init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_
             continue
 
         pull_ollama_blob(repos_ollama, layer_digest, accept,
-                         registry_head, ramalama_models, model_name, model_tag, symlink_path)
+                         registry_head, ramalama_models, model_name, model_tag,
+                         symlink_path)
 
     return symlink_path
 
@@ -193,10 +202,11 @@ def human_duration(d):
 
 
 def list_files_by_modification():
-    return sorted(Path().rglob('*'), key=lambda p: os.path.getmtime(p), reverse=True)
+    return sorted(Path().rglob('*'), key=lambda p: os.path.getmtime(p),
+                  reverse=True)
 
 
-def list_cli(ramalama_store, args):
+def list_cli(ramalama_store, args, port):
     if len(args) > 0:
         usage()
     print(f"{'NAME':<67} {'MODIFIED':<15} {'SIZE':<6}")
@@ -241,14 +251,12 @@ def pull_huggingface(model, ramalama_store):
     return symlink_path
 
 
-def pull_cli(ramalama_store, args):
+def pull_cli(ramalama_store, args, port):
     if len(args) < 1:
         usage()
 
     mkdirs(ramalama_store)
     model = args.pop(0)
-
-    # Use glob to find files matching the pattern
     matching_files = glob.glob(f"{ramalama_store}/models/*/{model}")
     if matching_files:
         return matching_files[0]
@@ -259,8 +267,7 @@ def pull_cli(ramalama_store, args):
     model = re.sub(r'^ollama://', '', model)
     repos_ollama = ramalama_store + "/repos/ollama"
     ramalama_models = ramalama_store + "/models/ollama"
-    registry_scheme = "https"
-    registry = "registry.ollama.ai"
+    registry = "https://registry.ollama.ai"
     if '/' in model:
         model_full = model
     else:
@@ -280,31 +287,31 @@ def pull_cli(ramalama_store, args):
 
     manifests = os.path.join(repos_ollama, "manifests",
                              registry, model_name, model_tag)
-    registry_head = f"{registry_scheme}://{registry}/v2/{model_name}"
+    registry_head = f"{registry}/v2/{model_name}"
     return init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_tag, ramalama_models, symlink_path, model)
 
 
 funcDict["pull"] = pull_cli
 
 
-def run_cli(ramalama_store, args):
+def run_cli(ramalama_store, args, port):
     if len(args) < 1:
         usage()
 
-    symlink_path = pull_cli(ramalama_store, args)
-    os.execlp("llama-main", "llama-main", "-m",
-              symlink_path, "--log-disable", "--instruct")
+    symlink_path = pull_cli(ramalama_store, args, port)
+    exec_cmd(["llama-main", "-m",
+              symlink_path, "--log-disable", "--instruct"])
 
 
 funcDict["run"] = run_cli
 
 
-def serve_cli(ramalama_store, args):
+def serve_cli(ramalama_store, args, port):
     if len(args) < 1:
         usage()
 
-    symlink_path = pull_cli(ramalama_store, args)
-    os.execlp("llama-server", "llama-server", "-m", symlink_path)
+    symlink_path = pull_cli(ramalama_store, args, port)
+    exec_cmd(["llama-server", "--port", port, "-m", symlink_path])
 
 
 funcDict["serve"] = serve_cli
@@ -366,16 +373,23 @@ def main(args):
                 print(f"Error: unrecognized command `{args[0]}`\n")
                 usage()
 
+        cmd = args[0]
+        port = 8080
+        host = os.getenv('RAMALAMA_HOST', port)
+        if host != port:
+            port = host.rsplit(':', 1)[1]
+
         if conman:
-            conman_args = [conman, "run", "--rm", "-it", "--security-opt=label=disable", f"-v{ramalama_store}:/var/lib/ramalama", f"-v{os.path.expanduser('~')}:{os.path.expanduser('~')}", "-v/tmp:/tmp",
-                           f"-v{__file__}:{__file__}", "-p", f"{os.getenv('RAMALAMA_HOST', '8080')}:8080", "quay.io/ramalama/ramalama:latest", __file__] + args
+            home = os.path.expanduser('~')
+            conman_args = [conman, "run", "--rm", "-it", "--security-opt=label=disable", f"-v{ramalama_store}:/var/lib/ramalama", f"-v{home}:{home}", "-v/tmp:/tmp",
+                           f"-v{__file__}:{__file__}", "-p", f"{host}:{port}", "quay.io/ramalama/ramalama:latest", __file__] + args
             if dryrun:
                 return print(*conman_args)
 
-            os.execvp(conman, conman_args)
+            exec_cmd(conman_args)
 
         cmd = args.pop(0)
-        funcDict[cmd](ramalama_store, args)
+        funcDict[cmd](ramalama_store, args, port)
     except IndexError:
         usage()
     except KeyError:
