@@ -306,7 +306,7 @@ def serve_cli(ramalama_store, args):
 funcDict["serve"] = serve_cli
 
 
-def usage(cmd=""):
+def usage():
     print("Usage:")
     print(f"  {os.path.basename(__file__)} COMMAND")
     print()
@@ -351,11 +351,25 @@ def main(args):
     ramalama_store = get_ramalama_store()
 
     try:
-        cmd = args[0]
+        dryrun = False
+        while len(args) > 0:
+            if args[0] == "--dryrun":
+                args.pop(0)
+                dryrun = True
+            elif args[0] in funcDict:
+                break
+            else:
+                print(f"Error: unrecognized command `{args[0]}`\n")
+                usage()
+
         if conman:
             conman_args = [conman, "run", "--rm", "-it", "--security-opt=label=disable", f"-v{ramalama_store}:/var/lib/ramalama", f"-v{os.path.expanduser('~')}:{os.path.expanduser('~')}", "-v/tmp:/tmp",
                            f"-v{__file__}:{__file__}", "-p", f"{os.getenv('RAMALAMA_HOST', '8080')}:8080", "quay.io/ramalama/ramalama:latest", __file__] + args
+            if dryrun:
+                return print(*conman_args)
+
             os.execvp(conman, conman_args)
+
         cmd = args.pop(0)
         funcDict[cmd](ramalama_store, args)
     except IndexError:
