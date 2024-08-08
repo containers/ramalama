@@ -20,7 +20,7 @@ jobs:
         run: ./ci.sh
 
   build:
-    runs-on: ubuntu-lastest
+    runs-on: ubuntu-22.04
     needs: [linux, macos]
     steps:
         - uses: actions/checkout@v3
@@ -28,11 +28,26 @@ jobs:
         - name: install qemu-user-static
           run: sudo apt-get install qemu-user-static
 
+        - name: Login to Registry
+          uses: redhat-actions/podman-login@v1.7
+          with:
+            registry: quay.io/ramalama/ramalama
+            username: ${{ secrets.USERNAME }}
+            password: ${{ secrets.PASSWORD }}
+          
         - name: use buildah to build images for amd and aarch64
           uses: redhat-actions/buildah-build@v2
+          id: build_image
           with:
-            image: quay.io/placeholder/placeholder
+            image: quay.io/ramalama/ramalama
             tags: nightly
             containerfiles: |
               container-images/ramalama/latest/Containerfile
             platforms: linux/amd64, linux/arm64
+
+        - name: Push Image
+          uses: redhat-actions/push-to-registry@v2.8
+          with:
+            image: ${{ steps.build_image.outputs.image }}
+            tags: ${{ steps.build_image.outputs.tags }}
+            registry: quay.io/ramalama/ramalama
