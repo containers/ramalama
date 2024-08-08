@@ -228,6 +228,10 @@ def pull_huggingface(model, ramalama_store):
     symlink_path = f"{directory}/{filename}"
     relative_target_path = os.path.relpath(
         gguf_path.rstrip(), start=os.path.dirname(symlink_path))
+    if os.path.exists(symlink_path) and os.readlink(symlink_path) == relative_target_path:
+        # Symlink is already correct, no need to update it
+        return symlink_path
+
     try:
         run_cmd(["ln", "-sf", relative_target_path, symlink_path])
     except subprocess.CalledProcessError as e:
