@@ -199,7 +199,7 @@ def list_files_by_modification():
 def list_cli(ramalama_store, args):
     if len(args) > 0:
         usage()
-    print(f"{'NAME':<67} {'MODIFIED':<12} {'SIZE':<6}")
+    print(f"{'NAME':<67} {'MODIFIED':<15} {'SIZE':<6}")
     mycwd = os.getcwd()
     os.chdir(f"{ramalama_store}/models/")
     for path in list_files_by_modification():
@@ -210,7 +210,7 @@ def list_cli(ramalama_store, args):
             modified = human_duration(diff) + " ago"
             size = subprocess.run(["du", "-h", str(path.resolve())],
                                   capture_output=True, text=True).stdout.split()[0]
-            print(f"{name:<67} {modified:<12} {size:<6}")
+            print(f"{name:<67} {modified:<15} {size:<6}")
     os.chdir(mycwd)
 
 
