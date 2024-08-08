@@ -9,6 +9,7 @@ import hashlib
 import shutil
 import time
 import re
+import logging
 from pathlib import Path
 
 x = False
@@ -135,11 +136,10 @@ def init_pull(repos_ollama, manifests, accept, registry_head, model_name, model_
 
 
 def huggingface_download(ramalama_store, model, directory, filename):
-    return run_cmd(["huggingface-cli", "download", directory, filename, "--cache-dir", ramalama_store + "/repos/huggingface/.cache", "--local-dir", ramalama_store + "/repos/huggingface"])
+    return run_cmd(["huggingface-cli", "download", directory, filename, "--cache-dir", ramalama_store + "/repos/huggingface/.cache", "--local-dir", ramalama_store + "/repos/huggingface/" + directory])
 
 
 def try_huggingface_download(ramalama_store, model, directory, filename):
-    huggingface_download(ramalama_store, model, directory, filename)
     proc = huggingface_download(ramalama_store, model, directory, filename)
     return proc.stdout.decode('utf-8')
 
