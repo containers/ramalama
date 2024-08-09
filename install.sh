@@ -55,6 +55,7 @@ main() {
   # only for macOS for now, which doesn't have containers
   if [ "$os" != "Linux" ]; then
     pip install "huggingface_hub[cli]==0.24.2"
+    pip install "omlmd"
   fi
 
   install -D -m755 "$from" "$bindir/"

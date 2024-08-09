@@ -9,6 +9,7 @@ RUN dnf install -y git jq procps-ng vim vulkan-headers vulkan-loader-devel \
     rm -rf /var/cache/*dnf*
 
 RUN pip install "huggingface_hub[cli]==0.24.2"
+RUN pip install "omlmd"
 
 ENV LLAMA_CCACHE=0
 

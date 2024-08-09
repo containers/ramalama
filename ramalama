@@ -10,6 +10,8 @@ import shutil
 import time
 import re
 import logging
+from omlmd.helpers import Helper
+from omlmd.provider import OMLMDRegistry
 from pathlib import Path
 
 x = False
@@ -241,6 +243,37 @@ def pull_huggingface(model, ramalama_store):
     return symlink_path
 
 
+def pull_oci(model, ramalama_store):
+    target = re.sub(r'^oci://', '', model)
+    registry, reference = target.split('/', 1)
+    registry, reference = ("docker.io", target) if "." not in registry else (registry, reference)
+    reference_dir = reference.replace(":", "/")
+    outdir = f"{ramalama_store}/repos/oci/{registry}/{reference_dir}"
+    print(f"Downloading {target}...")
+    omlmd = Helper(OMLMDRegistry())
+    omlmd.pull(target, outdir)
+    ggufs = [file for file in os.listdir(outdir) if file.endswith('.gguf')]
+    if len(ggufs) != 1:
+        print(f"Error: Unable to identify .gguf file in: {outdir}")
+        sys.exit(-1)
+    
+    directory = f"{ramalama_store}/models/oci/{registry}/{reference_dir}"
+    os.makedirs(directory, exist_ok=True)
+    symlink_path = f"{directory}/{ggufs[0]}"
+    relative_target_path = os.path.relpath(f"{outdir}/{ggufs[0]}", start=os.path.dirname(symlink_path))
+    if os.path.exists(symlink_path) and os.readlink(symlink_path) == relative_target_path:
+        # Symlink is already correct, no need to update it
+        return symlink_path
+
+    try:
+        run_cmd(["ln", "-sf", relative_target_path, symlink_path])
+    except subprocess.CalledProcessError as e:
+        print_error(e)
+        sys.exit(e.returncode)
+
+    return symlink_path
+
+
 def pull_cli(ramalama_store, args):
     if len(args) < 1:
         usage()
@@ -255,6 +288,8 @@ def pull_cli(ramalama_store, args):
 
     if model.startswith("huggingface://"):
         return pull_huggingface(model, ramalama_store)
+    if model.startswith("oci://"):
+        return pull_oci(model, ramalama_store)
 
     model = re.sub(r'^ollama://', '', model)
     repos_ollama = ramalama_store + "/repos/ollama"
