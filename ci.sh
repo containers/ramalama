@@ -27,7 +27,7 @@ main() {
   # only for macOS for now, which doesn't have containers
   if [ "$os" != "Linux" ]; then
     pip install "huggingface_hub[cli]==0.24.2"
-    pip install "omlmd"
+    pip install "omlmd==0.1.1"
   fi
 
   chmod +x ramalama install.sh
