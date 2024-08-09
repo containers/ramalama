@@ -8,6 +8,7 @@ RUN dnf install -y git jq procps-ng vim vulkan-headers vulkan-loader-devel \
     dnf clean all && \
     rm -rf /var/cache/*dnf*
 
+RUN /usr/bin/python3 --version
 RUN pip install "huggingface_hub[cli]==0.24.2"
 RUN pip install "omlmd==0.1.1"
 
