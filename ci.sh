@@ -28,7 +28,9 @@ main() {
   if [ "$os" != "Linux" ]; then
     /usr/bin/python3 --version
     pip install "huggingface_hub[cli]==0.24.2"
+    huggingface-cli --help
     pip install "omlmd==0.1.2"
+    omlmd --help
   fi
 
   chmod +x ramalama install.sh
