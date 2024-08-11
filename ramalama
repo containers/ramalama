@@ -244,20 +244,26 @@ def pull_huggingface(model, ramalama_store):
 def pull_oci(model, ramalama_store):
     target = re.sub(r'^oci://', '', model)
     registry, reference = target.split('/', 1)
-    registry, reference = ("docker.io", target) if "." not in registry else (registry, reference)
+    registry, reference = ("docker.io",
+                           target) if "." not in registry else (
+        registry, reference)
     reference_dir = reference.replace(":", "/")
     outdir = f"{ramalama_store}/repos/oci/{registry}/{reference_dir}"
     print(f"Downloading {target}...")
-    run_cmd(["omlmd", "pull", target, "--output", outdir]) # note: in the current way ramalama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir) since cannot use modules/sdk, can use only cli bindings from pip installs
+    # note: in the current way ramalama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir) since cannot use modules/sdk, can use only cli bindings from pip installs
+    run_cmd(["omlmd", "pull", target, "--output", outdir])
     ggufs = [file for file in os.listdir(outdir) if file.endswith('.gguf')]
     if len(ggufs) != 1:
         print(f"Error: Unable to identify .gguf file in: {outdir}")
         sys.exit(-1)
-    
+
     directory = f"{ramalama_store}/models/oci/{registry}/{reference_dir}"
     os.makedirs(directory, exist_ok=True)
     symlink_path = f"{directory}/{ggufs[0]}"
-    relative_target_path = os.path.relpath(f"{outdir}/{ggufs[0]}", start=os.path.dirname(symlink_path))
+    relative_target_path = os.path.relpath(
+        f"{outdir}/{ggufs[0]}",
+        start=os.path.dirname(symlink_path)
+    )
     if os.path.exists(symlink_path) and os.readlink(symlink_path) == relative_target_path:
         # Symlink is already correct, no need to update it
         return symlink_path
