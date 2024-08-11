@@ -10,8 +10,6 @@ import shutil
 import time
 import re
 import logging
-from omlmd.helpers import Helper
-from omlmd.provider import OMLMDRegistry
 from pathlib import Path
 
 x = False
@@ -250,8 +248,7 @@ def pull_oci(model, ramalama_store):
     reference_dir = reference.replace(":", "/")
     outdir = f"{ramalama_store}/repos/oci/{registry}/{reference_dir}"
     print(f"Downloading {target}...")
-    omlmd = Helper(OMLMDRegistry())
-    omlmd.pull(target, outdir)
+    run_cmd(["omlmd", "pull", target, "--output", outdir]) # note: in the current way ramalama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir) since cannot use modules/sdk, can use only cli bindings from pip installs
     ggufs = [file for file in os.listdir(outdir) if file.endswith('.gguf')]
     if len(ggufs) != 1:
         print(f"Error: Unable to identify .gguf file in: {outdir}")
