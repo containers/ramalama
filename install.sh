@@ -56,7 +56,7 @@ main() {
   if [ "$os" != "Linux" ]; then
     /usr/bin/python3 --version
     pip install "huggingface_hub[cli]==0.24.2"
-    pip install "omlmd==0.1.1"
+    pip install "omlmd==0.1.2"
   fi
 
   install -D -m755 "$from" "$bindir/"
