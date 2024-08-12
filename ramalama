@@ -374,7 +374,7 @@ def main(args):
                 usage()
 
         cmd = args[0]
-        port = 8080
+        port = "8080"
         host = os.getenv('RAMALAMA_HOST', port)
         if host != port:
             port = host.rsplit(':', 1)[1]
@@ -382,7 +382,7 @@ def main(args):
         if conman:
             home = os.path.expanduser('~')
             conman_args = [conman, "run", "--rm", "-it", "--security-opt=label=disable", f"-v{ramalama_store}:/var/lib/ramalama", f"-v{home}:{home}", "-v/tmp:/tmp",
-                           f"-v{__file__}:{__file__}", "-p", f"{host}:{port}", "quay.io/ramalama/ramalama:latest", __file__] + args
+                           f"-v{__file__}:{__file__}", "-e", "RAMALAMA_HOST", "-p", f"{host}:{port}", "quay.io/ramalama/ramalama:latest", __file__] + args
             if dryrun:
                 return print(*conman_args)
 
