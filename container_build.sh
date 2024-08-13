@@ -58,7 +58,7 @@ main() {
   select_container_manager
   local llm_store
   get_llm_store
-  local conman=("$conman_bin" "--root" "$llm_store")
+  local conman=("$conman_bin")
   local platform="linux/amd64"
   if [ "$(uname -m)" = "aarch64" ]; then
     platform="linux/arm64"
