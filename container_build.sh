@@ -16,15 +16,6 @@ select_container_manager() {
   conman_bin="podman"
 }
 
-get_llm_store() {
-  if [ "$EUID" -eq 0 ]; then
-    llm_store="/var/lib/ramalama/storage"
-    return 0
-  fi
-
-  llm_store="$HOME/.local/share/ramalama/storage"
-}
-
 add_build_platform() {
   conman_build+=("build" "--platform" "$platform")
   conman_build+=("-t" "quay.io/ramalama/$image_name" ".")
