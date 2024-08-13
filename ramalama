@@ -373,7 +373,6 @@ def main(args):
                 print(f"Error: unrecognized command `{args[0]}`\n")
                 usage()
 
-        cmd = args[0]
         port = "8080"
         host = os.getenv('RAMALAMA_HOST', port)
         if host != port:
