@@ -49,4 +49,7 @@ jobs:
             platforms: linux/amd64, linux/arm64
 
         - name: Push Image
-          run: podman push quay.io/ramalama/ramalama:nightly
+          run: |
+            podman push quay.io/ramalama/ramalama:nightly
+            podman push quay.io/ramalama/ramalama:nightly-linuxarm64
+            podman push quay.io/ramalama/ramalama:nightly-linuxamd64
