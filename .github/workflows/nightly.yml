@@ -2,6 +2,7 @@ name: nightly-build
 on:
     schedule:
     - cron: '0 0 * * *'
+    workflow_dispatch:
 
 jobs:
   linux:
@@ -31,7 +32,7 @@ jobs:
         - name: Login to Registry
           uses: redhat-actions/podman-login@v1.7
           with:
-            registry: quay.io/ramalama/ramalama
+            registry: quay.io
             username: ${{ secrets.USERNAME }}
             password: ${{ secrets.PASSWORD }}
           
@@ -50,4 +51,4 @@ jobs:
           with:
             image: ${{ steps.build_image.outputs.image }}
             tags: ${{ steps.build_image.outputs.tags }}
-            registry: quay.io/ramalama/ramalama
+            registry: quay.io
