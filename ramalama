@@ -291,7 +291,6 @@ def pull_cli(ramalama_store, args, port):
     if len(args) < 1:
         usage()
 
-    mkdirs(ramalama_store)
     model = args.pop(0)
     matching_files = glob.glob(f"{ramalama_store}/models/*/{model}")
     if matching_files:
@@ -398,6 +397,7 @@ def select_container_manager():
 def main(args):
     conman = select_container_manager()
     ramalama_store = get_ramalama_store()
+    mkdirs(ramalama_store)
 
     try:
         dryrun = False
