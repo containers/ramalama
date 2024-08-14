@@ -27,7 +27,9 @@ jobs:
         - uses: actions/checkout@v3
 
         - name: install qemu-user-static
-          run: sudo apt-get install qemu-user-static
+          run: |
+            sudo apt-get update
+            sudo apt-get install qemu-user-static
 
         - name: Login to Registry
           uses: redhat-actions/podman-login@v1.7
@@ -35,7 +37,7 @@ jobs:
             registry: quay.io
             username: ${{ secrets.USERNAME }}
             password: ${{ secrets.PASSWORD }}
-          
+
         - name: use buildah to build images for amd and aarch64
           uses: redhat-actions/buildah-build@v2
           id: build_image
