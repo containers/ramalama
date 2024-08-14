@@ -158,6 +158,8 @@ def mkdirs(ramalama_store):
     directories = [
         'models/huggingface',
         'repos/huggingface',
+        'models/oci',
+        'repos/oci',
         'models/ollama',
         'repos/ollama'
     ]
