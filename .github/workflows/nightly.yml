@@ -49,8 +49,4 @@ jobs:
             platforms: linux/amd64, linux/arm64
 
         - name: Push Image
-          uses: redhat-actions/push-to-registry@v2.8
-          with:
-            image: ${{ steps.build_image.outputs.image }}
-            tags: ${{ steps.build_image.outputs.tags }}
-            registry: quay.io
+          run: podman push quay.io/ramalama/ramalama:nightly
