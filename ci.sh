@@ -26,7 +26,11 @@ main() {
 
   # only for macOS for now, which doesn't have containers
   if [ "$os" != "Linux" ]; then
+    /usr/bin/python3 --version
     pip install "huggingface_hub[cli]==0.24.2"
+    huggingface-cli --help
+    pip install "omlmd==0.1.2"
+    omlmd --help
   fi
 
   chmod +x ramalama install.sh
@@ -45,9 +49,11 @@ main() {
   ./ramalama pull ben1t0/tiny-llm
   ./ramalama pull ollama://tinyllama:1.1b
   ./ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+  ./ramalama pull oci://quay.io/mmortari/gguf-py-example:v1
   ./ramalama list | grep tinyllama
   ./ramalama list | grep tiny-vicuna-1b
   ./ramalama list | grep NAME
+  ./ramalama list | grep oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
 #  ramalama list | grep granite-code
 #  ramalama rm granite-code
 }
