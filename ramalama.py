@@ -333,6 +333,48 @@ def pull_cli(ramalama_store, args, port):
 funcDict["pull"] = pull_cli
 
 
+def push_oci(model, ramalama_store):
+    # Remove the prefix and extract target details
+    target = re.sub(r'^oci://', '', model)
+    registry, reference = target.split('/', 1)
+    registry, reference = ("docker.io", target) if "." not in registry else (
+        registry, reference)
+    reference_dir = reference.replace(":", "/")
+
+    # Validate the model exists locally
+    local_model_path = os.path.join(
+        ramalama_store, 'models/oci', registry, reference_dir)
+    if not os.path.exists(local_model_path):
+        print_error(f"Model {model} not found locally. Cannot push.")
+        sys.exit(1)
+
+    # Push the model using omlmd
+    try:
+        run_cmd(["omlmd", "push", model, "--input", local_model_path])
+    except subprocess.CalledProcessError as e:
+        print_error(f"Failed to push model to OCI: {e}")
+        sys.exit(e.returncode)
+
+    return local_model_path
+
+
+def push_cli(ramalama_store, args, port):
+    if len(args) < 1:
+        usage()
+
+    model = args.pop(0)
+    if model.startswith("oci://"):
+        return push_oci(model, ramalama_store)
+
+    # Additional repository types can be added here, e.g., Ollama
+    else:
+        print_error(f"Unsupported repository type for model: {model}")
+        sys.exit(1)
+
+
+funcDict["push"] = push_cli
+
+
 def run_cli(ramalama_store, args, port):
     if len(args) < 1:
         usage()
@@ -363,6 +405,7 @@ def usage():
     print("Commands:")
     print("  list             List models")
     print("  pull MODEL       Pull a model")
+    print("  push MODEL       Push a model")
     print("  run MODEL        Run a model")
     print("  serve MODEL      Serve a model")
     sys.exit(1)

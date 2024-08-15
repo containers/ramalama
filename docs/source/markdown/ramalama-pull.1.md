@@ -1,13 +1,13 @@
 % ramalama-pull 1
 
 ## NAME
-ramalama - Pull and AI Models into local storage
+ramalama - Pull AI Models into local storage
 
 ## SYNOPSIS
-**ramalama pull** [*options*] *model* [*model*...]
+**ramalama pull** [*options*] *model*
 
 ## DESCRIPTION
-Pull specified AI Models into local storage
+Pull specified AI Model into local storage
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)
