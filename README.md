@@ -18,6 +18,14 @@ Install Ramalama by running this one-liner:
 curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | sudo bash
 ```
 
+## To be done
+
+GPU support. We got some GPUs working, but we haven't pushed the containers for
+these yet that work with the various GPUs.
+
+So at present it's x86_64 CPU driven inferencing, but we intend on providing
+support for Apple Silicon, AMD, Nvidia, etc. 
+
 ## Usage
 
 ### Listing Models
