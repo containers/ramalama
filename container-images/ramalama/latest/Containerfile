@@ -27,3 +27,12 @@ RUN git clone -b ramalama https://github.com/ericcurtin/llama.cpp.git && \
     done; \
     cd / && \
     rm -rf llama.cpp
+
+RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
+    cd whisper.cpp && \
+    git reset --hard 22fcd5fd110ba1ff592b4e23013d870831756259 && \
+    make -j $(nproc) && \
+    mv main /usr/bin/whisper-main && \
+    mv server /usr/bin/whisper-server && \
+    cd / && \
+    rm -rf whisper.cpp
