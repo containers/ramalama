@@ -387,6 +387,9 @@ def available(cmd):
 
 
 def select_container_manager():
+    if sys.platform == "darwin":
+        return ""
+
     if available("podman"):
         return "podman"
 
