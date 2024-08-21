@@ -15,7 +15,7 @@ will run the AI Models within a container based on the OCI image.
 Install Ramalama by running this one-liner:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.py | sudo python3
 ```
 
 ## To be done
