@@ -1,10 +1,12 @@
-FROM centos:stream9
+FROM registry.access.redhat.com/ubi9/ubi:9.4
 
-RUN mkdir -p /models
-RUN dnf install -y git jq procps-ng vim vulkan-headers vulkan-loader-devel \
-      glslc glslang python3-pip dnf-plugins-core \
-      python3-dnf-plugin-versionlock cmake gcc-c++ libcurl-devel \
-      vulkan-tools && \
+# vulkan-headers vulkan-loader-devel vulkan-tools glslc glslang python3-pip mesa-libOpenCL-$MESA_VER.aarch64
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    crb enable && \
+    dnf install -y epel-release && \
+    dnf --enablerepo=ubi-9-appstream-rpms install -y git procps-ng vim \
+      dnf-plugins-core python3-dnf-plugin-versionlock cmake gcc-c++ \
+      python3-pip && \
     dnf clean all && \
     rm -rf /var/cache/*dnf*
 
