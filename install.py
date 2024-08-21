@@ -60,7 +60,8 @@ def main():
 
     tmp_dir = tempfile.mkdtemp()
     try:
-        from_file = "ramalama"
+        binfile=ramalama
+        from_file = binfile + ".py"
         host = "https://raw.githubusercontent.com"
         url = f"{host}/containers/ramalama/s/{from_file}"
         to_file = os.path.join(tmp_dir, from_file)
@@ -71,7 +72,7 @@ def main():
             subprocess.run([sys.executable, "-m", "pip",
                            "install", "omlmd==0.1.2"], check=True)
 
-        ramalama_bin = os.path.join(bindir, from_file)
+        ramalama_bin = os.path.join(bindir, binfile)
         subprocess.run(["install", "-m755", to_file, ramalama_bin], check=True)
     finally:
         cleanup(tmp_dir)

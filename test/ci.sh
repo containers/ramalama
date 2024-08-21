@@ -33,7 +33,8 @@ main() {
     omlmd --help
   fi
 
-  chmod +x ramalama install.py
+  binfile=ramalama.py
+  chmod +x ${binfile} install.py
   if [ "$os" = "Linux" ]; then
     ./container_build.sh
     autopep8 --exit-code ramalama # Check style is correct
@@ -43,18 +44,18 @@ main() {
   $maybe_sudo ./install.py # todo macos support
 
   set +o pipefail
-  ./ramalama -h | grep Usage:
+  ./${binfile} -h | grep Usage:
   set -o pipefail
 
-  ./ramalama pull tinyllama
-  ./ramalama pull ben1t0/tiny-llm
-  ./ramalama pull ollama://tinyllama:1.1b
-  ./ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
-  ./ramalama pull oci://quay.io/mmortari/gguf-py-example:v1
-  ./ramalama list | grep tinyllama
-  ./ramalama list | grep tiny-vicuna-1b
-  ./ramalama list | grep NAME
-  ./ramalama list | grep oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
+  ./${binfile} pull tinyllama
+  ./${binfile} pull ben1t0/tiny-llm
+  ./${binfile} pull ollama://tinyllama:1.1b
+  ./${binfile} pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+  ./${binfile} pull oci://quay.io/mmortari/gguf-py-example:v1
+  ./${binfile} list | grep tinyllama
+  ./${binfile} list | grep tiny-vicuna-1b
+  ./${binfile} list | grep NAME
+  ./${binfile} list | grep oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
 #  ramalama list | grep granite-code
 #  ramalama rm granite-code
 }
