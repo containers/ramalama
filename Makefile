@@ -25,7 +25,7 @@ help:
 
 .PHONY:
 install:
-	./install.sh
+	./install.py
 	make -c docs install
 .PHONY:
 build:

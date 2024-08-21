@@ -33,13 +33,14 @@ main() {
     omlmd --help
   fi
 
-  chmod +x ramalama install.sh
+  chmod +x ramalama install.py
   if [ "$os" = "Linux" ]; then
     ./container_build.sh
-    $maybe_sudo ./install.sh # todo macos support
     autopep8 --exit-code ramalama # Check style is correct
     shellcheck -- *.sh
   fi
+
+  $maybe_sudo ./install.py # todo macos support
 
   set +o pipefail
   ./ramalama -h | grep Usage:
