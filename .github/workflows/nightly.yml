@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run a one-line script
-        run: ./ci.sh
+        run: make test
 
   macos:
     runs-on: macos-12
@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Run a one-line script
         shell: bash
-        run: ./ci.sh
+        run: make test
 
   build:
     runs-on: ubuntu-22.04

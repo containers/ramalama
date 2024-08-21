@@ -37,7 +37,7 @@ docs:
 
 .PHONY:
 test:
-	./ci.sh
+	test/ci.sh
 
 .PHONY: clean
 clean:
