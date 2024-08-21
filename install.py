@@ -65,7 +65,6 @@ def main():
         url = f"{host}/containers/ramalama/s/{from_file}"
         to_file = os.path.join(tmp_dir, from_file)
         download(url, to_file)
-        subprocess.run(["/usr/bin/python3", "--version"], check=True)
         if sys.platform == 'darwin':  # macOS
             subprocess.run([sys.executable, "-m", "pip", "install",
                            "huggingface_hub[cli]==0.24.2"], check=True)
