@@ -92,3 +92,8 @@ def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, mo
                   symlink_path)
 
     return symlink_path
+
+
+def push(store, model, target):
+    raise NotImplementedError(
+        "ramalama push not implemented for ollama transport")
