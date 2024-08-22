@@ -246,13 +246,6 @@ def create_store():
     return store
 
 
-def in_container():
-    if os.path.exists("/run/.containerenv") or os.path.exists("/.dockerenv") or os.getenv("container"):
-        return True
-
-    return False
-
-
 funcDict = {}
 funcDict["list"] = list_cli
 funcDict["ls"] = list_cli
