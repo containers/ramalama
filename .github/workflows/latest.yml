@@ -53,6 +53,6 @@ jobs:
         - name: push images to registry
           uses: redhat-actions/push-to-registry@v2.8
           with:
-            image: quay.io/ramalama/ramalama
+            image: ramalama/ramalama
             tags: latest
             registry: quay.io
