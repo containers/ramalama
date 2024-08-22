@@ -1,0 +1,57 @@
+name: latest-build
+on:
+    schedule:
+    - cron: '0 0 * * *'
+    workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run a one-line script
+        run: make test
+
+  macos:
+    runs-on: macos-12
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run a one-line script
+        shell: bash
+        run: make test
+
+  build:
+    runs-on: ubuntu-22.04
+    needs: [linux, macos]
+    steps:
+        - uses: actions/checkout@v3
+          with:
+            ref: 's'
+
+        - name: install qemu-user-static
+          run: |
+            sudo apt-get update
+            sudo apt-get install qemu-user-static
+
+        - name: Login to Registry
+          uses: redhat-actions/podman-login@v1.7
+          with:
+            registry: quay.io
+            username: ${{ secrets.USERNAME }}
+            password: ${{ secrets.PASSWORD }}
+
+        - name: use buildah to build images for amd and aarch64
+          uses: redhat-actions/buildah-build@v2
+          id: build_image
+          with:
+            image: quay.io/ramalama/ramalama
+            tags: latest
+            containerfiles: |
+              container-images/ramalama/latest/Containerfile
+            platforms: linux/amd64, linux/arm64
+
+        - name: push images to registry
+          uses: redhat-actions/push-to-registry@v2.8
+          with:
+            image: quay.io/ramalama/ramalama
+            tags: latest
