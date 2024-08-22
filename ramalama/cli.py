@@ -209,11 +209,12 @@ def push_cli(store, args, port):
     target = args.pop(0)
     if model.startswith("oci://"):
         return oci.push(store, model, target)
+    if model.startswith("huggingface://"):
+        return huggingface.push(store, model, target)
+    if model.startswith("ollama://"):
+        return ollama.push(store, model, target)
 
-    # TODO: Additional repository types can be added here, e.g., Ollama, HuggingFace, etc.
-    else:
-        raise NotImplementedError(
-            f"Unsupported repository type for model: {model}")
+    raise KeyError(f"Unsupported transport model must have ollama://, oci://, or huggingface:// prefix: {model}")
 
 
 def run_cli(store, args, port):

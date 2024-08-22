@@ -30,3 +30,6 @@ def pull(model, ramalama_store):
     run_cmd(["ln", "-sf", relative_target_path, symlink_path])
 
     return symlink_path
+
+def push(store, model, target):
+    raise NotImplementedError("ramalama push not implemented for huggingface transport")
