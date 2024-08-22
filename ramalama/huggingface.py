@@ -13,6 +13,18 @@ def try_download(ramalama_store, model, directory, filename):
     return proc.stdout.decode('utf-8')
 
 
+def login(args):
+    conman_args = ["huggingface-cli", "login"]
+    conman_args.extend(args)
+    exec_cmd(conman_args)
+
+
+def logout(args):
+    conman_args = ["huggingface-cli", "logout"]
+    conman_args.extend(args)
+    exec_cmd(conman_args)
+
+
 def pull(model, ramalama_store):
     model = re.sub(r'^huggingface://', '', model)
     directory, filename = model.rsplit('/', 1)
