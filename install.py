@@ -70,7 +70,7 @@ def main():
             subprocess.run([sys.executable, "-m", "pip", "install",
                            "huggingface_hub[cli]==0.24.2"], check=True)
             subprocess.run([sys.executable, "-m", "pip",
-                           "install", "omlmd==0.1.2"], check=True)
+                           "install", "omlmd==0.1.4"], check=True)
 
         ramalama_bin = os.path.join(bindir, binfile)
         subprocess.run(["install", "-m755", to_file, ramalama_bin], check=True)

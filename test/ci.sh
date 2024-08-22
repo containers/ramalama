@@ -29,7 +29,7 @@ main() {
     /usr/bin/python3 --version
     pip install "huggingface_hub[cli]==0.24.2"
     huggingface-cli --help
-    pip install "omlmd==0.1.2"
+    pip install "omlmd==0.1.4"
     omlmd --help
   fi
 
