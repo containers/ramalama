@@ -24,24 +24,24 @@ main() {
     fi
   fi
 
+  binfile=ramalama.py
+  chmod +x ${binfile} install.py
+
   # only for macOS for now, which doesn't have containers
-  if [ "$os" != "Linux" ]; then
+  if [ "$os" == "Darwin" ]; then
     /usr/bin/python3 --version
     pip install "huggingface_hub[cli]==0.24.2"
     huggingface-cli --help
     pip install "omlmd==0.1.4"
     omlmd --help
-  fi
-
-  binfile=ramalama.py
-  chmod +x ${binfile} install.py
-  if [ "$os" = "Linux" ]; then
+    ./install.py # todo macos support
+  else
     ./container_build.sh
-    autopep8 --exit-code ramalama # Check style is correct
+    autopep8 --in-place --exit-code *.py ramalama/*py # Check style is correct
     shellcheck -- *.sh
+    $maybe_sudo ./install.py # todo macos support
   fi
 
-  $maybe_sudo ./install.py # todo macos support
 
   set +o pipefail
   ./${binfile} -h | grep Usage:

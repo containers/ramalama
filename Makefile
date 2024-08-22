@@ -35,7 +35,7 @@ build:
 docs:
 	make -C docs
 
-.PHONY:
+.PHONY: test
 test:
 	test/ci.sh
 
