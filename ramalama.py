@@ -332,8 +332,9 @@ def oci_target_decompose(model):
     # Remove the prefix and extract target details
     target = re.sub(r'^oci://', '', model)
     registry, reference = target.split('/', 1)
-    registry, reference = ("docker.io", target) if "." not in registry else (
-        registry, reference)
+    if "." not in registry:
+        print_error(f"You must specify a registry for the model in the form 'oci://registry.acme.org/ns/repo:tag', got instead: {model}")
+        sys.exit(1)
     reference_dir = reference.replace(":", "/")
     return target, registry, reference, reference_dir
 
