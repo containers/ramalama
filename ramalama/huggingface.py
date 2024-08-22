@@ -27,10 +27,6 @@ def pull(model, ramalama_store):
         # Symlink is already correct, no need to update it
         return symlink_path
 
-    try:
-        run_cmd(["ln", "-sf", relative_target_path, symlink_path])
-    except subprocess.CalledProcessError as e:
-        perror(e)
-        sys.exit(e.returncode)
+    run_cmd(["ln", "-sf", relative_target_path, symlink_path])
 
     return symlink_path

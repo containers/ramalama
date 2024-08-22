@@ -54,7 +54,7 @@ def run_curl_cmd(args, filename):
         except subprocess.CalledProcessError as e:
             if e.returncode == 22:
                 perror(filename + " not found")
-            sys.exit(e.returncode)
+            raise e
 
 
 def verify_checksum(filename):

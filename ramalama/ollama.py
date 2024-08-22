@@ -37,11 +37,7 @@ def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, mo
     os.makedirs(models, exist_ok=True)
     relative_target_path = os.path.relpath(
         layer_blob_path, start=os.path.dirname(symlink_path))
-    try:
-        run_cmd(["ln", "-sf", relative_target_path, symlink_path])
-    except subprocess.CalledProcessError as e:
-        perror(e)
-        sys.exit(e.returncode)
+    run_cmd(["ln", "-sf", relative_target_path, symlink_path])
 
 
 def pull(model, store):
