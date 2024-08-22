@@ -31,10 +31,17 @@ def main(args):
 
         if conman:
             home = os.path.expanduser('~')
-            cwd = os.getcwd()
-            wd = os.path.join(cwd, "ramalama")
-            if not os.path.exists(wd):
-                wd = "/usr/lib/python3.12/site-packages/podman"
+            wd = "ramalama"
+            for path in sys.path:
+                path = os.path.join(path, 'ramalama')
+                # Check if the "ramalama" directory exists in the current path
+                if os.path.exists(path):
+                    wd = path
+                    break
+                else:
+                    print("ramalama not found in any sys.path directories")
+
+            # To do, unsafe, this may not be a valid path in the guest
             libpath = "/usr/lib/python3.12/site-packages/ramalama"
             conman_args = [conman, "run",
                            "--rm",
@@ -43,7 +50,7 @@ def main(args):
                            f"-v{store}:/var/lib/ramalama",
                            f"-v{home}:{home}",
                            "-v/tmp:/tmp",
-                           f"-v{sys.argv[0]}:/usr/bin/ramalama",
+                           f"-v{__file__}:/usr/bin/ramalama",
                            f"-v{wd}:{libpath}",
                            "-e", "RAMALAMA_HOST",
                            "-p", f"{host}:{port}",
