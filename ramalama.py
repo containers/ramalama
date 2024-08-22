@@ -14,6 +14,9 @@ def main(args):
         store = ramalama.create_store()
 
         dryrun = False
+        if len(args) < 1:
+            ramalama.usage()
+
         while len(args) > 0:
             if args[0] == "--dryrun":
                 args.pop(0)
