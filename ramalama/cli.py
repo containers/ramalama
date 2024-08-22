@@ -198,7 +198,7 @@ def pull_cli(store, args, port):
     if transport == "ollama":
         return ollama.pull(model, store)
 
-    ollama.pull(model, store)
+    return ollama.pull(model, store)
 
 
 def push_cli(store, args, port):
@@ -224,7 +224,7 @@ def run_cli(store, args, port):
 
     symlink_path = pull_cli(store, args, port)
     exec_cmd(["llama-cli", "-m",
-              symlink_path, "--log-disable", "--instruct"])
+              symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant"])
 
 
 def serve_cli(store, args, port):
