@@ -12,7 +12,7 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.n
 
 RUN /usr/bin/python3 --version
 RUN pip install "huggingface_hub[cli]==0.24.2"
-RUN pip install "omlmd==0.1.2"
+RUN pip install "omlmd==0.1.4"
 
 ENV GGML_CCACHE=0
 

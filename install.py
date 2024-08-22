@@ -77,7 +77,7 @@ def main():
             subprocess.run(["pip3", "install", "--break-system-packages",
                            "huggingface_hub[cli]==0.24.2"], check=True)
             subprocess.run(["pip3", "install", "--break-system-packages",
-                            "omlmd==0.1.2"], check=True)
+                            "omlmd==0.1.4"], check=True)
             subprocess.run(["brew", "install", "llama.cpp"], check=True)
 
         ramalama_bin = os.path.join(bindir, binfile)

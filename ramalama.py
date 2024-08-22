@@ -56,11 +56,11 @@ def print_error(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def run_cmd(args):
+def run_cmd(args, cwd=None):
     if x:
         print(*args)
 
-    return subprocess.run(args, check=True, stdout=subprocess.PIPE)
+    return subprocess.run(args, check=True, cwd=cwd, stdout=subprocess.PIPE)
 
 
 def exec_cmd(args):
@@ -254,12 +254,7 @@ def pull_huggingface(model, ramalama_store):
 
 
 def pull_oci(model, ramalama_store):
-    target = re.sub(r'^oci://', '', model)
-    registry, reference = target.split('/', 1)
-    registry, reference = ("docker.io",
-                           target) if "." not in registry else (
-        registry, reference)
-    reference_dir = reference.replace(":", "/")
+    target, registry, reference, reference_dir = oci_target_decompose(model)
     outdir = f"{ramalama_store}/repos/oci/{registry}/{reference_dir}"
     print(f"Downloading {target}...")
     # note: in the current way ramalama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir) since cannot use modules/sdk, can use only cli bindings from pip installs
@@ -333,6 +328,57 @@ def pull_cli(ramalama_store, args, port):
 funcDict["pull"] = pull_cli
 
 
+def oci_target_decompose(model):
+    # Remove the prefix and extract target details
+    target = re.sub(r'^oci://', '', model)
+    registry, reference = target.split('/', 1)
+    if "." not in registry:
+        print_error(f"You must specify a registry for the model in the form 'oci://registry.acme.org/ns/repo:tag', got instead: {model}")
+        sys.exit(1)
+    reference_dir = reference.replace(":", "/")
+    return target, registry, reference, reference_dir
+
+
+def push_oci(ramalama_store, model, target):
+    _, registry, _, reference_dir = oci_target_decompose(model)
+    target = re.sub(r'^oci://', '', target)
+    
+    # Validate the model exists locally
+    local_model_path = os.path.join(
+        ramalama_store, 'models/oci', registry, reference_dir)
+    if not os.path.exists(local_model_path):
+        print_error(f"Model {model} not found locally. Cannot push.")
+        sys.exit(1)
+
+    model_file = Path(local_model_path).resolve()
+    try:
+        # Push the model using omlmd, using cwd the model's file parent directory
+        run_cmd(["omlmd", "push", target, str(model_file), "--empty-metadata"], cwd=model_file.parent)
+    except subprocess.CalledProcessError as e:
+        print_error(f"Failed to push model to OCI: {e}")
+        sys.exit(e.returncode)
+
+    return local_model_path
+
+
+def push_cli(ramalama_store, args, port):
+    if len(args) < 2:
+        usage()
+
+    model = args.pop(0)
+    target = args.pop(0)
+    if model.startswith("oci://"):
+        return push_oci(ramalama_store, model, target)
+
+    # TODO: Additional repository types can be added here, e.g., Ollama, HuggingFace, etc.
+    else:
+        print_error(f"Unsupported repository type for model: {model}")
+        sys.exit(1)
+
+
+funcDict["push"] = push_cli
+
+
 def run_cli(ramalama_store, args, port):
     if len(args) < 1:
         usage()
@@ -361,10 +407,11 @@ def usage():
     print(f"  {os.path.basename(__file__)} COMMAND")
     print()
     print("Commands:")
-    print("  list             List models")
-    print("  pull MODEL       Pull a model")
-    print("  run MODEL        Run a model")
-    print("  serve MODEL      Serve a model")
+    print("  list              List models")
+    print("  pull MODEL        Pull a model")
+    print("  push MODEL TARGET Push a model to target")
+    print("  run MODEL         Run a model")
+    print("  serve MODEL       Serve a model")
     sys.exit(1)
 
 

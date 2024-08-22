@@ -17,6 +17,7 @@ Ramalama : The goal of ramalama is to make AI even more boring.
 | ------------------------------------------------ | --------------------------------------------------------------------------- |
 | [ramalama-list(1)](ramalama-list.1.md)  | Liste all AI models in local storage.                       |
 | [ramalama-pull(1)](ramalama-pull.1.md)  | Pull AI Model from registry to local storage                |
+| [ramalama-push(1)](ramalama-push.1.md)  | Push specified AI Model (OCI-only at present)               |
 | [ramalama-run(1)](ramalama-run.1.md)    | Run a chatbot on AI Model.                                  |
 | [ramalama-serve(1)](ramalama-serve.1.md)| Serve local AI Model as an API Service.                     |
 
