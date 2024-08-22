@@ -32,13 +32,17 @@ def main(args):
         if host != port:
             port = host.rsplit(':', 1)[1]
 
+        syspath = '/usr/share/ramalama/python'
+        sys.path.insert(0, syspath)
+
         if conman:
             home = os.path.expanduser('~')
-            cwd = os.getcwd()
-            wd = os.path.join(cwd, "ramalama")
-            if not os.path.exists(wd):
-                wd = "/usr/lib/python3.12/site-packages/podman"
-            libpath = "/usr/lib/python3.12/site-packages/ramalama"
+            wd = "ramalama"
+            for p in sys.path:
+                target = p+"ramalama"
+                if os.path.exists(target):
+                    wd = target
+                    break
             conman_args = [conman, "run",
                            "--rm",
                            "-it",
@@ -46,8 +50,8 @@ def main(args):
                            f"-v{store}:/var/lib/ramalama",
                            f"-v{home}:{home}",
                            "-v/tmp:/tmp",
-                           f"-v{sys.argv[0]}:/usr/bin/ramalama",
-                           f"-v{wd}:{libpath}",
+                           f"-v{__file__}:/usr/bin/ramalama:ro",
+                           f"-v{wd}:{syspath}:ro",
                            "-e", "RAMALAMA_HOST",
                            "-p", f"{host}:{port}",
                            "quay.io/ramalama/ramalama:latest", __file__] + args

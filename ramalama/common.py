@@ -9,8 +9,15 @@ import sys
 x = False
 
 
+def in_container():
+    if os.path.exists("/run/.containerenv") or os.path.exists("/.dockerenv") or os.getenv("container"):
+        return True
+
+    return False
+
+
 def container_manager():
-    if sys.platform == "darwin":
+    if in_container() or sys.platform == "darwin":
         return ""
 
     if sys.platform != "linux":
