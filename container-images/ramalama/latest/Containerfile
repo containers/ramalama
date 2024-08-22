@@ -14,19 +14,14 @@ RUN /usr/bin/python3 --version
 RUN pip install "huggingface_hub[cli]==0.24.2"
 RUN pip install "omlmd==0.1.4"
 
-ENV LLAMA_CCACHE=0
+ENV GGML_CCACHE=0
 
-RUN git clone -b ramalama https://github.com/ericcurtin/llama.cpp.git && \
+RUN git clone https://github.com/ggerganov/llama.cpp && \
     cd llama.cpp && \
-    cmake -B build -DLLAMA_CCACHE=0 && \
+    git reset --hard 50addec9a532a6518146ab837a85504850627316 && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 && \
     cmake --build build --config Release -j $(nproc) && \
-    cd build/bin && \
-    for file in *; do \
-      if [ -f "$file" ] && [ -x "$file" ]; then \
-        echo "$file" && \
-        mv "$file" /usr/bin/llama-"$file"; \
-      fi; \
-    done; \
+    cmake --install build && \
     cd / && \
     rm -rf llama.cpp
 

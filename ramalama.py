@@ -384,8 +384,8 @@ def run_cli(ramalama_store, args, port):
         usage()
 
     symlink_path = pull_cli(ramalama_store, args, port)
-    exec_cmd(["llama-main", "-m",
-              symlink_path, "--log-disable", "--instruct"])
+    exec_cmd(["llama-cli", "-m",
+              symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant"])
 
 
 funcDict["run"] = run_cli
