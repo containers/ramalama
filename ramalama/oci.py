@@ -18,8 +18,7 @@ def pull(model, store):
     run_cmd(["omlmd", "pull", target, "--output", outdir])
     ggufs = [file for file in os.listdir(outdir) if file.endswith('.gguf')]
     if len(ggufs) != 1:
-        print(f"Error: Unable to identify .gguf file in: {outdir}")
-        sys.exit(-1)
+        raise KeyError(f"Error: Unable to identify .gguf file in: {outdir}")
 
     directory = f"{store}/models/oci/{registry}/{reference_dir}"
     os.makedirs(directory, exist_ok=True)
@@ -32,11 +31,7 @@ def pull(model, store):
         # Symlink is already correct, no need to update it
         return symlink_path
 
-    try:
-        run_cmd(["ln", "-sf", relative_target_path, symlink_path])
-    except subprocess.CalledProcessError as e:
-        perror(e)
-        sys.exit(e.returncode)
+    run_cmd(["ln", "-sf", relative_target_path, symlink_path])
 
     return symlink_path
 
@@ -61,8 +56,7 @@ def push(store, model, target):
     local_model_path = os.path.join(
         store, 'models/oci', registry, reference_dir)
     if not os.path.exists(local_model_path):
-        print_error(f"Model {model} not found locally. Cannot push.")
-        sys.exit(1)
+        raise KeyError(f"Model {model} not found locally. Cannot push.")
 
     model_file = Path(local_model_path).resolve()
     try:
@@ -70,6 +64,6 @@ def push(store, model, target):
         run_cmd(["omlmd", "push", target, str(model_file),
                 "--empty-metadata"], cwd=model_file.parent)
     except subprocess.CalledProcessError as e:
-        raise subprocess.CalledProcessError(
-            f"Failed to push model to OCI: {e}")
+        perror(f"Failed to push model to OCI: {e}")
+        raise e
     return local_model_path

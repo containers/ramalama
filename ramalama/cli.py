@@ -15,7 +15,7 @@ import ramalama.huggingface as huggingface
 from pathlib import Path
 
 
-def usage():
+def usage(exit=0):
     print("Usage:")
     print(f"  {os.path.basename(__file__)} COMMAND")
     print()
@@ -25,7 +25,7 @@ def usage():
     print("  push MODEL TARGET Push a model to target")
     print("  run MODEL         Run a model")
     print("  serve MODEL       Serve a model")
-    sys.exit(1)
+    sys.exit(exit)
 
 
 def mkdirs(store):
@@ -85,7 +85,7 @@ def list_files_by_modification():
 
 def list_cli(store, args, port):
     if len(args) > 0:
-        usage()
+        usage(1)
     print(f"{'NAME':<67} {'MODIFIED':<15} {'SIZE':<6}")
     mycwd = os.getcwd()
     os.chdir(f"{store}/models/")
@@ -176,7 +176,7 @@ def list_cli(store, args, port):
 
 def pull_cli(store, args, port):
     if len(args) < 1:
-        usage()
+        usage(1)
 
     model = args.pop(0)
     matching_files = glob.glob(f"{store}/models/*/{model}")
@@ -203,7 +203,7 @@ def pull_cli(store, args, port):
 
 def push_cli(store, args, port):
     if len(args) < 2:
-        usage()
+        usage(1)
 
     model = args.pop(0)
     target = args.pop(0)
@@ -218,7 +218,7 @@ def push_cli(store, args, port):
 
 def run_cli(store, args, port):
     if len(args) < 1:
-        usage()
+        usage(1)
 
     symlink_path = pull_cli(store, args, port)
     exec_cmd(["llama-cli", "-m",
@@ -227,7 +227,7 @@ def run_cli(store, args, port):
 
 def serve_cli(store, args, port):
     if len(args) < 1:
-        usage()
+        usage(1)
 
     symlink_path = pull_cli(store, args, port)
     exec_cmd(["llama-server", "--port", port, "-m", symlink_path])
