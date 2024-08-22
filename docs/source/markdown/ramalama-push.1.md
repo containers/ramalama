@@ -4,7 +4,7 @@
 ramalama - Push AI Model (OCI-only at present)
 
 ## SYNOPSIS
-**ramalama push** [*options*] *model*
+**ramalama push** [*options*] *model* *target*
 
 ## DESCRIPTION
 Push specified AI Model (OCI-only at present)
