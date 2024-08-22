@@ -43,34 +43,42 @@ def download(url, to):
 
 
 def main():
-    if os.name != 'posix':
+    if sys.platform == 'darwin':
+        if os.geteuid() == 0:
+            print("This script is intended to run as non-root on macOS")
+            sys.exit(1)
+        if not available("brew"):
+            print("Please install Homebrew before continuing install on macOS")
+            sys.exit(2)
+    elif sys.platform == 'linux':
+        if os.geteuid() != 0:
+            print("This script is intended to run as root on Linux")
+            sys.exit(3)
+    else:
         print("This script is intended to run on Linux and macOS only")
-        sys.exit(1)
+        sys.exit(4)
 
-    if os.geteuid() != 0:
-        print("This script is intended to run as root only")
-        sys.exit(2)
-
-    bindirs = ["/usr/local/bin", "/usr/bin", "/bin"]
+    bindirs = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
     bindir = next((d for d in bindirs if d in os.environ["PATH"]), None)
 
     if bindir is None:
         print("No suitable bindir found in PATH")
-        sys.exit(3)
+        sys.exit(5)
 
     tmp_dir = tempfile.mkdtemp()
     try:
-        binfile=ramalama
+        binfile = "ramalama"
         from_file = binfile + ".py"
         host = "https://raw.githubusercontent.com"
         url = f"{host}/containers/ramalama/s/{from_file}"
         to_file = os.path.join(tmp_dir, from_file)
         download(url, to_file)
         if sys.platform == 'darwin':  # macOS
-            subprocess.run([sys.executable, "-m", "pip", "install",
+            subprocess.run(["pip3", "install", "--break-system-packages",
                            "huggingface_hub[cli]==0.24.2"], check=True)
-            subprocess.run([sys.executable, "-m", "pip",
-                           "install", "omlmd==0.1.2"], check=True)
+            subprocess.run(["pip3", "install", "--break-system-packages",
+                            "omlmd==0.1.2"], check=True)
+            subprocess.run(["brew", "install", "llama.cpp"], check=True)
 
         ramalama_bin = os.path.join(bindir, binfile)
         subprocess.run(["install", "-m755", to_file, ramalama_bin], check=True)
