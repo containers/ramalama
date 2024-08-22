@@ -43,6 +43,7 @@ def main(args):
                 if os.path.exists(target):
                     wd = target
                     break
+
             conman_args = [conman, "run",
                            "--rm",
                            "-it",
@@ -51,10 +52,17 @@ def main(args):
                            f"-v{home}:{home}",
                            "-v/tmp:/tmp",
                            f"-v{__file__}:/usr/bin/ramalama:ro",
-                           f"-v{wd}:{syspath}:ro",
-                           "-e", "RAMALAMA_HOST",
-                           "-p", f"{host}:{port}",
-                           "quay.io/ramalama/ramalama:latest", __file__] + args
+                           f"-v{wd}:{syspath}:ro"]
+            if os.path.exists("/dev/dri"):
+                conman_args += ["--device", "/dev/dri"]
+
+            if os.path.exists("/dev/kfd"):
+                conman_args += ["--device", "/dev/kfd"]
+
+            conman_args += ["-e", "RAMALAMA_HOST",
+                            "-p", f"{host}:{port}",
+                            "quay.io/ramalama/ramalama:latest", __file__]
+            conman_args += args
             if dryrun:
                 return print(*conman_args)
 
