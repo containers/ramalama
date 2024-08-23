@@ -21,6 +21,8 @@ def usage(exit=0):
     print()
     print("Commands:")
     print("  list              List models")
+    print("  login             Login to specified registry")
+    print("  logout            Logout from the specified registry")
     print("  pull MODEL        Pull a model")
     print("  push MODEL TARGET Push a model to target")
     print("  run MODEL         Run a model")
@@ -81,6 +83,36 @@ def human_duration(d):
 def list_files_by_modification():
     return sorted(Path().rglob('*'), key=lambda p: os.path.getmtime(p),
                   reverse=True)
+
+
+def login_cli(store, args, port):
+    transport = os.getenv("RAMALAMA_TRANSPORT")
+
+    if len(args) > 0:
+        transport = args[-1]
+        del args[-1]
+
+    if transport == "huggingface":
+        return huggingface.login(args)
+    if transport == "ollama":
+        return ollama.login(args)
+
+    return oci.login(transport, args)
+
+
+def logout_cli(store, args, port):
+    transport = os.getenv("RAMALAMA_TRANSPORT")
+
+    if len(args) > 0:
+        transport = args[-1]
+        del args[-1]
+
+    if transport == "huggingface":
+        return huggingface.logout(args)
+    if transport == "ollama":
+        return ollama.logout(args)
+
+    return oci.logout(transport, args)
 
 
 def list_cli(store, args, port):
@@ -250,6 +282,8 @@ def create_store():
 
 funcDict = {}
 funcDict["list"] = list_cli
+funcDict["login"] = login_cli
+funcDict["logout"] = logout_cli
 funcDict["ls"] = list_cli
 funcDict["pull"] = pull_cli
 funcDict["push"] = push_cli

@@ -94,6 +94,11 @@ def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, mo
     return symlink_path
 
 
-def push(store, model, target):
+def login(args):
     raise NotImplementedError(
-        "ramalama push not implemented for ollama transport")
+        "ramalama login not implemented for ollama registry")
+
+
+def logout(args):
+    raise NotImplementedError(
+        "ramalama logout not implemented for ollama registry")

@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 
-from ramalama.common import run_cmd
+from ramalama.common import run_cmd, container_manager, exec_cmd
 
 
 def pull(model, store):
@@ -46,6 +46,22 @@ def target_decompose(model):
 
     reference_dir = reference.replace(":", "/")
     return target, registry, reference, reference_dir
+
+
+def login(registry, args):
+    conman = container_manager()
+    conman_args = [conman, "login"]
+    conman_args.extend(args)
+    conman_args.append(registry)
+    return exec_cmd(conman_args)
+
+
+def logout(registry, args):
+    conman = container_manager()
+    conman_args = [conman, "logout"]
+    conman_args.extend(args)
+    conman_args.append(registry)
+    return exec_cmd(conman_args)
 
 
 def push(store, model, target):

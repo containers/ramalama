@@ -10,7 +10,9 @@ import sys
 
 def main(args):
     try:
-        conman = ramalama.container_manager()
+        conman = ""
+        if args[0] != "login" and args[0] != "logout":
+            conman = ramalama.container_manager()
         store = ramalama.create_store()
 
         dryrun = False
