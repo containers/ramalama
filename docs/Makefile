@@ -1,33 +1,33 @@
+PREFIX := /usr/local
+DATADIR := ${PREFIX}/share
+MANDIR := $(DATADIR)/man
+GOMD2MAN ?= go-md2man
+ifeq ($(shell uname -s),FreeBSD)
+SED=gsed
+else
 SED=sed
-# The 'sort' below is crucial: without it, 'make docs' behaves differently
-# on the first run than on subsequent ones, because the generated .md
-MANPAGES_SOURCE_DIR = source/markdown
-MANPAGES_MD ?= $(sort $(wildcard $(MANPAGES_SOURCE_DIR)/*.md))
-MANPAGES ?= $(MANPAGES_MD:%.md=%)
-MANPAGES_DEST ?= $(subst markdown,man, $(subst source,build,$(MANPAGES)))
-$(MANPAGES): OUTFILE=$(subst source/markdown,build/man,$@)
-$(MANPAGES): %: %.md
-GOMD2MAN ?= /usr/bin/go-md2man
-MANPAGES_DEST ?= $(subst markdown,man, $(subst source,build,$(MANPAGES)))
-SELINUXOPT ?= $(shell test -x /usr/sbin/selinuxenabled && selinuxenabled && echo -Z)
+endif
 
-.PHONY: docdir
-docdir:
-	mkdir -p build/man
-$(MANPAGES): OUTFILE=$(subst source/markdown,build/man,$@)
-$(MANPAGES): %: %.md  docdir
-	@$(SED) -e 's/\((ramalama[^)]*\.md\(#.*\)\?)\)//g'    \
-	       -e 's/\[\(ramalama[^]]*\)\]/\1/g'              \
-	       -e 's/\[\([^]]*\)](http[^)]\+)/\1/g'         \
-	       -e 's;<\(/\)\?\(a\|a\s\+[^>]*\|sup\)>;;g'    \
-	       -e 's/\\$$/  /g' $<                         |\
-	$(GOMD2MAN) -out $(OUTFILE)
+docs: $(patsubst %.md,%,$(wildcard *.md))
+
+%.1: %.1.md
+### sed is used to filter http/s links as well as relative links
+### replaces "\" at the end of a line with two spaces
+### this ensures that manpages are rendered correctly
+	@$(SED) -e 's/\((ramalama[^)]*\.md\(#.*\)\?)\)//g' \
+	 -e 's/\[\(ramalama[^]]*\)\]/\1/g' \
+	 -e 's/\[\([^]]*\)](http[^)]\+)/\1/g' \
+	 -e 's;<\(/\)\?\(a\|a\s\+[^>]*\|sup\)>;;g' \
+	 -e 's/\\$$/  /g' $<  | \
+	$(GOMD2MAN) -in /dev/stdin -out  $@
 
 .PHONY: install
-install: $(MANPAGES)
-	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(MANDIR)/man1
-	install ${SELINUXOPT} -m 644 $(filter %.1,$(MANPAGES_DEST)) $(DESTDIR)$(MANDIR)/man1
+install:
+	install -d ${DESTDIR}/${MANDIR}/man1
+	install -m 0644 ramalama*.1 ${DESTDIR}/${MANDIR}/man1
+	install -m 0644 links/ramalama*.1 ${DESTDIR}/${MANDIR}/man1
 
+.PHONY: clean
 clean:
-	$(RM) -fr build
+	$(RM) ramalama*.1
 
