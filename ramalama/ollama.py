@@ -4,6 +4,7 @@ import subprocess
 import json
 
 from ramalama.common import exec_cmd, run_cmd, run_curl_cmd, perror
+from ramalama.model import Model
 
 
 def pull_manifest(repos, manifests, accept, registry_head, model_tag):
@@ -40,34 +41,6 @@ def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, mo
     run_cmd(["ln", "-sf", relative_target_path, symlink_path])
 
 
-def pull(model, store):
-    model = re.sub(r'^ollama://', '', model)
-    repos = store + "/repos/ollama"
-    models = store + "/models/ollama"
-    registry = "https://registry.ollama.ai"
-    if '/' in model:
-        model_full = model
-    else:
-        model_full = "library/" + model
-
-    accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
-    if ':' in model_full:
-        model_name, model_tag = model_full.split(':', 1)
-    else:
-        model_name = model_full
-        model_tag = "latest"
-
-    model_base = os.path.basename(model_name)
-    symlink_path = os.path.join(models, f"{model_base}:{model_tag}")
-    if os.path.exists(symlink_path):
-        return symlink_path
-
-    manifests = os.path.join(repos, "manifests",
-                             registry, model_name, model_tag)
-    registry_head = f"{registry}/v2/{model_name}"
-    return init_pull(repos, manifests, accept, registry_head, model_name, model_tag, models, symlink_path, model)
-
-
 def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, models, symlink_path, model):
     try:
         pull_manifest(repos, manifests,
@@ -94,11 +67,33 @@ def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, mo
     return symlink_path
 
 
-def login(args):
-    raise NotImplementedError(
-        "ramalama login not implemented for ollama registry")
+class Ollama(Model):
+    def __init__(self, model):
+        super().__init__(model.removeprefix("ollama://"))
+        self.type = "Olama"
 
+    def pull(self, store):
+        repos = store + "/repos/ollama"
+        models = store + "/models/ollama"
+        registry = "https://registry.ollama.ai"
+        if '/' in self.model:
+            model_full = self.model
+        else:
+            model_full = "library/" + self.model
 
-def logout(args):
-    raise NotImplementedError(
-        "ramalama logout not implemented for ollama registry")
+        accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
+        if ':' in model_full:
+            model_name, model_tag = model_full.split(':', 1)
+        else:
+            model_name = model_full
+            model_tag = "latest"
+
+        model_base = os.path.basename(model_name)
+        symlink_path = os.path.join(models, f"{model_base}:{model_tag}")
+        if os.path.exists(symlink_path):
+            return symlink_path
+
+        manifests = os.path.join(repos, "manifests",
+                                 registry, model_name, model_tag)
+        registry_head = f"{registry}/v2/{model_name}"
+        return init_pull(repos, manifests, accept, registry_head, model_name, model_tag, models, symlink_path, self.model)
