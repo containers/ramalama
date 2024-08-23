@@ -8,11 +8,11 @@ import re
 import subprocess
 import sys
 import time
-from ramalama.common import exec_cmd
-import ramalama.ollama as ollama
-import ramalama.oci as oci
-import ramalama.huggingface as huggingface
 from pathlib import Path
+
+from ramalama.huggingface import Huggingface
+from ramalama.oci import OCI
+from ramalama.ollama import Ollama
 
 
 def usage(exit=0):
@@ -86,18 +86,13 @@ def list_files_by_modification():
 
 
 def login_cli(store, args, port):
-    transport = os.getenv("RAMALAMA_TRANSPORT")
-
+    transport = ""
     if len(args) > 0:
         transport = args[-1]
         del args[-1]
 
-    if transport == "huggingface":
-        return huggingface.login(args)
-    if transport == "ollama":
-        return ollama.login(args)
-
-    return oci.login(transport, args)
+    model = New(transport)
+    return model.login(args)
 
 
 def logout_cli(store, args, port):
@@ -107,12 +102,8 @@ def logout_cli(store, args, port):
         transport = args[-1]
         del args[-1]
 
-    if transport == "huggingface":
-        return huggingface.logout(args)
-    if transport == "ollama":
-        return ollama.logout(args)
-
-    return oci.logout(transport, args)
+    model = New(transport)
+    return model.login(args)
 
 
 def list_cli(store, args, port):
@@ -210,61 +201,37 @@ def pull_cli(store, args, port):
     if len(args) < 1:
         usage(1)
 
-    model = args.pop(0)
+    model = New(args.pop(0))
     matching_files = glob.glob(f"{store}/models/*/{model}")
     if matching_files:
         return matching_files[0]
 
-    if model.startswith("huggingface://"):
-        return huggingface.pull(model, store)
-    if model.startswith("oci://"):
-        return oci.pull(model, store)
-    if model.startswith("ollama://"):
-        return ollama.pull(model, store)
-
-    transport = os.getenv("RAMALAMA_TRANSPORT")
-    if transport == "huggingface":
-        return huggingface.pull(model, store)
-    if transport == "oci":
-        return oci.pull(model, store)
-    if transport == "ollama":
-        return ollama.pull(model, store)
-
-    return ollama.pull(model, store)
+    return model.pull(store)
 
 
 def push_cli(store, args, port):
     if len(args) < 2:
         usage(1)
 
-    model = args.pop(0)
+    model = New(args.pop(0))
     target = args.pop(0)
-    if model.startswith("oci://"):
-        return oci.push(store, model, target)
-    if model.startswith("huggingface://"):
-        return huggingface.push(store, model, target)
-    if model.startswith("ollama://"):
-        return ollama.push(store, model, target)
-
-    raise KeyError(
-        f"Unsupported transport model must have ollama://, oci://, or huggingface:// prefix: {model}")
+    model.push(store, target)
 
 
 def run_cli(store, args, port):
     if len(args) < 1:
         usage(1)
 
-    symlink_path = pull_cli(store, args, port)
-    exec_cmd(["llama-cli", "-m",
-              symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant"])
+    model = New(args.pop(0))
+    model.run(store, args)
 
 
 def serve_cli(store, args, port):
     if len(args) < 1:
         usage(1)
 
-    symlink_path = pull_cli(store, args, port)
-    exec_cmd(["llama-server", "--port", port, "-m", symlink_path])
+    model = New(args.pop(0))
+    model.serve(store, args)
 
 
 def get_store():
@@ -289,3 +256,22 @@ funcDict["pull"] = pull_cli
 funcDict["push"] = push_cli
 funcDict["run"] = run_cli
 funcDict["serve"] = serve_cli
+
+
+def New(model):
+    if model.startswith("huggingface"):
+        return Huggingface(model)
+    if model.startswith("ollama"):
+        return Ollama(model)
+    if model.startswith("oci") | model.startswith("docker"):
+        return OCI(model)
+
+    transport = os.getenv("RAMALAMA_TRANSPORT")
+    if transport == "huggingface":
+        return Huggingface(model)
+    if transport == "ollama":
+        return Ollama(model)
+    if transport == "oci":
+        return OCI(model)
+
+    return OCI(model)

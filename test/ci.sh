@@ -47,8 +47,8 @@ main() {
   ./${binfile} -h | grep Usage:
   set -o pipefail
 
-  ./${binfile} pull tinyllama
-  ./${binfile} pull ben1t0/tiny-llm
+  ./${binfile} pull ollama://tinyllama
+  RAMALAMA_TRANSPORT=ollama ./${binfile} pull ben1t0/tiny-llm
   ./${binfile} pull ollama://tinyllama:1.1b
   ./${binfile} pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
   ./${binfile} pull oci://quay.io/mmortari/gguf-py-example:v1
