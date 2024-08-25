@@ -36,28 +36,6 @@ support for Apple Silicon, AMD, Nvidia, etc.
 
 ## Usage
 
-### Listing Models
-
-You can `list` all models pulled into local storage.
-
-```
-$ ramalama list
-NAME                                                                MODIFIED     SIZE
-ollama://tiny-llm:latest                                            16 hours ago 5.5M
-huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf 14 hours ago 460M
-ollama://granite-code:3b                                            5 days ago   1.9G
-ollama://granite-code:latest                                        1 day ago    1.9G
-ollama://moondream:latest                                           6 days ago   791M
-```
-### Pulling Models
-
-You can `pull` a model using the `pull` command. By default, it pulls from the ollama registry.
-
-```
-$ ramalama pull granite-code
-###################################################                       32.5%
-```
-
 ### Running Models
 
 You can `run` a chatbot on a model using the `run` command. By default, it pulls from the ollama registry.
@@ -89,6 +67,28 @@ In a different terminal window see the running podman container.
 $ podman ps
 CONTAINER ID  IMAGE                             COMMAND               CREATED        STATUS        PORTS       NAMES
 91df4a39a360  quay.io/ramalama/ramalama:latest  /home/dwalsh/rama...  4 minutes ago  Up 4 minutes              gifted_volhard
+```
+
+### Listing Models
+
+You can `list` all models pulled into local storage.
+
+```
+$ ramalama list
+NAME                                                                MODIFIED     SIZE
+ollama://tiny-llm:latest                                            16 hours ago 5.5M
+huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf 14 hours ago 460M
+ollama://granite-code:3b                                            5 days ago   1.9G
+ollama://granite-code:latest                                        1 day ago    1.9G
+ollama://moondream:latest                                           6 days ago   791M
+```
+### Pulling Models
+
+You can `pull` a model using the `pull` command. By default, it pulls from the ollama registry.
+
+```
+$ ramalama pull granite-code
+###################################################                       32.5%
 ```
 
 ### Serving Models
