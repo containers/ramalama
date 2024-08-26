@@ -47,6 +47,7 @@ main() {
   ./${binfile} -h | grep Usage:
   set -o pipefail
 
+  ./${binfile} version
   ./${binfile} pull ollama://tinyllama
   RAMALAMA_TRANSPORT=ollama ./${binfile} pull ben1t0/tiny-llm
   ./${binfile} pull ollama://tinyllama:1.1b

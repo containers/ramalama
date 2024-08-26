@@ -41,6 +41,7 @@ Individual model transports can be modifies when specifying a model via the `hug
 | [ramalama-push(1)](ramalama-push.1.md)  | Push specified AI Model (OCI-only at present)               |
 | [ramalama-run(1)](ramalama-run.1.md)    | Run a chatbot on AI Model.                                  |
 | [ramalama-serve(1)](ramalama-serve.1.md)| Serve local AI Model as an API Service.                     |
+| [ramalama-version(1)](ramalama-version.1.md)| Print ramalama version                                  |
 
 ## CONFIGURATION FILES
 
