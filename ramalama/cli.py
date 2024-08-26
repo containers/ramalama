@@ -13,6 +13,7 @@ from pathlib import Path
 from ramalama.huggingface import Huggingface
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
+from ramalama.version import version
 
 
 def usage(exit=0):
@@ -27,6 +28,7 @@ def usage(exit=0):
     print("  push MODEL TARGET Push a model to target")
     print("  run MODEL         Run a model")
     print("  serve MODEL       Serve a model")
+    print("  version           Version of ramalama")
     sys.exit(exit)
 
 
@@ -234,6 +236,13 @@ def serve_cli(store, args, port):
     model.serve(store, args)
 
 
+def version_cli():
+    if len(args) > 1:
+        usage(1)
+
+    version()
+
+
 def get_store():
     if os.geteuid() == 0:
         return "/var/lib/ramalama"
@@ -256,6 +265,7 @@ funcDict["pull"] = pull_cli
 funcDict["push"] = push_cli
 funcDict["run"] = run_cli
 funcDict["serve"] = serve_cli
+funcDict["version"] = version_cli
 
 
 def New(model):

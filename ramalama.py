@@ -21,7 +21,10 @@ def main(args):
 
         while len(args) > 0:
             if args[0] == "-h" or args[0] == "--help":
-                ramalama.usage()
+                return ramalama.usage()
+
+            if args[0] == "-v" or args[0] == "version":
+                return ramalama.version()
 
             if args[0] == "--dryrun":
                 args.pop(0)
