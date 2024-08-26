@@ -1,14 +1,18 @@
 #!/usr/bin/python3
 
-import errno
-import os
-from pathlib import Path
 import subprocess
-import ramalama
+from pathlib import Path
+import os
+import errno
 import sys
 
 
 def main(args):
+    syspath = '/usr/share/ramalama'
+    sys.path.insert(0, syspath)
+
+    import ramalama
+
     try:
         conman = ""
         if args[0] != "login" and args[0] != "logout":
@@ -29,23 +33,22 @@ def main(args):
             if args[0] == "--dryrun":
                 args.pop(0)
                 dryrun = True
-            elif args[0] in ramalama.funcDict:
+                continue
+
+            if args[0] in ramalama.funcDict:
                 break
-            else:
-                ramalama.perror(f"Error: unrecognized command `{args[0]}`\n")
-                ramalama.usage()
+
+            ramalama.perror(f"Error: unrecognized command `{args[0]}`\n")
+            ramalama.usage(1)
 
         port = "8080"
         host = os.getenv('RAMALAMA_HOST', port)
         if host != port:
             port = host.rsplit(':', 1)[1]
 
-        syspath = '/usr/share/ramalama/python'
-        sys.path.insert(0, syspath)
-
         if conman:
             home = os.path.expanduser('~')
-            wd = "ramalama"
+            wd = "./ramalama"
             for p in sys.path:
                 target = p+"ramalama"
                 if os.path.exists(target):
@@ -63,14 +66,15 @@ def main(args):
                            "-e", "RAMALAMA_HOST",
                            "-e", "RAMALAMA_TRANSPORT",
                            "-p", f"{host}:{port}",
-                           f"-v{wd}:{syspath}:ro"]
+                           f"-v{wd}:{syspath}/ramalama:ro"]
             if os.path.exists("/dev/dri"):
                 conman_args += ["--device", "/dev/dri"]
 
             if os.path.exists("/dev/kfd"):
                 conman_args += ["--device", "/dev/kfd"]
 
-            conman_args += ["quay.io/ramalama/ramalama:latest", __file__]
+            conman_args += ["quay.io/ramalama/ramalama:latest",
+                            "/usr/bin/ramalama"]
             conman_args += args
 
             if dryrun:

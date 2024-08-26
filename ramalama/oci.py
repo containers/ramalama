@@ -13,7 +13,12 @@ class OCI(Model):
 
     def login(self, args):
         conman_args = [self.conman, "login"]
-        conman_args.extend(args)
+        if args.username:
+            conman_args.extend(["--username", args.username])
+        if args.password:
+            conman_args.extend(["--password", args.password])
+        if args.passwordstdin:
+            conman_args.append("--password-stdin")
         conman_args.append(self.model)
         return exec_cmd(conman_args)
 

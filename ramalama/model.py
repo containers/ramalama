@@ -35,11 +35,10 @@ class Model:
         exec_cmd(["llama-cli", "-m",
                   symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant"])
 
-    def serve(self, args):
+    def serve(self, store, port):
         symlink_path = self.pull(store)
-        try:
-            port = args[0]
-        except:
+
+        if port:
             port = os.getenv("RAMALAMA_HOST")
 
         exec_cmd(["llama-server", "--port", port, "-m", symlink_path])

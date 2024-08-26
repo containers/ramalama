@@ -21,11 +21,14 @@ class Huggingface(Model):
 
     def login(self, args):
         conman_args = ["huggingface-cli", "login"]
-        conman_args.extend(args)
+        if args.token:
+            conman_args.extend(["--token", args.token])
         exec_cmd(conman_args)
 
     def logout(self, args):
         conman_args = ["huggingface-cli", "logout"]
+        if args.token:
+            conman_args.extend(["--token", args.token])
         conman_args.extend(args)
         exec_cmd(conman_args)
 
