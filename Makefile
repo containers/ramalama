@@ -1,4 +1,6 @@
 MAKEFLAGS += -j2
+OS := $(shell uname;)
+
 default: help
 
 help:
@@ -37,7 +39,10 @@ docs:
 
 .PHONY: test
 test:
+ifeq ($(OS),Linux)
 	hack/man-page-checker
+	hack/xref-helpmsgs-manpages
+endif
 	test/ci.sh
 
 .PHONY: clean

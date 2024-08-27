@@ -9,8 +9,13 @@ ramalama\-pull - Pull AI Models into local storage
 ## DESCRIPTION
 Pull specified AI Model into local storage
 
+## OPTIONS
+
+#### **--help**, **-h**
+Print usage message
+
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)
+**[ramalama(1)](ramalama.1.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

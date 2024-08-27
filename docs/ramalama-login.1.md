@@ -13,9 +13,8 @@ Login to remote model registry
 
 Options are specific to registry types.
 
-#### **--username**, **-u**=*username*
-
-Username for registry
+#### **--help**, **-h**
+Print usage message
 
 #### **--password**, **-p**=*password*
 
@@ -28,6 +27,10 @@ Take the password from stdin
 #### **--token**
 
 Token to be passed to Model registry
+
+#### **--username**, **-u**=*username*
+
+Username for registry
 
 ## EXAMPLE
 
@@ -47,7 +50,7 @@ $ ramalama login --token=XYZ ollama
 ```
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)
+**[ramalama(1)](ramalama.1.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

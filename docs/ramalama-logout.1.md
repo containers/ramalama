@@ -13,6 +13,9 @@ Logout to remote model registry
 
 Options are specific to registry types.
 
+#### **--help**, **-h**
+Print usage message
+
 #### **--token**
 
 Token to be passed to Model registry
@@ -34,7 +37,7 @@ Logout from huggingface
 $ ramalama logout --token=XYZ huggingface
 ```
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)
+**[ramalama(1)](ramalama.1.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
