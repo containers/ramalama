@@ -54,13 +54,13 @@ Use environment variale "RAMALAMA_IN_CONTAINER=false" to change default.
 | Command                                          | Description                                                                 |
 | ------------------------------------------------ | --------------------------------------------------------------------------- |
 | [ramalama-list(1)](ramalama-list.1.md)  | List all AI models in local storage.                       |
-| [ramalama-login(1)](ramalama-login.1.md)| Login to model registry.                                   |
-| [ramalama-logout(1)](ramalama-logout.1.md)| Logout from model registry.                              |
-| [ramalama-pull(1)](ramalama-pull.1.md)  | Pull AI Model from registry to local storage                |
-| [ramalama-push(1)](ramalama-push.1.md)  | Push specified AI Model (OCI-only at present)               |
-| [ramalama-run(1)](ramalama-run.1.md)    | Run a chatbot on AI Model.                                  |
-| [ramalama-serve(1)](ramalama-serve.1.md)| Serve local AI Model as an API Service.                     |
-| [ramalama-version(1)](ramalama-version.1.md)| Print ramalama version                                  |
+| [ramalama-login(1)](ramalama-login.1.md)| Login to remote model registry.                            |
+| [ramalama-logout(1)](ramalama-logout.1.md)| Logout from remote model registry.                       |
+| [ramalama-pull(1)](ramalama-pull.1.md)  | Pull AI Models into local storage.                         |
+| [ramalama-push(1)](ramalama-push.1.md)  | Push AI Model (OCI-only at present)                        |
+| [ramalama-run(1)](ramalama-run.1.md)    | Run specified AI Model as a chatbot.                       |
+| [ramalama-serve(1)](ramalama-serve.1.md)| Serve specified AI Model as an API server.                 |
+| [ramalama-version(1)](ramalama-version.1.md)| Display the ramalama version                           |
 
 ## CONFIGURATION FILES
 

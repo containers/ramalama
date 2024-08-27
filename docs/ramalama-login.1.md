@@ -1,7 +1,7 @@
 % ramalama-login 1
 
 ## NAME
-ramalama - Login to remote model registry
+ramalama\-login - Login to remote model registry
 
 ## SYNOPSIS
 **ramalama login** [*options*]

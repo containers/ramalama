@@ -1,7 +1,7 @@
 % ramalama-list 1
 
 ## NAME
-ramalama - List all the AI Models in local storage
+ramalama\-list - List all AI models in local storage
 
 ## SYNOPSIS
 **ramalama list** [*options*]
