@@ -53,6 +53,10 @@ main() {
   ./${binfile} pull ollama://tinyllama:1.1b
   ./${binfile} pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
   ./${binfile} pull oci://quay.io/mmortari/gguf-py-example:v1
+  ./${binfile} list --noheading
+  ./${binfile} list -n
+  ./${binfile} list --json
+  ./${binfile} list --help
   ./${binfile} list | grep tinyllama
   ./${binfile} list | grep tiny-vicuna-1b
   ./${binfile} list | grep NAME

@@ -6,6 +6,14 @@ ramalama - Run specified AI Model as a chatbot
 ## SYNOPSIS
 **ramalama run** [*options*] *model*
 
+## OPTIONS
+
+#### **--prompt**
+
+Modify the prompt in the AI Chatbot
+
+#### **--password**, **-p**=*password*
+
 ## DESCRIPTION
 Run specified AI Model as a chat bot. Ramalama pulls specified AI Model from
 registry if it does not exist in local storage.
