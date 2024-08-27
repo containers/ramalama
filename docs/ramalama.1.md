@@ -7,9 +7,17 @@ ramalama - Simple management tool for working with AI Models
 **ramalama** [*options*] *command*
 
 ## DESCRIPTION
-Ramalama : The goal of ramalama is to make AI boring.
+Ramalama : The goal of ramalama is to make AI boring. Ramalama can pull an AI
+Model from model registires and start a chatbot or serve as a rest API from a
+simple single command. It treats Models similar to the way that Podman or
+Docker treat container images.
 
-Ramalama supports multiple types of model registries. Currently the following types of AI Model registries (transports):
+Ramalama runs models with a specially designed container image containing all
+of the tooling required to run the Model. Users d ont need to pre-configure
+the host system.
+
+Ramalama supports multiple model registries types called transports.
+Supported transports:
 
 * HuggingFace : [`huggingface.co`](https://www.huggingface.co)
 
@@ -18,17 +26,28 @@ Ramalama supports multiple types of model registries. Currently the following ty
 * OCI : [`opencontainers.org`](https://opencontainers.org)
 (quay.io, docker.io, Artifactory)
 
-RamaLama uses the OCI registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default.
-
-`export RAMALAMA_TRANSPORT=ollama`
-
-Changes RamaLama to use ollama transport.
+RamaLama uses the OCI registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=ollama` Changes RamaLama to use ollama transport.
 
 Individual model transports can be modifies when specifying a model via the `huggingface://`, `oci://`, or `ollama://` prefix.
 
-`ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf`
+ramalama pull `huggingface://`afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
 
-**ramalama [GLOBAL OPTIONS]**
+## GLOBAL OPTIONS
+
+#### **-h**, **--help**
+
+Show this help message and exit
+
+#### **--store**=STORE
+
+Store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
+
+#### **--dryrun**
+Show container runtime command without executing it (default: False)
+
+#### **--nocontainer**
+Do not run ramamlama in the default container (default: False)
+Use environment variale "RAMALAMA_IN_CONTAINER=false" to change default.
 
 ## COMMANDS
 

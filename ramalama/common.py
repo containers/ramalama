@@ -17,12 +17,6 @@ def in_container():
 
 
 def container_manager():
-    if in_container() or sys.platform == "darwin":
-        return ""
-
-    if sys.platform != "linux":
-        raise NotImplementedError("ramalama currently only works on linux")
-
     if available("podman"):
         return "podman"
 

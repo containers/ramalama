@@ -72,9 +72,9 @@ class Ollama(Model):
         super().__init__(model.removeprefix("ollama://"))
         self.type = "Olama"
 
-    def pull(self, store):
-        repos = store + "/repos/ollama"
-        models = store + "/models/ollama"
+    def pull(self, args):
+        repos = args.store + "/repos/ollama"
+        models = args.store + "/models/ollama"
         registry = "https://registry.ollama.ai"
         if '/' in self.model:
             model_full = self.model

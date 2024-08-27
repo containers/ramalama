@@ -5,12 +5,12 @@ from ramalama.common import run_cmd
 from ramalama.model import Model
 
 
-def download(ramalama_store, model, directory, filename):
-    return run_cmd(["huggingface-cli", "download", directory, filename, "--cache-dir", ramalama_store + "/repos/huggingface/.cache", "--local-dir", ramalama_store + "/repos/huggingface/" + directory])
+def download(store, model, directory, filename):
+    return run_cmd(["huggingface-cli", "download", directory, filename, "--cache-dir", store + "/repos/huggingface/.cache", "--local-dir", store + "/repos/huggingface/" + directory])
 
 
-def try_download(ramalama_store, model, directory, filename):
-    proc = download(ramalama_store, model, directory, filename)
+def try_download(store, model, directory, filename):
+    proc = download(store, model, directory, filename)
     return proc.stdout.decode('utf-8')
 
 
@@ -32,7 +32,7 @@ class Huggingface(Model):
         conman_args.extend(args)
         exec_cmd(conman_args)
 
-    def pull(self, store):
+    def pull(self, args):
         split = self.model.rsplit('/', 1)
         directory = ""
         if len(split) > 1:
@@ -41,8 +41,8 @@ class Huggingface(Model):
         else:
             filename = split[0]
 
-        gguf_path = try_download(store, self.model, directory, filename)
-        directory = f"{store}/models/huggingface/{directory}"
+        gguf_path = try_download(args.store, self.model, directory, filename)
+        directory = f"{args.store}/models/huggingface/{directory}"
         os.makedirs(directory, exist_ok=True)
         symlink_path = f"{directory}/{filename}"
         relative_target_path = os.path.relpath(

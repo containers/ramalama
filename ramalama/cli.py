@@ -1,54 +1,84 @@
 #!/usr/bin/python3
 
+from argparse import ArgumentParser
+from pathlib import Path
+import argparse
 import glob
 import json
-import logging
 import os
 import re
 import subprocess
 import sys
 import time
-from pathlib import Path
-from argparse import ArgumentParser
 
 from ramalama.huggingface import Huggingface
+from ramalama.common import in_container, container_manager, exec_cmd
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.version import version
 
 
-def usage(exit=0):
-    print("Usage:")
-    print(f"  {os.path.basename(__file__)} COMMAND")
-    print()
-    print("Commands:")
-    print("  list              List models")
-    print("  login             Login to specified registry")
-    print("  logout            Logout from the specified registry")
-    print("  pull MODEL        Pull a model")
-    print("  push MODEL TARGET Push a model to target")
-    print("  run MODEL         Run a model")
-    print("  serve MODEL       Serve a model")
-    print("  version           Version of ramalama")
-    sys.exit(exit)
+def use_container():
+    transport = os.getenv("RAMALAMA_IN_CONTAINER", "true")
+    return transport.lower() == "true"
 
 
-def login_cli(store, args, port):
-    parser = ArgumentParser()
-    parser.add_argument('login')           # positional argument
-    parser.add_argument("-u", "--username", dest="username",
-                        help="Username for registry")
+def init_cli():
+    parser = ArgumentParser(prog='ramalama',
+                            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                            description="Simple management tool for working with AI Models.")
+    parser.add_argument("--store",
+                        default=get_store(),
+                        help="store AI Models in the specified directory")
+    parser.add_argument("--dryrun",
+                        action='store_true',
+                        help="show container runtime command without executing it")
+    parser.add_argument("--nocontainer",
+                        default=not use_container(),
+                        action='store_true',
+                        help="do not run ramamlama in the default container")
+
+    subparsers = parser.add_subparsers(dest='subcommand')
+    subparsers.required = True
+    list_parser(subparsers)
+    login_parser(subparsers)
+    logout_parser(subparsers)
+    pull_parser(subparsers)
+    push_parser(subparsers)
+    run_parser(subparsers)
+    serve_parser(subparsers)
+    version_parser(subparsers)
+    # Parse CLI
+    args = parser.parse_args()
+    # create stores directories
+    mkdirs(args.store)
+    run_container(args)
+
+    # Process CLI
+    args.func(args)
+
+
+def login_parser(subparsers):
+    parser = subparsers.add_parser('login', help='Login to remote registry')
+    # Do not run in a container
+    parser.add_argument("--nocontainer",
+                        action='store_true',
+                        help=argparse.SUPPRESS)
     parser.add_argument("-p", "--password", dest="password",
-                        help="Password for registry")
+                        help="password for registry")
     parser.add_argument("--password-stdin", dest="passwordstdin",
                         action='store_true',
-                        help="Take the password for registry from stdin")
+                        help="take the password for registry from stdin")
     parser.add_argument("--token", dest="token",
-                        help="Token for registry")
+                        help="token for registry")
+    parser.add_argument("-u", "--username", dest="username",
+                        help="username for registry")
     parser.add_argument('transport', nargs='?', type=str,
                         default="")  # positional argument
-    args = parser.parse_args()
+    parser.set_defaults(func=login_cli)
 
+
+def login_cli(args):
     transport = args.transport
     if transport != "":
         transport = os.getenv("RAMALAMA_TRANSPORT")
@@ -56,20 +86,26 @@ def login_cli(store, args, port):
     return model.login(args)
 
 
-def logout_cli(store, args, port):
-    parser = ArgumentParser()
-    parser.add_argument('login')           # positional argument
+def logout_parser(subparsers):
+    parser = subparsers.add_parser(
+        'logout', help='Logout from remote registry')
+    # Do not run in a container
+    parser.add_argument("--nocontainer",
+                        action='store_true',
+                        help=argparse.SUPPRESS)
     parser.add_argument("--token", dest="token",
                         help="Token for registry")
     parser.add_argument('transport', nargs='?', type=str,
                         default="")  # positional argument
-    args = parser.parse_args()
+    parser.set_defaults(func=logout_cli)
 
+
+def logout_cli(args):
     transport = args.transport
     if transport != "":
         transport = os.getenv("RAMALAMA_TRANSPORT")
     model = New(str(transport))
-    return model.login(args)
+    return model.logout(args)
 
 
 def mkdirs(store):
@@ -127,20 +163,23 @@ def list_files_by_modification():
                   reverse=True)
 
 
-def list_cli(store, args, port):
-    parser = ArgumentParser()
-    parser.add_argument('list')           # positional argument
+def list_parser(subparsers):
+    parser = subparsers.add_parser(
+        'list', help='List all downloaded AI Models')
     parser.add_argument("-n", "--noheading", dest="noheading",
                         action='store_true',
-                        help="Do not display heading")
+                        help="do not display heading")
     parser.add_argument("--json", dest="json",
                         action='store_true',
-                        help="Print using json")
-    args = parser.parse_args()
+                        help="print using json")
+    parser.set_defaults(func=list_cli)
+
+
+def list_cli(args):
     if not args.noheading:
         print(f"{'NAME':<67} {'MODIFIED':<15} {'SIZE':<6}")
     mycwd = os.getcwd()
-    os.chdir(f"{store}/models/")
+    os.chdir(f"{args.store}/models/")
     models = []
     for path in list_files_by_modification():
         if path.is_symlink():
@@ -161,63 +200,79 @@ def list_cli(store, args, port):
         print(json.dumps(json_dict))
 
 
-def pull_cli(store, args, port):
-    parser = ArgumentParser()
-    parser.add_argument('pull')           # positional argument
+def pull_parser(subparsers):
+    parser = subparsers.add_parser(
+        'pull', help='Pull AI model from model registry to local storage')
     parser.add_argument('model')         # positional argument
-    args = parser.parse_args()
+    parser.set_defaults(func=pull_cli)
 
+
+def pull_cli(args):
     model = New(args.model)
-    matching_files = glob.glob(f"{store}/models/*/{model}")
+    matching_files = glob.glob(f"{args.store}/models/*/{model}")
     if matching_files:
         return matching_files[0]
 
-    return model.pull(store)
+    return model.pull(args)
 
 
-def push_cli(store, args, port):
-    parser = ArgumentParser()
-    parser.add_argument('push')           # positional argument
+def push_parser(subparsers):
+    parser = subparsers.add_parser(
+        'push', help='Push AI Model from local storate to remote model registry')
     parser.add_argument('model')         # positional argument
     parser.add_argument('target')         # positional argument
-    args = parser.parse_args()
+    parser.set_defaults(func=push_cli)
 
+
+def push_cli(args):
     model = New(args.model)
-    model.push(store, args.target)
+    model.push(args)
 
 
-def run_cli(store, args, port):
-    parser = ArgumentParser()
-    parser.add_argument('run')           # positional argument
+def run_parser(subparsers):
+    parser = subparsers.add_parser(
+        'run', help='Run chatbot on specified AI Model')
     parser.add_argument("--prompt", dest="prompt",
                         action='store_true',
                         help="modify chatbot prompt")
     parser.add_argument('model')         # positional argument
     parser.add_argument('args', nargs='*',
                         help='additinal options to pass to the AI Model')
-    args = parser.parse_args()
+    parser.set_defaults(func=run_cli)
 
+
+def run_cli(args):
     model = New(args.model)
-    model.run(store, args.args)
+    model.run(args)
 
 
-def serve_cli(store, args, port):
-    parser = ArgumentParser()
-    parser.add_argument('serve')           # positional argument
-    parser.add_argument("--port", dest="port",
+def serve_parser(subparsers):
+    port = "8080"
+    host = os.getenv('RAMALAMA_HOST', port)
+    split = host.rsplit(':', 1)
+    if len(split) > 1:
+        port = split[1]
+
+    parser = subparsers.add_parser(
+        'serve', help='Serve RESTAPI on specified AI Model')
+    parser.add_argument("--port", default=port,
                         help="port for AI Model server to listen on")
     parser.add_argument('model')         # positional argument
-    args = parser.parse_args()
+    parser.set_defaults(func=serve_cli)
 
+
+def serve_cli(args):
     model = New(args.model)
-    model.serve(store, args.port)
+    model.serve(args)
 
 
-def version_cli():
-    parser = ArgumentParser()
-    parser.add_argument('version')           # positional argument
-    args = parser.parse_args()
+def version_parser(subparsers):
+    parser = subparsers.add_parser(
+        'version', help='Display version of AI Model')
+    parser.set_defaults(func=version_cli)
 
+
+def version_cli(args):
     version()
 
 
@@ -228,22 +283,51 @@ def get_store():
     return os.path.expanduser("~/.local/share/ramalama")
 
 
-def create_store():
-    store = get_store()
-    mkdirs(store)
-    return store
+def run_container(args):
+    if args.nocontainer or in_container():
+        return
 
+    conman = container_manager()
+    if conman == "":
+        return
 
-funcDict = {}
-funcDict["list"] = list_cli
-funcDict["login"] = login_cli
-funcDict["logout"] = logout_cli
-funcDict["ls"] = list_cli
-funcDict["pull"] = pull_cli
-funcDict["push"] = push_cli
-funcDict["run"] = run_cli
-funcDict["serve"] = serve_cli
-funcDict["version"] = version_cli
+    home = os.path.expanduser('~')
+    wd = "./ramalama"
+    for p in sys.path:
+        target = p+"ramalama"
+        if os.path.exists(target):
+            wd = target
+            break
+
+    port = "8080"
+    host = os.getenv('RAMALAMA_HOST', port)
+
+    conman_args = [conman, "run",
+                   "--rm",
+                   "-it",
+                   "--security-opt=label=disable",
+                   f"-v{args.store}:/var/lib/ramalama",
+                   f"-v{home}:{home}",
+                   "-v/tmp:/tmp",
+                   f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
+                   "-e", "RAMALAMA_HOST",
+                   "-e", "RAMALAMA_TRANSPORT",
+                   "-p", f"{host}:{port}",
+                   f"-v{wd}:/usr/share/ramalama/ramalama:ro"]
+    if os.path.exists("/dev/dri"):
+        conman_args += ["--device", "/dev/dri"]
+
+    if os.path.exists("/dev/kfd"):
+        conman_args += ["--device", "/dev/kfd"]
+
+    conman_args += ["quay.io/ramalama/ramalama:latest",
+                    "/usr/bin/ramalama"]
+    conman_args += sys.argv[1:]
+
+    if args.dryrun:
+        return print(*conman_args)
+
+    exec_cmd(conman_args)
 
 
 def New(model):

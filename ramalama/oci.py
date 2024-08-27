@@ -19,12 +19,11 @@ class OCI(Model):
             conman_args.extend(["--password", args.password])
         if args.passwordstdin:
             conman_args.append("--password-stdin")
-        conman_args.append(self.model)
+        conman_args.append(self.transport)
         return exec_cmd(conman_args)
 
-    def logout(self, registry, args):
+    def logout(self, args):
         conman_args = [self.conman, "logout"]
-        conman_args.extend(args)
         conman_args.append(self.model)
         return exec_cmd(conman_args)
 
@@ -39,13 +38,13 @@ class OCI(Model):
         reference_dir = reference.replace(":", "/")
         return target, registry, reference, reference_dir
 
-    def push(self, store, target):
+    def push(self, args):
         _, registry, _, reference_dir = self._target_decompose(self.model)
-        target = re.sub(r'^oci://', '', target)
+        target = re.sub(r'^oci://', '', args.target)
 
         # Validate the model exists locally
         local_model_path = os.path.join(
-            store, 'models/oci', registry, reference_dir)
+            args.store, 'models/oci', registry, reference_dir)
         if not os.path.exists(local_model_path):
             raise KeyError(
                 f"Model {self.model} not found locally. Cannot push.")
@@ -60,7 +59,7 @@ class OCI(Model):
             raise e
         return local_model_path
 
-    def pull(self, store):
+    def pull(self, args):
         try:
             registry, reference = self.model.split('/', 1)
         except:
@@ -68,7 +67,7 @@ class OCI(Model):
             reference = self.model
 
         reference_dir = reference.replace(":", "/")
-        outdir = f"{store}/repos/oci/{registry}/{reference_dir}"
+        outdir = f"{args.store}/repos/oci/{registry}/{reference_dir}"
         print(f"Downloading {self.model}...")
         # note: in the current way ramalama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir) since cannot use modules/sdk, can use only cli bindings from pip installs
         run_cmd(["omlmd", "pull", self.model, "--output", outdir])
@@ -77,7 +76,7 @@ class OCI(Model):
             raise KeyError(
                 f"Error: Unable to identify .gguf file in: {outdir}")
 
-        directory = f"{store}/models/oci/{registry}/{reference_dir}"
+        directory = f"{args.store}/models/oci/{registry}/{reference_dir}"
         os.makedirs(directory, exist_ok=True)
         symlink_path = f"{directory}/{ggufs[0]}"
         relative_target_path = os.path.relpath(
