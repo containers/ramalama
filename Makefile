@@ -37,6 +37,7 @@ docs:
 
 .PHONY: test
 test:
+	hack/man-page-checker
 	test/ci.sh
 
 .PHONY: clean

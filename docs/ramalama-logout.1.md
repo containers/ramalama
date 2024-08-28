@@ -1,7 +1,7 @@
 % ramalama-logout 1
 
 ## NAME
-ramalama - Logout from remote model registry
+ramalama\-logout - Logout from remote model registry
 
 ## SYNOPSIS
 **ramalama logout** [*options*]

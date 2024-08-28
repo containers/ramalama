@@ -1,7 +1,7 @@
 % ramalama-version 1
 
 ## NAME
-ramalama - Print version of ramalama
+ramalama\-version - Display the ramalama version
 
 ## SYNOPSIS
 **ramalama version**

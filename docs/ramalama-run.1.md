@@ -1,7 +1,7 @@
 % ramalama-run 1
 
 ## NAME
-ramalama - Run specified AI Model as a chatbot
+ramalama\-run - Run specified AI Model as a chatbot
 
 ## SYNOPSIS
 **ramalama run** [*options*] *model*
