@@ -178,7 +178,7 @@ sub xref_by_help {
 
   OPTION:
     for my $k (sort keys %$help) {
-        next if $k =~ /^_/;             # metadata ("_desc"). Ignore.
+        next if $k =~ /^_/ || $k eq "ls"; # metadata ("_desc"). Ignore.
 
         if (! ref($man)) {
             # Super-unlikely but I've seen it

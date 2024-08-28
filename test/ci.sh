@@ -60,7 +60,10 @@ main() {
   ./${binfile} list | grep tinyllama
   ./${binfile} list | grep tiny-vicuna-1b
   ./${binfile} list | grep NAME
-  ./${binfile} list | grep oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
+  ./${binfile} ls | grep tinyllama
+  ./${binfile} ls | grep tiny-vicuna-1b
+  ./${binfile} ls | grep NAME
+  ./${binfile} ls | grep oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
 #  ramalama list | grep granite-code
 #  ramalama rm granite-code
 }

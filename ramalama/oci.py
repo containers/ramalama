@@ -20,7 +20,7 @@ class OCI(Model):
             conman_args.extend(["--password", args.password])
         if args.passwordstdin:
             conman_args.append("--password-stdin")
-        conman_args.append(self.transport)
+        conman_args.append(args.transport)
         return exec_cmd(conman_args)
 
     def logout(self, args):
