@@ -44,7 +44,7 @@ main() {
 
 
   set +o pipefail
-  ./${binfile} -h | grep Usage:
+  ./${binfile} -h | grep usage:
   set -o pipefail
 
   ./${binfile} version

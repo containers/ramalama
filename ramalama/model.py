@@ -22,23 +22,23 @@ class Model:
         raise NotImplementedError(
             f"ramalama logout for {self.type} not implemented")
 
-    def pull(self, store):
+    def pull(self, args):
         raise NotImplementedError(
             f"ramalama pull for {self.type} not implemented")
 
-    def push(self, store, target):
+    def push(self, args):
         raise NotImplementedError(
             f"ramalama push for {self.type} not implemented")
 
-    def run(self, store, args):
-        symlink_path = self.pull(store)
+    def run(self, args):
+        symlink_path = self.pull(args.store)
         exec_cmd(["llama-cli", "-m",
                   symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant"])
 
-    def serve(self, store, port):
-        symlink_path = self.pull(store)
+    def serve(self, args):
+        symlink_path = self.pull(args.store)
 
-        if port:
-            port = os.getenv("RAMALAMA_HOST")
+        if args.port:
+            args.port = os.getenv("RAMALAMA_HOST")
 
-        exec_cmd(["llama-server", "--port", port, "-m", symlink_path])
+        exec_cmd(["llama-server", "--port", args.port, "-m", symlink_path])
