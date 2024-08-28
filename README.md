@@ -26,13 +26,15 @@ macOS:
 curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.py | python3
 ```
 
-## To be done
+## Hardware Support
 
-GPU support. We got some GPUs working, but we haven't pushed the containers for
-these yet that work with the various GPUs.
-
-So at present it's x86_64 CPU driven inferencing, but we intend on providing
-support for Apple Silicon, AMD, Nvidia, etc. 
+| Hardware                           | Enabled |
+| ---------------------------------- | ------- |
+| CPU                                | :white_check_mark: |
+| Apple Silicon GPU (macOS)          | :white_check_mark: |
+| Apple Silicon GPU (podman-machine) | :x: |
+| Nvidia GPU (cuda)                  | :x: |
+| AMD GPU (rocm)                     | :x: |
 
 ## Usage
 
