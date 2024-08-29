@@ -9,19 +9,16 @@ ramalama\-list - List all AI models in local storage
 ## DESCRIPTION
 List all the AI Models in local storage
 
-.SH OPTIONS
+## OPTIONS
 
-.SS \fB-h\fP \fB--help\fP
-.PP
+#### **--help**, **-h**
 Print usage message
 
-.SS \fB-n\fP, \fB--noheading\fP,
-.PP
-Do not print heading
-
-.SS \fB--json\fP
-.PP
+#### **--json**
 Print model list in json format
+
+#### **--noheading**, **-n**
+Do not print heading
 
 ## EXAMPLE
 
@@ -42,7 +39,7 @@ $ ramalama  list --json
 ```
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)
+**[ramalama(1)](ramalama.1.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

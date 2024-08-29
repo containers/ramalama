@@ -32,22 +32,24 @@ Individual model transports can be modifies when specifying a model via the `hug
 
 ramalama pull `huggingface://`afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
 
+**ramalama [GLOBAL OPTIONS]**
+
 ## GLOBAL OPTIONS
-
-#### **-h**, **--help**
-
-Show this help message and exit
-
-#### **--store**=STORE
-
-Store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
 
 #### **--dryrun**
 Show container runtime command without executing it (default: False)
 
+#### **--help**, **-h**
+
+Show this help message and exit
+
 #### **--nocontainer**
 Do not run ramamlama in the default container (default: False)
 Use environment variale "RAMALAMA_IN_CONTAINER=false" to change default.
+
+#### **--store**=STORE
+
+Store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
 
 ## COMMANDS
 
@@ -66,7 +68,7 @@ Use environment variale "RAMALAMA_IN_CONTAINER=false" to change default.
 
 
 ## SEE ALSO
-**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**)
+**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

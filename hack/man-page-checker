@@ -2,11 +2,6 @@
 #
 # man-page-checker - validate and cross-reference man page names
 #
-if [ "$(uname)" != "Linux" ]; then
-    # Only run script on Linux systems
-    exit 0
-fi
-
 verbose=
 for i; do
     case "$i" in
