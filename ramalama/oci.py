@@ -1,9 +1,10 @@
+from pathlib import Path
 import os
 import re
 import subprocess
 
 from ramalama.model import Model
-from ramalama.common import run_cmd, container_manager, exec_cmd
+from ramalama.common import run_cmd, container_manager, exec_cmd, perror
 
 
 class OCI(Model):
@@ -36,10 +37,10 @@ class OCI(Model):
                 f"You must specify a registry for the model in the form 'oci://registry.acme.org/ns/repo:tag', got instead: {self.model}")
 
         reference_dir = reference.replace(":", "/")
-        return target, registry, reference, reference_dir
+        return registry, reference, reference_dir
 
     def push(self, args):
-        _, registry, _, reference_dir = self._target_decompose(self.model)
+        registry, _, reference_dir = self._target_decompose(self.model)
         target = re.sub(r'^oci://', '', args.target)
 
         # Validate the model exists locally
