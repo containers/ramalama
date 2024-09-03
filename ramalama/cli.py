@@ -52,7 +52,8 @@ def init_cli():
     args = parser.parse_args()
     # create stores directories
     mkdirs(args.store)
-    run_container(args)
+    if run_container(args):
+        return
 
     # Process CLI
     args.func(args)
@@ -287,25 +288,29 @@ def get_store():
     return os.path.expanduser("~/.local/share/ramalama")
 
 
-def run_container(args):
-    if args.nocontainer or in_container():
-        return
-
-    conman = container_manager()
-    if conman == "":
-        return
-
-    home = os.path.expanduser('~')
+def find_working_directory():
     wd = "./ramalama"
     for p in sys.path:
-        target = p+"ramalama"
+        target = p + "ramalama"
         if os.path.exists(target):
             wd = target
             break
 
+    return wd
+
+
+def run_container(args):
+    if args.nocontainer or in_container() or sys.platform == 'darwin':
+        return False
+
+    conman = container_manager()
+    if conman == "":
+        return False
+
+    home = os.path.expanduser('~')
+    wd = find_working_directory()
     port = "8080"
     host = os.getenv('RAMALAMA_HOST', port)
-
     conman_args = [conman, "run",
                    "--rm",
                    "-it",
@@ -327,9 +332,9 @@ def run_container(args):
     conman_args += ["quay.io/ramalama/ramalama:latest",
                     "/usr/bin/ramalama"]
     conman_args += sys.argv[1:]
-
     if args.dryrun:
-        return print(*conman_args)
+        print(*conman_args)
+        return True
 
     exec_cmd(conman_args)
 
