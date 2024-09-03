@@ -36,7 +36,7 @@ def amd_lshw():
 
 def download(url, to):
     curl_cmd = [
-        "curl", "--globoff", "--location", "--proto-default", "https",
+        "curl", "--globoff", "--location", "--proto-default", "https", "-f",
         "-o", to, "--remote-time", "--retry", "10", "--retry-max-time", "10", url
     ]
     subprocess.run(curl_cmd, check=True)
@@ -70,7 +70,8 @@ def main():
         binfile = "ramalama"
         from_file = binfile + ".py"
         host = "https://raw.githubusercontent.com"
-        url = f"{host}/containers/ramalama/s/{from_file}"
+        branch = os.getenv('BRANCH', 's')
+        url = f"{host}/containers/ramalama/{branch}/{from_file}"
         to_file = os.path.join(tmp_dir, from_file)
         download(url, to_file)
         if sys.platform == 'darwin':  # macOS
