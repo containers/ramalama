@@ -4,45 +4,31 @@ available() {
   command -v "$1" > /dev/null
 }
 
-main() {
-  set -ex -o pipefail
+mac_steps() {
+  ./install.py
+}
 
-  local maybe_sudo=""
-  if [ "$EUID" -ne 0 ]; then
-    maybe_sudo="sudo"
-  fi
-
-  local os
-  os="$(uname -s)"
+linux_steps() {
   if ! available autopep8; then
-    if [ "$os" = "Linux" ]; then
-      if available apt; then
-        $maybe_sudo apt install -y python3-autopep8
-      else
-        $maybe_sudo dnf install -y python3-autopep8
-      fi
+    if available apt; then
+      $maybe_sudo apt install -y python3-autopep8
+    else
+      $maybe_sudo dnf install -y python3-autopep8
     fi
   fi
 
-  binfile=ramalama.py
-  chmod +x ${binfile} install.py
-
-  # only for macOS for now, which doesn't have containers
-  if [ "$os" == "Darwin" ]; then
-    /usr/bin/python3 --version
-    pip install "huggingface_hub[cli]==0.24.2"
-    huggingface-cli --help
-    pip install "omlmd==0.1.4"
-    omlmd --help
-    ./install.py # todo macos support
-  else
-    ./container_build.sh
-    autopep8 --in-place --exit-code *.py ramalama/*py # Check style is correct
-    shellcheck -- *.sh
-    $maybe_sudo ./install.py # todo macos support
+  ./container_build.sh
+  autopep8 --in-place --exit-code *.py ramalama/*py # Check style is correct
+  shellcheck -- *.sh
+  if [ -n "$BRANCH" ]; then
+    $maybe_sudo BRANCH=$BRANCH ./install.py
+    return
   fi
 
+  $maybe_sudo ./install.py
+}
 
+tests() {
   set +o pipefail
   ./${binfile} -h | grep usage:
   set -o pipefail
@@ -64,8 +50,35 @@ main() {
   ./${binfile} ls | grep tiny-vicuna-1b
   ./${binfile} ls | grep NAME
   ./${binfile} ls | grep oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
-#  ramalama list | grep granite-code
-#  ramalama rm granite-code
+}
+
+main() {
+  set -ex -o pipefail
+
+  local maybe_sudo=""
+  if [ "$EUID" -ne 0 ]; then
+    maybe_sudo="sudo"
+  fi
+
+  local os
+  os="$(uname -s)"
+  binfile=ramalama.py
+  chmod +x ${binfile} install.py
+  uname -a
+  /usr/bin/python3 --version
+  if [ -n "$GITHUB_HEAD_REF" ]; then
+    export BRANCH="$GITHUB_HEAD_REF"
+  elif [ -n "$GITHUB_REF_NAME" ]; then
+    export BRANCH="$GITHUB_REF_NAME"
+  fi
+
+  if [ "$os" == "Darwin" ]; then
+    mac_steps
+  else
+    linux_steps
+  fi
+
+  tests
 }
 
 main
