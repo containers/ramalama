@@ -31,12 +31,12 @@ class Model:
             f"ramalama push for {self.type} not implemented")
 
     def run(self, args):
-        symlink_path = self.pull(args.store)
+        symlink_path = self.pull(args)
         exec_cmd(["llama-cli", "-m",
                   symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant"])
 
     def serve(self, args):
-        symlink_path = self.pull(args.store)
+        symlink_path = self.pull(args)
 
         if args.port:
             args.port = os.getenv("RAMALAMA_HOST")

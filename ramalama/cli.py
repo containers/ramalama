@@ -163,16 +163,20 @@ def list_files_by_modification():
                   reverse=True)
 
 
-def list_parser(subparsers):
-    parser = subparsers.add_parser(
-        'list', help='List all downloaded AI Models')
+def add_list_parser(subparsers, name, func):
+    parser = subparsers.add_parser(name, help='List all downloaded AI Models')
     parser.add_argument("-n", "--noheading", dest="noheading",
                         action='store_true',
                         help="do not display heading")
     parser.add_argument("--json", dest="json",
                         action='store_true',
                         help="print using json")
-    parser.set_defaults(func=list_cli)
+    parser.set_defaults(func=func)
+
+
+def list_parser(subparsers):
+    add_list_parser(subparsers, 'list', list_cli)
+    add_list_parser(subparsers, 'ls', list_cli)
 
 
 def list_cli(args):
@@ -254,7 +258,7 @@ def serve_parser(subparsers):
         port = split[1]
 
     parser = subparsers.add_parser(
-        'serve', help='Serve RESTAPI on specified AI Model')
+        'serve', help='Serve REST API on specified AI Model')
     parser.add_argument("--port", default=port,
                         help="port for AI Model server to listen on")
     parser.add_argument('model')         # positional argument
