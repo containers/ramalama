@@ -252,15 +252,9 @@ def run_cli(args):
 
 
 def serve_parser(subparsers):
-    port = "8080"
-    host = os.getenv('RAMALAMA_HOST', port)
-    split = host.rsplit(':', 1)
-    if len(split) > 1:
-        port = split[1]
-
     parser = subparsers.add_parser(
         'serve', help='Serve REST API on specified AI Model')
-    parser.add_argument("--port", default=port,
+    parser.add_argument("--port", default="8080",
                         help="port for AI Model server to listen on")
     parser.add_argument('model')         # positional argument
     parser.set_defaults(func=serve_cli)
@@ -309,8 +303,6 @@ def run_container(args):
 
     home = os.path.expanduser('~')
     wd = find_working_directory()
-    port = "8080"
-    host = os.getenv('RAMALAMA_HOST', port)
     conman_args = [conman, "run",
                    "--rm",
                    "-it",
@@ -319,10 +311,12 @@ def run_container(args):
                    f"-v{home}:{home}",
                    "-v/tmp:/tmp",
                    f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
-                   "-e", "RAMALAMA_HOST",
                    "-e", "RAMALAMA_TRANSPORT",
-                   "-p", f"{host}:{port}",
                    f"-v{wd}:/usr/share/ramalama/ramalama:ro"]
+
+    if hasattr(args, 'port'):
+        conman_args += ["-p", f"{args.port}:{args.port}"]
+
     if os.path.exists("/dev/dri"):
         conman_args += ["--device", "/dev/dri"]
 

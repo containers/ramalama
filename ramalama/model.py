@@ -37,8 +37,4 @@ class Model:
 
     def serve(self, args):
         symlink_path = self.pull(args)
-
-        if args.port:
-            args.port = os.getenv("RAMALAMA_HOST")
-
         exec_cmd(["llama-server", "--port", args.port, "-m", symlink_path])
