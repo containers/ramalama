@@ -37,12 +37,25 @@ build:
 docs:
 	make -C docs
 
-.PHONY: test
-test:
+.PHONY: autopep8
+autopep8:
+	@pip install -q autopep8
+	autopep8 --in-place --exit-code *.py ramalama/*py # Check style is correct
+
+.PHONY: codespell
+codespell:
+	@pip install -q codespell
+	codespell --dictionary=- -w
+
+.PHONY: validate
+validate: codespell autopep8
 ifeq ($(OS),Linux)
 	hack/man-page-checker
 	hack/xref-helpmsgs-manpages
 endif
+
+.PHONY: test
+test: validate
 	test/ci.sh
 
 .PHONY: clean

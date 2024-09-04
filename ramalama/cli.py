@@ -36,7 +36,7 @@ def init_cli():
     parser.add_argument("--nocontainer",
                         default=not use_container(),
                         action='store_true',
-                        help="do not run ramamlama in the default container")
+                        help="do not run ramalama in the default container")
 
     subparsers = parser.add_subparsers(dest='subcommand')
     subparsers.required = True
