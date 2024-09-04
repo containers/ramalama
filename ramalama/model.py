@@ -33,7 +33,7 @@ class Model:
     def run(self, args):
         symlink_path = self.pull(args)
         exec_cmd(["llama-cli", "-m",
-                  symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant"])
+                  symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant", "--in-prefix", "", "--in-suffix", "", "--no-display-prompt"])
 
     def serve(self, args):
         symlink_path = self.pull(args)
