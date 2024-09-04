@@ -9,16 +9,7 @@ mac_steps() {
 }
 
 linux_steps() {
-  if ! available autopep8; then
-    if available apt; then
-      $maybe_sudo apt install -y python3-autopep8
-    else
-      $maybe_sudo dnf install -y python3-autopep8
-    fi
-  fi
-
   ./container_build.sh
-  autopep8 --in-place --exit-code *.py ramalama/*py # Check style is correct
   shellcheck -- *.sh
   if [ -n "$BRANCH" ]; then
     $maybe_sudo BRANCH=$BRANCH ./install.py
@@ -72,6 +63,9 @@ main() {
     export BRANCH="$GITHUB_REF_NAME"
   fi
 
+  pip install codespell
+  pip install autopep8
+  autopep8 --in-place --exit-code *.py ramalama/*py # Check style is correct
   if [ "$os" == "Darwin" ]; then
     mac_steps
   else
