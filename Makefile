@@ -67,6 +67,8 @@ endif
 .PHONY: test
 test: validate
 	test/ci.sh
+	make clean
+	hack/tree_status.sh
 
 .PHONY: clean
 clean:
