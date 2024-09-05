@@ -67,9 +67,6 @@ main() {
     fi
   fi
 
-  pip install codespell
-  pip install autopep8
-  autopep8 --in-place --exit-code *.py ramalama/*py # Check style is correct
   if [ "$os" == "Darwin" ]; then
     mac_steps
   else

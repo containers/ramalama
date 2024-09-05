@@ -44,8 +44,8 @@ Show container runtime command without executing it (default: False)
 Show this help message and exit
 
 #### **--nocontainer**
-Do not run ramamlama in the default container (default: False)
-Use environment variale "RAMALAMA_IN_CONTAINER=false" to change default.
+Do not run ramalama in the default container (default: False)
+Use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
 
 #### **--store**=STORE
 
