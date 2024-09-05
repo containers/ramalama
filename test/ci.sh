@@ -55,16 +55,13 @@ main() {
   os="$(uname -s)"
   binfile=ramalama.py
   chmod +x ${binfile} install.py
+  env
   uname -a
   /usr/bin/python3 --version
-
-  export BRANCH="main"
-  if false; then # This doesn't work for forked repos, will revisit
-    if [ -n "$GITHUB_HEAD_REF" ]; then
-      export BRANCH="$GITHUB_HEAD_REF"
-    elif [ -n "$GITHUB_REF_NAME" ]; then
-      export BRANCH="$GITHUB_REF_NAME"
-    fi
+  if [ -n "$GITHUB_HEAD_REF" ]; then
+    export BRANCH="$GITHUB_HEAD_REF"
+  elif [ -n "$GITHUB_REF_NAME" ]; then
+    export BRANCH="$GITHUB_REF_NAME"
   fi
 
   if [ "$os" == "Darwin" ]; then
