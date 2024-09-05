@@ -73,6 +73,12 @@ main() {
     linux_steps
   fi
 
+  go install github.com/cpuguy83/go-md2man@latest
+  tmpdir=$(mktemp -d)
+  make install DESTDIR=${tmpdir} PREFIX=/usr
+  find ${tmpdir}
+  rm -rf $tmpdir
+
   tests
 }
 

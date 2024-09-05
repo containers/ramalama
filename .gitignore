@@ -1,2 +1,6 @@
 __pycache__
-*.1
+docs/*.1
+build
+ramalama.egg-info
+*.patch
+dist
