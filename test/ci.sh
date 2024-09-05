@@ -57,10 +57,14 @@ main() {
   chmod +x ${binfile} install.py
   uname -a
   /usr/bin/python3 --version
-  if [ -n "$GITHUB_HEAD_REF" ]; then
-    export BRANCH="$GITHUB_HEAD_REF"
-  elif [ -n "$GITHUB_REF_NAME" ]; then
-    export BRANCH="$GITHUB_REF_NAME"
+
+  export BRANCH="main"
+  if false; then # This doesn't work for forked repos, will revisit
+    if [ -n "$GITHUB_HEAD_REF" ]; then
+      export BRANCH="$GITHUB_HEAD_REF"
+    elif [ -n "$GITHUB_REF_NAME" ]; then
+      export BRANCH="$GITHUB_REF_NAME"
+    fi
   fi
 
   pip install codespell
