@@ -18,7 +18,7 @@ ENV GGML_CCACHE=0
 
 RUN git clone https://github.com/ggerganov/llama.cpp && \
     cd llama.cpp && \
-    git reset --hard 50addec9a532a6518146ab837a85504850627316 && \
+    git reset --hard 32b2ec88bc44b086f3807c739daf28a1613abde1 && \
     cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 && \
     cmake --build build --config Release -j $(nproc) && \
     cmake --install build && \
