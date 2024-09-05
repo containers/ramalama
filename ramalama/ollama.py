@@ -70,7 +70,7 @@ def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, mo
 class Ollama(Model):
     def __init__(self, model):
         super().__init__(model.removeprefix("ollama://"))
-        self.type = "Olama"
+        self.type = "Ollama"
 
     def pull(self, args):
         repos = args.store + "/repos/ollama"
@@ -78,6 +78,7 @@ class Ollama(Model):
         registry = "https://registry.ollama.ai"
         if '/' in self.model:
             model_full = self.model
+            models = os.path.join(models, model_full.rsplit("/", 1)[0])
         else:
             model_full = "library/" + self.model
 
