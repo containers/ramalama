@@ -349,4 +349,4 @@ def New(model):
     if transport == "oci":
         return OCI(model)
 
-    return OCI(model)
+    return Ollama(model)
