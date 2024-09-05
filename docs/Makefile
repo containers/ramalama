@@ -1,14 +1,20 @@
 PREFIX := /usr/local
 DATADIR := ${PREFIX}/share
 MANDIR := $(DATADIR)/man
+GO ?= go
 GOMD2MAN ?= go-md2man
 ifeq ($(shell uname -s),FreeBSD)
 SED=gsed
 else
 SED=sed
 endif
+# This must never include the 'hack' directory
+export PATH := $(shell $(GO) env GOPATH)/bin:$(PATH)
 
-docs: $(patsubst %.md,%,$(wildcard *.md))
+gomd2man:
+	go install github.com/cpuguy83/go-md2man@latest
+
+docs:  gomd2man $(patsubst %.md,%,$(wildcard *.md))
 
 %.1: %.1.md
 ### sed is used to filter http/s links as well as relative links
@@ -22,7 +28,7 @@ docs: $(patsubst %.md,%,$(wildcard *.md))
 	$(GOMD2MAN) -in /dev/stdin -out  $@
 
 .PHONY: install
-install:
+install: docs
 	install -d ${DESTDIR}/${MANDIR}/man1
 	install -m 0644 ramalama*.1 ${DESTDIR}/${MANDIR}/man1
 	install -m 0644 links/ramalama*.1 ${DESTDIR}/${MANDIR}/man1
@@ -30,4 +36,3 @@ install:
 .PHONY: clean
 clean:
 	$(RM) ramalama*.1
-

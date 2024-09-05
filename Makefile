@@ -1,5 +1,10 @@
 MAKEFLAGS += -j2
 OS := $(shell uname;)
+SELINUXOPT ?= $(shell test -x /usr/sbin/selinuxenabled && selinuxenabled && echo -Z)
+PREFIX ?= /usr/local
+BINDIR ?= ${PREFIX}/bin
+PYTHON ?= $(shell command -v python3 python|head -n1)
+DESTDIR ?= /
 
 default: help
 
@@ -27,8 +32,13 @@ help:
 
 .PHONY:
 install:
-	./install.py
-	make -c docs install
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(BINDIR)
+	install ${SELINUXOPT} -m 755 ramalama.py \
+		$(DESTDIR)$(BINDIR)/ramalama
+	RAMALAMA_VERSION=$(RAMALAMA_VERSION) \
+	pip install . --root $(DESTDIR) --prefix ${PREFIX}
+
+	make -C docs install
 .PHONY:
 build:
 	./container_build.sh
@@ -61,3 +71,6 @@ test: validate
 .PHONY: clean
 clean:
 	@find . -name \*~ -delete
+	@find . -name \*# -delete
+	rm -rf $$(<.gitignore)
+	make -C docs clean
