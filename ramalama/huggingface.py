@@ -1,7 +1,7 @@
 import os
 import re
 from ramalama import *
-from ramalama.common import run_cmd
+from ramalama.common import run_cmd, exec_cmd
 from ramalama.model import Model
 
 
