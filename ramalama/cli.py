@@ -230,7 +230,7 @@ def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="Run chatbot on specified AI Model")
     parser.add_argument("--prompt", dest="prompt", action="store_true", help="modify chatbot prompt")
     parser.add_argument("model")  # positional argument
-    parser.add_argument("args", nargs="*", help="additinal options to pass to the AI Model")
+    parser.add_argument("args", nargs="*", help="additional options to pass to the AI Model")
     parser.set_defaults(func=run_cli)
 
 
