@@ -1,6 +1,7 @@
-__pycache__
+ramalama/__pycache__
 docs/*.1
 build
 *.egg-info
 *.patch
+ramalama/*.patch
 dist

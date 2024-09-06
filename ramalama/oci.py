@@ -20,7 +20,7 @@ class OCI(Model):
             conman_args.extend(["--password", args.password])
         if args.passwordstdin:
             conman_args.append("--password-stdin")
-        conman_args.append(args.transport)
+        conman_args.append(args.TRANSPORT)
         return exec_cmd(conman_args)
 
     def logout(self, args):
@@ -43,7 +43,7 @@ class OCI(Model):
 
     def push(self, args):
         registry, _, reference_dir = self._target_decompose(self.model)
-        target = re.sub(r"^oci://", "", args.target)
+        target = re.sub(r"^oci://", "", args.TARGET)
 
         # Validate the model exists locally
         local_model_path = os.path.join(args.store, "models/oci", registry, reference_dir)

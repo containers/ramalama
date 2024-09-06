@@ -5,6 +5,7 @@ PREFIX ?= /usr/local
 BINDIR ?= ${PREFIX}/bin
 PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
+PATH := $(PATH):$(HOME)/.local/bin
 
 default: help
 
@@ -52,6 +53,7 @@ docs:
 .PHONY: lint
 lint:
 	@pip install -q black flake8
+	echo $$PATH
 	black --line-length 120 --exclude 'venv/*' *.py ramalama/*.py  # Format the code
 	flake8 --max-line-length=120 --exclude=venv *.py ramalama/*.py  # Check for any inconsistencies
 
@@ -66,6 +68,10 @@ ifeq ($(OS),Linux)
 	hack/man-page-checker
 	hack/xref-helpmsgs-manpages
 endif
+
+.PHONY: bats
+bats:
+	RAMALAMA=$(CURDIR)/ramalama.py bats -T test/system/
 
 .PHONY: test
 test: validate
