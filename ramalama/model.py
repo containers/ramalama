@@ -1,4 +1,5 @@
 import os
+import sys
 from ramalama.common import container_manager, exec_cmd
 
 
@@ -7,10 +8,12 @@ class Model:
     model = ""
     conman = container_manager()
     type = "Model"
-    ctx_size = "2048"
+    common_params = ["-c", "2048"]
 
     def __init__(self, model):
         self.model = model
+        if sys.platform == 'darwin':
+            self.common_params += ["-ngl", "99"]
 
     def path(self):
         return path
@@ -33,10 +36,12 @@ class Model:
 
     def run(self, args):
         symlink_path = self.pull(args)
-        exec_cmd(["llama-cli", "-m",
-                  symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant", "--in-prefix", "", "--in-suffix", "", "--no-display-prompt", "-c", self.ctx_size])
+        exec_args = ["llama-cli", "-m",
+                     symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant", "--in-prefix", "", "--in-suffix", "", "--no-display-prompt"] + self.common_params
+        exec_cmd(exec_args)
 
     def serve(self, args):
         symlink_path = self.pull(args)
-        exec_cmd(["llama-server", "--port", args.port,
-                 "-m", symlink_path, "-c", self.ctx_size])
+        exec_args = ["llama-server", "--port", args.port,
+                     "-m", symlink_path] + self.common_params
+        exec_cmd(exec_args)
