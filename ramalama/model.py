@@ -7,6 +7,7 @@ class Model:
     model = ""
     conman = container_manager()
     type = "Model"
+    ctx_size = "2048"
 
     def __init__(self, model):
         self.model = model
@@ -33,8 +34,9 @@ class Model:
     def run(self, args):
         symlink_path = self.pull(args)
         exec_cmd(["llama-cli", "-m",
-                  symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant", "--in-prefix", "", "--in-suffix", "", "--no-display-prompt"])
+                  symlink_path, "--log-disable", "-cnv", "-p", "You are a helpful assistant", "--in-prefix", "", "--in-suffix", "", "--no-display-prompt", "-c", self.ctx_size])
 
     def serve(self, args):
         symlink_path = self.pull(args)
-        exec_cmd(["llama-server", "--port", args.port, "-m", symlink_path])
+        exec_cmd(["llama-server", "--port", args.port,
+                 "-m", symlink_path, "-c", self.ctx_size])
