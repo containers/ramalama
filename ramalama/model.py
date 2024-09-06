@@ -15,9 +15,6 @@ class Model:
         if sys.platform == 'darwin':
             self.common_params += ["-ngl", "99"]
 
-    def path(self):
-        return path
-
     def login(self, args):
         raise NotImplementedError(
             f"ramalama login for {self.type} not implemented")
