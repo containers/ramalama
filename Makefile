@@ -49,10 +49,11 @@ endif
 docs:
 	make -C docs
 
-.PHONY: autopep8
-autopep8:
-	@pip install -q autopep8
-	autopep8 --in-place --exit-code *.py ramalama/*py # Check style is correct
+.PHONY: lint
+lint:
+	@pip install -q black flake8
+	black --line-length 120 --exclude 'venv/*' *.py ramalama/*.py  # Format the code
+	flake8 --max-line-length=120 --exclude=venv *.py ramalama/*.py  # Check for any inconsistencies
 
 .PHONY: codespell
 codespell:
@@ -60,7 +61,7 @@ codespell:
 	codespell --dictionary=- -w
 
 .PHONY: validate
-validate: build codespell autopep8
+validate: build codespell lint
 ifeq ($(OS),Linux)
 	hack/man-page-checker
 	hack/xref-helpmsgs-manpages
