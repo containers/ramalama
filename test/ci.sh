@@ -9,7 +9,6 @@ mac_steps() {
 }
 
 linux_steps() {
-  ./container_build.sh
   shellcheck -- *.sh
   if [ -n "$BRANCH" ]; then
     $maybe_sudo BRANCH=$BRANCH ./install.py

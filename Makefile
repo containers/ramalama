@@ -41,7 +41,9 @@ install:
 	make -C docs install
 .PHONY:
 build:
+ifeq ($(OS),Linux)
 	./container_build.sh
+endif
 
 .PHONY: docs
 docs:
@@ -58,7 +60,7 @@ codespell:
 	codespell --dictionary=- -w
 
 .PHONY: validate
-validate: codespell autopep8
+validate: build codespell autopep8
 ifeq ($(OS),Linux)
 	hack/man-page-checker
 	hack/xref-helpmsgs-manpages
