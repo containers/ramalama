@@ -181,11 +181,11 @@ def list_parser(subparsers):
 
 
 def list_cli(args):
-    if not args.noheading:
-        print(f"{'NAME':<67} {'MODIFIED':<15} {'SIZE':<6}")
+    models = []
     mycwd = os.getcwd()
     os.chdir(f"{args.store}/models/")
-    models = []
+
+    # Collect model data
     for path in list_files_by_modification():
         if path.is_symlink():
             name = str(path).replace('/', '://', 1)
@@ -194,15 +194,30 @@ def list_cli(args):
             modified = human_duration(diff) + " ago"
             size = subprocess.run(["du", "-h", str(path.resolve())],
                                   capture_output=True, text=True).stdout.split()[0]
-            if args.json:
-                models.append({"name": name, "modified": diff, "size": size})
-            else:
-                print(f"{name:<67} {modified:<15} {size:<6}")
+
+            # Store data for later use
+            models.append({"name": name, "modified": modified, "size": size})
+
     os.chdir(mycwd)
 
+    # If JSON output is requested
     if args.json:
         json_dict = {"models": models}
         print(json.dumps(json_dict))
+        return
+
+    # Calculate maximum width for each column
+    name_width = max(len("NAME"), max(len(model["name"]) for model in models))
+    modified_width = max(len("MODIFIED"), max(
+        len(model["modified"]) for model in models))
+    size_width = max(len("SIZE"), max(len(model["size"]) for model in models))
+    if not args.noheading:
+        print(f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} "
+              f"{'SIZE':<{size_width}}")
+
+    for model in models:
+        print(f"{model['name']:<{name_width}} {model['modified']:<{modified_width}} "
+              f"{model['size']:<{size_width}}")
 
 
 def pull_parser(subparsers):
