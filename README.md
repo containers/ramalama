@@ -146,13 +146,16 @@ and install again.
 
 ## Credit where credit is due
 
-For the majority of AI/LLM software we use, under the covers the heavy lifting is being done by:
+This project wouldn't be possible without the help of other projects like:
 
-https://github.com/ggerganov/llama.cpp
+llama.cpp
+whisper.cpp
+vllm
+podman
+omlmd
+huggingface
 
-so if you like this tool, give llama.cpp repo a :star:, and hey, give us a :star: too while you are at it.
-
-![image](https://github.com/user-attachments/assets/d7a91662-5903-4117-ad41-2b193a852ea1)
+so if you like this tool, give some of these repos a :star:, and hey, give us a :star: too while you are at it.
 
 ## Contributors
 
