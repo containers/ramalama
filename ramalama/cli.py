@@ -17,6 +17,10 @@ from ramalama.ollama import Ollama
 from ramalama.version import version
 
 
+class HelpException(Exception):
+    pass
+
+
 def use_container():
     transport = os.getenv("RAMALAMA_IN_CONTAINER", "true")
     return transport.lower() == "true"
@@ -37,8 +41,12 @@ def init_cli():
         help="do not run ramalama in the default container",
     )
 
+    parser.add_argument("-v", dest="version", action="store_true", help="show ramalama version")
+
     subparsers = parser.add_subparsers(dest="subcommand")
-    subparsers.required = True
+    subparsers.required = False
+
+    help_parser(subparsers)
     list_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
@@ -49,13 +57,22 @@ def init_cli():
     version_parser(subparsers)
     # Parse CLI
     args = parser.parse_args()
+    if args.version:
+        return version()
     # create stores directories
     mkdirs(args.store)
     if run_container(args):
         return
 
     # Process CLI
-    args.func(args)
+    try:
+        args.func(args)
+    except HelpException:
+        parser.print_help()
+    except AttributeError as e:
+        print(e)
+        parser.print_usage()
+        print("ramalama: requires a subcommand")
 
 
 def login_parser(subparsers):
@@ -68,12 +85,12 @@ def login_parser(subparsers):
     )
     parser.add_argument("--token", dest="token", help="token for registry")
     parser.add_argument("-u", "--username", dest="username", help="username for registry")
-    parser.add_argument("transport", nargs="?", type=str, default="")  # positional argument
+    parser.add_argument("TRANSPORT", nargs="?", type=str, default="")  # positional argument
     parser.set_defaults(func=login_cli)
 
 
 def login_cli(args):
-    transport = args.transport
+    transport = args.TRANSPORT
     if transport != "":
         transport = os.getenv("RAMALAMA_TRANSPORT")
     model = New(str(transport))
@@ -83,14 +100,15 @@ def login_cli(args):
 def logout_parser(subparsers):
     parser = subparsers.add_parser("logout", help="Logout from remote registry")
     # Do not run in a container
-    parser.add_argument("--nocontainer", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--token", dest="token", help="Token for registry")
-    parser.add_argument("transport", nargs="?", type=str, default="")  # positional argument
+    parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--token", help="Token for registry")
+    parser.add_argument("TRANSPORT", nargs="?", type=str, default="")  # positional argument
+    parser.add_argument("TRANSPORT", nargs="?", type=str, default="")  # positional argument
     parser.set_defaults(func=logout_cli)
 
 
 def logout_cli(args):
-    transport = args.transport
+    transport = args.TRANSPORT
     if transport != "":
         transport = os.getenv("RAMALAMA_TRANSPORT")
     model = New(str(transport))
@@ -164,10 +182,12 @@ def list_parser(subparsers):
 
 
 def list_cli(args):
-    models = []
+    if not args.noheading and not args.json:
+        print(f"{'NAME':<67} {'MODIFIED':<15} {'SIZE':<6}")
     mycwd = os.getcwd()
     os.chdir(f"{args.store}/models/")
 
+    models = []
     # Collect model data
     for path in list_files_by_modification():
         if path.is_symlink():
@@ -184,10 +204,8 @@ def list_cli(args):
 
     # If JSON output is requested
     if args.json:
-        json_dict = {"models": models}
-        print(json.dumps(json_dict))
+        print(json.dumps(models))
         return
-
     # Calculate maximum width for each column
     name_width = max(len("NAME"), max(len(model["name"]) for model in models))
     modified_width = max(len("MODIFIED"), max(len(model["modified"]) for model in models))
@@ -199,14 +217,25 @@ def list_cli(args):
         print(f"{model['name']:<{name_width}} {model['modified']:<{modified_width}} " f"{model['size']:<{size_width}}")
 
 
+def help_parser(subparsers):
+    parser = subparsers.add_parser("help", help="Help about any command")
+    # Do not run in a container
+    parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
+    parser.set_defaults(func=help_cli)
+
+
+def help_cli(args):
+    raise HelpException()
+
+
 def pull_parser(subparsers):
     parser = subparsers.add_parser("pull", help="Pull AI model from model registry to local storage")
-    parser.add_argument("model")  # positional argument
+    parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=pull_cli)
 
 
 def pull_cli(args):
-    model = New(args.model)
+    model = New(args.MODEL)
     matching_files = glob.glob(f"{args.store}/models/*/{model}")
     if matching_files:
         return matching_files[0]
@@ -215,44 +244,46 @@ def pull_cli(args):
 
 
 def push_parser(subparsers):
-    parser = subparsers.add_parser("push", help="Push AI Model from local storage to remote model registry")
-    parser.add_argument("model")  # positional argument
-    parser.add_argument("target")  # positional argument
+    parser = subparsers.add_parser("push", help="Push AI model from local storage to remote registry")
+    parser.add_argument("MODEL")  # positional argument
+    parser.add_argument("TARGET")  # positional argument
     parser.set_defaults(func=push_cli)
 
 
 def push_cli(args):
-    model = New(args.model)
+    model = New(args.MODEL)
     model.push(args)
 
 
 def run_parser(subparsers):
-    parser = subparsers.add_parser("run", help="Run chatbot on specified AI Model")
+    parser = subparsers.add_parser("run", help="Run specified AI Model as a chatbot")
     parser.add_argument("--prompt", dest="prompt", action="store_true", help="modify chatbot prompt")
-    parser.add_argument("model")  # positional argument
-    parser.add_argument("args", nargs="*", help="additional options to pass to the AI Model")
+    parser.add_argument("MODEL")  # positional argument
+    parser.add_argument("ARGS", nargs="*", help="additional options to pass to the AI Model")
     parser.set_defaults(func=run_cli)
 
 
 def run_cli(args):
-    model = New(args.model)
+    model = New(args.MODEL)
     model.run(args)
 
 
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="Serve REST API on specified AI Model")
     parser.add_argument("--port", default="8080", help="port for AI Model server to listen on")
-    parser.add_argument("model")  # positional argument
+    parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
 
 
 def serve_cli(args):
-    model = New(args.model)
+    model = New(args.MODEL)
     model.serve(args)
 
 
 def version_parser(subparsers):
     parser = subparsers.add_parser("version", help="Display version of AI Model")
+    # Do not run in a container
+    parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
     parser.set_defaults(func=version_cli)
 
 
