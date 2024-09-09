@@ -87,3 +87,13 @@ class OCI(Model):
         run_cmd(["ln", "-sf", relative_target_path, symlink_path])
 
         return symlink_path
+
+    def get_symlink_path(self, args):
+        registry, reference = self.model.split("/", 1)
+        reference_dir = reference.replace(":", "/")
+        directory = f"{args.store}/models/oci/{registry}/{reference_dir}"
+        ggufs = [file for file in os.listdir(directory) if file.endswith(".gguf")]
+        if len(ggufs) != 1:
+            raise KeyError(f"Error: Unable to identify .gguf file in: {directory}")
+
+        return f"{directory}/{ggufs[0]}"

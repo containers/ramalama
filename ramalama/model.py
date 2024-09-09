@@ -1,5 +1,6 @@
+import os
 import sys
-from ramalama.common import container_manager, exec_cmd
+from ramalama.common import container_manager, exec_cmd, perror
 
 
 class Model:
@@ -26,6 +27,52 @@ class Model:
 
     def push(self, args):
         raise NotImplementedError(f"ramalama push for {self.type} not implemented")
+
+    def is_symlink_to(self, file_path, target_path):
+        if os.path.islink(file_path):
+            symlink_target = os.readlink(file_path)
+            abs_symlink_target = os.path.abspath(os.path.join(os.path.dirname(file_path), symlink_target))
+            abs_target_path = os.path.abspath(target_path)
+            return abs_symlink_target == abs_target_path
+
+        return False
+
+    def garbage_collection(self, args):
+        repo_paths = ["huggingface", "oci", "ollama"]
+        for repo in repo_paths:
+            repo_dir = f"{args.store}/repos/{repo}"
+            model_dir = f"{args.store}/models/{repo}"
+            for root, dirs, files in os.walk(repo_dir):
+                file_has_a_symlink = False
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if (repo == "ollama" and file.startswith("sha256:")) or file.endswith(".gguf"):
+                        file_path = os.path.join(root, file)
+                        for model_root, model_dirs, model_files in os.walk(model_dir):
+                            for model_file in model_files:
+                                if self.is_symlink_to(os.path.join(root, model_root, model_file), file_path):
+                                    file_has_a_symlink = True
+
+                        if not file_has_a_symlink:
+                            os.remove(file_path)
+                            file_path = os.path.basename(file_path)
+                            print(f"Deleted: {file_path}")
+
+    def remove(self, args):
+        symlink_path = self.get_symlink_path(args)
+        if os.path.exists(symlink_path):
+            try:
+                os.remove(symlink_path)
+                print(f"Untagged: {self.model}")
+            except OSError as e:
+                perror(f"Error removing {self.model}: {e}")
+        else:
+            perror(f"Model {self.model} not found")
+
+        self.garbage_collection(args)
+
+    def get_symlink_path(self, args):
+        raise NotImplementedError(f"get_symlink_path for {self.type} not implemented")
 
     def run(self, args):
         symlink_path = self.pull(args)

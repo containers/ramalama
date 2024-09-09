@@ -13,25 +13,6 @@ def pull_manifest(repos, manifests, accept, registry_head, model_tag):
     run_cmd(curl_cmd)
 
 
-def pull_config_blob(repos, accept, registry_head, manifest_data):
-    cfg_hash = manifest_data["config"]["digest"]
-    config_blob_path = os.path.join(repos, "blobs", cfg_hash)
-    curl_cmd = [
-        "curl",
-        "-f",
-        "-s",
-        "-L",
-        "-C",
-        "-",
-        "--header",
-        accept,
-        "-o",
-        config_blob_path,
-        f"{registry_head}/blobs/{cfg_hash}",
-    ]
-    run_curl_cmd(curl_cmd, config_blob_path)
-
-
 def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, symlink_path):
     layer_blob_path = os.path.join(repos, "blobs", layer_digest)
     curl_cmd = [
@@ -64,7 +45,6 @@ def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, mo
 
         raise e
 
-    pull_config_blob(repos, accept, registry_head, manifest_data)
     for layer in manifest_data["layers"]:
         layer_digest = layer["digest"]
         if layer["mediaType"] != "application/vnd.ollama.image.model":
@@ -107,3 +87,20 @@ class Ollama(Model):
         return init_pull(
             repos, manifests, accept, registry_head, model_name, model_tag, models, symlink_path, self.model
         )
+
+    def get_symlink_path(self, args):
+        models = args.store + "/models/ollama"
+        if "/" in self.model:
+            model_full = self.model
+            models = os.path.join(models, model_full.rsplit("/", 1)[0])
+        else:
+            model_full = "library/" + self.model
+
+        if ":" in model_full:
+            model_name, model_tag = model_full.split(":", 1)
+        else:
+            model_name = model_full
+            model_tag = "latest"
+
+        model_base = os.path.basename(model_name)
+        return os.path.join(models, f"{model_base}:{model_tag}")
