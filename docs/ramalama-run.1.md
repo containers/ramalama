@@ -11,6 +11,9 @@ ramalama\-run - Run specified AI Model as a chatbot
 #### **--help**, **-h**
 Print usage message
 
+#### **--name**, **-n**
+Name of the container to run the model in.
+
 #### **--prompt**
 
 Modify the prompt in the AI Chatbot

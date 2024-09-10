@@ -15,6 +15,9 @@ registry if it does not exist in local storage.
 #### **--help**, **-h**
 Print usage message
 
+#### **--name**, **-n**
+Name of the container to run the model in.
+
 #### **--port**
 Port for AI Model server to listen on
 
