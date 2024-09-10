@@ -3,6 +3,7 @@
     "extends": [
         "github>containers/automation//renovate/defaults.json5"
     ],
+    "forkProcessing": "enabled",
     "customManagers": [
         {
             // Searches through Containerfiles to find ARG and ENV variables associated with git references
