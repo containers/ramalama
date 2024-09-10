@@ -57,10 +57,12 @@ def init_cli():
     rm_parser(subparsers)
     run_parser(subparsers)
     serve_parser(subparsers)
+    stop_parser(subparsers)
+    version_parser(subparsers)
     # Parse CLI
     args = parser.parse_args()
     if args.version:
-        return version()
+        return version(args)
     # create stores directories
     mkdirs(args.store)
     if run_container(args):
@@ -281,6 +283,7 @@ def run_cli(args):
 
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="Serve REST API on specified AI Model")
+    parser.add_argument("-d", "--detach", dest="detach", action="store_true", help="run the container in detached mode")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the model will be run")
     parser.add_argument("--port", default="8080", help="port for AI Model server to listen on")
     parser.add_argument("MODEL")  # positional argument
@@ -290,6 +293,40 @@ def serve_parser(subparsers):
 def serve_cli(args):
     model = New(args.MODEL)
     model.serve(args)
+
+
+def stop_cli(args):
+    model = New(args.MODEL)
+    model.stop(args)
+
+
+def stop_parser(subparsers):
+    parser = subparsers.add_parser("stop", help="Stop named container that is running AI Model")
+    parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("NAME")  # positional argument
+    parser.set_defaults(func=stop_container)
+
+
+def stop_container(args):
+    conman = container_manager()
+    if conman == "":
+        raise IndexError("no container manager (Podman, Docker) found")
+
+    conman_args = [
+        conman,
+        "stop",
+        "-t=0",
+        args.NAME,
+    ]
+
+    exec_cmd(conman_args)
+
+
+def version_parser(subparsers):
+    parser = subparsers.add_parser("version", help="Display version of AI Model")
+    # Do not run in a container
+    parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
+    parser.set_defaults(func=version)
 
 
 def rm_parser(subparsers):
@@ -322,8 +359,15 @@ def find_working_directory():
 
 
 def run_container(args):
-    if args.nocontainer and args.name != "":
-        raise IndexError("--nocontainer and --name options conflict. --name requires a container.")
+    if args.nocontainer:
+        if hasattr(args, "name") and args.name != "":
+            raise IndexError("--nocontainer and --name options conflict. --name requires a container.")
+
+        if hasattr(args, "detach") and args.detach:
+            raise IndexError(
+                "--nocontainer and --detach options conflict. --detach requires the model to be run in a container."
+            )
+
     if args.nocontainer or in_container() or sys.platform == "darwin":
         return False
 
@@ -342,8 +386,7 @@ def run_container(args):
         "run",
         "--rm",
         "-it",
-        "--label",
-        '"RAMALAMA container"',
+        "--label=RAMALAMA container",
         "--security-opt=label=disable",
         "-v/tmp:/tmp",
         "-e",
@@ -356,8 +399,8 @@ def run_container(args):
         f"-v{wd}:/usr/share/ramalama/ramalama:ro",
     ]
 
-    if hasattr(args, "MODEL"):
-        conman_args += [f'--label="RAMALAMA_MODEL={args.MODEL}"']
+    if hasattr(args, "detach") and args.detach:
+        conman_args += ["-d"]
 
     if hasattr(args, "port"):
         conman_args += ["-p", f"{args.port}:{args.port}"]
@@ -367,6 +410,9 @@ def run_container(args):
 
     if os.path.exists("/dev/kfd"):
         conman_args += ["--device", "/dev/kfd"]
+
+    if hasattr(args, "MODEL"):
+        conman_args += [f'--label="RAMALAMA_MODEL={args.MODEL}"']
 
     conman_args += ["quay.io/ramalama/ramalama:latest", "/usr/bin/ramalama"]
     conman_args += sys.argv[1:]
