@@ -36,6 +36,22 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.py | 
 | Nvidia GPU (cuda)                  | :x: |
 | AMD GPU (rocm)                     | :x: |
 
+## COMMANDS
+
+| Command                                                | Description                                                |
+| ------------------------------------------------------ | ---------------------------------------------------------- |
+| [ramalama-containers(1)](docs/ramalama-containers.1.md)| List all ramalama containers.                              |
+| [ramalama-list(1)](docs/ramalama-list.1.md)            | List all AI models in local storage.                       |
+| [ramalama-login(1)](docs/ramalama-login.1.md)          | Login to remote model registry.                            |
+| [ramalama-logout(1)](docs/ramalama-logout.1.md)        | Logout from remote model registry.                         |
+| [ramalama-pull(1)](docs/ramalama-pull.1.md)            | Pull AI Models into local storage.                         |
+| [ramalama-push(1)](docs/ramalama-push.1.md)            | Push AI Model (OCI-only at present)                        |
+| [ramalama-rm(1)](docs/ramalama-rm.1.md)                | Remove specified AI Model from local storage.              |
+| [ramalama-run(1)](docs/ramalama-run.1.md)              | Run specified AI Model as a chatbot.                       |
+| [ramalama-serve(1)](docs/ramalama-serve.1.md)          | Serve specified AI Model as an API server.                 |
+| [ramalama-stop(1)](docs/ramalama-stop.1.md)            | Stop ramalaman container running an AI Model.              |
+| [ramalama-version(1)](docs/ramalama-version.1.md)      | Display the ramalama version.                              |
+
 ## Usage
 
 ### Running Models
