@@ -187,6 +187,7 @@ def list_cli(args):
     mycwd = os.getcwd()
     os.chdir(f"{args.store}/models/")
     models = []
+
     # Collect model data
     for path in list_files_by_modification():
         if path.is_symlink():
@@ -207,14 +208,19 @@ def list_cli(args):
         return
 
     # Calculate maximum width for each column
-    name_width = max(len("NAME"), max(len(model["name"]) for model in models))
-    modified_width = max(len("MODIFIED"), max(len(model["modified"]) for model in models))
-    size_width = max(len("SIZE"), max(len(model["size"]) for model in models))
+    name_width = len("NAME")
+    modified_width = len("MODIFIED")
+    size_width = len("SIZE")
+    for model in models:
+        name_width = max(name_width, len(model["name"]))
+        modified_width = max(modified_width, len(model["modified"]))
+        size_width = max(size_width, len(model["size"]))
+
     if not args.noheading and not args.json:
-        print(f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} " f"{'SIZE':<{size_width}}")
+        print(f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} {'SIZE':<{size_width}}")
 
     for model in models:
-        print(f"{model['name']:<{name_width}} {model['modified']:<{modified_width}} " f"{model['size']:<{size_width}}")
+        print(f"{model['name']:<{name_width}} {model['modified']:<{modified_width}} {model['size']:<{size_width}}")
 
 
 def help_parser(subparsers):
