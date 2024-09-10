@@ -62,3 +62,14 @@ class Huggingface(Model):
         run_cmd(["ln", "-sf", relative_target_path, symlink_path])
 
         return symlink_path
+
+    def get_symlink_path(self, args):
+        split = self.model.rsplit("/", 1)
+        directory = ""
+        if len(split) > 1:
+            directory = split[0]
+            filename = split[1]
+        else:
+            filename = split[0]
+
+        return f"{args.store}/models/huggingface/{directory}/{filename}"

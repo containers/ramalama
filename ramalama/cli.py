@@ -54,9 +54,9 @@ def init_cli():
     logout_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
+    rm_parser(subparsers)
     run_parser(subparsers)
     serve_parser(subparsers)
-    version_parser(subparsers)
     # Parse CLI
     args = parser.parse_args()
     if args.version:
@@ -184,11 +184,8 @@ def list_parser(subparsers):
 
 
 def list_cli(args):
-    if not args.noheading and not args.json:
-        print(f"{'NAME':<67} {'MODIFIED':<15} {'SIZE':<6}")
     mycwd = os.getcwd()
     os.chdir(f"{args.store}/models/")
-
     models = []
     # Collect model data
     for path in list_files_by_modification():
@@ -208,11 +205,12 @@ def list_cli(args):
     if args.json:
         print(json.dumps(models))
         return
+
     # Calculate maximum width for each column
     name_width = max(len("NAME"), max(len(model["name"]) for model in models))
     modified_width = max(len("MODIFIED"), max(len(model["modified"]) for model in models))
     size_width = max(len("SIZE"), max(len(model["size"]) for model in models))
-    if not args.noheading:
+    if not args.noheading and not args.json:
         print(f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} " f"{'SIZE':<{size_width}}")
 
     for model in models:
@@ -231,7 +229,7 @@ def help_cli(args):
 
 
 def pull_parser(subparsers):
-    parser = subparsers.add_parser("pull", help="Pull AI model from model registry to local storage")
+    parser = subparsers.add_parser("pull", help="Pull AI Model from model registry to local storage")
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=pull_cli)
 
@@ -288,15 +286,15 @@ def serve_cli(args):
     model.serve(args)
 
 
-def version_parser(subparsers):
-    parser = subparsers.add_parser("version", help="Display version of AI Model")
-    # Do not run in a container
-    parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
-    parser.set_defaults(func=version_cli)
+def rm_parser(subparsers):
+    parser = subparsers.add_parser("rm", help="Remove AI Model from local storage")
+    parser.add_argument("MODEL")
+    parser.set_defaults(func=rm_cli)
 
 
-def version_cli(args):
-    version()
+def rm_cli(args):
+    model = New(args.MODEL)
+    model.remove(args)
 
 
 def get_store():

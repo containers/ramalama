@@ -60,9 +60,9 @@ Store AI Models in the specified directory (default rootless: `$HOME/.local/shar
 | [ramalama-logout(1)](ramalama-logout.1.md)| Logout from remote model registry.                       |
 | [ramalama-pull(1)](ramalama-pull.1.md)  | Pull AI Models into local storage.                         |
 | [ramalama-push(1)](ramalama-push.1.md)  | Push AI Model (OCI-only at present)                        |
+| [ramalama-rm(1)](ramalama-rm.1.md)      | Remove specified AI Model from local storage.              |
 | [ramalama-run(1)](ramalama-run.1.md)    | Run specified AI Model as a chatbot.                       |
 | [ramalama-serve(1)](ramalama-serve.1.md)| Serve specified AI Model as an API server.                 |
-| [ramalama-version(1)](ramalama-version.1.md)| Display the ramalama version                           |
 
 ## CONFIGURATION FILES
 

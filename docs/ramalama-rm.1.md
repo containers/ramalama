@@ -1,13 +1,13 @@
-% ramalama-version 1
+% ramalama-rm 1
 
 ## NAME
-ramalama\-version - Display the ramalama version
+ramalama\-rm - Remove specified AI Model from local storage
 
 ## SYNOPSIS
-**ramalama version**
+**ramalama rm** [*options*] *model*
 
 ## DESCRIPTION
-Print version of ramalama
+Remove specified AI Model from local storage
 
 ## OPTIONS
 

@@ -23,7 +23,7 @@ tests() {
   ./${binfile} -h | grep usage:
   set -o pipefail
 
-  ./${binfile} version
+  ./${binfile} -v
   ./${binfile} pull ollama://tinyllama
   RAMALAMA_TRANSPORT=ollama ./${binfile} pull ben1t0/tiny-llm
   ./${binfile} pull ollama://tinyllama:1.1b
@@ -40,6 +40,12 @@ tests() {
   ./${binfile} ls | grep tiny-vicuna-1b
   ./${binfile} ls | grep NAME
   ./${binfile} ls | grep oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
+  ./${binfile} rm ollama://ben1t0/tiny-llm:latest
+  if ./${binfile} list | grep ben1t0/tiny-llm; then
+      exit 1
+  else
+      exit 0
+  fi
 }
 
 main() {
@@ -72,13 +78,13 @@ main() {
     linux_steps
   fi
 
+  $maybe_sudo rm -rf /usr/share/ramalama /opt/homebrew/share/ramalama /usr/local/share/ramalama
+  tests
   go install github.com/cpuguy83/go-md2man@latest
   tmpdir=$(mktemp -d)
   make install DESTDIR=${tmpdir} PREFIX=/usr
   find ${tmpdir}
   rm -rf $tmpdir
-
-  tests
 }
 
 main
