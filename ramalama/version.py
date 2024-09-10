@@ -3,5 +3,5 @@
 __version__ = "0.1.0"
 
 
-def version():
+def version(args):
     print("ramalama version " + __version__)
