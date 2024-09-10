@@ -1,0 +1,28 @@
+FROM quay.io/ramalama/ramalama:latest
+
+RUN echo -e "[ROCm]\nname=ROCm\nbaseurl=https://repo.radeon.com/rocm/rhel9/6.2/main\nenabled=1\ngpgcheck=0\npriority=50" >> /etc/yum.repos.d/rocm.repo
+RUN echo -e "[amdgpu]\nname=amdgpu\nbaseurl=https://repo.radeon.com/amdgpu/6.2/rhel/9.4/main/x86_64\nenabled=1\ngpgcheck=0\npriority=50" >> /etc/yum.repos.d/amdgpu.repo
+
+RUN dnf install -y rocm-dev hipblas-devel rocblas-devel && \
+    dnf clean all && \
+    rm -rf /var/cache/*dnf*
+
+RUN git clone https://github.com/ggerganov/llama.cpp && \
+    cd llama.cpp && \
+    git reset --hard 32b2ec88bc44b086f3807c739daf28a1613abde1 && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 -DGGML_HIPBLAS=1 && \
+    cmake --build build --config Release -j $(nproc) && \
+    cmake --install build && \
+    cd / && \
+    rm -rf llama.cpp
+
+RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
+    cd whisper.cpp && \
+    git reset --hard 22fcd5fd110ba1ff592b4e23013d870831756259 && \
+    export GGML_CCACHE=0 && \
+    export GGML_HIPBLAS=1 && \
+    make -j $(nproc) && \
+    mv main /usr/bin/whisper-main && \
+    mv server /usr/bin/whisper-server && \
+    cd / && \
+    rm -rf whisper.cpp
