@@ -1,0 +1,39 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "github>containers/automation//renovate/defaults.json5"
+    ],
+    "customManagers": [
+        {
+            // Searches through Containerfiles to find ARG and ENV variables associated with git references
+            // and updates them to the latest commit digest.
+            // The regex captures the dependency name, package name, git reference, versioning strategy,
+            // and current digest from the renovate directive.
+            // ref: https://docs.renovatebot.com/modules/manager/regex/#advanced-capture
+            "customType": "regex",
+            "fileMatch": [
+                "Containerfile$"
+            ],
+            "matchStrings": [
+                "#\\s*renovate:\\s*datasource=git-refs\\sdepName=(?<depName>\\S+)\\s(?:packageName=(?<packageName>\\S+)\\s)?(?:gitRef=(?<currentValue>\\S+)\\s)?(?:versioning=(?<versioning>\\S+)\\s)?(?:extractVersion=\\S+\\s)?type=(?<type>digest)\\s(?:ARG|ENV)\\s.*?=(?<currentDigest>\\S+)"
+            ],
+            "datasourceTemplate": "git-refs",
+            "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+        },
+        {
+            // Searches through Containerfiles to find ARG and ENV variables associated with various datasources
+            // and updates them to the latest version.
+            // The regex captures the dependency name, package name, versioning strategy,
+            // and current version value from the renovate directive.
+            // ref: https://docs.renovatebot.com/modules/manager/regex/#advanced-capture
+            "customType": "regex",
+            "fileMatch": [
+                "Containerfile$"
+            ],
+            "matchStrings": [
+                "#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\sdepName=(?<depName>\\S+)\\s(?:packageName=(?<packageName>\\S+)\\s)?(?:versioning=(?<versioning>\\S+)\\s)?(?:extractVersion=\\S+\\s)?(?:ARG|ENV)\\s.*?=(?<currentValue>\\S+)"
+            ],
+            "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+        }
+    ]
+}
