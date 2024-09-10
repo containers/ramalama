@@ -6,6 +6,8 @@ import argparse
 import glob
 import json
 import os
+import random
+import string
 import subprocess
 import sys
 import time
@@ -255,9 +257,14 @@ def push_cli(args):
     model.push(args)
 
 
+def _name():
+    return "ramalama_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
+
+
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="Run specified AI Model as a chatbot")
     parser.add_argument("--prompt", dest="prompt", action="store_true", help="modify chatbot prompt")
+    parser.add_argument("-n", "--name", dest="name", help="name of container in which the model will be run")
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument("ARGS", nargs="*", help="additional options to pass to the AI Model")
     parser.set_defaults(func=run_cli)
@@ -270,6 +277,7 @@ def run_cli(args):
 
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="Serve REST API on specified AI Model")
+    parser.add_argument("-n", "--name", dest="name", help="name of container in which the model will be run")
     parser.add_argument("--port", default="8080", help="port for AI Model server to listen on")
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
@@ -310,8 +318,14 @@ def find_working_directory():
 
 
 def run_container(args):
+    if args.nocontainer and args.name != "":
+        raise IndexError("--nocontainer and --name options conflict. --name requires a container.")
     if args.nocontainer or in_container() or sys.platform == "darwin":
         return False
+
+    name = _name()
+    if hasattr(args, "name") and args.name is not None:
+        name = args.name
 
     conman = container_manager()
     if conman == "":
@@ -324,15 +338,22 @@ def run_container(args):
         "run",
         "--rm",
         "-it",
+        "--label",
+        '"RAMALAMA container"',
         "--security-opt=label=disable",
-        f"-v{args.store}:/var/lib/ramalama",
-        f"-v{home}:{home}",
         "-v/tmp:/tmp",
-        f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
         "-e",
         "RAMALAMA_TRANSPORT",
+        "--name",
+        name,
+        f"-v{args.store}:/var/lib/ramalama",
+        f"-v{home}:{home}",
+        f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
         f"-v{wd}:/usr/share/ramalama/ramalama:ro",
     ]
+
+    if hasattr(args, "MODEL"):
+        conman_args += [f'--label="RAMALAMA_MODEL={args.MODEL}"']
 
     if hasattr(args, "port"):
         conman_args += ["-p", f"{args.port}:{args.port}"]
