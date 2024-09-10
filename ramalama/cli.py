@@ -49,6 +49,7 @@ def init_cli():
     subparsers.required = False
 
     help_parser(subparsers)
+    containers_parser(subparsers)
     list_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
@@ -171,6 +172,25 @@ def human_duration(d):
 
 def list_files_by_modification():
     return sorted(Path().rglob("*"), key=lambda p: os.path.getmtime(p), reverse=True)
+
+
+def containers_parser(subparsers):
+    parser = subparsers.add_parser("containers", aliases=["ps"], help="List all ramalama containers")
+    parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
+    parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
+    parser.set_defaults(func=list_containers)
+
+
+def list_containers(args):
+    conman = container_manager()
+    if conman == "":
+        raise IndexError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "ps", "-a", "--filter", "label=RAMALAMA container"]
+    if args.noheading:
+        conman_args += ["--noheading"]
+
+    exec_cmd(conman_args)
 
 
 def add_list_parser(subparsers, name, func):
@@ -410,9 +430,6 @@ def run_container(args):
 
     if os.path.exists("/dev/kfd"):
         conman_args += ["--device", "/dev/kfd"]
-
-    if hasattr(args, "MODEL"):
-        conman_args += [f'--label="RAMALAMA_MODEL={args.MODEL}"']
 
     conman_args += ["quay.io/ramalama/ramalama:latest", "/usr/bin/ramalama"]
     conman_args += sys.argv[1:]
