@@ -5,7 +5,7 @@ ARG HUGGINGFACE_HUB_VERSION=0.24.2
 # renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
 ARG OMLMD_VERSION=0.1.4
 # renovate: datasource=git-refs depName=ggerganov/llama.cpp packageName=https://github.com/ggerganov/llama.cpp gitRef=master versioning=loose type=digest
-ARG LLAMA_CPP_SHA=32b2ec88bc44b086f3807c739daf28a1613abde1
+ARG LLAMA_CPP_SHA=0996c5597f680effacc046832bb807c14900e22d
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
 ARG WHISPER_CPP_SHA=22fcd5fd110ba1ff592b4e23013d870831756259
 
