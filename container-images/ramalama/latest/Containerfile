@@ -1,5 +1,14 @@
 FROM registry.access.redhat.com/ubi9/ubi:9.4
 
+# renovate: datasource=github-releases depName=huggingface/huggingface_hub extractVersion=^v(?<version>.*)
+ARG HUGGINGFACE_HUB_VERSION=0.24.2
+# renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
+ARG OMLMD_VERSION=0.1.4
+# renovate: datasource=git-refs depName=ggerganov/llama.cpp packageName=https://github.com/ggerganov/llama.cpp gitRef=master versioning=loose type=digest
+ARG LLAMA_CPP_SHA=32b2ec88bc44b086f3807c739daf28a1613abde1
+# renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
+ARG WHISPER_CPP_SHA=22fcd5fd110ba1ff592b4e23013d870831756259
+
 # vulkan-headers vulkan-loader-devel vulkan-tools glslc glslang python3-pip mesa-libOpenCL-$MESA_VER.aarch64
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
     crb enable && \
@@ -11,14 +20,14 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.n
     rm -rf /var/cache/*dnf*
 
 RUN /usr/bin/python3 --version
-RUN pip install "huggingface_hub[cli]==0.24.2"
-RUN pip install "omlmd==0.1.4"
+RUN pip install "huggingface_hub[cli]==${HUGGINGFACE_HUB_VERSION}"
+RUN pip install "omlmd==${OMLMD_VERSION}"
 
 ENV GGML_CCACHE=0
 
 RUN git clone https://github.com/ggerganov/llama.cpp && \
     cd llama.cpp && \
-    git reset --hard 32b2ec88bc44b086f3807c739daf28a1613abde1 && \
+    git reset --hard ${LLAMA_CPP_SHA} && \
     cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 && \
     cmake --build build --config Release -j $(nproc) && \
     cmake --install build && \
@@ -27,7 +36,7 @@ RUN git clone https://github.com/ggerganov/llama.cpp && \
 
 RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
     cd whisper.cpp && \
-    git reset --hard 22fcd5fd110ba1ff592b4e23013d870831756259 && \
+    git reset --hard ${WHISPER_CPP_SHA} && \
     make -j $(nproc) && \
     mv main /usr/bin/whisper-main && \
     mv server /usr/bin/whisper-server && \
