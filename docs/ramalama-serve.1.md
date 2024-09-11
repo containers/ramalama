@@ -24,8 +24,16 @@ Print usage message
 #### **--name**, **-n**
 Name of the container to run the model in.
 
-#### **--port**
+#### **--port**, **-p**
 Port for AI Model server to listen on
+
+## EXAMPLES
+
+```
+$ ramalama serve -p 8080 --name mymodel ollama://tiny-llm:latest
+$ ramalama serve -n example --port 8081 oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
+
+```
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**
