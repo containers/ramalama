@@ -8,14 +8,14 @@ jobs:
   linux:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Run a one-line script
         run: make test
 
   macos:
     runs-on: macos-12
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Run a one-line script
         shell: bash
         run: make test
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [linux, macos]
     steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
           with:
             ref: 's'
 
