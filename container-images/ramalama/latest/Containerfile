@@ -7,7 +7,7 @@ ARG OMLMD_VERSION=0.1.4
 # renovate: datasource=git-refs depName=ggerganov/llama.cpp packageName=https://github.com/ggerganov/llama.cpp gitRef=master versioning=loose type=digest
 ARG LLAMA_CPP_SHA=32b2ec88bc44b086f3807c739daf28a1613abde1
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
-ARG WHISPER_CPP_SHA=22fcd5fd110ba1ff592b4e23013d870831756259
+ARG WHISPER_CPP_SHA=5caa19240d55bfd6ee316d50fbad32c6e9c39528
 
 # vulkan-headers vulkan-loader-devel vulkan-tools glslc glslang python3-pip mesa-libOpenCL-$MESA_VER.aarch64
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
