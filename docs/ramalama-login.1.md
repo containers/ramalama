@@ -32,7 +32,7 @@ Token to be passed to Model registry
 
 Username for registry
 
-## EXAMPLE
+## EXAMPLES
 
 Login to quay.io/username oci registry
 ```

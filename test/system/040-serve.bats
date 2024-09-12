@@ -33,16 +33,34 @@ verify_begin="podman run --rm -it --label=RAMALAMA container --security-opt=labe
 }
 
 @test "ramalama --detach serve and stop" {
-    model=ollama://tiny-llm:latest 
+    model=ollama://tiny-llm:latest
     container=c_$(safename)
 
     run_ramalama serve --name ${container} --detach ${model}
-    
-    run_ramalama ps 
+
+    run_ramalama ps
     run_ramalama containers --noheading
-    is "$output" ".*${container}" "dryrun correct"
+    is "$output" ".*${container}" "list correct"
 
     run_ramalama stop ${container}
+}
+
+@test "ramalama --detach serve and stop all" {
+    model=ollama://tiny-llm:latest
+    container=c_$(safename)
+
+    run_ramalama stop --all
+
+    run_ramalama serve --detach ${model}
+    run_ramalama serve -p 8081 --detach ${model}
+
+    run_ramalama containers --noheading
+    is ${#lines[@]} 2 "two containers should be running"
+
+    run_ramalama stop --all
+
+    run_ramalama containers -n
+    is "$output" "" "no more containers should exist"
 }
 
 # vim: filetype=sh

@@ -13,7 +13,7 @@ import sys
 import time
 
 from ramalama.huggingface import Huggingface
-from ramalama.common import in_container, container_manager, exec_cmd
+from ramalama.common import in_container, container_manager, exec_cmd, run_cmd
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.version import version
@@ -176,12 +176,13 @@ def list_files_by_modification():
 
 def containers_parser(subparsers):
     parser = subparsers.add_parser("containers", aliases=["ps"], help="List all ramalama containers")
+    parser.add_argument("--format", help="pretty-print containers to JSON or using a Go template")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
     parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
     parser.set_defaults(func=list_containers)
 
 
-def list_containers(args):
+def _list_containers(args):
     conman = container_manager()
     if conman == "":
         raise IndexError("no container manager (Podman, Docker) found")
@@ -190,7 +191,19 @@ def list_containers(args):
     if args.noheading:
         conman_args += ["--noheading"]
 
-    exec_cmd(conman_args)
+    if args.format:
+        conman_args += [f"--format={args.format}"]
+
+    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+    if output == "":
+        return []
+    return output.split("\n")
+
+
+def list_containers(args):
+    if len(_list_containers(args)) == 0:
+        return
+    print("\n".join(_list_containers(args)))
 
 
 def add_list_parser(subparsers, name, func):
@@ -305,7 +318,7 @@ def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="Serve REST API on specified AI Model")
     parser.add_argument("-d", "--detach", dest="detach", action="store_true", help="run the container in detached mode")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the model will be run")
-    parser.add_argument("--port", default="8080", help="port for AI Model server to listen on")
+    parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
 
@@ -323,11 +336,12 @@ def stop_cli(args):
 def stop_parser(subparsers):
     parser = subparsers.add_parser("stop", help="Stop named container that is running AI Model")
     parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("NAME")  # positional argument
+    parser.add_argument("-a", "--all", action="store_true", help="Stop all ramalama containers")
+    parser.add_argument("NAME", nargs="?")  # positional argument
     parser.set_defaults(func=stop_container)
 
 
-def stop_container(args):
+def _stop_container(name):
     conman = container_manager()
     if conman == "":
         raise IndexError("no container manager (Podman, Docker) found")
@@ -336,10 +350,23 @@ def stop_container(args):
         conman,
         "stop",
         "-t=0",
-        args.NAME,
+        name,
     ]
 
-    exec_cmd(conman_args)
+    run_cmd(conman_args)
+
+
+def stop_container(args):
+    if not args.all:
+        return _stop_container(args.NAME)
+
+    if args.NAME == "":
+        raise IndexError("can not specify --all as well NAME")
+
+    args.noheading = True
+    args.format = "{{ .Names }}"
+    for i in _list_containers(args):
+        _stop_container(i)
 
 
 def version_parser(subparsers):
