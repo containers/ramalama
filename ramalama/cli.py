@@ -370,7 +370,7 @@ def get_store():
 def find_working_directory():
     wd = "./ramalama"
     for p in sys.path:
-        target = p + "ramalama"
+        target = os.path.join(p, "ramalama")
         if os.path.exists(target):
             wd = target
             break
