@@ -57,7 +57,7 @@ function teardown() {
     # FIXME: The '?' means 'ignore exit status'; use a number if you
     # FIXME:    expect a precise nonzero code, or omit for 0 (usual case).
     # FIXME: NEVER EVER RUN 'ramalama' DIRECTLY. See helpers.bash for why.
-    run_ramalama '?' run -d $IMAGE sh -c 'prep..; echo READY'
+    run_ramalama '?' serve -d $MODEL; echo READY'
     cid="$output"
     wait_for_ready $cid
 
