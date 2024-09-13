@@ -80,29 +80,11 @@ function _prefetch() {
         fi
     fi
 
-    # Kludge alert.
-    # Skopeo has no --storage-driver, --root, or --runroot flags; those
-    # need to be expressed in the destination string inside [brackets].
-    # See containers-transports(5). So if we see those options in
-    # _RAMALAMA_TEST_OPTS, transmogrify $want into skopeo form.
-    skopeo_opts=''
-    driver="$(expr "$_RAMALAMA_TEST_OPTS" : ".*--storage-driver \([^ ]\+\)" || true)"
-    if [[ -n "$driver" ]]; then
-        skopeo_opts+="$driver@"
-    fi
-
     altroot="$(expr "$_RAMALAMA_TEST_OPTS" : ".*--root \([^ ]\+\)" || true)"
     if [[ -n "$altroot" ]] && [[ -d "$altroot" ]]; then
         skopeo_opts+="$altroot"
 
         altrunroot="$(expr "$_RAMALAMA_TEST_OPTS" : ".*--runroot \([^ ]\+\)" || true)"
-        if [[ -n "$altrunroot" ]] && [[ -d "$altrunroot" ]]; then
-            skopeo_opts+="+$altrunroot"
-        fi
-    fi
-
-    if [[ -n "$skopeo_opts" ]]; then
-        want="[$skopeo_opts]$want"
     fi
 
     # Cached image is now guaranteed to exist. Be sure to load it
@@ -265,19 +247,6 @@ function restore_image() {
     archive=$BATS_TMPDIR/$archive_basename.tar
 
     run_ramalama restore $archive
-}
-
-#######################
-#  _run_ramalama_quiet  #  Helper for leak_check. Runs ramalama with no logging
-#######################
-function _run_ramalama_quiet() {
-    # This should be the same as what run_ramalama() does.
-    run timeout -v --foreground --kill=10 60 $RAMALAMA $_RAMALAMA_TEST_OPTS "$@"
-    if [[ $status -ne 0 ]]; then
-        echo "# Error running command: ramalama $*"
-        echo "$output"
-        exit_code=$((exit_code + 1))
-    fi
 }
 
 function clean_setup() {
@@ -659,15 +628,6 @@ function journald_unavailable() {
     echo "WEIRD: 'journalctl -n 1' failed with a non-permission error:"
     echo "$output"
     return 1
-}
-
-# Returns the name of the local pause image.
-function pause_image() {
-    # This function is intended to be used as '$(pause_image)', i.e.
-    # our caller wants our output. run_ramalama() messes with output because
-    # it emits the command invocation to stdout, hence the redirection.
-    run_ramalama version --format "{{.Server.Version}}-{{.Server.Built}}" >/dev/null
-    echo "localhost/ramalama-pause:$output"
 }
 
 # Wait for the pod (1st arg) to transition into the state (2nd arg)

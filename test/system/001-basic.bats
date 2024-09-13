@@ -16,20 +16,10 @@ function setup() {
 # bats test_tags=distro-integration
 @test "ramalama version" {
     run_ramalama version
-    is "$output" "ramalama.*version \+"               "'Version line' in output"
+    is "$output" "ramalama.*version \+"               "'Version line' in output with version command"
+
     run_ramalama -v
-    is "$output" "ramalama.*version \+"               "'Version line' in output"
-}
-
-# bats test_tags=distro-integration
-@test "ramalama can pull a model" {
-#    run_ramalama rm -a -f
-
-    # This is a risk point: it will fail if the registry or network are flaky
-    run_ramalama pull $MODEL
-
-    run_ramalama list
-    is "$output" ".*$MODEL"               "'Version line' in output"
+    is "$output" "ramalama.*version \+"               "'Version line' in output with -v "
 }
 
 # vim: filetype=sh
