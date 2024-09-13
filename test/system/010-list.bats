@@ -10,6 +10,9 @@ load helpers
 
     run_ramalama list --noheading
     assert "${lines[0]}" !~ "$headings" "header line should not be there"
+
+    run_ramalama list -n
+    assert "${lines[0]}" !~ "$headings" "header line should not be there"
 }
 
 @test "ramalama list - json" {
