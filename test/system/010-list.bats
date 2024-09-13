@@ -13,6 +13,12 @@ load helpers
 
     run_ramalama list -n
     assert "${lines[0]}" !~ "$headings" "header line should not be there"
+
+    run_ramalama list --quiet
+    assert "${lines[0]}" !~ "$headings" "header line should not be there"
+
+    run_ramalama list --q
+    assert "${lines[0]}" !~ "$headings" "header line should not be there"
 }
 
 @test "ramalama list - json" {
@@ -44,14 +50,13 @@ size              | [0-9]\\\+
 #    is "$output" ""
 #}
 
-#FIXME
-#@test "ramalama rm --ignore" {
-#    random_image_name=i_$(safename)
-#    run_ramalama 1 rm $random_image_name
-#    is "$output" "Error: $random_image_name: image not known.*"
-#    run_ramalama rm --ignore $random_image_name
-#    is "$output" ""
-#}
+@test "ramalama rm --ignore" {
+    random_image_name=i_$(safename)
+    run_ramalama 1 rm $random_image_name
+    is "$output" "Error: $random_image_name: image not known.*"
+    run_ramalama rm --ignore $random_image_name
+    is "$output" ""
+}
 
 #FIXME
 #@test "ramalama rm --force bogus" {

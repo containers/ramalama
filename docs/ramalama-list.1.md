@@ -22,6 +22,9 @@ Print model list in json format
 #### **--noheading**, **-n**
 Do not print heading
 
+#### **--quiet**, **-q**
+Print only model names
+
 ## EXAMPLES
 
 List all models downloaded to users homedir
