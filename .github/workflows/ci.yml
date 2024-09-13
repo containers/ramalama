@@ -12,6 +12,9 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+      - name: install golang
+        shell: bash
+        run: brew install go
       - name: Run a one-line script
         shell: bash
         run: make test
