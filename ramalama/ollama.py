@@ -41,7 +41,7 @@ def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, mo
             manifest_data = json.load(f)
     except subprocess.CalledProcessError as e:
         if e.returncode == 22:
-            raise KeyError((f"{model}:{model_tag} not found"))
+            raise KeyError((f"{model} not found"))
 
         raise e
 
