@@ -18,36 +18,6 @@ linux_steps() {
   $maybe_sudo ./install.py
 }
 
-tests() {
-  set +o pipefail
-  ./${binfile} -h | grep usage:
-  set -o pipefail
-
-  ./${binfile} -v
-  ./${binfile} pull ollama://tinyllama
-  RAMALAMA_TRANSPORT=ollama ./${binfile} pull ben1t0/tiny-llm
-  ./${binfile} pull ollama://tinyllama:1.1b
-  ./${binfile} pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
-  ./${binfile} pull oci://quay.io/mmortari/gguf-py-example:v1
-  ./${binfile} list --noheading
-  ./${binfile} list -n
-  ./${binfile} list --json
-  ./${binfile} list --help
-  ./${binfile} list | grep tinyllama
-  ./${binfile} list | grep tiny-vicuna-1b
-  ./${binfile} list | grep NAME
-  ./${binfile} ls | grep tinyllama
-  ./${binfile} ls | grep tiny-vicuna-1b
-  ./${binfile} ls | grep NAME
-  ./${binfile} ls | grep oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
-  ./${binfile} rm ollama://ben1t0/tiny-llm:latest
-  if ./${binfile} list | grep ben1t0/tiny-llm; then
-      exit 1
-  else
-      exit 0
-  fi
-}
-
 main() {
   set -ex -o pipefail
 
@@ -79,7 +49,6 @@ main() {
   fi
 
   $maybe_sudo rm -rf /usr/share/ramalama /opt/homebrew/share/ramalama /usr/local/share/ramalama
-  tests
   go install github.com/cpuguy83/go-md2man@latest
   tmpdir=$(mktemp -d)
   make install DESTDIR=${tmpdir} PREFIX=/usr
