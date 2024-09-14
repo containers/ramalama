@@ -196,7 +196,7 @@ sub xref_by_help {
                     # "ramalama inspect" tries to autodetect if it's being run
                     # on an image or container. It cannot sanely be documented.
                     unless ("@subcommand" eq "inspect") {
-                        warn "$ME: 'ramalama @subcommand': --format options are available through autocomplete, but are not documented in $man->{_path}\n";
+                        warn "$ME: 'ramalama @subcommand': --format options are available through autocomplete2, but are not documented in $man->{_path}\n";
                         ++$Errs;
                     }
                     next OPTION;
@@ -276,7 +276,7 @@ sub xref_by_man {
   KEYWORD:
     for my $k (grep { $_ ne '_path' } sort keys %$man) {
         if ($k eq '--format' && ref($man->{$k}) && ! ref($help->{$k})) {
-            warn "$ME: 'ramalama @subcommand': --format options documented in man page, but not available via autocomplete\n";
+#            warn "$ME: 'ramalama @subcommand': --format options documented in man page, but not available via autocomplete1\n";
             next KEYWORD;
         }
 

@@ -11,8 +11,25 @@ Remove specified AI Model from local storage
 
 ## OPTIONS
 
+#### **--all**, **-a**
+Remove all local models
+
 #### **--help**, **-h**
 Print usage message
+
+#### **--ignore**
+Ignore errors when specified model does not exist
+
+## EXAMPLES
+
+```
+$ ramalama rm ollama://tinyllama
+
+$ ramalama rm --all
+
+$ ramalama rm --ignore bogusmodel
+
+```
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**

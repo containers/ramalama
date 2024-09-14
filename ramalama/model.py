@@ -65,9 +65,11 @@ class Model:
                 os.remove(symlink_path)
                 print(f"Untagged: {self.model}")
             except OSError as e:
-                perror(f"Error removing {self.model}: {e}")
+                if not args.ignore:
+                    perror(f"Error removing {self.model}: {e}")
         else:
-            perror(f"Model {self.model} not found")
+            if not args.ignore:
+                perror(f"Model {self.model} not found")
 
         self.garbage_collection(args)
 
