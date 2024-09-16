@@ -48,7 +48,7 @@ class OCI(Model):
         # Validate the model exists locally
         local_model_path = os.path.join(args.store, "models/oci", registry, reference_dir)
         if not os.path.exists(local_model_path):
-            raise KeyError(f"Model {self.model} not found locally. Cannot push.")
+            raise KeyError(f"model {self.model} not found locally. Cannot push.")
 
         model_file = Path(local_model_path).resolve()
         try:
@@ -74,7 +74,7 @@ class OCI(Model):
         run_cmd(["omlmd", "pull", self.model, "--output", outdir])
         ggufs = [file for file in os.listdir(outdir) if file.endswith(".gguf")]
         if len(ggufs) != 1:
-            raise KeyError(f"Error: Unable to identify .gguf file in: {outdir}")
+            raise KeyError(f"unable to identify .gguf file in: {outdir}")
 
         directory = f"{args.store}/models/oci/{registry}/{reference_dir}"
         os.makedirs(directory, exist_ok=True)
@@ -94,6 +94,6 @@ class OCI(Model):
         directory = f"{args.store}/models/oci/{registry}/{reference_dir}"
         ggufs = [file for file in os.listdir(directory) if file.endswith(".gguf")]
         if len(ggufs) != 1:
-            raise KeyError(f"Error: Unable to identify .gguf file in: {directory}")
+            raise KeyError(f"unable to identify .gguf file in: {directory}")
 
         return f"{directory}/{ggufs[0]}"

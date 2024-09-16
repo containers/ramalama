@@ -1,6 +1,6 @@
 import os
 import sys
-from ramalama.common import container_manager, exec_cmd, perror
+from ramalama.common import container_manager, exec_cmd
 
 
 class Model:
@@ -66,10 +66,10 @@ class Model:
                 print(f"Untagged: {self.model}")
             except OSError as e:
                 if not args.ignore:
-                    perror(f"Error removing {self.model}: {e}")
+                    raise KeyError(f"removing {self.model}: {e}")
         else:
             if not args.ignore:
-                perror(f"Model {self.model} not found")
+                raise KeyError(f"model {self.model} not found")
 
         self.garbage_collection(args)
 

@@ -29,6 +29,7 @@ modified          | [0-9]\\\+
 size              | [0-9]\\\+
 "
 
+    run_ramalama pull ollama://tinyllama
     run_ramalama list --json
 
     while read field expect; do
@@ -39,39 +40,18 @@ size              | [0-9]\\\+
 }
 
 
-#@test "ramalama list - rm -af removes all models" {
-#FIXME    run_ramalama rm -af
-#    is "$output" "Untagged: $IMAGE
-#Untagged: $pauseImage
-#Deleted: $imageID
-#Deleted: $pauseID" "infra list gets removed as well"
-
-#    run_ramalama list --noheading
-#    is "$output" ""
-#}
+@test "ramalama list - rm -a removes all models" {
+    run_ramalama rm -a
+    run_ramalama list --noheading
+    is "$output" ""
+}
 
 @test "ramalama rm --ignore" {
     random_image_name=i_$(safename)
     run_ramalama 1 rm $random_image_name
-    is "$output" "Error: $random_image_name: image not known.*"
+    is "$output" "Error: model $random_image_name not found.*"
     run_ramalama rm --ignore $random_image_name
     is "$output" ""
 }
-
-#FIXME
-#@test "ramalama rm --force bogus" {
-#    run_ramalama 1 rm bogus
-#    is "$output" "Error: bogus: image not known" "Should print error"
-#    run_ramalama rm --force bogus
-#    is "$output" "" "Should print no output"
-
-#    random_image_name=i_$(safename)
-#    run_ramalama image tag $IMAGE $random_image_name
-#    run_ramalama rm --force bogus $random_image_name
-#    assert "$output" = "Untagged: localhost/$random_image_name:latest" "removed image"
-
-#    run_ramalama list
-#    assert "$output" !~ "$random_image_name" "image must be removed"
-#}
 
 # vim: filetype=sh
