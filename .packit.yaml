@@ -1,0 +1,76 @@
+---
+# See the documentation for more information:
+# https://packit.dev/docs/configuration/
+
+upstream_tag_template: v{version}
+
+packages:
+  ramalama-fedora:
+    pkg_tool: fedpkg
+    downstream_package_name: ramalama
+    specfile_path: rpm/ramalama.spec
+  ramalama-centos:
+    pkg_tool: centpkg
+    downstream_package_name: ramalama
+    specfile_path: rpm/ramalama.spec
+  ramalama-rhel:
+    specfile_path: rpm/ramalama.spec
+
+srpm_build_deps:
+  - make build
+
+jobs:
+  # Copr builds for Fedora
+  - job: copr_build
+    trigger: pull_request
+    packages: [ramalama-fedora]
+    targets:
+      - fedora-all
+
+  # Copr builds for CentOS Stream
+  - job: copr_build
+    trigger: pull_request
+    packages: [ramalama-centos]
+    targets:
+      - centos-stream-10
+      - centos-stream-9
+
+  # Copr builds for RHEL
+  - job: copr_build
+    trigger: pull_request
+    packages: [ramalama-rhel]
+    targets:
+      - epel-9
+
+  # Run on commit to main branch
+  - job: copr_build
+    trigger: commit
+    packages: [ramalama-fedora]
+    branch: main
+    owner: rhcontainerbot
+    project: ramalama-next
+
+  # Downstream sync for Fedora
+  - job: propose_downstream
+    trigger: release
+    packages: [ramalama-fedora]
+    dist_git_branches:
+      - fedora-all
+
+  # Downstream sync for CentOS Stream
+  # TODO: c9s enablement being tracked in https://issues.redhat.com/browse/RUN-2123
+  - job: propose_downstream
+    trigger: release
+    packages: [ramalama-centos]
+    dist_git_branches:
+      - c10s
+
+  - job: koji_build
+    trigger: commit
+    dist_git_branches:
+      - fedora-all
+
+  - job: bodhi_update
+    trigger: commit
+    dist_git_branches:
+      - fedora-branched # rawhide updates are created automatically

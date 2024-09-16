@@ -43,6 +43,7 @@ install:
 .PHONY:
 build:
 ifeq ($(OS),Linux)
+	$(PYTHON) -m pip install --user -r requirements.txt
 	./container_build.sh
 endif
 
@@ -79,6 +80,10 @@ test: validate
 	test/ci.sh
 	make clean
 	hack/tree_status.sh
+
+.PHONY: rpm
+rpm: ## Build rpm packages
+	rpkg local
 
 .PHONY: clean
 clean:
