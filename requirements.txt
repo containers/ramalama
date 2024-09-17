@@ -1,0 +1,7 @@
+# Any changes should be copied into pyproject.toml
+requests>=2.24
+setuptools
+sphinx
+tomli>=1.2.3; python_version<'3.11'
+urllib3
+wheel

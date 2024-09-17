@@ -43,6 +43,7 @@ install:
 .PHONY:
 build:
 ifeq ($(OS),Linux)
+	$(PYTHON) -m pip install --user -r requirements.txt
 	./container_build.sh
 endif
 

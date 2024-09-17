@@ -1,0 +1,51 @@
+---
+# See the documentation for more information:
+# https://packit.dev/docs/configuration/
+
+upstream_tag_template: v{version}
+
+packages:
+  ramalama-fedora:
+    pkg_tool: fedpkg
+    downstream_package_name: python-ramalama
+    specfile_path: rpm/python-ramalama.spec
+  ramalama-centos:
+    pkg_tool: centpkg
+    downstream_package_name: python-ramalama
+    specfile_path: rpm/python-ramalama.spec
+  ramalama-rhel:
+    specfile_path: rpm/python-ramalama.spec
+
+srpm_build_deps:
+  - make build
+
+jobs:
+  # Copr builds for Fedora
+  - job: copr_build
+    trigger: pull_request
+    packages: [ramalama-fedora]
+    targets:
+      - fedora-all
+
+  # Copr builds for CentOS Stream
+  - job: copr_build
+    trigger: pull_request
+    packages: [ramalama-centos]
+    targets:
+      - centos-stream-10
+      - centos-stream-9
+
+  # Copr builds for RHEL
+  - job: copr_build
+    trigger: pull_request
+    packages: [ramalama-rhel]
+    targets:
+      - epel-9
+
+  # Run on commit to main branch
+  - job: copr_build
+    trigger: commit
+    packages: [ramalama-fedora]
+    branch: main
+    owner: rhcontainerbot
+    project: podman-next
