@@ -11,6 +11,7 @@ import string
 import subprocess
 import sys
 import time
+import configparser
 
 from ramalama.huggingface import Huggingface
 from ramalama.common import in_container, container_manager, exec_cmd, run_cmd
@@ -66,6 +67,12 @@ def init_cli():
         return version(args)
     # create stores directories
     mkdirs(args.store)
+    if hasattr(args, "MODEL"):
+        resolved_model = resolve_shortname(args.MODEL)
+        if resolved_model:
+            args.UNRESOLVED_MODEL = args.MODEL
+            args.MODEL = resolved_model
+
     if run_container(args):
         return
 
@@ -413,14 +420,15 @@ def get_store():
 
 
 def find_working_directory():
-    wd = "./ramalama"
-    for p in sys.path:
-        target = os.path.join(p, "ramalama")
-        if os.path.exists(target):
-            wd = target
-            break
+    if os.path.exists("./ramalama"):
+        return "./ramalama"
 
-    return wd
+    for p in sys.path:
+        p = os.path.join(p, "ramalama")
+        if os.path.exists(p):
+            return p
+
+    return ""
 
 
 def run_container(args):
@@ -478,11 +486,49 @@ def run_container(args):
 
     conman_args += ["quay.io/ramalama/ramalama:latest", "/usr/bin/ramalama"]
     conman_args += sys.argv[1:]
+    if hasattr(args, "UNRESOLVED_MODEL"):
+        index = conman_args.index(args.UNRESOLVED_MODEL)
+        conman_args[index] = args.MODEL
+
     if args.dryrun:
         print(*conman_args)
         return True
 
     exec_cmd(conman_args)
+
+
+def strip_quotes(s):
+    return s.strip("'\"")
+
+
+def remove_quotes(data):
+    # Remove leading and trailing quotes from keys and values
+    cleaned_dict = {strip_quotes(key): strip_quotes(value) for key, value in data.items()}
+
+    return cleaned_dict
+
+
+def load_shortnames():
+    config = configparser.ConfigParser()
+    aliases = {}
+    file_paths = [
+        "usr/share/ramalama/aliases.conf",  # for development
+        "/usr/share/ramalama/aliases.conf",
+        "/etc/ramalama/aliases.conf",
+        os.path.expanduser("~/.config/ramalama/aliases.conf"),
+    ]
+
+    for file_path in file_paths:
+        config.read(file_path)
+        if "aliases" in config:
+            aliases.update(config["aliases"])
+
+    return remove_quotes(aliases)
+
+
+def resolve_shortname(model):
+    shortnames = load_shortnames()
+    return shortnames.get(model)
 
 
 def New(model):
