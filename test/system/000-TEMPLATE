@@ -50,9 +50,6 @@ function teardown() {
 
 # FIXME: very basic one-pass example
 @test "ramalama FOO - description of test" {
-    # FIXME: please try to remove this line; that is, try to write tests
-    # that will pass as both root and rootless.
-
     # FIXME: template for run commands. Always use 'run_ramalama'!
     # FIXME: The '?' means 'ignore exit status'; use a number if you
     # FIXME:    expect a precise nonzero code, or omit for 0 (usual case).
