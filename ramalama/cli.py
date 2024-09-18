@@ -231,8 +231,7 @@ def _list_models(args):
         if path.is_symlink():
             name = str(path).replace("/", "://", 1)
             file_epoch = path.lstat().st_mtime
-            diff = int(time.time() - file_epoch)
-            modified = human_duration(diff) + " ago"
+            modified = int(time.time() - file_epoch)
             size = subprocess.run(["du", "-h", str(path.resolve())], capture_output=True, text=True).stdout.split()[0]
 
             # Store data for later use
@@ -255,8 +254,9 @@ def list_cli(args):
     modified_width = len("MODIFIED")
     size_width = len("SIZE")
     for model in models:
+        modified = human_duration(model["modified"]) + " ago"
         name_width = max(name_width, len(model["name"]))
-        modified_width = max(modified_width, len(model["modified"]))
+        modified_width = max(modified_width, len(modified))
         size_width = max(size_width, len(model["size"]))
 
     if not args.quiet and not args.noheading and not args.json:
@@ -266,7 +266,7 @@ def list_cli(args):
         if args.quiet:
             print(model["name"])
         else:
-            print(f"{model['name']:<{name_width}} {model['modified']:<{modified_width}} {model['size']:<{size_width}}")
+            print(f"{model['name']:<{name_width}} {modified:<{modified_width}} {model['size']:<{size_width}}")
 
 
 def help_parser(subparsers):

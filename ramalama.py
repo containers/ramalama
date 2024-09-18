@@ -19,16 +19,16 @@ def main(args):
     try:
         ramalama.init_cli()
     except IndexError as e:
-        ramalama.perror(str(e).strip("'"))
+        ramalama.perror("Error: " + str(e).strip("'"))
         sys.exit(errno.EINVAL)
     except KeyError as e:
-        ramalama.perror(str(e).strip("'"))
+        ramalama.perror("Error: " + str(e).strip("'"))
         sys.exit(1)
     except NotImplementedError as e:
-        ramalama.perror(str(e).strip("'"))
+        ramalama.perror("Error: " + str(e).strip("'"))
         sys.exit(errno.ENOTSUP)
     except subprocess.CalledProcessError as e:
-        ramalama.perror(str(e).strip("'"))
+        ramalama.perror("Error: " + str(e).strip("'"))
         sys.exit(e.returncode)
 
 
