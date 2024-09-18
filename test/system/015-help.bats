@@ -65,9 +65,6 @@ function check_help() {
         # This should be disallowed with a clear message.
         if expr "$full_help" : ".*-l, --latest" >/dev/null; then
             local nope="exec list port ps top"   # these can't be tested
-            if is_rootless; then
-                nope="$nope mount restore"       # these don't work rootless
-            fi
             if ! grep -wq "$cmd" <<<$nope; then
                 run_ramalama 2 "$@" $cmd -l nonexistent-container
                 is "$output" "Error: .*--latest and \(containers\|pods\|arguments\) cannot be used together" \
@@ -83,18 +80,6 @@ function check_help() {
 
         # If usage has required arguments, try running without them.
         if expr "$usage" : '[A-Z]' >/dev/null; then
-            # Exceptions: these commands don't work rootless
-            if is_rootless; then
-                # "pause is not supported for rootless containers"
-                if [[ "$cmd" = "pause" ]] || [[ "$cmd" = "unpause" ]]; then
-                    continue
-                fi
-                # "network rm" too
-                if [ "$@" = "network" -a "$cmd" = "rm" ]; then
-                    continue
-                fi
-            fi
-
             # The </dev/null protects us from 'ramalama login' which will
             # try to read username/password from stdin.
             dprint "$command_string (without required args)"

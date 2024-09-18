@@ -102,9 +102,7 @@ function _prefetch() {
 function skopeo() {
     local xdg=${XDG_RUNTIME_DIR}
     if [ -z "$xdg" ]; then
-        if is_rootless; then
-            xdg=/run/user/$(id -u)
-        fi
+        xdg=/run/user/$(id -u)
     fi
     XDG_RUNTIME_DIR=${xdg} command skopeo "$@"
 }
@@ -558,16 +556,8 @@ function wait_for_file_content() {
 # BEGIN miscellaneous tools
 
 # Shortcuts for common needs:
-function is_rootless() {
-    [ "$(id -u)" -ne 0 ]
-}
-
 function is_aarch64() {
     [ "$(uname -m)" == "aarch64" ]
-}
-
-function selinux_enabled() {
-    /usr/sbin/selinuxenabled 2> /dev/null
 }
 
 # Returns the OCI runtime *basename* (typically llama.cpp or vllm). Much as we'd
@@ -603,57 +593,6 @@ function ramalama_isolation_opts() {
         mkdir -p $path/$opt
         echo " --$opt $path/$opt"
     done
-}
-
-# rhbz#1895105: rootless journald is unavailable except to users in
-# certain magic groups; which our testuser account does not belong to
-# (intentional: that is the RHEL default, so that's the setup we test).
-function journald_unavailable() {
-    if ! is_rootless; then
-        # root must always have access to journal
-        return 1
-    fi
-
-    run journalctl -n 1
-    if [[ $status -eq 0 ]]; then
-        return 1
-    fi
-
-    if [[ $output =~ permission ]]; then
-        return 0
-    fi
-
-    # This should never happen; if it does, it's likely that a subsequent
-    # test will fail. This output may help track that down.
-    echo "WEIRD: 'journalctl -n 1' failed with a non-permission error:"
-    echo "$output"
-    return 1
-}
-
-# Wait for the pod (1st arg) to transition into the state (2nd arg)
-function _ensure_pod_state() {
-    for i in {0..5}; do
-        run_ramalama pod inspect $1 --format "{{.State}}"
-        if [[ $output == "$2" ]]; then
-            return
-        fi
-        sleep 0.5
-    done
-
-    die "Timed out waiting for pod $1 to enter state $2"
-}
-
-# Wait for the container's (1st arg) running state (2nd arg)
-function _ensure_container_running() {
-    for i in {0..20}; do
-        run_ramalama container inspect $1 --format "{{.State.Running}}"
-        if [[ $output == "$2" ]]; then
-            return
-        fi
-        sleep 0.5
-    done
-
-    die "Timed out waiting for container $1 to enter state running=$2"
 }
 
 #########
