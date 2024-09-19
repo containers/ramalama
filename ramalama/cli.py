@@ -82,8 +82,7 @@ def init_cli():
         args.func(args)
     except HelpException:
         parser.print_help()
-    except AttributeError as e:
-        print(e)
+    except AttributeError:
         parser.print_usage()
         print("ramalama: requires a subcommand")
 
@@ -421,15 +420,7 @@ def get_store():
 
 
 def find_working_directory():
-    if os.path.exists("./ramalama"):
-        return "./ramalama"
-
-    for p in sys.path:
-        p = os.path.join(p, "ramalama")
-        if os.path.exists(p):
-            return p
-
-    return ""
+    return os.path.dirname(__file__)
 
 
 def run_container(args):
