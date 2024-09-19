@@ -3,6 +3,7 @@ OS := $(shell uname;)
 SELINUXOPT ?= $(shell test -x /usr/sbin/selinuxenabled && selinuxenabled && echo -Z)
 PREFIX ?= /usr/local
 BINDIR ?= ${PREFIX}/bin
+SHAREDIR ?= ${PREFIX}/share/ramalama
 PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
@@ -32,20 +33,29 @@ help:
 	@echo
 
 .PHONY:
-install:
+install-shortnames:
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(SHAREDIR)
+	install ${SELINUXOPT} -m 644 shortnames/shortnames.conf \
+		$(DESTDIR)$(SHAREDIR)
+
+.PHONY:
+install: install-shortnames install-docs
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(BINDIR)
 	install ${SELINUXOPT} -m 755 ramalama.py \
 		$(DESTDIR)$(BINDIR)/ramalama
 	RAMALAMA_VERSION=$(RAMALAMA_VERSION) \
 	pip install . --root $(DESTDIR) --prefix ${PREFIX}
 
-	make -C docs install
 .PHONY:
 build:
 ifeq ($(OS),Linux)
 	$(PYTHON) -m pip install --user -r requirements.txt
 	./container_build.sh
 endif
+
+.PHONY: install-docs
+install-docs: docs
+	make -C docs install
 
 .PHONY: docs
 docs:
