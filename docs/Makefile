@@ -11,10 +11,7 @@ endif
 # This must never include the 'hack' directory
 export PATH := $(shell $(GO) env GOPATH)/bin:$(PATH)
 
-gomd2man:
-	go install github.com/cpuguy83/go-md2man@latest
-
-docs:  gomd2man $(patsubst %.md,%,$(wildcard *.md))
+docs:  $(patsubst %.md,%,$(wildcard *.md))
 
 %.1: %.1.md
 ### sed is used to filter http/s links as well as relative links
@@ -32,6 +29,11 @@ install: docs
 	install -d ${DESTDIR}/${MANDIR}/man1
 	install -m 0644 ramalama*.1 ${DESTDIR}/${MANDIR}/man1
 	install -m 0644 links/ramalama*.1 ${DESTDIR}/${MANDIR}/man1
+
+
+.PHONY: install-tools
+install-tools:
+	go install github.com/cpuguy83/go-md2man@latest
 
 .PHONY: clean
 clean:

@@ -4,7 +4,7 @@ from ramalama.common import container_manager, exec_cmd
 
 
 class Model:
-    """Model supper class"""
+    """Model super class"""
 
     model = ""
     conman = container_manager()

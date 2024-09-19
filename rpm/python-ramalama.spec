@@ -18,6 +18,7 @@ URL: https://github.com/containers/%{pypi_name}
 # Tarball fetched from upstream
 Source0: %{url}/archive/v%{version}.tar.gz
 BuildArch: noarch
+Provides: %{pypi_name}
 
 %description
 %desc
@@ -30,7 +31,10 @@ configure the system for AI themselves. After the initialization, Ramalama
 will run the AI Models within a container based on the OCI image.
 
 %package -n python%{python3_pkgversion}-%{pypi_name}
+BuildRequires: golang
+BuildRequires: golang-github-cpuguy83-md2man
 BuildRequires: git-core
+BuildRequires: make
 BuildRequires: python%{python3_pkgversion}-devel
 BuildRequires: pyproject-rpm-macros
 BuildRequires: python%{python3_pkgversion}-pip
@@ -51,10 +55,15 @@ Summary: %{summary}
 %install
 %pyproject_install
 %pyproject_save_files %{pypi_name}
+%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-shortnames
+%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-docs
 
 %files -n python%{python3_pkgversion}-%{pypi_name} -f %{pyproject_files}
 %license LICENSE
 %doc README.md
+%dir %{_datadir}/%{pypi_name}
+%{_datadir}/%{pypi_name}/shortnames.conf
+%{_mandir}/man1/ramalama*.1*
 
 %changelog
 %autochangelog
