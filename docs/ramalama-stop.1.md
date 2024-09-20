@@ -14,6 +14,9 @@ Stop all containers
 #### **--help**, **-h**
 Print usage message
 
+#### **--ignore**
+Ignore missing containers when stopping
+
 ## DESCRIPTION
 Stop specified container that is executing the AI Model.
 

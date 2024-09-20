@@ -85,6 +85,9 @@ verify_begin="podman run --rm -it --label=RAMALAMA container --security-opt=labe
     run_ramalama 125 stop ${name}
     is "$output" "Error: no container with name or ID \"${name}\" found: no such container" "missing container"
 
+    run_ramalama stop --ignore ${name}
+    is "$output" "" "ignore missing"
+
     run_ramalama 22 stop --all ${name}
     is "$output" "Error: specifying --all and container name, ${name}, not allowed" "list correct"
 }

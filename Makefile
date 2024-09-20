@@ -64,7 +64,6 @@ docs:
 .PHONY: lint
 lint:
 	@pip install -q black flake8
-	echo $$PATH
 	black --line-length 120 --exclude 'venv/*' *.py ramalama/*.py  # Format the code
 	flake8 --max-line-length=120 --exclude=venv *.py ramalama/*.py  # Check for any inconsistencies
 
