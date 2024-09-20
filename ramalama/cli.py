@@ -353,6 +353,8 @@ def stop_parser(subparsers):
 
 
 def _stop_container(name):
+    if not name:
+        raise IndexError("must specify a container name")
     conman = container_manager()
     if conman == "":
         raise IndexError("no container manager (Podman, Docker) found")
@@ -371,9 +373,8 @@ def stop_container(args):
     if not args.all:
         return _stop_container(args.NAME)
 
-    if args.NAME == "":
-        raise IndexError("can not specify --all as well NAME")
-
+    if args.NAME:
+        raise IndexError("specifying --all and container name, %s, not allowed" % args.NAME)
     args.noheading = True
     args.format = "{{ .Names }}"
     for i in _list_containers(args):
@@ -425,7 +426,7 @@ def find_working_directory():
 
 def run_container(args):
     if args.nocontainer:
-        if hasattr(args, "name") and args.name != "":
+        if hasattr(args, "name") and args.name:
             raise IndexError("--nocontainer and --name options conflict. --name requires a container.")
 
         if hasattr(args, "detach") and args.detach:
