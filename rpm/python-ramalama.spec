@@ -18,7 +18,6 @@ URL: https://github.com/containers/%{pypi_name}
 # Tarball fetched from upstream
 Source0: %{url}/archive/v%{version}.tar.gz
 BuildArch: noarch
-Provides: %{pypi_name}
 
 %description
 %desc
@@ -41,6 +40,7 @@ BuildRequires: python%{python3_pkgversion}-pip
 BuildRequires: python%{python3_pkgversion}-setuptools
 BuildRequires: python%{python3_pkgversion}-wheel
 Summary: %{summary}
+Provides: %{pypi_name} = %{version}-%{release}
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{pypi_name}}
 
 %description -n python%{python3_pkgversion}-%{pypi_name}
