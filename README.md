@@ -27,7 +27,7 @@ The ramalama uses the Ollama registry transport by default. Use the RAMALAMA_TRA
 
 Individual model transports can be modifies when specifying a model via the `huggingface://`, `oci://`, or `ollama://` prefix.
 
-ramalama pull `huggingface://`afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+`ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf`
 
 To make it easier for users, ramalama uses shortname files, which container
 alias names for fully specified AI Models allowing users to specify the shorter
