@@ -4,11 +4,55 @@ The Ramalama project's goal is to make working with AI boring
 through the use of OCI containers.
 
 On first run Ramalama inspects your system for GPU support, falling back to CPU
-support if no GPUs are present. It then uses container engines like Podman to
-pull the appropriate OCI image with all of the software necessary to run an
-AI Model for your systems setup. This eliminates the need for the user to
-configure the system for AI themselves. After the initialization, Ramalama
+support if no GPUs are present. It then uses container engines like Podman or
+Docker to pull the appropriate OCI image with all of the software necessary to
+run an AI Model for your systems setup. This eliminates the need for the user
+to configure the system for AI themselves. After the initialization, Ramalama
 will run the AI Models within a container based on the OCI image.
+
+Ramalama supports multiple AI model registries types called transports.
+Supported transports:
+
+
+## TRANSPORTS
+
+| Transports    | Web Site                                            |
+| ------------- | --------------------------------------------------- |
+| HuggingFace   | [`huggingface.co`](https://www.huggingface.co)      |
+| Ollama        | [`ollama.com`](https://www.ollama.com)              |
+| OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)|
+||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), and [`Artifactory`](https://artifactory.com)|
+
+The ramalama uses the Ollama registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
+
+Individual model transports can be modifies when specifying a model via the `huggingface://`, `oci://`, or `ollama://` prefix.
+
+ramalama pull `huggingface://`afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+
+To make it easier for users, ramalama uses shortname files, which container
+alias names for fully specified AI Models allowing users to specify the shorter
+names when referring to models. ramalama reads shortnames.conf files if they
+exist . These files contain a list of name value pairs for specification of
+the model. The following table specifies the order which Ramama reads the files
+. Any duplicate names that exist override previously defined shortnames.
+
+| Shortnames type | Path                                            |
+| --------------- | ---------------------------------------- |
+| Distribution    | /usr/share/ramalama/shortnames.conf      |
+| Administrators  | /etc/ramamala/shortnames.conf            |
+| Users           | $HOME/.config/ramalama/shortnames.conf   |
+
+```code
+$ cat /usr/share/ramalama/shortnames.conf
+[shortnames]
+  "tiny" = "ollama://tinyllama"
+  "granite" = "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf"
+  "granite:7b" = "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf"
+  "ibm/granite" = "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf"
+  "merlinite" = "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf"
+  "merlinite:7b" = "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf"
+...
+```
 
 ## Install
 
@@ -40,6 +84,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.py | 
 
 | Command                                                | Description                                                |
 | ------------------------------------------------------ | ---------------------------------------------------------- |
+| [ramalama(1)](docs/ramalama.1.md)                      | Primary ramalama man page.                                 |
 | [ramalama-containers(1)](docs/ramalama-containers.1.md)| List all ramalama containers.                              |
 | [ramalama-list(1)](docs/ramalama-list.1.md)            | List all AI models in local storage.                       |
 | [ramalama-login(1)](docs/ramalama-login.1.md)          | Login to remote model registry.                            |
@@ -111,10 +156,18 @@ $ ramalama pull granite-code
 
 ### Serving Models
 
-You can `serve` a chatbot on a model using the `serve` command. By default, it pulls from the ollama registry.
+You can `serve` multiple models using the `serve` command. By default, it pulls from the ollama registry.
 
 ```
-$ ramalama serve llama3
+$ ramalama serve --name mylama llama3
+```
+
+### Stopping servers
+
+You can stop a running model if it is running in a container.
+
+```
+$ ramalama stop mylama
 ```
 
 ## Diagram
@@ -125,28 +178,28 @@ $ ramalama serve llama3
 | ramalama run granite-code |
 |                           |
 +-------+-------------------+
-        |
-        |
-        |                                          +------------------+
-        |                                          | Pull model layer |
-        +----------------------------------------->| granite-code     |
-                                                   +------------------+
-                                                   | Repo options:    |
-                                                   +-+-------+------+-+
-                                                     |       |      |
-                                                     v       v      v
-                                             +---------+ +------+ +----------+
-                                             | Hugging | | quay | | Ollama   |
-                                             | Face    | |      | | Registry |
-                                             +-------+-+ +---+--+ +-+--------+
-                                                     |       |      |
-                                                     v       v      v
-                                                   +------------------+
-                                                   | Start with       |
-                                                   | llama.cpp and    |
-                                                   | granite-code     |
-                                                   | model            |
-                                                   +------------------+
+	|
+	|
+	|                                          +------------------+
+	|                                          | Pull model layer |
+	+----------------------------------------->| granite-code     |
+						   +------------------+
+						   | Repo options:    |
+						   +-+-------+------+-+
+						     |       |      |
+						     v       v      v
+					     +---------+ +------+ +----------+
+					     | Hugging | | quay | | Ollama   |
+					     | Face    | |      | | Registry |
+					     +-------+-+ +---+--+ +-+--------+
+						     |       |      |
+						     v       v      v
+						   +------------------+
+						   | Start with       |
+						   | llama.cpp and    |
+						   | granite-code     |
+						   | model            |
+						   +------------------+
 ```
 
 ## In development
