@@ -348,37 +348,35 @@ def stop_parser(subparsers):
     parser = subparsers.add_parser("stop", help="Stop named container that is running AI Model")
     parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("-a", "--all", action="store_true", help="Stop all ramalama containers")
+    parser.add_argument(
+        "--ignore", action="store_true", help="Ignore errors when specified ramalama containersis missing"
+    )
     parser.add_argument("NAME", nargs="?")  # positional argument
     parser.set_defaults(func=stop_container)
 
 
-def _stop_container(name):
+def _stop_container(args, name):
     if not name:
         raise IndexError("must specify a container name")
     conman = container_manager()
     if conman == "":
         raise IndexError("no container manager (Podman, Docker) found")
 
-    conman_args = [
-        conman,
-        "stop",
-        "-t=0",
-        name,
-    ]
+    conman_args = [conman, "stop", "-t=0", "--ignore=" + str(args.ignore), name]
 
     run_cmd(conman_args)
 
 
 def stop_container(args):
     if not args.all:
-        return _stop_container(args.NAME)
+        return _stop_container(args, args.NAME)
 
     if args.NAME:
         raise IndexError("specifying --all and container name, %s, not allowed" % args.NAME)
     args.noheading = True
     args.format = "{{ .Names }}"
     for i in _list_containers(args):
-        _stop_container(i)
+        _stop_container(args, i)
 
 
 def version_parser(subparsers):
