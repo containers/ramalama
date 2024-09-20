@@ -77,4 +77,16 @@ verify_begin="podman run --rm -it --label=RAMALAMA container --security-opt=labe
     is "$output" "" "no more containers should exist"
 }
 
+@test "ramalama stop failures" {
+    name=m_$(safename)
+    run_ramalama 22 stop
+    is "$output" "Error: must specify a container name" "name required"
+
+    run_ramalama 125 stop ${name}
+    is "$output" "Error: no container with name or ID \"${name}\" found: no such container" "missing container"
+
+    run_ramalama 22 stop --all ${name}
+    is "$output" "Error: specifying --all and container name, ${name}, not allowed" "list correct"
+}
+
 # vim: filetype=sh

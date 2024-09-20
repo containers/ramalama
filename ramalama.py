@@ -28,7 +28,6 @@ def main(args):
         ramalama.perror("Error: " + str(e).strip("'"))
         sys.exit(errno.ENOTSUP)
     except subprocess.CalledProcessError as e:
-        ramalama.perror("Error: " + str(e).strip("'"))
         sys.exit(e.returncode)
 
 

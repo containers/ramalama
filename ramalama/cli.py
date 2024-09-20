@@ -82,8 +82,7 @@ def init_cli():
         args.func(args)
     except HelpException:
         parser.print_help()
-    except AttributeError as e:
-        print(e)
+    except AttributeError:
         parser.print_usage()
         print("ramalama: requires a subcommand")
 
@@ -354,6 +353,8 @@ def stop_parser(subparsers):
 
 
 def _stop_container(name):
+    if not name:
+        raise IndexError("must specify a container name")
     conman = container_manager()
     if conman == "":
         raise IndexError("no container manager (Podman, Docker) found")
@@ -372,9 +373,8 @@ def stop_container(args):
     if not args.all:
         return _stop_container(args.NAME)
 
-    if args.NAME == "":
-        raise IndexError("can not specify --all as well NAME")
-
+    if args.NAME:
+        raise IndexError("specifying --all and container name, %s, not allowed" % args.NAME)
     args.noheading = True
     args.format = "{{ .Names }}"
     for i in _list_containers(args):
@@ -421,20 +421,12 @@ def get_store():
 
 
 def find_working_directory():
-    if os.path.exists("./ramalama"):
-        return "./ramalama"
-
-    for p in sys.path:
-        p = os.path.join(p, "ramalama")
-        if os.path.exists(p):
-            return p
-
-    return ""
+    return os.path.dirname(__file__)
 
 
 def run_container(args):
     if args.nocontainer:
-        if hasattr(args, "name") and args.name != "":
+        if hasattr(args, "name") and args.name:
             raise IndexError("--nocontainer and --name options conflict. --name requires a container.")
 
         if hasattr(args, "detach") and args.detach:
