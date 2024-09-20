@@ -77,21 +77,27 @@ class Model:
         raise NotImplementedError(f"get_symlink_path for {self.type} not implemented")
 
     def run(self, args):
+        prompt = "You are a helpful assistant"
+        if args.ARGS:
+            prompt = " ".join(args.ARGS)
+
         symlink_path = self.pull(args)
         exec_args = [
             "llama-cli",
             "-m",
             symlink_path,
             "--log-disable",
-            "-cnv",
-            "-p",
-            "You are a helpful assistant",
             "--in-prefix",
             "",
             "--in-suffix",
             "",
             "--no-display-prompt",
+            "-p",
+            prompt,
         ] + self.common_params
+        if not args.ARGS:
+            exec_args.append("-cnv")
+
         exec_cmd(exec_args)
 
     def serve(self, args):

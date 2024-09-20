@@ -22,4 +22,11 @@ load helpers
     is "${lines[0]}"  "--nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
 }
 
+@test "ramalama run granite with prompt" {
+    run_ramalama run --name foobar granite "How often to full moons happen"
+    is "$output" ".*Moon" "should include some info about the Moon"
+    run_ramalama list
+    is "$output" ".*granite" "granite model should have been pulled"
+}
+
 # vim: filetype=sh
