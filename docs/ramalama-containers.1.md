@@ -1,7 +1,7 @@
 % ramalama-containers 1
 
 ## NAME
-ramalama\-containers - List all ramalama containers
+ramalama\-containers - list all ramalama containers
 
 ## SYNOPSIS
 **ramalama containers** [*options*]
@@ -14,8 +14,7 @@ List all containers running AI Models
 ## OPTIONS
 
 #### **--format**=*format*
-
-Pretty-print containers to JSON or using a Go template
+pretty-print containers to JSON or using a Go template
 
 Valid placeholders for the Go template are listed below:
 

@@ -1,7 +1,7 @@
 % ramalama-run 1
 
 ## NAME
-ramalama\-run - Run specified AI Model as a chatbot
+ramalama\-run - run specified AI Model as a chatbot
 
 ## SYNOPSIS
 **ramalama run** [*options*] *model* [arg ...]
@@ -9,14 +9,13 @@ ramalama\-run - Run specified AI Model as a chatbot
 ## OPTIONS
 
 #### **--help**, **-h**
-Print usage message
+show this help message and exit
 
 #### **--name**, **-n**
-Name of the container to run the model in.
+name of the container to run the Model in
 
 #### **--prompt**
-
-Modify the prompt in the AI Chatbot
+modify the prompt in the AI Chatbot
 
 ## DESCRIPTION
 Run specified AI Model as a chat bot. Ramalama pulls specified AI Model from

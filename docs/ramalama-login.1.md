@@ -1,36 +1,31 @@
 % ramalama-login 1
 
 ## NAME
-ramalama\-login - Login to remote model registry
+ramalama\-login - login to remote registry
 
 ## SYNOPSIS
 **ramalama login** [*options*]
 
 ## DESCRIPTION
-Login to remote model registry
+login to remote registry
 
 ## OPTIONS
-
 Options are specific to registry types.
 
 #### **--help**, **-h**
-Print usage message
+show this help message and exit
 
 #### **--password**, **-p**=*password*
-
-Password for registry
+password for registry
 
 #### **--password-stdin**
-
-Take the password from stdin
+take the password from stdin
 
 #### **--token**
-
-Token to be passed to Model registry
+token to be passed to Model registry
 
 #### **--username**, **-u**=*username*
-
-Username for registry
+username for registry
 
 ## EXAMPLES
 

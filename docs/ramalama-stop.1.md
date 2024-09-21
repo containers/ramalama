@@ -1,7 +1,7 @@
 % ramalama-stop 1
 
 ## NAME
-ramalama\-stop - Stop ramalaman container running an AI Model
+ramalama\-stop - stop named container that is running AI Model
 
 ## SYNOPSIS
 **ramalama stop** [*options*] *name*

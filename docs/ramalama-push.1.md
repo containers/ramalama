@@ -1,7 +1,7 @@
 % ramalama-push 1
 
 ## NAME
-ramalama\-push - Push AI Model (OCI-only at present)
+ramalama\-push - push AI Model from local storage to remote registry
 
 ## SYNOPSIS
 **ramalama push** [*options*] *model* *target*

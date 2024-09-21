@@ -1,7 +1,7 @@
 % ramalama-list 1
 
 ## NAME
-ramalama\-list - List all AI models in local storage
+ramalama\-list - list all downloaded AI Models
 
 ## SYNOPSIS
 **ramalama list** [*options*]
@@ -14,20 +14,20 @@ List all the AI Models in local storage
 ## OPTIONS
 
 #### **--help**, **-h**
-Print usage message
+show this help message and exit
 
 #### **--json**
-Print model list in json format
+print Model list in json format
 
 #### **--noheading**, **-n**
-Do not print heading
+do not print heading
 
 #### **--quiet**, **-q**
-Print only model names
+print only Model names
 
 ## EXAMPLES
 
-List all models downloaded to users homedir
+List all Models downloaded to users homedir
 ```
 $ ramalama list
 NAME                                                                MODIFIED     SIZE
@@ -37,7 +37,8 @@ ollama://granite-code:3b                                            5 days ago  
 ollama://granite-code:latest                                        1 day ago    1.9G
 ollama://moondream:latest                                           6 days ago   791M
 ```
-List all models in json format
+
+List all Models in json format
 ```
 $ ramalama list --json
 {"models": [{"name": "oci://quay.io/mmortari/gguf-py-example/v1/example.gguf", "modified": 427330, "size": "4.0K"}, {"name": "huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf", "modified": 427333, "size": "460M"}, {"name": "ollama://tiny-llm:latest", "modified": 420833, "size": "5.5M"}, {"name": "ollama://mistral:latest", "modified": 433998, "size": "3.9G"}, {"name": "ollama://granite-code:latest", "modified": 2180483, "size": "1.9G"}, {"name": "ollama://tinyllama:latest", "modified": 364870, "size": "609M"}, {"name": "ollama://tinyllama:1.1b", "modified": 364866, "size": "609M"}]}

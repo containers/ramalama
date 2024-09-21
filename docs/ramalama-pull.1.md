@@ -1,7 +1,7 @@
 % ramalama-pull 1
 
 ## NAME
-ramalama\-pull - Pull AI Models into local storage
+ramalama\-pull - pull AI Model from Model registry to local storage
 
 ## SYNOPSIS
 **ramalama pull** [*options*] *model*

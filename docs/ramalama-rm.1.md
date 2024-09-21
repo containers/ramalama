@@ -1,24 +1,24 @@
 % ramalama-rm 1
 
 ## NAME
-ramalama\-rm - Remove specified AI Model from local storage
+ramalama\-rm - remove AI Model from local storage
 
 ## SYNOPSIS
 **ramalama rm** [*options*] *model*
 
 ## DESCRIPTION
-Remove specified AI Model from local storage
+remove AI Model from local storage
 
 ## OPTIONS
 
 #### **--all**, **-a**
-Remove all local models
+remove all local Models
 
 #### **--help**, **-h**
-Print usage message
+show this help message and exit
 
 #### **--ignore**
-Ignore errors when specified model does not exist
+ignore errors when specified Model does not exist
 
 ## EXAMPLES
 

@@ -68,35 +68,33 @@ $ cat /usr/share/ramalama/shortnames.conf
 ## GLOBAL OPTIONS
 
 #### **--dryrun**
-Show container runtime command without executing it (default: False)
+show container runtime command without executing it (default: False)
 
 #### **--help**, **-h**
-
-Show this help message and exit
+show this help message and exit
 
 #### **--nocontainer**
-Do not run ramalama in the default container (default: False)
-Use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
+do not run ramalama in the default container (default: False)
+use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
 
 #### **--store**=STORE
-
-Store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
+store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
 
 ## COMMANDS
 
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
-| [ramalama-containers(1)](ramalama-containers.1.md)| List all ramalama containers.                              |
-| [ramalama-list(1)](ramalama-list.1.md)            | List all AI models in local storage.                       |
-| [ramalama-login(1)](ramalama-login.1.md)          | Login to remote model registry.                            |
-| [ramalama-logout(1)](ramalama-logout.1.md)        | Logout from remote model registry.                         |
-| [ramalama-pull(1)](ramalama-pull.1.md)            | Pull AI Models into local storage.                         |
-| [ramalama-push(1)](ramalama-push.1.md)            | Push AI Model (OCI-only at present)                        |
-| [ramalama-rm(1)](ramalama-rm.1.md)                | Remove specified AI Model from local storage.              |
-| [ramalama-run(1)](ramalama-run.1.md)              | Run specified AI Model as a chatbot.                       |
-| [ramalama-serve(1)](ramalama-serve.1.md)          | Serve specified AI Model as an API server.                 |
-| [ramalama-stop(1)](ramalama-stop.1.md)            | Stop ramalaman container running an AI Model.              |
-| [ramalama-version(1)](ramalama-version.1.md)      | Display the ramalama version.                              |
+| [ramalama-containers(1)](ramalama-containers.1.md)| list all ramalama containers                               |
+| [ramalama-list(1)](ramalama-list.1.md)            | list all downloaded AI Models                              |
+| [ramalama-login(1)](ramalama-login.1.md)          | login to remote registry                                   |
+| [ramalama-logout(1)](ramalama-logout.1.md)        | logout from remote registry                                |
+| [ramalama-pull(1)](ramalama-pull.1.md)            | pull AI Model from Model registry to local storage         |
+| [ramalama-push(1)](ramalama-push.1.md)            | push AI Model from local storage to remote registry        |
+| [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Model from local storage                         |
+| [ramalama-run(1)](ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
+| [ramalama-serve(1)](ramalama-serve.1.md)          | serve rest api on specified AI Model                       |
+| [ramalama-stop(1)](ramalama-stop.1.md)            | stop named container that is running AI Model              |
+| [ramalama-version(1)](ramalama-version.1.md)      | display version of AI Model                                |
 
 ## CONFIGURATION FILES
 
