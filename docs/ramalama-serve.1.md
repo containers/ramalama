@@ -1,7 +1,7 @@
 % ramalama-serve 1
 
 ## NAME
-ramalama\-serve - Serve specified AI Model as an API server
+ramalama\-serve - serve rest api on specified AI Model
 
 ## SYNOPSIS
 **ramalama serve** [*options*] *model*
@@ -16,16 +16,16 @@ registry if it does not exist in local storage.
 Run the container in the background and print the new container ID.
 The default is false. Conflicts with the --nocontainer option.
 
-Use the `ramalama stop` command to stop the container running the served ramalama model.
+Use the `ramalama stop` command to stop the container running the served ramalama Model.
 
 #### **--help**, **-h**
-Print usage message
+show this help message and exit
 
 #### **--name**, **-n**
-Name of the container to run the model in.
+Name of the container to run the Model in.
 
 #### **--port**, **-p**
-Port for AI Model server to listen on
+port for AI Model server to listen on
 
 ## EXAMPLES
 

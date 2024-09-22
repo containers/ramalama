@@ -84,18 +84,18 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.py | 
 
 | Command                                                | Description                                                |
 | ------------------------------------------------------ | ---------------------------------------------------------- |
-| [ramalama(1)](docs/ramalama.1.md)                      | Primary ramalama man page.                                 |
-| [ramalama-containers(1)](docs/ramalama-containers.1.md)| List all ramalama containers.                              |
-| [ramalama-list(1)](docs/ramalama-list.1.md)            | List all AI models in local storage.                       |
-| [ramalama-login(1)](docs/ramalama-login.1.md)          | Login to remote model registry.                            |
-| [ramalama-logout(1)](docs/ramalama-logout.1.md)        | Logout from remote model registry.                         |
-| [ramalama-pull(1)](docs/ramalama-pull.1.md)            | Pull AI Models into local storage.                         |
-| [ramalama-push(1)](docs/ramalama-push.1.md)            | Push AI Model (OCI-only at present)                        |
-| [ramalama-rm(1)](docs/ramalama-rm.1.md)                | Remove specified AI Model from local storage.              |
-| [ramalama-run(1)](docs/ramalama-run.1.md)              | Run specified AI Model as a chatbot.                       |
-| [ramalama-serve(1)](docs/ramalama-serve.1.md)          | Serve specified AI Model as an API server.                 |
-| [ramalama-stop(1)](docs/ramalama-stop.1.md)            | Stop ramalaman container running an AI Model.              |
-| [ramalama-version(1)](docs/ramalama-version.1.md)      | Display the ramalama version.                              |
+| [ramalama(1)](docs/ramalama.1.md)                      | primary ramalama man page                                  |
+| [ramalama-containers(1)](docs/ramalama-containers.1.md)| list all ramalama containers                               |
+| [ramalama-list(1)](docs/ramalama-list.1.md)            | list all downloaded AI Models                              |
+| [ramalama-login(1)](docs/ramalama-login.1.md)          | login to remote registry                                   |
+| [ramalama-logout(1)](docs/ramalama-logout.1.md)        | logout from remote registry                                |
+| [ramalama-pull(1)](docs/ramalama-pull.1.md)            | pull AI Model from Model registry to local storage         |
+| [ramalama-push(1)](docs/ramalama-push.1.md)            | push AI Model from local storage to remote registry        |
+| [ramalama-rm(1)](docs/ramalama-rm.1.md)                | remove AI Model from local storage                         |
+| [ramalama-run(1)](docs/ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
+| [ramalama-serve(1)](docs/ramalama-serve.1.md)          | serve rest api on specified AI Model                       |
+| [ramalama-stop(1)](docs/ramalama-stop.1.md)            | stop named container that is running AI Model              |
+| [ramalama-version(1)](docs/ramalama-version.1.md)      | display version of AI Model                                |
 
 ## Usage
 

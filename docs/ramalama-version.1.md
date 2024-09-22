@@ -1,7 +1,7 @@
 % ramalama-version 1
 
 ## NAME
-ramalama\-version - Display the ramalama version
+ramalama\-version - display version of AI Model
 
 ## SYNOPSIS
 **ramalama version**
