@@ -33,16 +33,19 @@ help:
 	@echo
 
 .PHONY:
+install-program:
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(BINDIR)
+	install ${SELINUXOPT} -m 755 ramalama.py \
+		$(DESTDIR)$(BINDIR)/ramalama
+
+.PHONY:
 install-shortnames:
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(SHAREDIR)
 	install ${SELINUXOPT} -m 644 shortnames/shortnames.conf \
 		$(DESTDIR)$(SHAREDIR)
 
 .PHONY:
-install: install-shortnames install-docs
-	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(BINDIR)
-	install ${SELINUXOPT} -m 755 ramalama.py \
-		$(DESTDIR)$(BINDIR)/ramalama
+install: install-program install-shortnames install-docs
 	RAMALAMA_VERSION=$(RAMALAMA_VERSION) \
 	pip install . --root $(DESTDIR) --prefix ${PREFIX}
 
