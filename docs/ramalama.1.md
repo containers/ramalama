@@ -92,7 +92,7 @@ store AI Models in the specified directory (default rootless: `$HOME/.local/shar
 | [ramalama-push(1)](ramalama-push.1.md)            | push AI Model from local storage to remote registry        |
 | [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Model from local storage                         |
 | [ramalama-run(1)](ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
-| [ramalama-serve(1)](ramalama-serve.1.md)          | serve rest api on specified AI Model                       |
+| [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
 | [ramalama-stop(1)](ramalama-stop.1.md)            | stop named container that is running AI Model              |
 | [ramalama-version(1)](ramalama-version.1.md)      | display version of AI Model                                |
 

@@ -93,7 +93,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.py | 
 | [ramalama-push(1)](docs/ramalama-push.1.md)            | push AI Model from local storage to remote registry        |
 | [ramalama-rm(1)](docs/ramalama-rm.1.md)                | remove AI Model from local storage                         |
 | [ramalama-run(1)](docs/ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
-| [ramalama-serve(1)](docs/ramalama-serve.1.md)          | serve rest api on specified AI Model                       |
+| [ramalama-serve(1)](docs/ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
 | [ramalama-stop(1)](docs/ramalama-stop.1.md)            | stop named container that is running AI Model              |
 | [ramalama-version(1)](docs/ramalama-version.1.md)      | display version of AI Model                                |
 
