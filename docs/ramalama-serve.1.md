@@ -1,7 +1,7 @@
 % ramalama-serve 1
 
 ## NAME
-ramalama\-serve - serve rest api on specified AI Model
+ramalama\-serve - serve REST API on specified AI Model
 
 ## SYNOPSIS
 **ramalama serve** [*options*] *model*
