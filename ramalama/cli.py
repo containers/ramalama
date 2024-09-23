@@ -13,7 +13,7 @@ import sys
 import time
 
 from ramalama.huggingface import Huggingface
-from ramalama.common import in_container, container_manager, exec_cmd, run_cmd
+from ramalama.common import in_container, container_manager, exec_cmd, run_cmd, default_image
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.shortnames import Shortnames
@@ -42,18 +42,17 @@ def init_cli():
     )
     parser.add_argument("--dry-run", dest="dryrun", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
-        "--runtime",
-        default="llama.cpp",
-        choices=["llama.cpp", "vllm"],
-        help="specify the runtime to use, valid options are 'llama.cpp' and 'vllm'",
-    )
-    parser.add_argument(
         "--nocontainer",
         default=not use_container(),
         action="store_true",
         help="do not run ramalama in the default container",
     )
-
+    parser.add_argument(
+        "--runtime",
+        default="llama.cpp",
+        choices=["llama.cpp", "vllm"],
+        help="specify the runtime to use, valid options are 'llama.cpp' and 'vllm'",
+    )
     parser.add_argument("-v", dest="version", action="store_true", help="show ramalama version")
 
     subparsers = parser.add_subparsers(dest="subcommand")
@@ -458,7 +457,8 @@ def run_container(args):
         "run",
         "--rm",
         "-it",
-        "--label=RAMALAMA container",
+        "--label",
+        "RAMALAMA container",
         "--security-opt=label=disable",
         "-v/tmp:/tmp",
         "-e",
@@ -468,7 +468,7 @@ def run_container(args):
         f"-v{args.store}:/var/lib/ramalama",
         f"-v{home}:{home}",
         f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
-        f"-v{wd}:/usr/share/ramalama:ro",
+        f"-v{wd}:/usr/share/ramalama/ramalama:ro",
     ]
 
     if hasattr(args, "detach") and args.detach is True:
@@ -483,7 +483,7 @@ def run_container(args):
     if os.path.exists("/dev/kfd"):
         conman_args += ["--device", "/dev/kfd"]
 
-    conman_args += ["quay.io/ramalama/ramalama:latest", "/usr/bin/ramalama"]
+    conman_args += [default_image(), "/usr/bin/ramalama"]
     conman_args += sys.argv[1:]
     if hasattr(args, "UNRESOLVED_MODEL"):
         index = conman_args.index(args.UNRESOLVED_MODEL)
@@ -499,9 +499,9 @@ def run_container(args):
 def dry_run(args):
     for arg in args:
         if " " in arg:
-            print('"%s" ' % arg, end=" ")
+            print('"%s"' % arg, end=" ")
         else:
-            print("%s " % arg, end=" ")
+            print("%s" % arg, end=" ")
     print()
 
 
