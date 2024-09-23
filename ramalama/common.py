@@ -38,7 +38,11 @@ def exec_cmd(args):
     if x:
         print(*args)
 
-    return os.execvp(args[0], args)
+    try:
+        return os.execvp(args[0], args)
+    except Exception:
+        perror(f"os.execvp({args[0]}, {args})")
+        raise
 
 
 def run_cmd(args):
