@@ -14,7 +14,7 @@ registry if it does not exist in local storage.
 
 #### **--detach**, **-d**
 Run the container in the background and print the new container ID.
-The default is false. Conflicts with the --nocontainer option.
+The default is TRUE. The --nocontainer option forces this option to False.
 
 Use the `ramalama stop` command to stop the container running the served ramalama Model.
 
@@ -29,10 +29,18 @@ port for AI Model server to listen on
 
 ## EXAMPLES
 
+Run two AI Models at the same time, notice that they are running within Podman Containers.
 ```
 $ ramalama serve -p 8080 --name mymodel ollama://tiny-llm:latest
-$ ramalama serve -n example --port 8081 oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
+09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
 
+$ ramalama serve -n example --port 8081 oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
+3f64927f11a5da5ded7048b226fbe1362ee399021f5e8058c73949a677b6ac9c
+
+$ podman ps
+CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS         PORTS                   NAMES
+09b0e0d26ed2  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  32 seconds ago  Up 32 seconds  0.0.0.0:8081->8081/tcp  ramalama_sTLNkijNNP
+3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8082->8082/tcp  ramalama_YMPQvJxN97
 ```
 
 ## SEE ALSO
