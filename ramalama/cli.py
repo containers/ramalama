@@ -37,7 +37,10 @@ def init_cli():
         description="Simple management tool for working with AI Models.",
     )
     parser.add_argument("--store", default=get_store(), help="store AI Models in the specified directory")
-    parser.add_argument("--dryrun", action="store_true", help="show container runtime command without executing it")
+    parser.add_argument(
+        "--dryrun", dest="dryrun", action="store_true", help="show container runtime command without executing it"
+    )
+    parser.add_argument("--dry-run", dest="dryrun", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--runtime",
         default="llama.cpp",
@@ -333,7 +336,7 @@ def run_cli(args):
 
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
-    parser.add_argument("-d", "--detach", dest="detach", action="store_true", help="run the container in detached mode")
+    parser.add_argument("-d", "--detach", default=True, dest="detach", help="run the container in detached mode")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
     parser.add_argument("MODEL")  # positional argument
@@ -433,10 +436,9 @@ def run_container(args):
         if hasattr(args, "name") and args.name:
             raise IndexError("--nocontainer and --name options conflict. --name requires a container.")
 
-        if hasattr(args, "detach") and args.detach:
-            raise IndexError(
-                "--nocontainer and --detach options conflict. --detach requires the Model to be run in a container."
-            )
+        # --nocontainer implies --detach=false
+        if hasattr(args, "detach"):
+            args.detach = False
 
     if args.nocontainer or in_container() or sys.platform == "darwin":
         return False
@@ -466,10 +468,10 @@ def run_container(args):
         f"-v{args.store}:/var/lib/ramalama",
         f"-v{home}:{home}",
         f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
-        f"-v{wd}:/usr/share/ramalama/ramalama:ro",
+        f"-v{wd}:/usr/share/ramalama:ro",
     ]
 
-    if hasattr(args, "detach") and args.detach:
+    if hasattr(args, "detach") and args.detach is True:
         conman_args += ["-d"]
 
     if hasattr(args, "port"):
@@ -488,10 +490,19 @@ def run_container(args):
         conman_args[index] = args.MODEL
 
     if args.dryrun:
-        print(*conman_args)
+        dry_run(conman_args)
         return True
 
     exec_cmd(conman_args)
+
+
+def dry_run(args):
+    for arg in args:
+        if " " in arg:
+            print('"%s" ' % arg, end=" ")
+        else:
+            print("%s " % arg, end=" ")
+    print()
 
 
 def New(model):
