@@ -96,3 +96,12 @@ def verify_checksum(filename):
 
     # Compare the checksums
     return sha256_hash.hexdigest() == expected_checksum
+
+
+# default_image function should figure out which GPU the system uses t
+# then running appropriate container image.
+def default_image():
+    image = os.getenv("RAMALAMA_IMAGE")
+    if image:
+        return image
+    return "quay.io/ramalama/ramalama:latest"

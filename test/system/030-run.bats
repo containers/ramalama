@@ -4,6 +4,7 @@ load helpers
 
 @test "ramalama --dryrun run basic output" {
     model=m_$(safename)
+    image=m_$(safename)
 
     verify_begin="podman run --rm -it --label \"RAMALAMA container\" --security-opt=label=disable -v/tmp:/tmp -e RAMALAMA_TRANSPORT --name"
 
@@ -19,7 +20,10 @@ load helpers
     is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
 
     run_ramalama 22 --nocontainer run --name foobar MODEL
-    is "${lines[0]}"  "--nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
+    is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
+
+    RAMALAMA_IMAGE=${image} run_ramalama --dryrun run ${model}
+    is "$output" ".*${image} /usr/bin/ramalama" "verify image name"
 }
 
 @test "ramalama run granite with prompt" {

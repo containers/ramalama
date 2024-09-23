@@ -133,7 +133,7 @@ function check_help() {
     # Test for regression of #7273 (spurious "--remote" help on output)
     for helpopt in help --help -h; do
         run_ramalama $helpopt
-        is "${lines[0]}" "usage: ramalama [-h] [--store STORE] [--dryrun] [--nocontainer] [-v]" \
+        is "${lines[0]}" "usage: ramalama [-h] [--store STORE] [--dryrun] [--nocontainer]" \
            "ramalama $helpopt: first line of output"
     done
 
