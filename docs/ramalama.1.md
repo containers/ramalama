@@ -77,6 +77,9 @@ show this help message and exit
 do not run ramalama in the default container (default: False)
 use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
 
+#### **--runtime**
+specify the runtime to use, valid options are 'llama.cpp' and 'vllm' (default: llama.cpp)
+
 #### **--store**=STORE
 store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
 

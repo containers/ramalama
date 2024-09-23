@@ -102,5 +102,8 @@ class Model:
 
     def serve(self, args):
         symlink_path = self.pull(args)
-        exec_args = ["llama-server", "--port", args.port, "-m", symlink_path] + self.common_params
+        exec_args = ["llama-server", "--port", args.port, "-m", symlink_path]
+        if args.runtime == "vllm":
+            exec_args = ["vllm", "serve", "--port", args.port, symlink_path]
+
         exec_cmd(exec_args)

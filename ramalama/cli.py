@@ -39,6 +39,12 @@ def init_cli():
     parser.add_argument("--store", default=get_store(), help="store AI Models in the specified directory")
     parser.add_argument("--dryrun", action="store_true", help="show container runtime command without executing it")
     parser.add_argument(
+        "--runtime",
+        default="llama.cpp",
+        choices=["llama.cpp", "vllm"],
+        help="specify the runtime to use, valid options are 'llama.cpp' and 'vllm'",
+    )
+    parser.add_argument(
         "--nocontainer",
         default=not use_container(),
         action="store_true",
@@ -316,7 +322,7 @@ def run_parser(subparsers):
     parser.add_argument("--prompt", dest="prompt", action="store_true", help="modify chatbot prompt")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     parser.add_argument("MODEL")  # positional argument
-    parser.add_argument("ARGS", nargs="*", help="Additional options to pass to the AI Model")
+    parser.add_argument("ARGS", nargs="*", help="additional options to pass to the AI Model")
     parser.set_defaults(func=run_cli)
 
 
