@@ -91,4 +91,14 @@ verify_begin="podman run --rm -it --label \"RAMALAMA container\" --security-opt=
     is "$output" "Error: specifying --all and container name, ${name}, not allowed" "list correct"
 }
 
+@test "ramalama serve --generate=quadlet" {
+    model=tiny
+    name=c_$(safename)
+
+    run_ramalama serve --name=${name} --port 1234 --generate=quadlet ${model}
+    is "$output" ".*PublishPort=1234" "PublishPort should match"
+    is "$output" ".*Name=${name}" "Quadlet should have name field"
+    is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
+}
+
 # vim: filetype=sh
