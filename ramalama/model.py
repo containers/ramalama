@@ -1,6 +1,6 @@
 import os
 import sys
-from ramalama.common import container_manager, exec_cmd
+from ramalama.common import container_manager, exec_cmd, find_working_directory, default_image
 
 
 class Model:
@@ -106,4 +106,43 @@ class Model:
         if args.runtime == "vllm":
             exec_args = ["vllm", "serve", "--port", args.port, symlink_path]
 
+        if args.quadlet:
+            return self.quadlet(args, exec_args)
+
         exec_cmd(exec_args)
+
+
+    def quadlet(self, args, exec_args):
+        port_string=""
+        if hasattr(args, "port"):
+            port_string=f"PublishPort={args.port}"
+
+        print("""
+[Unit]
+Description=RamaLama %s AI Model Service
+After=local-fs.target
+
+[Container]
+Device=+/dev/dri
+Device=+/dev/kfd
+Environment=RAMALAMA_TRANSPORT=%s
+Exec=%s
+Image=%s
+Label=RAMALAMA container
+Name=%s
+SecurityLabelDisable=true
+Volume=%s:/usr/bin/ramalama/ramalama:ro
+Volume=%s:/var/lib/ramalama:ro
+%s
+
+[Install]
+# Start by default on boot
+WantedBy=multi-user.target default.target
+""" % (args.MODEL,
+       default_image(),
+       args.name,
+       " ".join(exec_args),
+       find_working_directory(),
+       sys.argv[0],
+       self.type,
+       port_string))
