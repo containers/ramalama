@@ -85,7 +85,7 @@ def setup_ramalama(bindir, tmp_dir):
     to_file = os.path.join(tmp_dir, from_file)
     download(url, to_file)
     ramalama_bin = os.path.join(bindir, binfile)
-    syspath = "/usr/share/ramalama"
+    syspath = "/usr/local/share/ramalama"
     if sys.platform == "darwin":
         install_mac_dependencies()
         sharedirs = ["/opt/homebrew/share", "/usr/local/share"]
