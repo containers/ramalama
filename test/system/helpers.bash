@@ -28,7 +28,7 @@ IMAGE=$RAMALAMA_TEST_IMAGE_FQN
 MODEL=ollama://ben1t0/tiny-llm:latest
 
 # Default timeout for a ramalama command.
-RAMALAMA_TIMEOUT=${RAMALAMA_TIMEOUT:-120}
+RAMALAMA_TIMEOUT=${RAMALAMA_TIMEOUT:-600}
 
 # Prompt to display when logging ramalama commands; distinguish root/rootless
 _LOG_PROMPT='$'
@@ -181,14 +181,6 @@ function defer-assertion-failures() {
 function basic_teardown() {
     echo "# [teardown]" >&2
 
-    # Free any ports reserved by our test
-    if [[ -d $PORT_LOCK_DIR ]]; then
-        mylocks=$(grep -wlr $BATS_SUITE_TEST_NUMBER $PORT_LOCK_DIR || true)
-        if [[ -n "$mylocks" ]]; then
-            rm -f $mylocks
-        fi
-    fi
-
     immediate-assertion-failures
     # Unlike normal tests teardown will not exit on first command failure
     # but rather only uses the return code of the teardown function.
@@ -252,8 +244,6 @@ function clean_setup() {
             "rm -t 0 --all --force --ignore"
     )
     for action in "${actions[@]}"; do
-#FIXME        _run_ramalama_quiet $action
-
         # The -f commands should never exit nonzero, but if they do we want
         # to know about it.
         #   FIXME: someday: also test for [[ -n "$output" ]] - can't do this
@@ -274,14 +264,6 @@ function clean_setup() {
             fi
         fi
     done
-
-    # Clean up all models except those desired.
-    # 2023-06-26 REMINDER: it is tempting to think that this is clunky,
-    # wouldn't it be safer/cleaner to just 'rm -a' then '_prefetch $IMAGE'?
-    # Yes, but it's also tremendously slower: 29m for a CI run, to 39m.
-    # Image loads are slow.
-    found_needed_image=
-    _run_ramalama_quiet list
 
     for line in "${lines[@]}"; do
         set $line
@@ -826,14 +808,7 @@ function random_string() {
 # String is lower-case so it can be used as an image name
 #
 function safename() {
-    # FIXME: I don't think these can ever fail. Remove checks once I'm sure.
-    test -n "$BATS_SUITE_TMPDIR"
-    test -n "$BATS_SUITE_TEST_NUMBER"
-    safenamepath=$BATS_SUITE_TMPDIR/.safename.$BATS_SUITE_TEST_NUMBER
-    if [[ ! -e $safenamepath ]]; then
-        echo -n "t${BATS_SUITE_TEST_NUMBER}-$(random_string 8 | tr A-Z a-z)" >$safenamepath
-    fi
-    cat $safenamepath
+    echo -n "$(random_string 8 | tr A-Z a-z)"
 }
 
 #########################

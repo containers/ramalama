@@ -344,7 +344,11 @@ def serve_parser(subparsers):
         "-n", "--name", dest="name", default=_name(), help="name of container in which the Model will be run"
     )
     parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
-    parser.add_argument("--generate", choices=["quadlet"], help="generate spectified configuration format for running the AI Model as a service")
+    parser.add_argument(
+        "--generate",
+        choices=["quadlet"],
+        help="generate specified configuration format for running the AI Model as a service",
+    )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
 
@@ -434,7 +438,7 @@ def get_store():
 
 
 def run_container(args):
-    if hasattr(args, "generate") and args.generate != "":
+    if hasattr(args, "generate") and args.generate:
         return False
 
     if args.nocontainer:
@@ -462,7 +466,7 @@ def run_container(args):
         conman,
         "run",
         "--rm",
-        "-it",
+        "-i",
         "--label",
         "RAMALAMA container",
         "--security-opt=label=disable",
@@ -474,6 +478,9 @@ def run_container(args):
         f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
         f"-v{wd}:/usr/share/ramalama/ramalama:ro",
     ]
+
+    if sys.stdout.isatty():
+        conman_args += ["-t"]
 
     if hasattr(args, "detach") and args.detach is True:
         conman_args += ["-d"]

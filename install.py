@@ -57,7 +57,12 @@ def check_platform():
             print("This script is intended to run as non-root on macOS")
             return 1
         if not available("brew"):
-            print("Please install brew and add the directory containing brew to the PATH before continuing install on macOS")
+            print(
+                """
+RamaLama requires brew to complete installation. Install brew and add the
+directory containing brew to the PATH before continuing to install RamaLama
+"""
+            )
             return 2
     elif sys.platform == "linux":
         if os.geteuid() != 0:
@@ -71,7 +76,7 @@ def check_platform():
 
 
 def install_mac_dependencies():
-    subprocess.run(["pip3", "install", "huggingface_hub[cli]==0.25.1"], check=True)
+    subprocess.run(["pip3", "install", "huggingface_hub[cli]"], check=True)
     subprocess.run(["pip3", "install", "omlmd==0.1.4"], check=True)
     subprocess.run(["brew", "install", "llama.cpp"], check=True)
 

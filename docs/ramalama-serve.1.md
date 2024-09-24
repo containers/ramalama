@@ -18,11 +18,11 @@ The default is TRUE. The --nocontainer option forces this option to False.
 
 Use the `ramalama stop` command to stop the container running the served ramalama Model.
 
+#### **--generate**=quadlet
+Generate specified configuration format for running the AI Model as a service
+
 #### **--help**, **-h**
 show this help message and exit
-
-#### **--generate** ['quadlet']
-Generate specified configuration format for running the AI Model as a service
 
 #### **--name**, **-n**
 Name of the container to run the Model in.
