@@ -87,9 +87,12 @@ bats:
 	RAMALAMA=$(CURDIR)/ramalama.py bats -T test/system/
 	_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/ramalama.py bats -T test/system/
 
-.PHONY: test
-test: validate
+.PHONY: ci
+ci:
 	test/ci.sh
+
+.PHONY: test
+test: validate bats ci
 	make clean
 	hack/tree_status.sh
 

@@ -16,7 +16,6 @@ load helpers
     is "$output" ".*ollama://tinyllama" "image was actually pulled locally"
 
     RAMALAMA_TRANSPORT=ollama run_ramalama pull tinyllama:1.1b
-ben1t0/tiny-llm
     run_ramalama pull ollama://tinyllama:1.1b
     run_ramalama list
     is "$output" ".*ollama://tinyllama:1.1b" "image was actually pulled locally"

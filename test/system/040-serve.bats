@@ -2,7 +2,7 @@
 
 load helpers
 
-verify_begin="podman run --rm -it --label=RAMALAMA container --security-opt=label=disable -v/tmp:/tmp -e RAMALAMA_TRANSPORT --name"
+verify_begin="podman run --rm -it --label \"RAMALAMA container\" --security-opt=label=disable -e RAMALAMA_TRANSPORT --name"
 
 @test "ramalama --dryrun serve basic output" {
     model=m_$(safename)
@@ -19,7 +19,7 @@ verify_begin="podman run --rm -it --label=RAMALAMA container --security-opt=labe
     is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
 
     run_ramalama 22 --nocontainer serve --name foobar MODEL
-    is "${lines[0]}"  "--nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
+    is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
 }
 
 @test "ramalama --detach serve" {
@@ -34,24 +34,25 @@ verify_begin="podman run --rm -it --label=RAMALAMA container --security-opt=labe
 
 @test "ramalama serve and stop" {
     model=ollama://tiny-llm:latest
-    container=c_$(safename)
+    container1=c_$(safename)
+    container2=c_$(safename)
 
-    run_ramalama serve --name ${container} --detach ${model}; echo READY
+    run_ramalama serve --name ${container1} --detach ${model}
     cid="$output"
-    wait_for_ready $cid
+
     run_ramalama ps
-    is "$output" ".*${container}" "list correct"
-    run_ramalama containers --noheading
-    is "$output" ".*${container}" "list correct"
-    run_ramalama stop ${container}
+    is "$output" ".*${container1}" "list correct"
 
-    run_ramalama serve -d ${model}; echo READY
+    run_ramalama containers --noheading
+    is "$output" ".*${container1}" "list correct"
+    run_ramalama stop ${container1}
+
+    run_ramalama serve --name ${container2} -d ${model}
     cid="$output"
-    wait_for_ready $cid
-    run_ramalama containers
-    is "$output" ".*${cid}" "list correct with cid"
+    run_ramalama containers -n
+    is "$output" ".*${cid:0:10}" "list correct with cid"
     run_ramalama ps --noheading
-    is "$output" ".*${container}" "list correct with cid and no heading"
+    is "$output" ".*${container2}" "list correct with cid and no heading"
     run_ramalama stop ${cid}
 }
 
@@ -61,13 +62,11 @@ verify_begin="podman run --rm -it --label=RAMALAMA container --security-opt=labe
 
     run_ramalama stop --all
 
-    run_ramalama serve --detach ${model}; echo READY
+    run_ramalama serve --detach ${model}
     cid="$output"
-    wait_for_ready $cid
 
-    run_ramalama serve -p 8081 --detach ${model}; echo READY
+    run_ramalama serve -p 8081 --detach ${model}
     cid="$output"
-    wait_for_ready $cid
 
     run_ramalama containers --noheading
     is ${#lines[@]} 2 "two containers should be running"
@@ -83,7 +82,7 @@ verify_begin="podman run --rm -it --label=RAMALAMA container --security-opt=labe
     is "$output" "Error: must specify a container name" "name required"
 
     run_ramalama 125 stop ${name}
-    is "$output" "Error: no container with name or ID \"${name}\" found: no such container" "missing container"
+    is "$output" "Error: no container with name or ID \"${name}\" found: no such container.*" "missing container"
 
     run_ramalama stop --ignore ${name}
     is "$output" "" "ignore missing"

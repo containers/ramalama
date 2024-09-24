@@ -2,9 +2,15 @@ name: ci
 on: [push, pull_request]
 jobs:
   linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: install bats
+        shell: bash
+        run: |
+	   sudo apt update
+	   sudo apt -y install bats
+	apt-get bash
       - name: Run a one-line script
         run: make test
 
@@ -17,5 +23,8 @@ jobs:
         run: brew install go
       - name: Run a one-line script
         shell: bash
-        run: make test
+        run: make validate
+      - name: Run ci
+        shell: bash
+        run: make ci
 
