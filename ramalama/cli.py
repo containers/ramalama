@@ -13,7 +13,7 @@ import sys
 import time
 
 from ramalama.huggingface import Huggingface
-from ramalama.common import in_container, container_manager, exec_cmd, run_cmd, default_image
+from ramalama.common import in_container, container_manager, exec_cmd, run_cmd, default_image, find_working_directory
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.shortnames import Shortnames
@@ -344,6 +344,7 @@ def serve_parser(subparsers):
         "-n", "--name", dest="name", default=_name(), help="name of container in which the Model will be run"
     )
     parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
+    parser.add_argument("--generate", choices=["quadlet"], help="generate spectified configuration format for running the AI Model as a service")
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
 
@@ -432,11 +433,10 @@ def get_store():
     return os.path.expanduser("~/.local/share/ramalama")
 
 
-def find_working_directory():
-    return os.path.dirname(__file__)
-
-
 def run_container(args):
+    if hasattr(args, "generate") and args.generate != "":
+        return False
+
     if args.nocontainer:
         if hasattr(args, "name") and args.name:
             raise IndexError("--nocontainer and --name options conflict. --name requires a container.")

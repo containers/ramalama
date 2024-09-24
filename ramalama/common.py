@@ -52,6 +52,10 @@ def run_cmd(args):
     return subprocess.run(args, check=True, stdout=subprocess.PIPE)
 
 
+def find_working_directory():
+    return os.path.dirname(__file__)
+
+
 def run_curl_cmd(args, filename):
     if not verify_checksum(filename):
         try:

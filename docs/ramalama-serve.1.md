@@ -21,6 +21,9 @@ Use the `ramalama stop` command to stop the container running the served ramalam
 #### **--help**, **-h**
 show this help message and exit
 
+#### **--generate** ['quadlet']
+Generate specified configuration format for running the AI Model as a service
+
 #### **--name**, **-n**
 Name of the container to run the Model in.
 
@@ -41,6 +44,32 @@ $ podman ps
 CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS         PORTS                   NAMES
 09b0e0d26ed2  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  32 seconds ago  Up 32 seconds  0.0.0.0:8081->8081/tcp  ramalama_sTLNkijNNP
 3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8082->8082/tcp  ramalama_YMPQvJxN97
+```
+
+Generate a quadlet for running the AI Model service
+```
+$ ramalama serve --generate=quadlet granite
+
+[Unit]
+Description=RamaLama granite AI Model Service
+After=local-fs.target
+
+[Container]
+Device=+/dev/dri
+Device=+/dev/kfd
+Environment=RAMALAMA_TRANSPORT=HuggingFace
+Exec=llama-server --port 8080 -m /home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
+Image=quay.io/ramalama/ramalama:latest
+Label=RAMALAMA container
+Name=ramalama_YcTTynYeJ6
+SecurityLabelDisable=true
+Volume=/home/dwalsh/ramalama/ramalama:/usr/bin/ramalama/ramalama:ro
+Volume=./ramalama.py:/var/lib/ramalama:ro
+PublishPort=8080
+
+[Install]
+# Start by default on boot
+WantedBy=multi-user.target default.target
 ```
 
 ## SEE ALSO
