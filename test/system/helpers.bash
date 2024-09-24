@@ -281,7 +281,7 @@ function clean_setup() {
     # Yes, but it's also tremendously slower: 29m for a CI run, to 39m.
     # Image loads are slow.
     found_needed_image=
-    _run_ramalama_quiet list
+#FIXME    _run_ramalama_quiet list
 
     for line in "${lines[@]}"; do
         set $line

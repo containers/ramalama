@@ -6,7 +6,7 @@ load helpers
     headings="NAME *MODIFIED *SIZE"
 
     run_ramalama list
-    is "${lines[0]}" "$headings" "header line"
+    is "*${lines}" "$headings" "header line"
 
     run_ramalama list --noheading
     assert "${lines[0]}" !~ "$headings" "header line should not be there"

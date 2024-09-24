@@ -2,15 +2,14 @@ name: ci
 on: [push, pull_request]
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: install bats
         shell: bash
         run: |
-	   sudo apt update
-	   sudo apt -y install bats
-	apt-get bash
+           sudo apt-get update
+           sudo apt-get install bats
       - name: Run a one-line script
         run: make test
 

@@ -462,7 +462,7 @@ def run_container(args):
         conman,
         "run",
         "--rm",
-        "-it",
+        "-i",
         "--label",
         "RAMALAMA container",
         "--security-opt=label=disable",
@@ -474,6 +474,9 @@ def run_container(args):
         f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
         f"-v{wd}:/usr/share/ramalama/ramalama:ro",
     ]
+
+    if sys.stdout.isatty():
+        conman_args += ["-t"]
 
     if hasattr(args, "detach") and args.detach is True:
         conman_args += ["-d"]
