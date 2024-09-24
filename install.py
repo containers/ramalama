@@ -57,7 +57,7 @@ def check_platform():
             print("This script is intended to run as non-root on macOS")
             return 1
         if not available("brew"):
-            print("Please install Homebrew before continuing install on macOS")
+            print("Please install brew and add the directory containing brew to the PATH before continuing install on macOS")
             return 2
     elif sys.platform == "linux":
         if os.geteuid() != 0:
@@ -71,8 +71,8 @@ def check_platform():
 
 
 def install_mac_dependencies():
-    subprocess.run(["pip3", "install", "--break-system-packages", "huggingface_hub[cli]==0.24.2"], check=True)
-    subprocess.run(["pip3", "install", "--break-system-packages", "omlmd==0.1.4"], check=True)
+    subprocess.run(["pip3", "install", "huggingface_hub[cli]==0.25.1"], check=True)
+    subprocess.run(["pip3", "install", "omlmd==0.1.4"], check=True)
     subprocess.run(["brew", "install", "llama.cpp"], check=True)
 
 
