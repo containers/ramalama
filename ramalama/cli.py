@@ -458,37 +458,64 @@ def run_container(args):
         name = _name()
 
     wd = find_working_directory()
-    conman_args = [
-        conman,
-        "run",
-        "--rm",
-        "-it",
-        "--label",
-        "RAMALAMA container",
-        "--security-opt=label=disable",
-        "-e",
-        "RAMALAMA_TRANSPORT",
-        "--name",
-        name,
-        f"-v{args.store}:/var/lib/ramalama",
-        f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
-        f"-v{wd}:/usr/share/ramalama/ramalama:ro",
-    ]
 
-    if hasattr(args, "detach") and args.detach is True:
+    quadlet = True
+    if quadlet:
+        print(f"""[Container]
+Environment=RAMALAMA_TRANSPORT
+Label="RAMALAMA container"
+SecurityLabelDisable=true
+ContainerName={name}
+Volume={args.store}::/var/lib/ramalama
+Volume={sys.argv[0]}:/usr/bin/ramalama:ro
+Volume={wd}:/usr/share/ramalama/ramalama:ro""")
+    else:
+        conman_args = [
+            conman,
+            "run",
+            "--rm",
+            "-it",
+            "--label",
+            "RAMALAMA container",
+            "--security-opt=label=disable",
+            "-e",
+            "RAMALAMA_TRANSPORT",
+            "--name",
+            name,
+            f"-v{args.store}:/var/lib/ramalama",
+            f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
+            f"-v{wd}:/usr/share/ramalama/ramalama:ro",
+        ]
+
+    if not quadlet and hasattr(args, "detach") and args.detach is True:
         conman_args += ["-d"]
 
     if hasattr(args, "port"):
-        conman_args += ["-p", f"{args.port}:{args.port}"]
+        if quadlet:
+            print(f"PublishPort={args.port}:{args.port}")
+        else:
+            conman_args += ["-p", f"{args.port}:{args.port}"]
 
     if os.path.exists("/dev/dri"):
-        conman_args += ["--device", "/dev/dri"]
+        if quadlet:
+            print("AddDevice=/dev/dri")
+        else:
+            conman_args += ["--device", "/dev/dri"]
 
     if os.path.exists("/dev/kfd"):
-        conman_args += ["--device", "/dev/kfd"]
+        if quadlet:
+            print("AddDevice=/dev/kfd")
+        else:
+            conman_args += ["--device", "/dev/kfd"]
 
-    conman_args += [default_image(), "/usr/bin/ramalama"]
-    conman_args += sys.argv[1:]
+    if quadlet:
+        print(f"Image={default_image()}")
+        print(f"Exec=/usr/bin/ramalama {' '.join(sys.argv[1:])}")
+        return True
+    else:
+        conman_args += [default_image(), "/usr/bin/ramalama"]
+        conman_args += sys.argv[1:]
+
     if hasattr(args, "UNRESOLVED_MODEL"):
         index = conman_args.index(args.UNRESOLVED_MODEL)
         conman_args[index] = args.MODEL
