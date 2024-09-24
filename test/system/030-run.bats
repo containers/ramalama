@@ -6,7 +6,7 @@ load helpers
     model=m_$(safename)
     image=m_$(safename)
 
-    verify_begin="podman run --rm -it --label \"RAMALAMA container\" --security-opt=label=disable -v/tmp:/tmp -e RAMALAMA_TRANSPORT --name"
+    verify_begin="podman run --rm -it --label \"RAMALAMA container\" --security-opt=label=disable -e RAMALAMA_TRANSPORT --name"
 
     run_ramalama --dryrun run ${model}
     is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
@@ -28,7 +28,7 @@ load helpers
 
 @test "ramalama run granite with prompt" {
     run_ramalama run --name foobar granite "How often to full moons happen"
-    is "$output" ".*Moon" "should include some info about the Moon"
+    is "$output" ".*month" "should include some info about the Moon"
     run_ramalama list
     is "$output" ".*granite" "granite model should have been pulled"
 }

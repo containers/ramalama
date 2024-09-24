@@ -447,67 +447,6 @@ function run_ramalama_testing() {
     fi
 }
 
-# Wait for certain output from a container, indicating that it's ready.
-function wait_for_output {
-    local sleep_delay=1
-    local how_long=$RAMALAMA_TIMEOUT
-    local expect=
-    local cid=
-
-    # Arg processing. A single-digit number is how long to sleep between
-    # iterations; a 2- or 3-digit number is the total time to wait; all
-    # else are, in order, the string to expect and the container name/ID.
-    local i
-    for i in "$@"; do
-        if expr "$i" : '[0-9]\+$' >/dev/null; then
-            if [ $i -le 9 ]; then
-                sleep_delay=$i
-            else
-                how_long=$i
-            fi
-        elif [ -z "$expect" ]; then
-            expect=$i
-        else
-            cid=$i
-        fi
-    done
-
-    [ -n "$cid" ] || die "FATAL: wait_for_output: no container name/ID in '$*'"
-
-    t1=$(expr $SECONDS + $how_long)
-    while [ $SECONDS -lt $t1 ]; do
-        run_ramalama 0+w logs $cid
-        logs=$output
-        if expr "$logs" : ".*$expect" >/dev/null; then
-            return
-        fi
-
-        # Barf if container is not running
-        run_ramalama inspect --format '{{.State.Running}}' $cid
-        if [ $output != "true" ]; then
-            run_ramalama inspect --format '{{.State.ExitCode}}' $cid
-            exitcode=$output
-
-            # One last chance: maybe the container exited just after logs cmd
-            run_ramalama 0+w logs $cid
-            if expr "$logs" : ".*$expect" >/dev/null; then
-                return
-            fi
-
-            die "Container exited (status: $exitcode) before we saw '$expect': $logs"
-        fi
-
-        sleep $sleep_delay
-    done
-
-    die "timed out waiting for '$expect' from $cid"
-}
-
-# Shortcut for the lazy
-function wait_for_ready {
-    wait_for_output 'READY' "$@"
-}
-
 ###################
 #  wait_for_file  #  Returns once file is available on host
 ###################

@@ -322,7 +322,9 @@ def _name():
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     parser.add_argument("--prompt", dest="prompt", action="store_true", help="modify chatbot prompt")
-    parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
+    parser.add_argument(
+        "-n", "--name", dest="name", default=_name(), help="name of container in which the Model will be run"
+    )
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument("ARGS", nargs="*", help="additional options to pass to the AI Model")
     parser.set_defaults(func=run_cli)
@@ -335,8 +337,12 @@ def run_cli(args):
 
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
-    parser.add_argument("-d", "--detach", default=True, dest="detach", help="run the container in detached mode")
-    parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
+    parser.add_argument(
+        "-d", "--detach", action="store_true", default=True, dest="detach", help="run the container in detached mode"
+    )
+    parser.add_argument(
+        "-n", "--name", dest="name", default=_name(), help="name of container in which the Model will be run"
+    )
     parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
@@ -371,7 +377,6 @@ def _stop_container(args, name):
         raise IndexError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "stop", "-t=0", "--ignore=" + str(args.ignore), name]
-
     run_cmd(conman_args)
 
 
@@ -382,6 +387,7 @@ def stop_container(args):
     if args.NAME:
         raise IndexError("specifying --all and container name, %s, not allowed" % args.NAME)
     args.noheading = True
+    args.ignore = True
     args.format = "{{ .Names }}"
     for i in _list_containers(args):
         _stop_container(args, i)
@@ -442,15 +448,15 @@ def run_container(args):
     if args.nocontainer or in_container() or sys.platform == "darwin":
         return False
 
-    name = _name()
-    if hasattr(args, "name") and args.name is not None:
-        name = args.name
-
     conman = container_manager()
     if conman == "":
         return False
 
-    home = os.path.expanduser("~")
+    if hasattr(args, "name"):
+        name = args.name
+    else:
+        name = _name()
+
     wd = find_working_directory()
     conman_args = [
         conman,
@@ -460,13 +466,11 @@ def run_container(args):
         "--label",
         "RAMALAMA container",
         "--security-opt=label=disable",
-        "-v/tmp:/tmp",
         "-e",
         "RAMALAMA_TRANSPORT",
         "--name",
         name,
         f"-v{args.store}:/var/lib/ramalama",
-        f"-v{home}:{home}",
         f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
         f"-v{wd}:/usr/share/ramalama/ramalama:ro",
     ]
