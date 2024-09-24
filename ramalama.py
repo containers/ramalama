@@ -7,11 +7,8 @@ import sys
 
 
 def main(args):
-    syspath = "/usr/share/ramalama"
-    if sys.platform == "darwin":
-        sharedirs = ["/opt/homebrew/share/ramalama", "/usr/local/share/ramalama"]
-        syspath = next((d for d in sharedirs if os.path.exists(d)), None)
-
+    sharedirs = ["/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
+    syspath = next((d for d in sharedirs if os.path.exists(d)), None)
     sys.path.insert(0, syspath)
 
     import ramalama
