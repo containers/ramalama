@@ -5,6 +5,8 @@ load helpers
 verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=label=disable -e RAMALAMA_TRANSPORT --name"
 
 @test "ramalama --dryrun serve basic output" {
+    skip_if_nocontainer
+
     model=m_$(safename)
 
     run_ramalama --dryrun serve ${model}
@@ -24,6 +26,8 @@ verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=l
 }
 
 @test "ramalama --detach serve" {
+    skip_if_nocontainer
+
     model=m_$(safename)
 
     run_ramalama --dryrun serve --detach ${model}
@@ -37,6 +41,8 @@ verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=l
 
 @test "ramalama serve and stop" {
     skip "FIXME does not work in CI/CD system"
+    skip_if_nocontainer
+
     model=ollama://tiny-llm:latest
     container1=c_$(safename)
     container2=c_$(safename)
@@ -67,6 +73,8 @@ verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=l
 
 @test "ramalama --detach serve and stop all" {
     skip "FIXME does not work in CI/CD system"
+    skip_if_nocontainer
+
     model=ollama://tiny-llm:latest
     container=c_$(safename)
     port1=8100

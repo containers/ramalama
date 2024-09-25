@@ -323,7 +323,7 @@ def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     parser.add_argument("--prompt", dest="prompt", action="store_true", help="modify chatbot prompt")
     parser.add_argument(
-        "-n", "--name", dest="name", default=_name(), help="name of container in which the Model will be run"
+        "-n", "--name", dest="name", help="name of container in which the Model will be run"
     )
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument("ARGS", nargs="*", help="additional options to pass to the AI Model")
@@ -341,7 +341,7 @@ def serve_parser(subparsers):
         "-d", "--detach", action="store_true", default=True, dest="detach", help="run the container in detached mode"
     )
     parser.add_argument(
-        "-n", "--name", dest="name", default=_name(), help="name of container in which the Model will be run"
+        "-n", "--name", dest="name", help="name of container in which the Model will be run"
     )
     parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
     parser.add_argument(
@@ -354,6 +354,8 @@ def serve_parser(subparsers):
 
 
 def serve_cli(args):
+    if args.nocontainer:
+        args.detach=False
     model = New(args.MODEL)
     model.serve(args)
 
@@ -456,7 +458,7 @@ def run_container(args):
     if conman == "":
         return False
 
-    if hasattr(args, "name"):
+    if hasattr(args, "name") and args.name:
         name = args.name
     else:
         name = _name()
@@ -509,6 +511,8 @@ def run_container(args):
 
 def dry_run(args):
     for arg in args:
+        if not arg:
+            continue
         if " " in arg:
             print('"%s"' % arg, end=" ")
         else:

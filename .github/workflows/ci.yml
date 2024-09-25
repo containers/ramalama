@@ -10,6 +10,7 @@ jobs:
         run: |
            sudo apt-get update
            sudo apt-get install bats bash
+	   pip install omlmd
       - name: run test
         run: make test
 

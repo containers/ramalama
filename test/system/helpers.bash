@@ -911,5 +911,11 @@ function make_random_file() {
     dd if=/dev/urandom of="$1" bs=1 count=${2:-$((${RANDOM} % 8192 + 1024))} status=none
 }
 
+function skip_if_nocontainer() {
+    if [[ "${_RAMALAMA_TEST_OPTS}" == "--nocontainer" ]]; then
+	skip "Not supported with --nocontainer"
+    fi
+}
+
 # END   miscellaneous tools
 ###############################################################################
