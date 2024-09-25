@@ -86,7 +86,6 @@ class Model:
             "llama-cli",
             "-m",
             symlink_path,
-            "--log-disable",
             "--in-prefix",
             "",
             "--in-suffix",
@@ -98,7 +97,7 @@ class Model:
         if not args.ARGS:
             exec_args.append("-cnv")
 
-        exec_cmd(exec_args)
+        exec_cmd(exec_args, False)
 
     def serve(self, args):
         symlink_path = self.pull(args)

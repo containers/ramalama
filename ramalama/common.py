@@ -34,9 +34,14 @@ def available(cmd):
     return shutil.which(cmd) is not None
 
 
-def exec_cmd(args):
+def exec_cmd(args, stderr=True):
     if x:
         print(*args)
+
+    if not stderr:
+        # Redirecting stderr to /dev/null
+        with open(os.devnull, 'w') as devnull:
+            os.dup2(devnull.fileno(), sys.stderr.fileno())
 
     try:
         return os.execvp(args[0], args)
