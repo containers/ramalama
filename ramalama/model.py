@@ -110,17 +110,17 @@ class Model:
 
         exec_cmd(exec_args)
 
-
     def quadlet(self, args, exec_args):
-        port_string=""
+        port_string = ""
         if hasattr(args, "port"):
-            port_string=f"PublishPort={args.port}"
+            port_string = f"PublishPort={args.port}"
 
-        name_string=""
+        name_string = ""
         if hasattr(args, "name") and args.name != "":
-            name_string=f"Name={args.name}"
+            name_string = f"Name={args.name}"
 
-        print("""
+        print(
+            """
 [Unit]
 Description=RamaLama %s AI Model Service
 After=local-fs.target
@@ -141,11 +141,15 @@ Volume=%s:/var/lib/ramalama:ro
 [Install]
 # Start by default on boot
 WantedBy=multi-user.target default.target
-""" % (args.UNRESOLVED_MODEL,
-       self.type,
-       " ".join(exec_args),
-       default_image(),
-       name_string,
-       find_working_directory(),
-       sys.argv[0],
-       port_string))
+"""
+            % (
+                args.UNRESOLVED_MODEL,
+                self.type,
+                " ".join(exec_args),
+                default_image(),
+                name_string,
+                find_working_directory(),
+                sys.argv[0],
+                port_string,
+            )
+        )

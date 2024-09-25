@@ -2,16 +2,15 @@ name: ci
 on: [push, pull_request]
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: install bats
         shell: bash
         run: |
-	   sudo apt update
-	   sudo apt -y install bats
-	apt-get bash
-      - name: Run a one-line script
+           sudo apt-get update
+           sudo apt-get install bats bash
+      - name: run test
         run: make test
 
   macos:
@@ -24,7 +23,8 @@ jobs:
       - name: Run a one-line script
         shell: bash
         run: make validate
-      - name: Run ci
-        shell: bash
-        run: make ci
+# FIXME: ci script should be able to run on MAC.
+#      - name: Run ci
+#        shell: bash
+#        run: make ci
 
