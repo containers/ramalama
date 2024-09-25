@@ -3,6 +3,8 @@
 load helpers
 
 @test "ramalama --dryrun run basic output" {
+    skip_if_nocontainer
+
     model=m_$(safename)
     image=m_$(safename)
 

@@ -91,9 +91,13 @@ class OCI(Model):
     def get_symlink_path(self, args):
         registry, reference = self.model.split("/", 1)
         reference_dir = reference.replace(":", "/")
-        directory = f"{args.store}/models/oci/{registry}/{reference_dir}"
-        ggufs = [file for file in os.listdir(directory) if file.endswith(".gguf")]
-        if len(ggufs) != 1:
-            raise KeyError(f"unable to identify .gguf file in: {directory}")
+        path = f"{args.store}/models/oci/{registry}/{reference_dir}"
 
-        return f"{directory}/{ggufs[0]}"
+        if os.path.isfile(path):
+            return path
+
+        ggufs = [file for file in os.listdir(path) if file.endswith(".gguf")]
+        if len(ggufs) != 1:
+            raise KeyError(f"unable to identify .gguf file in: {path}")
+
+        return f"{path}/{ggufs[0]}"
