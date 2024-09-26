@@ -2,15 +2,23 @@ from pathlib import Path
 import os
 import re
 import subprocess
+import sys
 
 from ramalama.model import Model
-from ramalama.common import run_cmd, exec_cmd, perror
+from ramalama.common import run_cmd, exec_cmd, perror, available
 
 
 class OCI(Model):
     def __init__(self, model):
         super().__init__(model.removeprefix("oci://").removeprefix("docker://"))
         self.type = "OCI"
+        if available("omlmd"):
+            self.omlmd = "omlmd"
+        else:
+            for i in sys.path:
+                self.omlmd = f"{i}/../../../bin/omlmd"
+                if os.path.exists(self.omlmd):
+                    break
 
     def login(self, args):
         conman_args = [self.conman, "login"]
@@ -53,7 +61,7 @@ class OCI(Model):
         model_file = Path(local_model_path).resolve()
         try:
             # Push the model using omlmd, using cwd the model's file parent directory
-            run_cmd(["omlmd", "push", target, str(model_file), "--empty-metadata"], cwd=model_file.parent)
+            run_cmd([self.omlmd, "push", target, str(model_file), "--empty-metadata"], cwd=model_file.parent)
         except subprocess.CalledProcessError as e:
             perror(f"Failed to push model to OCI: {e}")
             raise e
@@ -71,7 +79,7 @@ class OCI(Model):
         print(f"Downloading {self.model}...")
         # note: in the current way ramalama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir)
         # since cannot use modules/sdk, can use only cli bindings from pip installs
-        run_cmd(["omlmd", "pull", self.model, "--output", outdir])
+        run_cmd([self.omlmd, "pull", self.model, "--output", outdir])
         ggufs = [file for file in os.listdir(outdir) if file.endswith(".gguf")]
         if len(ggufs) != 1:
             raise KeyError(f"unable to identify .gguf file in: {outdir}")
