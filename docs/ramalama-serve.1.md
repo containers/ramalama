@@ -7,7 +7,7 @@ ramalama\-serve - serve REST API on specified AI Model
 **ramalama serve** [*options*] *model*
 
 ## DESCRIPTION
-Serve specified AI Model as a chat bot. Ramalama pulls specified AI Model from
+Serve specified AI Model as a chat bot. RamaLama pulls specified AI Model from
 registry if it does not exist in local storage.
 
 ## OPTIONS

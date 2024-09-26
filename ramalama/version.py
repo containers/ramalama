@@ -1,4 +1,4 @@
-"""Version of RamalamaPy."""
+"""Version of RamaLamaPy."""
 
 __version__ = "0.1.0"
 

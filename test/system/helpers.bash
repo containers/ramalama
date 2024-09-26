@@ -1,9 +1,9 @@
 # -*- bash -*-
 
-# Ramalama command to run; 
+# RamaLama command to run; 
 RAMALAMA=${RAMALAMA:-ramalama}
 
-# Ramalama testing helper used in 331-system-check tests
+# RamaLama testing helper used in 331-system-check tests
 RAMALAMA_TESTING=${RAMALAMA_TESTING:-$(dirname ${BASH_SOURCE})/../../bin/ramalama-testing}
 
 # llama.cpp or vllm, unlikely to change. Cache, because it's expensive to determine.

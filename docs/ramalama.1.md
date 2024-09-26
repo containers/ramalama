@@ -7,20 +7,20 @@ ramalama - Simple management tool for working with AI Models
 **ramalama** [*options*] *command*
 
 ## DESCRIPTION
-Ramalama : The goal of ramalama is to make AI boring.
+RamaLama : The goal of ramalama is to make AI boring.
 
-On first run Ramalama inspects your system for GPU support, falling back to CPU
+On first run RamaLama inspects your system for GPU support, falling back to CPU
 support if no GPUs are present. It then uses container engines like Podman or
 Docker to pull the appropriate OCI image with all of the software necessary to run an
 AI Model for your systems setup. This eliminates the need for the user to
-configure the system for AI themselves. After the initialization, Ramalama
+configure the system for AI themselves. After the initialization, RamaLama
 will run the AI Models within a container based on the OCI image.
 
-Ramalama first pulls AI Models from model registires. It then start a chatbot
+RamaLama first pulls AI Models from model registires. It then start a chatbot
 or a service as a rest API from a simple single command. Models are treated similarly
 to the way that Podman or Docker treat container images.
 
-Ramalama supports multiple AI model registries types called transports.
+RamaLama supports multiple AI model registries types called transports.
 Supported transports:
 
 
