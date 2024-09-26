@@ -77,7 +77,7 @@ class OCI(Model):
         reference_dir = reference.replace(":", "/")
         outdir = f"{args.store}/repos/oci/{registry}/{reference_dir}"
         print(f"Downloading {self.model}...")
-        # note: in the current way ramalama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir)
+        # note: in the current way RamaLama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir)
         # since cannot use modules/sdk, can use only cli bindings from pip installs
         run_cmd([self.omlmd, "pull", self.model, "--output", outdir])
         ggufs = [file for file in os.listdir(outdir) if file.endswith(".gguf")]

@@ -21,7 +21,7 @@ Ignore missing containers when stopping
 Stop specified container that is executing the AI Model.
 
 If ramalama command was executed with the --nocontainer model, then
-this command will have no effect. The user will need to stop the ramalama
+this command will have no effect. The user will need to stop the RamaLama
 processes manually.
 
 ## EXAMPLES

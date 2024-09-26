@@ -7,7 +7,7 @@ ramalama - Simple management tool for working with AI Models
 **ramalama** [*options*] *command*
 
 ## DESCRIPTION
-RamaLama : The goal of ramalama is to make AI boring.
+RamaLama : The goal of RamaLama is to make AI boring.
 
 On first run RamaLama inspects your system for GPU support, falling back to CPU
 support if no GPUs are present. It then uses container engines like Podman or
@@ -33,15 +33,15 @@ Supported transports:
 | OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)|
 ||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), and [`Artifactory`](https://artifactory.com)|
 
-The ramalama uses the Ollama registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
+RamaLama uses the Ollama registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
 Individual model transports can be modifies when specifying a model via the `huggingface://`, `oci://`, or `ollama://` prefix.
 
 ramalama pull `huggingface://`afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
 
-To make it easier for users, ramalama uses shortname files, which container
+To make it easier for users, RamaLama uses shortname files, which container
 alias names for fully specified AI Models allowing users to specify the shorter
-names when referring to models. ramalama reads shortnames.conf files if they
+names when referring to models. RamaLama reads shortnames.conf files if they
 exist . These files contain a list of name value pairs for specification of
 the model. The following table specifies the order which Ramama reads the files
 . Any duplicate names that exist override previously defined shortnames.
@@ -74,7 +74,7 @@ show container runtime command without executing it (default: False)
 show this help message and exit
 
 #### **--nocontainer**
-do not run ramalama in the default container (default: False)
+do not run RamaLama in the default container (default: False)
 use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
 
 #### **--runtime**
@@ -87,17 +87,17 @@ store AI Models in the specified directory (default rootless: `$HOME/.local/shar
 
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
-| [ramalama-containers(1)](ramalama-containers.1.md)| list all ramalama containers                               |
+| [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
 | [ramalama-list(1)](ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](ramalama-login.1.md)          | login to remote registry                                   |
 | [ramalama-logout(1)](ramalama-logout.1.md)        | logout from remote registry                                |
-| [ramalama-pull(1)](ramalama-pull.1.md)            | pull AI Model from Model registry to local storage         |
-| [ramalama-push(1)](ramalama-push.1.md)            | push AI Model from local storage to remote registry        |
-| [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Model from local storage                         |
+| [ramalama-pull(1)](ramalama-pull.1.md)            | pull AI Models from Model registries to local storage      |
+| [ramalama-push(1)](ramalama-push.1.md)            | push AI Models from local storage to remote registries     |
+| [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Models from local storage                         |
 | [ramalama-run(1)](ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
 | [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
 | [ramalama-stop(1)](ramalama-stop.1.md)            | stop named container that is running AI Model              |
-| [ramalama-version(1)](ramalama-version.1.md)      | display version of AI Model                                |
+| [ramalama-version(1)](ramalama-version.1.md)      | display version of RamaLama
 
 ## CONFIGURATION FILES
 
