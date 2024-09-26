@@ -48,32 +48,44 @@ CONTAINER ID  IMAGE                             COMMAND               CREATED   
 
 Generate a quadlet for running the AI Model service
 ```
-$ ramalama serve --generate=quadlet granite
+$ ramalama serve --name MyGraniteServer --generate=quadlet granite > $HOME/.config/containers/systemd/MyGraniteServer.container
+$ cat $HOME/.config/containers/systemd/MyGraniteServer.container
 
 [Unit]
 Description=RamaLama granite AI Model Service
 After=local-fs.target
 
 [Container]
-Device=+/dev/dri
-Device=+/dev/kfd
-Environment=RAMALAMA_TRANSPORT=HuggingFace
+AddDevice=-/dev/dri
+AddDevice=-/dev/kfd
 Exec=llama-server --port 8080 -m /home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
 Image=quay.io/ramalama/ramalama:latest
-Label=RAMALAMA container
-Name=ramalama_YcTTynYeJ6
-SecurityLabelDisable=true
-Volume=/home/dwalsh/ramalama/ramalama:/usr/bin/ramalama/ramalama:ro
-Volume=./ramalama.py:/var/lib/ramalama:ro
+Volume=/home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf:/home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf:ro,z
+ContainerName=MyGraniteServer
 PublishPort=8080
 
 [Install]
 # Start by default on boot
 WantedBy=multi-user.target default.target
+$ systemctl --user daemon-reload
+$ systemctl start --user MyGraniteServer
+$ systemctl status --user MyGraniteServer
+● MyGraniteServer.service - RamaLama granite AI Model Service
+     Loaded: loaded (/home/dwalsh/.config/containers/systemd/MyGraniteServer.container; generated)
+    Drop-In: /usr/lib/systemd/user/service.d
+	     └─10-timeout-abort.conf
+     Active: active (running) since Fri 2024-09-27 06:54:17 EDT; 3min 3s ago
+   Main PID: 3706287 (conmon)
+      Tasks: 20 (limit: 76808)
+     Memory: 1.0G (peak: 1.0G)
+...
+$ podman ps
+CONTAINER ID  IMAGE                             COMMAND               CREATED        STATUS        PORTS                    NAMES
+7bb35b97a0fe  quay.io/ramalama/ramalama:latest  llama-server --po...  3 minutes ago  Up 3 minutes  0.0.0.0:43869->8080/tcp  MyGraniteServer
 ```
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman-ps(1)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
