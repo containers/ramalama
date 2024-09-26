@@ -6,7 +6,7 @@ on:
 
 jobs:
   linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Run a one-line script
@@ -24,7 +24,7 @@ jobs:
         run: make test
 
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: [linux, macos]
     steps:
         - uses: actions/checkout@v4
