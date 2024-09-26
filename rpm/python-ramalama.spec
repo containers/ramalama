@@ -13,7 +13,7 @@ Name: python-%{pypi_name}
 Version: 0
 License: Apache-2.0
 Release: %autorelease
-Summary: RESTful API for Ramalama
+Summary: RESTful API for RamaLama
 URL: https://github.com/containers/%{pypi_name}
 # Tarball fetched from upstream
 Source0: %{url}/archive/v%{version}.tar.gz
@@ -26,7 +26,7 @@ On first run ramalama inspects your system for GPU support, falling back to CPU
 support if no GPUs are present. It then uses container engines like Podman to
 pull the appropriate OCI image with all of the software necessary to run an
 AI Model for your systems setup. This eliminates the need for the user to
-configure the system for AI themselves. After the initialization, Ramalama
+configure the system for AI themselves. After the initialization, RamaLama
 will run the AI Models within a container based on the OCI image.
 
 %package -n python%{python3_pkgversion}-%{pypi_name}

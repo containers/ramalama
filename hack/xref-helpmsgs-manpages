@@ -25,8 +25,8 @@ $| = 1;
 # BEGIN user-customizable section
 
 # Path to ramalama executable
-my $Default_Ramalama = "$FindBin::Bin/../ramalama.py";
-my $RAMALAMA = $ENV{RAMALAMA} || $Default_Ramalama;
+my $Default_RamaLama = "$FindBin::Bin/../ramalama.py";
+my $RAMALAMA = $ENV{RAMALAMA} || $Default_RamaLama;
 
 # Path to all doc files, including .rst and (down one level) markdown
 our $Docs_Path = 'docs';
@@ -101,7 +101,7 @@ all subcommands; and recursively reads ramalama-*.1.md files
 in $Markdown_Path, then cross-references that each --help
 option is listed in the appropriate man page and vice-versa.
 
-$ME invokes '\$RAMALAMA' (default: $Default_Ramalama).
+$ME invokes '\$RAMALAMA' (default: $Default_RamaLama).
 
 In the spirit of shoehorning functionality where it wasn't intended,
 $ME also checks the SEE ALSO section of each man page
@@ -360,7 +360,7 @@ sub xref_rst {
     # Now the other way around: look for anything in Commands.rst that is
     # not in ramalama --help
     for my $k (sort grep { $rst->{$_}{_source} =~ /Commands.rst/ } keys %$rst) {
-        if ($k ne 'Ramalama' && ! exists $help->{$k}) {
+        if ($k ne 'RamaLama' && ! exists $help->{$k}) {
             warn "$ME: 'ramalama $k' found in $rst->{$k}{_source} but not 'ramalama help'\n";
             ++$Errs;
         }
@@ -820,7 +820,7 @@ sub ramalama_rst {
                     }
 
                     my $expect = "markdown/ramalama-$subcommand.1";
-                    if ($subcommand eq 'Ramalama') {
+                    if ($subcommand eq 'RamaLama') {
                         $expect = "markdown/ramalama.1";
                     }
                     if ($target ne $expect) {
