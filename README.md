@@ -23,15 +23,15 @@ Supported transports:
 | OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)|
 ||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), and [`Artifactory`](https://artifactory.com)|
 
-The ramalama uses the Ollama registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
+RamaLama uses the Ollama registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
 Individual model transports can be modifies when specifying a model via the `huggingface://`, `oci://`, or `ollama://` prefix.
 
 `ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf`
 
-To make it easier for users, ramalama uses shortname files, which container
+To make it easier for users, RamaLama uses shortname files, which container
 alias names for fully specified AI Models allowing users to specify the shorter
-names when referring to models. ramalama reads shortnames.conf files if they
+names when referring to models. RamaLama reads shortnames.conf files if they
 exist . These files contain a list of name value pairs for specification of
 the model. The following table specifies the order which Ramama reads the files
 . Any duplicate names that exist override previously defined shortnames.
@@ -84,8 +84,8 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.py | 
 
 | Command                                                | Description                                                |
 | ------------------------------------------------------ | ---------------------------------------------------------- |
-| [ramalama(1)](docs/ramalama.1.md)                      | primary ramalama man page                                  |
-| [ramalama-containers(1)](docs/ramalama-containers.1.md)| list all ramalama containers                               |
+| [ramalama(1)](docs/ramalama.1.md)                      | primary RamaLama man page                                  |
+| [ramalama-containers(1)](docs/ramalama-containers.1.md)| list all RamaLama containers                               |
 | [ramalama-list(1)](docs/ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](docs/ramalama-login.1.md)          | login to remote registry                                   |
 | [ramalama-logout(1)](docs/ramalama-logout.1.md)        | logout from remote registry                                |

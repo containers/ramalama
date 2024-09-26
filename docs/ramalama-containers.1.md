@@ -1,7 +1,7 @@
 % ramalama-containers 1
 
 ## NAME
-ramalama\-containers - list all ramalama containers
+ramalama\-containers - list all RamaLama containers
 
 ## SYNOPSIS
 **ramalama containers** [*options*]

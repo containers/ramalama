@@ -45,7 +45,7 @@ def init_cli():
         "--nocontainer",
         default=not use_container(),
         action="store_true",
-        help="do not run ramalama in the default container",
+        help="do not run RamaLama in the default container",
     )
     parser.add_argument(
         "--runtime",
@@ -53,7 +53,7 @@ def init_cli():
         choices=["llama.cpp", "vllm"],
         help="specify the runtime to use, valid options are 'llama.cpp' and 'vllm'",
     )
-    parser.add_argument("-v", dest="version", action="store_true", help="show ramalama version")
+    parser.add_argument("-v", dest="version", action="store_true", help="show RamaLama version")
 
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
@@ -190,7 +190,7 @@ def list_files_by_modification():
 
 
 def containers_parser(subparsers):
-    parser = subparsers.add_parser("containers", aliases=["ps"], help="list all ramalama containers")
+    parser = subparsers.add_parser("containers", aliases=["ps"], help="list all RamaLama containers")
     parser.add_argument("--format", help="pretty-print containers to JSON or using a Go template")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
     parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
@@ -364,9 +364,9 @@ def stop_cli(args):
 def stop_parser(subparsers):
     parser = subparsers.add_parser("stop", help="stop named container that is running AI Model")
     parser.add_argument("--nocontainer", default=True, action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("-a", "--all", action="store_true", help="stop all ramalama containers")
+    parser.add_argument("-a", "--all", action="store_true", help="stop all RamaLama containers")
     parser.add_argument(
-        "--ignore", action="store_true", help="ignore errors when specified ramalama container is missing"
+        "--ignore", action="store_true", help="ignore errors when specified RamaLama container is missing"
     )
     parser.add_argument("NAME", nargs="?")  # positional argument
     parser.set_defaults(func=stop_container)

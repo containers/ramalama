@@ -1,5 +1,5 @@
 %global pypi_name ramalama
-%global desc %{pypi_name} is a command line tool for working with AI LLM models.
+%global desc RamaLama is a command line tool for working with AI LLM models.
 
 %define _python_dist_allow_version_zero 1
 
@@ -22,7 +22,7 @@ BuildArch: noarch
 %description
 %desc
 
-On first run ramalama inspects your system for GPU support, falling back to CPU
+On first run RamaLama inspects your system for GPU support, falling back to CPU
 support if no GPUs are present. It then uses container engines like Podman to
 pull the appropriate OCI image with all of the software necessary to run an
 AI Model for your systems setup. This eliminates the need for the user to

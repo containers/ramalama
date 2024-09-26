@@ -1,7 +1,7 @@
 % ramalama-rm 1
 
 ## NAME
-ramalama\-rm - remove AI Model from local storage
+ramalama\-rm - remove AI Models from local storage
 
 ## SYNOPSIS
 **ramalama rm** [*options*] *model*
