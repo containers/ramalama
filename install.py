@@ -109,6 +109,7 @@ def setup_ramalama(bindir, tmp_dir):
         "__init__.py",
         "oci.py",
         "version.py",
+        "shortnames.py",
     ]
     for i in python_files:
         url = f"{host}/containers/ramalama/{branch}/ramalama/{i}"
