@@ -8,7 +8,6 @@ import json
 import os
 import random
 import string
-import subprocess
 import sys
 import time
 
@@ -229,6 +228,21 @@ def list_parser(subparsers):
     parser.set_defaults(func=list_cli)
 
 
+def human_readable_size(size):
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if size < 1024:
+            size = round(size, 2)
+            return f"{size} {unit}"
+
+        size /= 1024
+
+    return f"{size} PB"
+
+
+def get_size(file):
+    return human_readable_size(os.path.getsize(file))
+
+
 def _list_models(args):
     mycwd = os.getcwd()
     os.chdir(f"{args.store}/models/")
@@ -240,7 +254,7 @@ def _list_models(args):
             name = str(path).replace("/", "://", 1)
             file_epoch = path.lstat().st_mtime
             modified = int(time.time() - file_epoch)
-            size = subprocess.run(["du", "-h", str(path.resolve())], capture_output=True, text=True).stdout.split()[0]
+            size = get_size(path)
 
             # Store data for later use
             models.append({"name": name, "modified": modified, "size": size})
