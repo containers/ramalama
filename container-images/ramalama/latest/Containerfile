@@ -15,7 +15,7 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.n
     dnf install -y epel-release && \
     dnf --enablerepo=ubi-9-appstream-rpms install -y git procps-ng vim \
       dnf-plugins-core python3-dnf-plugin-versionlock cmake gcc-c++ \
-      python3-pip && \
+      python3-pip python3-argcomplete && \
     dnf clean all && \
     rm -rf /var/cache/*dnf*
 
