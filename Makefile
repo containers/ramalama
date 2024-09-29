@@ -32,6 +32,14 @@ help:
 	@echo "  - make clean"
 	@echo
 
+
+.PHONY:
+install-requirements:
+	@pipx install -q black flake8
+	$(PYTHON) -m pip install --user -r requirements.txt
+	pip install "huggingface_hub[cli]==0.25.1"
+	pip install "omlmd==0.1.4"
+
 .PHONY:
 install-program:
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(BINDIR)
@@ -52,7 +60,6 @@ install: install-program install-shortnames install-docs
 .PHONY:
 build:
 ifeq ($(OS),Linux)
-	$(PYTHON) -m pip install --user -r requirements.txt
 	./container_build.sh
 endif
 
@@ -66,13 +73,11 @@ docs:
 
 .PHONY: lint
 lint:
-	@pip install -q black flake8
 	black --line-length 120 --exclude 'venv/*' *.py ramalama/*.py  # Format the code
 	flake8 --max-line-length=120 --exclude=venv *.py ramalama/*.py  # Check for any inconsistencies
 
 .PHONY: codespell
 codespell:
-	@pip install -q codespell
 	codespell --dictionary=- -w
 
 .PHONY: validate

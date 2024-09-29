@@ -2,15 +2,15 @@ name: ci
 on: [push, pull_request]
 jobs:
   linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: install bats
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install bats bash
-           pip install omlmd
+           sudo apt-get install bats bash codespell
+           pipx install omlmd black flake8
       - name: run test
         run: make test
 
@@ -21,6 +21,7 @@ jobs:
       - name: install golang
         shell: bash
         run: brew install go
+	run: make install-requirements
       - name: Run a one-line script
         shell: bash
         run: make validate
