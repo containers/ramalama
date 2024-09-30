@@ -40,7 +40,6 @@ verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=l
 }
 
 @test "ramalama serve and stop" {
-    skip "FIXME does not work in CI/CD system"
     skip_if_nocontainer
 
     model=ollama://tiny-llm:latest
@@ -49,8 +48,8 @@ verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=l
 
     run_ramalama serve --name ${container1} --detach ${model}
     cid="$output"
-    run podman wait --condition=running $cid
-    run podman inspect $cid
+    run -0 podman wait --condition=running $cid
+    run -0 podman inspect $cid
 
     run_ramalama ps
     is "$output" ".*${container1}" "list correct for for container1"
@@ -61,7 +60,7 @@ verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=l
 
     run_ramalama serve --name ${container2} -d ${model}
     cid="$output"
-    run podman wait --condition=running $cid
+    run -0 podman wait --condition=running $cid
     run_ramalama containers -n
     is "$output" ".*${cid:0:10}" "list correct with cid"
     run_ramalama ps --noheading
@@ -84,14 +83,14 @@ verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=l
 
     run_ramalama serve -p ${port1} --detach ${model}
     cid="$output"
-    run podman wait --condition=running $cid
+    run -0 podman wait --condition=running $cid
 
     run_ramalama serve -p ${port2} --detach ${model}
     cid="$output"
-    run podman wait --condition=running $cid
+    run -0 podman wait --condition=running $cid
     echo $output
 
-    run podman inspect  $cid
+    run -0 podman inspect  $cid
     echo $output
 
     run_ramalama containers --noheading
