@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import argcomplete
 import os
 import errno
 import subprocess
@@ -13,8 +14,23 @@ def main(args):
 
     import ramalama
 
+    parser, args = ramalama.init_cli()
+    argcomplete.autocomplete(parser)
+
+    if args.version:
+        return ramalama.version(args)
+
+    if ramalama.run_container(args):
+        return
+
+    # Process CLI
     try:
-        ramalama.init_cli()
+        args.func(args)
+    except ramalama.HelpException:
+        parser.print_help()
+    except AttributeError:
+        parser.print_usage()
+        print("ramalama: requires a subcommand")
     except IndexError as e:
         ramalama.perror("Error: " + str(e).strip("'"))
         sys.exit(errno.EINVAL)

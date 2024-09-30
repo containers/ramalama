@@ -29,7 +29,6 @@ def use_container():
 
 
 def init_cli():
-    shortnames = Shortnames()
     parser = ArgumentParser(
         prog="ramalama",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -71,27 +70,17 @@ def init_cli():
     version_parser(subparsers)
     # Parse CLI
     args = parser.parse_args()
-    if args.version:
-        return version(args)
+
     # create stores directories
     mkdirs(args.store)
     if hasattr(args, "MODEL"):
+        shortnames = Shortnames()
         resolved_model = shortnames.resolve(args.MODEL)
         if resolved_model:
             args.UNRESOLVED_MODEL = args.MODEL
             args.MODEL = resolved_model
 
-    if run_container(args):
-        return
-
-    # Process CLI
-    try:
-        args.func(args)
-    except HelpException:
-        parser.print_help()
-    except AttributeError:
-        parser.print_usage()
-        print("ramalama: requires a subcommand")
+    return parser, args
 
 
 def login_parser(subparsers):
