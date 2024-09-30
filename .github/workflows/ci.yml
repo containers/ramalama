@@ -9,7 +9,7 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install bats bash codespell
+           sudo apt-get install bats bash codespell python3-argcomplete
            pipx install omlmd black flake8
       - name: run test
         run: make test

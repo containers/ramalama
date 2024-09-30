@@ -39,6 +39,7 @@ BuildRequires: pyproject-rpm-macros
 BuildRequires: python%{python3_pkgversion}-pip
 BuildRequires: python%{python3_pkgversion}-setuptools
 BuildRequires: python%{python3_pkgversion}-wheel
+BuildRequires: python%{python3_pkgversion}-argcomplete
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{pypi_name}}
@@ -57,6 +58,7 @@ Provides: %{pypi_name} = %{version}-%{release}
 %pyproject_save_files %{pypi_name}
 %{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-shortnames
 %{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-docs
+%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-completions
 
 %files -n python%{python3_pkgversion}-%{pypi_name} -f %{pyproject_files}
 %license LICENSE
@@ -64,6 +66,11 @@ Provides: %{pypi_name} = %{version}-%{release}
 %dir %{_datadir}/%{pypi_name}
 %{_datadir}/%{pypi_name}/shortnames.conf
 %{_mandir}/man1/ramalama*.1*
+%{_datadir}/bash-completion/completions/%{pypi_name}
+%{_datadir}/fish/vendor_completions.d//%{pypi_name}.fish
+#
+# FIXME: Not available on Centos/RHEL 9 yet
+# %{_datadir}/zsh/site/_%{pypi_name}
 
 %changelog
 %autochangelog

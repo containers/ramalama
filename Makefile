@@ -3,7 +3,7 @@ OS := $(shell uname;)
 SELINUXOPT ?= $(shell test -x /usr/sbin/selinuxenabled && selinuxenabled && echo -Z)
 PREFIX ?= /usr/local
 BINDIR ?= ${PREFIX}/bin
-SHAREDIR ?= ${PREFIX}/share/ramalama
+SHAREDIR ?= ${PREFIX}/share
 PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
@@ -41,6 +41,18 @@ install-requirements:
 	pip install "omlmd==0.1.4"
 
 .PHONY:
+install-completions:
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/bash-completion/completions
+	register-python-argcomplete --shell bash ramalamay > $(DESTDIR)${SHAREDIR}/bash-completion/completions/ramalama
+
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d
+	register-python-argcomplete --shell fish ramalama > $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d/ramalama.fish
+
+# FIXME: not available on Centos 9 yet.
+#	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/zsh/site
+#	register-python-argcomplete --shell zsh ramalama > $(DESTDIR)${SHAREDIR}/zsh/site/_ramalama
+
+.PHONY:
 install-program:
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(BINDIR)
 	install ${SELINUXOPT} -m 755 ramalama.py \
@@ -48,12 +60,12 @@ install-program:
 
 .PHONY:
 install-shortnames:
-	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(SHAREDIR)
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(SHAREDIR)/ramalama
 	install ${SELINUXOPT} -m 644 shortnames/shortnames.conf \
-		$(DESTDIR)$(SHAREDIR)
+		$(DESTDIR)$(SHAREDIR)/ramalama
 
 .PHONY:
-install: install-program install-shortnames install-docs
+install: install-program install-shortnames install-docs install-completions
 	RAMALAMA_VERSION=$(RAMALAMA_VERSION) \
 	pip install . --root $(DESTDIR) --prefix ${PREFIX}
 

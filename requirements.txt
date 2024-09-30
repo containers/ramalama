@@ -1,4 +1,5 @@
 # Any changes should be copied into pyproject.toml
+argcomplete
 requests>=2.24
 setuptools
 sphinx
