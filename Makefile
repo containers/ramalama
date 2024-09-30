@@ -44,7 +44,6 @@ install-requirements:
 install-completions:
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/bash-completion/completions
 	register-python-argcomplete --shell bash ramalama > $(DESTDIR)${SHAREDIR}/bash-completion/completions/ramalama
-
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d
 	register-python-argcomplete --shell fish ramalama > $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d/ramalama.fish
 
@@ -53,10 +52,18 @@ install-completions:
 #	register-python-argcomplete --shell zsh ramalama > $(DESTDIR)${SHAREDIR}/zsh/site/_ramalama
 
 .PHONY:
-install-program:
-	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(BINDIR)
-	install ${SELINUXOPT} -m 755 ramalama.py \
-		$(DESTDIR)$(BINDIR)/ramalama
+completions:
+	mkdir -p build/completions/bash-completion/completions
+	register-python-argcomplete --shell bash ramalama > build/completions/bash-completion/completions/ramalama
+
+	mkdir -p build/completions/fish/vendor_completions.d
+	register-python-argcomplete --shell fish ramalama > build/completions/fish/vendor_completions.d/ramalama.fish
+
+	mkdir -p build/completions/bash-completion/completions
+	register-python-argcomplete --shell bash ramalama > build/completions/bash-completion/completions/ramalama
+
+	mkdir -p build/completions/fish/vendor_completions.d
+	register-python-argcomplete --shell fish ramalama > build/completions/fish/vendor_completions.d/ramalama.fish
 
 .PHONY:
 install-shortnames:
@@ -65,7 +72,19 @@ install-shortnames:
 		$(DESTDIR)$(SHAREDIR)/ramalama
 
 .PHONY:
-install: install-program install-shortnames install-docs install-completions
+completions:
+	mkdir -p build/completions/bash-completion/completions
+	register-python-argcomplete --shell bash ramalama > build/completions/bash-completion/completions/ramalama
+
+	mkdir -p build/completions/fish/vendor_completions.d
+	register-python-argcomplete --shell fish ramalama > build/completions/fish/vendor_completions.d/ramalama.fish
+
+# FIXME: not available on Centos 9 yet.
+#	mkdir -p build/completions/zsh/site
+#	register-python-argcomplete --shell zsh ramalama > build/completions/zsh/site/_ramalama
+
+.PHONY:
+install: docs completions
 	RAMALAMA_VERSION=$(RAMALAMA_VERSION) \
 	pip install . --root $(DESTDIR) --prefix ${PREFIX}
 
@@ -99,10 +118,16 @@ ifeq ($(OS),Linux)
 	hack/xref-helpmsgs-manpages
 endif
 
+.PHONY:
+pypi: clean
+	python3 -m build --sdist
+	python3 -m build --wheel
+	python3 -m twine upload dist/*
+
 .PHONY: bats
 bats:
-	RAMALAMA=$(CURDIR)/ramalama.py bats -T test/system/
-	_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/ramalama.py bats -T test/system/
+	RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
+	_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
 
 .PHONY: ci
 ci:

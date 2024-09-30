@@ -8,10 +8,10 @@ import sys
 
 
 def main(args):
-    sharedirs = ["/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
-    syspath = next((d for d in sharedirs if os.path.exists(d)), None)
-    sys.path.insert(0, syspath)
-
+    sharedirs = ["./", "/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
+    syspath = next((d for d in sharedirs if os.path.exists(d+"/ramalama/cli.py")), None)
+    if syspath:
+        sys.path.insert(0, syspath)
     import ramalama
 
     parser, args = ramalama.init_cli()

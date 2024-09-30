@@ -63,14 +63,12 @@ Provides: %{pypi_name} = %{version}-%{release}
 %files -n python%{python3_pkgversion}-%{pypi_name} -f %{pyproject_files}
 %license LICENSE
 %doc README.md
+%{_bindir}/%{pypi_name}
 %dir %{_datadir}/%{pypi_name}
 %{_datadir}/%{pypi_name}/shortnames.conf
-%{_mandir}/man1/ramalama*.1*
+%{_mandir}/man1/%{pypi_name}*
 %{_datadir}/bash-completion/completions/%{pypi_name}
 %{_datadir}/fish/vendor_completions.d/%{pypi_name}.fish
-#
-# FIXME: Not available on Centos/RHEL 9 yet
-# %{_datadir}/zsh/site/_%{pypi_name}
 
 %changelog
 %autochangelog

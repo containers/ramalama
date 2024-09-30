@@ -25,7 +25,7 @@ $| = 1;
 # BEGIN user-customizable section
 
 # Path to ramalama executable
-my $Default_RamaLama = "$FindBin::Bin/../ramalama.py";
+my $Default_RamaLama = "$FindBin::Bin/../bin/ramalama";
 my $RAMALAMA = $ENV{RAMALAMA} || $Default_RamaLama;
 
 # Path to all doc files, including .rst and (down one level) markdown

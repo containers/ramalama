@@ -1,6 +1,8 @@
+import importlib.metadata
+
 """Version of RamaLamaPy."""
 
-__version__ = "0.1.0"
+__version__ = importlib.metadata.version("ramalama")
 
 
 def version(args):
