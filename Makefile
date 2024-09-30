@@ -102,7 +102,7 @@ endif
 .PHONY: bats
 bats:
 	RAMALAMA=$(CURDIR)/ramalama.py bats -T test/system/
-#	_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/ramalama.py bats -T test/system/
+	_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/ramalama.py bats -T test/system/
 
 .PHONY: ci
 ci:
