@@ -67,7 +67,7 @@ Provides: %{pypi_name} = %{version}-%{release}
 %{_datadir}/%{pypi_name}/shortnames.conf
 %{_mandir}/man1/ramalama*.1*
 %{_datadir}/bash-completion/completions/%{pypi_name}
-%{_datadir}/fish/vendor_completions.d//%{pypi_name}.fish
+%{_datadir}/fish/vendor_completions.d/%{pypi_name}.fish
 #
 # FIXME: Not available on Centos/RHEL 9 yet
 # %{_datadir}/zsh/site/_%{pypi_name}

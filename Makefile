@@ -43,7 +43,7 @@ install-requirements:
 .PHONY:
 install-completions:
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/bash-completion/completions
-	register-python-argcomplete --shell bash ramalamay > $(DESTDIR)${SHAREDIR}/bash-completion/completions/ramalama
+	register-python-argcomplete --shell bash ramalama > $(DESTDIR)${SHAREDIR}/bash-completion/completions/ramalama
 
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d
 	register-python-argcomplete --shell fish ramalama > $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d/ramalama.fish
