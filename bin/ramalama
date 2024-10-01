@@ -42,6 +42,8 @@ def main(args):
         sys.exit(errno.ENOTSUP)
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
+    except KeyboardInterrupt:
+        sys.exit(0)
 
 
 if __name__ == "__main__":
