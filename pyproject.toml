@@ -1,0 +1,50 @@
+[project]
+name = "ramalama"
+version = "0.0.6"
+dependencies = [
+  "argcomplete",
+  "omlmd",
+  "huggingface_hub[cli]",
+]
+requires-python = ">= 3.8"
+maintainers = [
+   { name="Dan Walsh", email = "dwalsh@redhat.com" },
+   { name="Eric Curtin", email = "ecurtin@redhat.com" },
+]
+description = "RamaLama is a command line tool for working with AI LLM models."
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["ramalama", "llama", "AI"]
+
+[project.urls]
+Homepage = "https://github.com/containers/ramalama"
+Documentation = "https://github.com/containers/ramalama/tree/main/docs"
+Repository = "https://github.com/containers/ramalama"
+Issues = "https://github.com/containers/ramalama/issues"
+
+[tool.black]
+line-length = 100
+skip-string-normalization = true
+preview = true
+target-version = ["py36"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.tox
+  | \.venv
+  | \.history
+  | build
+  | dist
+  | docs
+  | hack
+)/
+'''
+[tool.isort]
+profile = "black"
+line_length = 100
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"

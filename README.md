@@ -56,6 +56,16 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 ## Install
 
+## Install via PyPi
+
+Ramalama is available via PyPi [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
+
+```
+pip install ramalama
+```
+
+## Install by script
+
 Install RamaLama by running this one-liner (on macOS run without sudo):
 
 Linux:

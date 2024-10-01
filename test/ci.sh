@@ -28,7 +28,7 @@ main() {
 
   local os
   os="$(uname -s)"
-  binfile=ramalama.py
+  binfile=bin/ramalama
   chmod +x ${binfile} install.py
   uname -a
   /usr/bin/python3 --version
