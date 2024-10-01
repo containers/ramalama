@@ -1,7 +1,13 @@
 import os
-from ramalama.common import run_cmd, exec_cmd
+from ramalama.common import run_cmd, exec_cmd, perror
 from ramalama.model import Model
 
+missing_hugginface="""
+Huggingface models requires the huggingface-cli and tldm modules.
+These modules can be installed via PyPi tools like pip, pip3, pipx or via
+distribution package managers like dnf or apt. Example:
+pip install huggingface_hub[cli] tldm
+"""
 
 def download(store, model, directory, filename):
     return run_cmd(
@@ -19,8 +25,13 @@ def download(store, model, directory, filename):
 
 
 def try_download(store, model, directory, filename):
-    proc = download(store, model, directory, filename)
-    return proc.stdout.decode("utf-8")
+    try:
+        proc = download(store, model, directory, filename)
+        return proc.stdout.decode("utf-8")
+    except FileNotFoundError as e:
+        raise NotImplementedError("""\
+%s
+%s""" % (str(e).strip("'"), missing_hugginface))
 
 
 class Huggingface(Model):
@@ -32,14 +43,21 @@ class Huggingface(Model):
         conman_args = ["huggingface-cli", "login"]
         if args.token:
             conman_args.extend(["--token", args.token])
-        exec_cmd(conman_args)
+        try:
+            self.exec(conman_args)
+        except FileNotFoundError as e:
+            raise NotImplementedError("""\
+            %s
+
+            %s
+            """ % str(e).strip("'"), missing_hugginface)
 
     def logout(self, args):
         conman_args = ["huggingface-cli", "logout"]
         if args.token:
             conman_args.extend(["--token", args.token])
         conman_args.extend(args)
-        exec_cmd(conman_args)
+        self.exec(conman_args)
 
     def pull(self, args):
         split = self.model.rsplit("/", 1)
@@ -73,3 +91,13 @@ class Huggingface(Model):
             filename = split[0]
 
         return f"{args.store}/models/huggingface/{directory}/{filename}"
+
+    def exec(self, args):
+        try:
+            exec_cmd(args)
+        except FileNotFoundError as e:
+            raise NotImplementedError("""\
+%s
+
+%s
+""" % str(e).strip("'"), missing_hugginface)
