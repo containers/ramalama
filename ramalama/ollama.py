@@ -1,34 +1,58 @@
 import os
-import subprocess
+import urllib.request
 import json
-
-from ramalama.common import run_cmd, run_curl_cmd
+from ramalama.common import run_cmd
 from ramalama.model import Model
+
+bar_format = "Pulling {desc}: {percentage:3.0f}% ▕{bar:20}▏ {n_fmt}/{total_fmt} {rate_fmt} {remaining}"
+
+
+def download_file(url, dest_path, headers=None):
+    from tqdm import tqdm
+
+    request = urllib.request.Request(url, headers=headers or {})
+    with urllib.request.urlopen(request) as response:
+        total_size = int(response.headers.get("Content-Length", 0))
+        chunk_size = 8192  # 8 KB chunks
+        with open(dest_path, "wb") as file, tqdm(
+            desc=dest_path[-16:],
+            total=total_size,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+            bar_format=bar_format,
+            ascii=True,
+        ) as progress_bar:
+            while True:
+                chunk = response.read(chunk_size)
+                if not chunk:
+                    break
+                file.write(chunk)
+                progress_bar.update(len(chunk))
 
 
 def pull_manifest(repos, manifests, accept, registry_head, model_tag):
     os.makedirs(os.path.dirname(manifests), exist_ok=True)
     os.makedirs(os.path.join(repos, "blobs"), exist_ok=True)
-    curl_cmd = ["curl", "-f", "-s", "--header", accept, "-o", manifests, f"{registry_head}/manifests/{model_tag}"]
-    run_cmd(curl_cmd)
+    url = f"{registry_head}/manifests/{model_tag}"
+    headers = {"Accept": accept}
+    download_file(url, manifests, headers=headers)
+
+
+def pull_config_blob(repos, accept, registry_head, manifest_data):
+    cfg_hash = manifest_data["config"]["digest"]
+    config_blob_path = os.path.join(repos, "blobs", cfg_hash)
+    url = f"{registry_head}/blobs/{cfg_hash}"
+    headers = {"Accept": accept}
+    download_file(url, config_blob_path, headers=headers)
 
 
 def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, symlink_path):
     layer_blob_path = os.path.join(repos, "blobs", layer_digest)
-    curl_cmd = [
-        "curl",
-        "-f",
-        "-L",
-        "-C",
-        "-",
-        "--progress-bar",
-        "--header",
-        accept,
-        "-o",
-        layer_blob_path,
-        f"{registry_head}/blobs/{layer_digest}",
-    ]
-    run_curl_cmd(curl_cmd, layer_blob_path)
+    url = f"{registry_head}/blobs/{layer_digest}"
+    headers = {"Accept": accept}
+    download_file(url, layer_blob_path, headers=headers)
+
     os.makedirs(models, exist_ok=True)
     relative_target_path = os.path.relpath(layer_blob_path, start=os.path.dirname(symlink_path))
     run_cmd(["ln", "-sf", relative_target_path, symlink_path])
@@ -39,12 +63,12 @@ def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, mo
         pull_manifest(repos, manifests, accept, registry_head, model_tag)
         with open(manifests, "r") as f:
             manifest_data = json.load(f)
-    except subprocess.CalledProcessError as e:
-        if e.returncode == 22:
-            raise KeyError((f"{model} not found"))
-
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise KeyError(f"{model} not found")
         raise e
 
+    pull_config_blob(repos, accept, registry_head, manifest_data)
     for layer in manifest_data["layers"]:
         layer_digest = layer["digest"]
         if layer["mediaType"] != "application/vnd.ollama.image.model":

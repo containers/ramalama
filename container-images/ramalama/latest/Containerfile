@@ -4,6 +4,8 @@ FROM registry.access.redhat.com/ubi9/ubi:9.4-1214.1726694543
 ARG HUGGINGFACE_HUB_VERSION=0.25.1
 # renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
 ARG OMLMD_VERSION=0.1.4
+# renovate: datasource=github-releases depName=tqdm/tqdm extractVersion=^v(?<version>.*)
+ARG TQDM_VERSION=4.66.5
 # renovate: datasource=git-refs depName=ggerganov/llama.cpp packageName=https://github.com/ggerganov/llama.cpp gitRef=master versioning=loose type=digest
 ARG LLAMA_CPP_SHA=70392f1f81470607ba3afef04aa56c9f65587664
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
@@ -22,6 +24,7 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.n
 RUN /usr/bin/python3 --version
 RUN pip install "huggingface_hub[cli]==${HUGGINGFACE_HUB_VERSION}"
 RUN pip install "omlmd==${OMLMD_VERSION}"
+RUN pip install "tqdm==${TQDM_VERSION}"
 
 ENV GGML_CCACHE=0
 
