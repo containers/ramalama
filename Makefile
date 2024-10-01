@@ -52,20 +52,6 @@ install-completions:
 #	register-python-argcomplete --shell zsh ramalama > $(DESTDIR)${SHAREDIR}/zsh/site/_ramalama
 
 .PHONY:
-completions:
-	mkdir -p build/completions/bash-completion/completions
-	register-python-argcomplete --shell bash ramalama > build/completions/bash-completion/completions/ramalama
-
-	mkdir -p build/completions/fish/vendor_completions.d
-	register-python-argcomplete --shell fish ramalama > build/completions/fish/vendor_completions.d/ramalama.fish
-
-	mkdir -p build/completions/bash-completion/completions
-	register-python-argcomplete --shell bash ramalama > build/completions/bash-completion/completions/ramalama
-
-	mkdir -p build/completions/fish/vendor_completions.d
-	register-python-argcomplete --shell fish ramalama > build/completions/fish/vendor_completions.d/ramalama.fish
-
-.PHONY:
 install-shortnames:
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(SHAREDIR)/ramalama
 	install ${SELINUXOPT} -m 644 shortnames/shortnames.conf \
