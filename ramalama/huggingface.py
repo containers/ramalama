@@ -9,6 +9,7 @@ distribution package managers like dnf or apt. Example:
 pip install huggingface_hub[cli] tldm
 """
 
+
 def download(store, model, directory, filename):
     return run_cmd(
         [

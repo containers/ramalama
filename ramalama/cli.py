@@ -16,7 +16,7 @@ from ramalama.common import in_container, container_manager, exec_cmd, run_cmd, 
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.shortnames import Shortnames
-from ramalama.version import version
+from ramalama.version import version, print_version
 
 
 class HelpException(Exception):
@@ -416,7 +416,7 @@ def version_parser(subparsers):
     parser = subparsers.add_parser("version", help="display version of AI Model")
     # Do not run in a container
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
-    parser.set_defaults(func=version)
+    parser.set_defaults(func=print_version)
 
 
 def rm_parser(subparsers):
@@ -494,6 +494,10 @@ def run_container(args):
         f"-v{wd}:/usr/share/ramalama/ramalama:ro",
     ]
 
+    di_volume = distinfo_volume()
+    if di_volume != "":
+        conman_args += [di_volume]
+
     if sys.stdout.isatty():
         conman_args += ["-t"]
 
@@ -550,3 +554,12 @@ def New(model):
         return OCI(model)
 
     return Ollama(model)
+
+
+def distinfo_volume():
+    dist_info = "ramalama-%s.dist-info" % version()
+    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), dist_info)
+    if not os.path.exists(path):
+        return ""
+
+    return f"-v{path}:/usr/share/ramalama/{dist_info}:ro"
