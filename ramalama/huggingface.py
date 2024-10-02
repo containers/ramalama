@@ -2,7 +2,7 @@ import os
 from ramalama.common import run_cmd, exec_cmd
 from ramalama.model import Model
 
-missing_huggingface = """
+missing_hugginface="""
 Huggingface models requires the huggingface-cli and tldm modules.
 These modules can be installed via PyPi tools like pip, pip3, pipx or via
 distribution package managers like dnf or apt. Example:
@@ -29,12 +29,9 @@ def try_download(store, model, directory, filename):
         proc = download(store, model, directory, filename)
         return proc.stdout.decode("utf-8")
     except FileNotFoundError as e:
-        raise NotImplementedError(
-            """\
+        raise NotImplementedError("""\
 %s
-%s"""
-            % (str(e).strip("'"), missing_huggingface)
-        )
+%s""" % (str(e).strip("'"), missing_hugginface))
 
 
 class Huggingface(Model):
@@ -49,12 +46,11 @@ class Huggingface(Model):
         try:
             self.exec(conman_args)
         except FileNotFoundError as e:
-            raise NotImplementedError(
-                """\
-%s
-%s"""
-                % (str(e).strip("'"), missing_huggingface)
-            )
+            raise NotImplementedError("""\
+            %s
+
+            %s
+            """ % str(e).strip("'"), missing_hugginface)
 
     def logout(self, args):
         conman_args = ["huggingface-cli", "logout"]
@@ -100,12 +96,8 @@ class Huggingface(Model):
         try:
             exec_cmd(args)
         except FileNotFoundError as e:
-            raise NotImplementedError(
-                """\
+            raise NotImplementedError("""\
 %s
 
 %s
-"""
-                % str(e).strip("'"),
-                missing_huggingface,
-            )
+""" % str(e).strip("'"), missing_hugginface)

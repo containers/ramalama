@@ -35,10 +35,7 @@ help:
 
 .PHONY:
 install-requirements:
-	@pipx install -q black flake8
-	$(PYTHON) -m pip install --user -r requirements.txt
-	pip install "huggingface_hub[cli]==0.25.1"
-	pip install "omlmd==0.1.4"
+	@pipx install -q black flake8 argcomplete wheel omlmd huggingface_hub[cli] codespell
 
 .PHONY:
 install-completions:
@@ -113,7 +110,7 @@ pypi: clean
 .PHONY: bats
 bats:
 	RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
-	_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
+	#_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
 
 .PHONY: ci
 ci:

@@ -67,10 +67,6 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 ## GLOBAL OPTIONS
 
-#### **--container**
-run RamaLama in the default container (default: True)
-use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
-
 #### **--dryrun**
 show container runtime command without executing it (default: False)
 
@@ -79,6 +75,7 @@ show this help message and exit
 
 #### **--nocontainer**
 do not run RamaLama in the default container (default: False)
+use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
 
 #### **--runtime**
 specify the runtime to use, valid options are 'llama.cpp' and 'vllm' (default: llama.cpp)
