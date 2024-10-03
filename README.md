@@ -71,13 +71,13 @@ Install RamaLama by running this one-liner (on macOS run without sudo):
 Linux:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.py | sudo python3
+curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | sudo sh
 ```
 
 macOS:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.py | python3
+curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | sh
 ```
 
 ## Hardware Support

@@ -5,17 +5,17 @@ available() {
 }
 
 mac_steps() {
-  ./install.py
+  ./install.sh
 }
 
 linux_steps() {
   shellcheck -- *.sh
   if [ -n "$BRANCH" ]; then
-    $maybe_sudo BRANCH=$BRANCH ./install.py
+    $maybe_sudo BRANCH=$BRANCH ./install.sh
     return
   fi
 
-  $maybe_sudo ./install.py
+  $maybe_sudo ./install.sh
 }
 
 main() {
@@ -29,7 +29,7 @@ main() {
   local os
   os="$(uname -s)"
   binfile=bin/ramalama
-  chmod +x ${binfile} install.py
+  chmod +x ${binfile} install.sh
   uname -a
   /usr/bin/python3 --version
 
