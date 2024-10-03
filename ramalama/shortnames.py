@@ -11,6 +11,7 @@ class Shortnames:
         file_paths = [
             "/usr/share/ramalama/shortnames.conf",
             "/etc/ramalama/shortnames.conf",
+            os.path.expanduser("~/.local/share/ramalama/shortnames.conf"),
             os.path.expanduser("~/.config/ramalama/shortnames.conf"),
             "./shortnames/shortnames.conf",  # for development
             "./shortnames.conf",  # for development

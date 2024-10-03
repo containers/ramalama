@@ -18,7 +18,7 @@ def main(args):
     argcomplete.autocomplete(parser)
 
     if args.version:
-        return ramalama.version(args)
+        return ramalama.print_version(args)
 
     if ramalama.run_container(args):
         return
