@@ -35,7 +35,7 @@ help:
 
 .PHONY:
 install-requirements:
-	pipx install -q black flake8 argcomplete wheel omlmd huggingface_hub[cli] codespell
+	pipx install tqdm black flake8 argcomplete wheel omlmd huggingface_hub[cli] codespell
 
 .PHONY:
 install-completions:

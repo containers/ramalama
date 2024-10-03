@@ -12,7 +12,7 @@ load helpers
 
 function check_help() {
     local count=0
-    local -A found
+    local found
 
     echo $(_ramalama_commands "$@")
     for cmd in $(_ramalama_commands "$@"); do
