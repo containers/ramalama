@@ -77,7 +77,7 @@ directory containing brew to the PATH before continuing to install RamaLama
 
 def install_mac_dependencies():
     subprocess.run(["pip3", "install", "huggingface_hub[cli]"], check=True)
-    subprocess.run(["pip3", "install", "omlmd==0.1.4"], check=True)
+    subprocess.run(["pip3", "install", "omlmd==0.1.5"], check=True)
     subprocess.run(["pip3", "install", "tqdm"], check=True)
     subprocess.run(["brew", "install", "llama.cpp"], check=True)
 

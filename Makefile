@@ -38,7 +38,7 @@ install-requirements:
 	@pipx install -q black flake8
 	$(PYTHON) -m pip install --user -r requirements.txt
 	pip install "huggingface_hub[cli]==0.25.1"
-	pip install "omlmd==0.1.4"
+	pip install "omlmd==0.1.5"
 
 .PHONY:
 install-completions:
