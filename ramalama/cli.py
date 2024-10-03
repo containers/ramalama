@@ -490,7 +490,7 @@ def run_container(args):
         "--name",
         name,
         f"-v{args.store}:/var/lib/ramalama",
-        f"-v{sys.argv[0]}:/usr/bin/ramalama:ro",
+        f"-v{os.path.realpath(sys.argv[0])}:/usr/bin/ramalama:ro",
         f"-v{wd}:/usr/share/ramalama/ramalama:ro",
     ]
 
