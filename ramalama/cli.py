@@ -194,6 +194,7 @@ def containers_parser(subparsers):
     parser = subparsers.add_parser("containers", aliases=["ps"], help="list all RamaLama containers")
     parser.add_argument("--format", help="pretty-print containers to JSON or using a Go template")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
+    parser.add_argument("--no-trunc", dest="notrunc", action="store_true", help="display the extended information")
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=list_containers)
 
@@ -206,6 +207,8 @@ def _list_containers(args):
     conman_args = [conman, "ps", "-a", "--filter", "label=RAMALAMA container"]
     if args.noheading:
         conman_args += ["--noheading"]
+    if hasattr(args, "notrunc") and args.notrunc:
+        conman_args += ["--no-trunc"]
 
     if args.format:
         conman_args += [f"--format={args.format}"]
