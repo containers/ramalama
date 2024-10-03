@@ -46,6 +46,9 @@ Valid placeholders for the Go template are listed below:
 #### **--help**, **-h**
 Print usage message
 
+#### **--no-trunc**
+Display the extended information
+
 #### **--noheading**, **-n**
 Do not print heading
 

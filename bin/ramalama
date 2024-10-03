@@ -20,11 +20,11 @@ def main(args):
     if args.version:
         return ramalama.print_version(args)
 
-    if ramalama.run_container(args):
-        return
-
     # Process CLI
     try:
+        if ramalama.run_container(args):
+            return
+
         args.func(args)
     except ramalama.HelpException:
         parser.print_help()
