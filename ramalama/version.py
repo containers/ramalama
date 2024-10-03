@@ -9,6 +9,8 @@ def version():
     except importlib.metadata.PackageNotFoundError:
         return 0
 
+    return 0
+
 
 def print_version(args):
     print("ramalama version %s" % version())

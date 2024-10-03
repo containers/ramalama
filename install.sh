@@ -75,6 +75,8 @@ setup_ramalama() {
   fi
 
   install -m755 -d "$syspath"
+  syspath="$syspath/ramalama"
+  install -m755 -d "$syspath"
   install -m755 "$to_file" "$ramalama_bin"
 
   local python_files=("cli.py" "huggingface.py" "model.py" "ollama.py" "common.py" "__init__.py" \
