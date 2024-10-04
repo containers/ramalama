@@ -1,21 +1,59 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
-import argcomplete
+import glob
 import os
 import errno
 import subprocess
 import sys
 
+def add_pipx_venvs_to_syspath():
+    """
+    Adds all available pipx virtual environments' site-packages directories to sys.path.
+    This function looks for any venv in ~/.local/pipx/venvs and appends their site-packages directory to sys.path.
+    """
+    python_version = f'{sys.version_info.major}.{sys.version_info.minor}'
+    pipx_venvs_path = os.path.expanduser(f'~/.local/pipx/venvs/*/lib/python{python_version}/site-packages')
+    matched_paths = glob.glob(pipx_venvs_path)
+    if not matched_paths:
+        return
+
+    should_we_return = False
+    for path in matched_paths:
+        should_we_return = True
+        sys.path.insert(0, path)
+
+    if should_we_return:
+        return
+
+    pipx_venvs_path = os.path.expanduser('~/.local/pipx/venvs/*/lib/python*/site-packages')
+    matched_paths = glob.glob(pipx_venvs_path)
+    if not matched_paths:
+        return
+
+    for path in matched_paths:
+        sys.path.insert(0, path)
 
 def main(args):
     sharedirs = ["./", "/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
     syspath = next((d for d in sharedirs if os.path.exists(d+"/ramalama/cli.py")), None)
     if syspath:
         sys.path.insert(0, syspath)
-    import ramalama
+
+    add_pipx_venvs_to_syspath()
+    try:
+        import ramalama
+    except:
+        print(f"ramalama module not found in sys.path: {sys.path}", file=sys.stderr)
+        raise
 
     parser, args = ramalama.init_cli()
-    argcomplete.autocomplete(parser)
+
+    # if autocomplete doesn't exist, just do nothing, don't break
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser)
+    except Exception:
+        None
 
     if args.version:
         return ramalama.print_version(args)

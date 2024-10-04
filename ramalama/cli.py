@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 from argparse import ArgumentParser
 from pathlib import Path
 import argparse
@@ -24,12 +22,13 @@ class HelpException(Exception):
 
 
 def use_container():
-    transport = os.getenv("RAMALAMA_IN_CONTAINER", "true")
-    if transport != "":
+    transport = os.getenv("RAMALAMA_IN_CONTAINER")
+    if transport:
         return transport.lower() == "true"
 
     if in_container() or sys.platform == "darwin":
         return False
+
     return True
 
 
