@@ -23,11 +23,16 @@ jobs:
       - name: install golang
         shell: bash
         run: |
-           brew install go
+           brew install go bats bash jq
            make install-requirements
       - name: Run a one-line script
         shell: bash
-        run: make validate
+        run: |
+           make install-requirements
+           make validate
+           pipx install .
+           make bats-nocontainer
+
 # FIXME: ci script should be able to run on MAC.
 #      - name: Run ci
 #        shell: bash

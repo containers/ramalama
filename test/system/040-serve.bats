@@ -95,6 +95,7 @@ verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=l
 }
 
 @test "ramalama stop failures" {
+    skip_if_nocontainer
     name=m_$(safename)
     run_ramalama 22 stop
     is "$output" "Error: must specify a container name" "name required"
