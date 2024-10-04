@@ -49,7 +49,7 @@ main() {
   select_container_manager
   local conman=("$conman_bin")
   local platform="linux/amd64"
-  if [ "$(uname -m)" = "aarch64" ]; then
+  if [ "$(uname -m)" = "aarch64" ] || ([ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]); then
     platform="linux/arm64"
   fi
 
