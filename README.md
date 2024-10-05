@@ -236,6 +236,10 @@ huggingface
 
 so if you like this tool, give some of these repos a :star:, and hey, give us a :star: too while you are at it.
 
+## Community
+
+[`Discord`](https://discord.com/invite/czz5ETuy)
+
 ## Contributors
 
 Open to contributors
