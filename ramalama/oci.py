@@ -50,7 +50,7 @@ class OCI(Model):
         return registry, reference, reference_dir
 
     def push(self, args):
-        registry, _, reference_dir = self._target_decompose(self.model)
+        registry, _, reference_dir = self._target_decompose()
         target = re.sub(r"^oci://", "", args.TARGET)
 
         # Validate the model exists locally
