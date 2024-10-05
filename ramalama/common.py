@@ -50,11 +50,18 @@ def exec_cmd(args, stderr=True):
         raise
 
 
-def run_cmd(args):
+def run_cmd(args, cwd=None):
+    """
+    Run the given command arguments.
+
+    Args:
+    args: command line arguments to execute in a subprocess
+    cwd: optional working directory to run the command from
+    """
     if x:
         print(*args)
 
-    return subprocess.run(args, check=True, stdout=subprocess.PIPE)
+    return subprocess.run(args, check=True, cwd=cwd, stdout=subprocess.PIPE)
 
 
 def find_working_directory():
