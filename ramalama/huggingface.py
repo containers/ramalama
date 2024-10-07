@@ -10,38 +10,17 @@ pip install huggingface_hub[cli] tldm
 """
 
 
-def download(store, model, directory, filename):
-    return run_cmd(
-        [
-            "huggingface-cli",
-            "download",
-            directory,
-            filename,
-            "--cache-dir",
-            store + "/repos/huggingface/.cache",
-            "--local-dir",
-            store + "/repos/huggingface/" + directory,
-        ]
-    )
-
-
-def try_download(store, model, directory, filename):
-    try:
-        proc = download(store, model, directory, filename)
-        return proc.stdout.decode("utf-8")
-    except FileNotFoundError as e:
-        raise NotImplementedError(
-            """\
-%s
-%s"""
-            % (str(e).strip("'"), missing_huggingface)
-        )
-
-
 class Huggingface(Model):
     def __init__(self, model):
         super().__init__(model.removeprefix("huggingface://"))
         self.type = "HuggingFace"
+        split = self.model.rsplit("/", 1)
+        self.directory = ""
+        if len(split) > 1:
+            self.directory = split[0]
+            self.filename = split[1]
+        else:
+            self.filename = split[0]
 
     def login(self, args):
         conman_args = ["huggingface-cli", "login"]
@@ -64,20 +43,18 @@ class Huggingface(Model):
         conman_args.extend(args)
         self.exec(conman_args)
 
-    def pull(self, args):
-        split = self.model.rsplit("/", 1)
-        directory = ""
-        if len(split) > 1:
-            directory = split[0]
-            filename = split[1]
-        else:
-            filename = split[0]
+    def path(self, args):
+        return self.symlink_path(args)
 
-        gguf_path = try_download(args.store, self.model, directory, filename)
-        directory = f"{args.store}/models/huggingface/{directory}"
-        os.makedirs(directory, exist_ok=True)
-        symlink_path = f"{directory}/{filename}"
+    def pull(self, args):
+        relative_target_path = ""
+        symlink_path = self.symlink_path(args)
+
+        gguf_path = self.download(args.store)
         relative_target_path = os.path.relpath(gguf_path.rstrip(), start=os.path.dirname(symlink_path))
+        directory = f"{args.store}/models/huggingface/{self.directory}"
+        os.makedirs(directory, exist_ok=True)
+
         if os.path.exists(symlink_path) and os.readlink(symlink_path) == relative_target_path:
             # Symlink is already correct, no need to update it
             return symlink_path
@@ -86,16 +63,33 @@ class Huggingface(Model):
 
         return symlink_path
 
-    def get_symlink_path(self, args):
-        split = self.model.rsplit("/", 1)
-        directory = ""
-        if len(split) > 1:
-            directory = split[0]
-            filename = split[1]
-        else:
-            filename = split[0]
+    def push(self, source, args):
+        try:
+            proc = run_cmd(
+                [
+                    "huggingface-cli",
+                    "upload",
+                    "--repo-type",
+                    "model",
+                    self.directory,
+                    self.filename,
+                    "--cache-dir",
+                    args.store + "/repos/huggingface/.cache",
+                    "--local-dir",
+                    args.store + "/repos/huggingface/" + self.directory,
+                ]
+            )
+            return proc.stdout.decode("utf-8")
+        except FileNotFoundError as e:
+            raise NotImplementedError(
+                """\
+                %s
+                %s"""
+                % (str(e).strip("'"), missing_huggingface)
+            )
 
-        return f"{args.store}/models/huggingface/{directory}/{filename}"
+    def symlink_path(self, args):
+        return f"{args.store}/models/huggingface/{self.directory}/{self.filename}"
 
     def exec(self, args):
         try:
@@ -109,4 +103,27 @@ class Huggingface(Model):
 """
                 % str(e).strip("'"),
                 missing_huggingface,
+            )
+
+    def download(self, store):
+        try:
+            proc = run_cmd(
+                [
+                    "huggingface-cli",
+                    "download",
+                    self.directory,
+                    self.filename,
+                    "--cache-dir",
+                    store + "/repos/huggingface/.cache",
+                    "--local-dir",
+                    store + "/repos/huggingface/" + self.directory,
+                ]
+            )
+            return proc.stdout.decode("utf-8")
+        except FileNotFoundError as e:
+            raise NotImplementedError(
+                """\
+                %s
+                %s"""
+                % (str(e).strip("'"), missing_huggingface)
             )
