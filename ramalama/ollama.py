@@ -84,17 +84,14 @@ class Ollama(Model):
         super().__init__(model.removeprefix("ollama://"))
         self.type = "Ollama"
 
-    def pull(self, args):
-        repos = args.store + "/repos/ollama"
+    def _local(self, args):
         models = args.store + "/models/ollama"
-        registry = "https://registry.ollama.ai"
         if "/" in self.model:
             model_full = self.model
-            models = os.path.join(models, model_full.rsplit("/", 1)[0])
+            self._models = os.path.join(models, model_full.rsplit("/", 1)[0])
         else:
             model_full = "library/" + self.model
 
-        accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
         if ":" in model_full:
             model_name, model_tag = model_full.split(":", 1)
         else:
@@ -103,9 +100,23 @@ class Ollama(Model):
 
         model_base = os.path.basename(model_name)
         symlink_path = os.path.join(models, f"{model_base}:{model_tag}")
+        return symlink_path, models, model_base, model_name, model_tag
+
+    def path(self, args):
+        symlink_path, _, _, _, _ = self._local(args)
+        if not os.path.exists(symlink_path):
+            raise KeyError("f{{args.Model} does not exist")
+
+        return symlink_path
+
+    def pull(self, args):
+        repos = args.store + "/repos/ollama"
+        symlink_path, models, model_base, model_name, model_tag = self._local(args)
         if os.path.exists(symlink_path):
             return symlink_path
 
+        registry = "https://registry.ollama.ai"
+        accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
         manifests = os.path.join(repos, "manifests", registry, model_name, model_tag)
         registry_head = f"{registry}/v2/{model_name}"
         return init_pull(
