@@ -1,6 +1,6 @@
 ![RAMALAMA logo](logos/PNG/ramalama-logo-full-vertical-dark.png)
 
-# ramalama
+# RamaLama
 
 The RamaLama project's goal is to make working with AI boring
 through the use of OCI containers.
@@ -60,7 +60,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 ## Install via PyPi
 
-Ramalama is available via PyPi [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
+RamaLama is available via PyPi [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
 
 ```
 pip install ramalama
