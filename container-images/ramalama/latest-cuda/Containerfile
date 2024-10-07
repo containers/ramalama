@@ -47,7 +47,7 @@ RUN git clone https://github.com/ggerganov/llama.cpp && \
 RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
     cd whisper.cpp && \
     git reset --hard ${WHISPER_CPP_SHA} && \
-    make -j $(nproc) && \
+    make -j $(nproc) GGML_CUDA=1 CUDA_ARCH=ALL && \
     mv main /usr/bin/whisper-main && \
     mv server /usr/bin/whisper-server && \
     cd / && \
