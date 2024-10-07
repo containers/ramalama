@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.6.1-devel-ubi9
+FROM docker.io/nvidia/cuda:12.6.1-devel-ubi9
 
 # renovate: datasource=github-releases depName=huggingface/huggingface_hub extractVersion=^v(?<version>.*)
 ARG HUGGINGFACE_HUB_VERSION=0.25.2

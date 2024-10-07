@@ -27,7 +27,7 @@ class Model:
 
     def __init__(self, model):
         self.model = model
-        if sys.platform == "darwin":
+        if sys.platform == "darwin" or os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES"):
             self.common_params += ["-ngl", "99"]
 
     def login(self, args):
