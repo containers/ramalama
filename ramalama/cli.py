@@ -515,7 +515,7 @@ def run_container(args):
     if os.path.exists("/dev/kfd"):
         conman_args += ["--device", "/dev/kfd"]
 
-    conman_args += [default_image(), "/usr/bin/ramalama"]
+    conman_args += [default_image(), "python3", "/usr/bin/ramalama"]
     conman_args += sys.argv[1:]
     if hasattr(args, "UNRESOLVED_MODEL"):
         index = conman_args.index(args.UNRESOLVED_MODEL)

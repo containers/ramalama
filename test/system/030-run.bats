@@ -25,7 +25,7 @@ load helpers
     is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
 
     RAMALAMA_IMAGE=${image} run_ramalama --dryrun run ${model}
-    is "$output" ".*${image} /usr/bin/ramalama" "verify image name"
+    is "$output" ".*${image} python3 /usr/bin/ramalama" "verify image name"
 }
 
 # FIXME no way to run this reliably without flakes in CI/CD system
