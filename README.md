@@ -1,3 +1,5 @@
+![RAMALAMA logo](logos/ramalama-logo.png)
+
 # ramalama
 
 The RamaLama project's goal is to make working with AI boring
