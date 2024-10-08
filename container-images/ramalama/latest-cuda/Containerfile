@@ -1,7 +1,7 @@
 FROM nvidia/cuda:12.6.1-devel-ubi9
 
 # renovate: datasource=github-releases depName=huggingface/huggingface_hub extractVersion=^v(?<version>.*)
-ARG HUGGINGFACE_HUB_VERSION=0.25.0
+ARG HUGGINGFACE_HUB_VERSION=0.25.1
 # renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
 ARG OMLMD_VERSION=0.1.4
 # renovate: datasource=git-refs depName=ggerganov/llama.cpp packageName=https://github.com/ggerganov/llama.cpp gitRef=master versioning=loose type=digest
