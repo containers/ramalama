@@ -9,12 +9,16 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install bats bash codespell python3-argcomplete
+           sudo apt-get install bats bash codespell python3-argcomplete pipx
            make install-requirements
-      - name: run test
+      - name: run bats
         run: |
            make validate
            make bats
+      - name: bats-nocontainer
+        run: |
+           make install-requirements
+           make bats-nocontainer
 
   macos:
     runs-on: macos-14
