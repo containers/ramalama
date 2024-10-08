@@ -63,7 +63,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 Ramalama is available via PyPi [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
 
 ```
-pip install ramalama
+pipx install ramalama
 ```
 
 ## Install by script
