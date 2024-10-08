@@ -1,4 +1,4 @@
-![RAMALAMA logo](logos/PNG/ramalama-logo-full-vertical-dark.png)
+![RAMALAMA logo](logos/PNG/ramalama-logo-full-vertical-added-bg.png)
 
 # RamaLama
 
