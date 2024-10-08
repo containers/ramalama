@@ -53,7 +53,7 @@ main() {
     platform="linux/arm64"
   fi
 
-  for i in container-images/*/*; do
+  for i in container-images/*; do
     build "$i" "$@"
   done
 }
