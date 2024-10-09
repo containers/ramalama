@@ -456,6 +456,25 @@ def get_store():
     return os.path.expanduser("~/.local/share/ramalama")
 
 
+def get_gpu():
+    i = 0
+    gpu_num = 0
+    gpu_bytes = 0
+    for fp in sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total')):
+        with open(fp, 'r') as file:
+            content = int(file.read())
+            if content > 1073741824 and content > gpu_bytes:
+                gpu_bytes = content
+                gpu_num = i
+
+        i += 1
+
+    if gpu_bytes:  # this is the ROCm/AMD case
+        return "HIP_VISIBLE_DEVICES", gpu_num
+
+    return None, None
+
+
 def run_container(args):
     if hasattr(args, "generate") and args.generate:
         return False
@@ -518,7 +537,14 @@ def run_container(args):
     if os.path.exists("/dev/kfd"):
         conman_args += ["--device", "/dev/kfd"]
 
-    conman_args += [default_image(), "python3", "/usr/bin/ramalama"]
+    gpu_type, gpu_num = get_gpu()
+    if gpu_type == "HIP_VISIBLE_DEVICES":
+        conman_args += ["-e", f"{gpu_type}={gpu_num}"]
+        conman_args += ["quay.io/ramalama/ramalama:latest-rocm"]
+    else:
+        conman_args += [default_image()]
+
+    conman_args += ["python3", "/usr/bin/ramalama"]
     conman_args += sys.argv[1:]
     if hasattr(args, "UNRESOLVED_MODEL"):
         index = conman_args.index(args.UNRESOLVED_MODEL)
