@@ -22,10 +22,13 @@ class Model:
     def logout(self, args):
         raise NotImplementedError(f"ramalama logout for {self.type} not implemented")
 
+    def path(self, source, args):
+        raise NotImplementedError(f"ramalama puath for {self.type} not implemented")
+
     def pull(self, args):
         raise NotImplementedError(f"ramalama pull for {self.type} not implemented")
 
-    def push(self, args):
+    def push(self, source, args):
         raise NotImplementedError(f"ramalama push for {self.type} not implemented")
 
     def is_symlink_to(self, file_path, target_path):

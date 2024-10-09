@@ -323,14 +323,17 @@ def pull_cli(args):
 
 def push_parser(subparsers):
     parser = subparsers.add_parser("push", help="push AI Model from local storage to remote registry")
-    parser.add_argument("MODEL")  # positional argument
+    parser.add_argument("SOURCE")  # positional argument
     parser.add_argument("TARGET")  # positional argument
     parser.set_defaults(func=push_cli)
 
 
 def push_cli(args):
-    model = New(args.MODEL)
-    model.push(args)
+    smodel = New(args.SOURCE)
+    source = smodel.path(args)
+
+    model = New(args.TARGET)
+    model.push(source, args)
 
 
 def _name():

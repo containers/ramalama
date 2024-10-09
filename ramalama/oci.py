@@ -1,6 +1,4 @@
-from pathlib import Path
 import os
-import re
 import subprocess
 import sys
 
@@ -36,10 +34,10 @@ class OCI(Model):
         conman_args.append(self.model)
         return exec_cmd(conman_args)
 
-    def _target_decompose(self):
+    def _target_decompose(self, model):
         # Remove the prefix and extract target details
         try:
-            registry, reference = self.model.split("/", 1)
+            registry, reference = model.split("/", 1)
         except Exception:
             raise KeyError(
                 f"You must specify a registry for the model in the form "
@@ -49,23 +47,17 @@ class OCI(Model):
         reference_dir = reference.replace(":", "/")
         return registry, reference, reference_dir
 
-    def push(self, args):
-        registry, _, reference_dir = self._target_decompose()
-        target = re.sub(r"^oci://", "", args.TARGET)
+    def push(self, source, args):
+        target = args.TARGET.strip("oci://")
+        tregistry, _, treference_dir = self._target_decompose(target)
 
-        # Validate the model exists locally
-        local_model_path = os.path.join(args.store, "models/oci", registry, reference_dir)
-        if not os.path.exists(local_model_path):
-            raise KeyError(f"model {self.model} not found locally. Cannot push.")
-
-        model_file = Path(local_model_path).resolve()
         try:
             # Push the model using omlmd, using cwd the model's file parent directory
-            run_cmd([self.omlmd, "push", target, str(model_file), "--empty-metadata"], cwd=model_file.parent)
+
+            run_cmd([self.omlmd, "push", target, source, "--empty-metadata"])
         except subprocess.CalledProcessError as e:
             perror(f"Failed to push model to OCI: {e}")
             raise e
-        return local_model_path
 
     def pull(self, args):
         try:
