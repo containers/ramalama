@@ -11,7 +11,15 @@ import sys
 import time
 
 from ramalama.huggingface import Huggingface
-from ramalama.common import in_container, container_manager, exec_cmd, run_cmd, default_image, find_working_directory, perror
+from ramalama.common import (
+    in_container,
+    container_manager,
+    exec_cmd,
+    run_cmd,
+    default_image,
+    find_working_directory,
+    perror,
+)
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.shortnames import Shortnames
@@ -225,7 +233,8 @@ def _list_containers(args):
         return output.split("\n")
     except subprocess.CalledProcessError as e:
         perror("ramalama list command requires a running container engine")
-        raise(e)
+        raise (e)
+
 
 def list_containers(args):
     if len(_list_containers(args)) == 0:
@@ -405,7 +414,7 @@ def _stop_container(args, name):
 
     conman_args = [conman, "stop", "-t=0"]
     if args.ignore:
-        conman_args += [ "--ignore", str(args.ignore)]
+        conman_args += ["--ignore", str(args.ignore)]
     conman_args += [name]
     run_cmd(conman_args)
 
