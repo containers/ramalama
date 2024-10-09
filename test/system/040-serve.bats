@@ -25,6 +25,14 @@ verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=l
     run_ramalama stop --all
 }
 
+@test "ramalama --nocontainer" {
+    run_ramalama 1 --nocontainer ps
+    is "$output" "Error: containers command requires a container, not valid with --nocontainer option." "all containers gone"
+
+    run_ramalama 1 --nocontainer stop foobar
+    is "$output" "Error: stop command requires a container, not valid with --nocontainer option." "all containers gone"
+}
+
 @test "ramalama --detach serve" {
     skip_if_nocontainer
 

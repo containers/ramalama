@@ -224,6 +224,9 @@ def _list_containers(args):
 
 
 def list_containers(args):
+    if not args.container:
+        raise KeyError("containers command requires a container, not valid with --nocontainer option.")
+
     if len(_list_containers(args)) == 0:
         return
     print("\n".join(_list_containers(args)))
@@ -382,11 +385,6 @@ def serve_cli(args):
     model.serve(args)
 
 
-def stop_cli(args):
-    model = New(args.MODEL)
-    model.stop(args)
-
-
 def stop_parser(subparsers):
     parser = subparsers.add_parser("stop", help="stop named container that is running AI Model")
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
@@ -410,6 +408,9 @@ def _stop_container(args, name):
 
 
 def stop_container(args):
+    if not args.container:
+        raise KeyError("stop command requires a container, not valid with --nocontainer option.")
+
     if not args.all:
         return _stop_container(args, args.NAME)
 
