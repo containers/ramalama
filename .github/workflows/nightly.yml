@@ -18,10 +18,6 @@ jobs:
               /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup \
               /usr/lib/jvm || true
            sudo apt install aptitude -y >/dev/null 2>&1
-           sudo aptitude purge '~n ^mysql' -f -y >/dev/null 2>&1
-           sudo aptitude purge '~n ^dotnet' -f -y >/dev/null 2>&1
-           sudo apt-get autoremove -y >/dev/null 2>&1
-           sudo apt-get autoclean -y >/dev/null 2>&1
 
       # /mnt has ~ 65 GB free disk space. / is too small.
       - name: Reconfigure Docker data-root
