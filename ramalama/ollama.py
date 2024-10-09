@@ -8,7 +8,17 @@ bar_format = "Pulling {desc}: {percentage:3.0f}% ▕{bar:20}▏ {n_fmt}/{total_f
 
 
 def download_file(url, dest_path, headers=None):
-    from tqdm import tqdm
+    try:
+        from tqdm import tqdm
+    except FileNotFoundError:
+        raise NotImplementedError(
+            """\
+Ollama models requires the tqdm modules.
+This model can be installed via PyPi tools like pip, pip3, pipx or via
+distribution package managers like dnf or apt. Example:
+pip install tqdm
+"""
+        )
 
     request = urllib.request.Request(url, headers=headers or {})
     with urllib.request.urlopen(request) as response:

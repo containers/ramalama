@@ -3,6 +3,9 @@ name = "ramalama"
 version = "0.0.14"
 dependencies = [
   "argcomplete",
+  "tqdm",
+  "omlmd",
+  "huggingface_hub[cli]",
 ]
 requires-python = ">= 3.8"
 maintainers = [

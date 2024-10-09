@@ -3,4 +3,5 @@ argcomplete
 setuptools
 wheel
 omlmd
+tqdm
 huggingface_hub[cli]
