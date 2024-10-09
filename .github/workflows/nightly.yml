@@ -77,7 +77,7 @@ jobs:
             image: quay.io/ramalama/ramalama
             tags: nightly
             containerfiles: |
-              container-images/ramalama/latest/Containerfile
+              container-images/cpuonly/Containerfile
             platforms: linux/amd64, linux/arm64
 
         - name: push images to registry
