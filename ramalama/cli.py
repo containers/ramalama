@@ -6,11 +6,12 @@ import json
 import os
 import random
 import string
+import subprocess
 import sys
 import time
 
 from ramalama.huggingface import Huggingface
-from ramalama.common import in_container, container_manager, exec_cmd, run_cmd, default_image, find_working_directory
+from ramalama.common import in_container, container_manager, exec_cmd, run_cmd, default_image, find_working_directory, perror
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.shortnames import Shortnames
@@ -217,16 +218,16 @@ def _list_containers(args):
     if args.format:
         conman_args += [f"--format={args.format}"]
 
-    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-    if output == "":
-        return []
-    return output.split("\n")
-
+    try:
+        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+        if output == "":
+            return []
+        return output.split("\n")
+    except subprocess.CalledProcessError as e:
+        perror("ramalama list command requires a running container engine")
+        raise(e)
 
 def list_containers(args):
-    if not args.container:
-        raise KeyError("containers command requires a container, not valid with --nocontainer option.")
-
     if len(_list_containers(args)) == 0:
         return
     print("\n".join(_list_containers(args)))
@@ -403,14 +404,14 @@ def _stop_container(args, name):
     if conman == "":
         raise IndexError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "stop", "-t=0", "--ignore=" + str(args.ignore), name]
+    conman_args = [conman, "stop", "-t=0"]
+    if args.ignore:
+        conman_args += [ "--ignore", str(args.ignore)]
+    conman_args += [name]
     run_cmd(conman_args)
 
 
 def stop_container(args):
-    if not args.container:
-        raise KeyError("stop command requires a container, not valid with --nocontainer option.")
-
     if not args.all:
         return _stop_container(args, args.NAME)
 
