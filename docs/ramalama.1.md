@@ -89,6 +89,9 @@ show container runtime command without executing it (default: False)
 run RamaLama using the specified container engine. Default is `podman` if installed otherwise docker.
 The default can be overridden in the ramalama.conf file or via the RAMALAMA_CONTAINER_ENGINE environment variable.
 
+#### **--gpu**
+offload the workload to the GPU (default: False)
+
 #### **--help**, **-h**
 show this help message and exit
 

@@ -37,8 +37,6 @@ class Model:
 
     def __init__(self, model):
         self.model = model
-        if sys.platform == "darwin" or os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES"):
-            self.common_params += ["-ngl", "99"]
 
     def login(self, args):
         raise NotImplementedError(f"ramalama login for {self.type} not implemented")
@@ -146,7 +144,7 @@ class Model:
         if hasattr(args, "port"):
             conman_args += ["-p", f"{args.port}:{args.port}"]
 
-        if os.path.exists("/dev/dri"):
+        if sys.platform == "darwin" or os.path.exists("/dev/dri"):
             conman_args += ["--device", "/dev/dri"]
 
         if os.path.exists("/dev/kfd"):
@@ -180,6 +178,20 @@ class Model:
         run_cmd(conman_args, stdout=None, debug=args.debug)
         return True
 
+    def gpu_args(self):
+        gpu_args = [ ]
+        if sys.platform == "darwin":
+            # llama.cpp will default to the Metal backend on macOS, so we don't need
+            # any additional arguments.
+            pass
+        elif sys.platform == "linux" and (os.path.exists("/dev/dri") or
+              os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")):
+            gpu_args = ["-ngl", "99"]
+        else:
+            print("GPU offload was requested but is not available on this system")
+
+        return gpu_args
+
     def run(self, args):
         prompt = "You are a helpful assistant"
         if args.ARGS:
@@ -205,6 +217,9 @@ class Model:
         if not args.ARGS and sys.stdin.isatty():
             exec_args.append("-cnv")
 
+        if args.gpu:
+            exec_args.extend(self.gpu_args())
+
         try:
             exec_cmd(exec_args, args.debug, debug=args.debug)
         except FileNotFoundError as e:
@@ -217,6 +232,8 @@ class Model:
         exec_args = ["llama-server", "--port", args.port, "-m", model_path]
         if args.runtime == "vllm":
             exec_args = ["vllm", "serve", "--port", args.port, model_path]
+        elif args.gpu:
+            exec_args.extend(self.gpu_args())
 
         if args.generate == "quadlet":
             return self.quadlet(model_path, args, exec_args)
