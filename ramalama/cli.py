@@ -63,6 +63,13 @@ def init_cli():
         help="do not run RamaLama in the default container",
     )
     parser.add_argument(
+        "--gpu",
+        dest="gpu",
+        default=False,
+        action="store_true",
+        help="offload the workload to the GPU",
+    )
+    parser.add_argument(
         "--runtime",
         default="llama.cpp",
         choices=["llama.cpp", "vllm"],
@@ -517,7 +524,7 @@ def run_container(args):
     if hasattr(args, "port"):
         conman_args += ["-p", f"{args.port}:{args.port}"]
 
-    if os.path.exists("/dev/dri"):
+    if args.gpu and (os.path.exists("/dev/dri") or sys.platform == "darwin"):
         conman_args += ["--device", "/dev/dri"]
 
     if os.path.exists("/dev/kfd"):

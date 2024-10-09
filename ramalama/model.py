@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 from ramalama.common import container_manager, exec_cmd, default_image
 
 
@@ -13,8 +14,6 @@ class Model:
 
     def __init__(self, model):
         self.model = model
-        if sys.platform == "darwin":
-            self.common_params += ["-ngl", "99"]
 
     def login(self, args):
         raise NotImplementedError(f"ramalama login for {self.type} not implemented")
@@ -79,6 +78,21 @@ class Model:
     def symlink_path(self, args):
         raise NotImplementedError(f"symlink_path for {self.type} not implemented")
 
+    def gpu_args(self, model_path):
+        gpu_args = [ ]
+        if sys.platform == "darwin":
+            # llama.cpp will default to the Metal backend on macOS, so we don't need
+            # any additional arguments.
+            pass
+        elif sys.platform == "linux" and Path("/dev/dri").exists():
+            if "q4_0.gguf" not in model_path.lower():
+                print("GPU offload requested but this doesn't seem to be a Q4_0 model, CPU will be used instead")
+            gpu_args = ["-ngl", "99"]
+        else:
+            print("GPU offload was requested but is not available on this system")
+
+        return gpu_args
+
     def run(self, args):
         prompt = "You are a helpful assistant"
         if args.ARGS:
@@ -100,6 +114,9 @@ class Model:
         if not args.ARGS:
             exec_args.append("-cnv")
 
+        if args.gpu:
+            exec_args.extend(self.gpu_args(symlink_path))
+
         exec_cmd(exec_args, False)
 
     def serve(self, args):
@@ -107,6 +124,8 @@ class Model:
         exec_args = ["llama-server", "--port", args.port, "-m", symlink_path]
         if args.runtime == "vllm":
             exec_args = ["vllm", "serve", "--port", args.port, symlink_path]
+        elif args.gpu:
+            exec_args.extend(self.gpu_args(symlink_path))
 
         if args.generate == "quadlet":
             return self.quadlet(symlink_path, args, exec_args)

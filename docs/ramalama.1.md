@@ -74,6 +74,9 @@ use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
 #### **--dryrun**
 show container runtime command without executing it (default: False)
 
+#### **--gpu**
+offload the workload to the GPU (default: False)
+
 #### **--help**, **-h**
 show this help message and exit
 
