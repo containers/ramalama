@@ -1,7 +1,7 @@
 FROM registry.access.redhat.com/ubi9/ubi:9.4-1214.1726694543
 
 # renovate: datasource=github-releases depName=huggingface/huggingface_hub extractVersion=^v(?<version>.*)
-ARG HUGGINGFACE_HUB_VERSION=0.25.1
+ARG HUGGINGFACE_HUB_VERSION=0.25.2
 # renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
 ARG OMLMD_VERSION=0.1.5
 # renovate: datasource=github-releases depName=tqdm/tqdm extractVersion=^v(?<version>.*)
