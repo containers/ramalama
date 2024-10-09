@@ -77,6 +77,15 @@ show container runtime command without executing it (default: False)
 #### **--help**, **-h**
 show this help message and exit
 
+#### **--image**=IMAGE
+OCI container image to run with specified AI model. By default RamaLama
+attempts to use the best AI OCI image based on GPU on the local system.
+The --image option allows users to override the default.
+
+The RAMALAMA_IMAGE environment variable can be used to modify the default
+image. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
+RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
+
 #### **--nocontainer**
 do not run RamaLama in the default container (default: False)
 
@@ -101,7 +110,6 @@ store AI Models in the specified directory (default rootless: `$HOME/.local/shar
 | [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
 | [ramalama-stop(1)](ramalama-stop.1.md)            | stop named container that is running AI Model              |
 | [ramalama-version(1)](ramalama-version.1.md)      | display version of RamaLama
-
 ## CONFIGURATION FILES
 
 

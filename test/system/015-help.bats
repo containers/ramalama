@@ -133,10 +133,21 @@ function check_help() {
     # Test for regression of #7273 (spurious "--remote" help on output)
     for helpopt in help --help -h; do
         run_ramalama $helpopt
-        is "${lines[0]}" "usage: ramalama [-h] [--store STORE] [--dryrun] [--container] [--nocontainer]" \
+        is "${lines[0]}" "usage: ramalama [-h] [--store STORE] [--dryrun] [--container] [--image IMAGE]" \
            "ramalama $helpopt: first line of output"
     done
 
+}
+
+@test "ramalama verify default image" {
+
+    run_ramalama --help
+    is "$output" ".*image IMAGE.*OCI container image to run with specified AI model"  "Verify default image"
+    is "$output" ".*default: quay.io/ramalama/ramalama:latest"  "Verify default image"
+
+    image=m_$(safename)
+    RAMALAMA_IMAGE=${image} run_ramalama --help
+    is "$output" ".*default: ${image}"  "Verify default image"
 }
 
 # vim: filetype=sh
