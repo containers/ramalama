@@ -241,7 +241,6 @@ so if you like this tool, give some of these repos a :star:, and hey, give us a 
 ## Community
 
 [`Matrix`](https://matrix.to/#/#ramalama:fedoraproject.org)
-[`Discord`](https://discord.com/invite/czz5ETuy)
 
 ## Contributors
 
