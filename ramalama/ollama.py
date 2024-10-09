@@ -112,7 +112,7 @@ class Ollama(Model):
             repos, manifests, accept, registry_head, model_name, model_tag, models, symlink_path, self.model
         )
 
-    def get_symlink_path(self, args):
+    def symlink_path(self, args):
         models = args.store + "/models/ollama"
         if "/" in self.model:
             model_full = self.model

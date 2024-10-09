@@ -59,7 +59,7 @@ class Model:
                             print(f"Deleted: {file_path}")
 
     def remove(self, args):
-        symlink_path = self.get_symlink_path(args)
+        symlink_path = self.symlink_path(args)
         if os.path.exists(symlink_path):
             try:
                 os.remove(symlink_path)
@@ -73,8 +73,8 @@ class Model:
 
         self.garbage_collection(args)
 
-    def get_symlink_path(self, args):
-        raise NotImplementedError(f"get_symlink_path for {self.type} not implemented")
+    def symlink_path(self, args):
+        raise NotImplementedError(f"symlink_path for {self.type} not implemented")
 
     def run(self, args):
         prompt = "You are a helpful assistant"

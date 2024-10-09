@@ -96,7 +96,7 @@ class OCI(Model):
 
         return symlink_path
 
-    def get_symlink_path(self, args):
+    def symlink_path(self, args):
         registry, reference = self.model.split("/", 1)
         reference_dir = reference.replace(":", "/")
         path = f"{args.store}/models/oci/{registry}/{reference_dir}"
