@@ -14,15 +14,10 @@ def add_pipx_venvs_to_syspath():
     python_version = f'{sys.version_info.major}.{sys.version_info.minor}'
     pipx_venvs_path = os.path.expanduser(f'~/.local/pipx/venvs/*/lib/python{python_version}/site-packages')
     matched_paths = glob.glob(pipx_venvs_path)
-    if not matched_paths:
-        return
+    if matched_paths:
+        for path in matched_paths:
+            sys.path.insert(0, path)
 
-    should_we_return = False
-    for path in matched_paths:
-        should_we_return = True
-        sys.path.insert(0, path)
-
-    if should_we_return:
         return
 
     pipx_venvs_path = os.path.expanduser('~/.local/pipx/venvs/*/lib/python*/site-packages')
