@@ -1,5 +1,7 @@
 import setuptools
+import subprocess
 import os
+import sys
 from setuptools import find_packages
 from setuptools.command.build_py import build_py as build_py_orig
 
@@ -41,6 +43,14 @@ class build_py(build_py_orig):
         return [(pkg, mod, file) for (pkg, mod, file) in modules]
 
 
+def _post_install():
+    if sys.platform == "darwin":
+        try:
+            subprocess.run(["brew", "install", "llama.cpp"], check=True, stdout=subprocess.PIPE)
+        except FileNotFoundError:
+            raise KeyError("RamaLama requires the llama.cpp executable to be installed")
+
+
 setuptools.setup(
     packages=find_packages(),
     cmdclass={"build_py": build_py},
@@ -49,3 +59,6 @@ setuptools.setup(
     + generate_completions("share", "build/completions")
     + generate_man_pages("share/man/man1", "docs"),
 )
+
+
+_post_install()
