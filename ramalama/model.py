@@ -232,8 +232,11 @@ class Model:
         exec_args = ["llama-server", "--port", args.port, "-m", model_path]
         if args.runtime == "vllm":
             exec_args = ["vllm", "serve", "--port", args.port, model_path]
-        elif args.gpu:
-            exec_args.extend(self.gpu_args())
+        else:
+            if args.gpu:
+                exec_args.extend(self.gpu_args())
+            if in_container():
+                exec_args.extend(["--host", "0.0.0.0"])
 
         if args.generate == "quadlet":
             return self.quadlet(model_path, args, exec_args)
