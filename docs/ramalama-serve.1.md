@@ -1,38 +1,53 @@
 % ramalama-serve 1
 
 ## NAME
+
 ramalama\-serve - serve REST API on specified AI Model
 
 ## SYNOPSIS
-**ramalama serve** [*options*] *model*
+
+**ramalama serve** [*options*] _model_
 
 ## DESCRIPTION
+
 Serve specified AI Model as a chat bot. RamaLama pulls specified AI Model from
 registry if it does not exist in local storage.
+
+## REST API ENDPOINTS
+
+Under the hood, `ramalama-serve` uses the `LLaMA.cpp` HTTP server by default.
+
+For REST API endpoint documentation, see: [https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md#api-endpoints](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md#api-endpoints)
 
 ## OPTIONS
 
 #### **--detach**, **-d**
+
 Run the container in the background and print the new container ID.
 The default is TRUE. The --nocontainer option forces this option to False.
 
 Use the `ramalama stop` command to stop the container running the served ramalama Model.
 
 #### **--generate**=quadlet
+
 Generate specified configuration format for running the AI Model as a service
 
 #### **--help**, **-h**
+
 show this help message and exit
 
 #### **--name**, **-n**
+
 Name of the container to run the Model in.
 
 #### **--port**, **-p**
+
 port for AI Model server to listen on
 
 ## EXAMPLES
 
 Run two AI Models at the same time, notice that they are running within Podman Containers.
+
 ```
 $ ramalama serve -p 8080 --name mymodel ollama://tiny-llm:latest
 09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
@@ -47,6 +62,7 @@ CONTAINER ID  IMAGE                             COMMAND               CREATED   
 ```
 
 Generate a quadlet for running the AI Model service
+
 ```
 $ ramalama serve --name MyGraniteServer --generate=quadlet granite > $HOME/.config/containers/systemd/MyGraniteServer.container
 $ cat $HOME/.config/containers/systemd/MyGraniteServer.container
@@ -85,7 +101,9 @@ CONTAINER ID  IMAGE                             COMMAND               CREATED   
 ```
 
 ## SEE ALSO
+
 **[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman-ps(1)**
 
 ## HISTORY
+
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

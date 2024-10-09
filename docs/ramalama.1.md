@@ -16,12 +16,11 @@ AI Model for your systems setup. This eliminates the need for the user to
 configure the system for AI themselves. After the initialization, RamaLama
 will run the AI Models within a container based on the OCI image.
 
-RamaLama first pulls AI Models from model registires. It then start a chatbot
-or a service as a rest API from a simple single command. Models are treated similarly
-to the way that Podman or Docker treat container images.
+RamaLama first pulls AI Models from model registries. It then start a chatbot
+or a service as a rest API (using llama.cpp's server) from a simple single command. 
+Models are treated similarly to the way that Podman or Docker treat container images.
 
-RamaLama supports multiple AI model registries types called transports.
-Supported transports:
+RamaLama supports multiple AI model registries types called transports. Supported transports:
 
 
 ## TRANSPORTS
@@ -107,14 +106,15 @@ store AI Models in the specified directory (default rootless: `$HOME/.local/shar
 | [ramalama-push(1)](ramalama-push.1.md)            | push AI Models from local storage to remote registries     |
 | [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Models from local storage                         |
 | [ramalama-run(1)](ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
-| [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
+| [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model using `llama.cpp`     |
 | [ramalama-stop(1)](ramalama-stop.1.md)            | stop named container that is running AI Model              |
 | [ramalama-version(1)](ramalama-version.1.md)      | display version of RamaLama
 ## CONFIGURATION FILES
 
 
 ## SEE ALSO
-**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**
+- **[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**
+- **[llama.cpp API endpoints](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md#api-endpoints)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
