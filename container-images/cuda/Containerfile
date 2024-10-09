@@ -22,8 +22,8 @@ RUN /usr/bin/python3 --version
 RUN pip install "huggingface_hub[cli]==${HUGGINGFACE_HUB_VERSION}"
 RUN pip install "omlmd==${OMLMD_VERSION}"
 
-# Build wouldnt complete couldnt find libcuda so made a systemlink
-# But this didnt work
+# Build wouldn't complete couldn't find libcuda so made a systemlink
+# But this didn't work
 
 # RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
 # RUN LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs/
@@ -32,7 +32,7 @@ RUN pip install "omlmd==${OMLMD_VERSION}"
 
 # ENV GGML_CCACHE=0
 
-# Build wouldnt complete with cmake even with nvidia container toolkit installed
+# Build wouldn't complete with cmake even with nvidia container toolkit installed
 
 RUN git clone https://github.com/ggerganov/llama.cpp && \
     cd llama.cpp && \

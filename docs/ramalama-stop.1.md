@@ -6,6 +6,10 @@ ramalama\-stop - stop named container that is running AI Model
 ## SYNOPSIS
 **ramalama stop** [*options*] *name*
 
+Tells container engine to stop the specified container.
+
+Command will not work when run with --nocontainer option.
+
 ## OPTIONS
 
 #### **--all**, **-a**
