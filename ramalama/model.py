@@ -1,6 +1,20 @@
 import os
 import sys
-from ramalama.common import container_manager, exec_cmd, default_image
+from ramalama.common import container_manager, exec_cmd, default_image, in_container
+
+
+file_not_found = """\
+RamaLama requires the "%s" command to be installed on the host when running with --nocontainer.
+RamaLama is designed to run AI Models inside of containers, where "%s" is already installed.
+Either install a package containing the "%s" command or run the workload inside of a container.
+"""
+
+file_not_found_in_container = """\
+RamaLama requires the "%s" command to be installed inside of the container.
+RamaLama requires the server application be installed in the container images.
+Either install a package containing the "%s" command in the container or run with the default
+RamaLama image.
+"""
 
 
 class Model:
@@ -100,7 +114,12 @@ class Model:
         if not args.ARGS:
             exec_args.append("-cnv")
 
-        exec_cmd(exec_args, False)
+        try:
+            exec_cmd(exec_args, False)
+        except FileNotFoundError as e:
+            if in_container():
+                raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
+            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
 
     def serve(self, args):
         symlink_path = self.pull(args)
@@ -111,7 +130,12 @@ class Model:
         if args.generate == "quadlet":
             return self.quadlet(symlink_path, args, exec_args)
 
-        exec_cmd(exec_args)
+        try:
+            exec_cmd(exec_args)
+        except FileNotFoundError as e:
+            if in_container():
+                raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
+            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
 
     def quadlet(self, model, args, exec_args):
         port_string = ""
