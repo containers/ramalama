@@ -14,9 +14,6 @@ show this help message and exit
 #### **--name**, **-n**
 name of the container to run the Model in
 
-#### **--prompt**
-modify the prompt in the AI Chatbot
-
 ## DESCRIPTION
 Run specified AI Model as a chat bot. RamaLama pulls specified AI Model from
 registry if it does not exist in local storage. By default a prompt for a chat

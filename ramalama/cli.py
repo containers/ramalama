@@ -351,10 +351,9 @@ def _name():
 
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
-    parser.add_argument("--prompt", dest="prompt", action="store_true", help="modify chatbot prompt")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     parser.add_argument("MODEL")  # positional argument
-    parser.add_argument("ARGS", nargs="*", help="additional options to pass to the AI Model")
+    parser.add_argument("ARGS", nargs="*", help="Overrides the default prompt")
     parser.set_defaults(func=run_cli)
 
 
