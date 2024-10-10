@@ -108,17 +108,16 @@ store AI Models in the specified directory (default rootless: `$HOME/.local/shar
 | [ramalama-logout(1)](ramalama-logout.1.md)        | logout from remote registry                                |
 | [ramalama-pull(1)](ramalama-pull.1.md)            | pull AI Models from Model registries to local storage      |
 | [ramalama-push(1)](ramalama-push.1.md)            | push AI Models from local storage to remote registries     |
-| [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Models from local storage                         |
+| [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Models from local storage                        |
 | [ramalama-run(1)](ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
-| [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model using `llama.cpp`     |
+| [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
 | [ramalama-stop(1)](ramalama-stop.1.md)            | stop named container that is running AI Model              |
 | [ramalama-version(1)](ramalama-version.1.md)      | display version of RamaLama
 ## CONFIGURATION FILES
 
 
 ## SEE ALSO
-- **[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**
-- **[llama.cpp API endpoints](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md#api-endpoints)**
+**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
