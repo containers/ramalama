@@ -1,6 +1,6 @@
 [project]
 name = "ramalama"
-version = "0.0.14"
+version = "0.0.16"
 dependencies = [
   "argcomplete",
   "tqdm",
