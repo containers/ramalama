@@ -17,21 +17,21 @@ packages:
     specfile_path: rpm/python-ramalama.spec
 
 srpm_build_deps:
-  - make build
+  - make
 
 jobs:
   # Copr builds for Fedora
   - job: copr_build
     trigger: pull_request
     packages: [ramalama-fedora]
-    targets:
+    targets: &fedora_copr_targets
       - fedora-all
 
   # Copr builds for CentOS Stream
   - job: copr_build
     trigger: pull_request
     packages: [ramalama-centos]
-    targets:
+    targets: &centos_copr_targets
       - centos-stream-10
       - centos-stream-9
 
@@ -49,3 +49,15 @@ jobs:
     branch: main
     owner: rhcontainerbot
     project: podman-next
+
+  # Tests for Fedora
+  - job: tests
+    trigger: pull_request
+    packages: [ramalama-fedora]
+    targets: *fedora_copr_targets
+
+  # Tests for CentOS Stream
+  - job: tests
+    trigger: pull_request
+    packages: [ramalama-centos]
+    targets: *centos_copr_targets
