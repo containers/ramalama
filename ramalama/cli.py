@@ -376,7 +376,7 @@ def run_cli(args):
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
     parser.add_argument(
-        "-d", "--detach", action="store_true", default=True, dest="detach", help="run the container in detached mode"
+        "-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode"
     )
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
