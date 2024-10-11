@@ -37,7 +37,7 @@ class Model:
         raise NotImplementedError(f"ramalama logout for {self.type} not implemented")
 
     def path(self, source, args):
-        raise NotImplementedError(f"ramalama puath for {self.type} not implemented")
+        raise NotImplementedError(f"ramalama path for {self.type} not implemented")
 
     def pull(self, args):
         raise NotImplementedError(f"ramalama pull for {self.type} not implemented")
