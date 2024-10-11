@@ -30,13 +30,40 @@ class HelpException(Exception):
     pass
 
 
+def ai_support_in_vm():
+    conman = container_manager()
+    if conman == "":
+        return False
+
+    if conman == "podman":
+        conman_args = [conman, "machine", "list", "--format", "{{ .VMType }}"]
+        try:
+            output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+            if output == "krunkit":
+                return True
+        except subprocess.CalledProcessError:
+            pass
+        perror(
+            """\
+Warning: podman needs to be configured to use krunkit for AI Workloads,
+running without containers
+"""
+        )
+        return False
+    # Assume this is running with Docker and return true
+    return True
+
+
 def use_container():
     transport = os.getenv("RAMALAMA_IN_CONTAINER")
     if transport:
         return transport.lower() == "true"
 
-    if in_container() or sys.platform == "darwin":
+    if in_container():
         return False
+
+    if sys.platform == "darwin":
+        return ai_support_in_vm()
 
     return True
 
@@ -375,9 +402,7 @@ def run_cli(args):
 
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
-    parser.add_argument(
-        "-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode"
-    )
+    parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
     parser.add_argument(
