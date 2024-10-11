@@ -26,6 +26,11 @@ behaviour.
 
 RamaLama supports multiple AI model registries types called transports. Supported transports:
 
+Note:
+
+On Macs with Arm support and Podman, the Podman machine must be
+configured to use the krunkit VM Type. This allows the Mac's GPU to be
+used within the VM.
 
 ## TRANSPORTS
 
@@ -117,7 +122,7 @@ store AI Models in the specified directory (default rootless: `$HOME/.local/shar
 
 
 ## SEE ALSO
-**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**
+**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**, **docker(1)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
