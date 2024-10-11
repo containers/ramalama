@@ -1,3 +1,5 @@
+%global debug_package %{nil}
+
 %global pypi_name ramalama
 %global desc RamaLama is a command line tool for working with AI LLM models.
 
@@ -34,13 +36,17 @@ BuildRequires: golang
 BuildRequires: golang-github-cpuguy83-md2man
 BuildRequires: git-core
 BuildRequires: make
-BuildRequires: python%{python3_pkgversion}-devel
 BuildRequires: pyproject-rpm-macros
 BuildRequires: python%{python3_pkgversion}-pip
 BuildRequires: python%{python3_pkgversion}-setuptools
 BuildRequires: python%{python3_pkgversion}-wheel
 BuildRequires: python%{python3_pkgversion}-argcomplete
+Requires: python%{python3_pkgversion}-argcomplete
 Recommends: podman
+Recommends: python%{python3_pkgversion}-huggingface-hub
+Recommends: python%{python3_pkgversion}-tqdm
+
+
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{pypi_name}}
@@ -52,16 +58,12 @@ Provides: %{pypi_name} = %{version}-%{release}
 %autosetup -Sgit -n %{pypi_name}-%{version}
 
 %build
-%pyproject_wheel
 
 %install
-%pyproject_install
-%pyproject_save_files %{pypi_name}
+%make_install PREFIX=%{_prefix}
 %{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-shortnames
-%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-docs
-%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-completions
 
-%files -n python%{python3_pkgversion}-%{pypi_name} -f %{pyproject_files}
+%files -n python%{python3_pkgversion}-%{pypi_name}
 %license LICENSE
 %doc README.md
 %{_bindir}/%{pypi_name}
@@ -70,6 +72,8 @@ Provides: %{pypi_name} = %{version}-%{release}
 %{_mandir}/man1/%{pypi_name}*
 %{_datadir}/bash-completion/completions/%{pypi_name}
 %{_datadir}/fish/vendor_completions.d/%{pypi_name}.fish
+%dir %{python3_sitelib}/*
+%{python3_sitelib}/*
 
 %changelog
 %autochangelog

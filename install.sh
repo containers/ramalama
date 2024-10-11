@@ -47,7 +47,7 @@ check_platform() {
 }
 
 install_mac_dependencies() {
-  pipx install huggingface_hub[cli] omlmd argcomplete
+  pipx install huggingface_hub omlmd argcomplete
   brew install llama.cpp
 }
 

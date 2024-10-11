@@ -21,7 +21,7 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.n
     rm -rf /var/cache/*dnf*
 
 RUN /usr/bin/python3 --version
-RUN pip install "huggingface_hub[cli]==${HUGGINGFACE_HUB_VERSION}"
+RUN pip install "huggingface_hub==${HUGGINGFACE_HUB_VERSION}"
 RUN pip install "omlmd==${OMLMD_VERSION}"
 RUN pip install "tqdm==${TQDM_VERSION}"
 
