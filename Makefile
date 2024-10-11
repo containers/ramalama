@@ -35,7 +35,7 @@ help:
 
 .PHONY:
 install-requirements:
-	pipx install tqdm black flake8 argcomplete wheel omlmd huggingface_hub[cli] codespell
+	pipx install tqdm black flake8 argcomplete wheel omlmd huggingface_hub codespell
 
 .PHONY:
 install-completions:
@@ -69,7 +69,7 @@ completions:
 .PHONY:
 install: docs completions
 	RAMALAMA_VERSION=$(RAMALAMA_VERSION) \
-	pip install . --root $(DESTDIR) --prefix ${PREFIX}
+	pip install . --no-deps --root $(DESTDIR) --prefix ${PREFIX}
 
 .PHONY:
 build:

@@ -1,7 +1,0 @@
-# Any changes should be copied into pyproject.toml
-argcomplete
-setuptools
-wheel
-omlmd
-tqdm
-huggingface_hub[cli]

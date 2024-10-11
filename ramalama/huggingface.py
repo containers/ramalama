@@ -6,7 +6,7 @@ missing_huggingface = """
 Huggingface models requires the huggingface-cli and tqdm modules.
 These modules can be installed via PyPi tools like pip, pip3, pipx or via
 distribution package managers like dnf or apt. Example:
-pip install huggingface_hub[cli] tqdm
+pip install huggingface_hub tqdm
 """
 
 

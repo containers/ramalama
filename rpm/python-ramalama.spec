@@ -40,7 +40,12 @@ BuildRequires: python%{python3_pkgversion}-pip
 BuildRequires: python%{python3_pkgversion}-setuptools
 BuildRequires: python%{python3_pkgversion}-wheel
 BuildRequires: python%{python3_pkgversion}-argcomplete
+Requires: python%{python3_pkgversion}-argcomplete
 Recommends: podman
+Recommends: python%{python3_pkgversion}-huggingface-hub
+Recommends: python%{python3_pkgversion}-tqdm
+
+
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{pypi_name}}
