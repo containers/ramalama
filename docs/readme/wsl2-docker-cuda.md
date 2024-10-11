@@ -1,6 +1,6 @@
-# Setting Up Ramalama with CUDA Support in WSL2 Using Docker
+# Setting Up RamaLama with CUDA Support in WSL2 Using Docker
 
-This guide will walk you through the steps required to set up Ramalama in WSL2 with CUDA support using Docker.
+This guide will walk you through the steps required to set up RamaLama in WSL2 with CUDA support using Docker.
 
 ## Prerequisites
 

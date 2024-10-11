@@ -1,6 +1,6 @@
-# Setting Up Ramalama with CUDA Support in WSL2 Using Podman
+# Setting Up RamaLama with CUDA Support in WSL2 Using Podman
 
-This guide will walk you through the steps required to set up Ramalama in WSL2 with CUDA support using Podman.
+This guide will walk you through the steps required to set up RamaLama in WSL2 with CUDA support using Podman.
 
 ## Prerequisites
 
