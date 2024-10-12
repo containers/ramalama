@@ -14,31 +14,48 @@ def download_file(url, dest_path, headers=None):
         raise NotImplementedError(
             """\
 Ollama models requires the tqdm modules.
-This model can be installed via PyPi tools like pip, pip3, pipx or via
+This module can be installed via PyPi tools like pip, pip3, pipx or via
 distribution package managers like dnf or apt. Example:
 pip install tqdm
 """
         )
 
+    # Check if partially downloaded file exists
+    if os.path.exists(dest_path):
+        downloaded_size = os.path.getsize(dest_path)
+    else:
+        downloaded_size = 0
+
     request = urllib.request.Request(url, headers=headers or {})
-    with urllib.request.urlopen(request) as response:
-        total_size = int(response.headers.get("Content-Length", 0))
-        chunk_size = 8192  # 8 KB chunks
-        with open(dest_path, "wb") as file, tqdm(
-            desc=dest_path[-16:],
-            total=total_size,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-            bar_format=bar_format,
-            ascii=True,
-        ) as progress_bar:
-            while True:
-                chunk = response.read(chunk_size)
-                if not chunk:
-                    break
-                file.write(chunk)
-                progress_bar.update(len(chunk))
+    request.headers["Range"] = f"bytes={downloaded_size}-"  # Set range header
+
+    try:
+        with urllib.request.urlopen(request) as response:
+            total_size = int(response.headers.get("Content-Length", 0)) + downloaded_size
+            chunk_size = 8192  # 8 KB chunks
+
+            with open(dest_path, "ab") as file, tqdm(
+                desc=dest_path[-16:],
+                total=total_size,
+                initial=downloaded_size,
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+                bar_format=bar_format,
+                ascii=True,
+            ) as progress_bar:
+                while True:
+                    chunk = response.read(chunk_size)
+                    if not chunk:
+                        break
+                    file.write(chunk)
+                    progress_bar.update(len(chunk))
+    except urllib.error.HTTPError as e:
+        if e.code == 416:
+            # If we get a 416 error, it means the file is fully downloaded
+            print(f"File {url} already fully downloaded.")
+        else:
+            raise e
 
 
 def pull_manifest(repos, manifests, accept, registry_head, model_tag):
@@ -46,6 +63,13 @@ def pull_manifest(repos, manifests, accept, registry_head, model_tag):
     os.makedirs(os.path.join(repos, "blobs"), exist_ok=True)
     url = f"{registry_head}/manifests/{model_tag}"
     headers = {"Accept": accept}
+
+    # Attempt to redownload the manifest if already exists,
+    # otherwise json.JSONDecodeError exception is thrown when reading the manifest
+    if os.path.exists(manifests):
+        print(f"Manifest file {manifests} seems corrupted, deleting and retrying download.")
+        os.remove(manifests)
+
     download_file(url, manifests, headers=headers)
 
 
@@ -77,6 +101,14 @@ def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, mo
         if e.code == 404:
             raise KeyError(f"{model} not found")
         raise e
+    # This exception block acts as a safety-net to redownload the manifests if corrupted.
+    except json.JSONDecodeError:
+        print(f"Error: Failed to parse JSON in {manifests}. File might be corrupted or incomplete.")
+        print("Attempting to redownload the manifest file...")
+        os.remove(manifests)
+        pull_manifest(repos, manifests, accept, registry_head, model_tag)
+        with open(manifests, "r") as f:
+            manifest_data = json.load(f)
 
     pull_config_blob(repos, accept, registry_head, manifest_data)
     for layer in manifest_data["layers"]:
@@ -115,7 +147,7 @@ class Ollama(Model):
     def path(self, args):
         symlink_path, _, _, _, _ = self._local(args)
         if not os.path.exists(symlink_path):
-            raise KeyError("f{{args.Model} does not exist")
+            raise KeyError("f{args.Model} does not exist")
 
         return symlink_path
 
