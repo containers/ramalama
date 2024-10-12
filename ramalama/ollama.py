@@ -1,7 +1,7 @@
 import os
 import urllib.request
 import json
-from ramalama.common import run_cmd
+from ramalama.common import run_cmd, verify_checksum
 from ramalama.model import Model
 
 bar_format = "Pulling {desc}: {percentage:3.0f}% ▕{bar:20}▏ {n_fmt}/{total_fmt} {rate_fmt} {remaining}"
@@ -67,7 +67,6 @@ def pull_manifest(repos, manifests, accept, registry_head, model_tag):
     # Attempt to redownload the manifest if already exists,
     # otherwise json.JSONDecodeError exception is thrown when reading the manifest
     if os.path.exists(manifests):
-        print(f"Manifest file {manifests} seems corrupted, deleting and retrying download.")
         os.remove(manifests)
 
     download_file(url, manifests, headers=headers)
@@ -86,6 +85,14 @@ def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, mo
     url = f"{registry_head}/blobs/{layer_digest}"
     headers = {"Accept": accept}
     download_file(url, layer_blob_path, headers=headers)
+
+    # Verify checksum after downloading the blob
+    if not verify_checksum(layer_blob_path):
+        print(f"Checksum mismatch for blob {layer_blob_path}, retrying download...")
+        os.remove(layer_blob_path)
+        download_file(url, layer_blob_path, headers=headers)
+        if not verify_checksum(layer_blob_path):
+            raise ValueError(f"Checksum verification failed for blob {layer_blob_path}")
 
     os.makedirs(models, exist_ok=True)
     relative_target_path = os.path.relpath(layer_blob_path, start=os.path.dirname(symlink_path))
