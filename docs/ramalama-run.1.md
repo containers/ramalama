@@ -34,6 +34,14 @@ ramalama run merlinite "when is the summer solstice"
 The summer solstice, which is the longest day of the year, will happen on June ...
 ```
 
+Run command with a custom prompt and a file passed by the stdin
+```
+cat file.py | ramalama run granite-code 'what does this program do?'
+
+This program is a Python script that allows the user to interact with a terminal. ...
+ [end of text]
+```
+
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**
 
