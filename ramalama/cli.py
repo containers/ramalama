@@ -564,7 +564,7 @@ def run_container(args):
     if di_volume != "":
         conman_args += [di_volume]
 
-    if sys.stdout.isatty():
+    if sys.stdout.isatty() and sys.stdin.isatty():
         conman_args += ["-t"]
 
     if hasattr(args, "detach") and args.detach is True:

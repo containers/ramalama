@@ -98,6 +98,12 @@ class Model:
         if args.ARGS:
             prompt = " ".join(args.ARGS)
 
+        # Build a prompt with the stdin text that prepend the prompt passed as an
+        # argument to ramalama cli
+        if not sys.stdin.isatty():
+            input = sys.stdin.read()
+            prompt = input + "\n\n" + prompt
+
         symlink_path = self.pull(args)
         exec_args = [
             "llama-cli",
@@ -111,7 +117,7 @@ class Model:
             "-p",
             prompt,
         ] + self.common_params
-        if not args.ARGS:
+        if not args.ARGS and sys.stdin.isatty():
             exec_args.append("-cnv")
 
         try:
