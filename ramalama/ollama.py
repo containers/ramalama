@@ -7,7 +7,7 @@ from ramalama.model import Model
 bar_format = "Pulling {desc}: {percentage:3.0f}% ▕{bar:20}▏ {n_fmt}/{total_fmt} {rate_fmt} {remaining}"
 
 
-def download_file(url, dest_path, headers=None):
+def download_file(url, dest_path, headers=None, show_progress=True):
     try:
         from tqdm import tqdm
     except FileNotFoundError:
@@ -34,26 +34,36 @@ pip install tqdm
             total_size = int(response.headers.get("Content-Length", 0)) + downloaded_size
             chunk_size = 8192  # 8 KB chunks
 
-            with open(dest_path, "ab") as file, tqdm(
-                desc=dest_path[-16:],
-                total=total_size,
-                initial=downloaded_size,
-                unit="B",
-                unit_scale=True,
-                unit_divisor=1024,
-                bar_format=bar_format,
-                ascii=True,
-            ) as progress_bar:
-                while True:
-                    chunk = response.read(chunk_size)
-                    if not chunk:
-                        break
-                    file.write(chunk)
-                    progress_bar.update(len(chunk))
+            with open(dest_path, "ab") as file:
+                if show_progress:
+                    with tqdm(
+                        desc=dest_path[-16:],
+                        total=total_size,
+                        initial=downloaded_size,
+                        unit="B",
+                        unit_scale=True,
+                        unit_divisor=1024,
+                        bar_format=bar_format,
+                        ascii=True,
+                    ) as progress_bar:
+                        while True:
+                            chunk = response.read(chunk_size)
+                            if not chunk:
+                                break
+                            file.write(chunk)
+                            progress_bar.update(len(chunk))
+                else:
+                    # Download file without showing progress
+                    while True:
+                        chunk = response.read(chunk_size)
+                        if not chunk:
+                            break
+                        file.write(chunk)
     except urllib.error.HTTPError as e:
         if e.code == 416:
-            # If we get a 416 error, it means the file is fully downloaded
-            print(f"File {url} already fully downloaded.")
+            if show_progress:
+                # If we get a 416 error, it means the file is fully downloaded
+                print(f"File {url} already fully downloaded.")
         else:
             raise e
 
@@ -69,7 +79,7 @@ def pull_manifest(repos, manifests, accept, registry_head, model_tag):
     if os.path.exists(manifests):
         os.remove(manifests)
 
-    download_file(url, manifests, headers=headers)
+    download_file(url, manifests, headers=headers, show_progress=False)
 
 
 def pull_config_blob(repos, accept, registry_head, manifest_data):
@@ -77,20 +87,20 @@ def pull_config_blob(repos, accept, registry_head, manifest_data):
     config_blob_path = os.path.join(repos, "blobs", cfg_hash)
     url = f"{registry_head}/blobs/{cfg_hash}"
     headers = {"Accept": accept}
-    download_file(url, config_blob_path, headers=headers)
+    download_file(url, config_blob_path, headers=headers, show_progress=False)
 
 
 def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, symlink_path):
     layer_blob_path = os.path.join(repos, "blobs", layer_digest)
     url = f"{registry_head}/blobs/{layer_digest}"
     headers = {"Accept": accept}
-    download_file(url, layer_blob_path, headers=headers)
+    download_file(url, layer_blob_path, headers=headers, show_progress=True)
 
     # Verify checksum after downloading the blob
     if not verify_checksum(layer_blob_path):
         print(f"Checksum mismatch for blob {layer_blob_path}, retrying download...")
         os.remove(layer_blob_path)
-        download_file(url, layer_blob_path, headers=headers)
+        download_file(url, layer_blob_path, headers=headers, show_progress=True)
         if not verify_checksum(layer_blob_path):
             raise ValueError(f"Checksum verification failed for blob {layer_blob_path}")
 
@@ -154,7 +164,7 @@ class Ollama(Model):
     def path(self, args):
         symlink_path, _, _, _, _ = self._local(args)
         if not os.path.exists(symlink_path):
-            raise KeyError("f{args.Model} does not exist")
+            raise KeyError(f"{args.Model} does not exist")
 
         return symlink_path
 
