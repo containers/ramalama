@@ -2,7 +2,7 @@
 
 load helpers
 
-verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=label=disable -e RAMALAMA_TRANSPORT --name"
+verify_begin="podman run --rm -i --label RAMALAMA --security-opt=label=disable -e RAMALAMA_TRANSPORT --name"
 
 @test "ramalama --dryrun serve basic output" {
     skip_if_nocontainer

@@ -244,7 +244,7 @@ def _list_containers(args):
     if conman == "":
         raise IndexError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "ps", "-a", "--filter", "label=RAMALAMA container"]
+    conman_args = [conman, "ps", "-a", "--filter", "label=RAMALAMA"]
     if args.noheading:
         conman_args += ["--noheading"]
     if hasattr(args, "notrunc") and args.notrunc:
@@ -549,7 +549,7 @@ def run_container(args):
         "--rm",
         "-i",
         "--label",
-        "RAMALAMA container",
+        "RAMALAMA",
         "--security-opt=label=disable",
         "-e",
         "RAMALAMA_TRANSPORT",
