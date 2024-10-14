@@ -18,7 +18,7 @@ def in_container():
 
 def container_manager():
     engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
-    if engine:
+    if engine is not None:
         return engine
 
     if available("podman"):
