@@ -39,7 +39,7 @@ def ai_support_in_vm():
         conman_args = [conman, "machine", "list", "--format", "{{ .VMType }}"]
         try:
             output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-            if output == "krunkit":
+            if output in ["krunkit", "libkrun"]:
                 return True
         except subprocess.CalledProcessError:
             pass
