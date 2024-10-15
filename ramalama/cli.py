@@ -1,4 +1,3 @@
-from argparse import ArgumentParser
 from pathlib import Path
 import argparse
 import glob
@@ -68,23 +67,59 @@ def use_container():
     return True
 
 
+class ArgumentParserWithDefaults(argparse.ArgumentParser):
+    def add_argument(self, *args, help=None, default=None, **kwargs):
+        if help is not None:
+            kwargs['help'] = help
+        if default is not None and args[0] != '-h':
+            kwargs['default'] = default
+            if help is not None and help != "==SUPPRESS==":
+                kwargs['help'] += ' (default: {})'.format(default)
+        super().add_argument(*args, **kwargs)
+
+
 def init_cli():
-    parser = ArgumentParser(
+    description = """\
+RamaLama tool facilitates local management and serving of AI Models.
+
+On first run RamaLama inspects your system for GPU support, falling back to CPU support if no GPUs are present.
+
+RamaLama uses container engines like Podman or Docker to pull the appropriate OCI image with all of the software \
+necessary to run an AI Model for your systems setup.
+
+Running in containers eliminates the need for users to configure the host system for AI. After the initialization, \
+RamaLama runs the AI Models within a container based on the OCI image.
+
+RamaLama then pulls AI Models from model registires. Starting a chatbot or a rest API service from a simple single \
+command. Models are treated similarly to how Podman and Docker treat container images.
+
+When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAMALAMA_CONTAINER_ENGINE=docker` \
+environment variable can override this behaviour. When neather are installed RamaLama will attempt to run the model \
+with software on the local system.
+"""
+    parser = ArgumentParserWithDefaults(
         prog="ramalama",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="Simple management tool for working with AI Models.",
+        description=description,
+        formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument("--store", default=get_store(), help="store AI Models in the specified directory")
-    parser.add_argument(
-        "--dryrun", dest="dryrun", action="store_true", help="show container runtime command without executing it"
-    )
-    parser.add_argument("--dry-run", dest="dryrun", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--container",
         dest="container",
         default=use_container(),
         action="store_true",
-        help="run RamaLama in the default container",
+        help="""run RamaLama in the default container.
+The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
+    )
+    parser.add_argument(
+        "--dryrun", dest="dryrun", action="store_true", help="show container runtime command without executing it"
+    )
+    parser.add_argument("--dry-run", dest="dryrun", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--engine",
+        dest="engine",
+        default=container_manager(),
+        help="""run RamaLama using the specified container engine.
+The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
     )
     parser.add_argument(
         "--image",
@@ -96,7 +131,8 @@ def init_cli():
         dest="container",
         default=False,
         action="store_false",
-        help="do not run RamaLama in the default container",
+        help="""do not run RamaLama in the default container.
+The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
     parser.add_argument(
         "--runtime",
@@ -104,6 +140,7 @@ def init_cli():
         choices=["llama.cpp", "vllm"],
         help="specify the runtime to use, valid options are 'llama.cpp' and 'vllm'",
     )
+    parser.add_argument("--store", default=get_store(), help="store AI Models in the specified directory")
     parser.add_argument("-v", dest="version", action="store_true", help="show RamaLama version")
 
     subparsers = parser.add_subparsers(dest="subcommand")
@@ -240,7 +277,7 @@ def containers_parser(subparsers):
 
 
 def _list_containers(args):
-    conman = container_manager()
+    conman = args.engine
     if conman == "":
         raise IndexError("no container manager (Podman, Docker) found")
 
@@ -435,7 +472,7 @@ def stop_parser(subparsers):
 def _stop_container(args, name):
     if not name:
         raise IndexError("must specify a container name")
-    conman = container_manager()
+    conman = args.engine
     if conman == "":
         raise IndexError("no container manager (Podman, Docker) found")
 
@@ -533,7 +570,7 @@ def run_container(args):
     if in_container():
         return False
 
-    conman = container_manager()
+    conman = args.engine
     if conman == "":
         return False
 

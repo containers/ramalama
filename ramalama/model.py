@@ -1,6 +1,6 @@
 import os
 import sys
-from ramalama.common import container_manager, exec_cmd, default_image, in_container
+from ramalama.common import exec_cmd, default_image, in_container
 
 
 file_not_found = """\
@@ -21,7 +21,6 @@ class Model:
     """Model super class"""
 
     model = ""
-    conman = container_manager()
     type = "Model"
     common_params = ["-c", "2048"]
 
