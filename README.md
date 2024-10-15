@@ -90,7 +90,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 | Apple Silicon GPU (macOS)          | :white_check_mark: |
 | Apple Silicon GPU (podman-machine) | :x: |
 | Nvidia GPU (cuda)                  | :x: |
-| AMD GPU (rocm)                     | :x: |
+| AMD GPU (rocm)                     | :white_check_mark: |
 
 ## COMMANDS
 
