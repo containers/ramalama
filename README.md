@@ -5,12 +5,17 @@
 The RamaLama project's goal is to make working with AI boring
 through the use of OCI containers.
 
-On first run RamaLama inspects your system for GPU support, falling back to CPU
-support if no GPUs are present. It then uses container engines like Podman or
-Docker to pull the appropriate OCI image with all of the software necessary to
-run an AI Model for your systems setup. This eliminates the need for the user
-to configure the system for AI themselves. After the initialization, RamaLama
-will run the AI Models within a container based on the OCI image.
+RamaLama tool facilitates local management and serving of AI Models.
+
+On first run RamaLama inspects your system for GPU support, falling back to CPU support if no GPUs are present.
+
+RamaLama uses container engines like Podman or Docker to pull the appropriate OCI image with all of the software necessary to run an AI Model for your systems setup.
+
+Running in containers eliminates the need for users to configure the host system for AI. After the initialization, RamaLama runs the AI Models within a container based on the OCI image.
+
+RamaLama then pulls AI Models from model registires. Starting a chatbot or a rest API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
+
+When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behaviour. When neather are installed RamaLama will attempt to run the model with software on the local system.
 
 RamaLama supports multiple AI model registries types called transports.
 Supported transports:
