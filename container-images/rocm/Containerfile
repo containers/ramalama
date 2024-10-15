@@ -14,9 +14,7 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
 
 RUN dnf install -y rocm-dev hipblas-devel rocblas-devel && \
     dnf clean all && \
-    rm -rf /var/cache/*dnf*
-
-RUN git clone https://github.com/ggerganov/llama.cpp && \
+    git clone https://github.com/ggerganov/llama.cpp && \
     cd llama.cpp && \
     git reset --hard ${LLAMA_CPP_SHA} && \
     cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 \
@@ -24,14 +22,13 @@ RUN git clone https://github.com/ggerganov/llama.cpp && \
     cmake --build build --config Release -j $(nproc) && \
     cmake --install build && \
     cd / && \
-    rm -rf llama.cpp
-
-RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
+    git clone https://github.com/ggerganov/whisper.cpp.git && \
     cd whisper.cpp && \
     git reset --hard ${WHISPER_CPP_SHA} && \
     make -j $(nproc) GGML_HIPBLAS=1 && \
     mv main /usr/bin/whisper-main && \
     mv server /usr/bin/whisper-server && \
     cd / && \
-    rm -rf whisper.cpp
+    rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
+      /opt/rocm-*/lib/rocblas/library/*gfx9* llama.cpp whisper.cpp
 

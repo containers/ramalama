@@ -21,24 +21,30 @@ add_build_platform() {
   conman_build+=("-t" "quay.io/ramalama/$image_name" ".")
 }
 
+rm_container_image() {
+  if [ "$image_name" == "cuda" ] || [ "$image_name" == "rocm" ]; then
+    "$conman_bin" rmi -f "$image_name" || true
+  fi
+}
+
 build() {
   cd "$1"
   local image_name
   image_name=$(echo "$1" | sed "s#container-images/##g")
-  if [ "$image_name" != "rocm" ]; then # todo: skip, trim rocm image, too large
-    local conman_build=("${conman[@]}")
-    if [ "$#" -lt 2 ]; then
-      add_build_platform
-      "${conman_build[@]}" 2>&1 | tee container_build.log
-    elif [ "$2" = "-d" ]; then
-      add_build_platform
-      echo "${conman_build[@]}"
-    elif [ "$2" = "push" ]; then
-      "${conman[@]}" push "quay.io/ramalama/$image_name"
-    else
-      add_build_platform
-      "${conman_build[@]}" 2>&1 | tee container_build.log
-    fi
+  local conman_build=("${conman[@]}")
+  if [ "$#" -lt 2 ]; then
+    add_build_platform
+    "${conman_build[@]}" 2>&1 | tee container_build.log
+    rm_container_image
+  elif [ "$2" = "-d" ]; then
+    add_build_platform
+    echo "${conman_build[@]}"
+  elif [ "$2" = "push" ]; then
+    "${conman[@]}" push "quay.io/ramalama/$image_name"
+  else
+    add_build_platform
+    "${conman_build[@]}" 2>&1 | tee container_build.log
+    rm_container_image
   fi
 
   cd - > /dev/null
