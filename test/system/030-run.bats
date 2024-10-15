@@ -8,7 +8,7 @@ load helpers
     model=m_$(safename)
     image=m_$(safename)
 
-    verify_begin="podman run --rm -i --label \"RAMALAMA container\" --security-opt=label=disable -e RAMALAMA_TRANSPORT --name"
+    verify_begin="podman run --rm -i --label RAMALAMA --security-opt=label=disable -e RAMALAMA_TRANSPORT --name"
 
     run_ramalama --dryrun run ${model}
     is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
