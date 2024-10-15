@@ -9,7 +9,7 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install bats bash codespell python3-argcomplete
+           sudo apt-get install bats bash codespell python3-argcomplete pipx
            make install-requirements
       - name: Print disk space before cleanup
         shell: bash
@@ -42,10 +42,14 @@ jobs:
         run: |
            df -h
 
-      - name: run test
+      - name: run bats
         run: |
            make validate
            make bats
+      - name: bats-nocontainer
+        run: |
+           pip install tqdm --break-system-packages
+           make bats-nocontainer
 
   macos:
     runs-on: macos-14
