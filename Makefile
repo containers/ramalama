@@ -8,6 +8,7 @@ PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 
+
 default: help
 
 help:
@@ -43,10 +44,8 @@ install-completions:
 	register-python-argcomplete --shell bash ramalama > $(DESTDIR)${SHAREDIR}/bash-completion/completions/ramalama
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d
 	register-python-argcomplete --shell fish ramalama > $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d/ramalama.fish
-
-# FIXME: not available on Centos 9 yet.
-#	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/zsh/site
-#	register-python-argcomplete --shell zsh ramalama > $(DESTDIR)${SHAREDIR}/zsh/site/_ramalama
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/zsh/site
+	register-python-argcomplete --shell zsh ramalama > $(DESTDIR)${SHAREDIR}/zsh/site/_ramalama
 
 .PHONY:
 install-shortnames:
@@ -62,9 +61,8 @@ completions:
 	mkdir -p build/completions/fish/vendor_completions.d
 	register-python-argcomplete --shell fish ramalama > build/completions/fish/vendor_completions.d/ramalama.fish
 
-# FIXME: not available on Centos 9 yet.
-#	mkdir -p build/completions/zsh/site
-#	register-python-argcomplete --shell zsh ramalama > build/completions/zsh/site/_ramalama
+	mkdir -p build/completions/zsh/site
+	register-python-argcomplete --shell zsh ramalama > build/completions/zsh/site/_ramalama
 
 .PHONY:
 install: docs completions
