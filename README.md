@@ -103,6 +103,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 | ------------------------------------------------------ | ---------------------------------------------------------- |
 | [ramalama(1)](docs/ramalama.1.md)                      | primary RamaLama man page                                  |
 | [ramalama-containers(1)](docs/ramalama-containers.1.md)| list all RamaLama containers                               |
+| [ramalama-info(1)](ramalama-info.1.md)                 | display RamaLama configuration information                 |
 | [ramalama-list(1)](docs/ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](docs/ramalama-login.1.md)          | login to remote registry                                   |
 | [ramalama-logout(1)](docs/ramalama-logout.1.md)        | logout from remote registry                                |

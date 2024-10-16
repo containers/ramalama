@@ -64,8 +64,7 @@ def use_container():
 
     if sys.platform == "darwin":
          conman = container_manager()
-         krunkit_configured = ai_support_in_vm(conman)
-         return krunkit_configured
+         return ai_support_in_vm(conman)
 
     return True
 
@@ -151,6 +150,7 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
 
     help_parser(subparsers)
     containers_parser(subparsers)
+    info_parser(subparsers)
     list_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
@@ -309,6 +309,11 @@ def list_containers(args):
     print("\n".join(_list_containers(args)))
 
 
+def info_parser(subparsers):
+    parser = subparsers.add_parser("info", help="Display information pertaining to setup of RamaLama.")
+    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
+    parser.set_defaults(func=info_cli)
+
 def list_parser(subparsers):
     parser = subparsers.add_parser("list", aliases=["ls"], help="list all downloaded AI Models")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
@@ -351,6 +356,16 @@ def _list_models(args):
     os.chdir(mycwd)
     return models
 
+
+def info_cli(args):
+    info = {
+        "Engine": args.engine,
+        "Image": args.image,
+        "Runtime": args.runtime,
+        "Store": args.store,
+        "Version": version(),
+    }
+    print(json.dumps(info, sort_keys=True, indent=4))
 
 def list_cli(args):
     models = _list_models(args)

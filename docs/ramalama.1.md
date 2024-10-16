@@ -109,6 +109,7 @@ store AI Models in the specified directory (default rootless: `$HOME/.local/shar
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
 | [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
+| [ramalama-info(1)](ramalama-info.1.md)            | Display RamaLama configuration information                 |
 | [ramalama-list(1)](ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](ramalama-login.1.md)          | login to remote registry                                   |
 | [ramalama-logout(1)](ramalama-logout.1.md)        | logout from remote registry                                |
