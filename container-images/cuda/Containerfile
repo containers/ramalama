@@ -6,7 +6,7 @@ ARG HUGGINGFACE_HUB_VERSION=0.25.2
 ARG OMLMD_VERSION=0.1.6
 ARG LLAMA_CPP_SHA=70392f1f81470607ba3afef04aa56c9f65587664
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
-ARG WHISPER_CPP_SHA=b6049060dd2341b7816d2bce7dc7451c1665828e
+ARG WHISPER_CPP_SHA=d3f7137cc9befa6d74dc4085de2b664b97b7c8bb
 
 # vulkan-headers vulkan-loader-devel vulkan-tools glslc glslang python3-pip mesa-libOpenCL-$MESA_VER.aarch64
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
