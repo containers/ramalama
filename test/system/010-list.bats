@@ -23,7 +23,7 @@ load helpers
 }
 
 @test "ramalama list - json" {
-    #FIXME don't know why this blows upon macs
+    #FIXME jq version on mac does not like regex handling
     skip_if_darwin
     # 'created': ramalama includes fractional seconds, ramalama-remote does not
     tests="
