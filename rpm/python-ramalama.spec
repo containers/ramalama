@@ -8,7 +8,11 @@
 %global _python_dist_allow_version_zero 1
 
 # Temporary removal while we work on getting omlmd package.
+%if 0%{?rhel}
+%global __requires_exclude omlmd|huggingface-hub
+%else
 %global __requires_exclude omlmd
+%endif
 
 Name: python-%{pypi_name}
 # DO NOT TOUCH the Version string!
