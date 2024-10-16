@@ -1,9 +1,11 @@
 %global debug_package %{nil}
 
+%global source_url https://github.com/containers/%{pypi_name}
 %global pypi_name ramalama
 %global desc RamaLama is a command line tool for working with AI LLM models.
+%global _name python%{python3_pkgversion}-%{pypi_name}
 
-%define _python_dist_allow_version_zero 1
+%global _python_dist_allow_version_zero 1
 
 Name: python-%{pypi_name}
 # DO NOT TOUCH the Version string!
@@ -13,12 +15,12 @@ Name: python-%{pypi_name}
 # copr and koji builds.
 # If you're reading this on dist-git, the version is automatically filled in by Packit.
 Version: 0
-License: Apache-2.0
+License: MIT
 Release: %autorelease
 Summary: RESTful API for RamaLama
-URL: https://github.com/containers/%{pypi_name}
+URL: %{source_url}
 # Tarball fetched from upstream
-Source0: %{url}/archive/v%{version}.tar.gz
+Source0: %{source_url}/archive/refs/tags/v%{version}.tar.gz
 BuildArch: noarch
 
 %description
@@ -31,39 +33,47 @@ AI Model for your systems setup. This eliminates the need for the user to
 configure the system for AI themselves. After the initialization, RamaLama
 will run the AI Models within a container based on the OCI image.
 
-%package -n python%{python3_pkgversion}-%{pypi_name}
+%package -n %{_name}
+BuildRequires: git-core
 BuildRequires: golang
 BuildRequires: golang-github-cpuguy83-md2man
-BuildRequires: git-core
 BuildRequires: make
 BuildRequires: pyproject-rpm-macros
+
+BuildRequires: python%{python3_pkgversion}-argcomplete
+BuildRequires: python%{python3_pkgversion}-devel
 BuildRequires: python%{python3_pkgversion}-pip
 BuildRequires: python%{python3_pkgversion}-setuptools
 BuildRequires: python%{python3_pkgversion}-wheel
-BuildRequires: python%{python3_pkgversion}-argcomplete
+
 Requires: python%{python3_pkgversion}-argcomplete
+
 Recommends: podman
 Recommends: python%{python3_pkgversion}-huggingface-hub
 Recommends: python%{python3_pkgversion}-tqdm
 
-
+#
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
-%{?python_provide:%python_provide python%{python3_pkgversion}-%{pypi_name}}
+%{?python_provide:%python_provide %{_name} }
 
-%description -n python%{python3_pkgversion}-%{pypi_name}
+%description -n %{_name}
 %desc
 
 %prep
 %autosetup -Sgit -n %{pypi_name}-%{version}
 
 %build
+%pyproject_wheel
 
 %install
-%make_install PREFIX=%{_prefix}
+%pyproject_install
+%pyproject_save_files %{pypi_name}
 %{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-shortnames
+%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-docs
+%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-completions
 
-%files -n python%{python3_pkgversion}-%{pypi_name}
+%files -n %{_name}
 %license LICENSE
 %doc README.md
 %{_bindir}/%{pypi_name}
@@ -73,8 +83,8 @@ Provides: %{pypi_name} = %{version}-%{release}
 %{_datadir}/bash-completion/completions/%{pypi_name}
 %{_datadir}/fish/vendor_completions.d/%{pypi_name}.fish
 %{_datadir}/zsh/site/_ramalama
-%dir %{python3_sitelib}/*
-%{python3_sitelib}/*
+%{python3_sitelib}/%{pypi_name}/
+%{python3_sitelib}/%{pypi_name}-%{version}.dist-info/
 
 %changelog
 %autochangelog
