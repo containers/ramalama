@@ -7,6 +7,9 @@
 
 %global _python_dist_allow_version_zero 1
 
+# Temporary removal while we work on getting omlmd package.
+%global __requires_exclude omlmd
+
 Name: python-%{pypi_name}
 # DO NOT TOUCH the Version string!
 # The TRUE source of this specfile is:
