@@ -8,10 +8,10 @@
 %global _python_dist_allow_version_zero 1
 
 # Temporary removal while we work on getting omlmd package.
-%if 0%{?rhel}
-%global __requires_exclude omlmd|huggingface-hub
-%else
+%if 0%{?fedora}
 %global __requires_exclude omlmd
+%else
+%global __requires_exclude omlmd|huggingface-hub
 %endif
 
 Name: python-%{pypi_name}
