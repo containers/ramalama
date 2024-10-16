@@ -46,6 +46,6 @@ setuptools.setup(
     cmdclass={"build_py": build_py},
     scripts=["bin/ramalama"],
     data_files=[("share/ramalama", ["shortnames/shortnames.conf"])]
-    + generate_completions("share", "build/completions")
+    + generate_completions("share", "completions")
     + generate_man_pages("share/man/man1", "docs"),
 )

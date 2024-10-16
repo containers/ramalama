@@ -34,42 +34,45 @@ help:
 	@echo
 
 
-.PHONY:
+.PHONY: install-requirements
 install-requirements:
 	pipx install tqdm black flake8 argcomplete wheel omlmd huggingface_hub codespell
 
-.PHONY:
-install-completions:
+.PHONY: install-completions
+install-completions: completions
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/bash-completion/completions
-	register-python-argcomplete --shell bash ramalama > $(DESTDIR)${SHAREDIR}/bash-completion/completions/ramalama
+	install ${SELINUXOPT} -m 644 completions/bash-completion/completions/ramalama \
+		$(DESTDIR)${SHAREDIR}/bash-completion/completions/ramalama
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d
-	register-python-argcomplete --shell fish ramalama > $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d/ramalama.fish
+	install ${SELINUXOPT} -m 644 completions/fish/vendor_completions.d/ramalama.fish \
+		$(DESTDIR)${SHAREDIR}/fish/vendor_completions.d/ramalama.fish
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/zsh/site
-	register-python-argcomplete --shell zsh ramalama > $(DESTDIR)${SHAREDIR}/zsh/site/_ramalama
+	install ${SELINUXOPT} -m 644 completions/zsh/vendor-completions/_ramalama \
+		$(DESTDIR)${SHAREDIR}/zsh/vendor-completions/_ramalama
 
-.PHONY:
+.PHONY: install-shortnames
 install-shortnames:
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(SHAREDIR)/ramalama
 	install ${SELINUXOPT} -m 644 shortnames/shortnames.conf \
 		$(DESTDIR)$(SHAREDIR)/ramalama
 
-.PHONY:
+.PHONY: completions
 completions:
-	mkdir -p build/completions/bash-completion/completions
-	register-python-argcomplete --shell bash ramalama > build/completions/bash-completion/completions/ramalama
+	mkdir -p completions/bash-completion/completions
+	register-python-argcomplete --shell bash ramalama > completions/bash-completion/completions/ramalama
 
-	mkdir -p build/completions/fish/vendor_completions.d
-	register-python-argcomplete --shell fish ramalama > build/completions/fish/vendor_completions.d/ramalama.fish
+	mkdir -p completions/fish/vendor_completions.d
+	register-python-argcomplete --shell fish ramalama > completions/fish/vendor_completions.d/ramalama.fish
 
-	mkdir -p build/completions/zsh/site
-	register-python-argcomplete --shell zsh ramalama > build/completions/zsh/site/_ramalama
+	mkdir -p completions/zsh/vendor-completions
+	register-python-argcomplete --shell zsh ramalama > completions/zsh/vendor-completions/_ramalama
 
-.PHONY:
+.PHONY: install
 install: docs completions
 	RAMALAMA_VERSION=$(RAMALAMA_VERSION) \
 	pip install . --no-deps --root $(DESTDIR) --prefix ${PREFIX}
 
-.PHONY:
+.PHONY: build
 build:
 ifeq ($(OS),Linux)
 	./container_build.sh
@@ -99,7 +102,7 @@ ifeq ($(OS),Linux)
 	hack/xref-helpmsgs-manpages
 endif
 
-.PHONY:
+.PHONY: pypi
 pypi:   clean
 	make docs
 	python3 -m build --sdist
