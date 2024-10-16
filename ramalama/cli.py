@@ -34,11 +34,17 @@ def ai_support_in_vm(conman):
         return False
 
     if conman == "podman":
+        podman_machine_list = ["podman", "machine", "list"]
         conman_args = [conman, "machine", "list", "--format", "{{ .VMType }}"]
         try:
+            output = run_cmd(podman_machine_list).stdout.decode("utf-8").strip()
+            if "running" not in output:
+                return False
+
             output = run_cmd(conman_args).stdout.decode("utf-8").strip()
             if output == "krunkit" or output == "libkrun":
                 return True
+
         except subprocess.CalledProcessError:
             pass
 
@@ -59,11 +65,6 @@ def use_container():
     if sys.platform == "darwin":
          conman = container_manager()
          krunkit_configured = ai_support_in_vm(conman)
-         if krunkit_configured:
-             print(f"Running in a container via {conman}")
-         else:
-             print("Running natively on macOS")
-
          return krunkit_configured
 
     return True
