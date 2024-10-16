@@ -29,8 +29,7 @@ class HelpException(Exception):
     pass
 
 
-def ai_support_in_vm():
-    conman = container_manager()
+def ai_support_in_vm(conman):
     if conman == "":
         return False
 
@@ -42,15 +41,11 @@ def ai_support_in_vm():
                 return True
         except subprocess.CalledProcessError:
             pass
-        perror(
-            """\
-Warning: podman needs to be configured to use krunkit for AI Workloads,
-running without containers
-"""
-        )
+
         return False
-    # Assume this is running with Docker and return true
-    return True
+
+    # To be done, ensure docker can work with GPU acceleration
+    return False
 
 
 def use_container():
@@ -62,7 +57,14 @@ def use_container():
         return False
 
     if sys.platform == "darwin":
-        return ai_support_in_vm()
+         conman = container_manager()
+         krunkit_configured = ai_support_in_vm(conman)
+         if krunkit_configured:
+             print(f"Running in a container via {conman}")
+         else:
+             print("Running natively on macOS")
+
+         return krunkit_configured
 
     return True
 
