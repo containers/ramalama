@@ -22,32 +22,50 @@ RUN /usr/bin/python3 --version
 RUN pip install "huggingface_hub==${HUGGINGFACE_HUB_VERSION}"
 RUN pip install "omlmd==${OMLMD_VERSION}"
 
-# Build wouldn't complete couldn't find libcuda so made a systemlink
-# But this didn't work
+# CUDA_DOCKER_ARCH = 
+# Hopper GPUs (e.g., H100): Use 90
+# Ampere GPUs (e.g., RTX 30 Series, A100): Use 80
+# Turing GPUs (e.g., RTX 20 Series, GTX 16 Series): Use 75
+# Volta GPUs (e.g., V100): Use 70
+# Pascal GPUs (e.g., GTX 10 Series): Use 61
+# Maxwell GPUs (e.g., GTX 900 Series): Use 52
+# Kepler GPUs (e.g., GTX 600 and 700 Series): Use 35
 
-# RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
-# RUN LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs/
+# Change to your gpu architecture (Optional)
+ARG CUDA_DOCKER_ARCH=default
 
-# Disable cashing for debugging build
-
-# ENV GGML_CCACHE=0
-
-# Build wouldn't complete with cmake even with nvidia container toolkit installed
+# Followed https://github.com/ggerganov/llama.cpp/blob/master/.devops/full-cuda.Dockerfile
+# for reference to build llama.cpp with cuda using cmake
 
 RUN git clone https://github.com/ggerganov/llama.cpp && \
     cd llama.cpp && \
     git reset --hard ${LLAMA_CPP_SHA} && \
-    make -j $(nproc) GGML_CUDA=1 CUDA_ARCH=ALL && \
-    mv llama-cli /usr/bin/llama-cli && \
-    mv llama-server /usr/bin/llama-server && \
+    cmake -B build -DGGML_CUDA=ON -DCUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH} -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined . && \
+    cmake --build build --config Release -j$(nproc) && \
+    # Move llama-cli and llama-server to /usr/bin
+    mv build/bin/llama-cli /usr/bin/llama-cli && \
+    mv build/bin/llama-server /usr/bin/llama-server && \
+    # Move shared libraries to a standard library directory
+    mv build/ggml/src/libggml.so /usr/lib/libggml.so && \
+    mv build/src/libllama.so /usr/lib/libllama.so && \
+    # Update the dynamic linker cache
+    ldconfig && \
+    # Clean up
     cd / && \
     rm -rf llama.cpp
 
 RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
     cd whisper.cpp && \
     git reset --hard ${WHISPER_CPP_SHA} && \
-    make -j $(nproc) GGML_CUDA=1 CUDA_ARCH=ALL && \
-    mv main /usr/bin/whisper-main && \
-    mv server /usr/bin/whisper-server && \
+    cmake -B build -DGGML_CUDA=ON -DCUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH} -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined . && \
+    cmake --build build --config Release -j$(nproc) && \
+    # Move whisper binaries to /usr/bin
+    mv build/bin/main /usr/bin/whisper-main && \
+    mv build/bin/server /usr/bin/whisper-server && \
+    # Move any shared libraries to a standard library directory if needed
+    if [ -f build/lib/libwhisper.so ]; then mv build/lib/libwhisper.so /usr/lib/libwhisper.so; fi && \
+    # Update the dynamic linker cache if any shared libraries were moved
+    ldconfig || true && \
+    # Clean up
     cd / && \
     rm -rf whisper.cpp
