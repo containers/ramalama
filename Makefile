@@ -114,6 +114,10 @@ bats:
 bats-nocontainer:
 	_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
 
+.PHONY: bats-docker
+bats-docker:
+	_RAMALAMA_TEST_OPTS=--engine=docker RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
+
 .PHONY: ci
 ci:
 	test/ci.sh

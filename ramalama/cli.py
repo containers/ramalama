@@ -495,10 +495,21 @@ def _stop_container(args, name):
         raise IndexError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "stop", "-t=0"]
+    ignore_stderr=False
     if args.ignore:
-        conman_args += ["--ignore", str(args.ignore)]
+        if conman == "podman":
+            conman_args += ["--ignore", str(args.ignore)]
+        else:
+            ignore_stderr=True
+
     conman_args += [name]
-    run_cmd(conman_args)
+    try:
+        run_cmd(conman_args, ignore_stderr=ignore_stderr)
+    except subprocess.CalledProcessError:
+        if args.ignore and conman == "docker":
+            return
+        else:
+            raise
 
 
 def stop_container(args):
@@ -507,7 +518,6 @@ def stop_container(args):
 
     if args.NAME:
         raise IndexError("specifying --all and container name, %s, not allowed" % args.NAME)
-    args.noheading = True
     args.ignore = True
     args.format = "{{ .Names }}"
     for i in _list_containers(args):
