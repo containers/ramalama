@@ -89,7 +89,7 @@ Provides: %{pypi_name} = %{version}-%{release}
 %{_mandir}/man1/%{pypi_name}*
 %{_datadir}/bash-completion/completions/%{pypi_name}
 %{_datadir}/fish/vendor_completions.d/%{pypi_name}.fish
-%{_datadir}/zsh/site/_ramalama
+%{_datadir}/zsh/vendor-completions/_ramalama
 %{python3_sitelib}/%{pypi_name}/
 %{python3_sitelib}/%{pypi_name}-%{version}.dist-info/
 
