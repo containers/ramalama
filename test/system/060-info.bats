@@ -19,7 +19,7 @@ load helpers
 Image   | "quay.io/ramalama/ramalama:latest"
 Runtime | "llama.cpp"
 Version | "${version}"
-Store   | "${HOME}/.local/share/ramalama"
+Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)
 "
 
     defer-assertion-failures

@@ -918,7 +918,9 @@ function skip_if_nocontainer() {
 }
 
 function skip_if_darwin() {
-    [ "$(uname)" == "darwin" ] || skip "Not supported on darwin"
+    if [[ "$(uname)" == "Darwin" ]]; then
+	skip "Not supported on darwin"
+    fi
 }
 
 # END   miscellaneous tools

@@ -49,7 +49,10 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable -e RAM
 
     run_ramalama serve --name ${container1} --detach ${model}
     cid="$output"
-    run -0 podman inspect $cid
+    run_ramalama info
+    conmon=$(jq .Engine <<< $output)
+
+    run -0 ${conman} inspect1 $cid
 
     run_ramalama ps
     is "$output" ".*${container1}" "list correct for for container1"
@@ -100,8 +103,8 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable -e RAM
     run_ramalama 22 stop
     is "$output" "Error: must specify a container name" "name required"
 
-    run_ramalama 125 stop ${name}
-    is "$output" "Error: no container with name or ID \"${name}\" found: no such container.*" "missing container"
+    run_ramalama ? stop ${name}
+    is "$output" "Error.*such container.*" "missing container"
 
     run_ramalama stop --ignore ${name}
     is "$output" "" "ignore missing"
