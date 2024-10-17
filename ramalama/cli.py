@@ -193,7 +193,7 @@ def login_parser(subparsers):
 def login_cli(args):
     transport = args.TRANSPORT
     if transport != "":
-        transport = os.getenv("RAMALAMA_TRANSPORT")
+        transport = os.getenv("RAMALAMA_TRANSPORT") + "://"
     model = New(str(transport))
     return model.login(args)
 
@@ -211,7 +211,7 @@ def logout_parser(subparsers):
 def logout_cli(args):
     transport = args.TRANSPORT
     if transport != "":
-        transport = os.getenv("RAMALAMA_TRANSPORT")
+        transport = os.getenv("RAMALAMA_TRANSPORT") + "://"
     model = New(str(transport))
     return model.logout(args)
 
@@ -679,11 +679,11 @@ def dry_run(args):
 
 
 def New(model):
-    if model.startswith("huggingface"):
+    if model.startswith("huggingface://") or model.startswith("hf://"):
         return Huggingface(model)
-    if model.startswith("ollama"):
+    if model.startswith("ollama://"):
         return Ollama(model)
-    if model.startswith("oci") | model.startswith("docker"):
+    if model.startswith("oci://") or model.startswith("docker://"):
         return OCI(model)
 
     transport = os.getenv("RAMALAMA_TRANSPORT")
