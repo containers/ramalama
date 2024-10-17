@@ -29,31 +29,6 @@ class HelpException(Exception):
     pass
 
 
-def ai_support_in_vm(conman):
-    if conman == "":
-        return False
-
-    if conman == "podman":
-        podman_machine_list = ["podman", "machine", "list"]
-        conman_args = [conman, "machine", "list", "--format", "{{ .VMType }}"]
-        try:
-            output = run_cmd(podman_machine_list).stdout.decode("utf-8").strip()
-            if "running" not in output:
-                return False
-
-            output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-            if output == "krunkit" or output == "libkrun":
-                return True
-
-        except subprocess.CalledProcessError:
-            pass
-
-        return False
-
-    # To be done, ensure docker can work with GPU acceleration
-    return False
-
-
 def use_container():
     transport = os.getenv("RAMALAMA_IN_CONTAINER")
     if transport:
@@ -62,11 +37,7 @@ def use_container():
     if in_container():
         return False
 
-    if sys.platform == "darwin":
-         conman = container_manager()
-         return ai_support_in_vm(conman)
-
-    return True
+    return container_manager()
 
 
 class ArgumentParserWithDefaults(argparse.ArgumentParser):
@@ -314,6 +285,7 @@ def info_parser(subparsers):
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=info_cli)
 
+
 def list_parser(subparsers):
     parser = subparsers.add_parser("list", aliases=["ls"], help="list all downloaded AI Models")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
@@ -366,6 +338,7 @@ def info_cli(args):
         "Version": version(),
     }
     print(json.dumps(info, sort_keys=True, indent=4))
+
 
 def list_cli(args):
     models = _list_models(args)
@@ -495,12 +468,12 @@ def _stop_container(args, name):
         raise IndexError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "stop", "-t=0"]
-    ignore_stderr=False
+    ignore_stderr = False
     if args.ignore:
         if conman == "podman":
             conman_args += ["--ignore", str(args.ignore)]
         else:
-            ignore_stderr=True
+            ignore_stderr = True
 
     conman_args += [name]
     try:
