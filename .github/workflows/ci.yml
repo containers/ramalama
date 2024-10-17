@@ -42,6 +42,7 @@ jobs:
 
       - name: run bats
         run: |
+           make build
            make validate
            make bats
 

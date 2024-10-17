@@ -96,7 +96,7 @@ codespell:
 	codespell --dictionary=- -w
 
 .PHONY: validate
-validate: build codespell lint
+validate: codespell lint
 ifeq ($(OS),Linux)
 	hack/man-page-checker
 	hack/xref-helpmsgs-manpages
