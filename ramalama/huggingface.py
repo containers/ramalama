@@ -12,7 +12,9 @@ pip install huggingface_hub tqdm
 
 class Huggingface(Model):
     def __init__(self, model):
-        super().__init__(model.removeprefix("huggingface://"))
+        model = model.removeprefix("huggingface://")
+        model = model.removeprefix("hf://")
+        super().__init__(model)
         self.type = "HuggingFace"
         split = self.model.rsplit("/", 1)
         self.directory = ""

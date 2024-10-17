@@ -69,7 +69,11 @@ def run_cmd(args, cwd=None, ignore_stderr=False):
     if ignore_stderr:
         stderr=subprocess.PIPE
 
-    return subprocess.run(args, check=True, cwd=cwd, stdout=subprocess.PIPE, stderr=stderr)
+    try:
+        return subprocess.run(args, check=True, cwd=cwd, stdout=subprocess.PIPE, stderr=stderr)
+    except Exception:
+        perror(f"subprocess.run({args}, check=True, cwd={cwd}, stdout=subprocess.PIPE, stderr=stderr)")
+        raise
 
 
 def find_working_directory():
