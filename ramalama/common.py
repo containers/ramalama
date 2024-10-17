@@ -22,6 +22,25 @@ def container_manager():
         return engine
 
     if available("podman"):
+        if sys.platform != "darwin":
+            return "podman"
+
+        podman_machine_list = ["podman", "machine", "list"]
+        conman_args = ["podman", "machine", "list", "--format", "{{ .VMType }}"]
+        try:
+            output = run_cmd(podman_machine_list).stdout.decode("utf-8").strip()
+            if "running" not in output:
+                return ""
+
+            output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+            if output == "krunkit" or output == "libkrun":
+                return "podman"
+            else:
+                return ""
+
+        except subprocess.CalledProcessError:
+            pass
+
         return "podman"
 
     if available("docker"):
@@ -65,9 +84,9 @@ def run_cmd(args, cwd=None, ignore_stderr=False):
     if x:
         print(*args)
 
-    stderr=None
+    stderr = None
     if ignore_stderr:
-        stderr=subprocess.PIPE
+        stderr = subprocess.PIPE
 
     return subprocess.run(args, check=True, cwd=cwd, stdout=subprocess.PIPE, stderr=stderr)
 
