@@ -121,6 +121,18 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable -e RAM
     is "$output" ".*PublishPort=1234" "PublishPort should match"
     is "$output" ".*Name=${name}" "Quadlet should have name field"
     is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
+    run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus ${model}
+    is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from 'quadlet', 'kube')" "Should fail"
+}
+
+@test "ramalama serve --generate=kube" {
+    model=tiny
+    name=c_$(safename)
+    run_ramalama pull ${model}
+    run_ramalama serve --name=${name} --port 1234 --generate=kube ${model}
+    is "$output" ".*image: quay.io/ramalama/ramalama:latest" "Should container image"
+    is "$output" ".*command: \[\"llama-server\"\]" "Should command"
+    is "$output" ".*containerPort: 1234" "Should container container port"
 }
 
 # vim: filetype=sh
