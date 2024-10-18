@@ -23,11 +23,6 @@ jobs:
            make validate
            make bats
 
-      - name: bats-nocontainer
-        run: |
-           pip install tqdm --break-system-packages
-           make bats-nocontainer
-
   bats-nocontainer:
     runs-on: ubuntu-24.04
     steps:
@@ -54,6 +49,10 @@ jobs:
            sudo apt-get update
            sudo apt-get install bats bash codespell python3-argcomplete pipx
            make install-requirements
+
+      - name: build image
+        run: |
+          make build cpuonly
 
       - name: bats-docker
         run: |
