@@ -34,16 +34,18 @@ build() {
   local conman_build=("${conman[@]}")
   if [ "$#" -lt 2 ]; then
     add_build_platform
-    "${conman_build[@]}" 2>&1 | tee container_build.log
+    "${conman_build[@]}"
     rm_container_image
   elif [ "$2" = "-d" ]; then
     add_build_platform
     echo "${conman_build[@]}"
   elif [ "$2" = "push" ]; then
     "${conman[@]}" push "quay.io/ramalama/$image_name"
+  elif [ "$2" = "log" ]; then
+    "${conman_build[@]}" 2>&1 | tee container_build.log
   else
     add_build_platform
-    "${conman_build[@]}" 2>&1 | tee container_build.log
+    "${conman_build[@]}"
     rm_container_image
   fi
 
