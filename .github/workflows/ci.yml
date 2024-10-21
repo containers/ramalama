@@ -52,7 +52,7 @@ jobs:
 
       - name: build image
         run: |
-          make build IMAGE=cpuonly
+          make build IMAGE=ramalama
 
       - name: bats-docker
         run: |
