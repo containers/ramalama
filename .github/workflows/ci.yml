@@ -52,7 +52,7 @@ jobs:
 
       - name: build image
         run: |
-          make build cpuonly
+          make build IMAGE=cpuonly
 
       - name: bats-docker
         run: |
