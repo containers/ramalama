@@ -56,6 +56,6 @@ jobs:
         run: |
           df -h
 
-      - name: run bats
+      - name: Build Images
         run: |
           make build
