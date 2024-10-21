@@ -6,7 +6,7 @@ ARG HUGGINGFACE_HUB_VERSION=0.26.0
 ARG OMLMD_VERSION=0.1.6
 # renovate: datasource=github-releases depName=tqdm/tqdm extractVersion=^v(?<version>.*)
 ARG TQDM_VERSION=4.66.5
-ARG LLAMA_CPP_SHA=70392f1f81470607ba3afef04aa56c9f65587664
+ARG LLAMA_CPP_SHA=3f1ae2e32cde00c39b96be6d01c2997c29bae555
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
 ARG WHISPER_CPP_SHA=a5abfe6a90495f7bf19fe70d016ecc255e97359c
 
