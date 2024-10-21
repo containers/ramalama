@@ -29,7 +29,7 @@ Generate specified configuration format for running the AI Model as a service
 | Key       | Description                                                      |
 | --------- | ---------------------------------------------------------------- |
 |  quadlet  | Podman supported container definition for running AI Model under systemd |
-|  kube     | Kubernetes YAML definition for running the AI MOdel as a service |
+|  kube     | Kubernetes YAML definition for running the AI Model as a service |
 
 #### **--help**, **-h**
 show this help message and exit
