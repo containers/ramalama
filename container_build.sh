@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 available() {
   command -v "$1" >/dev/null
 }
@@ -63,10 +65,20 @@ main() {
     platform="linux/arm64"
   fi
 
-  for i in container-images/*; do
-    build "$i" "$@"
-  done
+  local target="${1:-all}"
+
+  if [ "$target" = "--help" ]; then
+    echo "Usage: $0 [all|image_name]"
+    exit 0
+  fi
+
+  if [ "$target" = "all" ]; then
+    for i in container-images/*; do
+      build "$i" "${@:2}"
+    done
+  else
+    build "container-images/$target" "${@:2}"
+  fi
 }
 
 main "$@"
-
