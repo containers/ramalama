@@ -4,10 +4,10 @@
 ramalama\-rm - remove AI Models from local storage
 
 ## SYNOPSIS
-**ramalama rm** [*options*] *model*
+**ramalama rm** [*options*] *model* [...]
 
 ## DESCRIPTION
-remove AI Model from local storage
+Specity one or more AI Models to be removed from local storage
 
 ## OPTIONS
 

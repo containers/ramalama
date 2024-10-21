@@ -503,26 +503,26 @@ def rm_parser(subparsers):
     parser = subparsers.add_parser("rm", help="remove AI Model from local storage")
     parser.add_argument("-a", "--all", action="store_true", help="remove all local Models")
     parser.add_argument("--ignore", action="store_true", help="ignore errors when specified Model does not exist")
-    parser.add_argument("MODEL", nargs="?")
+    parser.add_argument("MODELS", nargs="*")
     parser.set_defaults(func=rm_cli)
 
 
-def _rm_model(model, args):
-    model = New(model)
-    model.remove(args)
+def _rm_model(models, args):
+    for model in models:
+        model = New(model)
+        model.remove(args)
 
 
 def rm_cli(args):
     if not args.all:
-        return _rm_model(args.MODEL, args)
+        return _rm_model(args.MODELS, args)
 
-    if args.MODEL == "":
+    if len(args.MODELS) > 0:
         raise IndexError("can not specify --all as well MODEL")
 
     args.noheading = True
-    for model in _list_models(args):
-        _rm_model(model["name"], args)
-
+    models = [k['name'] for k in _list_models(args) ]
+    _rm_model(models, args)
 
 def get_store():
     if os.geteuid() == 0:
