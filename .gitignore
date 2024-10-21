@@ -2,7 +2,7 @@ ramalama/__pycache__
 docs/*.1
 build
 *.egg-info
-*.dist	-info
+*.dist
 *.patch
 ramalama/*.patch
 dist
