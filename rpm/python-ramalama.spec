@@ -12,7 +12,7 @@
 %global _python_dist_allow_version_zero 1
 
 # Temporary removal while we work on getting omlmd package.
-%if 0%{?fedora}
+%if 0%{?fedora} >= 40
 %global __requires_exclude omlmd
 %else
 %global __requires_exclude omlmd|huggingface-hub
@@ -81,7 +81,7 @@ Provides: %{pypi_name} = %{version}-%{release}
 %pyproject_save_files %{pypi_name}
 %{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-docs install-shortnames
 # older argcomplete does not support zsh
-%if 0%{?fedora} >= 40
+%if 0%{?fedora} >= 40 || 0%{?rhel} >= 10
 %{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-completions
 %endif
 
@@ -89,7 +89,7 @@ Provides: %{pypi_name} = %{version}-%{release}
 %license LICENSE
 %doc README.md
 %{_bindir}/%{pypi_name}
-%if 0%{?fedora} >= 40
+%if 0%{?fedora} >= 40 || 0%{?rhel} >= 10
 %{bash_completions_dir}/%{pypi_name}
 %{_datadir}/fish/vendor_completions.d/ramalama.fish
 %{_datadir}/zsh/vendor-completions/_ramalama
