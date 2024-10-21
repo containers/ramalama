@@ -19,8 +19,7 @@ load helpers
     run_ramalama pull ollama://tinyllama:1.1b
     run_ramalama list
     is "$output" ".*ollama://tinyllama:1.1b" "image was actually pulled locally"
-    run_ramalama rm ollama://tinyllama
-    run_ramalama rm ollama://tinyllama:1.1b
+    run_ramalama rm ollama://tinyllama ollama://tinyllama:1.1b
 }
 
 # bats test_tags=distro-integration
