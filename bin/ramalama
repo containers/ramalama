@@ -16,27 +16,24 @@ def add_pipx_venvs_bin_to_path():
     if os.path.exists(pipx_bin_path):
         os.environ["PATH"] += ":" + pipx_bin_path
 
-def add_pipx_venvs_to_syspath():
+def add_site_packages_to_syspath(base_path):
     """
-    Adds all available pipx virtual environments' site-packages directories to sys.path.
-    This function looks for any venv in ~/.local/pipx/venvs and appends their site-packages directory to sys.path.
+    Adds site-packages directories from a given base path to sys.path.
     """
     python_version = f'{sys.version_info.major}.{sys.version_info.minor}'
-    pipx_venvs_path = os.path.expanduser(f'~/.local/pipx/venvs/*/lib/python{python_version}/site-packages')
-    matched_paths = glob.glob(pipx_venvs_path)
+    search_pattern = os.path.expanduser(f'{base_path}/lib/python{python_version}/site-packages')
+    matched_paths = glob.glob(search_pattern)
     if matched_paths:
         for path in matched_paths:
             sys.path.insert(0, path)
-
         return
 
-    pipx_venvs_path = os.path.expanduser('~/.local/pipx/venvs/*/lib/python*/site-packages')
-    matched_paths = glob.glob(pipx_venvs_path)
-    if not matched_paths:
-        return
-
-    for path in matched_paths:
-        sys.path.insert(0, path)
+    # Fallback to a more general pattern if the specific version doesn't match
+    search_pattern = os.path.expanduser(f'{base_path}/lib/python*/site-packages')
+    matched_paths = glob.glob(search_pattern)
+    if matched_paths:
+        for path in matched_paths:
+            sys.path.insert(0, path)
 
 def main(args):
     sharedirs = ["./", "/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
@@ -44,7 +41,8 @@ def main(args):
     if syspath:
         sys.path.insert(0, syspath)
 
-    add_pipx_venvs_to_syspath()
+    add_site_packages_to_syspath('~/.local/pipx/venvs/*')
+    add_site_packages_to_syspath('/usr/local')
     add_pipx_venvs_bin_to_path()
     try:
         import ramalama
