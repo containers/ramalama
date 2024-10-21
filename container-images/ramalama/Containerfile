@@ -17,6 +17,9 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.n
     dnf --enablerepo=ubi-9-appstream-rpms install -y git procps-ng vim \
       dnf-plugins-core python3-dnf-plugin-versionlock cmake gcc-c++ \
       python3-pip python3-argcomplete && \
+    dnf copr enable -y slp/mesa-krunkit epel-9-$(uname -m) && \
+    dnf install -y mesa-vulkan-drivers-23.3.3-102.el9 \
+      vulkan-headers vulkan-loader-devel vulkan-tools spirv-tools glslc && \
     dnf clean all && \
     rm -rf /var/cache/*dnf*
 
@@ -25,12 +28,11 @@ RUN pip install "huggingface_hub==${HUGGINGFACE_HUB_VERSION}"
 RUN pip install "omlmd==${OMLMD_VERSION}"
 RUN pip install "tqdm==${TQDM_VERSION}"
 
-ENV GGML_CCACHE=0
-
-RUN git clone https://github.com/ggerganov/llama.cpp && \
+RUN git clone --recursive https://github.com/ggerganov/llama.cpp && \
     cd llama.cpp && \
     git reset --hard ${LLAMA_CPP_SHA} && \
-    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_KOMPUTE=1 \
+      -DGGML_CCACHE=0 && \
     cmake --build build --config Release -j $(nproc) && \
     cmake --install build && \
     cd / && \
@@ -39,8 +41,10 @@ RUN git clone https://github.com/ggerganov/llama.cpp && \
 RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
     cd whisper.cpp && \
     git reset --hard ${WHISPER_CPP_SHA} && \
-    make -j $(nproc) && \
-    mv main /usr/bin/whisper-main && \
-    mv server /usr/bin/whisper-server && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_KOMPUTE=1 \
+      -DGGML_CCACHE=0 && \
+    cmake --build build --config Release -j $(nproc) && \
+    mv build/bin/main /usr/bin/whisper-main && \
+    mv build/bin/server /usr/bin/whisper-server && \
     cd / && \
     rm -rf whisper.cpp
