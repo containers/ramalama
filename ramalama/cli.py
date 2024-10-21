@@ -3,21 +3,20 @@ import argparse
 import glob
 import json
 import os
-import random
-import string
 import subprocess
 import sys
 import time
 
 from ramalama.huggingface import Huggingface
 from ramalama.common import (
-    in_container,
     container_manager,
-    exec_cmd,
-    run_cmd,
     default_image,
+    exec_cmd,
     find_working_directory,
+    genname,
+    in_container,
     perror,
+    run_cmd,
 )
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
@@ -409,10 +408,6 @@ def push_cli(args):
     model.push(source, args)
 
 
-def _name():
-    return "ramalama_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
-
-
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
@@ -435,7 +430,7 @@ def serve_parser(subparsers):
     parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
     parser.add_argument(
         "--generate",
-        choices=["quadlet"],
+        choices=["quadlet", "kube"],
         help="generate specified configuration format for running the AI Model as a service",
     )
     parser.add_argument("MODEL")  # positional argument
@@ -578,7 +573,7 @@ def run_container(args):
     if hasattr(args, "name") and args.name:
         name = args.name
     else:
-        name = _name()
+        name = genname()
 
     wd = find_working_directory()
     conman_args = [

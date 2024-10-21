@@ -1,6 +1,7 @@
 import os
 import sys
-from ramalama.common import exec_cmd, default_image, in_container
+from ramalama.common import exec_cmd, default_image, in_container, genname
+from ramalama.version import version
 
 
 file_not_found = """\
@@ -12,8 +13,8 @@ Either install a package containing the "%s" command or run the workload inside 
 file_not_found_in_container = """\
 RamaLama requires the "%s" command to be installed inside of the container.
 RamaLama requires the server application be installed in the container images.
-Either install a package containing the "%s" command in the container or run with the default
-RamaLama image.
+Either install a package containing the "%s" command in the container or run
+with the default RamaLama image.
 """
 
 
@@ -128,12 +129,15 @@ class Model:
 
     def serve(self, args):
         symlink_path = self.pull(args)
-        exec_args = ["llama-server", "--port", args.port, "-m", symlink_path]
+        exec_args = ["llama-server", "--port", args.port, "-m", "/run/model"]
         if args.runtime == "vllm":
-            exec_args = ["vllm", "serve", "--port", args.port, symlink_path]
+            exec_args = ["vllm", "serve", "--port", args.port, "/run/model"]
 
         if args.generate == "quadlet":
             return self.quadlet(symlink_path, args, exec_args)
+
+        if args.generate == "kube":
+            return self.kube(symlink_path, args, exec_args)
 
         try:
             exec_cmd(exec_args)
@@ -162,7 +166,7 @@ AddDevice=-/dev/dri
 AddDevice=-/dev/kfd
 Exec={" ".join(exec_args)}
 Image={default_image()}
-Volume={model}:{model}:ro,z
+Volume={model}:/run/model:ro,z
 {name_string}
 {port_string}
 
@@ -170,4 +174,79 @@ Volume={model}:{model}:ro,z
 # Start by default on boot
 WantedBy=multi-user.target default.target
 """
+        )
+
+    def _gen_ports(self, args):
+        if not hasattr(args, "port"):
+            return ""
+
+        p = args.port.split(":", 2)
+        ports = f"""\
+    ports:
+    - containerPort: {p[0]}"""
+        if len(p) > 1:
+            ports += f"""
+      hostPort: {p[1]}"""
+
+        return ports
+
+    def _gen_volumes(self, model, args):
+        mounts = """\
+    volumeMounts:
+    - mountPath: /run/model
+      name: model"""
+
+        volumes = f"""
+  volumes:
+  - name model
+    hostPath:
+      path: {model}"""
+
+        for dev in ["dri", "kfd"]:
+            if os.path.exists("/dev/" + dev):
+                mounts = (
+                    mounts
+                    + f"""
+    - mountPath: /dev/{dev}
+      name: {dev}"""
+                )
+                volumes = (
+                    volumes
+                    + f""""
+  - name {dev}
+    hostPath:
+      path: /dev/{dev}"""
+                )
+
+        return mounts + volumes
+
+    def kube(self, model, args, exec_args):
+        port_string = self._gen_ports(args)
+        volume_string = self._gen_volumes(model, args)
+        _version = version()
+        if hasattr(args, "name") and args.name:
+            name = args.name
+        else:
+            name = genname()
+
+        print(
+            f"""\
+# Save the output of this file and use kubectl create -f to import
+# it into Kubernetes.
+#
+# Created with ramalama-{_version}
+apiVersion: v1
+kind: Deployment
+metadata:
+  labels:
+    app: {name}
+  name: {name}
+spec:
+  containers:
+  - name: {name}
+    image: {args.image}
+    command: ["{exec_args[0]}"]
+    args: {exec_args[1:]}
+{port_string}
+{volume_string}"""
         )

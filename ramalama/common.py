@@ -2,7 +2,9 @@
 
 import hashlib
 import os
+import random
 import shutil
+import string
 import subprocess
 import sys
 
@@ -148,3 +150,7 @@ def default_image():
     if image:
         return image
     return "quay.io/ramalama/ramalama:latest"
+
+
+def genname():
+    return "ramalama_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))

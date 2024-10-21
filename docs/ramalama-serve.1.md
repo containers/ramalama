@@ -23,8 +23,13 @@ The default is TRUE. The --nocontainer option forces this option to False.
 
 Use the `ramalama stop` command to stop the container running the served ramalama Model.
 
-#### **--generate**=quadlet
+#### **--generate**=type
 Generate specified configuration format for running the AI Model as a service
+
+| Key       | Description                                                      |
+| --------- | ---------------------------------------------------------------- |
+|  quadlet  | Podman supported container definition for running AI Model under systemd |
+|  kube     | Kubernetes YAML definition for running the AI MOdel as a service |
 
 #### **--help**, **-h**
 show this help message and exit
@@ -36,10 +41,9 @@ Name of the container to run the Model in.
 port for AI Model server to listen on
 
 ## EXAMPLES
-
-Run two AI Models at the same time, notice that they are running within Podman Containers.
-
+### Run two AI Models at the same time. Notice both are running within Podman Containers.
 ```
+
 $ ramalama serve -p 8080 --name mymodel ollama://tiny-llm:latest
 09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
 
@@ -52,8 +56,7 @@ CONTAINER ID  IMAGE                             COMMAND               CREATED   
 3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8082->8082/tcp  ramalama_YMPQvJxN97
 ```
 
-Generate a quadlet for running the AI Model service
-
+### Generate a quadlet for running the AI Model service
 ```
 $ ramalama serve --name MyGraniteServer --generate=quadlet granite > $HOME/.config/containers/systemd/MyGraniteServer.container
 $ cat $HOME/.config/containers/systemd/MyGraniteServer.container
@@ -89,6 +92,41 @@ $ systemctl status --user MyGraniteServer
 $ podman ps
 CONTAINER ID  IMAGE                             COMMAND               CREATED        STATUS        PORTS                    NAMES
 7bb35b97a0fe  quay.io/ramalama/ramalama:latest  llama-server --po...  3 minutes ago  Up 3 minutes  0.0.0.0:43869->8080/tcp  MyGraniteServer
+```
+
+### Generate a kubernetes YAML file named tini
+```
+$ ramalama serve --name tini --generate kube tiny
+# Save the output of this file and use kubectl create -f to import
+# it into Kubernetes.
+#
+# Created with ramalama-0.0.17
+apiVersion: v1
+kind: Deployment
+metadata:
+  labels:
+    app: tini
+  name: tini
+spec:
+  containers:
+  - name: tini
+    image: quay.io/ramalama/ramalama:latest
+    command: ["llama-server"]
+    args: ['--port', '8080', '-m', '/run/model']
+    ports:
+    - containerPort: 8080
+    volumeMounts:
+    - mountPath: /run/model
+      name: model
+    - mountPath: /dev/dri
+      name: dri
+  volumes:
+  - name model
+    hostPath:
+      path: /home/dwalsh/.local/share/ramalama/models/ollama/tinyllama:latest"
+  - name dri
+    hostPath:
+      path: /dev/dri
 ```
 
 ## SEE ALSO
