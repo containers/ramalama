@@ -2,8 +2,12 @@
 
 %global source_url https://github.com/containers/%{pypi_name}
 %global pypi_name ramalama
+%global forgeurl https://github.com/containers/%{pypi_name}
+# see ramalama/version.py
+%global version0 0.0.19
+%forgemeta
+
 %global desc RamaLama is a command line tool for working with AI LLM models.
-%global _name python%{python3_pkgversion}-%{pypi_name}
 
 %global _python_dist_allow_version_zero 1
 
@@ -25,22 +29,11 @@ Version: 0
 License: MIT
 Release: %autorelease
 Summary: RESTful API for RamaLama
-URL: %{source_url}
+URL: %{forgeurl}
 # Tarball fetched from upstream
-Source0: %{source_url}/archive/refs/tags/v%{version}.tar.gz
+Source0: %{forgesource}
 BuildArch: noarch
 
-%description
-%desc
-
-On first run RamaLama inspects your system for GPU support, falling back to CPU
-support if no GPUs are present. It then uses container engines like Podman to
-pull the appropriate OCI image with all of the software necessary to run an
-AI Model for your systems setup. This eliminates the need for the user to
-configure the system for AI themselves. After the initialization, RamaLama
-will run the AI Models within a container based on the OCI image.
-
-%package -n %{_name}
 BuildRequires: git-core
 BuildRequires: golang
 BuildRequires: golang-github-cpuguy83-md2man
@@ -55,20 +48,30 @@ BuildRequires: python%{python3_pkgversion}-wheel
 
 Requires: python%{python3_pkgversion}-argcomplete
 
+
+%description
+%desc
+
+On first run RamaLama inspects your system for GPU support, falling back to CPU
+support if no GPUs are present. It then uses container engines like Podman to
+pull the appropriate OCI image with all of the software necessary to run an
+AI Model for your systems setup. This eliminates the need for the user to
+configure the system for AI themselves. After the initialization, RamaLama
+will run the AI Models within a container based on the OCI image.
+
+%package -n python%{python3_pkgversion}-%{pypi_name}
 Recommends: podman
 Recommends: python%{python3_pkgversion}-huggingface-hub
 Recommends: python%{python3_pkgversion}-tqdm
-
-#
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
-%{?python_provide:%python_provide %{_name} }
+%{?python_provide:%python_provide python%{python3_pkgversion}-%{pypi_name}}
 
-%description -n %{_name}
+%description -n python%{python3_pkgversion}-%{pypi_name}
 %desc
 
 %prep
-%autosetup -Sgit -n %{pypi_name}-%{version}
+%forgesetup
 
 %build
 %pyproject_wheel
@@ -76,22 +79,26 @@ Provides: %{pypi_name} = %{version}-%{release}
 %install
 %pyproject_install
 %pyproject_save_files %{pypi_name}
-%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-shortnames
-%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-docs
+%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-docs install-shortnames
+# older argcomplete does not support zsh
+%if 0%{?fedora} >= 40
 %{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-completions
+%endif
 
-%files -n %{_name}
+%files -n python%{python3_pkgversion}-%{pypi_name}
 %license LICENSE
 %doc README.md
 %{_bindir}/%{pypi_name}
+%if 0%{?fedora} >= 40
+%{bash_completions_dir}/%{pypi_name}
+%{_datadir}/fish/vendor_completions.d/ramalama.fish
+%{_datadir}/zsh/vendor-completions/_ramalama
+%endif
+%{python3_sitelib}/%{pypi_name}
+%{python3_sitelib}/%{pypi_name}-%{version}.dist-info
 %dir %{_datadir}/%{pypi_name}
 %{_datadir}/%{pypi_name}/shortnames.conf
-%{_mandir}/man1/%{pypi_name}*
-%{_datadir}/bash-completion/completions/%{pypi_name}
-%{_datadir}/fish/vendor_completions.d/%{pypi_name}.fish
-%{_datadir}/zsh/vendor-completions/_ramalama
-%{python3_sitelib}/%{pypi_name}/
-%{python3_sitelib}/%{pypi_name}-%{version}.dist-info/
+%{_mandir}/man1/ramalama*.1*
 
 %changelog
 %autochangelog
