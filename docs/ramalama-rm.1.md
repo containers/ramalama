@@ -7,7 +7,7 @@ ramalama\-rm - remove AI Models from local storage
 **ramalama rm** [*options*] *model* [...]
 
 ## DESCRIPTION
-Specity one or more AI Models to be removed from local storage
+Specify one or more AI Models to be removed from local storage
 
 ## OPTIONS
 

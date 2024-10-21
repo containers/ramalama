@@ -17,9 +17,9 @@ RamaLama uses container engines like Podman or Docker to pull the appropriate OC
 
 Running in containers eliminates the need for users to configure the host system for AI. After the initialization, RamaLama runs the AI Models within a container based on the OCI image.
 
-RamaLama then pulls AI Models from model registires. Starting a chatbot or a rest API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
+RamaLama then pulls AI Models from model registries. Starting a chatbot or a rest API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
 
-When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behaviour. When neather are installed RamaLama will attempt to run the model with software on the local system.
+When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behavior. When neither are installed RamaLama will attempt to run the model with software on the local system.
 
 RamaLama supports multiple AI model registries types called transports. Supported transports:
 
@@ -48,7 +48,7 @@ To make it easier for users, RamaLama uses shortname files, which container
 alias names for fully specified AI Models allowing users to specify the shorter
 names when referring to models. RamaLama reads shortnames.conf files if they
 exist . These files contain a list of name value pairs for specification of
-the model. The following table specifies the order which Ramama reads the files
+the model. The following table specifies the order which RamaLama reads the files
 . Any duplicate names that exist override previously defined shortnames.
 
 | Shortnames type | Path                                            |
@@ -81,7 +81,7 @@ show container runtime command without executing it (default: False)
 
 #### **--engine**
 run RamaLama using the specified container engine.
-use environment variable RAMALAMA_CONTAINER_ENGINE to modify the default behaviour.
+use environment variable RAMALAMA_CONTAINER_ENGINE to modify the default behavior.
 
 #### **--help**, **-h**
 show this help message and exit
