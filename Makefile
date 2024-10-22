@@ -64,8 +64,13 @@ completions:
 	mkdir -p completions/fish/vendor_completions.d
 	register-python-argcomplete --shell fish ramalama > completions/fish/vendor_completions.d/ramalama.fish
 
-	mkdir -p completions/zsh/vendor-completions
-	register-python-argcomplete --shell zsh ramalama > completions/zsh/vendor-completions/_ramalama
+	tmpfile=$$(mktemp); \
+	if ! register-python-argcomplete --shell zsh ramalama > $${tmpfile}; then \
+		mkdir -p completions/zsh/vendor-completions; \
+		mv $${tmpfile} completions/zsh/vendor-completions/_ramalama; \
+	else \
+		rm $${tmpfile}; \
+	fi
 
 .PHONY: install
 install: docs completions
