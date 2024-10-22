@@ -1,0 +1,23 @@
+FROM quay.io/ramalama/ramalama:latest
+
+RUN /usr/bin/python3 --version
+
+RUN git clone https://github.com/ggerganov/llama.cpp && \
+    cd llama.cpp && \
+    git reset --hard ${LLAMA_CPP_SHA} && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 \
+      -DGGML_VULKAN=1 && \
+    cmake --build build --config Release -j $(nproc) && \
+    cmake --install build && \
+    cd / && \
+    git clone https://github.com/ggerganov/whisper.cpp.git && \
+    cd whisper.cpp && \
+    git reset --hard ${WHISPER_CPP_SHA} && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 \
+      -DGGML_VULKAN=1 && \
+    cmake --build build --config Release -j $(nproc) && \
+    mv build/bin/main /usr/bin/whisper-main && \
+    mv build/bin/server /usr/bin/whisper-server && \
+    cd / && \
+    rm -rf llama.cpp whisper.cpp
+
