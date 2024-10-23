@@ -6,12 +6,12 @@ import os
 import subprocess
 import sys
 import time
+import atexit
 
 from ramalama.huggingface import Huggingface
 from ramalama.common import (
     container_manager,
     default_image,
-    exec_cmd,
     find_working_directory,
     genname,
     in_container,
@@ -22,6 +22,8 @@ from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.shortnames import Shortnames
 from ramalama.version import version, print_version
+
+shortnames = Shortnames()
 
 
 class HelpException(Exception):
@@ -137,7 +139,6 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     # create stores directories
     mkdirs(args.store)
     if hasattr(args, "MODEL"):
-        shortnames = Shortnames()
         resolved_model = shortnames.resolve(args.MODEL)
         if resolved_model:
             args.UNRESOLVED_MODEL = args.MODEL
@@ -287,6 +288,7 @@ def info_parser(subparsers):
 
 def list_parser(subparsers):
     parser = subparsers.add_parser("list", aliases=["ls"], help="list all downloaded AI Models")
+    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
     parser.add_argument("--json", dest="json", action="store_true", help="print using json")
     parser.add_argument("-q", "--quiet", dest="quiet", action="store_true", help="print only Model names")
@@ -380,6 +382,7 @@ def help_cli(args):
 
 def pull_parser(subparsers):
     parser = subparsers.add_parser("pull", help="pull AI Model from Model registry to local storage")
+    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=pull_cli)
 
@@ -501,6 +504,7 @@ def version_parser(subparsers):
 
 def rm_parser(subparsers):
     parser = subparsers.add_parser("rm", help="remove AI Model from local storage")
+    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("-a", "--all", action="store_true", help="remove all local Models")
     parser.add_argument("--ignore", action="store_true", help="ignore errors when specified Model does not exist")
     parser.add_argument("MODELS", nargs="*")
@@ -509,6 +513,10 @@ def rm_parser(subparsers):
 
 def _rm_model(models, args):
     for model in models:
+        resolved_model = shortnames.resolve(model)
+        if resolved_model:
+            model = resolved_model
+
         model = New(model)
         model.remove(args)
 
@@ -521,8 +529,9 @@ def rm_cli(args):
         raise IndexError("can not specify --all as well MODEL")
 
     args.noheading = True
-    models = [k['name'] for k in _list_models(args) ]
+    models = [k['name'] for k in _list_models(args)]
     _rm_model(models, args)
+
 
 def get_store():
     if os.geteuid() == 0:
@@ -575,6 +584,7 @@ def run_container(args):
     else:
         name = genname()
 
+    short_file = shortnames.create_shortname_file()
     wd = find_working_directory()
     conman_args = [
         conman,
@@ -591,6 +601,7 @@ def run_container(args):
         f"-v{args.store}:/var/lib/ramalama",
         f"-v{os.path.realpath(sys.argv[0])}:/usr/bin/ramalama:ro",
         f"-v{wd}:/usr/share/ramalama/ramalama:ro",
+        f"-v{short_file}:/usr/share/ramalama/shortnames.conf:ro,Z",
     ]
 
     di_volume = distinfo_volume()
@@ -632,7 +643,12 @@ def run_container(args):
         dry_run(conman_args)
         return True
 
-    exec_cmd(conman_args)
+    def cleanup():
+        os.remove(short_file)
+
+    atexit.register(cleanup)
+
+    run_cmd(conman_args, stdout=None)
 
 
 def dry_run(args):

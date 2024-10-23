@@ -11,6 +11,7 @@ load helpers
 # bats test_tags=distro-integration
 @test "ramalama pull ollama" {
     run_ramalama pull tiny
+    run_ramalama rm tiny
     run_ramalama pull ollama://tinyllama
     run_ramalama list
     is "$output" ".*ollama://tinyllama" "image was actually pulled locally"

@@ -17,6 +17,7 @@ jobs:
            sudo apt-get update
            sudo apt-get install podman bats bash codespell python3-argcomplete pipx
            make install-requirements
+           pip install tqdm --break-system-packages
 
       - name: run bats
         run: |
