@@ -248,6 +248,12 @@ function skip_if_nocontainer() {
     fi
 }
 
+function skip_if_docker() {
+    if [[ "${_RAMALAMA_TEST_OPTS}" == "--engine=docker" ]]; then
+	skip "Not supported with ----engine=docker"
+    fi
+}
+
 function skip_if_darwin() {
     if [[ "$(uname)" == "Darwin" ]]; then
 	skip "Not supported on darwin"

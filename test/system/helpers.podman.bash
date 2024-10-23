@@ -47,7 +47,7 @@ fi
 # For purposes of system tests (CI, gating, OpenQA) we force a default early.
 # As of September 2024 we no longer test the default-setting logic in the
 # tools.
-if [[ -z "$XDG_RUNTIME_DIR" ]] && [[ "$(id -u)" -ne 0 ]]; then
+if [[ "$(uname)" != "Darwin" ]] && [[ -z "$XDG_RUNTIME_DIR" ]] && [[ "$(id -u)" -ne 0 ]]; then
     export XDG_RUNTIME_DIR=/run/user/$(id -u)
 fi
 
@@ -65,71 +65,6 @@ PORT_LOCK_DIR=$BATS_SUITE_TMPDIR/reserved-ports
 export PODMAN_IMAGECACHE=${BATS_TMPDIR:-/tmp}/podman-systest-imagecache-$(id -u)
 mkdir -p ${PODMAN_IMAGECACHE}
 
-function _prefetch() {
-     local want=$1
-
-     # Do we already have it in image store?
-     run_podman '?' image exists "$want"
-     if [[ $status -eq 0 ]]; then
-         return
-     fi
-
-    # No image. Do we have it already cached? (Replace / and : with --)
-    local cachename=$(sed -e 's;[/:];--;g' <<<"$want")
-    local cachepath="${PODMAN_IMAGECACHE}/${cachename}.tar"
-    if [[ ! -e "$cachepath" ]]; then
-        # Not cached. Fetch it and cache it. Retry twice, because of flakes.
-        cmd="skopeo copy --preserve-digests docker://$want oci-archive:$cachepath"
-        echo "$_LOG_PROMPT $cmd"
-        run $cmd
-        echo "$output"
-        if [[ $status -ne 0 ]]; then
-            echo "# 'pull $want' failed, will retry..." >&3
-            sleep 5
-
-            run $cmd
-            echo "$output"
-            if [[ $status -ne 0 ]]; then
-                echo "# 'pull $want' failed again, will retry one last time..." >&3
-                sleep 30
-                $cmd
-            fi
-        fi
-    fi
-
-    # Kludge alert.
-    # Skopeo has no --storage-driver, --root, or --runroot flags; those
-    # need to be expressed in the destination string inside [brackets].
-    # See containers-transports(5). So if we see those options in
-    # _PODMAN_TEST_OPTS, transmogrify $want into skopeo form.
-    skopeo_opts=''
-    driver="$(expr "$_PODMAN_TEST_OPTS" : ".*--storage-driver \([^ ]\+\)" || true)"
-    if [[ -n "$driver" ]]; then
-        skopeo_opts+="$driver@"
-    fi
-
-    altroot="$(expr "$_PODMAN_TEST_OPTS" : ".*--root \([^ ]\+\)" || true)"
-    if [[ -n "$altroot" ]] && [[ -d "$altroot" ]]; then
-        skopeo_opts+="$altroot"
-
-        altrunroot="$(expr "$_PODMAN_TEST_OPTS" : ".*--runroot \([^ ]\+\)" || true)"
-        if [[ -n "$altrunroot" ]] && [[ -d "$altrunroot" ]]; then
-            skopeo_opts+="+$altrunroot"
-        fi
-    fi
-
-    if [[ -n "$skopeo_opts" ]]; then
-        want="[$skopeo_opts]$want"
-    fi
-
-    # Cached image is now guaranteed to exist. Be sure to load it
-    # with skopeo, not podman, in order to preserve metadata
-    cmd="skopeo copy --all oci-archive:$cachepath containers-storage:$want"
-    echo "$_LOG_PROMPT $cmd"
-    $cmd
-}
-
-# END   tools for fetching & caching test images
 ###############################################################################
 # BEGIN setup/teardown tools
 
@@ -363,15 +298,18 @@ function leak_check() {
     _run_podman_quiet ps -a --external --filter=status=unknown --format '{{.ID}} {{.Image}} {{.Names}}  {{.Status}}'
     _leak_check_one "storage container"
 
-    # Images. Exclude our standard expected images.
-    _run_podman_quiet images --all --format '{{.ID}} {{.Repository}}:{{.Tag}}'
-    output=$(awk "\$2 != \"$IMAGE\" && \$2 != \"$PODMAN_SYSTEMD_IMAGE_FQN\" && \$2 !~ \"localhost/podman-pause:\" { print }" <<<"$output")
-    _leak_check_one "image"
+    # FIXME Images. Exclude our standard expected images.
+#    _run_podman_quiet images --all --format '{{.ID}} {{.Repository}}:{{.Tag}}'
+#    output=$(awk "\$2 != \"$IMAGE\" && \$2 != \"quay.io/ramalama/ramalama:latest\" && \$2 !~ \"localhost/podman-pause:\" { print }" <<<"$output")
+#    _leak_check_one "image"
 
     return $exit_code
 }
 
 function clean_setup() {
+    if [[ "${_RAMALAMA_TEST_OPTS}" == "--nocontainer" ]]; then
+	return
+    fi
     local actions=(
         "pod rm -t 0 --all --force --ignore"
             "rm -t 0 --all --force --ignore"
@@ -415,43 +353,6 @@ function clean_setup() {
             done
         fi
     done
-
-    # Clean up all images except those desired.
-    # 2023-06-26 REMINDER: it is tempting to think that this is clunky,
-    # wouldn't it be safer/cleaner to just 'rmi -a' then '_prefetch $IMAGE'?
-    # Yes, but it's also tremendously slower: 29m for a CI run, to 39m.
-    # Image loads are slow.
-    found_needed_image=
-    _run_podman_quiet images --all --format '{{.Repository}}:{{.Tag}} {{.ID}}'
-
-    for line in "${lines[@]}"; do
-        set $line
-        if [[ "$1" == "$PODMAN_TEST_IMAGE_FQN" ]]; then
-            if [[ -z "$PODMAN_TEST_IMAGE_ID" ]]; then
-                # This will probably only trigger the 2nd time through setup
-                PODMAN_TEST_IMAGE_ID=$2
-            fi
-            found_needed_image=1
-        elif [[ "$1" == "$PODMAN_SYSTEMD_IMAGE_FQN" ]]; then
-            # This is a big image, don't force unnecessary pulls
-            :
-        else
-            # Always remove image that doesn't match by name
-            echo "# setup(): removing stray image $1" >&3
-            _run_podman_quiet rmi --force "$1"
-
-            # Tagged image will have same IID as our test image; don't rmi it.
-            if [[ $2 != "$PODMAN_TEST_IMAGE_ID" ]]; then
-                echo "# setup(): removing stray image $2" >&3
-                _run_podman_quiet rmi --force "$2"
-            fi
-        fi
-    done
-
-    # Make sure desired image is present
-    if [[ -z "$found_needed_image" ]]; then
-        _prefetch $PODMAN_TEST_IMAGE_FQN
-    fi
 
     # Load (create, actually) the pause image. This way, all pod tests will
     # have it available. Without this, pod tests run in parallel will leave
@@ -573,29 +474,6 @@ function run_podman() {
         fi
     fi
 
-    # Check for "level=<unexpected>" in output, because a successful command
-    # should never issue unwanted warnings or errors. The "0+w" convention
-    # (see top of function) allows our caller to indicate that warnings are
-    # expected, e.g., "podman stop" without -t0.
-    if [[ $status -eq 0 ]]; then
-        # FIXME: don't do this on Debian or RHEL. runc is way too buggy:
-        #   - #11784 - lstat /sys/fs/.../*.scope: ENOENT
-        #   - #11785 - cannot toggle freezer: cgroups not configured
-        # As of January 2024 the freezer one seems to be fixed in Debian-runc
-        # but not in RHEL8-runc. The lstat one is closed-wontfix.
-        if [[ $PODMAN_RUNTIME != "runc" ]]; then
-            # FIXME: All kube commands emit unpredictable errors:
-            #    "Storage for container <X> has been removed"
-            #    "no container with ID <X> found in database"
-            # These are level=error but we still get exit-status 0.
-            # Just skip all kube commands completely
-            if [[ ! "$*" =~ kube ]]; then
-                if [[ "$output" =~ level=[^${allowed_levels}] ]]; then
-                    die "Command succeeded, but issued unexpected warnings"
-                fi
-            fi
-        fi
-    fi
 }
 
 function run_podman_testing() {

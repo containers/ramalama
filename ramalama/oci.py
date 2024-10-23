@@ -6,10 +6,12 @@ import tempfile
 from ramalama.model import Model
 from ramalama.common import run_cmd, exec_cmd, perror, available
 
+prefix = "oci://"
+
 
 class OCI(Model):
     def __init__(self, model, conman):
-        super().__init__(model.removeprefix("oci://").removeprefix("docker://"))
+        super().__init__(model.removeprefix(prefix).removeprefix("docker://"))
         self.type = "OCI"
         self.conman = conman
         if available("omlmd"):
@@ -19,22 +21,27 @@ class OCI(Model):
                 self.omlmd = f"{i}/../../../bin/omlmd"
                 if os.path.exists(self.omlmd):
                     break
-            raise """\
+            raise NotImplementedError("""\
 OCI models requires the omlmd module.
 This module can be installed via PyPi tools like pip, pip3, pipx or via
 distribution package managers like dnf or apt. Example:
 pip install omlmd
-"""
+""")
 
     def login(self, args):
         conman_args = [self.conman, "login"]
+        if str(args.tlsverify).lower() == "false":
+            conman_args.extend([f"--tls-verify={args.tlsverify}"])
+        if args.authfile:
+            conman_args.extend([f"--authfile={args.authfile}"])
         if args.username:
-            conman_args.extend(["--username", args.username])
+            conman_args.extend([f"--username={args.username}"])
         if args.password:
-            conman_args.extend(["--password", args.password])
+            conman_args.extend([f"--password={args.password}"])
         if args.passwordstdin:
             conman_args.append("--password-stdin")
-        conman_args.append(args.TRANSPORT)
+        conman_args.append(args.REGISTRY.removeprefix(prefix))
+        print(" ".join(conman_args))
         return exec_cmd(conman_args)
 
     def logout(self, args):
@@ -77,8 +84,8 @@ COPY {model} /{model_name}
         run_cmd([self.conman, "build", "-t", target, "-f", containerfile.name, contextdir], stdout=None)
 
     def push(self, source, args):
-        target = self.model.removeprefix("oci://")
-        source = source.removeprefix("oci://")
+        target = self.model.removeprefix(prefix)
+        source = source.removeprefix(prefix)
         if source != target:
             try:
                 self._build(source, target, args)

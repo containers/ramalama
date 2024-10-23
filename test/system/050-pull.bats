@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 
 load helpers
+load helpers.registry
+load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama pull no model" {
@@ -52,6 +54,21 @@ load helpers
     run_ramalama list
     is "$output" ".*quay.io/mmortari/gguf-py-example" "OCI image was actually pulled locally"
     run_ramalama rm oci://quay.io/mmortari/gguf-py-example:v1
+}
+
+@test "ramalama use registry" {
+    skip_if_darwin
+    skip_if_docker
+    local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
+    local authfile=$RAMALAMA_TMPDIR/authfile.json
+
+    start_registry
+    run_ramalama login --authfile=$authfile \
+        --tls-verify=false \
+        --username ${PODMAN_LOGIN_USER} \
+        --password ${PODMAN_LOGIN_PASS} \
+        oci://$registry
+    stop_registry
 }
 
 # vim: filetype=sh

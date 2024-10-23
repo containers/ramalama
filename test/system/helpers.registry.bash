@@ -38,10 +38,6 @@ function start_registry() {
 
     # Pull registry image, but into a separate container storage and DB and everything
     PODMAN_LOGIN_ARGS="--storage-driver vfs $(podman_isolation_opts ${PODMAN_LOGIN_WORKDIR})"
-    # _prefetch() will retry twice on network error, and will also use
-    # a pre-cached image if present (helpful on dev workstation, not in CI).
-    _PODMAN_TEST_OPTS="${PODMAN_LOGIN_ARGS}" _prefetch $REGISTRY_IMAGE
-
     # Registry image needs a cert. Self-signed is good enough.
     CERT=$AUTHDIR/domain.crt
     if [ ! -e $CERT ]; then

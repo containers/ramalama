@@ -17,7 +17,7 @@ function setup_suite() {
     IFS="
  	"
 
-    export PODMAN_LOGIN_WORKDIR="$BATS_SUITE_TMPDIR/podman-bats-registry"
+    export PODMAN_LOGIN_WORKDIR="$BATS_SUITE_TMPDIR/registry"
     mkdir "$PODMAN_LOGIN_WORKDIR"
 
     export PODMAN_LOGIN_USER="user$(random_string 4)"
@@ -25,12 +25,13 @@ function setup_suite() {
 
     # FIXME: racy! It could be many minutes between now and when we start it.
     # To mitigate, we use a range not used anywhere else in system tests.
-    export PODMAN_LOGIN_REGISTRY_PORT=$(random_free_port 27000-27999)
+    if [[ $(uname) != "Darwin" ]]; then
+	export PODMAN_LOGIN_REGISTRY_PORT=$(random_free_port 27000-27999)
 
-    # The above does not handle errors. Do a final confirmation.
-    assert "$PODMAN_LOGIN_REGISTRY_PORT" != "" \
-           "Unable to set PODMAN_LOGIN_REGISTRY_PORT"
-
+	# The above does not handle errors. Do a final confirmation.
+	assert "$PODMAN_LOGIN_REGISTRY_PORT" != "" \
+               "Unable to set PODMAN_LOGIN_REGISTRY_PORT"
+    fi
     clean_setup
 
     # Canary file. Will be removed if any individual test fails.
@@ -42,6 +43,10 @@ function setup_suite() {
 
 # Run at the very end of all tests. Useful for cleanup of non-BATS tmpdirs.
 function teardown_suite() {
+    if [[ "${_RAMALAMA_TEST_OPTS}" == "--nocontainer" ]]; then
+	return
+    fi
+
     stop_registry
     local exit_code=$?
 

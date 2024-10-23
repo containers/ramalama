@@ -296,7 +296,7 @@ function unreserve_port() {
     local port=$1
 
     local lockfile=$PORT_LOCK_DIR/$port
-    -e $lockfile || die "Cannot unreserve non-reserved port $port"
+    test -e $lockfile || die "Cannot unreserve non-reserved port $port"
     assert "$(< $lockfile)" = "$BATS_SUITE_TEST_NUMBER" \
            "Port $port is not reserved by this test"
     rm -f $lockfile
