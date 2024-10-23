@@ -1,15 +1,17 @@
 import os
 import subprocess
 import sys
+import tempfile
 
 from ramalama.model import Model
 from ramalama.common import run_cmd, exec_cmd, perror, available
 
 
 class OCI(Model):
-    def __init__(self, model):
+    def __init__(self, model, conman):
         super().__init__(model.removeprefix("oci://").removeprefix("docker://"))
         self.type = "OCI"
+        self.conman = conman
         if available("omlmd"):
             self.omlmd = "omlmd"
         else:
@@ -53,16 +55,47 @@ pip install omlmd
         reference_dir = reference.replace(":", "/")
         return registry, reference, reference_dir
 
+    def _build(self, source, target, args):
+        print(f"Building {target}...")
+        src = os.path.realpath(source)
+        model_name = os.path.basename(source)
+        contextdir = os.path.dirname(src)
+        model = os.path.basename(src)
+        containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=False)
+        # Open the file for writing.
+        with open(containerfile.name, 'w') as c:
+            c.write(
+                f"""\
+FROM {args.image} as builder
+RUN mkdir -p /run/model; cd /run/model; ln -s {model_name} model.file
+
+FROM scratch
+COPY --from=builder /run/model /
+COPY {model} /{model_name}
+"""
+            )
+        run_cmd([self.conman, "build", "-t", target, "-f", containerfile.name, contextdir], stdout=None)
+
     def push(self, source, args):
-        target = args.TARGET.strip("oci://")
-        tregistry, _, treference_dir = self._target_decompose(target)
-
+        target = self.model.removeprefix("oci://")
+        source = source.removeprefix("oci://")
+        if source != target:
+            try:
+                self._build(source, target, args)
+                try:
+                    print(f"Pushing {target}...")
+                    run_cmd([self.conman, "push", target])
+                    return
+                except subprocess.CalledProcessError as e:
+                    perror(f"Failed to push {source} model to OCI: {e}")
+                    raise e
+            except subprocess.CalledProcessError:
+                pass
         try:
-            # Push the model using omlmd, using cwd the model's file parent directory
-
-            run_cmd([self.omlmd, "push", target, source, "--empty-metadata"])
+            print(f"Pushing {target}...")
+            run_cmd([self.conman, "push", source, target])
         except subprocess.CalledProcessError as e:
-            perror(f"Failed to push model to OCI: {e}")
+            perror(f"Failed to push {source} model to OCI {target}: {e}")
             raise e
 
     def pull(self, args):
