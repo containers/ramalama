@@ -616,7 +616,7 @@ def run_container(args):
     if gpu_type == "HIP_VISIBLE_DEVICES":
         conman_args += ["-e", f"{gpu_type}={gpu_num}"]
         if args.image == default_image():
-            conman_args += ["quay.io/ramalama/ramalama:latest-rocm"]
+            conman_args += ["quay.io/ramalama/rocm:latest"]
         else:
             conman_args += [args.image]
     else:
