@@ -165,7 +165,7 @@ def login_cli(args):
     transport = args.TRANSPORT
     if transport != "":
         transport = os.getenv("RAMALAMA_TRANSPORT") + "://"
-    model = New(str(transport))
+    model = New(str(transport), args)
     return model.login(args)
 
 
@@ -183,7 +183,7 @@ def logout_cli(args):
     transport = args.TRANSPORT
     if transport != "":
         transport = os.getenv("RAMALAMA_TRANSPORT") + "://"
-    model = New(str(transport))
+    model = New(str(transport), args)
     return model.logout(args)
 
 
@@ -388,7 +388,7 @@ def pull_parser(subparsers):
 
 
 def pull_cli(args):
-    model = New(args.MODEL)
+    model = New(args.MODEL, args)
     matching_files = glob.glob(f"{args.store}/models/*/{model}")
     if matching_files:
         return matching_files[0]
@@ -398,16 +398,32 @@ def pull_cli(args):
 
 def push_parser(subparsers):
     parser = subparsers.add_parser("push", help="push AI Model from local storage to remote registry")
+    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("SOURCE")  # positional argument
-    parser.add_argument("TARGET")  # positional argument
+    parser.add_argument("TARGET", nargs="?")  # positional argument
     parser.set_defaults(func=push_cli)
 
 
 def push_cli(args):
-    smodel = New(args.SOURCE)
-    source = smodel.path(args)
+    if args.TARGET:
+        target = args.TARGET
+        src = shortnames.resolve(args.SOURCE)
+        if not src:
+            src = args.SOURCE
+        smodel = New(src, args)
+        if smodel.type == "OCI":
+            source = src
+        else:
+            source = smodel.path(args)
+    else:
+        target = args.SOURCE
+        source = args.SOURCE
 
-    model = New(args.TARGET)
+    tgt = shortnames.resolve(target)
+    if not tgt:
+        tgt = target
+
+    model = New(tgt, args)
     model.push(source, args)
 
 
@@ -422,7 +438,7 @@ def run_parser(subparsers):
 
 
 def run_cli(args):
-    model = New(args.MODEL)
+    model = New(args.MODEL, args)
     model.run(args)
 
 
@@ -443,7 +459,7 @@ def serve_parser(subparsers):
 def serve_cli(args):
     if not args.container:
         args.detach = False
-    model = New(args.MODEL)
+    model = New(args.MODEL, args)
     model.serve(args)
 
 
@@ -517,7 +533,7 @@ def _rm_model(models, args):
         if resolved_model:
             model = resolved_model
 
-        model = New(model)
+        model = New(model, args)
         model.remove(args)
 
 
@@ -662,13 +678,13 @@ def dry_run(args):
     print()
 
 
-def New(model):
+def New(model, args):
     if model.startswith("huggingface://") or model.startswith("hf://"):
         return Huggingface(model)
     if model.startswith("ollama://"):
         return Ollama(model)
     if model.startswith("oci://") or model.startswith("docker://"):
-        return OCI(model)
+        return OCI(model, args.engine)
 
     transport = os.getenv("RAMALAMA_TRANSPORT")
     if transport == "huggingface":
@@ -676,7 +692,7 @@ def New(model):
     if transport == "ollama":
         return Ollama(model)
     if transport == "oci":
-        return OCI(model)
+        return OCI(model, args.engine)
 
     return Ollama(model)
 
