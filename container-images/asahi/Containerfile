@@ -1,0 +1,47 @@
+FROM fedora:40
+
+# renovate: datasource=github-releases depName=huggingface/huggingface_hub extractVersion=^v(?<version>.*)
+ARG HUGGINGFACE_HUB_VERSION=0.26.0
+# renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
+ARG OMLMD_VERSION=0.1.6
+# renovate: datasource=github-releases depName=tqdm/tqdm extractVersion=^v(?<version>.*)
+ARG TQDM_VERSION=4.66.5
+ARG LLAMA_CPP_SHA=3f1ae2e32cde00c39b96be6d01c2997c29bae555
+# renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
+ARG WHISPER_CPP_SHA=0fbaac9c891055796456df7b9122a70c220f9ca1
+
+# vulkan-headers vulkan-loader-devel vulkan-tools glslc glslang python3-pip mesa-libOpenCL-$MESA_VER.aarch64
+RUN dnf install -y git procps-ng vim dnf-plugins-core \
+      python3-dnf-plugin-versionlock cmake gcc-c++ \
+      python3-pip python3-argcomplete && \
+    dnf clean all && \
+    rm -rf /var/cache/*dnf*
+
+RUN /usr/bin/python3 --version
+RUN pip install "huggingface_hub==${HUGGINGFACE_HUB_VERSION}"
+RUN pip install "omlmd==${OMLMD_VERSION}"
+RUN pip install "tqdm==${TQDM_VERSION}"
+
+RUN git clone --recursive https://github.com/ggerganov/llama.cpp && \
+    cd llama.cpp && \
+    git reset --hard ${LLAMA_CPP_SHA} && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_KOMPUTE=1 \
+      -DGGML_CCACHE=0 && \
+    cmake --build build --config Release -j $(nproc) && \
+    cmake --install build && \
+    cd / && \
+    rm -rf llama.cpp
+
+RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
+    cd whisper.cpp && \
+    git reset --hard ${WHISPER_CPP_SHA} && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_KOMPUTE=1 \
+      -DGGML_CCACHE=0 && \
+    cmake --build build --config Release -j $(nproc) && \
+    mv build/bin/main /usr/bin/whisper-main && \
+    mv build/bin/server /usr/bin/whisper-server && \
+    cd / && \
+    rm -rf whisper.cpp
+
+ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
+ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}
