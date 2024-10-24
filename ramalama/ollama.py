@@ -164,7 +164,7 @@ class Ollama(Model):
     def path(self, args):
         symlink_path, _, _, _, _ = self._local(args)
         if not os.path.exists(symlink_path):
-            raise KeyError(f"{args.Model} does not exist")
+            raise KeyError(f"{self.model} does not exist")
 
         return symlink_path
 

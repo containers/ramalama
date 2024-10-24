@@ -1,5 +1,6 @@
 import configparser
 import os
+import tempfile
 
 
 class Shortnames:
@@ -32,3 +33,12 @@ class Shortnames:
 
     def resolve(self, model):
         return self.shortnames.get(model)
+
+    def create_shortname_file(self):
+        shortnamefile = tempfile.NamedTemporaryFile(prefix='RamaLama_shortname_', delete=False)
+        # Open the file for writing.
+        with open(shortnamefile.name, 'w') as c:
+            c.write('[shortnames]\n')
+            for shortname in self.shortnames:
+                c.write('"%s"="%s"\n' % (shortname, self.shortnames.get(shortname)))
+        return shortnamefile.name

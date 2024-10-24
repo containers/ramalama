@@ -75,7 +75,7 @@ def exec_cmd(args, stderr=True):
         raise
 
 
-def run_cmd(args, cwd=None, ignore_stderr=False):
+def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False):
     """
     Run the given command arguments.
 
@@ -90,7 +90,7 @@ def run_cmd(args, cwd=None, ignore_stderr=False):
     if ignore_stderr:
         stderr = subprocess.PIPE
 
-    return subprocess.run(args, check=True, cwd=cwd, stdout=subprocess.PIPE, stderr=stderr)
+    return subprocess.run(args, check=True, cwd=cwd, stdout=stdout, stderr=stderr)
 
 
 def find_working_directory():

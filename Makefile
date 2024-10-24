@@ -67,7 +67,6 @@ completions:
 	mkdir -p completions/zsh/vendor-completions
 	-register-python-argcomplete --shell zsh ramalama > completions/zsh/vendor-completions/_ramalama
 
-
 .PHONY: install
 install: docs completions
 	RAMALAMA_VERSION=$(RAMALAMA_VERSION) \

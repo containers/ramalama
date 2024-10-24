@@ -34,9 +34,11 @@ build() {
   local image_name
   image_name=$(echo "$1" | sed "s#container-images/##g")
   local conman_build=("${conman[@]}")
+  local conman_show_size=("${conman[@]}" "images" "--filter" "reference='quay.io/ramalama/$image_name'")
   if [ "$#" -lt 2 ]; then
     add_build_platform
     "${conman_build[@]}"
+    "${conman_show_size[@]}"
     rm_container_image
   elif [ "$2" = "-d" ]; then
     add_build_platform
@@ -45,9 +47,11 @@ build() {
     "${conman[@]}" push "quay.io/ramalama/$image_name"
   elif [ "$2" = "log" ]; then
     "${conman_build[@]}" 2>&1 | tee container_build.log
+    "${conman_show_size[@]}"
   else
     add_build_platform
     "${conman_build[@]}"
+    "${conman_show_size[@]}"
     rm_container_image
   fi
 
