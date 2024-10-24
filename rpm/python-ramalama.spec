@@ -45,6 +45,7 @@ BuildRequires: python%{python3_pkgversion}-devel
 BuildRequires: python%{python3_pkgversion}-pip
 BuildRequires: python%{python3_pkgversion}-setuptools
 BuildRequires: python%{python3_pkgversion}-wheel
+BuildRequires: python%{python3_pkgversion}-tqdm
 
 Requires: python%{python3_pkgversion}-argcomplete
 
@@ -60,9 +61,9 @@ configure the system for AI themselves. After the initialization, RamaLama
 will run the AI Models within a container based on the OCI image.
 
 %package -n python%{python3_pkgversion}-%{pypi_name}
-Recommends: podman
-Recommends: python%{python3_pkgversion}-huggingface-hub
-Recommends: python%{python3_pkgversion}-tqdm
+Requires: podman
+Requires: python%{python3_pkgversion}-huggingface-hub
+Requires: python%{python3_pkgversion}-tqdm
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{pypi_name}}
@@ -80,20 +81,15 @@ Provides: %{pypi_name} = %{version}-%{release}
 %pyproject_install
 %pyproject_save_files %{pypi_name}
 %{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-docs install-shortnames
-# older argcomplete does not support zsh
-%if 0%{?fedora} >= 40 || 0%{?rhel} >= 10
 %{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-completions
-%endif
 
 %files -n python%{python3_pkgversion}-%{pypi_name}
 %license LICENSE
 %doc README.md
 %{_bindir}/%{pypi_name}
-%if 0%{?fedora} >= 40 || 0%{?rhel} >= 10
 %{bash_completions_dir}/%{pypi_name}
 %{_datadir}/fish/vendor_completions.d/ramalama.fish
 %{_datadir}/zsh/vendor-completions/_ramalama
-%endif
 %{python3_sitelib}/%{pypi_name}
 %{python3_sitelib}/%{pypi_name}-%{version}.dist-info
 %dir %{_datadir}/%{pypi_name}
