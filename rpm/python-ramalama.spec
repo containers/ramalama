@@ -1,6 +1,5 @@
 %global debug_package %{nil}
 
-%global source_url https://github.com/containers/%{pypi_name}
 %global pypi_name ramalama
 %global forgeurl https://github.com/containers/%{pypi_name}
 # see ramalama/version.py
@@ -70,7 +69,7 @@ Requires: python%{python3_pkgversion}-tqdm
 %else
 Recommends: python%{python3_pkgversion}-tqdm
 Recommends: python%{python3_pkgversion}-huggingface-hub
-%fi
+%endif
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{pypi_name}}
