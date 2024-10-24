@@ -32,6 +32,8 @@ main() {
   # verify llama.cpp version matches
   grep "$(grep "ARG LLAMA_CPP_SHA=" container-images/ramalama/Containerfile)" \
     container-images/cuda/Containerfile
+  grep "$(grep "ARG LLAMA_CPP_SHA=" container-images/ramalama/Containerfile)" \
+    container-images/asahi/Containerfile
 
   local os
   os="$(uname -s)"

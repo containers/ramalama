@@ -1,11 +1,7 @@
 FROM registry.access.redhat.com/ubi9/ubi:9.4-1214.1729773476
 
-# renovate: datasource=github-releases depName=huggingface/huggingface_hub extractVersion=^v(?<version>.*)
-ARG HUGGINGFACE_HUB_VERSION=0.26.2
 # renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
 ARG OMLMD_VERSION=0.1.6
-# renovate: datasource=github-releases depName=tqdm/tqdm extractVersion=^v(?<version>.*)
-ARG TQDM_VERSION=4.66.6
 ARG LLAMA_CPP_SHA=1329c0a75e6a7defc5c380eaf80d8e0f66d7da78
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
 ARG WHISPER_CPP_SHA=0377596b77a3602e36430320cbe45f8c305ef04a
@@ -24,9 +20,7 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.n
     rm -rf /var/cache/*dnf*
 
 RUN /usr/bin/python3 --version
-RUN pip install "huggingface_hub==${HUGGINGFACE_HUB_VERSION}"
 RUN pip install "omlmd==${OMLMD_VERSION}"
-RUN pip install "tqdm==${TQDM_VERSION}"
 
 RUN dnf config-manager --add-repo \
       https://mirror.stream.centos.org/9-stream/AppStream/$(uname -m)/os/

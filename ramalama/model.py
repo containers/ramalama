@@ -103,10 +103,16 @@ class Model:
         raise NotImplementedError(f"model_path for {self.type} not implemented")
 
     def _image(self, args):
+        if args.image != default_image():
+            return args.image
+
         gpu_type, _ = get_gpu()
         if gpu_type == "HIP_VISIBLE_DEVICES":
-            if args.image == default_image():
-                return "quay.io/ramalama/rocm:latest"
+            return "quay.io/ramalama/rocm:latest"
+
+        if gpu_type == "ASAHI_VISIBLE_DEVICES":
+            return "quay.io/ramalama/asahi:latest"
+
         return args.image
 
     def setup_container(self, args):
@@ -147,7 +153,7 @@ class Model:
             conman_args += ["--device", "/dev/kfd"]
 
         gpu_type, gpu_num = get_gpu()
-        if gpu_type == "HIP_VISIBLE_DEVICES":
+        if gpu_type == "HIP_VISIBLE_DEVICES" or gpu_type == "ASAHI_VISIBLE_DEVICES":
             conman_args += ["-e", f"{gpu_type}={gpu_num}"]
         return conman_args
 
@@ -198,7 +204,7 @@ class Model:
             # any additional arguments.
             pass
         elif sys.platform == "linux" and (
-            os.path.exists("/dev/dri") or os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
+            os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("ASAHI_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
         ):
             gpu_args = ["-ngl", "99"]
         else:
@@ -405,6 +411,12 @@ def get_gpu():
 
     if gpu_bytes:  # this is the ROCm/AMD case
         return "HIP_VISIBLE_DEVICES", gpu_num
+
+    if os.path.exists('/etc/os-release'):
+        with open('/etc/os-release', 'r') as file:
+            content = file.read()
+            if "asahi" in content.lower():
+                return "ASAHI_VISIBLE_DEVICES", 1
 
     return None, None
 
