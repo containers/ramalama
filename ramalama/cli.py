@@ -150,22 +150,32 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
 def login_parser(subparsers):
     parser = subparsers.add_parser("login", help="login to remote registry")
     # Do not run in a container
+    parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("-p", "--password", dest="password", help="password for registry")
     parser.add_argument(
         "--password-stdin", dest="passwordstdin", action="store_true", help="take the password for registry from stdin"
     )
+    parser.add_argument(
+        "--tls-verify",
+        dest="tlsverify",
+        default=True,
+        help="require HTTPS and verify certificates when contacting registries",
+    )
     parser.add_argument("--token", dest="token", help="token for registry")
     parser.add_argument("-u", "--username", dest="username", help="username for registry")
-    parser.add_argument("TRANSPORT", nargs="?", type=str, default="")  # positional argument
+    parser.add_argument(
+        "REGISTRY", nargs="?", type=str, default="OCI Registry where AI models are stored"
+    )  # positional argument
     parser.set_defaults(func=login_cli)
 
 
 def login_cli(args):
-    transport = args.TRANSPORT
-    if transport != "":
-        transport = os.getenv("RAMALAMA_TRANSPORT") + "://"
-    model = New(str(transport), args)
+    registry = args.REGISTRY
+    if registry != "":
+        registry = "oci://" + registry
+
+    model = New(str(registry), args)
     return model.login(args)
 
 
