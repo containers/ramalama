@@ -45,7 +45,9 @@ BuildRequires: python%{python3_pkgversion}-devel
 BuildRequires: python%{python3_pkgversion}-pip
 BuildRequires: python%{python3_pkgversion}-setuptools
 BuildRequires: python%{python3_pkgversion}-wheel
+%if 0%{fedora} >= 39
 BuildRequires: python%{python3_pkgversion}-tqdm
+%endif
 
 Requires: python%{python3_pkgversion}-argcomplete
 
@@ -62,8 +64,13 @@ will run the AI Models within a container based on the OCI image.
 
 %package -n python%{python3_pkgversion}-%{pypi_name}
 Requires: podman
+%if 0%{fedora} >= 39
 Requires: python%{python3_pkgversion}-huggingface-hub
 Requires: python%{python3_pkgversion}-tqdm
+%else
+Recommends: python%{python3_pkgversion}-tqdm
+Recommends: python%{python3_pkgversion}-huggingface-hub
+%fi
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{pypi_name}}
