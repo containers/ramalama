@@ -59,9 +59,9 @@ def available(cmd):
     return shutil.which(cmd) is not None
 
 
-def exec_cmd(args, stderr=True):
-    if x:
-        print(*args)
+def exec_cmd(args, stderr=True, debug=False):
+    if debug:
+        perror("exec_cmd: ", *args)
 
     if not stderr:
         # Redirecting stderr to /dev/null
@@ -75,7 +75,7 @@ def exec_cmd(args, stderr=True):
         raise
 
 
-def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False):
+def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, debug=False):
     """
     Run the given command arguments.
 
@@ -83,8 +83,8 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False):
     args: command line arguments to execute in a subprocess
     cwd: optional working directory to run the command from
     """
-    if x:
-        print(*args)
+    if debug:
+        perror("run_cmd: ", *args)
 
     stderr = None
     if ignore_stderr:

@@ -76,6 +76,9 @@ $ cat /usr/share/ramalama/shortnames.conf
 run RamaLama in the default container (default: True)
 use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
 
+#### **--debug**
+print debug messages
+
 #### **--dryrun**
 show container runtime command without executing it (default: False)
 

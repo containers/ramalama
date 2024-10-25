@@ -23,6 +23,10 @@ load setup_suite
     run_ramalama list
     is "$output" ".*ollama://tinyllama:1.1b" "image was actually pulled locally"
     run_ramalama rm ollama://tinyllama ollama://tinyllama:1.1b
+
+    random_image_name=i_$(safename)
+    run_ramalama 1 pull ${random_image_name}
+    is "$output" "Error: failed to pull https://registry.ollama.ai/v2/library/${random_image_name}: HTTP Error 404: Not Found" "image does not exist"
 }
 
 # bats test_tags=distro-integration
