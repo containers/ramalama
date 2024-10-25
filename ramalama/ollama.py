@@ -68,23 +68,22 @@ pip install tqdm
             raise e
 
 
-def pull_manifest(repos, manifests, accept, registry_head, model_tag):
-    os.makedirs(os.path.dirname(manifests), exist_ok=True)
-    os.makedirs(os.path.join(repos, "blobs"), exist_ok=True)
+def fetch_manifest_data(registry_head, model_tag, accept):
     url = f"{registry_head}/manifests/{model_tag}"
     headers = {"Accept": accept}
 
-    # Attempt to redownload the manifest if already exists,
-    # otherwise json.JSONDecodeError exception is thrown when reading the manifest
-    if os.path.exists(manifests):
-        os.remove(manifests)
-
-    download_file(url, manifests, headers=headers, show_progress=False)
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request) as response:
+        manifest_data = json.load(response)
+    return manifest_data
 
 
 def pull_config_blob(repos, accept, registry_head, manifest_data):
     cfg_hash = manifest_data["config"]["digest"]
     config_blob_path = os.path.join(repos, "blobs", cfg_hash)
+
+    os.makedirs(os.path.dirname(config_blob_path), exist_ok=True)
+
     url = f"{registry_head}/blobs/{cfg_hash}"
     headers = {"Accept": accept}
     download_file(url, config_blob_path, headers=headers, show_progress=False)
@@ -109,24 +108,8 @@ def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, mo
     run_cmd(["ln", "-sf", relative_target_path, symlink_path])
 
 
-def init_pull(repos, manifests, accept, registry_head, model_name, model_tag, models, symlink_path, model):
-    try:
-        pull_manifest(repos, manifests, accept, registry_head, model_tag)
-        with open(manifests, "r") as f:
-            manifest_data = json.load(f)
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            raise KeyError(f"{model} not found")
-        raise e
-    # This exception block acts as a safety-net to redownload the manifests if corrupted.
-    except json.JSONDecodeError:
-        print(f"Error: Failed to parse JSON in {manifests}. File might be corrupted or incomplete.")
-        print("Attempting to redownload the manifest file...")
-        os.remove(manifests)
-        pull_manifest(repos, manifests, accept, registry_head, model_tag)
-        with open(manifests, "r") as f:
-            manifest_data = json.load(f)
-
+def init_pull(repos, accept, registry_head, model_name, model_tag, models, symlink_path, model):
+    manifest_data = fetch_manifest_data(registry_head, model_tag, accept)
     pull_config_blob(repos, accept, registry_head, manifest_data)
     for layer in manifest_data["layers"]:
         layer_digest = layer["digest"]
@@ -176,11 +159,8 @@ class Ollama(Model):
 
         registry = "https://registry.ollama.ai"
         accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
-        manifests = os.path.join(repos, "manifests", registry, model_name, model_tag)
         registry_head = f"{registry}/v2/{model_name}"
-        return init_pull(
-            repos, manifests, accept, registry_head, model_name, model_tag, models, symlink_path, self.model
-        )
+        return init_pull(repos, accept, registry_head, model_name, model_tag, models, symlink_path, self.model)
 
     def symlink_path(self, args):
         models = args.store + "/models/ollama"

@@ -21,12 +21,14 @@ class OCI(Model):
                 self.omlmd = f"{i}/../../../bin/omlmd"
                 if os.path.exists(self.omlmd):
                     break
-            raise NotImplementedError("""\
+            raise NotImplementedError(
+                """\
 OCI models requires the omlmd module.
 This module can be installed via PyPi tools like pip, pip3, pipx or via
 distribution package managers like dnf or apt. Example:
 pip install omlmd
-""")
+"""
+            )
 
     def login(self, args):
         conman_args = [self.conman, "login"]
