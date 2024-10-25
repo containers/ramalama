@@ -32,13 +32,13 @@ def container_manager():
         try:
             output = run_cmd(podman_machine_list).stdout.decode("utf-8").strip()
             if "running" not in output:
-                return ""
+                return None
 
             output = run_cmd(conman_args).stdout.decode("utf-8").strip()
             if output == "krunkit" or output == "libkrun":
                 return "podman"
             else:
-                return ""
+                return None
 
         except subprocess.CalledProcessError:
             pass
@@ -48,7 +48,7 @@ def container_manager():
     if available("docker"):
         return "docker"
 
-    return ""
+    return None
 
 
 def perror(*args, **kwargs):
