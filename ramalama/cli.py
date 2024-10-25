@@ -397,7 +397,14 @@ def help_cli(args):
 
 def pull_parser(subparsers):
     parser = subparsers.add_parser("pull", help="pull AI Model from Model registry to local storage")
+    parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--tls-verify",
+        dest="tlsverify",
+        default=True,
+        help="require HTTPS and verify certificates when contacting registries",
+    )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=pull_cli)
 
@@ -413,23 +420,37 @@ def pull_cli(args):
 
 def push_parser(subparsers):
     parser = subparsers.add_parser("push", help="push AI Model from local storage to remote registry")
+    parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--tls-verify",
+        dest="tlsverify",
+        default=True,
+        help="require HTTPS and verify certificates when contacting registries",
+    )
     parser.add_argument("SOURCE")  # positional argument
     parser.add_argument("TARGET", nargs="?")  # positional argument
     parser.set_defaults(func=push_cli)
 
 
+def _get_source(args):
+    if os.path.exists(args.SOURCE):
+        return args.SOURCE
+
+    src = shortnames.resolve(args.SOURCE)
+    if not src:
+        src = args.SOURCE
+    smodel = New(src, args)
+    if smodel.type == "OCI":
+        return src
+    else:
+        return smodel.path(args)
+
+
 def push_cli(args):
     if args.TARGET:
         target = args.TARGET
-        src = shortnames.resolve(args.SOURCE)
-        if not src:
-            src = args.SOURCE
-        smodel = New(src, args)
-        if smodel.type == "OCI":
-            source = src
-        else:
-            source = smodel.path(args)
+        source = _get_source(args)
     else:
         target = args.SOURCE
         source = args.SOURCE
