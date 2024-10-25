@@ -61,7 +61,7 @@ class Huggingface(Model):
             # Symlink is already correct, no need to update it
             return symlink_path
 
-        run_cmd(["ln", "-sf", relative_target_path, symlink_path])
+        run_cmd(["ln", "-sf", relative_target_path, symlink_path], debug=args.debug)
 
         return symlink_path
 
@@ -79,7 +79,8 @@ class Huggingface(Model):
                     args.store + "/repos/huggingface/.cache",
                     "--local-dir",
                     args.store + "/repos/huggingface/" + self.directory,
-                ]
+                ],
+                debug=args.debug,
             )
             return proc.stdout.decode("utf-8")
         except FileNotFoundError as e:
@@ -95,7 +96,7 @@ class Huggingface(Model):
 
     def exec(self, args):
         try:
-            exec_cmd(args)
+            exec_cmd(args, args.debug)
         except FileNotFoundError as e:
             raise NotImplementedError(
                 """\

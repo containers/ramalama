@@ -43,13 +43,12 @@ pip install omlmd
         if args.passwordstdin:
             conman_args.append("--password-stdin")
         conman_args.append(args.REGISTRY.removeprefix(prefix))
-        print(" ".join(conman_args))
-        return exec_cmd(conman_args)
+        return exec_cmd(conman_args, debug=args.debug)
 
     def logout(self, args):
         conman_args = [self.conman, "logout"]
         conman_args.append(self.model)
-        return exec_cmd(conman_args)
+        return exec_cmd(conman_args, debug=args.debug)
 
     def _target_decompose(self, model):
         # Remove the prefix and extract target details
@@ -83,7 +82,9 @@ COPY --from=builder /run/model /
 COPY {model} /{model_name}
 """
             )
-        run_cmd([self.conman, "build", "-t", target, "-f", containerfile.name, contextdir], stdout=None)
+        run_cmd(
+            [self.conman, "build", "-t", target, "-f", containerfile.name, contextdir], stdout=None, debug=args.debug
+        )
 
     def push(self, source, args):
         target = self.model.removeprefix(prefix)

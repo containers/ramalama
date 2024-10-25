@@ -160,7 +160,11 @@ class Ollama(Model):
         registry = "https://registry.ollama.ai"
         accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
         registry_head = f"{registry}/v2/{model_name}"
-        return init_pull(repos, accept, registry_head, model_name, model_tag, models, symlink_path, self.model)
+        try:
+            return init_pull(repos, accept, registry_head, model_name, model_tag, models, symlink_path, self.model)
+        except urllib.error.HTTPError as e:
+            raise KeyError(f"failed to pull {registry_head}: " +str(e).strip("'"))
+
 
     def symlink_path(self, args):
         models = args.store + "/models/ollama"

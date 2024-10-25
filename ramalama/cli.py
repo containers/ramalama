@@ -85,6 +85,11 @@ with software on the local system.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
     parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="display debug messages",
+    )
+    parser.add_argument(
         "--dryrun", dest="dryrun", action="store_true", help="show container runtime command without executing it"
     )
     parser.add_argument("--dry-run", dest="dryrun", action="store_true", help=argparse.SUPPRESS)
@@ -674,7 +679,7 @@ def run_container(args):
 
     atexit.register(cleanup)
 
-    run_cmd(conman_args, stdout=None)
+    run_cmd(conman_args, stdout=None, debug=args.debug)
 
 
 def dry_run(args):

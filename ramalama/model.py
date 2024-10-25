@@ -121,7 +121,7 @@ class Model:
             exec_args.append("-cnv")
 
         try:
-            exec_cmd(exec_args, False)
+            exec_cmd(exec_args, False, debug=args.debug)
         except FileNotFoundError as e:
             if in_container():
                 raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
@@ -140,7 +140,7 @@ class Model:
             return self.kube(symlink_path, args, exec_args)
 
         try:
-            exec_cmd(exec_args)
+            exec_cmd(exec_args, debug=args.debug)
         except FileNotFoundError as e:
             if in_container():
                 raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
