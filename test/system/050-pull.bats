@@ -68,10 +68,18 @@ load setup_suite
 
     start_registry
     run_ramalama login --authfile=$authfile \
-        --tls-verify=false \
-        --username ${PODMAN_LOGIN_USER} \
-        --password ${PODMAN_LOGIN_PASS} \
-        oci://$registry
+	--tls-verify=false \
+	--username ${PODMAN_LOGIN_USER} \
+	--password ${PODMAN_LOGIN_PASS} \
+	oci://$registry
+    run_ramalama pull tiny
+    run_ramalama push --authfile=$authfile --tls-verify=false tiny oci://$registry/tiny
+
+    tmpfile=${RAMALAMA_TMPDIR}/mymodel
+    random=$(random_string 30)
+    echo $random > $tmpfile
+    run_ramalama push --authfile=$authfile --tls-verify=false $tmpfile oci://$registry/mymodel
+
     stop_registry
 }
 

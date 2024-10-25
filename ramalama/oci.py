@@ -80,6 +80,7 @@ RUN mkdir -p /run/model; cd /run/model; ln -s {model_name} model.file
 FROM scratch
 COPY --from=builder /run/model /
 COPY {model} /{model_name}
+LABEL org.ramalama.type=ai.model
 """
             )
         run_cmd(
@@ -89,12 +90,19 @@ COPY {model} /{model_name}
     def push(self, source, args):
         target = self.model.removeprefix(prefix)
         source = source.removeprefix(prefix)
+        conman_args = [self.conman, "push"]
+        if args.authfile:
+            conman_args.extend([f"--authfile={args.authfile}"])
+        if str(args.tlsverify).lower() == "false":
+            conman_args.extend([f"--tls-verify={args.tlsverify}"])
+
+        print(f"Pushing {target}...")
         if source != target:
             try:
                 self._build(source, target, args)
                 try:
-                    print(f"Pushing {target}...")
-                    run_cmd([self.conman, "push", target])
+                    conman_args.extend([target])
+                    run_cmd(conman_args)
                     return
                 except subprocess.CalledProcessError as e:
                     perror(f"Failed to push {source} model to OCI: {e}")
@@ -102,8 +110,8 @@ COPY {model} /{model_name}
             except subprocess.CalledProcessError:
                 pass
         try:
-            print(f"Pushing {target}...")
-            run_cmd([self.conman, "push", source, target])
+            conman_args.extend([source, target])
+            run_cmd(conman_args)
         except subprocess.CalledProcessError as e:
             perror(f"Failed to push {source} model to OCI {target}: {e}")
             raise e
