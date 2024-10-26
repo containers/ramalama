@@ -63,7 +63,7 @@ class Model:
                 file_has_a_symlink = False
                 for file in files:
                     file_path = os.path.join(root, file)
-                    if (repo == "ollama" and file.startswith("sha256:")) or file.endswith(".gguf"):
+                    if file.startswith("sha256:") or file.endswith(".gguf"):
                         file_path = os.path.join(root, file)
                         for model_root, model_dirs, model_files in os.walk(model_dir):
                             for model_file in model_files:
