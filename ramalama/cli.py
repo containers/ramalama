@@ -688,13 +688,38 @@ def dry_run(args):
     print()
 
 
+def convert_model_format(input_string):
+    # Split the input string to extract the relevant parts
+    parts = input_string.split('/')
+    if len(parts) != 3 or not parts[2]:
+        raise ValueError("Input string is not in the expected format")
+
+    username = parts[1]
+    model_info = parts[2]
+
+    # Check if quantization is specified, else default to Q4_K_M
+    if ':' in model_info:
+        model_name, quantization = model_info.split(':')
+    else:
+        model_name = model_info
+        quantization = 'Q4_K_M'  # Default quantization scheme
+
+    # Construct the new format
+    return f"hf://{username}/{model_name}/{model_name}-{quantization}.gguf"
+
+
 def New(model, args):
     if model.startswith("huggingface://") or model.startswith("hf://"):
+        return Huggingface(model)
+    if model.startswith("huggingface.co/") or model.startswith("hf.co/"):
+        model = convert_model_format(model)
         return Huggingface(model)
     if model.startswith("ollama://"):
         return Ollama(model)
     if model.startswith("oci://") or model.startswith("docker://"):
         return OCI(model, args.engine)
+    if model.startswith("https://"):
+        raise NotImplementedError("https support is to be implemented")
 
     transport = os.getenv("RAMALAMA_TRANSPORT")
     if transport == "huggingface":
