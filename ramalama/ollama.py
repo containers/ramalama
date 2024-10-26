@@ -1,71 +1,8 @@
 import os
 import urllib.request
 import json
-from ramalama.common import run_cmd, verify_checksum
+from ramalama.common import run_cmd, verify_checksum, download_file
 from ramalama.model import Model
-
-bar_format = "Pulling {desc}: {percentage:3.0f}% ▕{bar:20}▏ {n_fmt}/{total_fmt} {rate_fmt} {remaining}"
-
-
-def download_file(url, dest_path, headers=None, show_progress=True):
-    try:
-        from tqdm import tqdm
-    except FileNotFoundError:
-        raise NotImplementedError(
-            """\
-Ollama models requires the tqdm modules.
-This module can be installed via PyPi tools like pip, pip3, pipx or via
-distribution package managers like dnf or apt. Example:
-pip install tqdm
-"""
-        )
-
-    # Check if partially downloaded file exists
-    if os.path.exists(dest_path):
-        downloaded_size = os.path.getsize(dest_path)
-    else:
-        downloaded_size = 0
-
-    request = urllib.request.Request(url, headers=headers or {})
-    request.headers["Range"] = f"bytes={downloaded_size}-"  # Set range header
-
-    try:
-        with urllib.request.urlopen(request) as response:
-            total_size = int(response.headers.get("Content-Length", 0)) + downloaded_size
-            chunk_size = 8192  # 8 KB chunks
-
-            with open(dest_path, "ab") as file:
-                if show_progress:
-                    with tqdm(
-                        desc=dest_path[-16:],
-                        total=total_size,
-                        initial=downloaded_size,
-                        unit="B",
-                        unit_scale=True,
-                        unit_divisor=1024,
-                        bar_format=bar_format,
-                        ascii=True,
-                    ) as progress_bar:
-                        while True:
-                            chunk = response.read(chunk_size)
-                            if not chunk:
-                                break
-                            file.write(chunk)
-                            progress_bar.update(len(chunk))
-                else:
-                    # Download file without showing progress
-                    while True:
-                        chunk = response.read(chunk_size)
-                        if not chunk:
-                            break
-                        file.write(chunk)
-    except urllib.error.HTTPError as e:
-        if e.code == 416:
-            if show_progress:
-                # If we get a 416 error, it means the file is fully downloaded
-                print(f"File {url} already fully downloaded.")
-        else:
-            raise e
 
 
 def fetch_manifest_data(registry_head, model_tag, accept):

@@ -7,3 +7,4 @@ build
 ramalama/*.patch
 dist
 .#*
+venv/
