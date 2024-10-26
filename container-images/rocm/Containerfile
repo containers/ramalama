@@ -16,23 +16,28 @@ RUN curl --retry 8 --retry-all-errors -o \
       cat /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
 
+# Set amd gpu architecture for RDNA3
+# https://llvm.org/docs/AMDGPUUsage.html#processors
+ENV AMDGPU_TARGETS=gfx1100
+
 RUN dnf install -y rocm-dev hipblas-devel rocblas-devel && \
     dnf clean all && \
     git clone https://github.com/ggerganov/llama.cpp && \
     cd llama.cpp && \
     git reset --hard ${LLAMA_CPP_SHA} && \
     cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 \
-      -DGGML_HIPBLAS=1 && \
-    cmake --build build --config Release -j $(nproc) && \
+      -DGGML_HIPBLAS=ON -DAMDGPU_TARGETS=${ROCM_DOCKER_ARCH} && \
+    cmake --build build --config Release -j$(nproc) && \
     cmake --install build && \
     cd / && \
     git clone https://github.com/ggerganov/whisper.cpp.git && \
     cd whisper.cpp && \
     git reset --hard ${WHISPER_CPP_SHA} && \
-    make -j $(nproc) GGML_HIPBLAS=1 && \
-    mv main /usr/bin/whisper-main && \
-    mv server /usr/bin/whisper-server && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_CCACHE=0 \
+      -DGGML_HIPBLAS=ON -DAMDGPU_TARGETS=${ROCM_DOCKER_ARCH} && \
+    cmake --build build --config Release -j$(nproc) && \
+    mv build/bin/main /usr/bin/whisper-main && \
+    mv build/bin/server /usr/bin/whisper-server && \
     cd / && \
     rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
       /opt/rocm-*/lib/rocblas/library/*gfx9* llama.cpp whisper.cpp
-

@@ -679,6 +679,8 @@ def run_container(args):
     if gpu_type == "HIP_VISIBLE_DEVICES":
         conman_args += ["-e", f"{gpu_type}={gpu_num}"]
         if args.image == default_image():
+            # https://github.com/containers/podman/issues/10166
+            conman_args += ["--group-add", "keep-groups"]
             conman_args += ["quay.io/ramalama/rocm:latest"]
         else:
             conman_args += [args.image]
