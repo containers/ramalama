@@ -19,7 +19,7 @@ Running in containers eliminates the need for users to configure the host system
 
 RamaLama then pulls AI Models from model registries. Starting a chatbot or a rest API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
 
-When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behavior. When neither are installed RamaLama will attempt to run the model with software on the local system.
+When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behaviour. When neither are installed RamaLama will attempt to run the model with software on the local system.
 
 RamaLama supports multiple AI model registries types called transports. Supported transports:
 
@@ -84,7 +84,7 @@ show container runtime command without executing it (default: False)
 
 #### **--engine**
 run RamaLama using the specified container engine.
-use environment variable RAMALAMA_CONTAINER_ENGINE to modify the default behavior.
+use environment variable RAMALAMA_CONTAINER_ENGINE to modify the default behaviour.
 
 #### **--help**, **-h**
 show this help message and exit
