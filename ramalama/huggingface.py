@@ -74,7 +74,12 @@ class Huggingface(Model):
 
         # Fetch the SHA-256 checksum from the API
         checksum_api_url = f"https://huggingface.co/{self.directory}/raw/main/{self.filename}"
-        sha256_checksum = fetch_checksum_from_api(checksum_api_url)
+        try:
+            sha256_checksum = fetch_checksum_from_api(checksum_api_url)
+        except urllib.error.HTTPError as e:
+            raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
+        except urllib.error.URLError as e:
+            raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
 
         target_path = os.path.join(directory_path, f"sha256:{sha256_checksum}")
 
