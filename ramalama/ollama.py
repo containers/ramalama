@@ -26,7 +26,7 @@ def pull_config_blob(repos, accept, registry_head, manifest_data):
     download_file(url, config_blob_path, headers=headers, show_progress=False)
 
 
-def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, symlink_path):
+def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path):
     layer_blob_path = os.path.join(repos, "blobs", layer_digest)
     url = f"{registry_head}/blobs/{layer_digest}"
     headers = {"Accept": accept}
@@ -41,11 +41,11 @@ def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, mo
             raise ValueError(f"Checksum verification failed for blob {layer_blob_path}")
 
     os.makedirs(models, exist_ok=True)
-    relative_target_path = os.path.relpath(layer_blob_path, start=os.path.dirname(symlink_path))
-    run_cmd(["ln", "-sf", relative_target_path, symlink_path])
+    relative_target_path = os.path.relpath(layer_blob_path, start=os.path.dirname(model_path))
+    run_cmd(["ln", "-sf", relative_target_path, model_path])
 
 
-def init_pull(repos, accept, registry_head, model_name, model_tag, models, symlink_path, model):
+def init_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, model):
     manifest_data = fetch_manifest_data(registry_head, model_tag, accept)
     pull_config_blob(repos, accept, registry_head, manifest_data)
     for layer in manifest_data["layers"]:
@@ -53,9 +53,9 @@ def init_pull(repos, accept, registry_head, model_name, model_tag, models, symli
         if layer["mediaType"] != "application/vnd.ollama.image.model":
             continue
 
-        pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, symlink_path)
+        pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path)
 
-    return symlink_path
+    return model_path
 
 
 class Ollama(Model):
@@ -78,31 +78,31 @@ class Ollama(Model):
             model_tag = "latest"
 
         model_base = os.path.basename(model_name)
-        symlink_path = os.path.join(models, f"{model_base}:{model_tag}")
-        return symlink_path, models, model_base, model_name, model_tag
+        model_path = os.path.join(models, f"{model_base}:{model_tag}")
+        return model_path, models, model_base, model_name, model_tag
 
     def path(self, args):
-        symlink_path, _, _, _, _ = self._local(args)
-        if not os.path.exists(symlink_path):
+        model_path, _, _, _, _ = self._local(args)
+        if not os.path.exists(model_path):
             raise KeyError(f"{self.model} does not exist")
 
-        return symlink_path
+        return model_path
 
     def pull(self, args):
         repos = args.store + "/repos/ollama"
-        symlink_path, models, model_base, model_name, model_tag = self._local(args)
-        if os.path.exists(symlink_path):
-            return symlink_path
+        model_path, models, model_base, model_name, model_tag = self._local(args)
+        if os.path.exists(model_path):
+            return model_path
 
         registry = "https://registry.ollama.ai"
         accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
         registry_head = f"{registry}/v2/{model_name}"
         try:
-            return init_pull(repos, accept, registry_head, model_name, model_tag, models, symlink_path, self.model)
+            return init_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, self.model)
         except urllib.error.HTTPError as e:
             raise KeyError(f"failed to pull {registry_head}: " + str(e).strip("'"))
 
-    def symlink_path(self, args):
+    def model_path(self, args):
         models = args.store + "/models/ollama"
         if "/" in self.model:
             model_full = self.model

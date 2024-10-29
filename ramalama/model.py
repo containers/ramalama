@@ -1,6 +1,16 @@
 import os
 import sys
-from ramalama.common import exec_cmd, default_image, in_container, genname
+import glob
+import atexit
+
+from ramalama.common import (
+    default_image,
+    exec_cmd,
+    find_working_directory,
+    genname,
+    in_container,
+    run_cmd,
+)
 from ramalama.version import version
 
 
@@ -76,10 +86,10 @@ class Model:
                             print(f"Deleted: {file_path}")
 
     def remove(self, args):
-        symlink_path = self.symlink_path(args)
-        if os.path.exists(symlink_path):
+        model_path = self.model_path(args)
+        if os.path.exists(model_path):
             try:
-                os.remove(symlink_path)
+                os.remove(model_path)
                 print(f"Untagged: {self.model}")
             except OSError as e:
                 if not args.ignore:
@@ -90,8 +100,85 @@ class Model:
 
         self.garbage_collection(args)
 
-    def symlink_path(self, args):
-        raise NotImplementedError(f"symlink_path for {self.type} not implemented")
+    def model_path(self, args):
+        raise NotImplementedError(f"model_path for {self.type} not implemented")
+
+    def run_container(self, args, shortnames):
+        conman = args.engine
+        if conman == "":
+            return False
+
+        short_file = shortnames.create_shortname_file()
+        wd = find_working_directory()
+        if hasattr(args, "name") and args.name:
+            name = args.name
+        else:
+            name = genname()
+
+        conman_args = [
+            conman,
+            "run",
+            "--rm",
+            "-i",
+            "--label",
+            "RAMALAMA",
+            "--security-opt=label=disable",
+            "-e",
+            "RAMALAMA_TRANSPORT",
+            "--name",
+            name,
+            f"-v{args.store}:/var/lib/ramalama",
+            f"-v{os.path.realpath(sys.argv[0])}:/usr/bin/ramalama:ro",
+            f"-v{wd}:/usr/share/ramalama/ramalama:ro",
+            f"-v{short_file}:/usr/share/ramalama/shortnames.conf:ro,Z",
+        ]
+
+        di_volume = distinfo_volume()
+        if di_volume != "":
+            conman_args += [di_volume]
+
+        if sys.stdout.isatty() and sys.stdin.isatty():
+            conman_args += ["-t"]
+
+        if hasattr(args, "detach") and args.detach is True:
+            conman_args += ["-d"]
+
+        if hasattr(args, "port"):
+            conman_args += ["-p", f"{args.port}:{args.port}"]
+
+        if os.path.exists("/dev/dri"):
+            conman_args += ["--device", "/dev/dri"]
+
+        if os.path.exists("/dev/kfd"):
+            conman_args += ["--device", "/dev/kfd"]
+
+        gpu_type, gpu_num = get_gpu()
+        if gpu_type == "HIP_VISIBLE_DEVICES":
+            conman_args += ["-e", f"{gpu_type}={gpu_num}"]
+            if args.image == default_image():
+                conman_args += ["quay.io/ramalama/rocm:latest"]
+            else:
+                conman_args += [args.image]
+        else:
+            conman_args += [args.image]
+
+        conman_args += ["python3", "/usr/bin/ramalama"]
+        conman_args += sys.argv[1:]
+        if hasattr(args, "UNRESOLVED_MODEL"):
+            index = conman_args.index(args.UNRESOLVED_MODEL)
+            conman_args[index] = args.MODEL
+
+        if args.dryrun:
+            dry_run(conman_args)
+            return True
+
+        def cleanup():
+            os.remove(short_file)
+
+        atexit.register(cleanup)
+
+        run_cmd(conman_args, stdout=None, debug=args.debug)
+        return True
 
     def run(self, args):
         prompt = "You are a helpful assistant"
@@ -104,11 +191,11 @@ class Model:
             input = sys.stdin.read()
             prompt = input + "\n\n" + prompt
 
-        symlink_path = self.pull(args)
+        model_path = self.pull(args)
         exec_args = [
             "llama-cli",
             "-m",
-            symlink_path,
+            model_path,
             "--in-prefix",
             "",
             "--in-suffix",
@@ -128,16 +215,16 @@ class Model:
             raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
 
     def serve(self, args):
-        symlink_path = self.pull(args)
-        exec_args = ["llama-server", "--port", args.port, "-m", "/run/model"]
+        model_path = self.pull(args)
+        exec_args = ["llama-server", "--port", args.port, "-m", model_path]
         if args.runtime == "vllm":
-            exec_args = ["vllm", "serve", "--port", args.port, "/run/model"]
+            exec_args = ["vllm", "serve", "--port", args.port, model_path]
 
         if args.generate == "quadlet":
-            return self.quadlet(symlink_path, args, exec_args)
+            return self.quadlet(model_path, args, exec_args)
 
         if args.generate == "kube":
-            return self.kube(symlink_path, args, exec_args)
+            return self.kube(model_path, args, exec_args)
 
         try:
             exec_cmd(exec_args, debug=args.debug)
@@ -250,3 +337,42 @@ spec:
 {port_string}
 {volume_string}"""
         )
+
+
+def get_gpu():
+    i = 0
+    gpu_num = 0
+    gpu_bytes = 0
+    for fp in sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total')):
+        with open(fp, 'r') as file:
+            content = int(file.read())
+            if content > 1073741824 and content > gpu_bytes:
+                gpu_bytes = content
+                gpu_num = i
+
+        i += 1
+
+    if gpu_bytes:  # this is the ROCm/AMD case
+        return "HIP_VISIBLE_DEVICES", gpu_num
+
+    return None, None
+
+
+def dry_run(args):
+    for arg in args:
+        if not arg:
+            continue
+        if " " in arg:
+            print('"%s"' % arg, end=" ")
+        else:
+            print("%s" % arg, end=" ")
+    print()
+
+
+def distinfo_volume():
+    dist_info = "ramalama-%s.dist-info" % version()
+    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), dist_info)
+    if not os.path.exists(path):
+        return ""
+
+    return f"-v{path}:/usr/share/ramalama/{dist_info}:ro"

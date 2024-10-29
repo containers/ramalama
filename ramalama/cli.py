@@ -4,17 +4,13 @@ import glob
 import json
 import os
 import subprocess
-import sys
 import time
-import atexit
 import ramalama.oci
 
 from ramalama.huggingface import Huggingface
 from ramalama.common import (
     container_manager,
     default_image,
-    find_working_directory,
-    genname,
     in_container,
     perror,
     run_cmd,
@@ -682,25 +678,6 @@ def get_store():
     return os.path.expanduser("~/.local/share/ramalama")
 
 
-def get_gpu():
-    i = 0
-    gpu_num = 0
-    gpu_bytes = 0
-    for fp in sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total')):
-        with open(fp, 'r') as file:
-            content = int(file.read())
-            if content > 1073741824 and content > gpu_bytes:
-                gpu_bytes = content
-                gpu_num = i
-
-        i += 1
-
-    if gpu_bytes:  # this is the ROCm/AMD case
-        return "HIP_VISIBLE_DEVICES", gpu_num
-
-    return None, None
-
-
 def run_container(args):
     if hasattr(args, "generate") and args.generate:
         return False
@@ -717,104 +694,8 @@ def run_container(args):
     if in_container():
         return False
 
-    conman = args.engine
-    if conman == "":
-        return False
-
-    if hasattr(args, "name") and args.name:
-        name = args.name
-    else:
-        name = genname()
-
-    short_file = shortnames.create_shortname_file()
-    wd = find_working_directory()
-    conman_args = [
-        conman,
-        "run",
-        "--rm",
-        "-i",
-        "--label",
-        "RAMALAMA",
-        "--security-opt=label=disable",
-        "-e",
-        "RAMALAMA_TRANSPORT",
-        "--name",
-        name,
-        f"-v{args.store}:/var/lib/ramalama",
-        f"-v{os.path.realpath(sys.argv[0])}:/usr/bin/ramalama:ro",
-        f"-v{short_file}:/usr/share/ramalama/shortnames.conf:ro,Z",
-    ]
-
-    path_to_share = "/usr/share/ramalama"
-    if os.path.exists(path_to_share):
-        conman_args += [f"-v{path_to_share}:{path_to_share}:ro"]
-
-    conman_args += [f"-v{wd}:/usr/share/ramalama/ramalama:ro"]
-    path_to_share = "/etc/ramalama"
-    if os.path.exists(path_to_share):
-        conman_args += [f"-v{path_to_share}:{path_to_share}:ro"]
-
-    path_to_share = os.path.expanduser("~/.config/ramalama")
-    if os.path.exists(path_to_share):
-        conman_args += [f"-v{path_to_share}:/root/.config/ramalama:ro"]
-
-    di_volume = distinfo_volume()
-    if di_volume != "":
-        conman_args += [di_volume]
-
-    if sys.stdout.isatty() and sys.stdin.isatty():
-        conman_args += ["-t"]
-
-    if hasattr(args, "detach") and args.detach is True:
-        conman_args += ["-d"]
-
-    if hasattr(args, "port"):
-        conman_args += ["-p", f"{args.port}:{args.port}"]
-
-    if os.path.exists("/dev/dri"):
-        conman_args += ["--device", "/dev/dri"]
-
-    if os.path.exists("/dev/kfd"):
-        conman_args += ["--device", "/dev/kfd"]
-
-    gpu_type, gpu_num = get_gpu()
-    if gpu_type == "HIP_VISIBLE_DEVICES":
-        conman_args += ["-e", f"{gpu_type}={gpu_num}"]
-        if args.image == default_image():
-            conman_args += ["quay.io/ramalama/rocm:latest"]
-        else:
-            conman_args += [args.image]
-    else:
-        conman_args += [args.image]
-
-    conman_args += ["python3", "/usr/bin/ramalama"]
-    conman_args += sys.argv[1:]
-    if hasattr(args, "UNRESOLVED_MODEL"):
-        index = conman_args.index(args.UNRESOLVED_MODEL)
-        conman_args[index] = args.MODEL
-
-    if args.dryrun:
-        dry_run(conman_args)
-        return True
-
-    def cleanup():
-        os.remove(short_file)
-
-    atexit.register(cleanup)
-
-    run_cmd(conman_args, stdout=None, debug=args.debug)
-
-
-def dry_run(args):
-    for arg in args:
-        if not arg:
-            continue
-        if " " in arg:
-            print('"%s"' % arg, end=" ")
-        else:
-            print("%s" % arg, end=" ")
-    print()
-
+    model = New(args.image, args)
+    return model.run_container(args, shortnames)
 
 def New(model, args):
     if model.startswith("huggingface://") or model.startswith("hf://"):
@@ -833,12 +714,3 @@ def New(model, args):
         return OCI(model, args.engine)
 
     return Ollama(model)
-
-
-def distinfo_volume():
-    dist_info = "ramalama-%s.dist-info" % version()
-    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), dist_info)
-    if not os.path.exists(path):
-        return ""
-
-    return f"-v{path}:/usr/share/ramalama/{dist_info}:ro"
