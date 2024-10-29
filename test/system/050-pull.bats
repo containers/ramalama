@@ -80,6 +80,19 @@ load setup_suite
     echo $random > $tmpfile
     run_ramalama push --authfile=$authfile --tls-verify=false $tmpfile oci://$registry/mymodel
 
+    run_ramalama list
+    is "$output" ".*oci://$registry/tiny" "OCI image exists in list"
+    is "$output" ".*oci://$registry/mymodel" "OCI image exists in list"
+
+    run_ramalama rm oci://$registry/tiny
+    run_ramalama rm oci://$registry/mymodel
+
+    run_ramalama list
+    assert "$output" !~ ".*oci://$registry/tiny" "OCI image does not exist in list"
+    assert "$output" !~ ".*oci://$registry/mymodel" "OCI image does not exist in list"
+
+    run_podman image prune --force
+
     stop_registry
 }
 

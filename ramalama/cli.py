@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import atexit
+import ramalama.oci
 
 from ramalama.huggingface import Huggingface
 from ramalama.common import (
@@ -341,6 +342,8 @@ def _list_models(args):
             # Store data for later use
             models.append({"name": name, "modified": modified, "size": size})
 
+    models.extend(ramalama.oci.list_models(args))
+
     os.chdir(mycwd)
     return models
 
@@ -368,8 +371,11 @@ def list_cli(args):
     name_width = len("NAME")
     modified_width = len("MODIFIED")
     size_width = len("SIZE")
-    for model in models:
-        modified = human_duration(model["modified"]) + " ago"
+    for model in sorted(models, key=lambda d: d['name']):
+        try:
+            modified = human_duration(model["modified"]) + " ago"
+        except TypeError:
+            modified = model["modified"]
         name_width = max(name_width, len(model["name"]))
         modified_width = max(modified_width, len(modified))
         size_width = max(size_width, len(model["size"]))
@@ -378,10 +384,14 @@ def list_cli(args):
         print(f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} {'SIZE':<{size_width}}")
 
     for model in models:
+        try:
+            modified = human_duration(model["modified"]) + " ago"
+        except TypeError:
+            modified = model["modified"]
         if args.quiet:
             print(model["name"])
         else:
-            print(f"{model['name']:<{name_width}} {modified:<{modified_width}} {model['size']:<{size_width}}")
+            print(f"{model['name']:<{name_width}} {modified:<{modified_width}} {model['size'].upper():<{size_width}}")
 
 
 def help_parser(subparsers):

@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -7,6 +8,27 @@ from ramalama.model import Model
 from ramalama.common import run_cmd, exec_cmd, perror, available
 
 prefix = "oci://"
+
+ocilabel = "org.containers.type=ai.image.model"
+
+
+def list_models(args):
+    conman = args.engine
+    if conman is None:
+        return []
+
+    conman_args = [
+        conman,
+        "images",
+        "--filter",
+        f"label={ocilabel}",
+        "--format",
+        '{"name":"oci://{{ index .Names 0 }}","modified":"{{ .Created }}","size":"{{ .Size }}"},',
+    ]
+    output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+    if output == "":
+        return []
+    return json.loads("[" + output[:-1] + "]")
 
 
 class OCI(Model):
@@ -80,7 +102,7 @@ RUN mkdir -p /run/model; cd /run/model; ln -s {model_name} model.file
 FROM scratch
 COPY --from=builder /run/model /
 COPY {model} /{model_name}
-LABEL org.ramalama.type=ai.model
+LABEL {ocilabel}
 """
             )
         run_cmd(
@@ -158,3 +180,13 @@ LABEL org.ramalama.type=ai.model
             raise KeyError(f"unable to identify .gguf file in: {path}")
 
         return f"{path}/{ggufs[0]}"
+
+    def remove(self, args):
+        try:
+            super().remove(args)
+        except FileNotFoundError:
+            pass
+
+        if self.conman is not None:
+            conman_args = [self.conman, "rmi", "--force", self.model]
+            exec_cmd(conman_args, debug=args.debug)
