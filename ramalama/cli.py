@@ -39,7 +39,8 @@ def use_container():
     if in_container():
         return False
 
-    return container_manager()
+    conman = container_manager()
+    return conman is not None
 
 
 class ArgumentParserWithDefaults(argparse.ArgumentParser):
