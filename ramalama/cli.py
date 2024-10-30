@@ -697,6 +697,7 @@ def run_container(args):
     model = New(args.image, args)
     return model.run_container(args, shortnames)
 
+
 def New(model, args):
     if model.startswith("huggingface://") or model.startswith("hf://"):
         return Huggingface(model)
