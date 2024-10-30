@@ -12,8 +12,8 @@ a TOML format that can be easily modified and versioned.
 RamaLama reads the __/usr/share/ramalama/ramalama.conf__,
 __/etc/ramalama/ramalama.conf__, and __/etc/ramalama/ramalama.conf.d/\*.conf__
 for global configuration that effects all users.
-For user specific configuration it reads __\$XDG_CONFIG_HOME/ramalama/ramalama.conf__ and
-__\$XDG_CONFIG_HOME/ramalama/ramalama.conf.d/\*.conf__ files. When `$XDG_CONFIG_HOME` is not set it falls back to using `$HOME/.config` instead.
+For user specific configuration it reads __$XDG_CONFIG_HOME/ramalama/ramalama.conf__ and
+__$XDG_CONFIG_HOME/ramalama/ramalama.conf.d/\*.conf__ files. When `$XDG_CONFIG_HOME` is not set it falls back to using `$HOME/.config` instead.
 
 Fields specified in ramalama conf override the default options, as well as
 options in previously read ramalama.conf files.

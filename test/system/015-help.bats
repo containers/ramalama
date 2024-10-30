@@ -147,7 +147,101 @@ function check_help() {
 
     image=m_$(safename)
     RAMALAMA_IMAGE=${image} run_ramalama --help
-    is "$output" ".*default: ${image}"  "Verify default image"
+    is "$output" ".*default: ${image}"  "Verify default image from environment"
+
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+image="$image"
+EOF
+
+    RAMALAMA_CONFIG=${conf} run_ramalama --help
+    is "$output" ".*default: ${image}"  "Verify default image from ramalama.conf"
+
+    image1=m_$(safename)
+    RAMALAMA_IMAGE=${image1} RAMALAMA_CONFIG=${conf} run_ramalama --help
+    is "$output" ".*default: ${image1}"  "Verify default image from environment over ramalama.conf"
 }
 
+@test "ramalama verify default engine" {
+    engine=e_$(safename)
+    RAMALAMA_CONTAINER_ENGINE=${engine} run_ramalama --help
+    is "$output" ".*default: ${engine}"  "Verify default engine from environment variable"
+
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+engine="$engine"
+EOF
+
+    RAMALAMA_CONFIG=${conf} run_ramalama --help
+    is "$output" ".*default: ${engine}"  "Verify default engine from ramalama.conf"
+
+    engine1=e_$(safename)
+    RAMALAMA_CONTAINER_ENGINE=${engine1} RAMALAMA_CONFIG=${conf} run_ramalama --help
+    is "$output" ".*default: ${engine1}"  "Verify default engine from environment variable override ramamalama.conf"
+
+    engine2=e_$(safename)
+    RAMALAMA_CONTAINER_ENGINE=${engine1} RAMALAMA_CONFIG=${conf} run_ramalama --engine ${engine2} --help
+    is "$output" ".*default: ${engine2}"  "Verify --engine rules them all"
+}
+
+@test "ramalama verify default runtime" {
+    run_ramalama --help
+    is "$output" ".*default: llama.cpp"  "Verify default runtime from environment variable"
+
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+runtime="vllm"
+EOF
+
+    RAMALAMA_CONFIG=${conf} run_ramalama --help
+    is "$output" ".*default: vllm"  "Verify default runtime from ramalama.conf"
+}
+
+@test "ramalama verify default store" {
+    store=e_$(safename)
+    run_ramalama --help
+    is "$output" ".*default: ${HOME}/.local/share/ramalama"  "Verify default store"
+
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+store="$store"
+EOF
+
+    RAMALAMA_CONFIG=${conf} run_ramalama --help
+    is "$output" ".*default: ${store}"  "Verify default store from ramalama.conf"
+
+    store1=e_$(safename)
+    RAMALAMA_CONFIG=${conf} run_ramalama --store=${store1} --help
+    is "$output" ".*default: ${store1}"  "Verify default store from ramalama.conf"
+}
+
+@test "ramalama verify default container" {
+    skip_if_nocontainer
+
+    run_ramalama --help
+    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: True)"  "Verify default container"
+
+    RAMALAMA_IN_CONTAINER=false run_ramalama --help
+    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: False)"  "Verify default container with environment"
+
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+container=false
+EOF
+
+    RAMALAMA_CONFIG=${conf} run_ramalama --help
+    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: False)"  "Verify default container override in ramalama.conf"
+}
+
+@test "ramalama verify transport" {
+    transport=e_$(safename)
+    RAMALAMA_TRANSPORT=${transport} run_ramalama 1 pull foobar
+    is "$output" "Error: transport \"${transport}\" not supported. Must be oci, huggingface, or ollama."  "Verify bogus transport throws error"
+
+}
 # vim: filetype=sh

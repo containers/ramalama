@@ -29,9 +29,9 @@ class HelpException(Exception):
 
 
 def use_container():
-    transport = os.getenv("RAMALAMA_IN_CONTAINER")
-    if transport:
-        return transport.lower() == "true"
+    use_container = os.getenv("RAMALAMA_IN_CONTAINER")
+    if use_container:
+        return use_container.lower() == "true"
 
     if in_container():
         return False
@@ -53,14 +53,19 @@ class ArgumentParserWithDefaults(argparse.ArgumentParser):
 
 def load_config():
     """Load configuration from a list of paths, in priority order."""
+    parser = TOMLParser()
+    config_path = os.getenv("RAMALAMA_CONFIG")
+    if config_path:
+        return parser.parse_file(config_path)
+
     config = {}
     config_paths = [
         "/usr/share/ramalama/ramalama.conf",
         "/etc/ramalama/ramalama.conf",
-        os.path.expanduser("~/.config/ramalama/ramalama.conf"),
     ]
+    config_home=os.getenv("XDG_CONFIG_HOME",os.path.join("~",".config"))
+    config_paths.extend([os.path.expanduser(os.path.join(config_home,"/ramalama", "ramalama.conf"))])
 
-    parser = TOMLParser()
     # Load configuration from each path
     for path in config_paths:
         if os.path.exists(path):
@@ -74,11 +79,45 @@ def load_config():
     return config
 
 
+def get_store():
+    if os.geteuid() == 0:
+        return "/var/lib/ramalama"
+
+    return os.path.expanduser("~/.local/share/ramalama")
+
+
+def load_and_merge_config():
+    """Load configuration from files and merge with environment variables."""
+    config = load_config()
+    ramalama_config = config.setdefault('ramalama', {})
+
+    ramalama_config['container'] = os.getenv('RAMALAMA_IN_CONTAINER', ramalama_config.get('container', use_container()))
+    ramalama_config['engine'] = os.getenv(
+        'RAMALAMA_CONTAINER_ENGINE', ramalama_config.get('engine', container_manager())
+    )
+    ramalama_config['image'] = os.getenv('RAMALAMA_IMAGE', ramalama_config.get('image', default_image()))
+    ramalama_config['nocontainer'] = ramalama_config.get('nocontainer', False)
+    if ramalama_config['nocontainer']:
+        ramalama_config['container'] = False
+    else:
+        ramalama_config['container'] = os.getenv(
+            'RAMALAMA_IN_CONTAINER', ramalama_config.get('container', use_container())
+        )
+
+    ramalama_config['runtime'] = ramalama_config.get('runtime', 'llama.cpp')
+    ramalama_config['store'] = os.getenv('RAMALAMA_STORE', ramalama_config.get('store', get_store()))
+    ramalama_config['transport'] = os.getenv('RAMALAMA_TRANSPORT', ramalama_config.get('transport', "ollama"))
+
+    return ramalama_config
+
+
+config = load_and_merge_config()
+
+
 def init_cli():
     """Initialize the RamaLama CLI and parse command line arguments."""
     description = get_description()
-    config = load_and_merge_config()
-    parser = create_argument_parser(description, config)
+    parser = create_argument_parser(description)
     configure_subcommands(parser)
     args = parse_arguments(parser)
     post_parse_setup(args)
@@ -107,42 +146,18 @@ with software on the local system.
 """
 
 
-def load_and_merge_config():
-    """Load configuration from files and merge with environment variables."""
-    config = load_config()
-    ramalama_config = config.setdefault('ramalama', {})
-
-    ramalama_config['container'] = os.getenv('RAMALAMA_IN_CONTAINER', ramalama_config.get('container', use_container()))
-    ramalama_config['engine'] = os.getenv(
-        'RAMALAMA_CONTAINER_ENGINE', ramalama_config.get('engine', container_manager())
-    )
-    ramalama_config['image'] = os.getenv('RAMALAMA_IMAGE', ramalama_config.get('image', default_image()))
-    ramalama_config['nocontainer'] = ramalama_config.get('nocontainer', False)
-    if ramalama_config['nocontainer']:
-        ramalama_config['container'] = False
-    else:
-        ramalama_config['container'] = os.getenv(
-            'RAMALAMA_IN_CONTAINER', ramalama_config.get('container', use_container())
-        )
-
-    ramalama_config['runtime'] = ramalama_config.get('runtime', 'llama.cpp')
-    ramalama_config['store'] = os.getenv('RAMALAMA_STORE', ramalama_config.get('store', get_store()))
-
-    return ramalama_config
-
-
-def create_argument_parser(description, config):
+def create_argument_parser(description):
     """Create and configure the argument parser for the CLI."""
     parser = ArgumentParserWithDefaults(
         prog="ramalama",
         description=description,
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    configure_arguments(parser, config)
+    configure_arguments(parser)
     return parser
 
 
-def configure_arguments(parser, config):
+def configure_arguments(parser):
     """Configure the command-line arguments for the parser."""
     parser.add_argument(
         "--container",
@@ -247,7 +262,7 @@ def login_parser(subparsers):
     parser.add_argument("--token", dest="token", help="token for registry")
     parser.add_argument("-u", "--username", dest="username", help="username for registry")
     parser.add_argument(
-        "REGISTRY", nargs="?", type=str, default="OCI Registry where AI models are stored"
+        "REGISTRY", nargs="?", type=str, help="OCI Registry where AI models are stored"
     )  # positional argument
     parser.set_defaults(func=login_cli)
 
@@ -266,15 +281,12 @@ def logout_parser(subparsers):
     # Do not run in a container
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("--token", help="token for registry")
-    parser.add_argument("TRANSPORT", nargs="?", type=str, default="")  # positional argument
-    parser.add_argument("TRANSPORT", nargs="?", type=str, default="")  # positional argument
+    parser.add_argument("TRANSPORT", nargs="?", type=str, default=config.get("transport"))  # positional argument
     parser.set_defaults(func=logout_cli)
 
 
 def logout_cli(args):
-    transport = args.TRANSPORT
-    if transport != "":
-        transport = os.getenv("RAMALAMA_TRANSPORT") + "://"
+    transport = args.transport
     model = New(str(transport), args)
     return model.logout(args)
 
@@ -671,13 +683,6 @@ def rm_cli(args):
     _rm_model(models, args)
 
 
-def get_store():
-    if os.geteuid() == 0:
-        return "/var/lib/ramalama"
-
-    return os.path.expanduser("~/.local/share/ramalama")
-
-
 def run_container(args):
     if hasattr(args, "generate") and args.generate:
         return False
@@ -706,7 +711,7 @@ def New(model, args):
     if model.startswith("oci://") or model.startswith("docker://"):
         return OCI(model, args.engine)
 
-    transport = os.getenv("RAMALAMA_TRANSPORT")
+    transport = config.get("transport")
     if transport == "huggingface":
         return Huggingface(model)
     if transport == "ollama":
@@ -714,4 +719,4 @@ def New(model, args):
     if transport == "oci":
         return OCI(model, args.engine)
 
-    return Ollama(model)
+    raise KeyError(f'transport "{transport}" not supported. Must be oci, huggingface, or ollama.')
