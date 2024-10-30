@@ -185,30 +185,28 @@ class Model:
         if args.ARGS:
             prompt = " ".join(args.ARGS)
 
-        # Build a prompt with the stdin text that prepend the prompt passed as an
-        # argument to ramalama cli
+        # Build a prompt with the stdin text that prepend the prompt passed as
+        # an argument to ramalama cli
         if not sys.stdin.isatty():
             input = sys.stdin.read()
             prompt = input + "\n\n" + prompt
 
         model_path = self.pull(args)
-        exec_args = [
-            "llama-cli",
-            "-m",
-            model_path,
-            "--in-prefix",
-            "",
-            "--in-suffix",
-            "",
-            "--no-display-prompt",
+        exec_args = ["llama-cli", "-m", model_path, "--in-prefix", "", "--in-suffix", ""]
+
+        if not args.debug:
+            exec_args += ["--no-display-prompt"]
+
+        exec_args += [
             "-p",
             prompt,
         ] + self.common_params
+
         if not args.ARGS and sys.stdin.isatty():
             exec_args.append("-cnv")
 
         try:
-            exec_cmd(exec_args, False, debug=args.debug)
+            exec_cmd(exec_args, args.debug, debug=args.debug)
         except FileNotFoundError as e:
             if in_container():
                 raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
