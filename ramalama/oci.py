@@ -157,17 +157,17 @@ LABEL {ocilabel}
 
         directory = f"{args.store}/models/oci/{registry}/{reference_dir}"
         os.makedirs(directory, exist_ok=True)
-        symlink_path = f"{directory}/{ggufs[0]}"
-        relative_target_path = os.path.relpath(f"{outdir}/{ggufs[0]}", start=os.path.dirname(symlink_path))
-        if os.path.exists(symlink_path) and os.readlink(symlink_path) == relative_target_path:
+        model_path = f"{directory}/{ggufs[0]}"
+        relative_target_path = os.path.relpath(f"{outdir}/{ggufs[0]}", start=os.path.dirname(model_path))
+        if os.path.exists(model_path) and os.readlink(model_path) == relative_target_path:
             # Symlink is already correct, no need to update it
-            return symlink_path
+            return model_path
 
-        run_cmd(["ln", "-sf", relative_target_path, symlink_path])
+        run_cmd(["ln", "-sf", relative_target_path, model_path])
 
-        return symlink_path
+        return model_path
 
-    def symlink_path(self, args):
+    def model_path(self, args):
         registry, reference = self.model.split("/", 1)
         reference_dir = reference.replace(":", "/")
         path = f"{args.store}/models/oci/{registry}/{reference_dir}"

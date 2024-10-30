@@ -62,14 +62,14 @@ class Huggingface(Model):
         self.exec(conman_args)
 
     def path(self, args):
-        return self.symlink_path(args)
+        return self.model_path(args)
 
     def pull(self, args):
-        symlink_path = self.symlink_path(args)
+        model_path = self.model_path(args)
         directory_path = os.path.join(args.store, "repos", "huggingface", self.directory, self.filename)
         os.makedirs(directory_path, exist_ok=True)
 
-        symlink_dir = os.path.dirname(symlink_path)
+        symlink_dir = os.path.dirname(model_path)
         os.makedirs(symlink_dir, exist_ok=True)
 
         # Fetch the SHA-256 checksum from the API
@@ -84,10 +84,10 @@ class Huggingface(Model):
         target_path = os.path.join(directory_path, f"sha256:{sha256_checksum}")
 
         if os.path.exists(target_path) and verify_checksum(target_path):
-            relative_target_path = os.path.relpath(target_path, start=os.path.dirname(symlink_path))
-            if not self.check_valid_symlink_path(relative_target_path, symlink_path):
-                run_cmd(["ln", "-sf", relative_target_path, symlink_path], debug=args.debug)
-            return symlink_path
+            relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
+            if not self.check_valid_model_path(relative_target_path, model_path):
+                run_cmd(["ln", "-sf", relative_target_path, model_path], debug=args.debug)
+            return model_path
 
         # Download the model file to the target path
         url = f"https://huggingface.co/{self.directory}/resolve/main/{self.filename}"
@@ -100,14 +100,14 @@ class Huggingface(Model):
             if not verify_checksum(target_path):
                 raise ValueError(f"Checksum verification failed for {target_path}")
 
-        relative_target_path = os.path.relpath(target_path, start=os.path.dirname(symlink_path))
-        if self.check_valid_symlink_path(relative_target_path, symlink_path):
+        relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
+        if self.check_valid_model_path(relative_target_path, model_path):
             # Symlink is already correct, no need to update it
-            return symlink_path
+            return model_path
 
-        run_cmd(["ln", "-sf", relative_target_path, symlink_path], debug=args.debug)
+        run_cmd(["ln", "-sf", relative_target_path, model_path], debug=args.debug)
 
-        return symlink_path
+        return model_path
 
     def push(self, source, args):
         if not self.hf_cli_available:
@@ -130,11 +130,11 @@ class Huggingface(Model):
         )
         return proc.stdout.decode("utf-8")
 
-    def symlink_path(self, args):
+    def model_path(self, args):
         return os.path.join(args.store, "models", "huggingface", self.directory, self.filename)
 
-    def check_valid_symlink_path(self, relative_target_path, symlink_path):
-        return os.path.exists(symlink_path) and os.readlink(symlink_path) == relative_target_path
+    def check_valid_model_path(self, relative_target_path, model_path):
+        return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
 
     def exec(self, args):
         try:
