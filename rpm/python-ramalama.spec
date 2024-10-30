@@ -100,7 +100,9 @@ Provides: %{pypi_name} = %{version}-%{release}
 %{python3_sitelib}/%{pypi_name}-%{version}.dist-info
 %dir %{_datadir}/%{pypi_name}
 %{_datadir}/%{pypi_name}/shortnames.conf
+%{_datadir}/%{pypi_name}/ramalama.conf
 %{_mandir}/man1/ramalama*.1*
+%{_mandir}/man5/ramalama*.5*
 
 %changelog
 %autochangelog

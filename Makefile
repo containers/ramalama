@@ -70,7 +70,7 @@ completions:
 .PHONY: install
 install: docs completions
 	RAMALAMA_VERSION=$(RAMALAMA_VERSION) \
-	pip install . --use-feature=in-tree-build --no-deps --root $(DESTDIR) --prefix ${PREFIX}
+	pip install . --no-deps --root $(DESTDIR) --prefix ${PREFIX}
 
 .PHONY: build
 build:

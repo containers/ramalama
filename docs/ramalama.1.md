@@ -21,13 +21,15 @@ RamaLama then pulls AI Models from model registries. Starting a chatbot or a res
 
 When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behaviour. When neither are installed RamaLama will attempt to run the model with software on the local system.
 
-RamaLama supports multiple AI model registries types called transports. Supported transports:
-
 Note:
 
 On Macs with Arm support and Podman, the Podman machine must be
 configured to use the krunkit VM Type. This allows the Mac's GPU to be
 used within the VM.
+
+Default settings for flags are defined in `ramalama.conf(5)`.
+
+RamaLama supports multiple AI model registries types called transports. Supported transports:
 
 ## TRANSPORTS
 
@@ -38,7 +40,8 @@ used within the VM.
 | OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)|
 ||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), and [`Artifactory`](https://artifactory.com)|
 
-RamaLama uses the Ollama registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
+RamaLama uses the Ollama registry transport by default. The default can be overridden in the ramalama.conf file or use the RAMALAMA_TRANSPORTS
+environment. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
 Individual model transports can be modifies when specifying a model via the `huggingface://`, `oci://`, or `ollama://` prefix.
 
@@ -73,8 +76,8 @@ $ cat /usr/share/ramalama/shortnames.conf
 ## GLOBAL OPTIONS
 
 #### **--container**
-run RamaLama in the default container (default: True)
-use environment variable "RAMALAMA_IN_CONTAINER=false" to change default.
+run RamaLama in the default container. Default is `true` unless overridden in the ramalama.conf file.
+The environment variable "RAMALAMA_IN_CONTAINER=false" can also change the default.
 
 #### **--debug**
 print debug messages
@@ -83,29 +86,32 @@ print debug messages
 show container runtime command without executing it (default: False)
 
 #### **--engine**
-run RamaLama using the specified container engine.
-use environment variable RAMALAMA_CONTAINER_ENGINE to modify the default behaviour.
+run RamaLama using the specified container engine. Default is `podman` if installed otherwise docker.
+The default can be overridden in the ramalama.conf file or via the RAMALAMA_CONTAINER_ENGINE environment variable.
 
 #### **--help**, **-h**
 show this help message and exit
 
 #### **--image**=IMAGE
-OCI container image to run with specified AI model. By default RamaLama
-attempts to use the best AI OCI image based on GPU on the local system.
-The --image option allows users to override the default.
+OCI container image to run with specified AI model. By default RamaLama uses
+`quay.io/ramalama/ramalama:latest`. The --image option allows users to override
+the default.
 
-The RAMALAMA_IMAGE environment variable can be used to modify the default
-image. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
+The default can be overridden in the ramalama.conf file or via the the
+RAMALAMA_IMAGE environment variable. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
 RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
 
 #### **--nocontainer**
 do not run RamaLama in the default container (default: False)
+The default can be overridden in the ramalama.conf file.
 
 #### **--runtime**
 specify the runtime to use, valid options are 'llama.cpp' and 'vllm' (default: llama.cpp)
+The default can be overridden in the ramalama.conf file.
 
 #### **--store**=STORE
 store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
+The default can be overridden in the ramalama.conf file.
 
 ## COMMANDS
 
@@ -127,7 +133,7 @@ store AI Models in the specified directory (default rootless: `$HOME/.local/shar
 
 
 ## SEE ALSO
-**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**, **docker(1)**
+**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**, **docker(1)**, **[ramalama.conf(5)](ramalama.conf.5.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

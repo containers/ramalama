@@ -4,11 +4,31 @@ from setuptools import find_packages
 from setuptools.command.build_py import build_py as build_py_orig
 
 
-def generate_man_pages(share_path, docs):
+def generate_man1_pages(share_path, docs):
     data_files = []
 
     for path, _, files in os.walk(docs):
         list_entry = (share_path, [os.path.join(path, f) for f in files if f.endswith(".1")])
+        data_files.append(list_entry)
+
+    return data_files
+
+
+def generate_man5_pages(share_path, docs):
+    data_files = []
+
+    for path, _, files in os.walk(docs):
+        list_entry = (share_path, [os.path.join(path, f) for f in files if f.endswith(".5")])
+        data_files.append(list_entry)
+
+    return data_files
+
+
+def generate_ramalama_conf(share_path, docs):
+    data_files = []
+
+    for path, _, files in os.walk(docs):
+        list_entry = (share_path, [os.path.join(path, f) for f in files if f.endswith(".conf")])
         data_files.append(list_entry)
 
     return data_files
@@ -47,5 +67,7 @@ setuptools.setup(
     scripts=["bin/ramalama"],
     data_files=[("share/ramalama", ["shortnames/shortnames.conf"])]
     + generate_completions("share", "completions")
-    + generate_man_pages("share/man/man1", "docs"),
+    + generate_ramalama_conf("share/ramalama", "docs")
+    + generate_man1_pages("share/man/man1", "docs")
+    + generate_man5_pages("share/man/man5", "docs"),
 )
