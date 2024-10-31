@@ -73,8 +73,6 @@ def main(args):
     except AttributeError:
         parser.print_usage()
         print("ramalama: requires a subcommand")
-        if args.debug:
-            raise
     except IndexError as e:
         ramalama.perror("Error: " + str(e).strip("'"))
         sys.exit(errno.EINVAL)

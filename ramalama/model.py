@@ -101,18 +101,46 @@ class Model:
     def model_path(self, args):
         raise NotImplementedError(f"model_path for {self.type} not implemented")
 
+    # Add paths if they exist
+    def add_volume(self, conman_args, path):
+        if os.path.exists(path):
+            conman_args.append(f"-v{path}:{path}:ro")
+
+        return conman_args
+
     def run_container(self, args, shortnames):
         conman = args.engine
         if conman == "":
             return False
 
         short_file = shortnames.create_shortname_file()
-        wd = find_working_directory()
-        if hasattr(args, "name") and args.name:
-            name = args.name
-        else:
-            name = genname()
+        name = self.get_container_name(args)
+        conman_args = self.initialize_conman_args(conman, args, name, short_file)
 
+        conman_args = self.add_volumes(conman_args, args, short_file)
+        conman_args = self.add_runtime_options(conman_args, args)
+        conman_args = self.configure_gpu(conman_args, args)
+        conman_args += ["python3", "/usr/bin/ramalama"]
+        conman_args += sys.argv[1:]
+        if hasattr(args, "UNRESOLVED_MODEL"):
+            index = conman_args.index(args.UNRESOLVED_MODEL)
+            conman_args[index] = args.MODEL
+
+        if args.dryrun:
+            dry_run(conman_args)
+            return True
+
+        atexit.register(self.cleanup_short_file, short_file)
+        run_cmd(conman_args, stdout=None, debug=args.debug)
+        return True
+
+    def get_container_name(self, args):
+        if hasattr(args, "name") and args.name:
+            return args.name
+        return genname()
+
+    def initialize_conman_args(self, conman, args, name, short_file):
+        wd = find_working_directory()
         conman_args = [
             conman,
             "run",
@@ -127,65 +155,66 @@ class Model:
             name,
             f"-v{args.store}:/var/lib/ramalama",
             f"-v{os.path.realpath(sys.argv[0])}:/usr/bin/ramalama:ro",
-            f"-v{wd}:/usr/share/ramalama/ramalama:ro",
             f"-v{short_file}:/usr/share/ramalama/shortnames.conf:ro,Z",
+            f"-v{wd}:/usr/share/ramalama/ramalama:ro",
         ]
+        return conman_args
 
+    def add_volumes(self, conman_args, args, short_file):
+        # Add standard volumes
+        conman_args = self.add_volume(conman_args, "/usr/share/ramalama/ramalama.conf")
+        conman_args = self.add_volume(conman_args, "/usr/share/ramalama/ramalama.conf.d")
+        conman_args = self.add_volume(conman_args, "/etc/ramalama")
+        # Add user configuration if it exists
+        path_to_share = os.path.expanduser("~/.config/ramalama")
+        if os.path.exists(path_to_share):
+            conman_args.append(f"-v{path_to_share}:/root/.config/ramalama:ro")
+        # Add distribution information volume if available
         di_volume = distinfo_volume()
-        if di_volume != "":
-            conman_args += [di_volume]
+        if di_volume:
+            conman_args.append(di_volume)
 
-        if sys.stdout.isatty() and sys.stdin.isatty():
-            conman_args += ["-t"]
+        return conman_args
 
-        if hasattr(args, "detach") and args.detach is True:
-            conman_args += ["-d"]
-
-        if hasattr(args, "port"):
-            conman_args += ["-p", f"{args.port}:{args.port}"]
-
-        if sys.platform == "darwin" or os.path.exists("/dev/dri"):
-            conman_args += ["--device", "/dev/dri"]
-
-        if os.path.exists("/dev/kfd"):
-            conman_args += ["--device", "/dev/kfd"]
-
+    def configure_gpu(self, conman_args, args):
+        # Configure GPU if detected
         gpu_type, gpu_num = get_gpu()
         if gpu_type == "HIP_VISIBLE_DEVICES":
-            conman_args += ["-e", f"{gpu_type}={gpu_num}"]
-            if args.image == default_image():
-                conman_args += ["quay.io/ramalama/rocm:latest"]
-            else:
-                conman_args += [args.image]
+            conman_args.extend(["-e", f"{gpu_type}={gpu_num}"])
+            image = args.image if args.image != default_image() else "quay.io/ramalama/rocm:latest"
+            conman_args.append(image)
         else:
-            conman_args += [args.image]
+            conman_args.append(args.image)
 
-        conman_args += ["python3", "/usr/bin/ramalama"]
-        conman_args += sys.argv[1:]
-        if hasattr(args, "UNRESOLVED_MODEL"):
-            index = conman_args.index(args.UNRESOLVED_MODEL)
-            conman_args[index] = args.MODEL
+        return conman_args
 
-        if args.dryrun:
-            dry_run(conman_args)
-            return True
+    def add_runtime_options(self, conman_args, args):
+        # Add options like ports, devices, and TTY based on runtime environment
+        if sys.stdout.isatty() and sys.stdin.isatty():
+            conman_args.append("-t")
+        if hasattr(args, "detach") and args.detach:
+            conman_args.append("-d")
+        if hasattr(args, "port"):
+            conman_args.extend(["-p", f"{args.port}:{args.port}"])
+        if sys.platform == "darwin" or os.path.exists("/dev/dri"):
+            conman_args.extend(["--device", "/dev/dri"])
+        if os.path.exists("/dev/kfd"):
+            conman_args.extend(["--device", "/dev/kfd"])
 
-        def cleanup():
-            os.remove(short_file)
+        return conman_args
 
-        atexit.register(cleanup)
-
-        run_cmd(conman_args, stdout=None, debug=args.debug)
-        return True
+    def cleanup_short_file(self, short_file):
+        os.remove(short_file)
 
     def gpu_args(self):
-        gpu_args = [ ]
+        gpu_args = []
         if sys.platform == "darwin":
             # llama.cpp will default to the Metal backend on macOS, so we don't need
             # any additional arguments.
             pass
-        elif sys.platform == "linux" and (os.path.exists("/dev/dri") or
-              os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")):
+        elif sys.platform == "linux" and (
+            os.path.exists("/dev/dri") or os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
+        ):
             gpu_args = ["-ngl", "99"]
         else:
             print("GPU offload was requested but is not available on this system")
