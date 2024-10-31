@@ -101,39 +101,34 @@ class Model:
     def model_path(self, args):
         raise NotImplementedError(f"model_path for {self.type} not implemented")
 
-    def run_container(self, args, shortnames):
-        conman = args.engine
-        if conman == "":
-            return False
+    def _image(self, args):
+        gpu_type, _ = get_gpu()
+        if gpu_type == "HIP_VISIBLE_DEVICES":
+            if args.image == default_image():
+                return "quay.io/ramalama/rocm:latest"
+        return args.image
 
-        short_file = shortnames.create_shortname_file()
-        wd = find_working_directory()
+    def setup_container(self, args):
         if hasattr(args, "name") and args.name:
             name = args.name
         else:
             name = genname()
 
+        if not args.engine:
+            return []
+
         conman_args = [
-            conman,
+            args.engine,
             "run",
             "--rm",
             "-i",
             "--label",
             "RAMALAMA",
             "--security-opt=label=disable",
-            "-e",
-            "RAMALAMA_TRANSPORT",
             "--name",
             name,
             f"-v{args.store}:/var/lib/ramalama",
-            f"-v{os.path.realpath(sys.argv[0])}:/usr/bin/ramalama:ro",
-            f"-v{wd}:/usr/share/ramalama/ramalama:ro",
-            f"-v{short_file}:/usr/share/ramalama/shortnames.conf:ro,Z",
         ]
-
-        di_volume = distinfo_volume()
-        if di_volume != "":
-            conman_args += [di_volume]
 
         if sys.stdout.isatty() and sys.stdin.isatty():
             conman_args += ["-t"]
@@ -153,12 +148,29 @@ class Model:
         gpu_type, gpu_num = get_gpu()
         if gpu_type == "HIP_VISIBLE_DEVICES":
             conman_args += ["-e", f"{gpu_type}={gpu_num}"]
-            if args.image == default_image():
-                conman_args += ["quay.io/ramalama/rocm:latest"]
-            else:
-                conman_args += [args.image]
-        else:
-            conman_args += [args.image]
+        return conman_args
+
+    def run_container(self, args, shortnames):
+        conman_args = self.setup_container(args)
+        if len(conman_args) == 0:
+            return False
+
+        conman_args += [self._image(args)]
+
+        short_file = shortnames.create_shortname_file()
+        wd = find_working_directory()
+
+        conman_args += [
+            f"-v{os.path.realpath(sys.argv[0])}:/usr/bin/ramalama:ro",
+            f"-v{wd}:/usr/share/ramalama/ramalama:ro",
+            f"-v{short_file}:/usr/share/ramalama/shortnames.conf:ro,Z",
+            "-e",
+            "RAMALAMA_TRANSPORT",
+        ]
+
+        di_volume = distinfo_volume()
+        if di_volume != "":
+            conman_args += [di_volume]
 
         conman_args += ["python3", "/usr/bin/ramalama"]
         conman_args += sys.argv[1:]
@@ -179,20 +191,50 @@ class Model:
         return True
 
     def gpu_args(self):
-        gpu_args = [ ]
+        gpu_args = []
         if sys.platform == "darwin":
             # llama.cpp will default to the Metal backend on macOS, so we don't need
             # any additional arguments.
             pass
-        elif sys.platform == "linux" and (os.path.exists("/dev/dri") or
-              os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")):
+        elif sys.platform == "linux" and (
+            os.path.exists("/dev/dri") or os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
+        ):
             gpu_args = ["-ngl", "99"]
         else:
             print("GPU offload was requested but is not available on this system")
 
         return gpu_args
 
+    def exec_model_in_container(self, cmd_args, args):
+        model = args.MODEL
+        if hasattr(args, "UNRESOLVED_MODEL"):
+            model = args.UNRESOLVED_MODEL
+
+        conman_args = self.setup_container(args)
+        if len(conman_args) == 0:
+            return False
+
+        if os.path.exists(model):
+            conman_args += [f"-v{self.model}:/run/model/model.file,ro"]
+        else:
+            conman_args += [f"--mount=type=image,src={self.model},destination=/run/model,rw=false"]
+
+        # Make sure Image precedes cmd_args.
+        conman_args += [self._image(args)]
+        conman_args += cmd_args
+
+        if args.dryrun:
+            dry_run(conman_args)
+            return True
+
+        exec_cmd(conman_args, args.debug, debug=args.debug)
+        return True
+
     def run(self, args):
+        if hasattr(args, "name") and args.name:
+            if not args.container:
+                raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
+
         prompt = "You are a helpful assistant"
         if args.ARGS:
             prompt = " ".join(args.ARGS)
@@ -203,7 +245,11 @@ class Model:
             input = sys.stdin.read()
             prompt = input + "\n\n" + prompt
 
-        model_path = self.pull(args)
+        if args.dryrun:
+            model_path = "/path/to/" + self.model
+        else:
+            model_path = self.pull(args)
+
         exec_args = ["llama-cli", "-m", model_path, "--in-prefix", "", "--in-suffix", ""]
 
         if not args.debug:
@@ -221,6 +267,8 @@ class Model:
             exec_args.extend(self.gpu_args())
 
         try:
+            if self.exec_model_in_container(exec_args, args):
+                return
             exec_cmd(exec_args, args.debug, debug=args.debug)
         except FileNotFoundError as e:
             if in_container():
@@ -228,7 +276,15 @@ class Model:
             raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
 
     def serve(self, args):
-        model_path = self.pull(args)
+        if hasattr(args, "name") and args.name:
+            if not args.container and not args.generate:
+                raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
+
+        if args.dryrun:
+            model_path = "/path/to/model"
+        else:
+            model_path = self.pull(args)
+
         exec_args = ["llama-server", "--port", args.port, "-m", model_path]
         if args.runtime == "vllm":
             exec_args = ["vllm", "serve", "--port", args.port, model_path]
@@ -245,6 +301,8 @@ class Model:
             return self.kube(model_path, args, exec_args)
 
         try:
+            if self.exec_model_in_container(exec_args, args):
+                return
             exec_cmd(exec_args, debug=args.debug)
         except FileNotFoundError as e:
             if in_container():

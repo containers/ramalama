@@ -64,9 +64,6 @@ def main(args):
 
     # Process CLI
     try:
-        if ramalama.run_container(args):
-            return
-
         args.func(args)
     except ramalama.HelpException:
         parser.print_help()
