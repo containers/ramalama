@@ -197,6 +197,13 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
     parser.add_argument(
+        "--gpu",
+        dest="gpu",
+        default=False,
+        action="store_true",
+        help="offload the workload to the GPU",
+    )
+    parser.add_argument(
         "--runtime",
         default=config.get("runtime"),
         choices=["llama.cpp", "vllm"],
