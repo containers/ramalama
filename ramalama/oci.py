@@ -9,7 +9,9 @@ from ramalama.common import run_cmd, exec_cmd, perror, available
 
 prefix = "oci://"
 
-ocilabel = "org.containers.type=ai.image.model"
+ocilabeltype = "org.containers.type"
+ociimage_raw = "org.containers.type=ai.image.model.raw"
+ociimage_car = "org.containers.type=ai.image.model.car"
 
 
 def list_models(args):
@@ -21,7 +23,7 @@ def list_models(args):
         conman,
         "images",
         "--filter",
-        f"label={ocilabel}",
+        f"label={ocilabeltype}",
         "--format",
         '{"name":"oci://{{ index .Names 0 }}","modified":"{{ .Created }}","size":"{{ .Size }}"},',
     ]
@@ -88,23 +90,32 @@ pip install omlmd
     def _build(self, source, target, args):
         print(f"Building {target}...")
         src = os.path.realpath(source)
-        model_name = os.path.basename(source)
         contextdir = os.path.dirname(src)
         model = os.path.basename(src)
+        model_name = os.path.basename(source)
+        model_raw = f"""\
+FROM {args.image} as builder
+RUN mkdir -p /mnt/models; cd /mnt/models; ln -s {model_name} model.file
+
+FROM scratch
+COPY --from=builder /mnt/models /
+COPY {model} /{model_name}
+LABEL {ociimage_raw}
+"""
+        model_car = f"""\
+FROM {args.carimage}
+RUN mkdir -p /models; cd /models; ln -s {model_name} model.file
+COPY {model} /models/{model_name}
+LABEL {ociimage_car}
+"""
+
         containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=False)
         # Open the file for writing.
         with open(containerfile.name, 'w') as c:
-            c.write(
-                f"""\
-FROM {args.image} as builder
-RUN mkdir -p /run/model; cd /run/model; ln -s {model_name} model.file
-
-FROM scratch
-COPY --from=builder /run/model /
-COPY {model} /{model_name}
-LABEL {ocilabel}
-"""
-            )
+            if args.type == "car":
+                c.write(model_car)
+            else:
+                c.write(model_raw)
         run_cmd(
             [self.conman, "build", "-t", target, "-f", containerfile.name, contextdir], stdout=None, debug=args.debug
         )
@@ -143,7 +154,7 @@ LABEL {ocilabel}
         if args.engine:
             try:
                 run_cmd([args.engine, "pull", self.model], debug=args.debug)
-                return "/run/model/model.file"
+                return "/mnt/models/model.file"
             except subprocess.CalledProcessError:
                 pass
         return self._pull_omlmd(args)

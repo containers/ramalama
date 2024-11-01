@@ -112,11 +112,11 @@ spec:
   - name: tini
     image: quay.io/ramalama/ramalama:latest
     command: ["llama-server"]
-    args: ['--port', '8080', '-m', '/run/model']
+    args: ['--port', '8080', '-m', '/mnt/models']
     ports:
     - containerPort: 8080
     volumeMounts:
-    - mountPath: /run/model
+    - mountPath: /mnt/models
       name: model
     - mountPath: /dev/dri
       name: dri

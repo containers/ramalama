@@ -23,6 +23,17 @@ Print usage message
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
 
+#### **--type**=*raw* | *car*
+
+type of OCI Model Image to push.
+
+| Type | Description                                                   |
+| ---- | ------------------------------------------------------------- |
+| car  | Includes base image with the model stored in a /models subdir |
+| raw  | Only the model and a link file model.file to it stored at /   |
+
+Only supported for pushing OCI Model Images.
+
 ## EXAMPLE
 
 Push and OCI model to registry
