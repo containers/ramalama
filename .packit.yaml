@@ -25,6 +25,7 @@ jobs:
     targets: &fedora_copr_targets
       - fedora-development
       - fedora-latest-stable
+    osh_diff_scan_after_copr_build: false
 
   # Copr builds for CentOS Stream
   - job: copr_build
