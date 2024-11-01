@@ -11,11 +11,7 @@
 %global _python_dist_allow_version_zero 1
 
 # Temporary removal while we work on getting omlmd package.
-%if 0%{?fedora} >= 40
 %global __requires_exclude omlmd
-%else
-%global __requires_exclude omlmd|huggingface-hub
-%endif
 
 Name: python-%{pypi_name}
 # DO NOT TOUCH the Version string!
@@ -64,11 +60,9 @@ will run the AI Models within a container based on the OCI image.
 %package -n python%{python3_pkgversion}-%{pypi_name}
 Requires: podman
 %if 0%{?fedora} >= 40
-Requires: python%{python3_pkgversion}-huggingface-hub
 Requires: python%{python3_pkgversion}-tqdm
 %else
 Recommends: python%{python3_pkgversion}-tqdm
-Recommends: python%{python3_pkgversion}-huggingface-hub
 %endif
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
