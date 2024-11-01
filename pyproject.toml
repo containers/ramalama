@@ -5,7 +5,6 @@ dependencies = [
   "argcomplete",
   "tqdm",
   "omlmd",
-  "huggingface_hub",
 ]
 requires-python = ">= 3.8"
 maintainers = [
