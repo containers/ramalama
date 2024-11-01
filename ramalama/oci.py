@@ -124,7 +124,7 @@ LABEL {ocilabel}
                 self._build(source, target, args)
                 try:
                     conman_args.extend([target])
-                    run_cmd(conman_args)
+                    run_cmd(conman_args, debug=args.debug)
                     return
                 except subprocess.CalledProcessError as e:
                     perror(f"Failed to push {source} model to OCI: {e}")
@@ -133,12 +133,22 @@ LABEL {ocilabel}
                 pass
         try:
             conman_args.extend([source, target])
-            run_cmd(conman_args)
+            run_cmd(conman_args, debug=args.debug)
         except subprocess.CalledProcessError as e:
             perror(f"Failed to push {source} model to OCI {target}: {e}")
             raise e
 
     def pull(self, args):
+        print(f"Downloading {self.model}...")
+        if args.engine:
+            try:
+                run_cmd([args.engine, "pull", self.model], debug=args.debug)
+                return "/run/model/model.file"
+            except subprocess.CalledProcessError:
+                pass
+        return self._pull_omlmd(args)
+
+    def _pull_omlmd(self, args):
         try:
             registry, reference = self.model.split("/", 1)
         except Exception:
@@ -147,10 +157,9 @@ LABEL {ocilabel}
 
         reference_dir = reference.replace(":", "/")
         outdir = f"{args.store}/repos/oci/{registry}/{reference_dir}"
-        print(f"Downloading {self.model}...")
         # note: in the current way RamaLama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir)
         # since cannot use modules/sdk, can use only cli bindings from pip installs
-        run_cmd([self.omlmd, "pull", self.model, "--output", outdir])
+        run_cmd([self.omlmd, "pull", self.model, "--output", outdir], debug=args.debug)
         ggufs = [file for file in os.listdir(outdir) if file.endswith(".gguf")]
         if len(ggufs) != 1:
             raise KeyError(f"unable to identify .gguf file in: {outdir}")
@@ -163,8 +172,7 @@ LABEL {ocilabel}
             # Symlink is already correct, no need to update it
             return model_path
 
-        run_cmd(["ln", "-sf", relative_target_path, model_path])
-
+        run_cmd(["ln", "-sf", relative_target_path, model_path], debug=args.debug)
         return model_path
 
     def model_path(self, args):

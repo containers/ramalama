@@ -2,7 +2,7 @@
 
 load helpers
 
-verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable -e RAMALAMA_TRANSPORT --name"
+verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name"
 
 @test "ramalama --dryrun serve basic output" {
     skip_if_nocontainer
@@ -17,10 +17,10 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable -e RAM
     is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
     is "$output" ".*${model}" "verify model name"
 
-    run_ramalama --dryrun serve --name foobar MODEL
-    is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
+    run_ramalama 1 serve --name foobar MODEL
+    is "$output" ".*Error: failed to pull .*MODEL" "dryrun correct with --name"
 
-    run_ramalama 22 --nocontainer serve --name foobar MODEL
+    run_ramalama 1 --nocontainer serve --name foobar tiny
     is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
     run_ramalama stop --all
 }
