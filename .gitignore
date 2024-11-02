@@ -9,3 +9,6 @@ ramalama/*.patch
 dist
 .#*
 venv/
+*.container
+*.image
+*.volume

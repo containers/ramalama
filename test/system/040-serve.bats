@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 
 load helpers
+load helpers.registry
+load setup_suite
 
 verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name"
 
@@ -117,13 +119,58 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     model=tiny
     name=c_$(safename)
     run_ramalama pull ${model}
-    run_ramalama serve --name=${name} --port 1234 --generate=quadlet ${model}
+    run_ramalama serve --port 1234 --generate=quadlet ${model}
+    is "$output" "Generating quadlet file: tinyllama.container" "generate tinllama.container"
+
+    run cat tinyllama.container
     is "$output" ".*PublishPort=1234" "PublishPort should match"
-    is "$output" ".*Name=${name}" "Quadlet should have name field"
     is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
-    run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus ${model}
+    is "$output" ".*Volume=.*ollama/tinyllama" "Volume line should be correct"
+
+    rm tinyllama.container
+    run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus tiny
     is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from 'quadlet', 'kube')" "Should fail"
 }
+
+@test "ramalama serve --generate=quadlet with OCI" {
+    skip_if_darwin
+    skip_if_docker
+    local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
+    local authfile=$RAMALAMA_TMPDIR/authfile.json
+
+    name=c_$(safename)
+    start_registry
+    run_ramalama login --authfile=$authfile \
+	--tls-verify=false \
+	--username ${PODMAN_LOGIN_USER} \
+	--password ${PODMAN_LOGIN_PASS} \
+	oci://$registry
+    run_ramalama pull tiny
+    run_ramalama push --authfile=$authfile --tls-verify=false tiny oci://$registry/tiny
+    run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://$registry/tiny
+    is "$output" ".*Generating quadlet file: ${name}.container" "generate .container file"
+    is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
+    is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
+
+    run cat $name.container
+    is "$output" ".*PublishPort=1234" "PublishPort should match"
+    is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
+    is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
+    is "$output" ".*Mount=type=volume,source=${name}.volume,dest=/mnt/models,ro" "Volume line should be correct"
+
+    run cat $name.volume
+    is "$output" ".*Driver=image" "Driver Image"
+    is "$output" ".*Image=$name.image" "Image should exist"
+
+    run cat $name.image
+    is "$output" ".*Image=$registry/tiny" "Image should match"
+
+    rm $name.container
+    rm $name.volume
+    rm $name.image
+    stop_registry
+}
+
 
 @test "ramalama serve --generate=kube" {
     model=tiny

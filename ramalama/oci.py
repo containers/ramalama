@@ -153,8 +153,14 @@ LABEL {ociimage_car}
         print(f"Downloading {self.model}...")
         if args.engine:
             try:
-                run_cmd([args.engine, "pull", self.model], debug=args.debug)
-                return "/mnt/models/model.file"
+                conman_args = [args.engine, "pull"]
+                if str(args.tlsverify).lower() == "false":
+                    conman_args.extend([f"--tls-verify={args.tlsverify}"])
+                if args.authfile:
+                    conman_args.extend([f"--authfile={args.authfile}"])
+                conman_args.extend([self.model])
+                run_cmd(conman_args, debug=args.debug)
+                return "/run/model/model.file"
             except subprocess.CalledProcessError:
                 pass
         return self._pull_omlmd(args)
