@@ -26,6 +26,9 @@ main() {
     maybe_sudo="sudo"
   fi
 
+  # verify pyproject.toml and setup.py have same version
+  grep "$(grep "^version =.*" pyproject.toml)" setup.py
+
   local os
   os="$(uname -s)"
   binfile=bin/ramalama
