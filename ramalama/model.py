@@ -215,9 +215,9 @@ class Model:
             return False
 
         if os.path.exists(model):
-            conman_args += [f"-v{self.model}:/run/model/model.file,ro"]
+            conman_args += [f"-v{self.model}:/mnt/models/model.file,ro"]
         else:
-            conman_args += [f"--mount=type=image,src={self.model},destination=/run/model,rw=false"]
+            conman_args += [f"--mount=type=image,src={self.model},destination=/mnt/models,rw=false"]
 
         # Make sure Image precedes cmd_args.
         conman_args += [self._image(args)]
@@ -318,10 +318,13 @@ class Model:
         if hasattr(args, "name") and args.name:
             name_string = f"ContainerName={args.name}"
 
+        if hasattr(args, "MODEL"):
+            model = args.MODEL
+
         print(
             f"""
 [Unit]
-Description=RamaLama {args.UNRESOLVED_MODEL} AI Model Service
+Description=RamaLama {model} AI Model Service
 After=local-fs.target
 
 [Container]
@@ -329,7 +332,7 @@ AddDevice=-/dev/dri
 AddDevice=-/dev/kfd
 Exec={" ".join(exec_args)}
 Image={default_image()}
-Volume={model}:/run/model:ro,z
+Volume={model}:/mnt/models:ro,z
 {name_string}
 {port_string}
 
@@ -356,7 +359,7 @@ WantedBy=multi-user.target default.target
     def _gen_volumes(self, model, args):
         mounts = """\
     volumeMounts:
-    - mountPath: /run/model
+    - mountPath: /mnt/models
       name: model"""
 
         volumes = f"""

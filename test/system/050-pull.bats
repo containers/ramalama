@@ -74,20 +74,25 @@ load setup_suite
 	oci://$registry
     run_ramalama pull tiny
     run_ramalama push --authfile=$authfile --tls-verify=false tiny oci://$registry/tiny
+    run_ramalama push --authfile=$authfile --tls-verify=false --type car tiny oci://$registry/tiny-car
 
     tmpfile=${RAMALAMA_TMPDIR}/mymodel
     random=$(random_string 30)
     echo $random > $tmpfile
-    run_ramalama push --authfile=$authfile --tls-verify=false $tmpfile oci://$registry/mymodel
+    run_ramalama push --authfile=$authfile --tls-verify=false --type raw $tmpfile oci://$registry/mymodel
+
 
     run_ramalama list
     is "$output" ".*oci://$registry/tiny" "OCI image exists in list"
+    is "$output" ".*oci://$registry/tiny-car" "OCI image exists in list"
     is "$output" ".*oci://$registry/mymodel" "OCI image exists in list"
 
     run_ramalama rm oci://$registry/tiny
+    run_ramalama rm oci://$registry/tiny-car
     run_ramalama rm oci://$registry/mymodel
 
     run_ramalama list
+    assert "$output" !~ ".*oci://$registry/tiny-car" "OCI image does not exist in list"
     assert "$output" !~ ".*oci://$registry/tiny" "OCI image does not exist in list"
     assert "$output" !~ ".*oci://$registry/mymodel" "OCI image does not exist in list"
 

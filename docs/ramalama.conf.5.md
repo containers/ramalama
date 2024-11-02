@@ -9,11 +9,21 @@ RamaLama reads the ramalama.conf file, if it exists
 and modify the defaults for running RamaLama on the host. ramalama.conf uses
 a TOML format that can be easily modified and versioned.
 
-RamaLama reads the __/usr/share/ramalama/ramalama.conf__,
-__/etc/ramalama/ramalama.conf__, and __/etc/ramalama/ramalama.conf.d/\*.conf__
-for global configuration that effects all users.
-For user specific configuration it reads __$XDG_CONFIG_HOME/ramalama/ramalama.conf__ and
-__$XDG_CONFIG_HOME/ramalama/ramalama.conf.d/\*.conf__ files. When `$XDG_CONFIG_HOME` is not set it falls back to using `$HOME/.config` instead.
+RamaLama reads the he following paths for global configuration that effects all users.
+
+| Paths       |
+| -----------------------------------       |
+| __/usr/share/ramalama/ramalama.conf__     |
+| __/etc/ramalama/ramalama.conf__           |
+| __/etc/ramalama/ramalama.conf.d/\*.conf__ |
+
+For user specific configuration it reads
+
+| Paths                                       | Exception |
+| -----------------------------------         | ------------------------------ |
+| __$XDG_CONFIG_HOME/ramalama/ramalama.conf__ |                                        |
+| __$XDG_CONFIG_HOME/ramalama/ramalama.conf.d/\*.conf__ |                              |
+| __$HOME/.config/ramalama/ramalama.conf.d/\*.conf__ | When `$XDG_CONFIG_HOME` not set |
 
 Fields specified in ramalama conf override the default options, as well as
 options in previously read ramalama.conf files.
@@ -44,29 +54,18 @@ TOML can be simplified to:
 ## RAMALAMA TABLE
 The ramalama table contains settings to configure and manage the OCI runtime.
 
-# The RamaLama configuration file specifies all of the available configuration
-# command-line options/flags for container engine tools like Podman & Buildah,
-# but in a TOML format that can be easily modified and versioned.
-
-# Please refer to ramalama.conf(5) for details of all configuration options.
-# Not all container engines implement all of the options.
-# All of the options have hard coded defaults and these options will override
-# the built in defaults. Users can then override these options via the command
-# line. Container engines will read ramalama.conf files in up to three
-# locations in the following order:
-#  1. /usr/share/ramalama/ramalama.conf
-#  2. /etc/ramalama/ramalama.conf
-#  3. $XDG_CONFIG_HOME/ramalama/ramalama.conf or
-#     $HOME/.config/ramalama/ramalama.conf if $XDG_CONFIG_HOME is not set
-#  Items specified in the latter ramalama.conf, if they exist, override the
-# previous ramalama.conf settings, or the default settings.
-
 [ramalama]
 
 **container**=true
 
 Run RamaLama in the default container.
 RAMALAMA_IN_CONTAINER environment variable overrides this field.
+
+**carimage**="registry.access.redhat.com/ubi9-micro:latest"
+
+OCI Model Car image
+
+Image to be used when building and pushing --type=car models
 
 **engine**="podman"
 

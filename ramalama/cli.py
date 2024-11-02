@@ -104,6 +104,7 @@ def load_and_merge_config():
             'RAMALAMA_IN_CONTAINER', ramalama_config.get('container', use_container())
         )
 
+    ramalama_config['carimage'] = ramalama_config.get('carimage', "registry.access.redhat.com/ubi9-micro:latest")
     ramalama_config['runtime'] = ramalama_config.get('runtime', 'llama.cpp')
     ramalama_config['store'] = os.getenv('RAMALAMA_STORE', ramalama_config.get('store', get_store()))
     ramalama_config['transport'] = os.getenv('RAMALAMA_TRANSPORT', ramalama_config.get('transport', "ollama"))
@@ -524,9 +525,28 @@ def pull_cli(args):
 
 
 def push_parser(subparsers):
-    parser = subparsers.add_parser("push", help="push AI Model from local storage to remote registry")
+    parser = subparsers.add_parser(
+        "push",
+        help="push AI Model from local storage to remote registry",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--carimage",
+        default=config['carimage'],
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--type",
+        default="raw",
+        choices=["car", "raw"],
+        help="""\
+type of OCI Model Image to push.
+
+Model "car" includes base image with the model stored in a /models subdir.
+Model "raw" contains the model and a link file model.file to it stored at /.""",
+    )
     parser.add_argument(
         "--tls-verify",
         dest="tlsverify",
