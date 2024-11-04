@@ -17,6 +17,9 @@ For REST API endpoint documentation, see: [https://github.com/ggerganov/llama.cp
 
 ## OPTIONS
 
+#### **--authfile**=*password*
+path of the authentication file for OCI registries
+
 #### **--detach**, **-d**
 Run the container in the background and print the new container ID.
 The default is TRUE. The --nocontainer option forces this option to False.
@@ -40,14 +43,17 @@ Name of the container to run the Model in.
 #### **--port**, **-p**
 port for AI Model server to listen on
 
+#### **--tls-verify**=*true*
+require HTTPS and verify certificates when contacting OCI registries
+
 ## EXAMPLES
 ### Run two AI Models at the same time. Notice both are running within Podman Containers.
 ```
 
-$ ramalama serve -p 8080 --name mymodel ollama://tiny-llm:latest
+$ ramalama serve -d -p 8080 --name mymodel ollama://tiny-llm:latest
 09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
 
-$ ramalama serve -n example --port 8081 oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
+$ ramalama serve -d -n example --port 8081 oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
 3f64927f11a5da5ded7048b226fbe1362ee399021f5e8058c73949a677b6ac9c
 
 $ podman ps
@@ -56,11 +62,12 @@ CONTAINER ID  IMAGE                             COMMAND               CREATED   
 3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8082->8082/tcp  ramalama_YMPQvJxN97
 ```
 
-### Generate a quadlet for running the AI Model service
+### Generate quadlet service off of HuggingFace granite Model
 ```
-$ ramalama serve --name MyGraniteServer --generate=quadlet granite > $HOME/.config/containers/systemd/MyGraniteServer.container
-$ cat $HOME/.config/containers/systemd/MyGraniteServer.container
+$ ramalama serve --name MyGraniteServer --generate=quadlet granite
+Generating quadlet file: MyGraniteServer.container
 
+$ cat MyGraniteServer.container
 [Unit]
 Description=RamaLama granite AI Model Service
 After=local-fs.target
@@ -74,24 +81,65 @@ Volume=/home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite
 ContainerName=MyGraniteServer
 PublishPort=8080
 
-[Install]
-# Start by default on boot
-WantedBy=multi-user.target default.target
+$ mv  MyGraniteServer.container $HOME/.config/containers/systemd/
 $ systemctl --user daemon-reload
 $ systemctl start --user MyGraniteServer
 $ systemctl status --user MyGraniteServer
 ● MyGraniteServer.service - RamaLama granite AI Model Service
      Loaded: loaded (/home/dwalsh/.config/containers/systemd/MyGraniteServer.container; generated)
     Drop-In: /usr/lib/systemd/user/service.d
-	     └─10-timeout-abort.conf
+            └─10-timeout-abort.conf
      Active: active (running) since Fri 2024-09-27 06:54:17 EDT; 3min 3s ago
    Main PID: 3706287 (conmon)
       Tasks: 20 (limit: 76808)
      Memory: 1.0G (peak: 1.0G)
+
 ...
 $ podman ps
 CONTAINER ID  IMAGE                             COMMAND               CREATED        STATUS        PORTS                    NAMES
 7bb35b97a0fe  quay.io/ramalama/ramalama:latest  llama-server --po...  3 minutes ago  Up 3 minutes  0.0.0.0:43869->8080/tcp  MyGraniteServer
+```
+
+### Generate quadlet service off of tiny OCI Model
+```
+$ ramalama --runtime=vllm serve --name tiny --generate=quadlet oci://quay.io/rhatdan/tiny:latest
+Downloading quay.io/rhatdan/tiny:latest...
+Trying to pull quay.io/rhatdan/tiny:latest...
+Getting image source signatures
+Copying blob 65ba8d40e14a skipped: already exists
+Copying blob e942a1bf9187 skipped: already exists
+Copying config d8e0b28ee6 done   |
+Writing manifest to image destination
+Generating quadlet file: tiny.container
+Generating quadlet file: tiny.image
+Generating quadlet file: tiny.volume
+
+$cat tiny.container
+[Unit]
+Description=RamaLama /run/model/model.file AI Model Service
+After=local-fs.target
+
+[Container]
+AddDevice=-/dev/dri
+AddDevice=-/dev/kfd
+Exec=vllm serve --port 8080 /run/model/model.file
+Image=quay.io/ramalama/ramalama:latest
+Mount=type=volume,source=tiny:latest.volume,dest=/mnt/models,ro
+ContainerName=tiny
+PublishPort=8080
+
+[Install]
+# Start by default on boot
+WantedBy=multi-user.target default.target
+
+$ cat tiny.volume
+[Volume]
+Driver=image
+Image=tiny:latest.image
+
+$ cat tiny.image
+[Image]
+Image=quay.io/rhatdan/tiny:latest
 ```
 
 ### Generate a kubernetes YAML file named tini

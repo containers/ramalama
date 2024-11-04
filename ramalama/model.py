@@ -12,6 +12,7 @@ from ramalama.common import (
     run_cmd,
 )
 from ramalama.version import version
+from ramalama.quadlet import Quadlet
 
 
 file_not_found = """\
@@ -310,37 +311,8 @@ class Model:
             raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
 
     def quadlet(self, model, args, exec_args):
-        port_string = ""
-        if hasattr(args, "port"):
-            port_string = f"PublishPort={args.port}"
-
-        name_string = ""
-        if hasattr(args, "name") and args.name:
-            name_string = f"ContainerName={args.name}"
-
-        if hasattr(args, "MODEL"):
-            model = args.MODEL
-
-        print(
-            f"""
-[Unit]
-Description=RamaLama {model} AI Model Service
-After=local-fs.target
-
-[Container]
-AddDevice=-/dev/dri
-AddDevice=-/dev/kfd
-Exec={" ".join(exec_args)}
-Image={default_image()}
-Volume={model}:/mnt/models:ro,z
-{name_string}
-{port_string}
-
-[Install]
-# Start by default on boot
-WantedBy=multi-user.target default.target
-"""
-        )
+        quadlet = Quadlet(model, args, exec_args)
+        quadlet.gen_container()
 
     def _gen_ports(self, args):
         if not hasattr(args, "port"):
