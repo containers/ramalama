@@ -25,7 +25,7 @@ def list_models(args):
         "--filter",
         f"label={ocilabeltype}",
         "--format",
-        '{"name":"oci://{{ index .Names 0 }}","modified":"{{ .Created }}","size":"{{ .Size }}"},',
+        '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .Created }}","size":"{{ .Size }}"},',
     ]
     output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
     if output == "":
@@ -95,11 +95,11 @@ pip install omlmd
         model_name = os.path.basename(source)
         model_raw = f"""\
 FROM {args.image} as builder
-RUN mkdir -p /mnt/models; cd /mnt/models; ln -s {model_name} model.file
+RUN mkdir -p /models; cd /models; ln -s {model_name} model.file
 
 FROM scratch
-COPY --from=builder /mnt/models /
-COPY {model} /{model_name}
+COPY --from=builder /models /models
+COPY {model} /models/{model_name}
 LABEL {ociimage_raw}
 """
         model_car = f"""\
@@ -160,7 +160,7 @@ LABEL {ociimage_car}
                     conman_args.extend([f"--authfile={args.authfile}"])
                 conman_args.extend([self.model])
                 run_cmd(conman_args, debug=args.debug)
-                return "/run/model/model.file"
+                return "/mnt/model/model.file"
             except subprocess.CalledProcessError:
                 pass
         return self._pull_omlmd(args)

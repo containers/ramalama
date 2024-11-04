@@ -57,10 +57,10 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     run -0 ${conman} inspect1 $cid
 
     run_ramalama ps
-    is "$output" ".*${container1}" "list correct for for container1"
+    is "$output" ".*${container1}" "list correct for container1"
 
     run_ramalama containers --noheading
-    is "$output" ".*${container1}" "list correct for for container1"
+    is "$output" ".*${container1}" "list correct for container1"
     run_ramalama stop ${container1}
 
     run_ramalama serve --name ${container2} -d ${model}
@@ -138,36 +138,46 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
     local authfile=$RAMALAMA_TMPDIR/authfile.json
 
-    name=c_$(safename)
     start_registry
+
     run_ramalama login --authfile=$authfile \
 	--tls-verify=false \
 	--username ${PODMAN_LOGIN_USER} \
 	--password ${PODMAN_LOGIN_PASS} \
 	oci://$registry
+
     run_ramalama pull tiny
-    run_ramalama push --authfile=$authfile --tls-verify=false tiny oci://$registry/tiny
-    run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://$registry/tiny
-    is "$output" ".*Generating quadlet file: ${name}.container" "generate .container file"
-    is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
-    is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
 
-    run cat $name.container
-    is "$output" ".*PublishPort=1234" "PublishPort should match"
-    is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
-    is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
-    is "$output" ".*Mount=type=volume,source=${name}.volume,dest=/mnt/models,ro" "Volume line should be correct"
+    for modeltype in "" "--type=car" "--type=raw"; do
+	name=c_$(safename)
+	run_ramalama push $modeltype --authfile=$authfile --tls-verify=false tiny oci://$registry/tiny
+	run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://$registry/tiny
+	is "$output" ".*Generating quadlet file: ${name}.container" "generate .container file"
+	is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
+	is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
 
-    run cat $name.volume
-    is "$output" ".*Driver=image" "Driver Image"
-    is "$output" ".*Image=$name.image" "Image should exist"
+	run cat $name.container
+	is "$output" ".*PublishPort=1234" "PublishPort should match"
+	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
+	is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
+	is "$output" ".*Mount=type=volume,source=${name}.volume,dest=/mnt/models,subpath=/mounts,ro" "Volume line should be correct"
 
-    run cat $name.image
-    is "$output" ".*Image=$registry/tiny" "Image should match"
+	run cat $name.volume
+	is "$output" ".*Driver=image" "Driver Image"
+	is "$output" ".*Image=$name.image" "Image should exist"
 
-    rm $name.container
-    rm $name.volume
-    rm $name.image
+	run cat $name.image
+	is "$output" ".*Image=$registry/tiny" "Image should match"
+
+	run_ramalama list
+	is "$output" ".*oci://$registry/tiny" "Image should match"
+
+	rm $name.container
+	rm $name.volume
+	rm $name.image
+
+	run_ramalama rm oci://$registry/tiny:latest
+    done
     stop_registry
 }
 
