@@ -20,7 +20,8 @@ select_container_manager() {
 
 add_build_platform() {
   conman_build+=("build" "--platform" "$platform")
-  conman_build+=("-t" "quay.io/ramalama/$image_name" ".")
+  conman_build+=("-t" "quay.io/ramalama/$image_name")
+  conman_build+=("-f" "$image_name/Containerfile" ".")
 }
 
 rm_container_image() {
@@ -30,9 +31,8 @@ rm_container_image() {
 }
 
 build() {
-  cd "$1"
-  local image_name
-  image_name=$(echo "$1" | sed "s#container-images/##g")
+  cd "container-images"
+  local image_name="${1//container-images\//}"
   local conman_build=("${conman[@]}")
   local conman_show_size=("${conman[@]}" "images" "--filter" "reference='quay.io/ramalama/$image_name'")
   if [ "$#" -lt 2 ]; then
@@ -65,7 +65,8 @@ main() {
   select_container_manager
   local conman=("$conman_bin")
   local platform="linux/amd64"
-  if [ "$(uname -m)" = "aarch64" ] || ([ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]); then
+  if [ "$(uname -m)" = "aarch64" ] || \
+    { [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; }; then
     platform="linux/arm64"
   fi
 
@@ -78,6 +79,10 @@ main() {
 
   if [ "$target" = "all" ]; then
     for i in container-images/*; do
+      if [ "$i" == "container-images/scripts" ]; then
+        continue
+      fi
+
       build "$i" "${@:2}"
     done
   else

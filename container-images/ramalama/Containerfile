@@ -39,26 +39,10 @@ RUN dnf install -y glslang && \
     dnf clean all && \
     rm -rf /var/cache/*dnf*
 
-RUN git clone --recursive https://github.com/ggerganov/llama.cpp && \
-    cd llama.cpp && \
-    git reset --hard ${LLAMA_CPP_SHA} && \
-    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_KOMPUTE=1 \
-      -DGGML_CCACHE=0 && \
-    cmake --build build --config Release -j $(nproc) && \
-    cmake --install build && \
-    cd / && \
-    rm -rf llama.cpp
-
-RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
-    cd whisper.cpp && \
-    git reset --hard ${WHISPER_CPP_SHA} && \
-    cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr -DGGML_KOMPUTE=1 \
-      -DGGML_CCACHE=0 && \
-    cmake --build build --config Release -j $(nproc) && \
-    mv build/bin/main /usr/bin/whisper-main && \
-    mv build/bin/server /usr/bin/whisper-server && \
-    cd / && \
-    rm -rf whisper.cpp
+COPY ../scripts /scripts
+RUN chmod +x /scripts/*.sh && \
+    /scripts/build_llama_and_whisper.sh "$LLAMA_CPP_SHA" "$WHISPER_CPP_SHA" \
+      "/usr" "-DGGML_KOMPUTE=1"
 
 ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
 ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}
