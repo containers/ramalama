@@ -64,6 +64,13 @@ class Huggingface(Model):
     def path(self, args):
         return self.model_path(args)
 
+    def exists(self, args):
+        model_path = self.model_path(args)
+        if not os.path.exists(model_path):
+            return None
+
+        return model_path
+
     def pull(self, args):
         model_path = self.model_path(args)
         directory_path = os.path.join(args.store, "repos", "huggingface", self.directory, self.filename)

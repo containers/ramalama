@@ -81,6 +81,13 @@ class Ollama(Model):
         model_path = os.path.join(models, f"{model_base}:{model_tag}")
         return model_path, models, model_base, model_name, model_tag
 
+    def exists(self, args):
+        model_path, _, _, _, _ = self._local(args)
+        if not os.path.exists(model_path):
+            return None
+
+        return model_path
+
     def path(self, args):
         model_path, _, _, _, _ = self._local(args)
         if not os.path.exists(model_path):

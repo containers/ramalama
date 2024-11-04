@@ -176,6 +176,15 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	rm $name.volume
 	rm $name.image
 
+	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://$registry/tiny
+	is "$output" ".*command: \[\"vllm\"\]" "command is correct"
+	is "$output" ".*args: \['serve', '--port', '1234', '/mnt/models/model.file'\]" "args is correct"
+    
+
+	is "$output" ".*image: quay.io/ramalama/ramalama:latest" "image is correct"
+	is "$output" ".*reference: $registry/tiny" "AI image should be created"
+	is "$output" ".*pullPolicy: IfNotPresent" "pullPolicy should exist"
+
 	run_ramalama rm oci://$registry/tiny:latest
     done
     stop_registry

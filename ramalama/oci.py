@@ -215,3 +215,21 @@ LABEL {ociimage_car}
         if self.conman is not None:
             conman_args = [self.conman, "rmi", "--force", self.model]
             exec_cmd(conman_args, debug=args.debug)
+
+    def exists(self, args):
+        try:
+            model_path = self.model_path(args)
+            if os.path.exists(model_path):
+                return model_path
+        except FileNotFoundError:
+            pass
+
+        if self.conman is None:
+            return None
+
+        conman_args = [self.conman, "image", "inspect", self.model]
+        try:
+            run_cmd(conman_args, debug=args.debug)
+            return self.model
+        except Exception:
+            return None

@@ -142,39 +142,50 @@ $ cat tiny.image
 Image=quay.io/rhatdan/tiny:latest
 ```
 
-### Generate a kubernetes YAML file named tini
+### Generate a kubernetes YAML file named MyTinyModel
 ```
-$ ramalama serve --name tini --generate kube tiny
+$ ramalama serve --name MyTinyModel --generate=kube oci://quay.io/rhatdan/tiny-car:latest 
 # Save the output of this file and use kubectl create -f to import
 # it into Kubernetes.
 #
-# Created with ramalama-0.0.17
+# Created with ramalama-0.0.21
 apiVersion: v1
 kind: Deployment
 metadata:
+  name: MyTinyModel
   labels:
-    app: tini
-  name: tini
+    app: MyTinyModel
 spec:
-  containers:
-  - name: tini
-    image: quay.io/ramalama/ramalama:latest
-    command: ["llama-server"]
-    args: ['--port', '8080', '-m', '/mnt/models']
-    ports:
-    - containerPort: 8080
-    volumeMounts:
-    - mountPath: /mnt/models
-      name: model
-    - mountPath: /dev/dri
-      name: dri
-  volumes:
-  - name model
-    hostPath:
-      path: /home/dwalsh/.local/share/ramalama/models/ollama/tinyllama:latest"
-  - name dri
-    hostPath:
-      path: /dev/dri
+  replicas: 1
+  selector:
+    matchLabels:
+      app: MyTinyModel
+  template:
+    metadata:
+      labels:
+        app: MyTinyModel
+    spec:
+      containers:
+      - name: MyTinyModel
+        image: quay.io/ramalama/ramalama:latest
+        command: ["llama-server"]
+        args: ['--port', '8080', '-m', '/mnt/models/model.file']
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - mountPath: /mnt/models
+          subPath: /models
+          name: model
+        - mountPath: /dev/dri
+          name: dri
+      volumes:
+      - image:
+          reference: quay.io/rhatdan/tiny-car:latest
+          pullPolicy: IfNotPresent
+        name: model
+      - hostPath:
+          path: /dev/dri
+        name: dri
 ```
 
 ## SEE ALSO
