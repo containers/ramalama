@@ -9,9 +9,9 @@ mac_steps() {
 }
 
 linux_steps() {
-  shellcheck -- *.sh
+  shellcheck -- *.sh */*.sh */*/*.sh
   if [ -n "$BRANCH" ]; then
-    $maybe_sudo BRANCH=$BRANCH ./install.sh
+    $maybe_sudo BRANCH="$BRANCH" ./install.sh
     return
   fi
 
@@ -28,6 +28,10 @@ main() {
 
   # verify pyproject.toml and setup.py have same version
   grep "$(grep "^version =.*" pyproject.toml)" setup.py
+
+  # verify llama.cpp version matches
+  grep "$(grep "ARG LLAMA_CPP_SHA=" container-images/ramalama/Containerfile)" \
+    container-images/cuda/Containerfile
 
   local os
   os="$(uname -s)"
@@ -54,9 +58,9 @@ main() {
   $maybe_sudo rm -rf /usr/share/ramalama /opt/homebrew/share/ramalama /usr/local/share/ramalama
   go install github.com/cpuguy83/go-md2man@latest
   tmpdir=$(mktemp -d)
-  make install DESTDIR=${tmpdir} PREFIX=/usr
-  find ${tmpdir}
-  rm -rf $tmpdir
+  make install DESTDIR="$tmpdir" PREFIX=/usr
+  find "$tmpdir"
+  rm -rf "$tmpdir"
 }
 
 main

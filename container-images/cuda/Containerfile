@@ -1,41 +1,22 @@
 # Base image with CUDA for compilation
 FROM docker.io/nvidia/cuda:12.6.2-devel-ubi9 AS builder
 
-# renovate: datasource=github-releases depName=huggingface/huggingface_hub extractVersion=^v(?<version>.*)
-ARG HUGGINGFACE_HUB_VERSION=0.26.2
-# renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
-ARG OMLMD_VERSION=0.1.6
-ARG LLAMA_CPP_SHA=3f1ae2e32cde00c39b96be6d01c2997c29bae555
+ARG LLAMA_CPP_SHA=1329c0a75e6a7defc5c380eaf80d8e0f66d7da78
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
 ARG WHISPER_CPP_SHA=0377596b77a3602e36430320cbe45f8c305ef04a
 
-ARG CUDA_DOCKER_ARCH=default
-
 # Install dependencies only needed for building
-RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
-    dnf install -y git cmake gcc-c++ python3-pip && \
+RUN dnf install -y git cmake gcc-c++ && \
     dnf clean all && rm -rf /var/cache/*dnf*
 
-# Install Python packages
-RUN pip install "huggingface_hub==${HUGGINGFACE_HUB_VERSION}" "omlmd==${OMLMD_VERSION}"
+# Set the temporary installation directory
+ENV INSTALL_PREFIX=/tmp/install
 
-# Build llama.cpp
-RUN git clone https://github.com/ggerganov/llama.cpp && cd llama.cpp && \
-    git reset --hard ${LLAMA_CPP_SHA} && \
-    cmake -B build -DGGML_CUDA=ON -DCUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH} -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined . && \
-    cmake --build build --config Release -j$(nproc) && \
-    mv build/bin/llama-cli /usr/bin/ && mv build/bin/llama-server /usr/bin/ && \
-    mv build/ggml/src/libggml.so /usr/lib/ && mv build/src/libllama.so /usr/lib/ && \
-    cd / && rm -rf llama.cpp
-
-# Build whisper.cpp
-RUN git clone https://github.com/ggerganov/whisper.cpp && cd whisper.cpp && \
-    git reset --hard ${WHISPER_CPP_SHA} && \
-    cmake -B build -DGGML_CUDA=ON -DCUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH} -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined . && \
-    cmake --build build --config Release -j$(nproc) && \
-    mv build/bin/main /usr/bin/whisper-main && mv build/bin/server /usr/bin/whisper-server && \
-    if [ -f build/lib/libwhisper.so ]; then mv build/lib/libwhisper.so /usr/lib/; fi && \
-    cd / && rm -rf whisper.cpp
+COPY ../scripts /scripts
+RUN chmod +x /scripts/*.sh && \
+    /scripts/build_llama_and_whisper.sh "$LLAMA_CPP_SHA" "$WHISPER_CPP_SHA" \
+      "$INSTALL_PREFIX" \
+      "-DGGML_CUDA=1" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined"
 
 # Final runtime image
 FROM docker.io/nvidia/cuda:12.6.2-runtime-ubi9
@@ -46,16 +27,14 @@ ARG HUGGINGFACE_HUB_VERSION=0.26.2
 ARG OMLMD_VERSION=0.1.6
 
 # Install minimal runtime dependencies
-RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
-    dnf install -y python3 python3-pip && dnf clean all && rm -rf /var/cache/*dnf*
+RUN dnf install -y python3 python3-pip && \
+    dnf clean all && \
+    rm -rf /var/cache/*dnf*
 
 # Install Python packages in the runtime image
-RUN pip install "huggingface_hub==${HUGGINGFACE_HUB_VERSION}" "omlmd==${OMLMD_VERSION}"
+RUN pip install "huggingface_hub==${HUGGINGFACE_HUB_VERSION}" \
+      "omlmd==${OMLMD_VERSION}"
 
-# Copy only necessary files from the build stage
-COPY --from=builder /usr/bin/llama-cli /usr/bin/llama-server /usr/bin/
-COPY --from=builder /usr/bin/whisper-main /usr/bin/whisper-server /usr/bin/
-COPY --from=builder /usr/lib/libggml.so /usr/lib/libllama.so /usr/lib/
+# Copy the entire installation directory from the builder
+COPY --from=builder /tmp/install /usr
 
-# Update dynamic linker cache
-RUN ldconfig || true
