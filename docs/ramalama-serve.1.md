@@ -29,10 +29,11 @@ Use the `ramalama stop` command to stop the container running the served ramalam
 #### **--generate**=type
 Generate specified configuration format for running the AI Model as a service
 
-| Key       | Description                                                      |
-| --------- | ---------------------------------------------------------------- |
-|  quadlet  | Podman supported container definition for running AI Model under systemd |
-|  kube     | Kubernetes YAML definition for running the AI Model as a service |
+| Key          | Description                                                              |
+| ------------ | -------------------------------------------------------------------------|
+| quadlet      | Podman supported container definition for running AI Model under systemd |
+| kube         | Kubernetes YAML definition for running the AI Model as a service         |
+| quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
 
 #### **--help**, **-h**
 show this help message and exit
@@ -92,7 +93,7 @@ $ systemctl status --user MyGraniteServer
 ● MyGraniteServer.service - RamaLama granite AI Model Service
      Loaded: loaded (/home/dwalsh/.config/containers/systemd/MyGraniteServer.container; generated)
     Drop-In: /usr/lib/systemd/user/service.d
-            └─10-timeout-abort.conf
+	    └─10-timeout-abort.conf
      Active: active (running) since Fri 2024-09-27 06:54:17 EDT; 3min 3s ago
    Main PID: 3706287 (conmon)
       Tasks: 20 (limit: 76808)
@@ -148,7 +149,7 @@ Image=quay.io/rhatdan/tiny:latest
 
 ### Generate a kubernetes YAML file named MyTinyModel
 ```
-$ ramalama serve --name MyTinyModel --generate=kube oci://quay.io/rhatdan/tiny-car:latest 
+$ ramalama serve --name MyTinyModel --generate=kube oci://quay.io/rhatdan/tiny-car:latest
 Generating Kubernetes YAML file: MyTinyModel.yaml
 $ cat MyTinyModel.yaml
 # Save the output of this file and use kubectl create -f to import
@@ -169,29 +170,48 @@ spec:
   template:
     metadata:
       labels:
-        app: MyTinyModel
+	app: MyTinyModel
     spec:
       containers:
       - name: MyTinyModel
-        image: quay.io/ramalama/ramalama:latest
-        command: ["llama-server"]
-        args: ['--port', '8080', '-m', '/mnt/models/model.file']
-        ports:
-        - containerPort: 8080
-        volumeMounts:
-        - mountPath: /mnt/models
-          subPath: /models
-          name: model
-        - mountPath: /dev/dri
-          name: dri
+	image: quay.io/ramalama/ramalama:latest
+	command: ["llama-server"]
+	args: ['--port', '8080', '-m', '/mnt/models/model.file']
+	ports:
+	- containerPort: 8080
+	volumeMounts:
+	- mountPath: /mnt/models
+	  subPath: /models
+	  name: model
+	- mountPath: /dev/dri
+	  name: dri
       volumes:
       - image:
-          reference: quay.io/rhatdan/tiny-car:latest
-          pullPolicy: IfNotPresent
-        name: model
+	  reference: quay.io/rhatdan/tiny-car:latest
+	  pullPolicy: IfNotPresent
+	name: model
       - hostPath:
-          path: /dev/dri
-        name: dri
+	  path: /dev/dri
+	name: dri
+```
+
+### Generate a kubernetes YAML file named MyTinyModel shown above, but also generate a quadlet to run it in.
+```
+$ ramalama --name MyTinyModel --generate=quadlet/kube oci://quay.io/rhatdan/tiny-car:latest
+run_cmd:  podman image inspect quay.io/rhatdan/tiny-car:latest
+Generating Kubernetes YAML file: MyTinyModel.yaml
+Generating quadlet file: MyTinyModel.kube
+$ cat MyTinyModel.kube
+[Unit]
+Description=RamaLama quay.io/rhatdan/tiny-car:latest Kubernetes YAML - AI Model Service
+After=local-fs.target
+
+[Kube]
+Yaml=MyTinyModel.yaml
+
+[Install]
+# Start by default on boot
+WantedBy=multi-user.target default.target
 ```
 
 ## SEE ALSO

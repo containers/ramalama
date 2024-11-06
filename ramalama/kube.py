@@ -92,7 +92,7 @@ class Kube:
         print(f"Generating Kubernetes YAML file: {outfile}")
         with open(outfile, 'w') as c:
             c.write(
-            f"""\
+                f"""\
 # Save the output of this file and use kubectl create -f to import
 # it into Kubernetes.
 #
@@ -120,4 +120,4 @@ spec:
         args: {self.exec_args[1:]}
 {port_string}
 {volume_string}"""
-        )
+            )

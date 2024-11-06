@@ -18,6 +18,25 @@ class Quadlet:
         self.args = args
         self.exec_args = exec_args
 
+    def kube(self):
+        outfile = self.name + ".kube"
+        print(f"Generating quadlet file: {outfile}")
+        with open(outfile, 'w') as c:
+            c.write(
+                f"""\
+[Unit]
+Description=RamaLama {self.model} Kubernetes YAML - AI Model Service
+After=local-fs.target
+
+[Kube]
+Yaml={self.name}.yaml
+
+[Install]
+# Start by default on boot
+WantedBy=multi-user.target default.target
+"""
+            )
+
     def generate(self):
         port_string = ""
         if hasattr(self.args, "port"):

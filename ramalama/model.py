@@ -316,6 +316,9 @@ class Model:
         if args.generate == "kube":
             return self.kube(model_path, args, exec_args)
 
+        if args.generate == "quadlet/kube":
+            return self.quadlet_kube(model_path, args, exec_args)
+
         try:
             if self.exec_model_in_container(model_path, exec_args, args):
                 return
@@ -328,6 +331,12 @@ class Model:
     def quadlet(self, model, args, exec_args):
         quadlet = Quadlet(model, args, exec_args)
         quadlet.generate()
+
+    def quadlet_kube(self, model, args, exec_args):
+        kube = Kube(model, args, exec_args)
+        kube.generate()
+        quadlet = Quadlet(model, args, exec_args)
+        quadlet.kube()
 
     def kube(self, model, args, exec_args):
         kube = Kube(model, args, exec_args)
