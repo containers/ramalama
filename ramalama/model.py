@@ -13,6 +13,7 @@ from ramalama.common import (
 )
 from ramalama.version import version
 from ramalama.quadlet import Quadlet
+from ramalama.kube import Kube
 
 
 file_not_found = """\
@@ -284,11 +285,13 @@ class Model:
         if args.dryrun:
             model_path = "/path/to/model"
         else:
-            model_path = self.pull(args)
+            model_path = self.exists(args)
+            if not model_path:
+                model_path = self.pull(args)
 
-        exec_args = ["llama-server", "--port", args.port, "-m", model_path]
+        exec_args = ["llama-server", "--port", args.port, "-m", "/mnt/models/model.file"]
         if args.runtime == "vllm":
-            exec_args = ["vllm", "serve", "--port", args.port, model_path]
+            exec_args = ["vllm", "serve", "--port", args.port, "/mnt/models/model.file"]
         else:
             if args.gpu:
                 exec_args.extend(self.gpu_args())
@@ -312,82 +315,11 @@ class Model:
 
     def quadlet(self, model, args, exec_args):
         quadlet = Quadlet(model, args, exec_args)
-        quadlet.gen_container()
-
-    def _gen_ports(self, args):
-        if not hasattr(args, "port"):
-            return ""
-
-        p = args.port.split(":", 2)
-        ports = f"""\
-    ports:
-    - containerPort: {p[0]}"""
-        if len(p) > 1:
-            ports += f"""
-      hostPort: {p[1]}"""
-
-        return ports
-
-    def _gen_volumes(self, model, args):
-        mounts = """\
-    volumeMounts:
-    - mountPath: /mnt/models
-      name: model"""
-
-        volumes = f"""
-  volumes:
-  - name model
-    hostPath:
-      path: {model}"""
-
-        for dev in ["dri", "kfd"]:
-            if os.path.exists("/dev/" + dev):
-                mounts = (
-                    mounts
-                    + f"""
-    - mountPath: /dev/{dev}
-      name: {dev}"""
-                )
-                volumes = (
-                    volumes
-                    + f""""
-  - name {dev}
-    hostPath:
-      path: /dev/{dev}"""
-                )
-
-        return mounts + volumes
+        quadlet.generate()
 
     def kube(self, model, args, exec_args):
-        port_string = self._gen_ports(args)
-        volume_string = self._gen_volumes(model, args)
-        _version = version()
-        if hasattr(args, "name") and args.name:
-            name = args.name
-        else:
-            name = genname()
-
-        print(
-            f"""\
-# Save the output of this file and use kubectl create -f to import
-# it into Kubernetes.
-#
-# Created with ramalama-{_version}
-apiVersion: v1
-kind: Deployment
-metadata:
-  labels:
-    app: {name}
-  name: {name}
-spec:
-  containers:
-  - name: {name}
-    image: {args.image}
-    command: ["{exec_args[0]}"]
-    args: {exec_args[1:]}
-{port_string}
-{volume_string}"""
-        )
+        kube = Kube(model, args, exec_args)
+        kube.generate()
 
 
 def get_gpu():

@@ -18,7 +18,7 @@ class Quadlet:
         self.args = args
         self.exec_args = exec_args
 
-    def gen_container(self):
+    def generate(self):
         port_string = ""
         if hasattr(self.args, "port"):
             port_string = f"PublishPort={self.args.port}"
