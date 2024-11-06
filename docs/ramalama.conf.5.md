@@ -78,6 +78,10 @@ RAMALAMA_CONTAINER_ENGINE environment variable overrides this field.
 OCI container image to run with the specified AI model
 RAMALAMA_IMAGE environment variable overrides this field.
 
+**port**="8080"
+
+Specify default port for services to listen on
+
 **runtime**="llama.cpp"
 
 Specify the AI runtime to use; valid options are 'llama.cpp' and 'vllm' (default: llama.cpp)

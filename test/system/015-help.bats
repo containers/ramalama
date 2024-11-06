@@ -227,4 +227,20 @@ EOF
     is "$output" "Error: transport \"${transport}\" not supported. Must be oci, huggingface, or ollama."  "Verify bogus transport throws error"
 
 }
+
+@test "ramalama verify default port" {
+
+    run_ramalama serve --help
+    is "$output" ".*port for AI Model server to listen on.*8080"  "Verify default port"
+
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+port="1776"
+EOF
+
+    RAMALAMA_CONFIG=${conf} run_ramalama serve --help
+    is "$output" ".*port for AI Model server to listen on.*1776"  "Verify default port"
+}
+
 # vim: filetype=sh
