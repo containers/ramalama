@@ -80,7 +80,7 @@ setup_ramalama() {
   install -m755 "$to_file" "$ramalama_bin"
 
   local python_files=("cli.py" "huggingface.py" "model.py" "ollama.py" "common.py" "__init__.py" \
-                      "quadlet.py", "oci.py" "version.py" "shortnames.py" "toml_parser.py")
+                      "quadlet.py" "oci.py" "version.py" "shortnames.py" "toml_parser.py")
     
   for i in "${python_files[@]}"; do
     url="${host}/containers/ramalama/${branch}/ramalama/${i}"
