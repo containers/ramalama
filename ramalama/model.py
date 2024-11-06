@@ -249,7 +249,10 @@ class Model:
         else:
             model_path = self.pull(args)
 
-        exec_args = ["llama-cli", "-m", mnt_file, "--in-prefix", "", "--in-suffix", ""]
+        if args.container:
+            model_path = mnt_file
+
+        exec_args = ["llama-cli", "-m", model_path, "--in-prefix", "", "--in-suffix", ""]
 
         if not args.debug:
             exec_args += ["--no-display-prompt"]
@@ -286,9 +289,12 @@ class Model:
             if not model_path:
                 model_path = self.pull(args)
 
-        exec_args = ["llama-server", "--port", args.port, "-m", mnt_file]
+        if args.container:
+            model_path = mnt_file
+
+        exec_args = ["llama-server", "--port", args.port, "-m", model_path]
         if args.runtime == "vllm":
-            exec_args = ["vllm", "serve", "--port", args.port, mnt_file]
+            exec_args = ["vllm", "serve", "--port", args.port, model_path]
         else:
             if args.gpu:
                 exec_args.extend(self.gpu_args())
