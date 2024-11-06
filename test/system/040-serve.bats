@@ -132,7 +132,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from 'quadlet', 'kube')" "Should fail"
 }
 
-@test "ramalama serve --generate=quadlet with OCI" {
+@test "ramalama serve --generate=quadlet and --generate=kube with OCI" {
     skip_if_darwin
     skip_if_docker
     local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
@@ -177,9 +177,11 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	rm $name.image
 
 	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://$registry/tiny
+	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+
+	run cat $name.yaml
 	is "$output" ".*command: \[\"vllm\"\]" "command is correct"
 	is "$output" ".*args: \['serve', '--port', '1234', '/mnt/models/model.file'\]" "args is correct"
-    
 
 	is "$output" ".*image: quay.io/ramalama/ramalama:latest" "image is correct"
 	is "$output" ".*reference: $registry/tiny" "AI image should be created"
@@ -196,6 +198,9 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     name=c_$(safename)
     run_ramalama pull ${model}
     run_ramalama serve --name=${name} --port 1234 --generate=kube ${model}
+    is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+
+    run cat $name.yaml
     is "$output" ".*image: quay.io/ramalama/ramalama:latest" "Should container image"
     is "$output" ".*command: \[\"llama-server\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"

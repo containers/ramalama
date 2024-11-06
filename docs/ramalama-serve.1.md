@@ -145,6 +145,8 @@ Image=quay.io/rhatdan/tiny:latest
 ### Generate a kubernetes YAML file named MyTinyModel
 ```
 $ ramalama serve --name MyTinyModel --generate=kube oci://quay.io/rhatdan/tiny-car:latest 
+Generating Kubernetes YAML file: MyTinyModel.yaml
+$ cat MyTinyModel.yaml
 # Save the output of this file and use kubectl create -f to import
 # it into Kubernetes.
 #
