@@ -129,7 +129,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 
     rm tinyllama.container
     run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus tiny
-    is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from 'quadlet', 'kube')" "Should fail"
+    is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from 'quadlet', 'kube', 'quadlet/kube')" "Should fail"
 }
 
 @test "ramalama serve --generate=quadlet and --generate=kube with OCI" {
@@ -185,6 +185,11 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://$registry/tiny
 	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
+	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet/kube oci://$registry/tiny
+	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+	is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
+
+
 	run cat $name.yaml
 	is "$output" ".*command: \[\"vllm\"\]" "command is correct"
 	is "$output" ".*args: \['serve', '--port', '1234', '/mnt/models/model.file'\]" "args is correct"
@@ -210,6 +215,18 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     is "$output" ".*image: quay.io/ramalama/ramalama:latest" "Should container image"
     is "$output" ".*command: \[\"llama-server\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
+
+    run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube ${model}
+    is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+    is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
+
+    run cat $name.yaml
+    is "$output" ".*image: quay.io/ramalama/ramalama:latest" "Should container image"
+    is "$output" ".*command: \[\"llama-server\"\]" "Should command"
+    is "$output" ".*containerPort: 1234" "Should container container port"
+
+    run cat $name.kube
+    is "$output" ".*Yaml=$name.yaml" "Should container container port"
 }
 
 # vim: filetype=sh
