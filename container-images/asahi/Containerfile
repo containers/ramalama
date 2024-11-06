@@ -1,4 +1,4 @@
-FROM fedora:41
+FROM fedora:42
 
 # renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
 ARG OMLMD_VERSION=0.1.6
