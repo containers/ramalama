@@ -69,17 +69,21 @@ Generating quadlet file: MyGraniteServer.container
 
 $ cat MyGraniteServer.container
 [Unit]
-Description=RamaLama granite AI Model Service
+Description=RamaLama $HOME/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf AI Model Service
 After=local-fs.target
 
 [Container]
 AddDevice=-/dev/dri
 AddDevice=-/dev/kfd
-Exec=llama-server --port 8080 -m /home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
+Exec=llama-server --port 1234 -m $HOME/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
 Image=quay.io/ramalama/ramalama:latest
-Volume=/home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf:/home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf:ro,z
+Mount=type=bind,src=/home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf,target=/mnt/models/model.file,ro,Z
 ContainerName=MyGraniteServer
 PublishPort=8080
+
+[Install]
+# Start by default on boot
+WantedBy=multi-user.target default.target
 
 $ mv  MyGraniteServer.container $HOME/.config/containers/systemd/
 $ systemctl --user daemon-reload

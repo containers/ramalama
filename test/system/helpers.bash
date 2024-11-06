@@ -242,6 +242,10 @@ function _ramalama_commands() {
     awk '/^positional arguments:/{ok=1;next;}/^options:/{ok=0}ok { print $1 }' <<<"$output" | grep -v help | grep .
 }
 
+function is_container() {
+    [ "${_RAMALAMA_TEST_OPTS}" != "--nocontainer" ]
+}
+
 function skip_if_nocontainer() {
     if [[ "${_RAMALAMA_TEST_OPTS}" == "--nocontainer" ]]; then
 	skip "Not supported with --nocontainer"
