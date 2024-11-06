@@ -615,7 +615,7 @@ def serve_parser(subparsers):
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
-    parser.add_argument("-p", "--port", default="8080", help="port for AI Model server to listen on")
+    parser.add_argument("-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on")
     parser.add_argument(
         "--tls-verify",
         dest="tlsverify",
@@ -752,7 +752,7 @@ def New(model, args):
     if model.startswith("oci://") or model.startswith("docker://"):
         return OCI(model, args.engine)
 
-    transport = config.get("transport")
+    transport = config.get("transport", "ollama")
     if transport == "huggingface":
         return Huggingface(model)
     if transport == "ollama":
