@@ -125,7 +125,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     run cat tinyllama.container
     is "$output" ".*PublishPort=1234" "PublishPort should match"
     is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
-    is "$output" ".*Volume=.*ollama/tinyllama" "Volume line should be correct"
+    is "$output" ".*Mount=type=bind,.*tinyllama" "Mount line should be correct"
 
     rm tinyllama.container
     run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus tiny
@@ -153,28 +153,34 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	run_ramalama push $modeltype --authfile=$authfile --tls-verify=false tiny oci://$registry/tiny
 	run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://$registry/tiny
 	is "$output" ".*Generating quadlet file: ${name}.container" "generate .container file"
-	is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
-	is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
+	if is_container; then
+	   is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
+	   is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
+	fi
 
 	run cat $name.container
 	is "$output" ".*PublishPort=1234" "PublishPort should match"
 	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
 	is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
-	is "$output" ".*Mount=type=volume,source=${name}.volume,dest=/mnt/models,subpath=/mounts,ro" "Volume line should be correct"
+	is "$output" ".*Mount=type=image,source=${name}.volume,dest=/mnt/models,subpath=/mounts,ro" "Volume line should be correct"
 
-	run cat $name.volume
-	is "$output" ".*Driver=image" "Driver Image"
-	is "$output" ".*Image=$name.image" "Image should exist"
+	if is_container; then
+	   run cat $name.volume
+	   is "$output" ".*Driver=image" "Driver Image"
+	   is "$output" ".*Image=$name.image" "Image should exist"
 
-	run cat $name.image
-	is "$output" ".*Image=$registry/tiny" "Image should match"
+	   run cat $name.image
+	   is "$output" ".*Image=$registry/tiny" "Image should match"
+	fi
 
 	run_ramalama list
 	is "$output" ".*oci://$registry/tiny" "Image should match"
 
 	rm $name.container
-	rm $name.volume
-	rm $name.image
+	if is_container; then
+	   rm $name.volume
+	   rm $name.image
+	fi
 
 	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://$registry/tiny
 	is "$output" ".*command: \[\"vllm\"\]" "command is correct"
