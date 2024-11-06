@@ -88,7 +88,10 @@ class Kube:
         volume_string = self.gen_volumes()
         _version = version()
 
-        print(
+        outfile = self.name + ".yaml"
+        print(f"Generating Kubernetes YAML file: {outfile}")
+        with open(outfile, 'w') as c:
+            c.write(
             f"""\
 # Save the output of this file and use kubectl create -f to import
 # it into Kubernetes.
