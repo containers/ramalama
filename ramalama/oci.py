@@ -5,7 +5,7 @@ import sys
 import tempfile
 
 from ramalama.model import Model
-from ramalama.common import run_cmd, exec_cmd, perror, available
+from ramalama.common import run_cmd, exec_cmd, perror, available, mnt_file
 
 prefix = "oci://"
 
@@ -160,7 +160,7 @@ LABEL {ociimage_car}
                     conman_args.extend([f"--authfile={args.authfile}"])
                 conman_args.extend([self.model])
                 run_cmd(conman_args, debug=args.debug)
-                return "/mnt/model/model.file"
+                return mnt_file
             except subprocess.CalledProcessError:
                 pass
         return self._pull_omlmd(args)

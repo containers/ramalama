@@ -8,11 +8,17 @@ ramalama\-run - run specified AI Model as a chatbot
 
 ## OPTIONS
 
+#### **--authfile**=*password*
+path of the authentication file for OCI registries
+
 #### **--help**, **-h**
 show this help message and exit
 
 #### **--name**, **-n**
 name of the container to run the Model in
+
+#### **--tls-verify**=*true*
+require HTTPS and verify certificates when contacting OCI registries
 
 ## DESCRIPTION
 Run specified AI Model as a chat bot. RamaLama pulls specified AI Model from

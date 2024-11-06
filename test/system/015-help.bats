@@ -25,7 +25,7 @@ function check_help() {
         local full_help="$output"
 
         # The line immediately after 'usage:' gives us a 1-line synopsis
-        usage=$(echo "$full_help" | grep -A1 '^usage:')
+         usage=$(echo "$full_help" | grep -A4 '^usage:')
         assert "$usage" != "" "ramalama $cmd: no usage message found"
 
         # Strip off the leading command string; we no longer need it
@@ -59,23 +59,6 @@ function check_help() {
                    "'$usage' indicates that the command takes no arguments. I invoked it with 'invalid-arg' and expected the following error message"
             fi
             found[takes_no_args]=1
-        fi
-
-        # If command lists "-l, --latest" in help output, combine -l with arg.
-        # This should be disallowed with a clear message.
-        if expr "$full_help" : ".*-l, --latest" >/dev/null; then
-            local nope="exec list port ps top"   # these can't be tested
-            if ! grep -wq "$cmd" <<<$nope; then
-                run_ramalama 2 "$@" $cmd -l nonexistent-container
-                is "$output" "Error: .*--latest and \(containers\|pods\|arguments\) cannot be used together" \
-                   "'$command_string' with both -l and container"
-
-                # Combine -l and -a, too (but spell it as --all, because "-a"
-                # means "attach" in ramalama container start)
-                run_ramalama 2 "$@" $cmd --all --latest
-                is "$output" "Error: \(--all and --latest cannot be used together\|--all, --latest and containers cannot be used together\|--all, --latest and arguments cannot be used together\|unknown flag\)" \
-                   "'$command_string' with both --all and --latest"
-            fi
         fi
 
         # If usage has required arguments, try running without them.

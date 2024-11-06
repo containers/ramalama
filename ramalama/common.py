@@ -10,6 +10,8 @@ import sys
 import urllib.request
 
 x = False
+mnt_dir = "/mnt/models"
+mnt_file = f"{mnt_dir}/model.file"
 
 
 def in_container():

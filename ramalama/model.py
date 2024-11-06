@@ -14,6 +14,7 @@ from ramalama.common import (
 from ramalama.version import version
 from ramalama.quadlet import Quadlet
 from ramalama.kube import Kube
+from ramalama.common import mnt_dir, mnt_file
 
 
 file_not_found = """\
@@ -207,19 +208,15 @@ class Model:
 
         return gpu_args
 
-    def exec_model_in_container(self, cmd_args, args):
-        model = args.MODEL
-        if hasattr(args, "UNRESOLVED_MODEL"):
-            model = args.UNRESOLVED_MODEL
-
+    def exec_model_in_container(self, model_path, cmd_args, args):
         conman_args = self.setup_container(args)
         if len(conman_args) == 0:
             return False
 
-        if os.path.exists(model):
-            conman_args += [f"-v{self.model}:/mnt/models/model.file,ro"]
+        if model_path and os.path.exists(model_path):
+            conman_args += [f"--mount=type=bind,src={model_path},destination={mnt_file},rw=false,Z"]
         else:
-            conman_args += [f"--mount=type=image,src={self.model},destination=/mnt/models,rw=false"]
+            conman_args += [f"--mount=type=image,src={self.model},destination={mnt_dir},rw=false"]
 
         # Make sure Image precedes cmd_args.
         conman_args += [self._image(args)]
@@ -252,7 +249,7 @@ class Model:
         else:
             model_path = self.pull(args)
 
-        exec_args = ["llama-cli", "-m", model_path, "--in-prefix", "", "--in-suffix", ""]
+        exec_args = ["llama-cli", "-m", mnt_file, "--in-prefix", "", "--in-suffix", ""]
 
         if not args.debug:
             exec_args += ["--no-display-prompt"]
@@ -269,7 +266,7 @@ class Model:
             exec_args.extend(self.gpu_args())
 
         try:
-            if self.exec_model_in_container(exec_args, args):
+            if self.exec_model_in_container(model_path, exec_args, args):
                 return
             exec_cmd(exec_args, args.debug, debug=args.debug)
         except FileNotFoundError as e:
@@ -289,9 +286,9 @@ class Model:
             if not model_path:
                 model_path = self.pull(args)
 
-        exec_args = ["llama-server", "--port", args.port, "-m", "/mnt/models/model.file"]
+        exec_args = ["llama-server", "--port", args.port, "-m", mnt_file]
         if args.runtime == "vllm":
-            exec_args = ["vllm", "serve", "--port", args.port, "/mnt/models/model.file"]
+            exec_args = ["vllm", "serve", "--port", args.port, mnt_file]
         else:
             if args.gpu:
                 exec_args.extend(self.gpu_args())
@@ -305,7 +302,7 @@ class Model:
             return self.kube(model_path, args, exec_args)
 
         try:
-            if self.exec_model_in_container(exec_args, args):
+            if self.exec_model_in_container(model_path, exec_args, args):
                 return
             exec_cmd(exec_args, debug=args.debug)
         except FileNotFoundError as e:

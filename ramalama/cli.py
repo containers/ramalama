@@ -590,7 +590,14 @@ def push_cli(args):
 
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
+    parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
+    parser.add_argument(
+        "--tls-verify",
+        dest="tlsverify",
+        default=True,
+        help="require HTTPS and verify certificates when contacting registries",
+    )
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument(
         "ARGS", nargs="*", help="Overrides the default prompt, and the output is returned without entering the chatbot"

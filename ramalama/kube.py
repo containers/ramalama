@@ -2,7 +2,7 @@ import os
 
 
 from ramalama.version import version
-from ramalama.common import genname
+from ramalama.common import genname, mnt_dir
 
 
 class Kube:
@@ -23,9 +23,9 @@ class Kube:
         self.image = args.image
 
     def gen_volumes(self):
-        mounts = """\
+        mounts = f"""\
         volumeMounts:
-        - mountPath: /mnt/models
+        - mountPath: {mnt_dir}
           subPath: /models
           name: model"""
 
@@ -61,6 +61,7 @@ class Kube:
       - hostPath:
           path: {self.model}
         name: model"""
+
     def gen_oci_volume(self):
         return f"""
       - image:
