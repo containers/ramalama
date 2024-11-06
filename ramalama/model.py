@@ -253,14 +253,20 @@ class Model:
             prompt = input + "\n\n" + prompt
 
         if args.dryrun:
-            model_path = "/path/to/" + self.model
+            model_path = "/path/to/model"
         else:
-            model_path = self.pull(args)
+            model_path = self.exists(args)
+            if not model_path:
+                model_path = self.pull(args)
 
-        if args.container:
-            model_path = mnt_file
+        exec_model_path = mnt_file
+        if not args.container and not args.generate:
+            exec_model_path = model_path
 
-        exec_args = ["llama-cli", "-m", model_path, "--in-prefix", "", "--in-suffix", ""]
+        # if args.container:
+        #     model_path = mnt_file
+
+        exec_args = ["llama-cli", "-m", exec_model_path, "--in-prefix", "", "--in-suffix", ""]
 
         if not args.debug:
             exec_args += ["--no-display-prompt"]
