@@ -1,27 +1,12 @@
 FROM quay.io/ramalama/ramalama:latest
 
-RUN /usr/bin/python3 --version
-
 ARG ROCM_VERSION=6.2.2
 ARG AMDGPU_VERSION=6.2.2
 
 COPY rocm/amdgpu.repo /etc/yum.repos.d/
 COPY rocm/rocm.repo /etc/yum.repos.d/
-
-RUN dnf config-manager --add-repo \
-      https://mirror.stream.centos.org/9-stream/AppStream/$(uname -m)/os/
-RUN curl --retry 8 --retry-all-errors -o \
-      /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official \
-      http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official && \
-      cat /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-
 COPY scripts /scripts
-RUN dnf install -y rocm-dev hipblas-devel rocblas-devel && \
-    dnf clean all && \
-    chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "$LLAMA_CPP_SHA" "$WHISPER_CPP_SHA" \
-      "/usr" "-DGGML_HIPBLAS=1" && \
-    rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
-      /opt/rocm-*/lib/rocblas/library/*gfx9*
+RUN chmod +x /scripts/*.sh && \
+    /scripts/build_llama_and_whisper.sh "rocm" "$LLAMA_CPP_SHA" \
+      "$WHISPER_CPP_SHA" "/usr" "-DGGML_HIPBLAS=1"
 

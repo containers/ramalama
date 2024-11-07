@@ -5,32 +5,17 @@ ARG LLAMA_CPP_SHA=1329c0a75e6a7defc5c380eaf80d8e0f66d7da78
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
 ARG WHISPER_CPP_SHA=31aea563a83803c710691fed3e8d700e06ae6788
 
-# Install dependencies only needed for building
-RUN dnf install -y git cmake gcc-c++ && \
-    dnf clean all && rm -rf /var/cache/*dnf*
-
-# Set the temporary installation directory
-ARG INSTALL_PREFIX=/tmp/install
-
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "$LLAMA_CPP_SHA" "$WHISPER_CPP_SHA" \
-      "$INSTALL_PREFIX" \
+    /scripts/build_llama_and_whisper.sh "cuda" "$LLAMA_CPP_SHA" \
+      "$WHISPER_CPP_SHA" "/tmp/install" \
       "-DGGML_CUDA=1" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined"
 
 # Final runtime image
 FROM docker.io/nvidia/cuda:12.6.2-runtime-ubi9
 
-# renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
-ARG OMLMD_VERSION=0.1.6
-
-# Install minimal runtime dependencies
-RUN dnf install -y python3 python3-pip && \
-    dnf clean all && \
-    rm -rf /var/cache/*dnf*
-
-# Install Python packages in the runtime image
-RUN pip install "omlmd==${OMLMD_VERSION}"
+RUN dnf install -y python3 && \
+    dnf clean all && rm -rf /var/cache/*dnf*
 
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr
