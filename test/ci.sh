@@ -18,6 +18,26 @@ linux_steps() {
   $maybe_sudo ./install.sh
 }
 
+get_version() {
+  grep "^version =.*" pyproject.toml | sed s/\"//g | grep -oE '[^ ]+$'
+}
+
+get_arg_llama_cpp() {
+  grep "ARG LLAMA_CPP_SHA=" container-images/ramalama/Containerfile
+}
+
+version_checks() {
+  local version
+  version=$(get_version)
+  grep "version.*$version" setup.py
+  grep "version.*$version" rpm/python-ramalama.spec
+
+  local arg_llama_cpp
+  arg_llama_cpp=$(get_arg_llama_cpp)
+  grep "$arg_llama_cpp" container-images/cuda/Containerfile
+  grep "$arg_llama_cpp" container-images/asahi/Containerfile
+}
+
 main() {
   set -ex -o pipefail
 
@@ -26,19 +46,12 @@ main() {
     maybe_sudo="sudo"
   fi
 
-  # verify pyproject.toml and setup.py have same version
-  grep "$(grep "^version =.*" pyproject.toml)" setup.py
-
-  # verify llama.cpp version matches
-  grep "$(grep "ARG LLAMA_CPP_SHA=" container-images/ramalama/Containerfile)" \
-    container-images/cuda/Containerfile
-  grep "$(grep "ARG LLAMA_CPP_SHA=" container-images/ramalama/Containerfile)" \
-    container-images/asahi/Containerfile
+  version_checks
 
   local os
   os="$(uname -s)"
   binfile=bin/ramalama
-  chmod +x ${binfile} install.sh
+  chmod +x "$binfile" install.sh
   uname -a
   /usr/bin/python3 --version
 
