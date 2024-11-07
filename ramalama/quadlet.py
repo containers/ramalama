@@ -87,7 +87,7 @@ Driver=image
 Image={self.name}.image
 """
             )
-            return f"Mount=type=image,source={self.name}.volume,dest={mnt_dir},subpath=/mounts,ro"
+            return f"Mount=type=image,source={self.ai_image},destination={mnt_dir},subpath=/models,readwrite=false"
 
     def gen_image(self):
         outfile = self.name + ".image"

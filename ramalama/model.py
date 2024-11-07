@@ -224,7 +224,7 @@ class Model:
         if model_path and os.path.exists(model_path):
             conman_args += [f"--mount=type=bind,src={model_path},destination={mnt_file},rw=false,Z"]
         else:
-            conman_args += [f"--mount=type=image,src={self.model},destination={mnt_dir},rw=false"]
+            conman_args += [f"--mount=type=image,src={self.model},destination={mnt_dir},rw=false,subpath=/models"]
 
         # Make sure Image precedes cmd_args.
         conman_args += [self._image(args)]
