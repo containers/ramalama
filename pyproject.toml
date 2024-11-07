@@ -4,7 +4,6 @@ version = "0.0.22"
 dependencies = [
   "argcomplete",
   "tqdm",
-  "omlmd",
 ]
 requires-python = ">= 3.8"
 maintainers = [
