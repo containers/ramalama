@@ -63,7 +63,7 @@ class build_py(build_py_orig):
 
 setuptools.setup(
     name="ramalama",
-    version="0.0.21",
+    version="0.0.22",
     packages=find_packages(),
     cmdclass={"build_py": build_py},
     scripts=["bin/ramalama"],
