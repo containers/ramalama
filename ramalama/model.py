@@ -216,7 +216,7 @@ class Model:
 
     def exec_model_in_container(self, model_path, cmd_args, args):
         if not args.container:
-                return False
+            return False
         conman_args = self.setup_container(args)
         if len(conman_args) == 0:
             return False
@@ -236,6 +236,9 @@ class Model:
 
         exec_cmd(conman_args, args.debug, debug=args.debug)
         return True
+
+    def not_args_generate(self, args):
+        return not hasattr(args, "generate") or not args.generate
 
     def run(self, args):
         if hasattr(args, "name") and args.name:
@@ -260,7 +263,7 @@ class Model:
                 model_path = self.pull(args)
 
         exec_model_path = mnt_file
-        if not args.container and not args.generate:
+        if not args.container and self.not_args_generate(args):
             exec_model_path = model_path
 
         # if args.container:
@@ -292,9 +295,8 @@ class Model:
             raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
 
     def serve(self, args):
-        if hasattr(args, "name") and args.name:
-            if not args.container and not args.generate:
-                raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
+        if hasattr(args, "name") and args.name and not args.container and self.not_args_generate(args):
+            raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
 
         if args.dryrun:
             model_path = "/path/to/model"
@@ -304,7 +306,7 @@ class Model:
                 model_path = self.pull(args)
 
         exec_model_path = mnt_file
-        if not args.container and not args.generate:
+        if not args.container and self.not_args_generate(args):
             exec_model_path = model_path
 
         exec_args = ["llama-server", "--port", args.port, "-m", exec_model_path]
