@@ -708,8 +708,16 @@ def _rm_model(models, args):
         if resolved_model:
             model = resolved_model
 
-        model = New(model, args)
-        model.remove(args)
+        try:
+            m = New(model, args)
+            m.remove(args)
+        except KeyError as e:
+            try:
+                # attempt to remove as a container image
+                m=OCI(model, config.get('engine', container_manager()))
+                m.remove(args)
+            except Exception:
+                raise e
 
 
 def rm_cli(args):
