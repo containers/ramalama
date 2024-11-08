@@ -252,6 +252,12 @@ function skip_if_nocontainer() {
     fi
 }
 
+function skip_if_notlocal() {
+    if [[ "${_RAMALAMA_TEST}" != "local" ]]; then
+	skip "Not supported unless --local"
+    fi
+}
+
 function skip_if_docker() {
     if [[ "${_RAMALAMA_TEST_OPTS}" == "--engine=docker" ]]; then
 	skip "Not supported with ----engine=docker"

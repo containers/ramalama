@@ -136,7 +136,6 @@ class Model:
             "--security-opt=label=disable",
             "--name",
             name,
-            f"-v{args.store}:/var/lib/ramalama",
         ]
 
         if sys.stdout.isatty() and sys.stdin.isatty():
@@ -170,6 +169,7 @@ class Model:
         wd = find_working_directory()
 
         conman_args += [
+            f"-v{args.store}:/var/lib/ramalama",
             f"-v{os.path.realpath(sys.argv[0])}:/usr/bin/ramalama:ro",
             f"-v{wd}:/usr/share/ramalama/ramalama:ro",
             f"-v{short_file}:/usr/share/ramalama/shortnames.conf:ro,Z",
@@ -216,13 +216,13 @@ class Model:
 
     def exec_model_in_container(self, model_path, cmd_args, args):
         if not args.container:
-                return False
+            return False
         conman_args = self.setup_container(args)
         if len(conman_args) == 0:
             return False
 
         if model_path and os.path.exists(model_path):
-            conman_args += [f"--mount=type=bind,src={model_path},destination={mnt_file},rw=false,Z"]
+            conman_args += [f"--mount=type=bind,src={model_path},destination={mnt_file},rw=false"]
         else:
             conman_args += [f"--mount=type=image,src={self.model},destination={mnt_dir},rw=false,subpath=/models"]
 

@@ -30,12 +30,9 @@ load helpers
     is "$output" ".*${image} llama-cli -m" "verify image name"
 }
 
-# FIXME no way to run this reliably without flakes in CI/CD system
-#@test "ramalama run granite with prompt" {
-#    run_ramalama run --name foobar granite "How often to full moons happen"
-#    is "$output" ".*month" "should include some info about the Moon"
-#    run_ramalama list
-#    is "$output" ".*granite" "granite model should have been pulled"
-#}
+@test "ramalama run tiny with prompt" {
+      skip_if_notlocal
+      run_ramalama run --name foobar tiny "Write a 1 line poem"
+}
 
 # vim: filetype=sh
