@@ -260,7 +260,7 @@ class Model:
                 model_path = self.pull(args)
 
         exec_model_path = mnt_file
-        if not args.container and not args.generate:
+        if not args.container:
             exec_model_path = model_path
 
         # if args.container:
