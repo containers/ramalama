@@ -89,7 +89,7 @@ load setup_suite
 
     run_ramalama rm oci://$registry/tiny
     run_ramalama rm oci://$registry/tiny-car
-    run_ramalama rm oci://$registry/mymodel
+    run_ramalama rm $registry/mymodel
 
     run_ramalama list
     assert "$output" !~ ".*oci://$registry/tiny-car" "OCI image does not exist in list"
