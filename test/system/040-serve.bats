@@ -148,10 +148,11 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 
     run_ramalama pull tiny
 
+    ociimage=$registry/tiny:latest
     for modeltype in "" "--type=car" "--type=raw"; do
 	name=c_$(safename)
-	run_ramalama push $modeltype --authfile=$authfile --tls-verify=false tiny oci://$registry/tiny
-	run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://$registry/tiny
+	run_ramalama push $modeltype --authfile=$authfile --tls-verify=false tiny oci://${ociimage}
+	run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://${ociimage}
 	is "$output" ".*Generating quadlet file: ${name}.container" "generate .container file"
 	if is_container; then
 	   is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
@@ -162,7 +163,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	is "$output" ".*PublishPort=1234" "PublishPort should match"
 	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
 	is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
-	is "$output" ".*Mount=type=image,source=${name}.volume,dest=/mnt/models,subpath=/mounts,ro" "Volume line should be correct"
+	is "$output" ".*Mount=type=image,source=${ociimage},destination=/mnt/models,subpath=/models,readwrite=false" "Volume line should be correct"
 
 	if is_container; then
 	   run cat $name.volume
@@ -170,11 +171,11 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	   is "$output" ".*Image=$name.image" "Image should exist"
 
 	   run cat $name.image
-	   is "$output" ".*Image=$registry/tiny" "Image should match"
+	   is "$output" ".*Image=${ociimage}" "Image should match"
 	fi
 
 	run_ramalama list
-	is "$output" ".*oci://$registry/tiny" "Image should match"
+	is "$output" ".*${ociimage}" "Image should match"
 
 	rm $name.container
 	if is_container; then
@@ -182,10 +183,10 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	   rm $name.image
 	fi
 
-	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://$registry/tiny
+	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://${ociimage}
 	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
-	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet/kube oci://$registry/tiny
+	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet/kube oci://${ociimage}
 	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 	is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
 
@@ -195,10 +196,10 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	is "$output" ".*args: \['serve', '--port', '1234', '/mnt/models/model.file'\]" "args is correct"
 
 	is "$output" ".*image: quay.io/ramalama/ramalama:latest" "image is correct"
-	is "$output" ".*reference: $registry/tiny" "AI image should be created"
+	is "$output" ".*reference: ${ociimage}" "AI image should be created"
 	is "$output" ".*pullPolicy: IfNotPresent" "pullPolicy should exist"
 
-	run_ramalama rm oci://$registry/tiny:latest
+	run_ramalama rm oci://${ociimage}
     done
     stop_registry
 }
