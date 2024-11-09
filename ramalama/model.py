@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import atexit
+import shlex
 
 from ramalama.common import (
     default_image,
@@ -228,7 +229,11 @@ class Model:
 
         # Make sure Image precedes cmd_args.
         conman_args += [self._image(args)]
-        conman_args += cmd_args
+        cargs=shlex.join(cmd_args)
+        if not args.debug:
+            cargs += " 2> /dev/null"
+        conman_args += ["/bin/sh", "-c", cargs]
+
 
         if args.dryrun:
             dry_run(conman_args)
