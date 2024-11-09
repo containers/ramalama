@@ -615,7 +615,9 @@ def serve_parser(subparsers):
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
-    parser.add_argument("-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on")
+    parser.add_argument(
+        "-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on"
+    )
     parser.add_argument(
         "--tls-verify",
         dest="tlsverify",
@@ -714,7 +716,7 @@ def _rm_model(models, args):
         except KeyError as e:
             try:
                 # attempt to remove as a container image
-                m=OCI(model, config.get('engine', container_manager()))
+                m = OCI(model, config.get('engine', container_manager()))
                 m.remove(args)
             except Exception:
                 raise e
