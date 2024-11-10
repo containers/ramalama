@@ -217,7 +217,7 @@ class Model:
 
     def exec_model_in_container(self, model_path, cmd_args, args):
         if not args.container:
-                return False
+            return False
         conman_args = self.setup_container(args)
         if len(conman_args) == 0:
             return False
@@ -229,17 +229,16 @@ class Model:
 
         # Make sure Image precedes cmd_args.
         conman_args += [self._image(args)]
-        cargs=shlex.join(cmd_args)
+        cargs = shlex.join(cmd_args)
         if not args.debug:
             cargs += " 2> /dev/null"
         conman_args += ["/bin/sh", "-c", cargs]
-
 
         if args.dryrun:
             dry_run(conman_args)
             return True
 
-        exec_cmd(conman_args, args.debug, debug=args.debug)
+        exec_cmd(conman_args, debug=args.debug)
         return True
 
     def run(self, args):
