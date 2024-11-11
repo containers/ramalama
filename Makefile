@@ -95,6 +95,11 @@ lint:
 codespell:
 	codespell --dictionary=- -w
 
+.PHONY: test-run
+test-run:
+	_RAMALAMA_TEST=local RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/030-run.bats
+	_RAMALAMA_OPTIONS=--nocontainer _RAMALAMA_TEST=local bats -T test/system/030-run.bats
+
 .PHONY: validate
 validate: codespell lint
 ifeq ($(OS),Linux)
