@@ -31,9 +31,12 @@ dnf_install() {
       "${rpm_list[@]}"
   elif [ "$containerfile" = "rocm" ]; then
     dnf install -y rocm-dev hipblas-devel rocblas-devel
-  else
+  elif [ "$containerfile" = "cuda" ]; then
     dnf install -y "${rpm_list[@]}"
   fi
+
+  # For Vulkan image, we don't need to install anything extra but rebuild with
+  # -DGGML_VULKAN
 }
 
 cmake_steps() {
