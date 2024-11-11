@@ -1,42 +1,13 @@
 FROM registry.access.redhat.com/ubi9/ubi:9.4-1214.1729773476
 
-# renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
-ARG OMLMD_VERSION=0.1.6
 ARG LLAMA_CPP_SHA=1329c0a75e6a7defc5c380eaf80d8e0f66d7da78
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
 ARG WHISPER_CPP_SHA=31aea563a83803c710691fed3e8d700e06ae6788
 
-# vulkan-headers vulkan-loader-devel vulkan-tools glslc glslang python3-pip mesa-libOpenCL-$MESA_VER.aarch64
-RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
-    crb enable && \
-    dnf install -y epel-release && \
-    dnf --enablerepo=ubi-9-appstream-rpms install -y git procps-ng vim \
-      dnf-plugins-core python3-dnf-plugin-versionlock cmake gcc-c++ \
-      python3-pip python3-argcomplete && \
-    dnf copr enable -y slp/mesa-krunkit epel-9-$(uname -m) && \
-    dnf install -y mesa-vulkan-drivers-23.3.3-102.el9 \
-      vulkan-headers vulkan-loader-devel vulkan-tools spirv-tools glslc && \
-    dnf clean all && \
-    rm -rf /var/cache/*dnf*
-
-RUN /usr/bin/python3 --version
-RUN pip install "omlmd==${OMLMD_VERSION}"
-
-RUN dnf config-manager --add-repo \
-      https://mirror.stream.centos.org/9-stream/AppStream/$(uname -m)/os/
-RUN curl --retry 8 --retry-all-errors -o \
-      /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official \
-      http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official && \
-      cat /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-RUN dnf install -y glslang && \
-    dnf clean all && \
-    rm -rf /var/cache/*dnf*
-
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "$LLAMA_CPP_SHA" "$WHISPER_CPP_SHA" \
-      "/usr" "-DGGML_KOMPUTE=1"
+    /scripts/build_llama_and_whisper.sh "ramalama" "$LLAMA_CPP_SHA" \
+      "$WHISPER_CPP_SHA" "/usr" "-DGGML_KOMPUTE=1"
 
 ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
 ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}
