@@ -614,6 +614,7 @@ def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
+    parser.add_argument("--host", default=config.get('host', "0.0.0.0"), help="ip address to listen")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     parser.add_argument(
         "-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on"
