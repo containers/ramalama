@@ -70,8 +70,12 @@ Image to be used when building and pushing --type=car models
 **engine**="podman"
 
 Run RamaLama using the specified container engine.
-Valid options (Podman, Docker)
-RAMALAMA_CONTAINER_ENGINE environment variable overrides this field.
+Valid options are: Podman and Docker
+This field can be overridden by the RAMALAMA_CONTAINER_ENGINE environment variable.
+
+**host**="0.0.0.0"
+
+IP address for llama.cpp to listen on.
 
 **image**="quay.io/ramalama/ramalama:latest"
 

@@ -39,7 +39,7 @@ Generate specified configuration format for running the AI Model as a service
 show this help message and exit
 
 #### **--host**="0.0.0.0"
-ip address to listen
+IP address for llama.cpp to listen on.
 
 #### **--name**, **-n**
 Name of the container to run the Model in.
