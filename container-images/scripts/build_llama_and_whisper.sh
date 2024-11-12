@@ -13,15 +13,14 @@ dnf_install() {
     local uname_m
     uname_m="$(uname -m)"
     dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
-    dnf install -y mesa-vulkan-drivers-23.3.3-102.el9 vulkan-headers \
-      vulkan-loader-devel vulkan-tools spirv-tools glslc
     local url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
     dnf config-manager --add-repo "$url"
     url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
     curl --retry 8 --retry-all-errors -o \
       /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
     rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-    dnf install -y glslang
+    dnf install -y glslang mesa-vulkan-drivers-23.3.3-102.el9 vulkan-headers \
+      vulkan-loader-devel vulkan-tools spirv-tools glslc
   elif [ "$containerfile" = "asahi" ]; then
     dnf install -y dnf-plugins-core
     dnf copr enable -y @asahi/fedora-remix-branding
