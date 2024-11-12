@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.4-1214.1729773476
+FROM registry.access.redhat.com/ubi9/ubi:9.5-1730489303
 
 ARG LLAMA_CPP_SHA=1329c0a75e6a7defc5c380eaf80d8e0f66d7da78
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
