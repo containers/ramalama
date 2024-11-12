@@ -1,33 +1,31 @@
 #!/bin/bash
 
 dnf_install() {
-  local rpm_list=("python3" "python3-pip" "gcc-c++" "cmake" "vim" "procps-ng" \
-                  "git")
+  local rpm_list=("python3" "python3-pip" "python3-argcomplete" \
+                  "python3-dnf-plugin-versionlock" "gcc-c++" "cmake" "vim" \
+                  "procps-ng" "git" "dnf-plugins-core")
+  local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
+                     "spirv-tools" "glslc" "glslang")
   if [ "$containerfile" = "ramalama" ]; then
-    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+    dnf install -y "$url"
     crb enable
     dnf install -y epel-release
-    rpm_list+=("dnf-plugins-core" "python3-dnf-plugin-versionlock" \
-               "python3-argcomplete")
     dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
     local uname_m
     uname_m="$(uname -m)"
     dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
-    local url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
+    url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
     dnf config-manager --add-repo "$url"
     url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
     curl --retry 8 --retry-all-errors -o \
       /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
     rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-    dnf install -y glslang mesa-vulkan-drivers-23.3.3-102.el9 vulkan-headers \
-      vulkan-loader-devel vulkan-tools spirv-tools glslc
+    dnf install -y mesa-vulkan-drivers-23.3.3-102.el9 "${vulkan_rpms[@]}"
   elif [ "$containerfile" = "asahi" ]; then
-    dnf install -y dnf-plugins-core
     dnf copr enable -y @asahi/fedora-remix-branding
     dnf install -y asahi-repos
-    dnf install -y mesa-vulkan-drivers vulkan-headers vulkan-loader-devel \
-      vulkan-tools spirv-tools glslc glslang python3-argcomplete \
-      "${rpm_list[@]}"
+    dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}" "${rpm_list[@]}"
   elif [ "$containerfile" = "rocm" ]; then
     dnf install -y rocm-dev hipblas-devel rocblas-devel
   elif [ "$containerfile" = "cuda" ]; then
