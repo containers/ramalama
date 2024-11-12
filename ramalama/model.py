@@ -317,7 +317,7 @@ class Model:
         else:
             if args.gpu:
                 exec_args.extend(self.gpu_args())
-            if in_container():
+            if in_container() or (args.container and args.engine):
                 exec_args.extend(["--host", "0.0.0.0"])
 
         if args.generate == "quadlet":
