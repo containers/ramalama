@@ -38,6 +38,9 @@ Generate specified configuration format for running the AI Model as a service
 #### **--help**, **-h**
 show this help message and exit
 
+#### **--host**="0.0.0.0"
+ip address to listen
+
 #### **--name**, **-n**
 Name of the container to run the Model in.
 

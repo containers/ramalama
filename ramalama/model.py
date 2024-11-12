@@ -267,9 +267,6 @@ class Model:
         if not args.container:
             exec_model_path = model_path
 
-        # if args.container:
-        #     model_path = mnt_file
-
         exec_args = ["llama-cli", "-m", exec_model_path, "--in-prefix", "", "--in-suffix", ""]
 
         if not args.debug:
@@ -288,6 +285,9 @@ class Model:
 
         try:
             if self.exec_model_in_container(model_path, exec_args, args):
+                return
+            if args.dryrun:
+                dry_run(exec_args)
                 return
             exec_cmd(exec_args, args.debug, debug=args.debug)
         except FileNotFoundError as e:
@@ -317,8 +317,7 @@ class Model:
         else:
             if args.gpu:
                 exec_args.extend(self.gpu_args())
-            if in_container():
-                exec_args.extend(["--host", "0.0.0.0"])
+            exec_args.extend(["--host", args.host])
 
         if args.generate == "quadlet":
             return self.quadlet(model_path, args, exec_args)
@@ -331,6 +330,9 @@ class Model:
 
         try:
             if self.exec_model_in_container(model_path, exec_args, args):
+                return
+            if args.dryrun:
+                dry_run(exec_args)
                 return
             exec_cmd(exec_args, debug=args.debug)
         except FileNotFoundError as e:

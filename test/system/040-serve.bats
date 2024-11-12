@@ -7,24 +7,36 @@ load setup_suite
 verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name"
 
 @test "ramalama --dryrun serve basic output" {
-    skip_if_nocontainer
-
     model=m_$(safename)
 
-    run_ramalama --dryrun serve ${model}
-    is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
-    is "$output" ".*${model}" "verify model name"
+    if is_container; then
+	run_ramalama --dryrun serve ${model}
+	is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
+	is "$output" ".*${model}" "verify model name"
 
-    run_ramalama --dryrun serve --name foobar ${model}
-    is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
-    is "$output" ".*${model}" "verify model name"
+	run_ramalama --dryrun serve --name foobar ${model}
+	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
+	assert "$output" =~ ".*--host 0.0.0.0" "verify host 0.0.0.0 is added when run within container"
+	is "$output" ".*${model}" "verify model name"
 
-    run_ramalama 1 serve --name foobar MODEL
-    is "$output" ".*Error: failed to pull .*MODEL" "dryrun correct with --name"
+	run_ramalama --dryrun serve --host 127.1.2.3 --name foobar ${model}
+	assert "$output" =~ ".*--host 127.1.2.3" "verify --host is modified when run within container"
+	is "$output" ".*${model}" "verify model name"
 
-    run_ramalama 1 --nocontainer serve --name foobar tiny
-    is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
-    run_ramalama stop --all
+	run_ramalama 1 --nocontainer serve --name foobar tiny
+	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
+	run_ramalama stop --all
+    else
+	run_ramalama --dryrun serve ${model}
+	assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
+	run_ramalama --dryrun serve --host 127.0.0.1 ${model}
+	assert "$output" =~ ".*--host 127.0.0.1" "Outside container overrides host to 127.0.0.1"
+	run_ramalama 1 --nocontainer serve --name foobar tiny
+	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
+     fi
+
+    run_ramalama 1 serve MODEL
+    is "$output" ".*Error: failed to pull .*MODEL" "failed to pull model"
 }
 
 @test "ramalama --detach serve" {
