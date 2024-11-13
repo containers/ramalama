@@ -329,13 +329,28 @@ class Model:
             exec_args += ["--seed", args.seed]
 
         if args.runtime == "vllm":
-            if not (exec_model_path.endswith(".GGUF") or exec_model_path.endswith(".gguf")):
-                exec_model_path = os.path.dirname(exec_model_path)
+            exec_model_path = os.path.dirname(exec_model_path)
             exec_args = ["vllm", "serve", "--port", args.port, exec_model_path]
-        else:
+        elif args.runtime == "llama.cpp":
+            exec_args = ["llama-server", "--port", args.port, "-m", exec_model_path, "--host", args.host]
+
             if args.gpu:
                 exec_args.extend(self.gpu_args())
-            exec_args.extend(["--host", args.host])
+        else:
+            exec_args = [
+                "python3",
+                "-m",
+                "llama_cpp.server",
+                "--port",
+                args.port,
+                "--model",
+                exec_model_path,
+                "--host",
+                args.host,
+            ]
+
+            if args.gpu:
+                exec_args.extend(self.gpu_args())
 
         if args.generate == "quadlet":
             return self.quadlet(model_path, args, exec_args)
