@@ -9,8 +9,7 @@ dnf_install() {
   if [ "$containerfile" = "ramalama" ]; then
     local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
     dnf install -y "$url"
-    crb enable
-    dnf install -y epel-release
+    crb enable # this is in epel-release, can only install epel-release via url
     dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
     local uname_m
     uname_m="$(uname -m)"
@@ -30,7 +29,8 @@ dnf_install() {
     dnf install -y rocm-dev hipblas-devel rocblas-devel
   elif [ "$containerfile" = "cuda" ]; then
     dnf install -y "${rpm_list[@]}" gcc-toolset-12
-    source /opt/rh/gcc-toolset-12/enable
+    # shellcheck disable=SC1091
+    . /opt/rh/gcc-toolset-12/enable
   fi
 
   # For Vulkan image, we don't need to install anything extra but rebuild with
@@ -38,46 +38,88 @@ dnf_install() {
 }
 
 cmake_steps() {
-  local flag="$1"
-  cmake -B build "${common_flags[@]}" "$flag"
+  local cmake_flags=("${!1}")
+  cmake -B build "${cmake_flags[@]}"
   cmake --build build --config Release -j"$(nproc)"
   cmake --install build
 }
 
+set_install_prefix() {
+  if [ "$containerfile" = "cuda" ]; then
+    install_prefix="/tmp/install"
+  else
+    install_prefix="/usr"
+  fi
+}
+
+configure_common_flags() {
+  local containerfile="$1"
+  local -n common_flags_ref=$2
+
+  common_flags_ref=("-DGGML_NATIVE=OFF")
+  case "$containerfile" in
+    rocm)
+      common_flags_ref+=("-DGGML_HIPBLAS=1")
+      ;;
+    cuda)
+      common_flags_ref+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
+      ;;
+    vulkan | asahi)
+      common_flags_ref+=("-DGGML_VULKAN=1")
+      ;;
+  esac
+}
+
+clone_and_build_whisper_cpp() {
+  local whisper_cpp_sha="$1"
+  local install_prefix="$2"
+  local whisper_flags=("${!3}")
+  whisper_flags+=("-DBUILD_SHARED_LIBS=NO")
+
+  git clone https://github.com/ggerganov/whisper.cpp
+  cd whisper.cpp
+  git submodule update --init --recursive
+  git reset --hard "$whisper_cpp_sha"
+  cmake_steps whisper_flags
+  mkdir -p "$install_prefix/bin"
+  mv build/bin/main "$install_prefix/bin/whisper-main"
+  mv build/bin/server "$install_prefix/bin/whisper-server"
+  cd ..
+}
+
+clone_and_build_llama_cpp() {
+  local llama_cpp_sha="$1"
+  local common_flags=("${!2}")
+
+  git clone https://github.com/ggerganov/llama.cpp
+  cd llama.cpp
+  git submodule update --init --recursive
+  git reset --hard "$llama_cpp_sha"
+  cmake_steps common_flags
+  cd ..
+}
+
 main() {
-  set -e
+  set -ex
 
   local containerfile="$1"
   local llama_cpp_sha="$2"
   local whisper_cpp_sha="$3"
-  local install_prefix="$4"
-  local build_flag_1="$5"
-  local build_flag_2="$6"
-  local common_flags=("-DGGML_CCACHE=0" \
-                      "-DCMAKE_INSTALL_PREFIX=$install_prefix" "$build_flag_1")
-  if [ -n "$build_flag_2" ]; then
-    common_flags+=("$build_flag_2")
-  fi
+  local install_prefix
+  set_install_prefix
+  local common_flags
+  configure_common_flags "$containerfile" common_flags
 
+  common_flags+=("-DGGML_CCACHE=0" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
   dnf_install
+  clone_and_build_whisper_cpp "$whisper_cpp_sha" "$install_prefix" common_flags[@]
+  case "$containerfile" in
+    ramalama)
+      common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
+      ;;
+  esac
 
-  git clone https://github.com/ggerganov/llama.cpp
-  cd llama.cpp
-  git reset --hard "$llama_cpp_sha"
-  cmake_steps
-  cd ..
-
-  git clone https://github.com/ggerganov/whisper.cpp
-  cd whisper.cpp
-  git reset --hard "$whisper_cpp_sha"
-  cmake_steps "-DBUILD_SHARED_LIBS=NO"
-  mv build/bin/main "$install_prefix/bin/whisper-main"
-  mv build/bin/server "$install_prefix/bin/whisper-server"
-  cd ..
-
-  CMAKE_ARGS="${common_flags[*]}" FORCE_CMAKE=1 \
-    pip install --prefix="$install_prefix" 'llama-cpp-python[server]'
-
+  clone_and_build_llama_cpp "$llama_cpp_sha" common_flags[@]
   dnf clean all
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
     /opt/rocm-*/lib/rocblas/library/*gfx9* llama.cpp whisper.cpp

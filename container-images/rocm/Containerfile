@@ -8,5 +8,5 @@ COPY rocm/rocm.repo /etc/yum.repos.d/
 COPY scripts /scripts
 RUN chmod +x /scripts/*.sh && \
     /scripts/build_llama_and_whisper.sh "rocm" "$LLAMA_CPP_SHA" \
-      "$WHISPER_CPP_SHA" "/usr" "-DGGML_HIPBLAS=1"
+      "$WHISPER_CPP_SHA"
 

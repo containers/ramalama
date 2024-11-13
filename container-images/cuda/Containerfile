@@ -1,15 +1,14 @@
 # Base image with CUDA for compilation
 FROM docker.io/nvidia/cuda:12.6.2-devel-ubi9 AS builder
 
-ARG LLAMA_CPP_SHA=af148c9386da825a60c7038549c121c35ca56b50
+ARG LLAMA_CPP_SHA=0827b2c1da299805288abbd556d869318f2b121e
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
-ARG WHISPER_CPP_SHA=6266a9f9e56a5b925e9892acf650f3eb1245814d
+ARG WHISPER_CPP_SHA=3de9deead5759eb038966990e3cb5d83984ae467
 
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
     /scripts/build_llama_and_whisper.sh "cuda" "$LLAMA_CPP_SHA" \
-      "$WHISPER_CPP_SHA" "/tmp/install" \
-      "-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined"
+      "$WHISPER_CPP_SHA"
 
 # Final runtime image
 FROM docker.io/nvidia/cuda:12.6.2-runtime-ubi9
