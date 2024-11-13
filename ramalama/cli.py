@@ -215,6 +215,7 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
     parser.add_argument("-v", "--version", dest="version", action="store_true", help="show RamaLama version")
 
+
 def configure_subcommands(parser):
     """Add subcommand parsers to the main argument parser."""
     subparsers = parser.add_subparsers(dest="subcommand")
