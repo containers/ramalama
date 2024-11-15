@@ -1,7 +1,7 @@
 # Base image with CUDA for compilation
 FROM docker.io/nvidia/cuda:12.6.2-devel-ubi9 AS builder
 
-ARG LLAMA_CPP_SHA=1329c0a75e6a7defc5c380eaf80d8e0f66d7da78
+ARG LLAMA_CPP_SHA=af148c9386da825a60c7038549c121c35ca56b50
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
 ARG WHISPER_CPP_SHA=f19463ece2d43fd0b605dc513d8800eeb4e2315e
 
