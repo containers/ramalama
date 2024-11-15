@@ -2,7 +2,7 @@ FROM registry.access.redhat.com/ubi9/ubi:9.4-1214.1729773476
 
 ARG LLAMA_CPP_SHA=af148c9386da825a60c7038549c121c35ca56b50
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
-ARG WHISPER_CPP_SHA=f19463ece2d43fd0b605dc513d8800eeb4e2315e
+ARG WHISPER_CPP_SHA=83ac2842bd2f41aab35616165c928b06b445bcb4
 
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
