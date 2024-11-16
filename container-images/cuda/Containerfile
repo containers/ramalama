@@ -9,7 +9,7 @@ COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
     /scripts/build_llama_and_whisper.sh "cuda" "$LLAMA_CPP_SHA" \
       "$WHISPER_CPP_SHA" "/tmp/install" \
-      "-DGGML_CUDA=1" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined"
+      "-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined"
 
 # Final runtime image
 FROM docker.io/nvidia/cuda:12.6.2-runtime-ubi9
