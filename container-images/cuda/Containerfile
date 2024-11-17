@@ -3,7 +3,7 @@ FROM docker.io/nvidia/cuda:12.6.2-devel-ubi9 AS builder
 
 ARG LLAMA_CPP_SHA=af148c9386da825a60c7038549c121c35ca56b50
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
-ARG WHISPER_CPP_SHA=f02b40bcb4849139fd7de2558aee64c737ab678e
+ARG WHISPER_CPP_SHA=bb12cd9b7723ab4689365043c381590b4f582aba
 
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
