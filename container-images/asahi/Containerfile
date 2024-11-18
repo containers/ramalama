@@ -2,7 +2,7 @@ FROM fedora:41
 
 ARG LLAMA_CPP_SHA=1329c0a75e6a7defc5c380eaf80d8e0f66d7da78
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
-ARG WHISPER_CPP_SHA=01d3bd7d5ccd1956a7ddf1b57ee92d69f35aad93
+ARG WHISPER_CPP_SHA=d24f981fb2fbf73ec7d72888c3129d1ed3f91916
 
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
