@@ -277,7 +277,7 @@ def login_parser(subparsers):
 
 def login_cli(args):
     registry = args.REGISTRY
-    if registry != "":
+    if registry != "" and registry != "ollama" and registry != "hf" and registry != "huggingface":
         registry = "oci://" + registry
 
     model = New(str(registry), args)
@@ -294,7 +294,7 @@ def logout_parser(subparsers):
 
 
 def logout_cli(args):
-    transport = args.transport
+    transport = args.TRANSPORT
     model = New(str(transport), args)
     return model.logout(args)
 
@@ -756,9 +756,9 @@ def run_container(args):
 
 
 def New(model, args):
-    if model.startswith("huggingface://") or model.startswith("hf://"):
+    if model.startswith("huggingface") or model.startswith("hf://"):
         return Huggingface(model)
-    if model.startswith("ollama://"):
+    if model.startswith("ollama"):
         return Ollama(model)
     if model.startswith("oci://") or model.startswith("docker://"):
         return OCI(model, args.engine)

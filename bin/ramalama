@@ -86,6 +86,9 @@ def main(args):
         sys.exit(e.returncode)
     except KeyboardInterrupt:
         sys.exit(0)
+    except ValueError as e:
+        ramalama.perror("Error: " + str(e).strip("'"))
+        sys.exit(errno.EINVAL)
 
 
 if __name__ == "__main__":

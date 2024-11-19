@@ -17,6 +17,8 @@ from ramalama.quadlet import Quadlet
 from ramalama.kube import Kube
 from ramalama.common import mnt_dir, mnt_file
 
+model_types = ["oci", "huggingface", "hf", "ollama"]
+
 
 file_not_found = """\
 RamaLama requires the "%s" command to be installed on the host when running with --nocontainer.
@@ -48,9 +50,6 @@ class Model:
     def logout(self, args):
         raise NotImplementedError(f"ramalama logout for {self.type} not implemented")
 
-    def path(self, source, args):
-        raise NotImplementedError(f"ramalama path for {self.type} not implemented")
-
     def pull(self, args):
         raise NotImplementedError(f"ramalama pull for {self.type} not implemented")
 
@@ -67,8 +66,7 @@ class Model:
         return False
 
     def garbage_collection(self, args):
-        repo_paths = ["huggingface", "oci", "ollama"]
-        for repo in repo_paths:
+        for repo in model_types:
             repo_dir = f"{args.store}/repos/{repo}"
             model_dir = f"{args.store}/models/{repo}"
             for root, dirs, files in os.walk(repo_dir):
@@ -102,8 +100,6 @@ class Model:
 
         self.garbage_collection(args)
 
-    def model_path(self, args):
-        raise NotImplementedError(f"model_path for {self.type} not implemented")
 
     def _image(self, args):
         if args.image != default_image():
@@ -342,6 +338,22 @@ class Model:
     def kube(self, model, args, exec_args):
         kube = Kube(model, args, exec_args)
         kube.generate()
+
+    def path(self, args):
+        return self.model_path(args)
+
+    def model_path(self, args):
+        return os.path.join(args.store, "models", self.type, self.directory, self.filename)
+
+    def exists(self, args):
+        model_path = self.model_path(args)
+        if not os.path.exists(model_path):
+            return None
+
+        return model_path
+
+    def check_valid_model_path(self, relative_target_path, model_path):
+        return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
 
 
 def get_gpu():
