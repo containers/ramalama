@@ -1,4 +1,5 @@
 import os
+import pathlib
 import urllib.request
 from ramalama.common import run_cmd, exec_cmd, download_file, verify_checksum
 from ramalama.model import Model
@@ -37,7 +38,7 @@ class Huggingface(Model):
         model = model.removeprefix("huggingface://")
         model = model.removeprefix("hf://")
         super().__init__(model)
-        self.type = "HuggingFace"
+        self.type = "huggingface"
         split = self.model.rsplit("/", 1)
         self.directory = split[0] if len(split) > 1 else ""
         self.filename = split[1] if len(split) > 1 else split[0]
@@ -50,7 +51,7 @@ class Huggingface(Model):
         conman_args = ["huggingface-cli", "login"]
         if args.token:
             conman_args.extend(["--token", args.token])
-        self.exec(conman_args)
+        self.exec(conman_args, args)
 
     def logout(self, args):
         if not self.hf_cli_available:
@@ -59,17 +60,7 @@ class Huggingface(Model):
         conman_args = ["huggingface-cli", "logout"]
         if args.token:
             conman_args.extend(["--token", args.token])
-        self.exec(conman_args)
-
-    def path(self, args):
-        return self.model_path(args)
-
-    def exists(self, args):
-        model_path = self.model_path(args)
-        if not os.path.exists(model_path):
-            return None
-
-        return model_path
+        self.exec(conman_args, args)
 
     def pull(self, args):
         model_path = self.model_path(args)
@@ -93,13 +84,13 @@ class Huggingface(Model):
         if os.path.exists(target_path) and verify_checksum(target_path):
             relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
             if not self.check_valid_model_path(relative_target_path, model_path):
-                run_cmd(["ln", "-sf", relative_target_path, model_path], debug=args.debug)
+                pathlib.Path(model_path).unlink(missing_ok=True)
+                os.symlink(relative_target_path, model_path)
             return model_path
 
         # Download the model file to the target path
         url = f"https://huggingface.co/{self.directory}/resolve/main/{self.filename}"
         download_file(url, target_path, headers={}, show_progress=True)
-
         if not verify_checksum(target_path):
             print(f"Checksum mismatch for {target_path}, retrying download...")
             os.remove(target_path)
@@ -112,8 +103,8 @@ class Huggingface(Model):
             # Symlink is already correct, no need to update it
             return model_path
 
-        run_cmd(["ln", "-sf", relative_target_path, model_path], debug=args.debug)
-
+        pathlib.Path(model_path).unlink(missing_ok=True)
+        os.symlink(relative_target_path, model_path)
         return model_path
 
     def push(self, source, args):
@@ -137,14 +128,8 @@ class Huggingface(Model):
         )
         return proc.stdout.decode("utf-8")
 
-    def model_path(self, args):
-        return os.path.join(args.store, "models", "huggingface", self.directory, self.filename)
-
-    def check_valid_model_path(self, relative_target_path, model_path):
-        return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
-
-    def exec(self, args):
+    def exec(self, cmd_args, args):
         try:
-            exec_cmd(args, args.debug)
+            exec_cmd(cmd_args, debug=args.debug)
         except FileNotFoundError as e:
             print(f"{str(e).strip()}\n{missing_huggingface}")
