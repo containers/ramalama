@@ -47,7 +47,7 @@ $ ramalama login ollama
 
 Login to huggingface registry
 ```
-$ ramalama login --token=XYZ ollama
+$ ramalama login --token=XYZ huggingface
 ```
 
 ## SEE ALSO
