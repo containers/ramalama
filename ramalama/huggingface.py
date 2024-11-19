@@ -1,4 +1,5 @@
 import os
+import shutil
 import urllib.request
 from ramalama.common import run_cmd, exec_cmd, download_file, verify_checksum
 from ramalama.model import Model
@@ -13,12 +14,13 @@ pip install huggingface_hub tqdm
 
 def is_huggingface_cli_available():
     """Check if huggingface-cli is available on the system."""
-    try:
-        run_cmd(["huggingface-cli", "version"])
-        return True
-    except FileNotFoundError:
-        print("huggingface-cli not found. Some features may be limited.\n" + missing_huggingface)
+
+    path = shutil.which("huggingface-cli")
+    if path == "":
+        perror("huggingface-cli not found. Some features may be limited.\n" + missing_huggingface)
         return False
+    else:
+        return True
 
 
 def fetch_checksum_from_api(url):
