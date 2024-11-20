@@ -15,6 +15,7 @@ from ramalama.common import (
     perror,
     run_cmd,
 )
+from ramalama.model import model_types
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.shortnames import Shortnames
@@ -584,8 +585,19 @@ def push_cli(args):
     if not tgt:
         tgt = target
 
-    model = New(tgt, args)
-    model.push(source, args)
+    try:
+        model = New(tgt, args)
+        model.push(source, args)
+    except KeyError as e:
+        for mtype in model_types:
+            if model.startswith(mtype + "://"):
+                raise e
+        try:
+            # attempt to push as a container image
+            m = OCI(model, config.get('engine', container_manager()))
+            m.push(args)
+        except Exception:
+            raise e
 
 
 def run_parser(subparsers):
