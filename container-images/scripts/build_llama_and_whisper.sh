@@ -29,7 +29,8 @@ dnf_install() {
   elif [ "$containerfile" = "rocm" ]; then
     dnf install -y rocm-dev hipblas-devel rocblas-devel
   elif [ "$containerfile" = "cuda" ]; then
-    dnf install -y "${rpm_list[@]}"
+    dnf install -y "${rpm_list[@]}" gcc-toolset-12
+    source /opt/rh/gcc-toolset-12/enable
   fi
 
   # For Vulkan image, we don't need to install anything extra but rebuild with
