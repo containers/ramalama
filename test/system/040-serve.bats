@@ -205,7 +205,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 
 	run cat $name.yaml
 	is "$output" ".*command: \[\"vllm\"\]" "command is correct"
-	is "$output" ".*args: \['serve', '--port', '1234', '/mnt/models/model.file'\]" "args is correct"
+	is "$output" ".*args: \['serve', '--port', '1234', '/mnt/models'\]" "args is correct"
 
 	is "$output" ".*image: quay.io/ramalama/ramalama:latest" "image is correct"
 	is "$output" ".*reference: ${ociimage}" "AI image should be created"
