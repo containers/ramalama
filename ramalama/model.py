@@ -262,8 +262,19 @@ class Model:
         if not args.container:
             exec_model_path = model_path
 
-        exec_args = ["llama-simple-chat", "-m", exec_model_path]
-        exec_args += self.common_params
+        exec_args = ["llama-cli", "-m", exec_model_path, "--in-prefix", "", "--in-suffix", ""]
+
+        if not args.debug:
+            exec_args += ["--no-display-prompt"]
+
+        exec_args += [
+            "-p",
+            prompt,
+        ] + self.common_params
+
+        if not args.ARGS and sys.stdin.isatty():
+            exec_args.append("-cnv")
+
         if args.gpu:
             exec_args.extend(self.gpu_args())
 
