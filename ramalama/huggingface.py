@@ -1,7 +1,7 @@
 import os
 import pathlib
 import urllib.request
-from ramalama.common import available, run_cmd, exec_cmd, download_file, verify_checksum
+from ramalama.common import available, run_cmd, exec_cmd, download_file, verify_checksum, perror
 from ramalama.model import Model
 
 missing_huggingface = """
@@ -45,8 +45,7 @@ class Huggingface(Model):
 
     def login(self, args):
         if not self.hf_cli_available:
-            print("huggingface-cli not available, skipping login.")
-            return
+            raise NotImplementedError("huggingface-cli not available, skipping login.")
         conman_args = ["huggingface-cli", "login"]
         if args.token:
             conman_args.extend(["--token", args.token])
@@ -54,8 +53,7 @@ class Huggingface(Model):
 
     def logout(self, args):
         if not self.hf_cli_available:
-            print("huggingface-cli not available, skipping logout.")
-            return
+            raise NotImplementedError("huggingface-cli not available, skipping logout.")
         conman_args = ["huggingface-cli", "logout"]
         if args.token:
             conman_args.extend(["--token", args.token])
@@ -69,6 +67,24 @@ class Huggingface(Model):
         symlink_dir = os.path.dirname(model_path)
         os.makedirs(symlink_dir, exist_ok=True)
 
+        try:
+            return self.url_pull(args, model_path, directory_path)
+        except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
+            if self.hf_cli_available:
+                return self.hf_pull(args, model_path, directory_path)
+            perror("URL pull failed and huggingface-cli not available")
+            raise KeyError(f"Failed to pull model: {str(e)}")
+
+    def hf_pull(self, args, model_path, directory_path):
+        conman_args = ["huggingface-cli", "download", "--local-dir", directory_path, self.model]
+        run_cmd(conman_args, debug=args.debug)
+
+        relative_target_path = os.path.relpath(directory_path, start=os.path.dirname(model_path))
+        pathlib.Path(model_path).unlink(missing_ok=True)
+        os.symlink(relative_target_path, model_path)
+        return model_path
+
+    def url_pull(self, args, model_path, directory_path):
         # Fetch the SHA-256 checksum from the API
         checksum_api_url = f"https://huggingface.co/{self.directory}/raw/main/{self.filename}"
         try:

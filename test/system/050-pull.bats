@@ -45,6 +45,11 @@ load setup_suite
     run_ramalama list
     is "$output" ".*afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k" "image was actually pulled locally"
     run_ramalama rm huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+
+    run_ramalama pull hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0
+    run_ramalama list
+    is "$output" ".*TinyLlama/TinyLlama-1.1B-Chat-v1.0" "image was actually pulled locally"
+    run_ramalama rm huggingface://TinyLlama/TinyLlama-1.1B-Chat-v1.0
 }
 
 # bats test_tags=distro-integration

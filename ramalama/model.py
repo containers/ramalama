@@ -297,6 +297,8 @@ class Model:
 
         exec_args = ["llama-server", "--port", args.port, "-m", exec_model_path]
         if args.runtime == "vllm":
+            if not (exec_model_path.endswith(".GGUF") or exec_model_path.endswith(".gguf")):
+                exec_model_path = os.path.dirname(exec_model_path)
             exec_args = ["vllm", "serve", "--port", args.port, exec_model_path]
         else:
             if args.gpu:
