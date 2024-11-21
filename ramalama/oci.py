@@ -165,13 +165,15 @@ LABEL {ociimage_car}
                 pass
         return self._pull_omlmd(args)
 
-    def _pull_omlmd(self, args):
+    def _registry_reference(self):
         try:
             registry, reference = self.model.split("/", 1)
+            return registry, reference
         except Exception:
-            registry = "docker.io"
-            reference = self.model
+            return "docker.io", self.model
 
+    def _pull_omlmd(self, args):
+        registry, reference = self._registry_reference()
         reference_dir = reference.replace(":", "/")
         outdir = f"{args.store}/repos/oci/{registry}/{reference_dir}"
         # note: in the current way RamaLama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir)
@@ -193,7 +195,7 @@ LABEL {ociimage_car}
         return model_path
 
     def model_path(self, args):
-        registry, reference = self.model.split("/", 1)
+        registry, reference = self._registry_reference()
         reference_dir = reference.replace(":", "/")
         path = f"{args.store}/models/oci/{registry}/{reference_dir}"
 
@@ -206,15 +208,18 @@ LABEL {ociimage_car}
 
         return f"{path}/{ggufs[0]}"
 
-    def remove(self, args):
+    def remove(self, args, ignore_stderr=False):
         try:
             super().remove(args)
+            return
         except FileNotFoundError:
             pass
 
-        if self.conman is not None:
-            conman_args = [self.conman, "rmi", "--force", self.model]
-            exec_cmd(conman_args, debug=args.debug)
+        if self.conman is None:
+            raise NotImplementedError("OCI Images require a container engine")
+
+        conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
+        run_cmd(conman_args, debug=args.debug, ignore_stderr=ignore_stderr)
 
     def exists(self, args):
         try:

@@ -36,9 +36,9 @@ size              | [0-9]\\\+
     run_ramalama list --json
 
     while read field expect; do
-        actual=$(echo "$output" | jq -r ".[0].$field")
-        dprint "# actual=<$actual> expect=<$expect}>"
-        is "$actual" "$expect" "jq .$field"
+	actual=$(echo "$output" | jq -r ".[0].$field")
+	dprint "# actual=<$actual> expect=<$expect}>"
+	is "$actual" "$expect" "jq .$field"
     done < <(parse_table "$tests")
 }
 
@@ -51,9 +51,9 @@ size              | [0-9]\\\+
 
 @test "ramalama rm --ignore" {
     random_image_name=i_$(safename)
-    run_ramalama 1 rm $random_image_name
-    is "$output" "Error: model $random_image_name not found.*"
-    run_ramalama rm --ignore $random_image_name
+    run_ramalama 1 rm ${random_image_name}
+    is "$output" "Error: removing ${random_image_name}: \[Errno 2\] No such file or directory:.*"
+    run_ramalama rm --ignore ${random_image_name}
     is "$output" ""
 }
 

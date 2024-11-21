@@ -36,7 +36,7 @@ def add_site_packages_to_syspath(base_path):
             sys.path.insert(0, path)
 
 def main(args):
-    sharedirs = ["./", "/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
+    sharedirs = ["/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
     syspath = next((d for d in sharedirs if os.path.exists(d+"/ramalama/cli.py")), None)
     if syspath:
         sys.path.insert(0, syspath)
@@ -44,6 +44,7 @@ def main(args):
     add_site_packages_to_syspath('~/.local/pipx/venvs/*')
     add_site_packages_to_syspath('/usr/local')
     add_pipx_venvs_bin_to_path()
+    sys.path.insert(0, './')
     try:
         import ramalama
     except:
@@ -62,6 +63,10 @@ def main(args):
     if args.version:
         return ramalama.print_version(args)
 
+    def eprint(e, exit_code):
+        ramalama.perror("Error: " + str(e).strip("'\""))
+        sys.exit(exit_code)
+
     # Process CLI
     try:
         args.func(args)
@@ -73,22 +78,17 @@ def main(args):
         if args.debug:
             raise
     except IndexError as e:
-        ramalama.perror("Error: " + str(e).strip("'"))
-        sys.exit(errno.EINVAL)
+        eprint(e, errno.EINVAL)
     except KeyError as e:
-        ramalama.perror("Error: " + str(e).strip("'"))
-        sys.exit(1)
+        eprint(e, 1)
     except NotImplementedError as e:
-        ramalama.perror("Error: " + str(e).strip("'"))
-        sys.exit(errno.ENOTSUP)
+        eprint(e, errno.ENOTSUP)
     except subprocess.CalledProcessError as e:
-        ramalama.perror("Error: " + str(e).strip("'"))
-        sys.exit(e.returncode)
+        eprint(e, e.returncode)
     except KeyboardInterrupt:
         sys.exit(0)
     except ValueError as e:
-        ramalama.perror("Error: " + str(e).strip("'"))
-        sys.exit(errno.EINVAL)
+        eprint(e, errno.EINVAL)
 
 
 if __name__ == "__main__":

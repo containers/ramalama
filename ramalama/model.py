@@ -17,7 +17,7 @@ from ramalama.quadlet import Quadlet
 from ramalama.kube import Kube
 from ramalama.common import mnt_dir, mnt_file
 
-model_types = ["oci", "huggingface", "hf", "ollama"]
+model_types = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
 
 
 file_not_found = """\
@@ -87,17 +87,12 @@ class Model:
 
     def remove(self, args):
         model_path = self.model_path(args)
-        if os.path.exists(model_path):
-            try:
-                os.remove(model_path)
-                print(f"Untagged: {self.model}")
-            except OSError as e:
-                if not args.ignore:
-                    raise KeyError(f"removing {self.model}: {e}")
-        else:
+        try:
+            os.remove(model_path)
+            print(f"Untagged: {self.model}")
+        except OSError as e:
             if not args.ignore:
-                raise KeyError(f"model {self.model} not found")
-
+                raise KeyError(f"removing {self.model}: {e}")
         self.garbage_collection(args)
 
     def _image(self, args):

@@ -40,12 +40,20 @@ RamaLama supports multiple AI model registries types called transports. Supporte
 | OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)|
 ||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), and [`Artifactory`](https://artifactory.com)|
 
+RamaLama can also pull directly using URL syntax.
+
+http://, https:// and file://.
+
+This means if a model is on a web site or even on your local system, you can run it directly.
+
 RamaLama uses the Ollama registry transport by default. The default can be overridden in the ramalama.conf file or use the RAMALAMA_TRANSPORTS
 environment. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
-Individual model transports can be modifies when specifying a model via the `huggingface://`, `oci://`, or `ollama://` prefix.
+Individual model transports can be modifies when specifying a model via the `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, `file://` prefix.
 
 ramalama pull `huggingface://`afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+
+ramalama run `file://`$HOME/granite-7b-lab-Q4_K_M.gguf
 
 To make it easier for users, RamaLama uses shortname files, which container
 alias names for fully specified AI Models allowing users to specify the shorter

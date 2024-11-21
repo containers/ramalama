@@ -65,6 +65,39 @@ load setup_suite
     run_ramalama rm oci://quay.io/mmortari/gguf-py-example:v1
 }
 
+@test "ramalama URL" {
+      model=$RAMALAMA_TMPDIR/mymodel.gguf
+      touch $model
+      file_url=file://${model}
+      https_url=https://github.com/containers/ramalama/blob/main/README.md
+
+      for url in $file_url $https_url; do
+          run_ramalama pull $url
+          run_ramalama list
+          is "$output" ".*$url" "URL exists"
+          run_ramalama rm $url
+          run_ramalama list
+          assert "$output" !~ ".*$url" "URL no longer exists"
+      done
+}
+
+@test "ramalama file URL" {
+      model=$RAMALAMA_TMPDIR/mymodel.gguf
+      touch $model
+      url=file://${model}
+
+      run_ramalama pull $url
+      run_ramalama list
+      is "$output" ".*$url" "URL exists"
+      # test if model is removed, nothing blows up
+      rm ${model}
+      run_ramalama list
+      is "$output" ".*$url does not exist" "URL exists"
+      run_ramalama rm $url
+      run_ramalama list
+      assert "$output" !~ ".*$url" "URL no longer exists"
+}
+
 @test "ramalama use registry" {
     skip_if_darwin
     skip_if_docker
