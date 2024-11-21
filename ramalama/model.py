@@ -100,7 +100,6 @@ class Model:
 
         self.garbage_collection(args)
 
-
     def _image(self, args):
         if args.image != default_image():
             return args.image
