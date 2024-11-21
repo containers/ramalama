@@ -29,7 +29,7 @@ load helpers
 	is "$output" ".*${image} /bin/sh -c" "verify image name"
     else
 	run_ramalama --dryrun run ${model}
-	is "$output" 'llama-simple-chat -m /path/to/model.*' "dryrun correct"
+	is "$output" 'llama-cli -m /path/to/model --in-prefix --in-suffix --no-display-prompt -p.*' "dryrun correct"
 
 	run_ramalama 1 run --name foobar tiny
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
