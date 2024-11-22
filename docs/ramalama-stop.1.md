@@ -8,7 +8,7 @@ ramalama\-stop - stop named container that is running AI Model
 
 Tells container engine to stop the specified container.
 
-Command will not work when run with --nocontainer option.
+The stop command conflicts with --nocontainer option.
 
 ## OPTIONS
 
@@ -24,9 +24,7 @@ Ignore missing containers when stopping
 ## DESCRIPTION
 Stop specified container that is executing the AI Model.
 
-If ramalama command was executed with the --nocontainer model, then
-this command will have no effect. The user will need to stop the RamaLama
-processes manually.
+The ramalama stop command conflicts with the --nocontainer option. The user needs to stop the RamaLama processes manually when running with --nocontainer.
 
 ## EXAMPLES
 

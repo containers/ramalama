@@ -270,6 +270,9 @@ class Model:
             f"{args.temp}",
         ]
 
+        if args.seed:
+            exec_args += ["--seed", args.seed]
+
         if not args.debug:
             exec_args += ["--no-display-prompt"]
         exec_args += [
@@ -311,16 +314,20 @@ class Model:
         if not args.container and not args.generate:
             exec_model_path = model_path
 
-        exec_args = ["llama-server",
-                     "--port",
-                     args.port,
-                     "-m",
-                     exec_model_path,
-                     "-c",
-                     f"{args.context}",
-                     "--temp",
-                     f"{args.temp}",
-                     ]
+        exec_args = [
+            "llama-server",
+            "--port",
+            args.port,
+            "-m",
+            exec_model_path,
+            "-c",
+            f"{args.context}",
+            "--temp",
+            f"{args.temp}",
+        ]
+        if args.seed:
+            exec_args += ["--seed", args.seed]
+
         if args.runtime == "vllm":
             if not (exec_model_path.endswith(".GGUF") or exec_model_path.endswith(".gguf")):
                 exec_model_path = os.path.dirname(exec_model_path)

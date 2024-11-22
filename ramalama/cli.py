@@ -614,8 +614,7 @@ def push_cli(args):
             raise e
 
 
-def run_parser(subparsers):
-    parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
+def _run(parser):
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument(
         "-c",
@@ -625,6 +624,7 @@ def run_parser(subparsers):
         help="size of the prompt context (0 = loaded from model)",
     )
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
+    parser.add_argument("--seed", help="override random seed")
     parser.add_argument(
         "--temp", default=config.get('temp', "0.8"), help="temperature of the response from the AI model"
     )
@@ -634,6 +634,11 @@ def run_parser(subparsers):
         default=True,
         help="require HTTPS and verify certificates when contacting registries",
     )
+
+
+def run_parser(subparsers):
+    parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
+    _run(parser)
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument(
         "ARGS", nargs="*", help="Overrides the default prompt, and the output is returned without entering the chatbot"
@@ -648,28 +653,11 @@ def run_cli(args):
 
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
-    parser.add_argument("--authfile", help="path of the authentication file")
-    parser.add_argument(
-        "-c",
-        "--ctx-size",
-        dest="context",
-        default=config.get('ctx_size', 2048),
-        help="size of the prompt context (0 = loaded from model)",
-    )
+    _run(parser)
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
     parser.add_argument("--host", default=config.get('host', "0.0.0.0"), help="IP address to listen")
-    parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     parser.add_argument(
         "-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on"
-    )
-    parser.add_argument(
-        "--temp", default=config.get('temp', "0.8"), help="temperature of the response from the AI model"
-    )
-    parser.add_argument(
-        "--tls-verify",
-        dest="tlsverify",
-        default=True,
-        help="require HTTPS and verify certificates when contacting registries",
     )
     parser.add_argument(
         "--generate",

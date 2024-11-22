@@ -2,7 +2,7 @@
 
 # NAME
 ramalama.conf - These configuration files specifies default
-configuration options and command-line flags for RamaLa.
+configuration options and command-line flags for RamaLama.
 
 # DESCRIPTION
 RamaLama reads the ramalama.conf file, if it exists
@@ -32,7 +32,7 @@ Config files in the `.d` directories, are added in alpha numeric sorted order an
 
 ## ENVIRONMENT VARIABLES
 If the `RAMALAMA_CONF` environment variable is set, all system and user
-config files are ignored and only the specified config file will be loaded.
+config files are ignored and only the specified config file is loaded.
 
 # FORMAT
 The [TOML format][toml] is used as the encoding of the configuration file.
@@ -103,9 +103,9 @@ Store AI Models in the specified directory
 Temperature of the response from the AI Model
 llama.cpp explains this as:
 
-    The lower the number is, the more deterministic the response will be.
+    The lower the number is, the more deterministic the response.
 
-    The higher the number is the more creative the response will be, but moe likely to go off topic if set too high.
+    The higher the number is the more creative the response is, but moee likely to hallucinate when set too high.
 
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
