@@ -1114,7 +1114,7 @@ function parse_table() {
 function random_string() {
     local length=${1:-10}
 
-    head /dev/urandom | tr -dc a-zA-Z0-9 | head -c$length
+    head /dev/urandom | LC_ALL=C tr -dc a-zA-Z0-9 | head -c$length
 }
 
 ##############

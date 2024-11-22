@@ -18,6 +18,7 @@ from ramalama.common import (
 from ramalama.model import model_types
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
+from ramalama.url import URL
 from ramalama.shortnames import Shortnames
 from ramalama.toml_parser import TOMLParser
 from ramalama.version import version, print_version
@@ -351,7 +352,17 @@ def human_duration(d):
 
 
 def list_files_by_modification():
-    return sorted(Path().rglob("*"), key=lambda p: os.path.getmtime(p), reverse=True)
+    paths = Path().rglob("*")
+    models = []
+    for path in paths:
+        if str(path).startswith("file/"):
+            if not os.path.exists(str(path)):
+                path = str(path).replace("file/", "file:///")
+                perror(f"{path} does not exist")
+                continue
+        models.append(path)
+
+    return sorted(models, key=lambda p: os.path.getmtime(p), reverse=True)
 
 
 def containers_parser(subparsers):
@@ -431,7 +442,10 @@ def _list_models(args):
     # Collect model data
     for path in list_files_by_modification():
         if path.is_symlink():
-            name = str(path).replace("/", "://", 1)
+            if str(path).startswith("file/"):
+                name = str(path).replace("/", ":///", 1)
+            else:
+                name = str(path).replace("/", "://", 1)
             file_epoch = path.lstat().st_mtime
             modified = int(time.time() - file_epoch)
             size = get_size(path)
@@ -727,11 +741,18 @@ def _rm_model(models, args):
             m = New(model, args)
             m.remove(args)
         except KeyError as e:
+            for prefix in model_types:
+                if model.startswith(prefix + "://"):
+                    if not args.ignore:
+                        raise e
             try:
-                # attempt to remove as a container image
+                # attempt to remove as a container image 
                 m = OCI(model, config.get('engine', container_manager()))
-                m.remove(args)
+                m.remove(args, ignore_stderr=True)
+                return
             except Exception:
+                pass
+            if not args.ignore:
                 raise e
 
 
@@ -774,6 +795,8 @@ def New(model, args):
         return Ollama(model)
     if model.startswith("oci://") or model.startswith("docker://"):
         return OCI(model, args.engine)
+    if model.startswith("http://") or model.startswith("https://") or model.startswith("file://"):
+        return URL(model)
 
     transport = config.get("transport", "ollama")
     if transport == "huggingface":
