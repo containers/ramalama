@@ -152,6 +152,16 @@ class Model:
         gpu_type, gpu_num = get_gpu()
         if gpu_type == "HIP_VISIBLE_DEVICES" or gpu_type == "ASAHI_VISIBLE_DEVICES":
             conman_args += ["-e", f"{gpu_type}={gpu_num}"]
+
+        #podman is not a drop-in replacement for docker... need to "see" which we're in here, ala common.py->available logic
+        #risk of duplicating code here, maint problem
+        if gpu_type == "CUDA_VISIBLE_DEVICES":
+            if shutil.which("podman"):
+                #todo is /all/ appropriate?
+                conman_args += ["--device", "nvidia.com/gpu=all"] #AFAIK, cuda requires this for podman
+            else:
+                conman_args += ["--gpus", "all"] #and this for Docker
+        
         return conman_args
 
     def run_container(self, args, shortnames):
@@ -389,7 +399,15 @@ def get_gpu():
             content = file.read()
             if "asahi" in content.lower():
                 return "ASAHI_VISIBLE_DEVICES", 1
-
+                
+    try:
+        #TODO I don't currently have access to a PC w/ multiple NVidia GPUs nor an NVidia Mac...  but I *think* that
+        #every Linux and Windows machine having modern NVidia will have nvidia-smi and that the number of lines corresponds to the number of zero-indexed gpus
+        check_output = subprocess.run(['nvidia-smi', '-L'], check=True, capture_output=True) #shell to nvidia-smi
+        if not check_output.returncode: #if command EXIT_SUCCESS
+            return "CUDA_VISIBLE_DEVICES", len(check_output.stdout.splitlines()) # ret cuda, #gpus?
+    except Exception: {} #fall through
+    
     return None, None
 
 
