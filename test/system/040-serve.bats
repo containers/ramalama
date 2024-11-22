@@ -22,6 +22,10 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	run_ramalama --dryrun serve --host 127.1.2.3 --name foobar ${model}
 	assert "$output" =~ ".*--host 127.1.2.3" "verify --host is modified when run within container"
 	is "$output" ".*${model}" "verify model name"
+	is "$output" ".*--temp 0.8" "verify temp is set"
+
+	run_ramalama --dryrun serve --temp 0.1 ${model}
+	is "$output" ".*--temp 0.1" "verify temp is set"
 
 	run_ramalama 1 --nocontainer serve --name foobar tiny
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"

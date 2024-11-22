@@ -56,16 +56,20 @@ The ramalama table contains settings to configure and manage the OCI runtime.
 
 [ramalama]
 
+**carimage**="registry.access.redhat.com/ubi9-micro:latest"
+
+OCI model car image
+
+Image to be used when building and pushing --type=car models
+
 **container**=true
 
 Run RamaLama in the default container.
 RAMALAMA_IN_CONTAINER environment variable overrides this field.
 
-**carimage**="registry.access.redhat.com/ubi9-micro:latest"
+**ctx_size**=2048
 
-OCI Model Car image
-
-Image to be used when building and pushing --type=car models
+Size of the prompt context (0 = loaded from model)
 
 **engine**="podman"
 
@@ -95,9 +99,18 @@ Options: llama.cpp, vllm
 
 Store AI Models in the specified directory
 
+**temp**="0.8"
+Temperature of the response from the AI Model
+llama.cpp explains this as:
+
+    The lower the number is, the more deterministic the response will be.
+
+    The higher the number is the more creative the response will be, but moe likely to go off topic if set too high.
+
+        Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+
 **transport**="ollama"
 
 Specify the default transport to be used for pulling and pushing of AI Models.
 Options: oci, ollama, huggingface.
 RAMALAMA_TRANSPORT environment variable overrides this field.
-

@@ -39,7 +39,6 @@ class Model:
 
     model = ""
     type = "Model"
-    common_params = ["-c", "2048"]
 
     def __init__(self, model):
         self.model = model
@@ -257,15 +256,26 @@ class Model:
         if not args.container:
             exec_model_path = model_path
 
-        exec_args = ["llama-cli", "-m", exec_model_path, "--in-prefix", "", "--in-suffix", ""]
+        exec_args = [
+            "llama-cli",
+            "-m",
+            exec_model_path,
+            "--in-prefix",
+            "",
+            "--in-suffix",
+            "",
+            "-c",
+            f"{args.context}",
+            "--temp",
+            f"{args.temp}",
+        ]
 
         if not args.debug:
             exec_args += ["--no-display-prompt"]
-
         exec_args += [
             "-p",
             prompt,
-        ] + self.common_params
+        ]
 
         if not args.ARGS and sys.stdin.isatty():
             exec_args.append("-cnv")
@@ -301,7 +311,16 @@ class Model:
         if not args.container and not args.generate:
             exec_model_path = model_path
 
-        exec_args = ["llama-server", "--port", args.port, "-m", exec_model_path]
+        exec_args = ["llama-server",
+                     "--port",
+                     args.port,
+                     "-m",
+                     exec_model_path,
+                     "-c",
+                     f"{args.context}",
+                     "--temp",
+                     f"{args.temp}",
+                     ]
         if args.runtime == "vllm":
             if not (exec_model_path.endswith(".GGUF") or exec_model_path.endswith(".gguf")):
                 exec_model_path = os.path.dirname(exec_model_path)

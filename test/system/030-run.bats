@@ -14,10 +14,13 @@ load helpers
 	run_ramalama --dryrun run ${model}
 	is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
 	is "$output" ".*${model}" "verify model name"
+	is "$output" ".*-c 2048" "verify model name"
 
-	run_ramalama --dryrun run --name foobar ${model}
+	run_ramalama --dryrun run -c 4096 --name foobar ${model}
 	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
 	is "$output" ".*${model}" "verify model name"
+	is "$output" ".*-c 4096" "verify ctx-size is set"
+	is "$output" ".*--temp 0.8" "verify temp is set"
 
 	run_ramalama --dryrun run --name foobar ${model}
 	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
@@ -28,10 +31,11 @@ load helpers
 	RAMALAMA_IMAGE=${image} run_ramalama --dryrun run ${model}
 	is "$output" ".*${image} /bin/sh -c" "verify image name"
     else
-	run_ramalama --dryrun run ${model}
-	is "$output" 'llama-cli -m /path/to/model --in-prefix --in-suffix --no-display-prompt -p.*' "dryrun correct"
+	run_ramalama --dryrun run -c 4096 ${model}
+	is "$output" 'llama-cli -m /path/to/model --in-prefix --in-suffix -c 4096 --temp 0.8 --no-display-prompt -p.*' "dryrun correct"
+	is "$output" ".*-c 4096" "verify model name"
 
-	run_ramalama 1 run --name foobar tiny
+	run_ramalama 1 run --ctx-size=4096 --name foobar tiny
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
     fi
 }

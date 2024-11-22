@@ -20,6 +20,9 @@ For REST API endpoint documentation, see: [https://github.com/ggerganov/llama.cp
 #### **--authfile**=*password*
 path of the authentication file for OCI registries
 
+#### **--ctx-size**, **-c**
+size of the prompt context (default: 2048, 0 = loaded from model)
+
 #### **--detach**, **-d**
 Run the container in the background and print the new container ID.
 The default is TRUE. The --nocontainer option forces this option to False.
@@ -46,6 +49,16 @@ Name of the container to run the Model in.
 
 #### **--port**, **-p**
 port for AI Model server to listen on
+
+#### **--temp**="0.8"
+Temperature of the response from the AI Model
+llama.cpp explains this as:
+
+    The lower the number is, the more deterministic the response will be.
+
+    The higher the number is the more creative the response will be, but moe likely to go off topic if set too high.
+
+        Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
