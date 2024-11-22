@@ -55,3 +55,20 @@ jobs:
     trigger: pull_request
     packages: [ramalama-centos]
     targets: *centos_copr_targets
+
+  - job: propose_downstream
+    trigger: release
+    packages: [ramalama-fedora]
+    dist_git_branches: &fedora_targets
+      - fedora-all
+
+  - job: koji_build
+    trigger: commit
+    packages: [ramalama-fedora]
+    dist_git_branches: *fedora_targets
+
+  - job: bodhi_update
+    trigger: commit
+    packages: [ramalama-fedora]
+    dist_git_branches:
+      - fedora-branched # rawhide updates are created automatically
