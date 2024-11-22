@@ -102,19 +102,19 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 
 | Command                                                | Description                                                |
 | ------------------------------------------------------ | ---------------------------------------------------------- |
-| [ramalama(1)](docs/ramalama.1.md)                      | primary RamaLama man page                                  |
-| [ramalama-containers(1)](docs/ramalama-containers.1.md)| list all RamaLama containers                               |
-| [ramalama-info(1)](ramalama-info.1.md)                 | display RamaLama configuration information                 |
-| [ramalama-list(1)](docs/ramalama-list.1.md)            | list all downloaded AI Models                              |
-| [ramalama-login(1)](docs/ramalama-login.1.md)          | login to remote registry                                   |
-| [ramalama-logout(1)](docs/ramalama-logout.1.md)        | logout from remote registry                                |
-| [ramalama-pull(1)](docs/ramalama-pull.1.md)            | pull AI Model from Model registry to local storage         |
-| [ramalama-push(1)](docs/ramalama-push.1.md)            | push AI Model from local storage to remote registry        |
-| [ramalama-rm(1)](docs/ramalama-rm.1.md)                | remove AI Model from local storage                         |
-| [ramalama-run(1)](docs/ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
-| [ramalama-serve(1)](docs/ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
-| [ramalama-stop(1)](docs/ramalama-stop.1.md)            | stop named container that is running AI Model              |
-| [ramalama-version(1)](docs/ramalama-version.1.md)      | display version of AI Model                                |
+| [ramalama(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama.1.md)                      | primary RamaLama man page                                  |
+| [ramalama-containers(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-containers.1.md)| list all RamaLama containers                               |
+| [ramalama-info(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-info.1.md)                 | display RamaLama configuration information                 |
+| [ramalama-list(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-list.1.md)            | list all downloaded AI Models                              |
+| [ramalama-login(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-login.1.md)          | login to remote registry                                   |
+| [ramalama-logout(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-logout.1.md)        | logout from remote registry                                |
+| [ramalama-pull(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-pull.1.md)            | pull AI Model from Model registry to local storage         |
+| [ramalama-push(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-push.1.md)            | push AI Model from local storage to remote registry        |
+| [ramalama-rm(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-rm.1.md)                | remove AI Model from local storage                         |
+| [ramalama-run(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
+| [ramalama-serve(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
+| [ramalama-stop(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-stop.1.md)            | stop named container that is running AI Model              |
+| [ramalama-version(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-version.1.md)      | display version of AI Model                                |
 
 ## Usage
 
