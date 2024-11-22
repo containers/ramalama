@@ -285,6 +285,19 @@ class Model:
                 raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
             raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
 
+    def execute_model(self, model_path, exec_args, args):
+        try:
+            if self.exec_model_in_container(model_path, exec_args, args):
+                return
+            if args.dryrun:
+                dry_run(exec_args)
+                return
+            exec_cmd(exec_args, debug=args.debug)
+        except FileNotFoundError as e:
+            if in_container():
+                raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
+            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
+
     def serve(self, args):
         if hasattr(args, "name") and args.name:
             if not args.container and not args.generate:
@@ -301,15 +314,27 @@ class Model:
         if not args.container and not args.generate:
             exec_model_path = model_path
 
-        exec_args = ["llama-server", "--port", args.port, "-m", exec_model_path]
         if args.runtime == "vllm":
             if not (exec_model_path.endswith(".GGUF") or exec_model_path.endswith(".gguf")):
                 exec_model_path = os.path.dirname(exec_model_path)
             exec_args = ["vllm", "serve", "--port", args.port, exec_model_path]
-        else:
+        elif args.runtime == "llama.cpp":
+            exec_args = ["llama-server", "--port", args.port, "-m", exec_model_path, "--host", args.host]
             if args.gpu:
                 exec_args.extend(self.gpu_args())
-            exec_args.extend(["--host", args.host])
+
+        else:
+            exec_args = [
+                "python3",
+                "-m",
+                "llama_cpp.server",
+                "--port",
+                args.port,
+                "--model",
+                exec_model_path,
+                "--host",
+                args.host,
+            ]
 
         if args.generate == "quadlet":
             return self.quadlet(model_path, args, exec_args)
@@ -320,17 +345,7 @@ class Model:
         if args.generate == "quadlet/kube":
             return self.quadlet_kube(model_path, args, exec_args)
 
-        try:
-            if self.exec_model_in_container(model_path, exec_args, args):
-                return
-            if args.dryrun:
-                dry_run(exec_args)
-                return
-            exec_cmd(exec_args, debug=args.debug)
-        except FileNotFoundError as e:
-            if in_container():
-                raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
-            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
+        self.execute_model(model_path, exec_args, args)
 
     def quadlet(self, model, args, exec_args):
         quadlet = Quadlet(model, args, exec_args)

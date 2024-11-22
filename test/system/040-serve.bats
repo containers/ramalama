@@ -136,7 +136,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 
     run cat tinyllama.container
     is "$output" ".*PublishPort=1234" "PublishPort should match"
-    is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
+    is "$output" ".*Exec=python3 -m llama_cpp.server --port 1234 --model .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*tinyllama" "Mount line should be correct"
 
     rm tinyllama.container
@@ -174,7 +174,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	run cat $name.container
 	is "$output" ".*PublishPort=1234" "PublishPort should match"
 	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
-	is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
+	is "$output" ".*Exec=python3 -m llama_cpp.server --port 1234 --model .*" "Exec line should be correct"
 	is "$output" ".*Mount=type=image,source=${ociimage},destination=/mnt/models,subpath=/models,readwrite=false" "Volume line should be correct"
 
 	if is_container; then
@@ -226,7 +226,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 
     run cat $name.yaml
     is "$output" ".*image: quay.io/ramalama/ramalama:latest" "Should container image"
-    is "$output" ".*command: \[\"llama-server\"\]" "Should command"
+    is "$output" ".*command: \[\"python3\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
     run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube ${model}
@@ -235,7 +235,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 
     run cat $name.yaml
     is "$output" ".*image: quay.io/ramalama/ramalama:latest" "Should container image"
-    is "$output" ".*command: \[\"llama-server\"\]" "Should command"
+    is "$output" ".*command: \[\"python3\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
     run cat $name.kube

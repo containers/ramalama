@@ -79,7 +79,7 @@ After=local-fs.target
 [Container]
 AddDevice=-/dev/dri
 AddDevice=-/dev/kfd
-Exec=llama-server --port 1234 -m $HOME/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
+Exec=python3 -m llama_cpp.server --port 1234 --model $HOME/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
 Image=quay.io/ramalama/ramalama:latest
 Mount=type=bind,src=/home/dwalsh/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf,target=/mnt/models/model.file,ro,Z
 ContainerName=MyGraniteServer
