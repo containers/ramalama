@@ -3,6 +3,8 @@ import sys
 import glob
 import atexit
 import shlex
+import subprocess
+import shutil
 
 from ramalama.common import (
     default_image,
