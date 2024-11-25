@@ -4,14 +4,79 @@ import subprocess
 import sys
 import tempfile
 
+import ramalama.annotations as annotations
 from ramalama.model import Model
-from ramalama.common import run_cmd, exec_cmd, perror, available, mnt_file
+from ramalama.common import (
+    available,
+    engine_version,
+    exec_cmd,
+    mnt_file,
+    perror,
+    run_cmd,
+)
 
 prefix = "oci://"
 
 ocilabeltype = "org.containers.type"
 ociimage_raw = "org.containers.type=ai.image.model.raw"
 ociimage_car = "org.containers.type=ai.image.model.car"
+
+
+def engine_supports_manifest_attributes(engine):
+    if not engine or engine == "" or engine == "docker":
+        return False
+    if engine == "podman" and engine_version(engine) < "5":
+        return False
+    return True
+
+
+def list_manifests(args):
+    conman_args = [
+        args.engine,
+        "images",
+        "--filter",
+        "manifest=true",
+        "--format",
+        '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .Created }}",\
+        "size":"{{ .Size }}", "ID":"{{ .ID }}"},',
+    ]
+    output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+    if output == "":
+        return []
+
+    manifests = json.loads("[" + output[:-1] + "]")
+    if not engine_supports_manifest_attributes(args.engine):
+        return manifests
+
+    models = []
+    for manifest in manifests:
+        conman_args = [
+            args.engine,
+            "manifest",
+            "inspect",
+            manifest["ID"],
+        ]
+        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+
+        if output == "":
+            continue
+        inspect = json.loads(output)
+        if 'manifests' not in inspect:
+            continue
+        if not inspect['manifests']:
+            continue
+        img = inspect['manifests'][0]
+        if 'annotations' not in img:
+            continue
+        if annotations.AnnotationModel in img['annotations']:
+            models += [
+                {
+                    "name": manifest["name"],
+                    "modified": manifest["modified"],
+                    "size": manifest["size"],
+                }
+            ]
+    return models
 
 
 def list_models(args):
@@ -30,7 +95,9 @@ def list_models(args):
     output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
     if output == "":
         return []
-    return json.loads("[" + output[:-1] + "]")
+    models = json.loads("[" + output[:-1] + "]")
+    models += list_manifests(args)
+    return models
 
 
 class OCI(Model):
@@ -87,7 +154,7 @@ pip install omlmd
         reference_dir = reference.replace(":", "/")
         return registry, reference, reference_dir
 
-    def _build(self, source, target, args):
+    def build(self, source, target, args):
         print(f"Building {target}...")
         src = os.path.realpath(source)
         contextdir = os.path.dirname(src)
@@ -116,37 +183,103 @@ LABEL {ociimage_car}
                 c.write(model_car)
             else:
                 c.write(model_raw)
-        run_cmd(
-            [self.conman, "build", "-t", target, "-f", containerfile.name, contextdir], stdout=None, debug=args.debug
+        imageid = (
+            run_cmd([self.conman, "build", "--no-cache", "-q", "-f", containerfile.name, contextdir], debug=args.debug)
+            .stdout.decode("utf-8")
+            .strip()
         )
+        return imageid
+
+    def tag(self, imageid, target, args):
+        # Tag imageid with target
+        cmd_args = [
+            self.conman,
+            "tag",
+            imageid,
+            target,
+        ]
+        run_cmd(cmd_args, debug=args.debug)
+
+    def _create_manifest_without_attributes(self, target, imageid, args):
+        # Create manifest list for target with imageid
+        cmd_args = [
+            self.conman,
+            "manifest",
+            "create",
+            target,
+            imageid,
+        ]
+        run_cmd(cmd_args, debug=args.debug)
+
+    def _create_manifest(self, target, imageid, args):
+        print("DAN100")
+        if not engine_supports_manifest_attributes(args.engine):
+            return self._create_manifest_without_attributes(target, imageid, args)
+
+        # Create manifest list for target with imageid
+        cmd_args = [
+            self.conman,
+            "manifest",
+            "create",
+            target,
+            imageid,
+        ]
+        run_cmd(cmd_args, debug=args.debug)
+
+        # Annotate manifest list
+        cmd_args = [
+            self.conman,
+            "manifest",
+            "annotate",
+            "--annotation",
+            f"{annotations.AnnotationModel}=true",
+            "--annotation",
+            f"{ocilabeltype}=''",
+            "--annotation",
+            f"{annotations.AnnotationTitle}=args.SOURCE",
+            target,
+            imageid,
+        ]
+        run_cmd(cmd_args, stdout=None, debug=args.debug)
+
+    def _convert(self, source, target, args):
+        print(f"Converting {source} to {target}...")
+        try:
+            run_cmd([self.conman, "manifest", "rm", target], ignore_stderr=True, stdout=None, debug=args.debug)
+        except subprocess.CalledProcessError:
+            pass
+        imageid = self.build(source, target, args)
+        try:
+            self._create_manifest(target, imageid, args)
+        except subprocess.CalledProcessError as e:
+            perror(
+                f"""\
+Failed to create manifest for OCI {target} : {e}
+Tagging build instead"""
+            )
+            self.tag(imageid, target, args)
+
+    def convert(self, source, args):
+        target = self.model.removeprefix(prefix)
+        source = source.removeprefix(prefix)
+        self._convert(source, target, args)
 
     def push(self, source, args):
         target = self.model.removeprefix(prefix)
         source = source.removeprefix(prefix)
+        print(f"Pushing {target}...")
         conman_args = [self.conman, "push"]
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
         if str(args.tlsverify).lower() == "false":
             conman_args.extend([f"--tls-verify={args.tlsverify}"])
-
-        print(f"Pushing {target}...")
+        conman_args.extend([target])
         if source != target:
-            try:
-                self._build(source, target, args)
-                try:
-                    conman_args.extend([target])
-                    run_cmd(conman_args, debug=args.debug)
-                    return
-                except subprocess.CalledProcessError as e:
-                    perror(f"Failed to push {source} model to OCI: {e}")
-                    raise e
-            except subprocess.CalledProcessError:
-                pass
+            self._convert(source, target, args)
         try:
-            conman_args.extend([source, target])
             run_cmd(conman_args, debug=args.debug)
         except subprocess.CalledProcessError as e:
-            perror(f"Failed to push {source} model to OCI {target}: {e}")
+            perror(f"Failed to push OCI {target} : {e}")
             raise e
 
     def pull(self, args):
@@ -218,8 +351,12 @@ LABEL {ociimage_car}
         if self.conman is None:
             raise NotImplementedError("OCI Images require a container engine")
 
-        conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
-        run_cmd(conman_args, debug=args.debug, ignore_stderr=ignore_stderr)
+        try:
+            conman_args = [self.conman, "manifest", "rm", self.model]
+            run_cmd(conman_args, debug=args.debug, ignore_stderr=ignore_stderr)
+        except subprocess.CalledProcessError:
+            conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
+            run_cmd(conman_args, debug=args.debug, ignore_stderr=ignore_stderr)
 
     def exists(self, args):
         try:

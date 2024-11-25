@@ -602,14 +602,14 @@ def push_cli(args):
     try:
         model = New(tgt, args)
         model.push(source, args)
-    except KeyError as e:
+    except NotImplementedError as e:
         for mtype in model_types:
-            if model.startswith(mtype + "://"):
+            if tgt.startswith(mtype + "://"):
                 raise e
         try:
             # attempt to push as a container image
-            m = OCI(model, config.get('engine', container_manager()))
-            m.push(args)
+            m = OCI(tgt, config.get('engine', container_manager()))
+            m.push(source, args)
         except Exception:
             raise e
 
