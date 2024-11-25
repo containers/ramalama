@@ -98,12 +98,14 @@ class Model:
         if args.image != default_image():
             return args.image
 
-        gpu_type, _ = get_gpu()
-        if gpu_type == "HIP_VISIBLE_DEVICES":
+        if os.getenv("HIP_VISIBLE_DEVICES"):
             return "quay.io/ramalama/rocm:latest"
 
-        if gpu_type == "ASAHI_VISIBLE_DEVICES":
+        if os.getenv("ASAHI_VISIBLE_DEVICES"):
             return "quay.io/ramalama/asahi:latest"
+        
+        if os.getenv("CUDA_VISIBLE_DEVICES"):
+            return "docker.io/brianmahabir/rama-cuda:v1"
 
         return args.image
 
@@ -143,9 +145,18 @@ class Model:
         if os.path.exists("/dev/kfd"):
             conman_args += ["--device", "/dev/kfd"]
 
-        gpu_type, gpu_num = get_gpu()
-        if gpu_type == "HIP_VISIBLE_DEVICES" or gpu_type == "ASAHI_VISIBLE_DEVICES":
-            conman_args += ["-e", f"{gpu_type}={gpu_num}"]
+        for var in ["HIP_VISIBLE_DEVICES", "ASAHI_VISIBLE_DEVICES", "CUDA_VISIBLE_DEVICES"]:
+            value = os.getenv(var)
+            if value:
+                if var == "CUDA_VISIBLE_DEVICES":
+                    if args.engine == "docker":
+                        conman_args += ["--gpus", "all"]
+                    else:
+                        # Podman specific args
+                        conman_args += ["--device", "nvidia.com/gpu=all"]       
+                else:
+                    # For HIP and ASAHI, we directly add the environment variable with its value
+                    conman_args += ["-e", f"{var}={value}"]
         return conman_args
 
     def run_container(self, args, shortnames):
@@ -190,14 +201,14 @@ class Model:
         return True
 
     def gpu_args(self):
+        gpu_type, gpu_num = get_gpu()
         gpu_args = []
         if sys.platform == "darwin":
             # llama.cpp will default to the Metal backend on macOS, so we don't need
             # any additional arguments.
             pass
-        elif sys.platform == "linux" and (
-            os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("ASAHI_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
-        ):
+        elif sys.platform == "linux" and gpu_type is not None:
+            os.environ[gpu_type] = gpu_num
             gpu_args = ["-ngl", "99"]
         else:
             print("GPU offload was requested but is not available on this system")
@@ -280,8 +291,13 @@ class Model:
         if not args.ARGS and sys.stdin.isatty():
             exec_args.append("-cnv")
 
-        if args.gpu:
-            exec_args.extend(self.gpu_args())
+        # if args.gpu:
+        #     exec_args.extend(self.gpu_args())
+
+        # bypass args.gpu for auto-detection of gpu
+        gpu_args = self.gpu_args() 
+        if gpu_args is not None:
+            exec_args.extend(gpu_args) 
 
         try:
             if self.exec_model_in_container(model_path, exec_args, args):
@@ -293,7 +309,7 @@ class Model:
         except FileNotFoundError as e:
             if in_container():
                 raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
-            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
+            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0]))
 
     def serve(self, args):
         if hasattr(args, "name") and args.name:
@@ -326,8 +342,13 @@ class Model:
                 exec_model_path = os.path.dirname(exec_model_path)
             exec_args = ["vllm", "serve", "--port", args.port, exec_model_path]
         else:
-            if args.gpu:
-                exec_args.extend(self.gpu_args())
+            # if args.gpu:
+            #     exec_args.extend(self.gpu_args())
+
+            # bypass args.gpu for auto-detection of gpu
+            gpu_args = self.gpu_args() 
+            if gpu_args is not None:
+                exec_args.extend(gpu_args) 
             exec_args.extend(["--host", args.host])
 
         if args.generate == "quadlet":
@@ -349,7 +370,7 @@ class Model:
         except FileNotFoundError as e:
             if in_container():
                 raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
-            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
+            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0]))
 
     def quadlet(self, model, args, exec_args):
         quadlet = Quadlet(model, args, exec_args)
@@ -382,28 +403,86 @@ class Model:
         return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
 
 
+def get_amdgpu(gpu_template):
+    """Detect AMD GPUs and append valid entries to the template."""
+    amdgpu_num = 0
+    amdgpu_vram = 0
+    for i, fp in enumerate(sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total'))):
+        try:
+            with open(fp, 'r') as file:
+                memory_bytes = int(file.read())
+                memory_mib = memory_bytes / (1024 * 1024)  # Convert bytes to MiB
+                # Find AMD GPU with largest Vram
+                if memory_mib > 1024 and memory_mib > amdgpu_vram:
+                    amdgpu_vram = memory_mib
+                    amdgpu_num = i
+            gpu_template.append({"index":amdgpu_num, "vram":amdgpu_vram, "env":"HIP_VISIBLE_DEVICES"})
+        except Exception as ex:
+            print(f"Error reading AMD GPU memory info: {ex}")
+
+
+def get_nvgpu(gpu_template):
+    """Detect NVIDIA GPUs and append valid entries to the template."""
+    nvgpu_num = 0
+    nvgpu_vram = 0
+    try:
+        command = ['nvidia-smi', '--query-gpu=index,memory.total', '--format=csv,noheader,nounits']
+        output = run_cmd(command).stdout.decode("utf-8")
+
+         # Check for nvidia-container-toolkit to verify support with container runtime
+        try:
+            run_cmd(['nvidia-ctk', '--version']).stdout.decode("utf-8")
+        except FileNotFoundError:
+            print("'nvidia-container-toolkit' is not installed. No NVIDIA GPU support available for container runtime.")
+
+        # Find Nvidia GPU with largest Vram
+        for line in output.strip().split('\n'):
+            try:
+                index, memory_mib = line.split(',')
+                memory_mib = int(memory_mib)
+                if memory_mib > 1024 and memory_mib > nvgpu_vram:
+                    nvgpu_vram = memory_mib
+                    nvgpu_num = index.strip()
+            except ValueError as ex:
+                print(f"Error parsing NVIDIA GPU info: {ex}")
+                return
+        gpu_template.append({"index":nvgpu_num, "vram":nvgpu_vram, "env":"CUDA_VISIBLE_DEVICES"})
+    except FileNotFoundError:
+        # print("No Nvidia GPU Found ('nvidia-smi' command was not found)")
+        return
+
+
 def get_gpu():
-    i = 0
-    gpu_num = 0
-    gpu_bytes = 0
-    for fp in sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total')):
-        with open(fp, 'r') as file:
-            content = int(file.read())
-            if content > 1073741824 and content > gpu_bytes:
-                gpu_bytes = content
-                gpu_num = i
-
-        i += 1
-
-    if gpu_bytes:  # this is the ROCm/AMD case
-        return "HIP_VISIBLE_DEVICES", gpu_num
-
+    """
+    Detects and selects a GPU with at least 1 GiB of memory.
+    Uses a centralized template to handle multiple GPU types.
+    
+    Returns:
+        tuple: Environment variable name and GPU index (as a string), or (None, None) if no suitable GPU is found.
+    """
+    # Check if system is running Asahi Linux (Apple Silicon)
     if os.path.exists('/etc/os-release'):
-        with open('/etc/os-release', 'r') as file:
-            content = file.read()
-            if "asahi" in content.lower():
-                return "ASAHI_VISIBLE_DEVICES", 1
+        try:
+            with open('/etc/os-release', 'r') as file:
+                if "asahi" in file.read().lower():
+                    return "ASAHI_VISIBLE_DEVICES", "1"
+        except Exception as ex:
+            print(f"Error reading OS release file: {ex}")
 
+    # Initialize the GPU list
+    gpu_template = []
+
+    # Detect GPUs from different architectures
+    get_amdgpu(gpu_template) 
+    get_nvgpu(gpu_template)
+
+    # Sort GPUs by memory (descending order) and return the best one
+    if gpu_template:
+        # Sort all GPUs by the 'vram' key (assuming it exists), descending order
+        best_gpu = max(gpu_template, key=lambda x: x["vram"])
+        return best_gpu["env"], best_gpu["index"]
+
+    # No suitable GPU found
     return None, None
 
 
