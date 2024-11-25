@@ -18,6 +18,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
 	assert "$output" =~ ".*--host 0.0.0.0" "verify host 0.0.0.0 is added when run within container"
 	is "$output" ".*${model}" "verify model name"
+	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
 	run_ramalama --dryrun serve --host 127.1.2.3 --name foobar ${model}
 	assert "$output" =~ ".*--host 127.1.2.3" "verify --host is modified when run within container"
@@ -27,14 +28,18 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	run_ramalama --dryrun serve --temp 0.1 ${model}
 	is "$output" ".*--temp 0.1" "verify temp is set"
 
+	run_ramalama --dryrun serve --seed 1234 ${model}
+	is "$output" ".*--seed 1234" "verify seed is set"
+
 	run_ramalama 1 --nocontainer serve --name foobar tiny
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
 	run_ramalama stop --all
     else
 	run_ramalama --dryrun serve ${model}
 	assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
-	run_ramalama --dryrun serve --host 127.0.0.1 ${model}
+	run_ramalama --dryrun serve --seed abcd --host 127.0.0.1 ${model}
 	assert "$output" =~ ".*--host 127.0.0.1" "Outside container overrides host to 127.0.0.1"
+	assert "$output" =~ ".*--seed abcd" "Verify seed is set"
 	run_ramalama 1 --nocontainer serve --name foobar tiny
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
      fi

@@ -50,13 +50,16 @@ Name of the container to run the Model in.
 #### **--port**, **-p**
 port for AI Model server to listen on
 
+#### **--seed**=
+Specify seed rather than using random seed model interaction
+
 #### **--temp**="0.8"
 Temperature of the response from the AI Model
 llama.cpp explains this as:
 
-    The lower the number is, the more deterministic the response will be.
+    The lower the number is, the more deterministic the response.
 
-    The higher the number is the more creative the response will be, but moe likely to go off topic if set too high.
+    The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 

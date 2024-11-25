@@ -20,13 +20,16 @@ show this help message and exit
 #### **--name**, **-n**
 name of the container to run the Model in
 
+#### **--seed**=
+Specify seed rather than using random seed model interaction
+
 #### **--temp**="0.8"
 Temperature of the response from the AI Model
 llama.cpp explains this as:
 
-    The lower the number is, the more deterministic the response will be.
+    The lower the number is, the more deterministic the response.
 
-    The higher the number is the more creative the response will be, but moe likely to go off topic if set too high.
+    The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
@@ -36,7 +39,7 @@ require HTTPS and verify certificates when contacting OCI registries
 ## DESCRIPTION
 Run specified AI Model as a chat bot. RamaLama pulls specified AI Model from
 registry if it does not exist in local storage. By default a prompt for a chat
-bot will be started. When arguments are specified, the arguments will be given
+bot is started. When arguments are specified, the arguments will be given
 to the AI Model and the output returned without entering the chatbot.
 
 ## EXAMPLES

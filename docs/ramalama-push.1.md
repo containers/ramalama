@@ -9,7 +9,7 @@ ramalama\-push - push AI Models from local storage to remote registries
 ## DESCRIPTION
 Push specified AI Model (OCI-only at present)
 
-The model could be from RamaLama model storage in Huggingface, Ollama, or OCI Model format.
+The model can be from RamaLama model storage in Huggingface, Ollama, or OCI Model format.
 The model can also just be a model stored on disk.
 
 ## OPTIONS

@@ -11,7 +11,7 @@ ramalama\-containers - list all RamaLama containers
 ## DESCRIPTION
 List all containers running AI Models
 
-Command will not work when run with --nocontainer option.
+Command conflicts with the --nocontainer option.
 
 ## OPTIONS
 

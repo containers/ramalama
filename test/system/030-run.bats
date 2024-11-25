@@ -15,12 +15,14 @@ load helpers
 	is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
 	is "$output" ".*${model}" "verify model name"
 	is "$output" ".*-c 2048" "verify model name"
+	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
-	run_ramalama --dryrun run -c 4096 --name foobar ${model}
+	run_ramalama --dryrun run --seed 9876 -c 4096 --name foobar ${model}
 	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
 	is "$output" ".*${model}" "verify model name"
 	is "$output" ".*-c 4096" "verify ctx-size is set"
 	is "$output" ".*--temp 0.8" "verify temp is set"
+	is "$output" ".*--seed 9876" "verify seed is set"
 
 	run_ramalama --dryrun run --name foobar ${model}
 	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
