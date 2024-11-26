@@ -73,8 +73,10 @@ configure the system for AI themselves. After the initialization, RamaLama
 will run the AI Models within a container based on the OCI image.
 
 
+%if 0%{?fedora} >= 40
 %generate_buildrequires
 %pyproject_buildrequires
+%endif
 
 %prep
 %forgeautosetup -p1
