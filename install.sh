@@ -33,6 +33,11 @@ check_platform() {
       echo "directory containing brew to the PATH before continuing to install RamaLama"
       return 2
     fi
+
+    if ! available "pipx"; then
+      echo "Ramalama requires pipx to install. run 'brew install pipx' to install ramalama"
+      return 3
+    fi
   elif [ "$os" = "Linux" ]; then
     if [ "$EUID" -ne 0 ]; then
       echo "This script is intended to run as root on Linux"
