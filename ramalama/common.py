@@ -221,3 +221,9 @@ pip install tqdm
                 print(f"File {url} already fully downloaded.")
         else:
             raise e
+
+
+def engine_version(engine):
+    # Create manifest list for target with imageid
+    cmd_args = [engine, "version", "--format", "{{ .Client.Version }}"]
+    return run_cmd(cmd_args).stdout.decode("utf-8").strip()

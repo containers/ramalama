@@ -70,10 +70,6 @@ jobs:
            sudo systemctl restart docker.service
            df -h
 
-      - name: build image
-        run: |
-          make build IMAGE=ramalama
-
       - name: bats-docker
         run: |
            docker info
