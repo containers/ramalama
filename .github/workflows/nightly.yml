@@ -6,7 +6,7 @@ on:
 
 jobs:
   linux:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Free Disk Space Linux
@@ -36,7 +36,7 @@ jobs:
         run: make test
 
   macos:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - name: install golang
@@ -47,7 +47,7 @@ jobs:
         run: make test
 
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: [linux, macos]
     steps:
         - uses: actions/checkout@v4
