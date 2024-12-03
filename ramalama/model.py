@@ -21,17 +21,17 @@ model_types = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
 
 
 file_not_found = """\
-RamaLama requires the "%s" command to be installed on the host when running with --nocontainer.
-RamaLama is designed to run AI Models inside of containers, where "%s" is already installed.
-Either install a package containing the "%s" command or run the workload inside of a container.
-"""
+RamaLama requires the "%(cmd)s" command to be installed on the host when running with --nocontainer.
+RamaLama is designed to run AI Models inside of containers, where "%(cmd)s" is already installed.
+Either install a package containing the "%(cmd)s" command or run the workload inside of a container.
+%(error)s"""
 
 file_not_found_in_container = """\
-RamaLama requires the "%s" command to be installed inside of the container.
+RamaLama requires the "%(cmd)s" command to be installed inside of the container.
 RamaLama requires the server application be installed in the container images.
-Either install a package containing the "%s" command in the container or run
-with the default RamaLama image.
-"""
+Either install a package containing the "%(cmd)s" command in the container or run
+with the default RamaLama
+$(error)s"""
 
 
 class Model:
@@ -227,7 +227,7 @@ class Model:
             dry_run(conman_args)
             return True
 
-        exec_cmd(conman_args, debug=args.debug)
+        run_cmd(conman_args, debug=args.debug)
         return True
 
     def run(self, args):
@@ -295,8 +295,10 @@ class Model:
             exec_cmd(exec_args, args.debug, debug=args.debug)
         except FileNotFoundError as e:
             if in_container():
-                raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
-            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
+                raise NotImplementedError(
+                    file_not_found_in_container % {"cmd": exec_args[0], "error": str(e).strip("'")}
+                )
+            raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
     def serve(self, args):
         if hasattr(args, "name") and args.name:
@@ -355,8 +357,10 @@ class Model:
             exec_cmd(exec_args, debug=args.debug)
         except FileNotFoundError as e:
             if in_container():
-                raise NotImplementedError(file_not_found_in_container % (exec_args[0], str(e).strip("'")))
-            raise NotImplementedError(file_not_found % (exec_args[0], exec_args[0], exec_args[0], str(e).strip("'")))
+                raise NotImplementedError(
+                    file_not_found_in_container % {"cmd": exec_args[0], "error": str(e).strip("'")}
+                )
+            raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
     def quadlet(self, model, args, exec_args):
         quadlet = Quadlet(model, args, exec_args)

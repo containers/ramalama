@@ -21,7 +21,7 @@ dnf_install() {
     curl --retry 8 --retry-all-errors -o \
       /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
     rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-    dnf install -y mesa-vulkan-drivers-23.3.3-102.el9 "${vulkan_rpms[@]}"
+    dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
   elif [ "$containerfile" = "asahi" ]; then
     dnf copr enable -y @asahi/fedora-remix-branding
     dnf install -y asahi-repos
