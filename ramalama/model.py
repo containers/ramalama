@@ -9,7 +9,6 @@ from ramalama.common import (
     exec_cmd,
     find_working_directory,
     genname,
-    in_container,
     run_cmd,
 )
 from ramalama.version import version
@@ -294,7 +293,7 @@ class Model:
                 return
             exec_cmd(exec_args, args.debug, debug=args.debug)
         except FileNotFoundError as e:
-            if in_container():
+            if args.container:
                 raise NotImplementedError(
                     file_not_found_in_container % {"cmd": exec_args[0], "error": str(e).strip("'")}
                 )
@@ -356,7 +355,7 @@ class Model:
                 return
             exec_cmd(exec_args, debug=args.debug)
         except FileNotFoundError as e:
-            if in_container():
+            if args.container:
                 raise NotImplementedError(
                     file_not_found_in_container % {"cmd": exec_args[0], "error": str(e).strip("'")}
                 )
