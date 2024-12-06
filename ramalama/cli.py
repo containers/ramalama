@@ -225,6 +225,7 @@ def configure_subcommands(parser):
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
     help_parser(subparsers)
+    convert_parser(subparsers)
     containers_parser(subparsers)
     info_parser(subparsers)
     list_parser(subparsers)
@@ -277,12 +278,18 @@ def login_parser(subparsers):
     parser.set_defaults(func=login_cli)
 
 
-def login_cli(args):
-    registry = args.REGISTRY
-    if registry != "" and registry != "ollama" and registry != "hf" and registry != "huggingface":
-        registry = "oci://" + registry
+def normalize_registry(registry):
+    if registry in ["", "ollama", "hf" "huggingface"]:
+        return registry
+    if registry.startswith("oci://"):
+        return registry
+    return "oci://" + registry
 
-    model = New(str(registry), args)
+
+def login_cli(args):
+    registry = normalize_registry(args.REGISTRY)
+
+    model = New(registry, args)
     return model.login(args)
 
 
@@ -539,6 +546,44 @@ def pull_cli(args):
     return model.pull(args)
 
 
+def convert_parser(subparsers):
+    parser = subparsers.add_parser(
+        "convert",
+        help="convert AI Model from local storage to OCI Image",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument(
+        "--carimage",
+        default=config['carimage'],
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--type",
+        default="raw",
+        choices=["car", "raw"],
+        help="""\
+type of OCI Model Image to push.
+
+Model "car" includes base image with the model stored in a /models subdir.
+Model "raw" contains the model and a link file model.file to it stored at /.""",
+    )
+    parser.add_argument("SOURCE")  # positional argument
+    parser.add_argument("TARGET")  # positional argument
+    parser.set_defaults(func=convert_cli)
+
+
+def convert_cli(args):
+    target = args.TARGET
+    source = _get_source(args)
+
+    tgt = shortnames.resolve(target)
+    if not tgt:
+        tgt = target
+
+    model = OCI(tgt, args.engine)
+    model.convert(source, args)
+
+
 def push_parser(subparsers):
     parser = subparsers.add_parser(
         "push",
@@ -755,7 +800,7 @@ def _rm_model(models, args):
                         raise e
             try:
                 # attempt to remove as a container image
-                m = OCI(model, config.get('engine', container_manager()))
+                m = OCI(model, args.engine)
                 m.remove(args, ignore_stderr=True)
                 return
             except Exception:

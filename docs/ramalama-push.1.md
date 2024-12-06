@@ -12,6 +12,8 @@ Push specified AI Model (OCI-only at present)
 The model can be from RamaLama model storage in Huggingface, Ollama, or OCI Model format.
 The model can also just be a model stored on disk.
 
+Users can convert without pushing using the `ramalama convert` command.
+
 ## OPTIONS
 
 #### **--authfile**=*password*
@@ -65,7 +67,7 @@ Writing manifest to image destination
 ```
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-convert(1)](ramalama-convert.1.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Eric Curtin <ecurtin@redhat.com>

@@ -5,7 +5,7 @@ import sys
 import tempfile
 
 import ramalama.annotations as annotations
-from ramalama.model import Model
+from ramalama.model import Model, model_types
 from ramalama.common import (
     available,
     engine_version,
@@ -31,13 +31,16 @@ def engine_supports_manifest_attributes(engine):
 
 
 def list_manifests(args):
+    if args.engine == "docker":
+        return []
+
     conman_args = [
         args.engine,
         "images",
         "--filter",
         "manifest=true",
         "--format",
-        '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .Created }}",\
+        '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}",\
         "size":"{{ .Size }}", "ID":"{{ .ID }}"},',
     ]
     output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
@@ -90,7 +93,7 @@ def list_models(args):
         "--filter",
         f"label={ocilabeltype}",
         "--format",
-        '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .Created }}","size":"{{ .Size }}"},',
+        '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}","size":"{{ .Size }}"},',
     ]
     output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
     if output == "":
@@ -103,6 +106,9 @@ def list_models(args):
 class OCI(Model):
     def __init__(self, model, conman):
         super().__init__(model.removeprefix(prefix).removeprefix("docker://"))
+        for t in model_types:
+            if self.model.startswith(t + "://"):
+                raise ValueError(f"{model} invalid: Only OCI Model types supported")
         self.type = "OCI"
         self.conman = conman
         if available("omlmd"):
@@ -212,7 +218,6 @@ LABEL {ociimage_car}
         run_cmd(cmd_args, debug=args.debug)
 
     def _create_manifest(self, target, imageid, args):
-        print("DAN100")
         if not engine_supports_manifest_attributes(args.engine):
             return self._create_manifest_without_attributes(target, imageid, args)
 
