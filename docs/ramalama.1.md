@@ -129,7 +129,8 @@ The default can be overridden in the ramalama.conf file.
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
 | [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
-| [ramalama-info(1)](ramalama-info.1.md)            | Display RamaLama configuration information                 |
+| [ramalama-rag(1)](ramalama-rag.1.md)              | generate rag (Retrieval Augmented Generation) data from provided documents and convert into an OCI Image |
+| [ramalama-info(1)](ramalama-info.1.md)            | display RamaLama configuration information                 |
 | [ramalama-list(1)](ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](ramalama-login.1.md)          | login to remote registry                                   |
 | [ramalama-logout(1)](ramalama-logout.1.md)        | logout from remote registry                                |
