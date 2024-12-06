@@ -14,13 +14,6 @@ mnt_dir = "/mnt/models"
 mnt_file = f"{mnt_dir}/model.file"
 
 
-def in_container():
-    if os.path.exists("/run/.containerenv") or os.path.exists("/.dockerenv") or os.getenv("container"):
-        return True
-
-    return False
-
-
 def container_manager():
     engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
     if engine is not None:
