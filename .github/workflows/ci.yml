@@ -17,7 +17,7 @@ jobs:
            sudo apt-get update
            sudo apt-get install podman bats bash codespell python3-argcomplete pipx
            make install-requirements
-           pip install tqdm --break-system-packages
+           pip install docling tqdm
 
       - name: run bats
         run: |
@@ -37,7 +37,7 @@ jobs:
 
       - name: bats-nocontainer
         run: |
-           pip install tqdm --break-system-packages
+           pip install docling tqdm
            make bats-nocontainer
 
   docker:
@@ -73,7 +73,7 @@ jobs:
       - name: bats-docker
         run: |
            docker info
-           pip install tqdm --break-system-packages
+           pip install docling tqdm
            make bats-docker
 
   macos:
@@ -90,7 +90,7 @@ jobs:
         run: |
            make install-requirements
            make validate
-           pipx install .
+           pipx install . docling
            make bats-nocontainer
 
 # FIXME: ci script should be able to run on MAC.
