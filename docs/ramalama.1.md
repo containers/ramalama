@@ -129,6 +129,7 @@ The default can be overridden in the ramalama.conf file.
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
 | [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
+| [ramalama-convert(1)](ramalama-convert.1.md)      | convert AI Models from local storage to OCI Image          |
 | [ramalama-info(1)](ramalama-info.1.md)            | Display RamaLama configuration information                 |
 | [ramalama-list(1)](ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](ramalama-login.1.md)          | login to remote registry                                   |
