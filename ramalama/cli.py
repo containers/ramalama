@@ -11,7 +11,6 @@ from ramalama.huggingface import Huggingface
 from ramalama.common import (
     container_manager,
     default_image,
-    in_container,
     perror,
     run_cmd,
 )
@@ -34,9 +33,6 @@ def use_container():
     use_container = os.getenv("RAMALAMA_IN_CONTAINER")
     if use_container:
         return use_container.lower() == "true"
-
-    if in_container():
-        return False
 
     conman = container_manager()
     return conman is not None
@@ -832,9 +828,6 @@ def run_container(args):
         # --nocontainer implies --detach=false
         if hasattr(args, "detach"):
             args.detach = False
-        return False
-
-    if in_container():
         return False
 
     model = New(args.image, args)
