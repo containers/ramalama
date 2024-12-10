@@ -1,7 +1,7 @@
 % ramalama-info 1
 
 ## NAME
-ramalama\-info - Display RamaLama configuration information
+ramalama\-info - display RamaLama configuration information
 
 
 ## SYNOPSIS

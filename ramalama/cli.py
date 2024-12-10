@@ -6,6 +6,7 @@ import os
 import subprocess
 import time
 import ramalama.oci
+import ramalama.rag
 
 from ramalama.huggingface import Huggingface
 from ramalama.common import (
@@ -14,6 +15,7 @@ from ramalama.common import (
     perror,
     run_cmd,
 )
+
 from ramalama.model import model_types
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
@@ -229,6 +231,7 @@ def configure_subcommands(parser):
     logout_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
+    rag_parser(subparsers)
     rm_parser(subparsers)
     run_parser(subparsers)
     serve_parser(subparsers)
@@ -408,7 +411,7 @@ def list_containers(args):
 
 
 def info_parser(subparsers):
-    parser = subparsers.add_parser("info", help="Display information pertaining to setup of RamaLama.")
+    parser = subparsers.add_parser("info", help="display information pertaining to setup of RamaLama.")
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=info_cli)
 
@@ -769,6 +772,26 @@ def version_parser(subparsers):
     # Do not run in a container
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=print_version)
+
+
+def rag_parser(subparsers):
+    parser = subparsers.add_parser(
+        "rag",
+        help="generate rag (Retrieval Augmented Generation) data from provided documents and convert into an OCI Image",
+    )
+    parser.add_argument(
+        "PATH",
+        nargs="*",
+        help="""\
+Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
+formatted files to be processed""",
+    )
+    parser.add_argument("IMAGE", help="OCI Image name to contain processed rag data")
+    parser.set_defaults(func=rag_cli)
+
+
+def rag_cli(args):
+    ramalama.rag.generate(args)
 
 
 def rm_parser(subparsers):
