@@ -152,8 +152,6 @@ class Model:
         if len(conman_args) == 0:
             return False
 
-        conman_args += [self._image(args)]
-
         short_file = shortnames.create_shortname_file()
         wd = find_working_directory()
 
@@ -170,6 +168,7 @@ class Model:
         if di_volume != "":
             conman_args += [di_volume]
 
+        conman_args += [self._image(args)]
         conman_args += ["python3", "/usr/bin/ramalama"]
         conman_args += sys.argv[1:]
         if hasattr(args, "UNRESOLVED_MODEL"):
