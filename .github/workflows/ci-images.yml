@@ -20,6 +20,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Upgrade to podman 5
+        run: |
+          set -e
+          # Enable universe repository which contains podman
+          sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+          # Update package lists
+          sudo apt-get update
+          # Install specific podman version
+          sudo apt-get upgrade
+
       - name: install
         shell: bash
         run: |
