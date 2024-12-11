@@ -11,7 +11,7 @@ endif
 # This must never include the 'hack' directory
 export PATH := $(shell $(GO) env GOPATH)/bin:$(PATH)
 
-docs:  $(patsubst %.md,%,$(wildcard *.md))
+docs:  $(patsubst %.md,%,$(wildcard *[15].md))
 
 %.1: %.1.md
 ### sed is used to filter http/s links as well as relative links
