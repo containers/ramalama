@@ -40,8 +40,12 @@ check_platform() {
     fi
   elif [ "$os" = "Linux" ]; then
     if [ "$EUID" -ne 0 ]; then
-      echo "This script is intended to run as root on Linux"
-      return 3
+      if ! available sudo; then
+        error "This script is intended to run as root on Linux"
+        return 3
+      fi
+
+      sudo="sudo"
     fi
   else
     echo "This script is intended to run on Linux and macOS only"
@@ -79,10 +83,10 @@ setup_ramalama() {
     install_mac_dependencies
   fi
 
-  install -m755 -d "$syspath"
+  $sudo install -m755 -d "$syspath"
   syspath="$syspath/ramalama"
-  install -m755 -d "$syspath"
-  install -m755 "$to_file" "$ramalama_bin"
+  $sudo install -m755 -d "$syspath"
+  $sudo install -m755 "$to_file" "$ramalama_bin"
 
   local python_files=("cli.py" "huggingface.py" "model.py" "ollama.py" "common.py" "__init__.py" \
                       "quadlet.py" "kube.py" "oci.py" "version.py" "shortnames.py" "toml_parser.py")
@@ -90,7 +94,7 @@ setup_ramalama() {
   for i in "${python_files[@]}"; do
     url="${host}/containers/ramalama/${branch}/ramalama/${i}"
     download "$url" "$to_file"
-    install -m755 "$to_file" "${syspath}/${i}"
+    $sudo install -m755 "$to_file" "${syspath}/${i}"
   done
 }
 
@@ -98,6 +102,7 @@ main() {
   set -e -o pipefail
   local os
   os="$(uname -s)"
+  local sudo=""
   check_platform
 
   local bindirs=("/opt/homebrew/bin" "/usr/local/bin" "/usr/bin" "/bin")

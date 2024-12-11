@@ -73,15 +73,7 @@ pipx install ramalama
 
 ## Install by script
 
-Install RamaLama by running this one-liner (on macOS run without sudo):
-
-Linux:
-
-```
-curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | sudo bash
-```
-
-macOS:
+Install RamaLama by running this one-liner:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | bash
