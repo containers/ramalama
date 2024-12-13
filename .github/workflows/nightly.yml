@@ -19,6 +19,16 @@ jobs:
               /usr/lib/jvm || true
            sudo apt install aptitude -y >/dev/null 2>&1
 
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           # Enable universe repository which contains podman
+           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           # Update package lists
+           sudo apt-get update
+           # Install specific podman version
+           sudo apt-get upgrade
+
       # /mnt has ~ 65 GB free disk space. / is too small.
       - name: Reconfigure Docker data-root
         run: |
@@ -53,6 +63,16 @@ jobs:
         - uses: actions/checkout@v4
           with:
             ref: 'main'
+
+        - name: Upgrade to podman 5
+          run: |
+            set -e
+            # Enable universe repository which contains podman
+            sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+            # Update package lists
+            sudo apt-get update
+            # Install specific podman version
+            sudo apt-get upgrade
 
         - name: install qemu-user-static
           run: |

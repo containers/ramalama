@@ -19,6 +19,16 @@ jobs:
            make install-requirements
            pip install tqdm --break-system-packages
 
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           # Enable universe repository which contains podman
+           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           # Update package lists
+           sudo apt-get update
+           # Install specific podman version
+           sudo apt-get upgrade
+
       - name: run bats
         run: |
            make validate
@@ -35,6 +45,16 @@ jobs:
            sudo apt-get install podman bats bash codespell python3-argcomplete pipx
            make install-requirements
 
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           # Enable universe repository which contains podman
+           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           # Update package lists
+           sudo apt-get update
+           # Install specific podman version
+           sudo apt-get upgrade
+
       - name: bats-nocontainer
         run: |
            pip install tqdm --break-system-packages
@@ -50,6 +70,16 @@ jobs:
            sudo apt-get update
            sudo apt-get install bats bash codespell python3-argcomplete pipx
            make install-requirements
+
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           # Enable universe repository which contains podman
+           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           # Update package lists
+           sudo apt-get update
+           # Install specific podman version
+           sudo apt-get upgrade
 
       - name: Free Disk Space Linux
         shell: bash
