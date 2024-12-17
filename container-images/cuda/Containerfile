@@ -1,5 +1,5 @@
 # Base image with CUDA for compilation
-FROM docker.io/nvidia/cuda:12.6.2-devel-ubi9 AS builder
+FROM docker.io/nvidia/cuda:12.6.3-devel-ubi9 AS builder
 
 ARG LLAMA_CPP_SHA=af148c9386da825a60c7038549c121c35ca56b50
 # renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
@@ -12,7 +12,7 @@ RUN chmod +x /scripts/*.sh && \
       "-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined"
 
 # Final runtime image
-FROM docker.io/nvidia/cuda:12.6.2-runtime-ubi9
+FROM docker.io/nvidia/cuda:12.6.3-runtime-ubi9
 
 RUN dnf install -y python3 && \
     dnf clean all && rm -rf /var/cache/*dnf*
