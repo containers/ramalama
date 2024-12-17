@@ -244,7 +244,7 @@ def parse_arguments(parser):
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
     mkdirs(args.store)
-    if hasattr(args, "MODEL"):
+    if hasattr(args, "MODEL") and args.subcommand != "rm":
         resolved_model = shortnames.resolve(args.MODEL)
         if resolved_model:
             args.UNRESOLVED_MODEL = args.MODEL
@@ -776,7 +776,7 @@ def rm_parser(subparsers):
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("-a", "--all", action="store_true", help="remove all local Models")
     parser.add_argument("--ignore", action="store_true", help="ignore errors when specified Model does not exist")
-    parser.add_argument("MODELS", nargs="*")
+    parser.add_argument("MODEL", nargs="*")
     parser.set_defaults(func=rm_cli)
 
 
@@ -807,9 +807,12 @@ def _rm_model(models, args):
 
 def rm_cli(args):
     if not args.all:
-        return _rm_model(args.MODELS, args)
+        if len(args.MODEL) == 0:
+            raise IndexError("one MODEL or --all must be specified")
 
-    if len(args.MODELS) > 0:
+        return _rm_model(args.MODEL, args)
+
+    if len(args.MODEL) > 0:
         raise IndexError("can not specify --all as well MODEL")
 
     args.noheading = True
