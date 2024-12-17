@@ -275,10 +275,12 @@ def login_parser(subparsers):
 
 
 def normalize_registry(registry):
-    if registry in ["", "ollama", "hf" "huggingface"]:
+    if not registry or registry == "" or registry.startswith("oci://"):
+        return "oci://"
+
+    if registry in ["ollama", "hf" "huggingface"]:
         return registry
-    if registry.startswith("oci://"):
-        return registry
+
     return "oci://" + registry
 
 
@@ -294,13 +296,13 @@ def logout_parser(subparsers):
     # Do not run in a container
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("--token", help="token for registry")
-    parser.add_argument("TRANSPORT", nargs="?", type=str, default=config.get("transport"))  # positional argument
+    parser.add_argument("REGISTRY", nargs="?", type=str, help="OCI Registry where AI models are stored")
     parser.set_defaults(func=logout_cli)
 
 
 def logout_cli(args):
-    transport = args.TRANSPORT
-    model = New(str(transport), args)
+    registry = normalize_registry(args.REGISTRY)
+    model = New(registry, args)
     return model.logout(args)
 
 

@@ -4,7 +4,7 @@
 ramalama\-logout - logout from remote registry
 
 ## SYNOPSIS
-**ramalama logout** [*options*]
+**ramalama logout** [*options*] [*registry*]
 
 ## DESCRIPTION
 Logout to remote model registry

@@ -139,7 +139,8 @@ pip install omlmd
             conman_args.extend([f"--password={args.password}"])
         if args.passwordstdin:
             conman_args.append("--password-stdin")
-        conman_args.append(args.REGISTRY.removeprefix(prefix))
+        if args.REGISTRY:
+            conman_args.append(args.REGISTRY.removeprefix(prefix))
         return exec_cmd(conman_args, debug=args.debug)
 
     def logout(self, args):

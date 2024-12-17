@@ -7,7 +7,7 @@ ramalama\-login - login to remote registry
 **ramalama login** [*options*] [*registry*]
 
 ## DESCRIPTION
-login to remote registry
+login to remote model registry
 
 ## OPTIONS
 Options are specific to registry types.
