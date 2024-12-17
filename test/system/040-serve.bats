@@ -150,7 +150,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 
     rm tinyllama.container
     run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus tiny
-    is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from 'quadlet', 'kube', 'quadlet/kube')" "Should fail"
+    is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from.*quadlet.*kube.*quadlet/kube.*)" "Should fail"
 }
 
 @test "ramalama serve --generate=quadlet and --generate=kube with OCI" {

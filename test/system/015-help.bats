@@ -243,4 +243,10 @@ EOF
     is "$output" ".*port for AI Model server to listen on.*1776"  "Verify default port"
 }
 
+@test "ramalama verify one argument to rm" {
+
+    run_ramalama 22 rm
+    is "$output" "Error: one MODEL or --all must be specified"  "Verify at least one argument"
+}
+
 # vim: filetype=sh
