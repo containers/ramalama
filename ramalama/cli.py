@@ -183,6 +183,13 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
 The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
     )
     parser.add_argument(
+        "--gpu",
+        dest="gpu",
+        default=False,
+        action="store_true",
+        help="offload the workload to the GPU",
+    )
+    parser.add_argument(
         "--image",
         default=config.get("image"),
         help="OCI container image to run with the specified AI model",
@@ -196,13 +203,6 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
     parser.add_argument(
-        "--gpu",
-        dest="gpu",
-        default=False,
-        action="store_true",
-        help="offload the workload to the GPU",
-    )
-    parser.add_argument(
         "--runtime",
         default=config.get("runtime"),
         choices=["llama.cpp", "vllm"],
@@ -213,16 +213,15 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         default=config.get("store"),
         help="store AI Models in the specified directory",
     )
-    parser.add_argument("-v", dest="version", action="store_true", help="show RamaLama version")
-
+    parser.add_argument("-v", "--version", dest="version", action="store_true", help="show RamaLama version")
 
 def configure_subcommands(parser):
     """Add subcommand parsers to the main argument parser."""
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
     help_parser(subparsers)
-    convert_parser(subparsers)
     containers_parser(subparsers)
+    convert_parser(subparsers)
     info_parser(subparsers)
     list_parser(subparsers)
     login_parser(subparsers)
@@ -372,10 +371,10 @@ def list_files_by_modification():
 
 def containers_parser(subparsers):
     parser = subparsers.add_parser("containers", aliases=["ps"], help="list all RamaLama containers")
+    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("--format", help="pretty-print containers to JSON or using a Go template")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
     parser.add_argument("--no-trunc", dest="notrunc", action="store_true", help="display the extended information")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=list_containers)
 
 
@@ -418,8 +417,8 @@ def info_parser(subparsers):
 def list_parser(subparsers):
     parser = subparsers.add_parser("list", aliases=["ls"], help="list all downloaded AI Models")
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
-    parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
     parser.add_argument("--json", dest="json", action="store_true", help="print using json")
+    parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
     parser.add_argument("-q", "--quiet", dest="quiet", action="store_true", help="print only Model names")
     parser.set_defaults(func=list_cli)
 
@@ -700,12 +699,12 @@ def serve_parser(subparsers):
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
     parser.add_argument("--host", default=config.get('host', "0.0.0.0"), help="IP address to listen")
     parser.add_argument(
-        "-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on"
-    )
-    parser.add_argument(
         "--generate",
         choices=["quadlet", "kube", "quadlet/kube"],
         help="generate specified configuration format for running the AI Model as a service",
+    )
+    parser.add_argument(
+        "-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on"
     )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
@@ -720,8 +719,8 @@ def serve_cli(args):
 
 def stop_parser(subparsers):
     parser = subparsers.add_parser("stop", help="stop named container that is running AI Model")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("-a", "--all", action="store_true", help="stop all RamaLama containers")
+    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument(
         "--ignore", action="store_true", help="ignore errors when specified RamaLama container is missing"
     )
