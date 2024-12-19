@@ -103,7 +103,7 @@ def load_and_merge_config():
         )
 
     ramalama_config['carimage'] = ramalama_config.get('carimage', "registry.access.redhat.com/ubi9-micro:latest")
-    ramalama_config['runtime'] = ramalama_config.get('runtime', 'llama.cpp')
+    ramalama_config['runtime'] = ramalama_config.get('runtime', 'llama-cpp-python')
     ramalama_config['store'] = os.getenv('RAMALAMA_STORE', ramalama_config.get('store', get_store()))
     ramalama_config['transport'] = os.getenv('RAMALAMA_TRANSPORT', ramalama_config.get('transport', "ollama"))
 
@@ -205,8 +205,8 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     parser.add_argument(
         "--runtime",
         default=config.get("runtime"),
-        choices=["llama.cpp", "vllm"],
-        help="specify the runtime to use; valid options are 'llama.cpp' and 'vllm'",
+        choices=["llama-cpp-python", "llama.cpp", "vllm"],
+        help="specify the runtime to use; valid options are 'llama-cpp-python', 'llama.cpp' and 'vllm'",
     )
     parser.add_argument(
         "--store",
@@ -214,6 +214,7 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         help="store AI Models in the specified directory",
     )
     parser.add_argument("-v", "--version", dest="version", action="store_true", help="show RamaLama version")
+
 
 def configure_subcommands(parser):
     """Add subcommand parsers to the main argument parser."""
