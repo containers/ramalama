@@ -8,7 +8,7 @@ on:
 
 jobs:
   bats:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: install bats
@@ -17,7 +17,7 @@ jobs:
            sudo apt-get update
            sudo apt-get install podman bats bash codespell python3-argcomplete pipx
            make install-requirements
-           pip install tqdm --break-system-packages
+           pip install docling tqdm
 
       - name: Upgrade to podman 5
         run: |
@@ -35,7 +35,7 @@ jobs:
            make bats
 
   bats-nocontainer:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: install bats
@@ -57,11 +57,11 @@ jobs:
 
       - name: bats-nocontainer
         run: |
-           pip install tqdm --break-system-packages
+           pip install docling tqdm
            make bats-nocontainer
 
   docker:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: install bats
@@ -103,11 +103,11 @@ jobs:
       - name: bats-docker
         run: |
            docker info
-           pip install tqdm --break-system-packages
+           pip install docling tqdm
            make bats-docker
 
   macos:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - name: install golang
@@ -120,8 +120,9 @@ jobs:
         run: |
            make install-requirements
            make validate
-           pipx install .
+           pipx install . docling
            make bats-nocontainer
+	   cat /Users/runner/.local/pipx/logs/cmd_*.log
 
 # FIXME: ci script should be able to run on MAC.
 #      - name: Run ci

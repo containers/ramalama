@@ -4,6 +4,7 @@ version = "0.3.0"
 dependencies = [
   "argcomplete",
   "tqdm",
+  "docling",
 ]
 requires-python = ">= 3.8"
 maintainers = [
