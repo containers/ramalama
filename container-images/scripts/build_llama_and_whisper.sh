@@ -10,19 +10,24 @@ dnf_install() {
   # All the UBI-based ones
   if [ "$containerfile" = "ramalama" ] || [ "$containerfile" = "rocm" ] || \
     [ "$containerfile" = "vulkan" ]; then
-    local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
-    dnf install -y "$url"
-    crb enable # this is in epel-release, can only install epel-release via url
-    dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
-    local uname_m
-    uname_m="$(uname -m)"
-    dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
-    url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
-    dnf config-manager --add-repo "$url"
-    url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
-    curl --retry 8 --retry-all-errors -o \
-      /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
-    rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
+    source /etc/os-release
+    if [ "${ID}" = "fedora" ]; then
+      dnf install -y "${rpm_list[@]}"
+    else
+      local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+      dnf install -y "$url"
+      crb enable # this is in epel-release, can only install epel-release via url
+      dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
+      local uname_m
+      uname_m="$(uname -m)"
+      dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
+      url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
+      dnf config-manager --add-repo "$url"
+      url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
+      curl --retry 8 --retry-all-errors -o \
+        /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
+      rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
+    fi
     dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
   fi
 

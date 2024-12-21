@@ -1,0 +1,13 @@
+FROM registry.fedoraproject.org/fedora:latest
+
+ARG LLAMA_CPP_SHA=af148c9386da825a60c7038549c121c35ca56b50
+# renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
+ARG WHISPER_CPP_SHA=6266a9f9e56a5b925e9892acf650f3eb1245814d
+
+COPY ./build_llama_and_whisper.sh /build_llama_and_whisper.sh
+RUN chmod +x /*.sh && \
+    /build_llama_and_whisper.sh "ramalama" "$LLAMA_CPP_SHA" \
+      "$WHISPER_CPP_SHA" "/usr" "-DGGML_KOMPUTE=1"
+
+ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
+ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}
