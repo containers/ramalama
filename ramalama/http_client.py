@@ -57,7 +57,9 @@ class HttpClient:
             self.response = urllib.request.urlopen(request)
         except urllib.error.HTTPError as e:
             print(f"Request failed: {e.code}", file=sys.stderr)
-
+            return 1
+        except urllib.error.URLError as e:
+            print(f"Network error: {e.reason}", file=sys.stderr)
             return 1
 
         if self.response.status not in (200, 206):
