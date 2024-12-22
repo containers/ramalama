@@ -3,7 +3,6 @@ name = "ramalama"
 version = "0.3.0"
 dependencies = [
   "argcomplete",
-  "tqdm",
 ]
 requires-python = ">= 3.8"
 maintainers = [
