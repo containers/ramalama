@@ -5,10 +5,10 @@ from ramalama.common import available, run_cmd, exec_cmd, download_file, verify_
 from ramalama.model import Model
 
 missing_huggingface = """
-Optional: Huggingface models require the huggingface-cli and tqdm modules.
+Optional: Huggingface models require the huggingface-cli module.
 These modules can be installed via PyPi tools like pip, pip3, pipx, or via
 distribution package managers like dnf or apt. Example:
-pip install huggingface_hub tqdm
+pip install huggingface_hub
 """
 
 

@@ -17,7 +17,6 @@ jobs:
            sudo apt-get update
            sudo apt-get install podman bats bash codespell python3-argcomplete pipx
            make install-requirements
-           pip install tqdm --break-system-packages
 
       - name: Upgrade to podman 5
         run: |
@@ -57,7 +56,6 @@ jobs:
 
       - name: bats-nocontainer
         run: |
-           pip install tqdm --break-system-packages
            make bats-nocontainer
 
   docker:
@@ -103,7 +101,6 @@ jobs:
       - name: bats-docker
         run: |
            docker info
-           pip install tqdm --break-system-packages
            make bats-docker
 
   macos:
