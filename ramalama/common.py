@@ -1,5 +1,6 @@
 """ramalama common module."""
 
+import glob
 import hashlib
 import os
 import random
@@ -185,3 +186,39 @@ def engine_version(engine):
     # Create manifest list for target with imageid
     cmd_args = [engine, "version", "--format", "{{ .Client.Version }}"]
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
+
+
+def get_gpu():
+    i = 0
+    gpu_num = 0
+    gpu_bytes = 0
+    for fp in sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total')):
+        with open(fp, 'r') as file:
+            content = int(file.read())
+            if content > 1073741824 and content > gpu_bytes:
+                gpu_bytes = content
+                gpu_num = i
+
+        i += 1
+
+    if gpu_bytes:  # this is the ROCm/AMD case
+        return "HIP_VISIBLE_DEVICES", gpu_num
+
+    if os.path.exists('/etc/os-release'):
+        with open('/etc/os-release', 'r') as file:
+            content = file.read()
+            if "asahi" in content.lower():
+                return "ASAHI_VISIBLE_DEVICES", 1
+
+    return None, None
+
+
+def get_env_vars():
+    prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_")
+    env_vars = {k: v for k, v in os.environ.items() if k.startswith(prefixes)}
+
+    gpu_type, gpu_num = get_gpu()
+    if gpu_type not in env_vars and gpu_type in {"HIP_VISIBLE_DEVICES", "ASAHI_VISIBLE_DEVICES"}:
+        env_vars[gpu_type] = str(gpu_num)
+
+    return env_vars

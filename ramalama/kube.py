@@ -2,7 +2,7 @@ import os
 
 
 from ramalama.version import version
-from ramalama.common import genname, mnt_dir
+from ramalama.common import genname, mnt_dir, get_env_vars
 
 
 class Kube:
@@ -83,7 +83,25 @@ class Kube:
 
         return ports
 
+    @staticmethod
+    def _gen_env_vars():
+        env_vars = get_env_vars()
+
+        if not env_vars:
+            return ""
+
+        env_spec = """\
+        env:"""
+
+        for k, v in env_vars.items():
+            env_spec += f"""
+        - name: {k}
+          value: {v}"""
+
+        return env_spec
+
     def generate(self):
+        env_string = self._gen_env_vars()
         port_string = self._gen_ports()
         volume_string = self.gen_volumes()
         _version = version()
@@ -118,6 +136,7 @@ spec:
         image: {self.image}
         command: ["{self.exec_args[0]}"]
         args: {self.exec_args[1:]}
+{env_string}
 {port_string}
 {volume_string}"""
             )
