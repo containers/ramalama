@@ -142,9 +142,15 @@ class Model:
         if os.path.exists("/dev/kfd"):
             conman_args += ["--device", "/dev/kfd"]
 
+        env_vars = {k: v for k, v in os.environ.items() if k.startswith(("ASAHI_", "CUDA_", "HIP_", "HSA_"))}
+
         gpu_type, gpu_num = get_gpu()
-        if gpu_type == "HIP_VISIBLE_DEVICES" or gpu_type == "ASAHI_VISIBLE_DEVICES":
-            conman_args += ["-e", f"{gpu_type}={gpu_num}"]
+        if gpu_type not in env_vars and gpu_type in {"HIP_VISIBLE_DEVICES", "ASAHI_VISIBLE_DEVICES"}:
+            env_vars[gpu_type] = str(gpu_num)
+
+        for k, v in env_vars.items():
+            conman_args += ["-e", f"{k}={v}"]
+
         return conman_args
 
     def run_container(self, args, shortnames):
