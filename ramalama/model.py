@@ -1,6 +1,5 @@
 import os
 import sys
-import glob
 import atexit
 import shlex
 
@@ -10,6 +9,8 @@ from ramalama.common import (
     find_working_directory,
     genname,
     run_cmd,
+    get_gpu,
+    get_env_vars,
 )
 from ramalama.version import version
 from ramalama.quadlet import Quadlet
@@ -142,9 +143,9 @@ class Model:
         if os.path.exists("/dev/kfd"):
             conman_args += ["--device", "/dev/kfd"]
 
-        gpu_type, gpu_num = get_gpu()
-        if gpu_type == "HIP_VISIBLE_DEVICES" or gpu_type == "ASAHI_VISIBLE_DEVICES":
-            conman_args += ["-e", f"{gpu_type}={gpu_num}"]
+        for k, v in get_env_vars().items():
+            conman_args += ["-e", f"{k}={v}"]
+
         return conman_args
 
     def run_container(self, args, shortnames):
@@ -389,31 +390,6 @@ class Model:
 
     def check_valid_model_path(self, relative_target_path, model_path):
         return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
-
-
-def get_gpu():
-    i = 0
-    gpu_num = 0
-    gpu_bytes = 0
-    for fp in sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total')):
-        with open(fp, 'r') as file:
-            content = int(file.read())
-            if content > 1073741824 and content > gpu_bytes:
-                gpu_bytes = content
-                gpu_num = i
-
-        i += 1
-
-    if gpu_bytes:  # this is the ROCm/AMD case
-        return "HIP_VISIBLE_DEVICES", gpu_num
-
-    if os.path.exists('/etc/os-release'):
-        with open('/etc/os-release', 'r') as file:
-            content = file.read()
-            if "asahi" in content.lower():
-                return "ASAHI_VISIBLE_DEVICES", 1
-
-    return None, None
 
 
 def dry_run(args):

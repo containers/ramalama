@@ -42,6 +42,27 @@ load helpers
     fi
 }
 
+@test "ramalama --dryrun run ensure env vars are respected" {
+    skip_if_nocontainer
+    model=tiny
+
+    ASAHI_VISIBLE_DEVICES=99 run_ramalama --dryrun run ${model}
+    is "$output" ".*-e ASAHI_VISIBLE_DEVICES=99" "ensure ASAHI_VISIBLE_DEVICES is set from environment"
+
+    CUDA_LAUNCH_BLOCKING=1 run_ramalama --dryrun run ${model}
+    is "$output" ".*-e CUDA_LAUNCH_BLOCKING=1" "ensure CUDA_LAUNCH_BLOCKING is set from environment"
+
+    HIP_VISIBLE_DEVICES=99 run_ramalama --dryrun run ${model}
+    is "$output" ".*-e HIP_VISIBLE_DEVICES=99" "ensure HIP_VISIBLE_DEVICES is set from environment"
+
+    HSA_OVERRIDE_GFX_VERSION=0.0.0 run_ramalama --dryrun run ${model}
+    is "$output" ".*-e HSA_OVERRIDE_GFX_VERSION=0.0.0" "ensure HSA_OVERRIDE_GFX_VERSION is set from environment"
+
+    HIP_VISIBLE_DEVICES=99 HSA_OVERRIDE_GFX_VERSION=0.0.0 run_ramalama --dryrun run ${model}
+    is "$output" ".*-e HIP_VISIBLE_DEVICES=99" "ensure HIP_VISIBLE_DEVICES is set from environment"
+    is "$output" ".*-e HSA_OVERRIDE_GFX_VERSION=0.0.0" "ensure HSA_OVERRIDE_GFX_VERSION is set from environment"
+}
+
 @test "ramalama run tiny with prompt" {
       skip_if_notlocal
       run_ramalama run --name foobar tiny "Write a 1 line poem"

@@ -1,6 +1,6 @@
 import os
 
-from ramalama.common import default_image, mnt_dir, mnt_file
+from ramalama.common import default_image, mnt_dir, mnt_file, get_env_vars
 
 
 class Quadlet:
@@ -46,6 +46,10 @@ WantedBy=multi-user.target default.target
         if hasattr(self.args, "name") and self.args.name:
             name_string = f"ContainerName={self.args.name}"
 
+        env_var_string = ""
+        for k, v in get_env_vars().items():
+            env_var_string += f"Environment={k}={v}\n"
+
         outfile = self.name + ".container"
         print(f"Generating quadlet file: {outfile}")
         volume = self.gen_volume()
@@ -61,6 +65,7 @@ AddDevice=-/dev/dri
 AddDevice=-/dev/kfd
 Exec={" ".join(self.exec_args)}
 Image={default_image()}
+{env_var_string}
 {volume}
 {name_string}
 {port_string}

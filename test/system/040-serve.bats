@@ -148,6 +148,12 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*tinyllama" "Mount line should be correct"
 
+    HIP_SOMETHING=99 run_ramalama serve --port 1234 --generate=quadlet ${model}
+    is "$output" "Generating quadlet file: tinyllama.container" "generate tinllama.container"
+
+    run cat tinyllama.container
+    is "$output" ".*Environment=HIP_SOMETHING=99" "Should contain env property"
+
     rm tinyllama.container
     run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus tiny
     is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from.*quadlet.*kube.*quadlet/kube.*)" "Should fail"
@@ -238,6 +244,14 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     is "$output" ".*command: \[\"llama-server\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
+    HIP_SOMETHING=99 run_ramalama serve --name=${name} --port 1234 --generate=kube ${model}
+    is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+
+    run cat $name.yaml
+    is "$output" ".*env:" "Should contain env property"
+    is "$output" ".*name: HIP_SOMETHING" "Should contain env name"
+    is "$output" ".*value: 99" "Should contain env value"
+
     run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube ${model}
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
     is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
@@ -246,6 +260,14 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     is "$output" ".*image: quay.io/ramalama/ramalama:latest" "Should container image"
     is "$output" ".*command: \[\"llama-server\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
+
+    HIP_SOMETHING=99 run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube ${model}
+    is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+
+    run cat $name.yaml
+    is "$output" ".*env:" "Should contain env property"
+    is "$output" ".*name: HIP_SOMETHING" "Should contain env name"
+    is "$output" ".*value: 99" "Should contain env value"
 
     run cat $name.kube
     is "$output" ".*Yaml=$name.yaml" "Should container container port"
