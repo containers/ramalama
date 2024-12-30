@@ -93,7 +93,7 @@ lint:
 
 .PHONY: codespell
 codespell:
-	codespell --dictionary=- -w
+	codespell --dictionary=- -w --skip="*/venv*"
 
 .PHONY: test-run
 test-run:
