@@ -35,59 +35,117 @@ build() {
   local image_name="${1//container-images\//}"
   local conman_build=("${conman[@]}")
   local conman_show_size=("${conman[@]}" "images" "--filter" "reference='quay.io/ramalama/$image_name'")
-  if [ "$#" -lt 2 ]; then
-    add_build_platform
-    "${conman_build[@]}"
-    "${conman_show_size[@]}"
-    rm_container_image
-  elif [ "$2" = "-d" ]; then
-    add_build_platform
-    echo "${conman_build[@]}"
-  elif [ "$2" = "push" ]; then
-    "${conman[@]}" push "quay.io/ramalama/$image_name"
-  elif [ "$2" = "log" ]; then
-    "${conman_build[@]}" 2>&1 | tee container_build.log
-    "${conman_show_size[@]}"
-  else
-    add_build_platform
-    "${conman_build[@]}"
-    "${conman_show_size[@]}"
-    rm_container_image
+
+  if [ "$3" == "-d" ]; then
+      add_build_platform
+      echo "${conman_build[@]}"
+      cd - > /dev/null
+      return 0
   fi
+
+  case "${2:-}" in
+    build)
+      add_build_platform
+      "${conman_build[@]}"
+      "${conman_show_size[@]}"
+      rm_container_image
+      ;;
+    push)
+      "${conman[@]}" push "quay.io/ramalama/$image_name"
+      ;;
+    *)
+      echo "Invalid command: ${2:-}. Use 'build' or 'push'."
+      return 1
+      ;;
+  esac
 
   cd - > /dev/null
 }
 
-main() {
-  set -eu -o pipefail
+determine_platform() {
+  local platform="linux/amd64"
+  if [ "$(uname -m)" = "aarch64" ] || { [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; }; then
+    platform="linux/arm64"
+  fi
+  echo "$platform"
+}
 
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help)
+        print_usage
+        exit 0
+        ;;
+      -d)
+        option="$1"
+        shift
+        ;;
+      build|push)
+        command="$1"
+        shift
+        ;;
+      *)
+        target="$1"
+        shift
+        ;;
+    esac
+  done
+}
+
+process_all_targets() {
+  local command="$1"
+  local option="$2"
+  for i in container-images/*; do
+    if [ "$i" == "container-images/scripts" ]; then
+      continue
+    fi
+    build "$i" "$command" "$option"
+  done
+}
+
+print_usage() {
+  echo "Usage: $(basename "$0") [-h|--help] [-d] <command> [target]"
+  echo
+  echo "Commands:"
+  echo "  build        Build the container images"
+  echo "  push         Push the container images"
+  echo
+  echo "Options:"
+  echo "  -d           Some option description"
+  echo
+  echo "Targets:"
+  echo "  Specify the target container image to build or push"
+  echo "  If no target is specified, all container images will be processed"
+}
+
+main() {
   local conman_bin
   select_container_manager
   local conman=("$conman_bin")
-  local platform="linux/amd64"
-  if [ "$(uname -m)" = "aarch64" ] || \
-    { [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; }; then
-    platform="linux/arm64"
+  local platform
+  platform=$(determine_platform)
+
+  local target=""
+  local command=""
+  local option=""
+
+  parse_arguments "$@"
+
+  if [ -z "$command" ]; then
+    echo "Error: command is required (build or push)"
+    print_usage
+    exit 1
   fi
 
-  local target="${1:-all}"
-
-  if [ "$target" = "--help" ]; then
-    echo "Usage: $0 [all|image_name]"
-    exit 0
-  fi
+  target="${target:-all}"
 
   if [ "$target" = "all" ]; then
-    for i in container-images/*; do
-      if [ "$i" == "container-images/scripts" ]; then
-        continue
-      fi
-
-      build "$i" "${@:2}"
-    done
+    process_all_targets "$command" "$option"
   else
-    build "container-images/$target" "${@:2}"
+    build "container-images/$target" "$command" "$option"
   fi
 }
 
 main "$@"
+

@@ -75,7 +75,7 @@ install: docs completions
 .PHONY: build
 build:
 ifeq ($(OS),Linux)
-	./container_build.sh $(IMAGE)
+	./container_build.sh build $(IMAGE)
 endif
 
 .PHONY: install-docs
