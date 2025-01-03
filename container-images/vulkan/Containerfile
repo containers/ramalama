@@ -3,5 +3,5 @@ FROM quay.io/ramalama/ramalama:latest
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
     /scripts/build_llama_and_whisper.sh "vulkan" "$LLAMA_CPP_SHA" \
-      "$WHISPER_CPP_SHA" "/usr" "-DGGML_VULKAN=1"
+      "$WHISPER_CPP_SHA"
 

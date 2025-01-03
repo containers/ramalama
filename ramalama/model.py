@@ -235,15 +235,15 @@ class Model:
             if not args.container:
                 raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
 
-        prompt = "You are a helpful assistant"
+        prompt = ""
         if args.ARGS:
             prompt = " ".join(args.ARGS)
 
         # Build a prompt with the stdin text that prepend the prompt passed as
         # an argument to ramalama cli
         if not sys.stdin.isatty():
-            input = sys.stdin.read()
-            prompt = input + "\n\n" + prompt
+            inp = sys.stdin.read()
+            prompt = inp + "\n\n" + prompt
 
         if args.dryrun:
             model_path = "/path/to/model"
@@ -256,35 +256,21 @@ class Model:
         if not args.container:
             exec_model_path = model_path
 
-        exec_args = [
-            "llama-cli",
-            "-m",
-            exec_model_path,
-            "--in-prefix",
-            "",
-            "--in-suffix",
-            "",
-            "-c",
-            f"{args.context}",
-            "--temp",
-            f"{args.temp}",
-        ]
+        exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
 
         if args.seed:
             exec_args += ["--seed", args.seed]
 
-        if not args.debug:
-            exec_args += ["--no-display-prompt"]
-        exec_args += [
-            "-p",
-            prompt,
-        ]
-
-        if not args.ARGS and sys.stdin.isatty():
-            exec_args.append("-cnv")
+        if args.debug:
+            exec_args += ["-v"]
 
         if args.gpu:
             exec_args.extend(self.gpu_args())
+
+        exec_args += [
+            exec_model_path,
+            prompt,
+        ]
 
         try:
             if self.exec_model_in_container(model_path, exec_args, args):
@@ -331,8 +317,7 @@ class Model:
             exec_args += ["--seed", args.seed]
 
         if args.runtime == "vllm":
-            if not (exec_model_path.endswith(".GGUF") or exec_model_path.endswith(".gguf")):
-                exec_model_path = os.path.dirname(exec_model_path)
+            exec_model_path = os.path.dirname(exec_model_path)
             exec_args = ["vllm", "serve", "--port", args.port, exec_model_path]
         else:
             if args.gpu:
