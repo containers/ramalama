@@ -101,8 +101,9 @@ class Model:
         gpu_type, _ = get_gpu()
         if gpu_type == "HIP_VISIBLE_DEVICES":
             return "quay.io/ramalama/rocm:latest"
-
-        if gpu_type == "ASAHI_VISIBLE_DEVICES":
+        elif gpu_type == "CUDA_VISIBLE_DEVICES":
+            return "quay.io/ramalama/cuda:latest"
+        elif gpu_type == "ASAHI_VISIBLE_DEVICES":
             return "quay.io/ramalama/asahi:latest"
 
         return args.image
