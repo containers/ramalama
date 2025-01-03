@@ -1,0 +1,284 @@
+@font-face {
+  font-family: "Red Hat Mono";
+  src: url(assets/RedHatMono-VariableFont_wght.ttf);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.viewport {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100%;
+}
+
+.about-viewport {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100%;
+  @media screen and (max-width: 1024px) {
+    height: auto;
+  }
+}
+
+.orange-background {
+  color: white;
+  background-color: #cf3c23;
+}
+
+.welcome,
+.install,
+.demo,
+.about {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0%;
+}
+
+.welcome-grid {
+  display: grid;
+  grid-template-areas: "welcome-info llama-mascot";
+  align-items: center;
+  align-content: stretch;
+  justify-items: center;
+  justify-content: stretch;
+  @media screen and (max-width: 500px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+}
+
+.welcome-info,
+.llama-mascot {
+  display: block;
+}
+
+.welcome-info {
+  grid-area: welcome-info;
+  padding: 10%;
+}
+
+.welcome-h1,
+.welcome-h1-orange {
+  display: inline;
+  font-weight: 500;
+}
+
+.welcome-h1-orange {
+  color: #cf3c23;
+}
+
+.welcome-h2 {
+  font-weight: 500;
+  padding-right: 10rem;
+  @media screen and (max-width: 500px) {
+    padding: 0%;
+    font-size: 1rem;
+  }
+}
+
+.llama-mascot {
+  align-self: center;
+  justify-self: center;
+  grid-area: llama-mascot;
+  width: 50%;
+  @media screen and (max-width: 1024px) {
+    width: 75%;
+    @media screen and (max-width: 768px) {
+      display: none;
+    }
+  }
+}
+
+.install-info {
+  padding: 10%;
+  @media screen and (max-width: 1024px) {
+    font-size: medium;
+    @media screen and (max-width: 768px) {
+      font-size: small;
+      @media screen and (max-width: 500px) {
+        font-size: x-small;
+      }
+    }
+  }
+}
+
+.install-h3 {
+  font-weight: 500;
+}
+
+.install-code {
+  /* word-break: break-all; */
+  font-family: "Red Hat Mono", monospace !important;
+  font-weight: 500;
+  padding: 1rem;
+  background-color: #262626;
+  border-radius: 15px;
+  width: 100%;
+}
+
+.install-code div {
+  display: inline-flex;
+}
+
+.install-button {
+  @media screen and (max-width: 768px) {
+    padding: 10px;
+    font-size: larger;
+  }
+}
+
+.demo,
+.about {
+  padding: 10%;
+}
+
+.about {
+  @media screen and (max-width: 1024px) {
+    padding: 15% 10%;
+    @media screen and (max-width: 500px) {
+      padding: 30% 10%;
+    }
+  }
+}
+
+.about-header {
+  display: inline;
+  align-content: center;
+  @media screen and (max-width: 1440px) {
+    font-size: 2.5rem;
+  }
+}
+
+.about-grid {
+  display: grid;
+  grid-template-areas:
+    "graphic-1 graphic-2 graphic-3 graphic-4"
+    "text-1 text-2 text-3 text-4";
+  align-items: center;
+  align-content: stretch;
+  justify-items: center;
+  justify-content: stretch;
+  text-align: center;
+  gap: 2em;
+  height: auto;
+
+  @media screen and (max-width: 1024px) {
+    grid-template-areas:
+      "graphic-1 graphic-2"
+      "text-1 text-2"
+      "graphic-3 graphic-4"
+      "text-3 text-4";
+    gap: 1em;
+    @media screen and (max-width: 500px) {
+      grid-template-areas:
+        "graphic-1"
+        "text-1"
+        "graphic-2"
+        "text-2"
+        "graphic-3"
+        "text-3"
+        "graphic-4"
+        "text-4";
+    }
+  }
+}
+
+.about-grid > * {
+  justify-self: center;
+  align-self: center;
+  height: auto;
+}
+
+.about-graphic-1 {
+  grid-area: graphic-1;
+}
+
+.about-graphic-2 {
+  grid-area: graphic-2;
+}
+
+.about-graphic-3 {
+  grid-area: graphic-3;
+}
+
+.about-graphic-4 {
+  grid-area: graphic-4;
+}
+
+.about-text-1 {
+  grid-area: text-1;
+}
+
+.about-text-2 {
+  grid-area: text-2;
+}
+
+.about-text-3 {
+  grid-area: text-3;
+}
+
+.about-text-4 {
+  grid-area: text-4;
+}
+
+.about-graphic-1,
+.about-graphic-2,
+.about-graphic-3,
+.about-graphic-4 {
+  width: 100%;
+}
+
+.about-text-1,
+.about-text-2,
+.about-text-3,
+.about-text-4 {
+  margin-block-start: 0;
+  margin-block-end: 0;
+}
+
+button {
+  align-items: center;
+  border-radius: 15px;
+  border: 1px solid transparent;
+  margin: 12.5px 0;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: white;
+  color: black;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+button:not(.install-button) {
+  display: flex;
+  align-items: center;
+  width: 70%;
+  @media screen and (max-width: 500px) {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.7rem;
+    width: 100%;
+  }
+}
+
+button img {
+  padding-left: 5%;
+}
+
+button p {
+  padding-left: 10%;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+footer {
+  padding: 25px;
+  text-align: center;
+}

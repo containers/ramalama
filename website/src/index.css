@@ -1,0 +1,35 @@
+@font-face {
+  font-family: "Red Hat Display"; 
+  src: url(assets/RedHatDisplay-VariableFont_wght.ttf)
+}
+
+:root {
+  font-family: "Red Hat Display", Arial, Helvetica, sans-serif; 
+  line-height: 1.2;
+  font-weight: normal;
+  font-size: 1.2rem;
+
+  color-scheme: light dark;
+  color: black;
+  background-color: #ececec;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body{
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
