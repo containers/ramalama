@@ -1,0 +1,56 @@
+.logo {
+  width: 20%;
+  margin: 1.25rem 2rem;
+
+  @media screen and (max-width: 1024px) {
+    width: 30%;
+    @media screen and (max-width: 768px) {
+      width: 40%;
+      @media screen and (max-width: 500px) {
+        width: 50%;
+      }
+    }
+  }
+}
+
+.navbar {
+  position: fixed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #000;
+  background-color: #ffffffcc;
+  width: 100%;
+}
+
+.navbar-left {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #000;
+  text-decoration: none;
+}
+
+.orange-part {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #cf3c23;
+}
+
+.orange-part:hover {
+  color: #cf3c23;
+}
+
+.navbar-right .nav-links {
+  margin: 0 1rem;
+  list-style-type: none;
+  display: flex;
+}
+
+.navbar-right .nav-links li {
+  padding: 0 1rem;
+}
+
+.navbar-right .nav-links a {
+  color: #000;
+  text-decoration: none;
+}
