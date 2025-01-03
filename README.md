@@ -181,6 +181,12 @@ You can stop a running model if it is running in a container.
 $ ramalama stop mylama
 ```
 
+### UI support
+
+To use a UI, run a `ramalama serve` command, then connect via your browser at:
+
+127.0.0.1:8080
+
 ## Diagram
 
 ```
