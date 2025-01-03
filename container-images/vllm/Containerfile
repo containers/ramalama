@@ -1,0 +1,37 @@
+FROM quay.io/wxpe/tgis-vllm:release.4e3ff78
+
+USER root
+
+# renovate: datasource=github-releases depName=huggingface/huggingface_hub extractVersion=^v(?<version>.*)
+ARG HUGGINGFACE_HUB_VERSION=0.26.0
+# renovate: datasource=github-releases depName=containers/omlmd extractVersion=^v(?<version>.*)
+ARG OMLMD_VERSION=0.1.6
+# renovate: datasource=github-releases depName=tqdm/tqdm extractVersion=^v(?<version>.*)
+ARG TQDM_VERSION=4.66.5
+ARG LLAMA_CPP_SHA=3f1ae2e32cde00c39b96be6d01c2997c29bae555
+# renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
+ARG WHISPER_CPP_SHA=a5abfe6a90495f7bf19fe70d016ecc255e97359c
+
+# vulkan-headers vulkan-loader-devel vulkan-tools glslc glslang python3-pip mesa-libOpenCL-$MESA_VER.aarch64
+RUN microdnf -y install dnf subscription-manager && \
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    crb enable && \
+    dnf install -y epel-release && \
+    dnf --enablerepo=ubi-9-appstream-rpms update -y \
+    dnf --enablerepo=ubi-9-appstream-rpms install -y git procps-ng vim \
+      dnf-plugins-core python3-dnf-plugin-versionlock python3-pip \
+      python3-argcomplete && \
+    dnf clean all && \
+    rm -rf /var/cache/*dnf*
+
+RUN /usr/bin/python3 --version
+RUN pip install "huggingface_hub==${HUGGINGFACE_HUB_VERSION}"
+RUN pip install "omlmd==${OMLMD_VERSION}"
+RUN pip install "tqdm==${TQDM_VERSION}"
+
+USER vllm
+
+ENTRYPOINT []
+CMD /bin/sh
+
+ADD --chmod=755 vllm /usr/bin/vllm
