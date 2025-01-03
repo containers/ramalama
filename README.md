@@ -87,7 +87,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 | Apple Silicon GPU (Linux / Asahi)  | :white_check_mark: |
 | Apple Silicon GPU (macOS)          | :white_check_mark: |
 | Apple Silicon GPU (podman-machine) | :white_check_mark: |
-| Nvidia GPU (cuda)                  | :x: [Containerfile](https://github.com/containers/ramalama/blob/main/container-images/cuda/Containerfile) available but not published to quay.io |
+| Nvidia GPU (cuda)                  | :white_check_mark: |
 | AMD GPU (rocm)                     | :white_check_mark: |
 
 ## COMMANDS
