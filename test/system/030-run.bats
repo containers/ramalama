@@ -31,7 +31,7 @@ load helpers
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
 
 	RAMALAMA_IMAGE=${image} run_ramalama --dryrun run ${model}
-	is "$output" ".*${image} /bin/sh -c" "verify image name"
+	is "$output" ".*${image}:latest /bin/sh -c" "verify image name"
     else
 	run_ramalama --dryrun run -c 4096 ${model}
 	is "$output" 'llama-run -c 4096 --temp 0.8 /path/to/model.*' "dryrun correct"

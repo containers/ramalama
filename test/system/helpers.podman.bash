@@ -300,7 +300,7 @@ function leak_check() {
 
     # FIXME Images. Exclude our standard expected images.
 #    _run_podman_quiet images --all --format '{{.ID}} {{.Repository}}:{{.Tag}}'
-#    output=$(awk "\$2 != \"$IMAGE\" && \$2 != \"quay.io/ramalama/ramalama:latest\" && \$2 !~ \"localhost/podman-pause:\" { print }" <<<"$output")
+#    output=$(awk "\$2 != \"$IMAGE\" && \$2 != \"quay.io/ramalama/ramalama\" && \$2 !~ \"localhost/podman-pause:\" { print }" <<<"$output")
 #    _leak_check_one "image"
 
     return $exit_code

@@ -58,7 +58,7 @@ def available(cmd):
     return shutil.which(cmd) is not None
 
 
-def exec_cmd(args, stderr=True, debug=False):
+def exec_cmd(args, debug=False):
     if debug:
         perror("exec_cmd: ", *args)
 
@@ -69,22 +69,37 @@ def exec_cmd(args, stderr=True, debug=False):
         raise
 
 
-def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, debug=False):
+def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_all=False, debug=False):
     """
     Run the given command arguments.
 
     Args:
     args: command line arguments to execute in a subprocess
     cwd: optional working directory to run the command from
+    stdout: standard output configuration
+    ignore_stderr: if True, ignore standard error
+    ignore_all: if True, ignore both standard output and standard error
+    debug: if True, print debug information
     """
     if debug:
         perror("run_cmd: ", *args)
+        perror(f"Working directory: {cwd}")
+        perror(f"Ignore stderr: {ignore_stderr}")
+        perror(f"Ignore all: {ignore_all}")
 
-    stderr = None
-    if ignore_stderr:
-        stderr = subprocess.PIPE
+    serr = None
+    if ignore_all or ignore_stderr:
+        serr = subprocess.DEVNULL
 
-    return subprocess.run(args, check=True, cwd=cwd, stdout=stdout, stderr=stderr)
+    sout = subprocess.PIPE
+    if ignore_all:
+        sout = subprocess.DEVNULL
+
+    result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr)
+    if debug:
+        print("Command finished with return code:", result.returncode)
+
+    return result
 
 
 def find_working_directory():
@@ -143,7 +158,8 @@ def default_image():
     image = os.getenv("RAMALAMA_IMAGE")
     if image:
         return image
-    return "quay.io/ramalama/ramalama:latest"
+
+    return "quay.io/ramalama/ramalama"
 
 
 def genname():
