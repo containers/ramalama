@@ -1,13 +1,8 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.4-1214.1729773476
-
-ARG LLAMA_CPP_SHA=0827b2c1da299805288abbd556d869318f2b121e
-# renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
-ARG WHISPER_CPP_SHA=3de9deead5759eb038966990e3cb5d83984ae467
+FROM registry.access.redhat.com/ubi9/ubi:9.5
 
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "ramalama" "$LLAMA_CPP_SHA" \
-      "$WHISPER_CPP_SHA"
+    /scripts/build_llama_and_whisper.sh "ramalama"
 
 ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
 ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}

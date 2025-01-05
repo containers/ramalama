@@ -1,11 +1,6 @@
 FROM fedora:41
 
-ARG LLAMA_CPP_SHA=0827b2c1da299805288abbd556d869318f2b121e
-# renovate: datasource=git-refs depName=ggerganov/whisper.cpp packageName=https://github.com/ggerganov/whisper.cpp gitRef=master versioning=loose type=digest
-ARG WHISPER_CPP_SHA=3de9deead5759eb038966990e3cb5d83984ae467
-
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "asahi" "$LLAMA_CPP_SHA" \
-      "$WHISPER_CPP_SHA"
+    /scripts/build_llama_and_whisper.sh "asahi"
 
