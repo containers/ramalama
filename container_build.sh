@@ -25,7 +25,7 @@ add_build_platform() {
 }
 
 rm_container_image() {
-  if [ "$image_name" == "cuda" ] || [ "$image_name" == "rocm" ]; then
+  if $rm_after_build; then
     "$conman_bin" rmi -f "$image_name" || true
   fi
 }
@@ -35,7 +35,6 @@ build() {
   local image_name="${1//container-images\//}"
   local conman_build=("${conman[@]}")
   local conman_show_size=("${conman[@]}" "images" "--filter" "reference='quay.io/ramalama/$image_name'")
-
   if [ "$3" == "-d" ]; then
       add_build_platform
       echo "${conman_build[@]}"
@@ -81,6 +80,10 @@ parse_arguments() {
         option="$1"
         shift
         ;;
+      -r)
+        rm_after_build="true"
+        shift
+        ;;
       build|push)
         command="$1"
         shift
@@ -113,6 +116,7 @@ print_usage() {
   echo
   echo "Options:"
   echo "  -d           Some option description"
+  echo "  -r           Remove container image after build"
   echo
   echo "Targets:"
   echo "  Specify the target container image to build or push"
@@ -129,6 +133,7 @@ main() {
   local target=""
   local command=""
   local option=""
+  local rm_after_build="false"
 
   parse_arguments "$@"
 

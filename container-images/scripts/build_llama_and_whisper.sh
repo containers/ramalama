@@ -71,9 +71,9 @@ configure_common_flags() {
 }
 
 clone_and_build_whisper_cpp() {
-  local whisper_cpp_sha="$1"
-  local install_prefix="$2"
-  local whisper_flags=("${!3}")
+  local install_prefix="$1"
+  local whisper_flags=("${!2}")
+  local whisper_cpp_sha="3de9deead5759eb038966990e3cb5d83984ae467"
   whisper_flags+=("-DBUILD_SHARED_LIBS=NO")
 
   git clone https://github.com/ggerganov/whisper.cpp
@@ -88,8 +88,8 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local llama_cpp_sha="$1"
-  local common_flags=("${!2}")
+  local common_flags=("${!1}")
+  local llama_cpp_sha="0827b2c1da299805288abbd556d869318f2b121e"
 
   git clone https://github.com/ggerganov/llama.cpp
   cd llama.cpp
@@ -103,8 +103,6 @@ main() {
   set -ex
 
   local containerfile="$1"
-  local llama_cpp_sha="$2"
-  local whisper_cpp_sha="$3"
   local install_prefix
   set_install_prefix
   local common_flags
@@ -112,14 +110,14 @@ main() {
 
   common_flags+=("-DGGML_CCACHE=0" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
   dnf_install
-  clone_and_build_whisper_cpp "$whisper_cpp_sha" "$install_prefix" common_flags[@]
+  clone_and_build_whisper_cpp "$install_prefix" common_flags[@]
   case "$containerfile" in
     ramalama)
       common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
       ;;
   esac
 
-  clone_and_build_llama_cpp "$llama_cpp_sha" common_flags[@]
+  clone_and_build_llama_cpp common_flags[@]
   dnf clean all
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
     /opt/rocm-*/lib/rocblas/library/*gfx9* llama.cpp whisper.cpp

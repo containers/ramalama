@@ -1,12 +1,8 @@
 FROM quay.io/ramalama/ramalama:latest
 
-ARG ROCM_VERSION=6.2.2
-ARG AMDGPU_VERSION=6.2.2
-
 COPY rocm/amdgpu.repo /etc/yum.repos.d/
 COPY rocm/rocm.repo /etc/yum.repos.d/
 COPY scripts /scripts
 RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "rocm" "$LLAMA_CPP_SHA" \
-      "$WHISPER_CPP_SHA"
+    /scripts/build_llama_and_whisper.sh "rocm"
 
