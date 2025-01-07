@@ -135,6 +135,9 @@ class Model:
             name,
         ]
 
+        if os.path.basename(args.engine) == "podman":
+            conman_args += ["--pull=newer"]
+
         if sys.stdout.isatty() or sys.stdin.isatty():
             conman_args += ["-t"]
 
