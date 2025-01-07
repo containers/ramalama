@@ -135,7 +135,7 @@ class Model:
             name,
         ]
 
-        if sys.stdout.isatty() and sys.stdin.isatty():
+        if sys.stdout.isatty() or sys.stdin.isatty():
             conman_args += ["-t"]
 
         if hasattr(args, "detach") and args.detach is True:
