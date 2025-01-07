@@ -73,7 +73,7 @@ configure_common_flags() {
 clone_and_build_whisper_cpp() {
   local install_prefix="$1"
   local whisper_flags=("${!2}")
-  local whisper_cpp_sha="3de9deead5759eb038966990e3cb5d83984ae467"
+  local whisper_cpp_sha="8a9ad7844d6e2a10cddf4b92de4089d7ac2b14a9"
   whisper_flags+=("-DBUILD_SHARED_LIBS=NO")
 
   git clone https://github.com/ggerganov/whisper.cpp
@@ -89,7 +89,7 @@ clone_and_build_whisper_cpp() {
 
 clone_and_build_llama_cpp() {
   local common_flags=("${!1}")
-  local llama_cpp_sha="0827b2c1da299805288abbd556d869318f2b121e"
+  local llama_cpp_sha="a4dd490069a66ae56b42127048f06757fc4de4f7"
 
   git clone https://github.com/ggerganov/llama.cpp
   cd llama.cpp
