@@ -81,9 +81,6 @@ clone_and_build_whisper_cpp() {
   git submodule update --init --recursive
   git reset --hard "$whisper_cpp_sha"
   cmake_steps whisper_flags
-  mkdir -p "$install_prefix/bin"
-  mv build/bin/main "$install_prefix/bin/whisper-main"
-  mv build/bin/server "$install_prefix/bin/whisper-server"
   cd ..
 }
 

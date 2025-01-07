@@ -15,6 +15,7 @@ help:
 	@echo "Build Container"
 	@echo
 	@echo "  - make build"
+	@echo "  - make build IMAGE=ramalama"
 	@echo
 	@echo "Build docs"
 	@echo

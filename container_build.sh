@@ -19,7 +19,7 @@ select_container_manager() {
 }
 
 add_build_platform() {
-  conman_build+=("build" "--platform" "$platform")
+  conman_build+=("build" "--no-cache" "--platform" "$platform")
   conman_build+=("-t" "quay.io/ramalama/$image_name")
   conman_build+=("-f" "$image_name/Containerfile" ".")
 }
@@ -45,6 +45,7 @@ build() {
   case "${2:-}" in
     build)
       add_build_platform
+      echo "${conman_build[@]}"
       "${conman_build[@]}"
       "${conman_show_size[@]}"
       rm_container_image
