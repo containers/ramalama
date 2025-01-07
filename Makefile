@@ -79,7 +79,7 @@ ifeq ($(OS),Linux)
 endif
 
 .PHONY: build_rm
-build:
+build_rm:
 ifeq ($(OS),Linux)
 	./container_build.sh -r build $(IMAGE)
 endif
