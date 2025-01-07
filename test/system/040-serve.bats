@@ -222,7 +222,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 	is "$output" ".*command: \[\"vllm\"\]" "command is correct"
 	is "$output" ".*args: \['serve', '--port', '1234', '/mnt/models'\]" "args is correct"
 
-	is "$output" ".*image: quay.io/ramalama/ramalama:latest" "image is correct"
+	is "$output" ".*image: quay.io/ramalama/ramalama" "image is correct"
 	is "$output" ".*reference: ${ociimage}" "AI image should be created"
 	is "$output" ".*pullPolicy: IfNotPresent" "pullPolicy should exist"
 
@@ -240,7 +240,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
-    is "$output" ".*image: quay.io/ramalama/ramalama:latest" "Should container image"
+    is "$output" ".*image: quay.io/ramalama/ramalama" "Should container image"
     is "$output" ".*command: \[\"llama-server\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
@@ -257,7 +257,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
 
     run cat $name.yaml
-    is "$output" ".*image: quay.io/ramalama/ramalama:latest" "Should container image"
+    is "$output" ".*image: quay.io/ramalama/ramalama" "Should container image"
     is "$output" ".*command: \[\"llama-server\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 

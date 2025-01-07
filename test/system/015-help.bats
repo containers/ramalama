@@ -126,7 +126,7 @@ function check_help() {
 
     run_ramalama --help
     is "$output" ".*image IMAGE.*OCI container image to run with the specified AI model"  "Verify default image"
-    is "$output" ".*default: quay.io/ramalama/ramalama:latest"  "Verify default image"
+    is "$output" ".*default: quay.io/ramalama/ramalama"  "Verify default image"
 
     image=m_$(safename)
     RAMALAMA_IMAGE=${image} run_ramalama --help

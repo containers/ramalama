@@ -20,7 +20,7 @@ load helpers
 
     # FIXME Engine  (podman|docker|'')
     tests="
-Image   | "quay.io/ramalama/ramalama:latest"
+Image   | "quay.io/ramalama/ramalama"
 Runtime | "llama.cpp"
 Version | "${version}"
 Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)

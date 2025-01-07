@@ -4,6 +4,7 @@ import atexit
 import shlex
 
 from ramalama.common import (
+    container_manager,
     default_image,
     exec_cmd,
     find_working_directory,
@@ -94,6 +95,18 @@ class Model:
                 raise KeyError(f"removing {self.model}: {e}")
         self.garbage_collection(args)
 
+    def attempt_to_use_versioned(self, conman, image, vers, args):
+        try:
+            if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True, debug=args.debug):
+                return True
+
+            return run_cmd([conman, "pull", f"{image}:{vers}"], debug=args.debug)
+
+        except Exception:
+            return False
+
+        return False
+
     def _image(self, args):
         if args.image != default_image():
             return args.image
@@ -105,14 +118,19 @@ class Model:
 
             return "quay.io/modh/vllm:rhoai-2.17-cuda"
 
-        if gpu_type == "HIP_VISIBLE_DEVICES":
-            return "quay.io/ramalama/rocm:latest"
-        elif gpu_type == "CUDA_VISIBLE_DEVICES":
-            return "quay.io/ramalama/cuda:latest"
-        elif gpu_type == "ASAHI_VISIBLE_DEVICES":
-            return "quay.io/ramalama/asahi:latest"
+        vers = version()
+        conman = container_manager()
+        images = {
+            "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
+            "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
+            "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
+        }
 
-        return args.image
+        image = images.get(gpu_type, args.image)
+        if self.attempt_to_use_versioned(conman, image, vers, args):
+            return f"{image}:{vers}"
+
+        return f"{image}:latest"
 
     def setup_container(self, args):
         if hasattr(args, "name") and args.name:
