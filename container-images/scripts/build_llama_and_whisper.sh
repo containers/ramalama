@@ -41,7 +41,9 @@ cmake_steps() {
   local cmake_flags=("${!1}")
   cmake -B build "${cmake_flags[@]}"
   cmake --build build --config Release -j"$(nproc)"
-  cmake --install build
+  cmake --install build --prefix=/usr
+  #HACK libggml-cpu.so is being installed in the wrong place should be in /usr/lib64
+  test -f /usr/lib/libggml-cpu.so && mv /usr/lib/libggml-cpu.so /usr/lib64
 }
 
 set_install_prefix() {

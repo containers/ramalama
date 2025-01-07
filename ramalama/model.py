@@ -246,8 +246,6 @@ class Model:
         # Make sure Image precedes cmd_args.
         conman_args += [self._image(args)]
         cargs = shlex.join(cmd_args)
-        if not args.debug:
-            cargs += " 2> /dev/null"
         conman_args += ["/bin/sh", "-c", cargs]
 
         if args.dryrun:
