@@ -99,6 +99,12 @@ class Model:
             return args.image
 
         gpu_type, _ = get_gpu()
+        if args.runtime == "vllm":
+            if gpu_type == "HIP_VISIBLE_DEVICES":
+                return "quay.io/modh/vllm:rhoai-2.17-rocm"
+
+            return "quay.io/modh/vllm:rhoai-2.17-cuda"
+
         if gpu_type == "HIP_VISIBLE_DEVICES":
             return "quay.io/ramalama/rocm:latest"
         elif gpu_type == "CUDA_VISIBLE_DEVICES":
