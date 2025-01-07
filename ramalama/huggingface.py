@@ -17,7 +17,6 @@ def is_huggingface_cli_available():
     if available("huggingface-cli"):
         return True
     else:
-        print("huggingface-cli not found. Some features may be limited.\n" + missing_huggingface)
         return False
 
 

@@ -167,6 +167,10 @@ def download_file(url, dest_path, headers=None, show_progress=True):
 
     headers = headers or {}
 
+    # if we are not a tty, don't show progress, can pollute CI output and such
+    if not sys.stdout.isatty():
+        show_progress = False
+
     try:
         http_client.init(url=url, headers=headers, output_file=dest_path, progress=show_progress)
     except urllib.error.HTTPError as e:
