@@ -6,7 +6,10 @@ dnf_install() {
                   "procps-ng" "git" "dnf-plugins-core")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
-  if [ "$containerfile" = "ramalama" ]; then
+
+  # All the UBI-based ones
+  if [ "$containerfile" = "ramalama" ] || [ "$containerfile" = "rocm" ] || \
+    [ "$containerfile" = "vulkan" ]; then
     local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
     dnf install -y "$url"
     crb enable # this is in epel-release, can only install epel-release via url
@@ -21,7 +24,9 @@ dnf_install() {
       /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
     rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
     dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
-  elif [ "$containerfile" = "asahi" ]; then
+  fi
+
+  if [ "$containerfile" = "asahi" ]; then
     dnf copr enable -y @asahi/fedora-remix-branding
     dnf install -y asahi-repos
     dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}" "${rpm_list[@]}"
@@ -32,9 +37,6 @@ dnf_install() {
     # shellcheck disable=SC1091
     . /opt/rh/gcc-toolset-12/enable
   fi
-
-  # For Vulkan image, we don't need to install anything extra but rebuild with
-  # -DGGML_VULKAN
 }
 
 cmake_steps() {

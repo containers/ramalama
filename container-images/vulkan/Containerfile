@@ -1,4 +1,4 @@
-FROM quay.io/ramalama/ramalama:latest
+FROM registry.access.redhat.com/ubi9/ubi:9.5
 
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
