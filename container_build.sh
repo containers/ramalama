@@ -19,7 +19,14 @@ select_container_manager() {
 }
 
 add_build_platform() {
-  conman_build+=("build" "--no-cache" "--platform" "$platform")
+  conman_build+=("build")
+
+  # This build saves space
+  if ! $rm_after_build; then
+    conman_build+=("--no-cache")
+  fi
+
+  conman_build+=("--platform" "$platform")
   conman_build+=("-t" "quay.io/ramalama/$image_name")
   conman_build+=("-f" "$image_name/Containerfile" ".")
 }
@@ -67,6 +74,7 @@ determine_platform() {
   if [ "$(uname -m)" = "aarch64" ] || { [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; }; then
     platform="linux/arm64"
   fi
+
   echo "$platform"
 }
 
@@ -135,9 +143,7 @@ main() {
   local command=""
   local option=""
   local rm_after_build="false"
-
   parse_arguments "$@"
-
   if [ -z "$command" ]; then
     echo "Error: command is required (build or push)"
     print_usage
@@ -145,7 +151,6 @@ main() {
   fi
 
   target="${target:-all}"
-
   if [ "$target" = "all" ]; then
     process_all_targets "$command" "$option"
   else
