@@ -28,6 +28,9 @@ jobs:
            # Install specific podman version
            sudo apt-get upgrade
 
+      - name: Build a container for CPU inferencing
+        run: ./container_build.sh build ramalama
+
       - name: run bats
         run: |
            make validate
@@ -97,6 +100,9 @@ jobs:
            cat /etc/docker/daemon.json
            sudo systemctl restart docker.service
            df -h
+
+      - name: Build a container for CPU inferencing
+        run: ./container_build.sh build ramalama
 
       - name: bats-docker
         run: |
