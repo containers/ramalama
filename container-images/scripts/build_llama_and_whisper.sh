@@ -41,7 +41,9 @@ cmake_steps() {
   local cmake_flags=("${!1}")
   cmake -B build "${cmake_flags[@]}"
   cmake --build build --config Release -j"$(nproc)"
-  cmake --install build
+  cmake --install build --prefix=/usr
+  #HACK libggml-cpu.so is being installed in the wrong place should be in /usr/lib64
+  test -f /usr/lib/libggml-cpu.so && mv /usr/lib/libggml-cpu.so /usr/lib64
 }
 
 set_install_prefix() {
@@ -74,6 +76,7 @@ clone_and_build_whisper_cpp() {
   local install_prefix="$1"
   local whisper_flags=("${!2}")
   local whisper_cpp_sha="8a9ad7844d6e2a10cddf4b92de4089d7ac2b14a9"
+  whisper_flags+=("-DBUILD_SHARED_LIBS=NO")
 
   git clone https://github.com/ggerganov/whisper.cpp
   cd whisper.cpp
@@ -105,7 +108,7 @@ main() {
   local common_flags
   configure_common_flags "$containerfile" common_flags
 
-  common_flags+=("-DGGML_CCACHE=0" "-DCMAKE_INSTALL_PREFIX=$install_prefix" "-DBUILD_SHARED_LIBS=NO")
+  common_flags+=("-DGGML_CCACHE=0" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
   dnf_install
   clone_and_build_whisper_cpp "$install_prefix" common_flags[@]
   case "$containerfile" in
