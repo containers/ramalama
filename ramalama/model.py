@@ -118,7 +118,8 @@ class Model:
 
             return "quay.io/modh/vllm:rhoai-2.17-cuda"
 
-        vers = version()
+        split = version().split(".")
+        vers=".".join(split[:2])
         conman = container_manager()
         images = {
             "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
