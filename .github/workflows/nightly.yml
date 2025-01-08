@@ -42,6 +42,9 @@ jobs:
       - name: Docker info
         run: docker info
 
+      - name: Build a container for CPU inferencing
+        run: ./container_build.sh build ramalama
+
       - name: Run a one-line script
         run: make test
 
@@ -93,7 +96,7 @@ jobs:
             image: quay.io/ramalama/ramalama
             tags: nightly
             containerfiles: |
-              container-images/cpuonly/Containerfile
+              container-images/ramalama/Containerfile
             platforms: linux/amd64, linux/arm64
 
         - name: push images to registry

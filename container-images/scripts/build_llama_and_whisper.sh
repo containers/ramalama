@@ -38,12 +38,10 @@ dnf_install() {
 }
 
 cmake_steps() {
-  local cmake_flags=("${!1}")
+  local cmake_flags=("$@")
   cmake -B build "${cmake_flags[@]}"
   cmake --build build --config Release -j"$(nproc)"
-  cmake --install build --prefix=/usr
-  #HACK libggml-cpu.so is being installed in the wrong place should be in /usr/lib64
-  test -f /usr/lib/libggml-cpu.so && mv /usr/lib/libggml-cpu.so /usr/lib64
+  cmake --install build
 }
 
 set_install_prefix() {
@@ -55,26 +53,22 @@ set_install_prefix() {
 }
 
 configure_common_flags() {
-  local containerfile="$1"
-  local -n common_flags_ref=$2
-
-  common_flags_ref=("-DGGML_NATIVE=OFF")
+  common_flags=("-DGGML_NATIVE=OFF")
   case "$containerfile" in
     rocm)
-      common_flags_ref+=("-DGGML_HIPBLAS=1")
+      common_flags+=("-DGGML_HIPBLAS=1")
       ;;
     cuda)
-      common_flags_ref+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
+      common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
       ;;
     vulkan | asahi)
-      common_flags_ref+=("-DGGML_VULKAN=1")
+      common_flags+=("-DGGML_VULKAN=1")
       ;;
   esac
 }
 
 clone_and_build_whisper_cpp() {
-  local install_prefix="$1"
-  local whisper_flags=("${!2}")
+  local whisper_flags=("${common_flags[@]}")
   local whisper_cpp_sha="8a9ad7844d6e2a10cddf4b92de4089d7ac2b14a9"
   whisper_flags+=("-DBUILD_SHARED_LIBS=NO")
 
@@ -82,20 +76,19 @@ clone_and_build_whisper_cpp() {
   cd whisper.cpp
   git submodule update --init --recursive
   git reset --hard "$whisper_cpp_sha"
-  cmake_steps whisper_flags
+  cmake_steps "${whisper_flags[@]}"
   mkdir -p "$install_prefix/bin"
   cd ..
 }
 
 clone_and_build_llama_cpp() {
-  local common_flags=("${!1}")
   local llama_cpp_sha="a4dd490069a66ae56b42127048f06757fc4de4f7"
 
   git clone https://github.com/ggerganov/llama.cpp
   cd llama.cpp
   git submodule update --init --recursive
   git reset --hard "$llama_cpp_sha"
-  cmake_steps common_flags
+  cmake_steps "${common_flags[@]}"
   cd ..
 }
 
@@ -106,21 +99,22 @@ main() {
   local install_prefix
   set_install_prefix
   local common_flags
-  configure_common_flags "$containerfile" common_flags
+  configure_common_flags
 
   common_flags+=("-DGGML_CCACHE=0" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
   dnf_install
-  clone_and_build_whisper_cpp "$install_prefix" common_flags[@]
+  clone_and_build_whisper_cpp
   case "$containerfile" in
     ramalama)
       common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
       ;;
   esac
 
-  clone_and_build_llama_cpp common_flags[@]
+  clone_and_build_llama_cpp
   dnf clean all
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
     /opt/rocm-*/lib/rocblas/library/*gfx9* llama.cpp whisper.cpp
+  ldconfig # needed for libraries
 }
 
 main "$@"
