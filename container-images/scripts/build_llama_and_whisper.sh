@@ -102,7 +102,6 @@ main() {
   set_install_prefix
   local common_flags
   configure_common_flags
-
   common_flags+=("-DGGML_CCACHE=0" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
   dnf_install
   clone_and_build_whisper_cpp
@@ -115,7 +114,8 @@ main() {
   clone_and_build_llama_cpp
   dnf clean all
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
-    /opt/rocm-*/lib/rocblas/library/*gfx9* llama.cpp whisper.cpp
+    /opt/rocm-*/lib/rocblas/library/*gfx9* \
+    /opt/rocm-*/lib/hipblaslt/library/*gfx9* llama.cpp whisper.cpp
   ldconfig # needed for libraries
 }
 
