@@ -66,7 +66,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     skip "Seems to cause race conditions"
     skip_if_nocontainer
 
-    model=ollama://tiny-llm:latest
+    model=ollama://smollm:135m
     container1=c_$(safename)
     container2=c_$(safename)
 
@@ -99,7 +99,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
     skip "Seems to cause race conditions"
     skip_if_nocontainer
 
-    model=ollama://tiny-llm:latest
+    model=ollama://smollm:135m
     container=c_$(safename)
     port1=8100
     port2=8200

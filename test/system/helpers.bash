@@ -25,7 +25,7 @@ RAMALAMA_NONLOCAL_IMAGE_FQN="$RAMALAMA_TEST_IMAGE_REGISTRY/$RAMALAMA_TEST_IMAGE_
 # Because who wants to spell that out each time?
 IMAGE=$RAMALAMA_TEST_IMAGE_FQN
 
-MODEL=ollama://ben1t0/tiny-llm:latest
+MODEL=ollama://smollm:135m
 
 load helpers.podman
 

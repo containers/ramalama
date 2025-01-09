@@ -70,7 +70,7 @@ require HTTPS and verify certificates when contacting OCI registries
 ### Run two AI Models at the same time. Notice both are running within Podman Containers.
 ```
 
-$ ramalama serve -d -p 8080 --name mymodel ollama://tiny-llm:latest
+$ ramalama serve -d -p 8080 --name mymodel ollama://smollm:135m
 09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
 
 $ ramalama serve -d -n example --port 8081 oci://quay.io/mmortari/gguf-py-example/v1/example.gguf

@@ -150,7 +150,7 @@ You can `list` all models pulled into local storage.
 ```
 $ ramalama list
 NAME                                                                MODIFIED     SIZE
-ollama://tiny-llm:latest                                            16 hours ago 5.5M
+ollama://smollm:135m                                            16 hours ago 5.5M
 huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf 14 hours ago 460M
 ollama://granite-code:3b                                            5 days ago   1.9G
 ollama://granite-code:latest                                        1 day ago    1.9G
