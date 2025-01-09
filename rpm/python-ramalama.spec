@@ -101,4 +101,32 @@ will run the AI Models within a container based on the OCI image.
 %{_mandir}/man5/ramalama*.5*
 
 %changelog
-%autochangelog
+* Thu Jan  9 00:00:00 2025 Daniel J Walsh <dwalsh@redhat.com> - 0.4.0
+- Release 0.4.0
+
+* Tue Nov 26 00:00:00 2024 Stephen Smoogen <ssmoogen@redhat.com> - 0.2.0-7
+- Fix spec file to get CentOS Stream 10 building
+
+* Tue Nov 26 00:00:00 2024 Stephen Smoogen <ssmoogen@redhat.com> - 0.2.0-6
+- Needed to fix to match upstream
+
+* Tue Nov 26 00:00:00 2024 Stephen Smoogen <ssmoogen@redhat.com> - 0.2.0-5
+- Do manual addition of PR #4 items
+
+* Tue Nov 26 00:00:00 2024 Stephen Smoogen <ssmoogen@redhat.com> - 0.2.0-4
+- Fix changes to spec file description and other items found in review
+
+* Tue Nov 26 00:00:00 2024 Stephen Smoogen <ssmoogen@redhat.com> - 0.2.0-3
+- Incorporate upstream PR
+
+* Tue Nov 26 00:00:00 2024 Mikel Olasagasti Uranga <mikel@olasagasti.info> - 0.2.0-2
+- Switch to go-md2man instead of full name
+
+* Fri Nov 22 00:00:00 2024 Stephen Smoogen <ssmoogen@redhat.com> - 0.2.0-1
+- Update to 0.2.0
+
+* Wed Nov 20 00:00:00 2024 Stephen Smoogen <ssmoogen@redhat.com> - 0.1.2-1
+- Update to 0.1.2 and fix bugzilla issues.
+
+* Thu Nov 14 00:00:00 2024 Stephen Smoogen <ssmoogen@redhat.com> - 0.1.1-1
+- Initial pull of package
