@@ -27,16 +27,9 @@ def container_manager():
             return "podman"
 
         podman_machine_list = ["podman", "machine", "list"]
-        conman_args = ["podman", "machine", "list", "--format", "{{ .VMType }}"]
         try:
             output = run_cmd(podman_machine_list).stdout.decode("utf-8").strip()
             if "running" not in output:
-                return None
-
-            output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-            if output == "krunkit" or output == "libkrun":
-                return "podman"
-            else:
                 return None
 
         except subprocess.CalledProcessError:
