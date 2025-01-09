@@ -102,7 +102,7 @@ def find_working_directory():
 def run_curl_cmd(args, filename):
     if not verify_checksum(filename):
         try:
-            run_cmd(args)
+            run_cmd(args, debug=args.debug)
         except subprocess.CalledProcessError as e:
             if e.returncode == 22:
                 perror(filename + " not found")
