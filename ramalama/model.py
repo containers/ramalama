@@ -1,7 +1,6 @@
 import os
 import sys
 import atexit
-import shlex
 
 from ramalama.common import (
     container_manager,
@@ -119,7 +118,7 @@ class Model:
             return "quay.io/modh/vllm:rhoai-2.17-cuda"
 
         split = version().split(".")
-        vers=".".join(split[:2])
+        vers = ".".join(split[:2])
         conman = container_manager()
         images = {
             "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
@@ -245,9 +244,7 @@ class Model:
             conman_args += [f"--mount=type=image,src={self.model},destination={mnt_dir},rw=false,subpath=/models"]
 
         # Make sure Image precedes cmd_args.
-        conman_args += [self._image(args)]
-        cargs = shlex.join(cmd_args)
-        conman_args += ["/bin/sh", "-c", cargs]
+        conman_args += [self._image(args)] + cmd_args
 
         if args.dryrun:
             dry_run(conman_args)
@@ -295,8 +292,11 @@ class Model:
 
         exec_args += [
             exec_model_path,
-            prompt,
         ]
+        if len(prompt) > 0:
+            exec_args += [
+                prompt,
+            ]
 
         try:
             if self.exec_model_in_container(model_path, exec_args, args):
