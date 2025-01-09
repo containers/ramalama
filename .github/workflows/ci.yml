@@ -25,6 +25,7 @@ jobs:
            sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
+           sudo apt-get purge firefox
            # Install specific podman version
            sudo apt-get upgrade
 
@@ -54,6 +55,7 @@ jobs:
            sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
+           sudo apt-get purge firefox
            # Install specific podman version
            sudo apt-get upgrade
 
@@ -79,6 +81,7 @@ jobs:
            sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
+           sudo apt-get purge firefox
            # Install specific podman version
            sudo apt-get upgrade
 
