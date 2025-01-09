@@ -213,7 +213,7 @@ class Model:
 
         atexit.register(cleanup)
 
-        run_cmd(conman_args, stdout=None, debug=args.debug)
+        exec_cmd(conman_args, debug=args.debug)
         return True
 
     def gpu_args(self):
@@ -250,7 +250,7 @@ class Model:
             dry_run(conman_args)
             return True
 
-        run_cmd(conman_args, debug=args.debug)
+        exec_cmd(conman_args, debug=args.debug)
         return True
 
     def run(self, args):
