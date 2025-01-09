@@ -304,7 +304,7 @@ class Model:
             if args.dryrun:
                 dry_run(exec_args)
                 return
-            exec_cmd(exec_args, args.debug, debug=args.debug)
+            exec_cmd(exec_args, args.debug)
         except FileNotFoundError as e:
             if args.container:
                 raise NotImplementedError(
