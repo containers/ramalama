@@ -385,8 +385,9 @@ def _list_containers(args):
         raise IndexError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "ps", "-a", "--filter", "label=RAMALAMA"]
-    if args.noheading:
+    if hasattr(args, "noheading") and args.noheading:
         conman_args += ["--noheading"]
+
     if hasattr(args, "notrunc") and args.notrunc:
         conman_args += ["--no-trunc"]
 
@@ -394,7 +395,7 @@ def _list_containers(args):
         conman_args += [f"--format={args.format}"]
 
     try:
-        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
         if output == "":
             return []
         return output.split("\n")
@@ -746,7 +747,7 @@ def _stop_container(args, name):
 
     conman_args += [name]
     try:
-        run_cmd(conman_args, ignore_stderr=ignore_stderr)
+        run_cmd(conman_args, ignore_stderr=ignore_stderr, debug=args.debug)
     except subprocess.CalledProcessError:
         if args.ignore and conman == "docker":
             return
@@ -817,7 +818,6 @@ def rm_cli(args):
     if len(args.MODEL) > 0:
         raise IndexError("can not specify --all as well MODEL")
 
-    args.noheading = True
     models = [k['name'] for k in _list_models(args)]
     _rm_model(models, args)
 
