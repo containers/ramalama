@@ -105,7 +105,7 @@ llama.cpp explains this as:
 
     The lower the number is, the more deterministic the response.
 
-    The higher the number is the more creative the response is, but moee likely to hallucinate when set too high.
+    The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 

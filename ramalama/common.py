@@ -99,16 +99,6 @@ def find_working_directory():
     return os.path.dirname(__file__)
 
 
-def run_curl_cmd(args, filename):
-    if not verify_checksum(filename):
-        try:
-            run_cmd(args, debug=args.debug)
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 22:
-                perror(filename + " not found")
-            raise e
-
-
 def verify_checksum(filename):
     """
     Verifies if the SHA-256 checksum of a file matches the checksum provided in

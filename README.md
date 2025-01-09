@@ -112,7 +112,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 
 ### Running Models
 
-You can `run` a chatbot on a model using the `run` command. By default, it pulls from the ollama registry.
+You can `run` a chatbot on a model using the `run` command. By default, it pulls from the Ollama registry.
 
 Note: RamaLama will inspect your machine for native GPU support and then will
 use a container engine like Podman to pull an OCI container image with the
@@ -158,7 +158,7 @@ ollama://moondream:latest                                           6 days ago  
 ```
 ### Pulling Models
 
-You can `pull` a model using the `pull` command. By default, it pulls from the ollama registry.
+You can `pull` a model using the `pull` command. By default, it pulls from the Ollama registry.
 
 ```
 $ ramalama pull granite-code
@@ -167,7 +167,7 @@ $ ramalama pull granite-code
 
 ### Serving Models
 
-You can `serve` multiple models using the `serve` command. By default, it pulls from the ollama registry.
+You can `serve` multiple models using the `serve` command. By default, it pulls from the Ollama registry.
 
 ```
 $ ramalama serve --name mylama llama3
