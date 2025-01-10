@@ -38,6 +38,15 @@ version_checks() {
   grep "$arg_llama_cpp" container-images/asahi/Containerfile
 }
 
+check_packaging() {
+  cd ramalama
+  for i in *.py; do
+    grep -q "$i" ../install.sh
+  done
+
+  cd -
+}
+
 main() {
   set -ex -o pipefail
 
@@ -46,15 +55,14 @@ main() {
     maybe_sudo="sudo"
   fi
 
+  check_packaging
   version_checks
-
   local os
   os="$(uname -s)"
   binfile=bin/ramalama
   chmod +x "$binfile" install.sh
   uname -a
   /usr/bin/python3 --version
-
   export BRANCH="main"
   if false; then # This doesn't work for forked repos, will revisit
     if [ -n "$GITHUB_HEAD_REF" ]; then
