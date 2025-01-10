@@ -479,6 +479,7 @@ def engine_info(args):
     except FileNotFoundError as e:
         return str(e)
 
+
 def info_cli(args):
     info = {
         "Engine": {
@@ -491,7 +492,7 @@ def info_cli(args):
         "Version": version(),
     }
     if args.engine and len(args.engine) > 0:
-        info["Engine"]["Info"] =engine_info(args)
+        info["Engine"]["Info"] = engine_info(args)
 
     print(json.dumps(info, sort_keys=True, indent=4))
 
@@ -840,23 +841,6 @@ def rm_cli(args):
 
     models = [k['name'] for k in _list_models(args)]
     _rm_model(models, args)
-
-
-def run_container(args):
-    if hasattr(args, "generate") and args.generate:
-        return False
-
-    if not args.container:
-        if hasattr(args, "name") and args.name:
-            raise IndexError("--nocontainer and --name options conflict. --name requires a container.")
-
-        # --nocontainer implies --detach=false
-        if hasattr(args, "detach"):
-            args.detach = False
-        return False
-
-    model = New(args.image, args)
-    return model.run_container(args, shortnames)
 
 
 def New(model, args):
