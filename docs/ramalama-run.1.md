@@ -37,11 +37,14 @@ show this help message and exit
 #### **--name**, **-n**
 name of the container to run the Model in
 
+#### **--privileged**
+give extended privileges to container
+
 #### **--seed**=
-Specify seed rather than using random seed model interaction
+specify seed rather than using random seed model interaction
 
 #### **--temp**="0.8"
-Temperature of the response from the AI Model
+temperature of the response from the AI Model
 llama.cpp explains this as:
 
     The lower the number is, the more deterministic the response.

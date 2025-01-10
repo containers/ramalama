@@ -41,13 +41,13 @@ path of the authentication file for OCI registries
 size of the prompt context (default: 2048, 0 = loaded from model)
 
 #### **--detach**, **-d**
-Run the container in the background and print the new container ID.
+run the container in the background and print the new container ID.
 The default is TRUE. The --nocontainer option forces this option to False.
 
 Use the `ramalama stop` command to stop the container running the served ramalama Model.
 
 #### **--generate**=type
-Generate specified configuration format for running the AI Model as a service
+generate specified configuration format for running the AI Model as a service
 
 | Key          | Description                                                              |
 | ------------ | -------------------------------------------------------------------------|
@@ -62,16 +62,19 @@ show this help message and exit
 IP address for llama.cpp to listen on.
 
 #### **--name**, **-n**
-Name of the container to run the Model in.
+name of the container to run the Model in.
 
 #### **--port**, **-p**
 port for AI Model server to listen on
 
+#### **--privileged**
+give extended privileges to container
+
 #### **--seed**=
-Specify seed rather than using random seed model interaction
+specify seed rather than using random seed model interaction
 
 #### **--temp**="0.8"
-Temperature of the response from the AI Model
+temperature of the response from the AI Model
 llama.cpp explains this as:
 
     The lower the number is, the more deterministic the response.

@@ -116,7 +116,7 @@ function check_help() {
     # Test for regression of #7273 (spurious "--remote" help on output)
     for helpopt in help --help -h; do
         run_ramalama $helpopt
-        is "${lines[0]}" "usage: ramalama [-h] [--container] [--debug] [--dryrun] [--engine ENGINE]" \
+        is "${lines[0]}" "usage: ramalama [-h] [--container] [--nocontainer] [--engine ENGINE] [--debug]" \
            "ramalama $helpopt: first line of output"
     done
 
@@ -124,12 +124,12 @@ function check_help() {
 
 @test "ramalama verify default image" {
 
-    run_ramalama --help
+    run_ramalama run --help
     is "$output" ".*image IMAGE.*OCI container image to run with the specified AI model"  "Verify default image"
     is "$output" ".*default: quay.io/ramalama/ramalama"  "Verify default image"
 
     image=m_$(safename)
-    RAMALAMA_IMAGE=${image} run_ramalama --help
+    RAMALAMA_IMAGE=${image} run_ramalama run --help
     is "$output" ".*default: ${image}"  "Verify default image from environment"
 
     conf=$RAMALAMA_TMPDIR/ramalama.conf
@@ -138,11 +138,11 @@ function check_help() {
 image="$image"
 EOF
 
-    RAMALAMA_CONFIG=${conf} run_ramalama --help
+    RAMALAMA_CONFIG=${conf} run_ramalama run --help
     is "$output" ".*default: ${image}"  "Verify default image from ramalama.conf"
 
     image1=m_$(safename)
-    RAMALAMA_IMAGE=${image1} RAMALAMA_CONFIG=${conf} run_ramalama --help
+    RAMALAMA_IMAGE=${image1} RAMALAMA_CONFIG=${conf} run_ramalama run --help
     is "$output" ".*default: ${image1}"  "Verify default image from environment over ramalama.conf"
 }
 
@@ -170,7 +170,7 @@ EOF
 }
 
 @test "ramalama verify default runtime" {
-    run_ramalama --help
+    run_ramalama serve --help
     is "$output" ".*default: llama.cpp"  "Verify default runtime from environment variable"
 
     conf=$RAMALAMA_TMPDIR/ramalama.conf
@@ -179,7 +179,7 @@ EOF
 runtime="vllm"
 EOF
 
-    RAMALAMA_CONFIG=${conf} run_ramalama --help
+    RAMALAMA_CONFIG=${conf} run_ramalama serve --help
     is "$output" ".*default: vllm"  "Verify default runtime from ramalama.conf"
 }
 

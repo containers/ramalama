@@ -227,6 +227,9 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         help="specify the runtime to use; valid options are 'llama.cpp' and 'vllm'",
     )
     parser.add_argument(
+        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
+    )
+    parser.add_argument(
         "--store",
         default=config.get("store"),
         help="store AI Models in the specified directory",
