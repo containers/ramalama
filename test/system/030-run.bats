@@ -34,7 +34,7 @@ load helpers
 	is "$output" ".*${image}:latest llama-run" "verify image name"
     else
 	run_ramalama --dryrun run -c 4096 ${model}
-	is "$output" 'llama-run -c 4096 --temp 0.8 /path/to/model.*' "dryrun correct"
+	is "$output" 'llama-run -c 4096 --temp 0.8.*/path/to/model.*' "dryrun correct"
 	is "$output" ".*-c 4096" "verify model name"
 
 	run_ramalama 1 run --ctx-size=4096 --name foobar tiny
