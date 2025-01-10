@@ -382,7 +382,7 @@ def containers_parser(subparsers):
 def _list_containers(args):
     conman = args.engine
     if conman == "":
-        raise IndexError("no container manager (Podman, Docker) found")
+        raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "ps", "-a", "--filter", "label=RAMALAMA"]
     if hasattr(args, "noheading") and args.noheading:
@@ -412,7 +412,7 @@ def list_containers(args):
 
 def info_parser(subparsers):
     parser = subparsers.add_parser("info", help="Display information pertaining to setup of RamaLama.")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
+    parser.add_argument("--container", default=config.get('container', use_container()), help=argparse.SUPPRESS)
     parser.set_defaults(func=info_cli)
 
 
@@ -465,14 +465,34 @@ def _list_models(args):
     return models
 
 
+def engine_info(args):
+    conman = args.engine
+    if conman == "":
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "info", "--format", "json"]
+    try:
+        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+        if output == "":
+            return []
+        return json.loads(output)
+    except FileNotFoundError as e:
+        return str(e)
+
 def info_cli(args):
     info = {
-        "Engine": args.engine,
+        "Engine": {
+            "Name": args.engine,
+        },
+        "UseContainer": args.container,
         "Image": args.image,
         "Runtime": args.runtime,
         "Store": args.store,
         "Version": version(),
     }
+    if args.engine and len(args.engine) > 0:
+        info["Engine"]["Info"] =engine_info(args)
+
     print(json.dumps(info, sort_keys=True, indent=4))
 
 
@@ -732,10 +752,10 @@ def stop_parser(subparsers):
 
 def _stop_container(args, name):
     if not name:
-        raise IndexError("must specify a container name")
+        raise ValueError("must specify a container name")
     conman = args.engine
     if conman == "":
-        raise IndexError("no container manager (Podman, Docker) found")
+        raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "stop", "-t=0"]
     ignore_stderr = False
@@ -760,7 +780,7 @@ def stop_container(args):
         return _stop_container(args, args.NAME)
 
     if args.NAME:
-        raise IndexError("specifying --all and container name, %s, not allowed" % args.NAME)
+        raise ValueError("specifying --all and container name, %s, not allowed" % args.NAME)
     args.ignore = True
     args.format = "{{ .Names }}"
     for i in _list_containers(args):

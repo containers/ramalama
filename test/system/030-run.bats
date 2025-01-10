@@ -8,7 +8,7 @@ load helpers
 
     if is_container; then
 	run_ramalama info
-	conman=$(jq .Engine <<< $output | tr -d '"' )
+	conman=$(jq .Engine.Name <<< $output | tr -d '"' )
 	verify_begin="${conman} run --rm -i --label RAMALAMA --security-opt=label=disable --name"
 
 	run_ramalama --dryrun run ${model}

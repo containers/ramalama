@@ -29,10 +29,10 @@ Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)
     defer-assertion-failures
 
     while read field expect; do
-        actual=$(echo "$output" | jq -r ".$field")
-        dprint "# actual=<$actual> expect=<$expect>"
-        is "$actual" "$expect" "jq .$field"
-    done < <(parse_table "$tests")
+	actual=$(echo "$output" | jq -r ".$field")
+	dprint "# actual=<$actual> expect=<$expect>"
+	is "$actual" "$expect" "jq .$field"
+	    done < <(parse_table "$tests")
 
     image=i_$(safename)
     runtime=vllm
@@ -41,7 +41,7 @@ Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)
 
     run_ramalama --store $store --runtime $runtime --engine $engine --image $image info
     tests="
-Engine  | $engine
+Engine.Name | $engine
 Image   | $image
 Runtime | $runtime
 Store   | $store
@@ -50,9 +50,9 @@ Store   | $store
     defer-assertion-failures
 
     while read field expect; do
-        actual=$(echo "$output" | jq -r ".$field")
-        dprint "# actual=<$actual> expect=<$expect>"
-        is "$actual" "$expect" "jq .$field"
+	actual=$(echo "$output" | jq -r ".$field")
+	dprint "# actual=<$actual> expect=<$expect>"
+	is "$actual" "$expect" "jq .$field"
     done < <(parse_table "$tests")
 
 }
