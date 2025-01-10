@@ -1,12 +1,10 @@
 import os
 import sys
-import atexit
 
 from ramalama.common import (
     container_manager,
     default_image,
     exec_cmd,
-    find_working_directory,
     genname,
     run_cmd,
     get_gpu,
@@ -175,46 +173,6 @@ class Model:
             conman_args += ["-e", f"{k}={v}"]
 
         return conman_args
-
-    def run_container(self, args, shortnames):
-        conman_args = self.setup_container(args)
-        if len(conman_args) == 0:
-            return False
-
-        short_file = shortnames.create_shortname_file()
-        wd = find_working_directory()
-
-        conman_args += [
-            f"-v{args.store}:/var/lib/ramalama",
-            f"-v{os.path.realpath(sys.argv[0])}:/usr/bin/ramalama:ro",
-            f"-v{wd}:/usr/share/ramalama/ramalama:ro",
-            f"-v{short_file}:/usr/share/ramalama/shortnames.conf:ro,Z",
-            "-e",
-            "RAMALAMA_TRANSPORT",
-        ]
-
-        di_volume = distinfo_volume()
-        if di_volume != "":
-            conman_args += [di_volume]
-
-        conman_args += [self._image(args)]
-        conman_args += ["python3", "/usr/bin/ramalama"]
-        conman_args += sys.argv[1:]
-        if hasattr(args, "UNRESOLVED_MODEL"):
-            index = conman_args.index(args.UNRESOLVED_MODEL)
-            conman_args[index] = args.MODEL
-
-        if args.dryrun:
-            dry_run(conman_args)
-            return True
-
-        def cleanup():
-            os.remove(short_file)
-
-        atexit.register(cleanup)
-
-        exec_cmd(conman_args, debug=args.debug)
-        return True
 
     def gpu_args(self):
         gpu_args = []
