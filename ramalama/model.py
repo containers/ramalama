@@ -1,5 +1,6 @@
 import os
 import sys
+import platform
 
 from ramalama.common import (
     container_manager,
@@ -174,18 +175,22 @@ class Model:
 
         return conman_args
 
-    def gpu_args(self):
+    def gpu_args(self, force=False, server=False):
         gpu_args = []
-        if sys.platform == "darwin":
-            # llama.cpp will default to the Metal backend on macOS, so we don't need
-            # any additional arguments.
-            pass
-        elif sys.platform == "linux" and (
-            os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("ASAHI_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
+        if (
+            force
+            or sys.platform == "darwin"
+            or (sys.platform == "linux" and platform.machine() == "aarch64")
+            or os.getenv("HIP_VISIBLE_DEVICES")
+            or os.getenv("ASAHI_VISIBLE_DEVICES")
+            or os.getenv("CUDA_VISIBLE_DEVICES")
         ):
-            gpu_args = ["-ngl", "99"]
-        else:
-            print("GPU offload was requested but is not available on this system")
+            if server:
+                gpu_args += ["-ngl"]  # single dash
+            else:
+                gpu_args += ["--ngl"]  # double dash
+
+            gpu_args += ["999"]
 
         return gpu_args
 
@@ -212,31 +217,40 @@ class Model:
         return True
 
     def run(self, args):
+        self.check_name_and_container(args)
+        prompt = self.build_prompt(args)
+        model_path = self.get_model_path(args)
+        exec_args = self.build_exec_args_run(args, model_path, prompt)
+        self.execute_model(model_path, exec_args, args)
+
+    def check_name_and_container(self, args):
         if hasattr(args, "name") and args.name:
             if not args.container:
                 raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
 
+    def build_prompt(self, args):
         prompt = ""
         if args.ARGS:
             prompt = " ".join(args.ARGS)
 
-        # Build a prompt with the stdin text that prepend the prompt passed as
-        # an argument to ramalama cli
         if not sys.stdin.isatty():
             inp = sys.stdin.read()
             prompt = inp + "\n\n" + prompt
 
+        return prompt
+
+    def get_model_path(self, args):
         if args.dryrun:
-            model_path = "/path/to/model"
-        else:
-            model_path = self.exists(args)
-            if not model_path:
-                model_path = self.pull(args)
+            return "/path/to/model"
 
-        exec_model_path = mnt_file
-        if not args.container:
-            exec_model_path = model_path
+        model_path = self.exists(args)
+        if not model_path:
+            model_path = self.pull(args)
 
+        return model_path
+
+    def build_exec_args_run(self, args, model_path, prompt):
+        exec_model_path = model_path if not args.container else mnt_file
         exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
 
         if args.seed:
@@ -245,17 +259,17 @@ class Model:
         if args.debug:
             exec_args += ["-v"]
 
-        if args.gpu:
-            exec_args.extend(self.gpu_args())
+        gpu_args = self.gpu_args(force=args.gpu)
+        if gpu_args is not None:
+            exec_args.extend(gpu_args)
 
-        exec_args += [
-            exec_model_path,
-        ]
+        exec_args.append(exec_model_path)
         if len(prompt) > 0:
-            exec_args += [
-                prompt,
-            ]
+            exec_args.append(prompt)
 
+        return exec_args
+
+    def execute_model(self, model_path, exec_args, args):
         try:
             if self.exec_model_in_container(model_path, exec_args, args):
                 return
@@ -270,22 +284,12 @@ class Model:
                 )
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
-    def serve(self, args):
+    def validate_args(self, args):
         if hasattr(args, "name") and args.name:
             if not args.container and not args.generate:
                 raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
 
-        if args.dryrun:
-            model_path = "/path/to/model"
-        else:
-            model_path = self.exists(args)
-            if not model_path:
-                model_path = self.pull(args)
-
-        exec_model_path = mnt_file
-        if not args.container and not args.generate:
-            exec_model_path = model_path
-
+    def build_exec_args_serve(self, args, exec_model_path):
         exec_args = [
             "llama-server",
             "--port",
@@ -299,24 +303,32 @@ class Model:
         ]
         if args.seed:
             exec_args += ["--seed", args.seed]
+        return exec_args
 
+    def handle_runtime(self, args, exec_args, exec_model_path):
         if args.runtime == "vllm":
             exec_model_path = os.path.dirname(exec_model_path)
             exec_args = ["vllm", "serve", "--port", args.port, exec_model_path]
         else:
-            if args.gpu:
-                exec_args.extend(self.gpu_args())
+            gpu_args = self.gpu_args(force=args.gpu, server=True)
+            if gpu_args is not None:
+                exec_args.extend(gpu_args)
             exec_args.extend(["--host", args.host])
+        return exec_args
 
+    def generate_container_config(self, model_path, args, exec_args):
         if args.generate == "quadlet":
-            return self.quadlet(model_path, args, exec_args)
+            self.quadlet(model_path, args, exec_args)
+        elif args.generate == "kube":
+            self.kube(model_path, args, exec_args)
+        elif args.generate == "quadlet/kube":
+            self.quadlet_kube(model_path, args, exec_args)
+        else:
+            return False
 
-        if args.generate == "kube":
-            return self.kube(model_path, args, exec_args)
+        return True
 
-        if args.generate == "quadlet/kube":
-            return self.quadlet_kube(model_path, args, exec_args)
-
+    def execute_command(self, model_path, exec_args, args):
         try:
             if self.exec_model_in_container(model_path, exec_args, args):
                 return
@@ -330,6 +342,20 @@ class Model:
                     file_not_found_in_container % {"cmd": exec_args[0], "error": str(e).strip("'")}
                 )
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
+
+    def serve(self, args):
+        self.validate_args(args)
+        model_path = self.get_model_path(args)
+        exec_model_path = mnt_file
+        if not args.container and not args.generate:
+            exec_model_path = model_path
+
+        exec_args = self.build_exec_args_serve(args, exec_model_path)
+        exec_args = self.handle_runtime(args, exec_args, exec_model_path)
+        if self.generate_container_config(model_path, args, exec_args):
+            return
+
+        self.execute_command(model_path, exec_args, args)
 
     def quadlet(self, model, args, exec_args):
         quadlet = Quadlet(model, args, exec_args)
