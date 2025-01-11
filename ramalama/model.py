@@ -179,11 +179,10 @@ class Model:
         gpu_args = []
         if (
             force
-            or sys.platform == "darwin"
-            or (sys.platform == "linux" and platform.machine() == "aarch64")
             or os.getenv("HIP_VISIBLE_DEVICES")
             or os.getenv("ASAHI_VISIBLE_DEVICES")
             or os.getenv("CUDA_VISIBLE_DEVICES")
+            or platform.machine() in {"aarch64", "arm64"}  # linux and macOS report aarch64 differently
         ):
             if server:
                 gpu_args += ["-ngl"]  # single dash
