@@ -14,7 +14,7 @@ from ramalama.common import (
     perror,
     run_cmd,
 )
-from ramalama.model import model_types
+from ramalama.model import MODEL_TYPES
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.url import URL
@@ -668,7 +668,7 @@ def push_cli(args):
         model = New(tgt, args)
         model.push(source, args)
     except NotImplementedError as e:
-        for mtype in model_types:
+        for mtype in MODEL_TYPES:
             if tgt.startswith(mtype + "://"):
                 raise e
         try:
@@ -814,7 +814,7 @@ def _rm_model(models, args):
             m = New(model, args)
             m.remove(args)
         except KeyError as e:
-            for prefix in model_types:
+            for prefix in MODEL_TYPES:
                 if model.startswith(prefix + "://"):
                     if not args.ignore:
                         raise e

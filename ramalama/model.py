@@ -14,9 +14,9 @@ from ramalama.common import (
 from ramalama.version import version
 from ramalama.quadlet import Quadlet
 from ramalama.kube import Kube
-from ramalama.common import mnt_dir, mnt_file
+from ramalama.common import MNT_DIR, MNT_FILE
 
-model_types = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
+MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
 
 
 file_not_found = """\
@@ -64,7 +64,7 @@ class Model:
         return False
 
     def garbage_collection(self, args):
-        for repo in model_types:
+        for repo in MODEL_TYPES:
             repo_dir = f"{args.store}/repos/{repo}"
             model_dir = f"{args.store}/models/{repo}"
             for root, dirs, files in os.walk(repo_dir):
@@ -202,9 +202,9 @@ class Model:
             return False
 
         if model_path and os.path.exists(model_path):
-            conman_args += [f"--mount=type=bind,src={model_path},destination={mnt_file},rw=false"]
+            conman_args += [f"--mount=type=bind,src={model_path},destination={MNT_FILE},rw=false"]
         else:
-            conman_args += [f"--mount=type=image,src={self.model},destination={mnt_dir},rw=false,subpath=/models"]
+            conman_args += [f"--mount=type=image,src={self.model},destination={MNT_DIR},rw=false,subpath=/models"]
 
         # Make sure Image precedes cmd_args.
         conman_args += [self._image(args)] + cmd_args
@@ -250,7 +250,7 @@ class Model:
         return model_path
 
     def build_exec_args_run(self, args, model_path, prompt):
-        exec_model_path = model_path if not args.container else mnt_file
+        exec_model_path = model_path if not args.container else MNT_FILE
         exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
 
         if args.seed:
@@ -346,7 +346,7 @@ class Model:
     def serve(self, args):
         self.validate_args(args)
         model_path = self.get_model_path(args)
-        exec_model_path = mnt_file
+        exec_model_path = MNT_FILE
         if not args.container and not args.generate:
             exec_model_path = model_path
 

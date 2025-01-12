@@ -1,6 +1,6 @@
 import os
 
-from ramalama.common import default_image, mnt_dir, mnt_file, get_env_vars
+from ramalama.common import default_image, MNT_DIR, MNT_FILE, get_env_vars
 
 
 class Quadlet:
@@ -78,7 +78,7 @@ WantedBy=multi-user.target default.target
 
     def gen_volume(self):
         if os.path.exists(self.model):
-            return f"Mount=type=bind,src={self.model},target={mnt_file},ro,Z"
+            return f"Mount=type=bind,src={self.model},target={MNT_FILE},ro,Z"
 
         outfile = self.name + ".volume"
 
@@ -92,7 +92,7 @@ Driver=image
 Image={self.name}.image
 """
             )
-            return f"Mount=type=image,source={self.ai_image},destination={mnt_dir},subpath=/models,readwrite=false"
+            return f"Mount=type=image,source={self.ai_image},destination={MNT_DIR},subpath=/models,readwrite=false"
 
     def gen_image(self):
         outfile = self.name + ".image"
