@@ -12,9 +12,8 @@ import urllib.request
 import urllib.error
 from ramalama.http_client import HttpClient
 
-x = False
-mnt_dir = "/mnt/models"
-mnt_file = f"{mnt_dir}/model.file"
+MNT_DIR = "/mnt/models"
+MNT_FILE = f"{MNT_DIR}/model.file"
 
 
 def container_manager():

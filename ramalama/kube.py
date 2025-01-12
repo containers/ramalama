@@ -2,7 +2,7 @@ import os
 
 
 from ramalama.version import version
-from ramalama.common import genname, mnt_dir, get_env_vars
+from ramalama.common import genname, MNT_DIR, get_env_vars
 
 
 class Kube:
@@ -25,7 +25,7 @@ class Kube:
     def gen_volumes(self):
         mounts = f"""\
         volumeMounts:
-        - mountPath: {mnt_dir}
+        - mountPath: {MNT_DIR}
           subPath: /models
           name: model"""
 

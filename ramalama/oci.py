@@ -5,12 +5,12 @@ import sys
 import tempfile
 
 import ramalama.annotations as annotations
-from ramalama.model import Model, model_types
+from ramalama.model import Model, MODEL_TYPES
 from ramalama.common import (
     available,
     engine_version,
     exec_cmd,
-    mnt_file,
+    MNT_FILE,
     perror,
     run_cmd,
 )
@@ -106,7 +106,7 @@ def list_models(args):
 class OCI(Model):
     def __init__(self, model, conman):
         super().__init__(model.removeprefix(prefix).removeprefix("docker://"))
-        for t in model_types:
+        for t in MODEL_TYPES:
             if self.model.startswith(t + "://"):
                 raise ValueError(f"{model} invalid: Only OCI Model types supported")
         self.type = "OCI"
@@ -299,7 +299,7 @@ Tagging build instead"""
                     conman_args.extend([f"--authfile={args.authfile}"])
                 conman_args.extend([self.model])
                 run_cmd(conman_args, debug=args.debug)
-                return mnt_file
+                return MNT_FILE
             except subprocess.CalledProcessError:
                 pass
         return self._pull_omlmd(args)
