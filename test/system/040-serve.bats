@@ -219,8 +219,8 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
 
 
 	run cat $name.yaml
-	is "$output" ".*command: \[\"vllm\"\]" "command is correct"
-	is "$output" ".*args: \['serve', '--port', '1234', '/mnt/models'\]" "args is correct"
+	is "$output" ".*command: \[\"--port\"\]" "command is correct"
+	is "$output" ".*args: \['1234', '--model', '/mnt/models/model.file', '--max_model_len', '2048'\]" "args are correct"
 
 	is "$output" ".*image: quay.io/ramalama/ramalama" "image is correct"
 	is "$output" ".*reference: ${ociimage}" "AI image should be created"

@@ -193,6 +193,30 @@ def engine_version(engine):
 
 
 def get_gpu():
+
+    envs = get_env_vars()
+    # If env vars already set return
+    if envs:
+        return
+
+    # ASAHI CASE
+    if os.path.exists('/etc/os-release'):
+        with open('/etc/os-release', 'r') as file:
+            if "asahi" in file.read().lower():
+                # Set Env Var and break
+                os.environ["ASAHI_VISIBLE_DEVICES"] = "1"
+                return
+
+    # NVIDIA CASE
+    try:
+        command = ['nvidia-smi']
+        run_cmd(command).stdout.decode("utf-8")
+        os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+        return
+    except Exception:
+        pass
+
+    # ROCm/AMD CASE
     i = 0
     gpu_num = 0
     gpu_bytes = 0
@@ -205,24 +229,17 @@ def get_gpu():
 
         i += 1
 
-    if gpu_bytes:  # this is the ROCm/AMD case
-        return "HIP_VISIBLE_DEVICES", gpu_num
-
-    if os.path.exists('/etc/os-release'):
-        with open('/etc/os-release', 'r') as file:
-            content = file.read()
-            if "asahi" in content.lower():
-                return "ASAHI_VISIBLE_DEVICES", 1
-
-    return None, None
+    if gpu_bytes:
+        os.environ["HIP_VISIBLE_DEVICES"] = gpu_num
+        return
 
 
 def get_env_vars():
     prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_")
     env_vars = {k: v for k, v in os.environ.items() if k.startswith(prefixes)}
 
-    gpu_type, gpu_num = get_gpu()
-    if gpu_type not in env_vars and gpu_type in {"HIP_VISIBLE_DEVICES", "ASAHI_VISIBLE_DEVICES"}:
-        env_vars[gpu_type] = str(gpu_num)
+    # gpu_type, gpu_num = get_gpu()
+    # if gpu_type not in env_vars and gpu_type in {"HIP_VISIBLE_DEVICES", "ASAHI_VISIBLE_DEVICES"}:
+    #     env_vars[gpu_type] = str(gpu_num)
 
     return env_vars

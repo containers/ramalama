@@ -109,7 +109,13 @@ class Model:
         if args.image != default_image():
             return args.image
 
-        gpu_type, _ = get_gpu()
+        env_vars = get_env_vars()
+
+        if not env_vars:
+            gpu_type = None
+        else:
+            gpu_type, _ = next(iter(env_vars.items()))
+
         if args.runtime == "vllm":
             if gpu_type == "HIP_VISIBLE_DEVICES":
                 return "quay.io/modh/vllm:rhoai-2.17-rocm"
@@ -171,8 +177,10 @@ class Model:
             conman_args += ["--device", "/dev/kfd"]
 
         for k, v in get_env_vars().items():
+            # Special case for Cuda
+            if k == "CUDA_VISIBLE_DEVICES":
+                conman_args += ["--device", "nvidia.com/gpu=all"]
             conman_args += ["-e", f"{k}={v}"]
-
         return conman_args
 
     def gpu_args(self, force=False, server=False):
@@ -259,6 +267,7 @@ class Model:
         if args.debug:
             exec_args += ["-v"]
 
+        get_gpu()
         gpu_args = self.gpu_args(force=args.gpu)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
@@ -303,13 +312,17 @@ class Model:
         ]
         if args.seed:
             exec_args += ["--seed", args.seed]
+
         return exec_args
 
     def handle_runtime(self, args, exec_args, exec_model_path):
         if args.runtime == "vllm":
+            get_gpu()
             exec_model_path = os.path.dirname(exec_model_path)
-            exec_args = ["vllm", "serve", "--port", args.port, exec_model_path]
+            # Left out "vllm", "serve" the image entrypoint already starts it
+            exec_args = ["--port", args.port, "--model", MNT_FILE, "--max_model_len", "2048"]
         else:
+            get_gpu()
             gpu_args = self.gpu_args(force=args.gpu, server=True)
             if gpu_args is not None:
                 exec_args.extend(gpu_args)
