@@ -154,6 +154,11 @@ class Model:
 
         if os.path.basename(args.engine) == "podman":
             conman_args += ["--pull=newer"]
+        elif os.path.basename(args.engine) == "docker":
+            try:
+                run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
+            except Exception:  # Ignore errors, the run command will handle it.
+                pass
 
         if sys.stdout.isatty() or sys.stdin.isatty():
             conman_args += ["-t"]
@@ -201,9 +206,9 @@ class Model:
             return False
 
         if model_path and os.path.exists(model_path):
-            conman_args += [f"--mount=type=bind,src={model_path},destination={MNT_FILE},rw=false"]
+            conman_args += [f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"]
         else:
-            conman_args += [f"--mount=type=image,src={self.model},destination={MNT_DIR},rw=false,subpath=/models"]
+            conman_args += [f"--mount=type=image,src={self.model},destination={MNT_DIR},ro,subpath=/models"]
 
         # Make sure Image precedes cmd_args.
         conman_args += [self._image(args)] + cmd_args
