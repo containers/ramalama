@@ -1,7 +1,7 @@
 %global pypi_name ramalama
 %global forgeurl  https://github.com/containers/%{pypi_name}
 # see ramalama/version.py
-%global version0  0.5.1
+%global version0  0.5.2
 %forgemeta
 
 %global summary   RamaLama is a command line tool for working with AI LLM models
