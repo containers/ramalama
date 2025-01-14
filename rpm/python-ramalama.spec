@@ -47,13 +47,8 @@ configure the system for AI themselves. After the initialization, RamaLama
 will run the AI Models within a container based on the OCI image.
 
 %package -n python%{python3_pkgversion}-%{pypi_name}
-Requires: podman
-%if 0%{?fedora} >= 40
-# Needed as seen by BZ: 2327515
-Requires: python%{python3_pkgversion}-omlmd
-%else
+Recommends: podman
 Recommends: python%{python3_pkgversion}-omlmd
-%endif
 Summary: %{summary}
 Provides: %{pypi_name} = %{version}-%{release}
 
@@ -68,10 +63,8 @@ configure the system for AI themselves. After the initialization, RamaLama
 will run the AI Models within a container based on the OCI image.
 
 
-%if 0%{?fedora} >= 40
 %generate_buildrequires
 %pyproject_buildrequires
-%endif
 
 %prep
 %forgeautosetup -p1
