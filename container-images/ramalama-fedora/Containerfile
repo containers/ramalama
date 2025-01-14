@@ -1,9 +1,8 @@
 FROM registry.fedoraproject.org/fedora:latest
 
-COPY ./build_llama_and_whisper.sh /build_llama_and_whisper.sh
-RUN chmod +x /*.sh && \
-    /build_llama_and_whisper.sh "ramalama" "$LLAMA_CPP_SHA" \
-      "$WHISPER_CPP_SHA" "/usr" "-DGGML_KOMPUTE=1"
+COPY ../scripts /scripts
+RUN chmod +x /scripts/*.sh && \
+    /scripts/build_llama_and_whisper.sh "ramalama"
 
 ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
 ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}
