@@ -12,3 +12,4 @@ venv/
 *.container
 *.image
 *.volume
+**ramalama_**

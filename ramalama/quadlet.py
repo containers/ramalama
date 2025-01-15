@@ -1,6 +1,6 @@
 import os
 
-from ramalama.common import default_image, MNT_DIR, MNT_FILE, get_env_vars
+from ramalama.common import default_image, MNT_FILE, get_env_vars
 
 
 class Quadlet:
@@ -92,7 +92,7 @@ Driver=image
 Image={self.name}.image
 """
             )
-            return f"Mount=type=image,source={self.ai_image},destination={MNT_DIR},subpath=/models,readwrite=false"
+            return f"Mount=type=image,source={self.ai_image},destination={MNT_FILE},readwrite=false"
 
     def gen_image(self):
         outfile = self.name + ".image"
