@@ -238,7 +238,6 @@ llama.cpp
 whisper.cpp
 vllm
 podman
-omlmd
 huggingface
 
 so if you like this tool, give some of these repos a :star:, and hey, give us a :star: too while you are at it.

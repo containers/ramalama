@@ -54,6 +54,7 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama pull oci" {
+    skip "Waiting for podman artiface support" 
     run_ramalama pull oci://quay.io/mmortari/gguf-py-example:v1
     run_ramalama list
     is "$output" ".*quay.io/mmortari/gguf-py-example" "OCI image was actually pulled locally"
