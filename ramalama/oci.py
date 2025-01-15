@@ -1,13 +1,11 @@
 import json
 import os
 import subprocess
-import sys
 import tempfile
 
 import ramalama.annotations as annotations
 from ramalama.model import Model, MODEL_TYPES
 from ramalama.common import (
-    available,
     engine_version,
     exec_cmd,
     MNT_FILE,
@@ -111,21 +109,6 @@ class OCI(Model):
                 raise ValueError(f"{model} invalid: Only OCI Model types supported")
         self.type = "OCI"
         self.conman = conman
-        if available("omlmd"):
-            self.omlmd = "omlmd"
-        else:
-            for i in sys.path:
-                self.omlmd = f"{i}/../../../bin/omlmd"
-                if os.path.exists(self.omlmd):
-                    break
-            raise NotImplementedError(
-                """\
-OCI models requires the omlmd module.
-This module can be installed via PyPi tools like pip, pip3, pipx or via
-distribution package managers like dnf or apt. Example:
-pip install omlmd
-"""
-            )
 
     def login(self, args):
         conman_args = [self.conman, "login"]
@@ -290,19 +273,17 @@ Tagging build instead"""
 
     def pull(self, args):
         print(f"Downloading {self.model}...")
-        if args.engine:
-            try:
-                conman_args = [args.engine, "pull"]
-                if str(args.tlsverify).lower() == "false":
-                    conman_args.extend([f"--tls-verify={args.tlsverify}"])
-                if args.authfile:
-                    conman_args.extend([f"--authfile={args.authfile}"])
-                conman_args.extend([self.model])
-                run_cmd(conman_args, debug=args.debug)
-                return MNT_FILE
-            except subprocess.CalledProcessError:
-                pass
-        return self._pull_omlmd(args)
+        if not args.engine:
+            raise NotImplementedError("OCI images require a container engine like Podman or Docker")
+
+        conman_args = [args.engine, "pull"]
+        if str(args.tlsverify).lower() == "false":
+            conman_args.extend([f"--tls-verify={args.tlsverify}"])
+        if args.authfile:
+            conman_args.extend([f"--authfile={args.authfile}"])
+        conman_args.extend([self.model])
+        run_cmd(conman_args, debug=args.debug)
+        return MNT_FILE
 
     def _registry_reference(self):
         try:
@@ -310,28 +291,6 @@ Tagging build instead"""
             return registry, reference
         except Exception:
             return "docker.io", self.model
-
-    def _pull_omlmd(self, args):
-        registry, reference = self._registry_reference()
-        reference_dir = reference.replace(":", "/")
-        outdir = f"{args.store}/repos/oci/{registry}/{reference_dir}"
-        # note: in the current way RamaLama is designed, cannot do Helper(OMLMDRegistry()).pull(target, outdir)
-        # since cannot use modules/sdk, can use only cli bindings from pip installs
-        run_cmd([self.omlmd, "pull", self.model, "--output", outdir], debug=args.debug)
-        ggufs = [file for file in os.listdir(outdir) if file.endswith(".gguf")]
-        if len(ggufs) != 1:
-            raise KeyError(f"unable to identify .gguf file in: {outdir}")
-
-        directory = f"{args.store}/models/oci/{registry}/{reference_dir}"
-        os.makedirs(directory, exist_ok=True)
-        model_path = f"{directory}/{ggufs[0]}"
-        relative_target_path = os.path.relpath(f"{outdir}/{ggufs[0]}", start=os.path.dirname(model_path))
-        if os.path.exists(model_path) and os.readlink(model_path) == relative_target_path:
-            # Symlink is already correct, no need to update it
-            return model_path
-
-        run_cmd(["ln", "-sf", relative_target_path, model_path], debug=args.debug)
-        return model_path
 
     def model_path(self, args):
         registry, reference = self._registry_reference()
