@@ -75,15 +75,11 @@ install: docs completions
 
 .PHONY: build
 build:
-ifeq ($(OS),Linux)
 	./container_build.sh build $(IMAGE)
-endif
 
 .PHONY: build_rm
 build_rm:
-ifeq ($(OS),Linux)
 	./container_build.sh -r build $(IMAGE)
-endif
 
 .PHONY: install-docs
 install-docs: docs
