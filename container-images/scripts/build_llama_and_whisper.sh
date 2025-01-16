@@ -37,6 +37,7 @@ dnf_install() {
     # shellcheck disable=SC1091
     . /opt/rh/gcc-toolset-12/enable
   fi
+  dnf install -y python
 }
 
 cmake_steps() {
@@ -94,6 +95,18 @@ clone_and_build_llama_cpp() {
   cd ..
 }
 
+clone_and_build_pragmatic() {
+  local llama_cpp_sha="924518e2e5726e81f3aeb2518fb85963a500e93a"
+
+  git clone https://github.com/redhat-et/PRAGmatic
+  cd PRAGmatic
+  git submodule update --init --recursive
+#  git reset --hard "$pragmatic_sha"
+  pip install -r requirements.txt --prefix=/usr
+  pip install --prefix=/usr .
+  cd ..
+}
+
 main() {
   set -ex
 
@@ -104,6 +117,8 @@ main() {
   configure_common_flags
   common_flags+=("-DGGML_CCACHE=0" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
   dnf_install
+  clone_and_build_pragmatic
+
   clone_and_build_whisper_cpp
   case "$containerfile" in
     ramalama)
@@ -115,8 +130,9 @@ main() {
   dnf clean all
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
     /opt/rocm-*/lib/rocblas/library/*gfx9* \
-    /opt/rocm-*/lib/hipblaslt/library/*gfx9* llama.cpp whisper.cpp
+    /opt/rocm-*/lib/hipblaslt/library/*gfx9* llama.cpp whisper.cpp PRAGmatic
   ldconfig # needed for libraries
+
 }
 
 main "$@"
