@@ -1,4 +1,5 @@
 #!/bin/bash
+source /etc/os-release
 
 dnf_install() {
   local rpm_list=("python3" "python3-pip" "python3-argcomplete" \
@@ -10,7 +11,6 @@ dnf_install() {
   # All the UBI-based ones
   if [ "$containerfile" = "ramalama" ] || [ "$containerfile" = "rocm" ] || \
     [ "$containerfile" = "vulkan" ]; then
-    source /etc/os-release
     if [ "${ID}" = "fedora" ]; then
       dnf install -y "${rpm_list[@]}"
     else
@@ -36,7 +36,11 @@ dnf_install() {
     dnf install -y asahi-repos
     dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}" "${rpm_list[@]}"
   elif [ "$containerfile" = "rocm" ]; then
-    dnf install -y rocm-dev hipblas-devel rocblas-devel
+    if [ "${ID}" = "fedora" ]; then
+      dnf install -y rocm-core-devel hipblas-devel rocblas-devel
+    else
+      dnf install -y rocm-dev hipblas-devel rocblas-devel
+    fi
   elif [ "$containerfile" = "cuda" ]; then
     dnf install -y "${rpm_list[@]}" gcc-toolset-12
     # shellcheck disable=SC1091
