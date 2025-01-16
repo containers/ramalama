@@ -3,7 +3,7 @@
 dnf_install() {
   local rpm_list=("python3" "python3-pip" "python3-argcomplete" \
                   "python3-dnf-plugin-versionlock" "gcc-c++" "cmake" "vim" \
-                  "procps-ng" "git" "dnf-plugins-core")
+                  "procps-ng" "git" "dnf-plugins-core" "libcurl-devel")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
 
@@ -55,7 +55,7 @@ set_install_prefix() {
 }
 
 configure_common_flags() {
-  common_flags=("-DGGML_NATIVE=OFF")
+  common_flags=("-DGGML_NATIVE=OFF" "-DLLAMA_CURL=ON")
   case "$containerfile" in
     rocm)
       common_flags+=("-DGGML_HIPBLAS=1")
