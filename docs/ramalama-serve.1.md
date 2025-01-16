@@ -10,6 +10,23 @@ ramalama\-serve - serve REST API on specified AI Model
 Serve specified AI Model as a chat bot. RamaLama pulls specified AI Model from
 registry if it does not exist in local storage.
 
+## MODEL TRANSPORTS
+
+| Transports    | Prefix | Web Site                                            |
+| ------------- | ------ | --------------------------------------------------- |
+| URL based    | https://, http://, file:// | `https://web.site/ai.model`, `file://tmp/ai.model`|
+| HuggingFace   | huggingface://, hf:// | [`huggingface.co`](https://www.huggingface.co)      |
+| Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)              |
+| OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
+|||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
+
+RamaLama defaults to the Ollama registry transport. This default can be overridden in the `ramalama.conf` file or via the RAMALAMA_TRANSPORTS
+environment. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
+
+Modify individual model transports by specifying the `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, `file://` prefix to the model.
+
+URL support means if a model is on a web site or even on your local system, you can run it directly.
+
 ## REST API ENDPOINTS
 Under the hood, `ramalama-serve` uses the `LLaMA.cpp` HTTP server by default.
 
