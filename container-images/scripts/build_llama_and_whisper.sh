@@ -124,7 +124,8 @@ main() {
   dnf clean all
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
     /opt/rocm-*/lib/rocblas/library/*gfx9* \
-    /opt/rocm-*/lib/hipblaslt/library/*gfx9* llama.cpp whisper.cpp
+    /opt/rocm-*/lib/hipblaslt/library/*gfx9* llama.cpp whisper.cpp \
+    /usr/lib64/rocm/gfx9* 
   ldconfig # needed for libraries
 }
 
