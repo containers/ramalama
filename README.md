@@ -130,7 +130,7 @@ Copying blob 4472627772b1 [--------------------------------------] 0.0b / 120.0b
 After the initial container image has been downloaded, you can interact with
 different models, using the container image.
 ```
-$ ramalama run granite-code
+$ ramalama run granite3-moe
 > Write a hello world application in python
 
 print("Hello World")
@@ -150,19 +150,23 @@ You can `list` all models pulled into local storage.
 ```
 $ ramalama list
 NAME                                                                MODIFIED     SIZE
-ollama://smollm:135m                                            16 hours ago 5.5M
+ollama://smollm:135m                                                16 hours ago 5.5M
 huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf 14 hours ago 460M
-ollama://granite-code:3b                                            5 days ago   1.9G
-ollama://granite-code:latest                                        1 day ago    1.9G
 ollama://moondream:latest                                           6 days ago   791M
+ollama://phi4:latest                                                6 days ago   8.43 GB
+ollama://tinyllama:latest                                           1 week ago   608.16 MB
+ollama://granite3-moe:3b                                            1 week ago   1.92 GB
+ollama://granite3-moe:latest                                        3 months ago 1.92 GB
+ollama://llama3.1:8b                                                2 months ago 4.34 GB
+ollama://llama3.1:latest                                            2 months ago 4.34 GB
 ```
 ### Pulling Models
 
 You can `pull` a model using the `pull` command. By default, it pulls from the Ollama registry.
 
 ```
-$ ramalama pull granite-code
-###################################################                       32.5%
+$ ramalama pull granite3-moe
+ 31% |████████                    |  250.11 MB/ 783.77 MB  36.95 MB/s       14s
 ```
 
 ### Serving Models
@@ -192,30 +196,30 @@ To use a UI, run a `ramalama serve` command, then connect via your browser at:
 ```
 +---------------------------+
 |                           |
-| ramalama run granite-code |
+| ramalama run granite3-moe |
 |                           |
 +-------+-------------------+
 	|
 	|
-	|                                          +------------------+
-	|                                          | Pull model layer |
-	+----------------------------------------->| granite-code     |
-						   +------------------+
+        |           +------------------+           +------------------+
+        |           | Pull inferencing |           | Pull model layer |
+        +-----------| runtime (cuda)   |---------->| granite3-moe     |
+                    +------------------+           +------------------+
 						   | Repo options:    |
 						   +-+-------+------+-+
 						     |       |      |
 						     v       v      v
 					     +---------+ +------+ +----------+
-					     | Hugging | | quay | | Ollama   |
+					     | Hugging | | OCI  | | Ollama   |
 					     | Face    | |      | | Registry |
 					     +-------+-+ +---+--+ +-+--------+
 						     |       |      |
 						     v       v      v
 						   +------------------+
 						   | Start with       |
-						   | llama.cpp and    |
-						   | granite-code     |
-						   | model            |
+						   | cuda runtime     |
+						   | and              |
+						   | granite3-moe     |
 						   +------------------+
 ```
 
