@@ -94,27 +94,11 @@ show container runtime command without executing it (default: False)
 run RamaLama using the specified container engine. Default is `podman` if installed otherwise docker.
 The default can be overridden in the ramalama.conf file or via the RAMALAMA_CONTAINER_ENGINE environment variable.
 
-#### **--gpu**
-offload the workload to the GPU (default: False)
-
 #### **--help**, **-h**
 show this help message and exit
 
-#### **--image**=IMAGE
-OCI container image to run with specified AI model. By default RamaLama uses
-`quay.io/ramalama/ramalama:latest`. The --image option allows users to override
-the default.
-
-The default can be overridden in the ramalama.conf file or via the the
-RAMALAMA_IMAGE environment variable. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
-RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
-
 #### **--nocontainer**
 do not run RamaLama in the default container (default: False)
-The default can be overridden in the ramalama.conf file.
-
-#### **--runtime**=*llama.cpp* | *vllm*
-specify the runtime to use, valid options are 'llama.cpp' and 'vllm' (default: llama.cpp)
 The default can be overridden in the ramalama.conf file.
 
 #### **--store**=STORE

@@ -41,13 +41,13 @@ path of the authentication file for OCI registries
 size of the prompt context (default: 2048, 0 = loaded from model)
 
 #### **--detach**, **-d**
-Run the container in the background and print the new container ID.
+run the container in the background and print the new container ID.
 The default is TRUE. The --nocontainer option forces this option to False.
 
 Use the `ramalama stop` command to stop the container running the served ramalama Model.
 
 #### **--generate**=type
-Generate specified configuration format for running the AI Model as a service
+generate specified configuration format for running the AI Model as a service
 
 | Key          | Description                                                              |
 | ------------ | -------------------------------------------------------------------------|
@@ -55,23 +55,42 @@ Generate specified configuration format for running the AI Model as a service
 | kube         | Kubernetes YAML definition for running the AI Model as a service         |
 | quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
 
+#### **--gpu**
+offload the workload to the GPU
+
 #### **--help**, **-h**
 show this help message and exit
 
 #### **--host**="0.0.0.0"
 IP address for llama.cpp to listen on.
 
+#### **--image**
+OCI container image to run with specified AI model. By default RamaLama uses
+`quay.io/ramalama/ramalama:latest`. The --image option allows users to override
+the default.
+
+The default can be overridden in the ramalama.conf file or via the the
+RAMALAMA_IMAGE environment variable. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
+RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
+
 #### **--name**, **-n**
-Name of the container to run the Model in.
+name of the container to run the Model in.
 
 #### **--port**, **-p**
 port for AI Model server to listen on
 
+#### **--privileged**
+give extended privileges to container
+
+#### **--runtime**
+specify the runtime to use, valid options are 'llama.cpp' and 'vllm' (default: llama.cpp)
+The default can be overridden in the ramalama.conf file.
+
 #### **--seed**=
-Specify seed rather than using random seed model interaction
+specify seed rather than using random seed model interaction
 
 #### **--temp**="0.8"
-Temperature of the response from the AI Model
+temperature of the response from the AI Model
 llama.cpp explains this as:
 
     The lower the number is, the more deterministic the response.

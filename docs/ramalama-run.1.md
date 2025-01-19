@@ -31,17 +31,32 @@ path of the authentication file for OCI registries
 #### **--ctx-size**, **-c**
 size of the prompt context (default: 2048, 0 = loaded from model)
 
+#### **--gpu**
+offload the workload to the GPU
+
 #### **--help**, **-h**
 show this help message and exit
+
+#### **--image**
+OCI container image to run with specified AI model. By default RamaLama uses
+`quay.io/ramalama/ramalama:latest`. The --image option allows users to override
+the default.
+
+The default can be overridden in the ramalama.conf file or via the the
+RAMALAMA_IMAGE environment variable. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
+RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
 
 #### **--name**, **-n**
 name of the container to run the Model in
 
+#### **--privileged**
+give extended privileges to container
+
 #### **--seed**=
-Specify seed rather than using random seed model interaction
+specify seed rather than using random seed model interaction
 
 #### **--temp**="0.8"
-Temperature of the response from the AI Model
+temperature of the response from the AI Model
 llama.cpp explains this as:
 
     The lower the number is, the more deterministic the response.

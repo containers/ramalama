@@ -116,7 +116,7 @@ class Model:
         else:
             gpu_type, _ = next(iter(env_vars.items()))
 
-        if args.runtime == "vllm":
+        if hasattr(args, "runtime") and args.runtime == "vllm":
             if gpu_type == "HIP_VISIBLE_DEVICES":
                 return "quay.io/modh/vllm:rhoai-2.17-rocm"
 
@@ -137,16 +137,14 @@ class Model:
 
         return f"{image}:latest"
 
-    def setup_container(self, args):
+    def container_name(self, args):
         if hasattr(args, "name") and args.name:
-            name = args.name
+            return args.name
         else:
-            name = genname()
+            return genname()
 
-        if not args.engine:
-            return []
-
-        conman_args = [
+    def add_common_args(self, args, name):
+        return [
             args.engine,
             "run",
             "--rm",
@@ -158,6 +156,7 @@ class Model:
             name,
         ]
 
+    def add_podman_args(self, args, conman_args):
         if os.path.basename(args.engine) == "podman":
             conman_args += ["--pull=newer"]
         elif os.path.basename(args.engine) == "docker":
@@ -166,26 +165,64 @@ class Model:
             except Exception:  # Ignore errors, the run command will handle it.
                 pass
 
+        return conman_args
+
+    def add_tty_args(self, conman_args):
         if sys.stdout.isatty() or sys.stdin.isatty():
             conman_args += ["-t"]
 
+        return conman_args
+
+    def add_detach_args(self, args, conman_args):
         if hasattr(args, "detach") and args.detach is True:
             conman_args += ["-d"]
 
+        return conman_args
+
+    def add_port_args(self, args, conman_args):
         if hasattr(args, "port"):
             conman_args += ["-p", f"{args.port}:{args.port}"]
 
+        return conman_args
+
+    def add_privileged_args(self, args, conman_args):
+        if args.privileged:
+            conman_args += ["--privileged"]
+
+        return conman_args
+
+    def add_device_args(self, conman_args):
         if sys.platform == "darwin" or os.path.exists("/dev/dri"):
             conman_args += ["--device", "/dev/dri"]
 
         if os.path.exists("/dev/kfd"):
             conman_args += ["--device", "/dev/kfd"]
 
+        return conman_args
+
+    def add_env_vars(self, conman_args):
         for k, v in get_env_vars().items():
             # Special case for Cuda
             if k == "CUDA_VISIBLE_DEVICES":
                 conman_args += ["--device", "nvidia.com/gpu=all"]
             conman_args += ["-e", f"{k}={v}"]
+        return conman_args
+
+    def setup_container(self, args):
+        name = self.container_name(args)
+
+        if not args.engine:
+            return []
+
+        conman_args = self.add_common_args(args, name)
+        conman_args = self.add_podman_args(args, conman_args)
+        conman_args = self.add_tty_args(conman_args)
+        conman_args = self.add_detach_args(args, conman_args)
+        conman_args = self.add_port_args(args, conman_args)
+        conman_args = self.add_privileged_args(args, conman_args)
+        conman_args = self.add_device_args(conman_args)
+        conman_args = self.add_env_vars(conman_args)
+
         return conman_args
 
     def gpu_args(self, force=False, server=False):

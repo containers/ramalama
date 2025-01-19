@@ -152,12 +152,12 @@ def create_argument_parser(description):
         description=description,
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    configure_arguments(parser)
+    configure_runtime_container_arguments(parser)
     return parser
 
 
-def configure_arguments(parser):
-    """Configure the command-line arguments for the parser."""
+def add_container_arguments(parser):
+    """Add container-related arguments to the parser."""
     parser.add_argument(
         "--container",
         dest="container",
@@ -165,34 +165,6 @@ def configure_arguments(parser):
         action="store_true",
         help="""run RamaLama in the default container.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="display debug messages",
-    )
-    parser.add_argument(
-        "--dryrun", dest="dryrun", action="store_true", help="show container runtime command without executing it"
-    )
-    parser.add_argument("--dry-run", dest="dryrun", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument(
-        "--engine",
-        dest="engine",
-        default=config.get("engine"),
-        help="""run RamaLama using the specified container engine.
-The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
-    )
-    parser.add_argument(
-        "--gpu",
-        dest="gpu",
-        default=False,
-        action="store_true",
-        help="offload the workload to the GPU",
-    )
-    parser.add_argument(
-        "--image",
-        default=config.get("image"),
-        help="OCI container image to run with the specified AI model",
     )
     parser.add_argument(
         "--nocontainer",
@@ -203,17 +175,54 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
     parser.add_argument(
-        "--runtime",
-        default=config.get("runtime"),
-        choices=["llama.cpp", "vllm"],
-        help="specify the runtime to use; valid options are 'llama.cpp' and 'vllm'",
+        "--engine",
+        dest="engine",
+        default=config.get("engine"),
+        help="""run RamaLama using the specified container engine.
+The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
+    )
+
+
+def add_conman_args(parser):
+    """Add container-related arguments to the parser."""
+    parser.add_argument(
+        "--image", default=config.get("image"), help="OCI container image to run with the specified AI model"
     )
     parser.add_argument(
-        "--store",
-        default=config.get("store"),
-        help="store AI Models in the specified directory",
+        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
     )
+    parser.add_argument("--gpu", dest="gpu", action="store_true", help="offload the workload to the GPU")
+
+
+def add_debug_arguments(parser):
+    """Add debug-related arguments to the parser."""
+    parser.add_argument("--debug", action="store_true", help="display debug messages")
+
+
+def add_dryrun_arguments(parser):
+    """Add dry run arguments to the parser."""
+    parser.add_argument(
+        "--dryrun", dest="dryrun", action="store_true", help="show container runtime command without executing it"
+    )
+
+
+def add_store_arguments(parser):
+    """Add store-related arguments to the parser."""
+    parser.add_argument("--store", default=config.get("store"), help="store AI Models in the specified directory")
+
+
+def add_version_arguments(parser):
+    """Add version-related arguments to the parser."""
     parser.add_argument("-v", "--version", dest="version", action="store_true", help="show RamaLama version")
+
+
+def configure_runtime_container_arguments(parser):
+    """Configure the command-line arguments for the parser."""
+    add_container_arguments(parser)
+    add_debug_arguments(parser)
+    add_dryrun_arguments(parser)
+    add_store_arguments(parser)
+    add_version_arguments(parser)
 
 
 def configure_subcommands(parser):
@@ -486,8 +495,6 @@ def info_cli(args):
             "Name": args.engine,
         },
         "UseContainer": args.container,
-        "Image": args.image,
-        "Runtime": args.runtime,
         "Store": args.store,
         "Version": version(),
     }
@@ -704,6 +711,7 @@ def _run(parser):
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     _run(parser)
+    add_conman_args(parser)
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument(
         "ARGS", nargs="*", help="Overrides the default prompt, and the output is returned without entering the chatbot"
@@ -719,6 +727,13 @@ def run_cli(args):
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
     _run(parser)
+    parser.add_argument(
+        "--runtime",
+        default=config.get("runtime"),
+        choices=["llama.cpp", "vllm"],
+        help="specify the runtime to use; valid options are 'llama.cpp' and 'vllm'",
+    )
+    add_conman_args(parser)
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
     parser.add_argument("--host", default=config.get('host', "0.0.0.0"), help="IP address to listen")
     parser.add_argument(
