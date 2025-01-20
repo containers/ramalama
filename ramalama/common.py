@@ -230,7 +230,7 @@ def get_gpu():
         i += 1
 
     if gpu_bytes:
-        os.environ["HIP_VISIBLE_DEVICES"] = gpu_num
+        os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
         return
 
 
