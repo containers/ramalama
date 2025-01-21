@@ -211,7 +211,7 @@ def get_gpu():
     try:
         command = ['nvidia-smi']
         run_cmd(command).stdout.decode("utf-8")
-        os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
         return
     except Exception:
         pass
