@@ -381,7 +381,7 @@ def containers_parser(subparsers):
 
 def _list_containers(args):
     conman = args.engine
-    if conman == "":
+    if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "ps", "-a", "--filter", "label=RAMALAMA"]
