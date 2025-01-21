@@ -39,11 +39,15 @@ dnf_install() {
   fi
 }
 
+cmake_check_warnings() {
+  awk -v rc=0 '/CMake Warning:/ { rc=1 } 1; END {exit rc}'
+}
+
 cmake_steps() {
   local cmake_flags=("$@")
-  cmake -B build "${cmake_flags[@]}"
-  cmake --build build --config Release -j"$(nproc)"
-  cmake --install build
+  cmake -B build "${cmake_flags[@]}" 2>&1 | cmake_check_warnings
+  cmake --build build --config Release -j"$(nproc)" 2>&1 | cmake_check_warnings
+  cmake --install build 2>&1 | cmake_check_warnings
 }
 
 set_install_prefix() {
@@ -55,10 +59,10 @@ set_install_prefix() {
 }
 
 configure_common_flags() {
-  common_flags=("-DGGML_NATIVE=OFF" "-DLLAMA_CURL=ON")
+  common_flags=("-DGGML_NATIVE=OFF")
   case "$containerfile" in
     rocm)
-      common_flags+=("-DGGML_HIPBLAS=1")
+      common_flags+=("-DGGML_HIP=ON")
       ;;
     cuda)
       common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
@@ -102,9 +106,10 @@ main() {
   set_install_prefix
   local common_flags
   configure_common_flags
-  common_flags+=("-DGGML_CCACHE=0" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
+  common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
   dnf_install
   clone_and_build_whisper_cpp
+  common_flags+=("-DLLAMA_CURL=ON")
   case "$containerfile" in
     ramalama)
       common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
@@ -114,8 +119,7 @@ main() {
   clone_and_build_llama_cpp
   dnf clean all
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
-    /opt/rocm-*/lib/rocblas/library/*gfx9* \
-    /opt/rocm-*/lib/hipblaslt/library/*gfx9* llama.cpp whisper.cpp
+    /opt/rocm-*/lib/*/library/*gfx9* llama.cpp whisper.cpp
   ldconfig # needed for libraries
 }
 
