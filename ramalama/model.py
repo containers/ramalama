@@ -303,17 +303,27 @@ class Model:
                 raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
 
     def build_exec_args_serve(self, args, exec_model_path):
-        exec_args = [
-            "llama-server",
-            "--port",
-            args.port,
-            "-m",
-            exec_model_path,
-            "-c",
-            f"{args.context}",
-            "--temp",
-            f"{args.temp}",
-        ]
+        if args.runtime == "vllm":
+            exec_args = [
+                "--model",
+                exec_model_path,
+                "--port",
+                args.port,
+                "--max-sequence-length",
+                f"{args.context}",
+            ]
+        else:
+            exec_args = [
+                "llama-server",
+                "--port",
+                args.port,
+                "-m",
+                exec_model_path,
+                "-c",
+                f"{args.context}",
+                "--temp",
+                f"{args.temp}",
+            ]
         if args.seed:
             exec_args += ["--seed", args.seed]
 
