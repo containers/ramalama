@@ -36,7 +36,7 @@ RamaLama supports multiple AI model registries types called transports. Supporte
 | Transports    | Prefix | Web Site                                            |
 | ------------- | ------ | --------------------------------------------------- |
 | URL based    | https://, http://, file:// | `https://web.site/ai.model`, `file://tmp/ai.model`|
-| HuggingFace   | huggingface://, hf:// | [`huggingface.co`](https://www.huggingface.co)      |
+| HuggingFace   | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)      |
 | Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)              |
 | OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
 |||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|

@@ -35,6 +35,7 @@ class Huggingface(Model):
     def __init__(self, model):
         model = model.removeprefix("huggingface://")
         model = model.removeprefix("hf://")
+        model = model.removeprefix("hf.co/")
         super().__init__(model)
         self.type = "huggingface"
         split = self.model.rsplit("/", 1)
