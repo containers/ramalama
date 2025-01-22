@@ -844,7 +844,7 @@ def rm_cli(args):
 
 
 def New(model, args):
-    if model.startswith("huggingface") or model.startswith("hf://"):
+    if model.startswith("huggingface://") or model.startswith("hf://") or model.startswith("hf.co/"):
         return Huggingface(model)
     if model.startswith("ollama"):
         return Ollama(model)
