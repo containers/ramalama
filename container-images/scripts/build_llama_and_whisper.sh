@@ -85,6 +85,7 @@ clone_and_build_whisper_cpp() {
   cmake_steps "${whisper_flags[@]}"
   mkdir -p "$install_prefix/bin"
   cd ..
+  rm -rf whisper.cpp
 }
 
 clone_and_build_llama_cpp() {
@@ -96,6 +97,7 @@ clone_and_build_llama_cpp() {
   git reset --hard "$llama_cpp_sha"
   cmake_steps "${common_flags[@]}"
   cd ..
+  rm -rf llama.cpp
 }
 
 main() {
@@ -117,10 +119,9 @@ main() {
   esac
 
   clone_and_build_llama_cpp
-  dnf clean all
-  rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9* llama.cpp whisper.cpp
+  dnf -y clean all
+  rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
   ldconfig # needed for libraries
 }
 
 main "$@"
-
