@@ -118,8 +118,7 @@ main() {
 
   clone_and_build_llama_cpp
   dnf clean all
-  rm -rf /var/cache/*dnf* /opt/rocm-*/lib/llvm \
-    /opt/rocm-*/lib/*/library/*gfx9* llama.cpp whisper.cpp
+  rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9* llama.cpp whisper.cpp
   ldconfig # needed for libraries
 }
 
