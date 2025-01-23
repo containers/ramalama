@@ -21,6 +21,10 @@ download() {
       --remote-time --retry 10 --retry-max-time 10 "$1"
 }
 
+apt_get_install() {
+  apt-get -qq -y install "$1"
+}
+
 check_platform() {
   if [ "$os" = "Darwin" ]; then
     if [ "$EUID" -eq 0 ]; then
@@ -41,6 +45,13 @@ check_platform() {
       fi
 
       sudo="sudo"
+    fi
+
+    if available dnf; then
+      $sudo dnf install -y --best podman || true
+    elif available apt-get; then
+      $sudo apt-get update -qq || true
+      $sudo apt_get_install podman || $sudo apt_get_install docker || true
     fi
   else
     echo "This script is intended to run on Linux and macOS only"
