@@ -188,7 +188,7 @@ class Model:
             conman_args += ["-e", f"{k}={v}"]
         return conman_args
 
-    def gpu_args(self, force=False, server=False):
+    def gpu_args(self, force=False, runner=False):
         gpu_args = []
         if (
             force
@@ -197,10 +197,10 @@ class Model:
             or os.getenv("CUDA_VISIBLE_DEVICES")
             or platform.machine() in {"aarch64", "arm64"}  # linux and macOS report aarch64 differently
         ):
-            if server:
-                gpu_args += ["-ngl"]  # single dash
-            else:
+            if runner:
                 gpu_args += ["--ngl"]  # double dash
+            else:
+                gpu_args += ["-ngl"]  # single dash
 
             gpu_args += ["999"]
 
@@ -227,6 +227,12 @@ class Model:
 
         exec_cmd(conman_args, debug=args.debug)
         return True
+
+    def bench(self, args):
+        self.check_name_and_container(args)
+        model_path = self.get_model_path(args)
+        exec_args = self.build_exec_args_bench(args, model_path)
+        self.execute_model(model_path, exec_args, args)
 
     def run(self, args):
         self.check_name_and_container(args)
@@ -261,6 +267,19 @@ class Model:
 
         return model_path
 
+    def build_exec_args_bench(self, args, model_path):
+        exec_model_path = MNT_FILE if args.container else model_path
+        exec_args = ["llama-bench"]
+
+        get_gpu()
+        gpu_args = self.gpu_args(force=args.gpu)
+        if gpu_args is not None:
+            exec_args.extend(gpu_args)
+
+        exec_args += ["-m", exec_model_path]
+
+        return exec_args
+
     def build_exec_args_run(self, args, model_path, prompt):
         exec_model_path = model_path if not args.container else MNT_FILE
         exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
@@ -272,7 +291,7 @@ class Model:
             exec_args += ["-v"]
 
         get_gpu()
-        gpu_args = self.gpu_args(force=args.gpu)
+        gpu_args = self.gpu_args(force=args.gpu, runner=True)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
 
@@ -337,7 +356,7 @@ class Model:
             exec_args = ["--port", args.port, "--model", MNT_FILE, "--max_model_len", "2048"]
         else:
             get_gpu()
-            gpu_args = self.gpu_args(force=args.gpu, server=True)
+            gpu_args = self.gpu_args(force=args.gpu)
             if gpu_args is not None:
                 exec_args.extend(gpu_args)
             exec_args.extend(["--host", args.host])
