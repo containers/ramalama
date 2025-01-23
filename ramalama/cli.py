@@ -221,6 +221,7 @@ def configure_subcommands(parser):
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
     help_parser(subparsers)
+    bench_parser(subparsers)
     containers_parser(subparsers)
     convert_parser(subparsers)
     info_parser(subparsers)
@@ -368,6 +369,17 @@ def list_files_by_modification():
         models.append(path)
 
     return sorted(models, key=lambda p: os.path.getmtime(p), reverse=True)
+
+
+def bench_cli(args):
+    model = New(args.MODEL, args)
+    model.bench(args)
+
+
+def bench_parser(subparsers):
+    parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
+    parser.add_argument("MODEL")  # positional argument
+    parser.set_defaults(func=bench_cli)
 
 
 def containers_parser(subparsers):

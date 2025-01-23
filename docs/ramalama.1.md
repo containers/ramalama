@@ -129,6 +129,7 @@ show RamaLama version
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
 | [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
+| [ramalama-bench(1)](ramalama-bench.1.md)          | benchmark specified AI Model                               |
 | [ramalama-convert(1)](ramalama-convert.1.md)      | convert AI Models from local storage to OCI Image          |
 | [ramalama-info(1)](ramalama-info.1.md)            | Display RamaLama configuration information                 |
 | [ramalama-list(1)](ramalama-list.1.md)            | list all downloaded AI Models                              |
