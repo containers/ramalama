@@ -11,7 +11,7 @@ endif
 # This must never include the 'hack' directory
 export PATH := $(shell $(GO) env GOPATH)/bin:$(PATH)
 
-docs:  $(patsubst %.md,%,$(wildcard *[15].md))
+docs:  $(patsubst %.md,%,$(wildcard *[157].md))
 
 %.1: %.1.md
 ### sed is used to filter http/s links as well as relative links
@@ -35,6 +35,17 @@ docs:  $(patsubst %.md,%,$(wildcard *[15].md))
 	 -e 's/\\$$/  /g' $<  | \
 	$(GOMD2MAN) -in /dev/stdin -out  $@
 
+%.7: %.7.md
+### sed is used to filter http/s links as well as relative links
+### replaces "\" at the end of a line with two spaces
+### this ensures that manpages are rendered correctly
+	@$(SED) -e 's/\((ramalama[^)]*\.md\(#.*\)\?)\)//g' \
+	 -e 's/\[\(ramalama[^]]*\)\]/\1/g' \
+	 -e 's/\[\([^]]*\)](http[^)]\+)/\1/g' \
+	 -e 's;<\(/\)\?\(a\|a\s\+[^>]*\|sup\)>;;g' \
+	 -e 's/\\$$/  /g' $<  | \
+	$(GOMD2MAN) -in /dev/stdin -out  $@
+
 .PHONY: install
 install: docs
 	install -d ${DESTDIR}/${MANDIR}/man1
@@ -42,6 +53,8 @@ install: docs
 	install -m 0644 links/ramalama*.1 ${DESTDIR}/${MANDIR}/man1
 	install -d ${DESTDIR}/${MANDIR}/man5
 	install -m 0644 ramalama*.5 ${DESTDIR}/${MANDIR}/man5
+	install -d ${DESTDIR}/${MANDIR}/man7
+	install -m 0644 ramalama*.7 ${DESTDIR}/${MANDIR}/man7
 
 	install -d ${DESTDIR}/${DATADIR}/ramalama
 	install -m 0644 ramalama.conf ${DESTDIR}/${DATADIR}/ramalama
@@ -53,4 +66,4 @@ install-tools:
 
 .PHONY: clean
 clean:
-	$(RM) -f ramalama*.1 ramalama*.5
+	$(RM) -f ramalama*.1 ramalama*.5 ramalama*.7

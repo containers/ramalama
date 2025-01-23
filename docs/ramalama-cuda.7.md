@@ -1,53 +1,84 @@
-# Setting Up RamaLama with CUDA Support in WSL2 Using Docker
+% ramalama 7
 
-This guide will walk you through the steps required to set up RamaLama in WSL2 with CUDA support using Docker.
+# Setting Up RamaLama with CUDA Support on Linux systems
 
-## Prerequisites
-
-1. **NVIDIA Game-Ready Drivers**
-   Ensure that you have the appropriate NVIDIA game-ready drivers installed on your Windows system. This is necessary for CUDA support in WSL2.
-
-2. **Docker Desktop Installation**
-   Install Docker Desktop and in settings under **General**, ensure the option to **Use the WSL 2 based engine** is checked.
+This guide walks through the steps required to set up RamaLama with CUDA support.
 
 ## Install the NVIDIA Container Toolkit
 Follow the installation instructions provided in the [NVIDIA Container Toolkit installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 
----
+### Installation using dnf/yum (For RPM based distros like Fedora)
 
-### Installation using APT (For Distros like Ubuntu)
+* Install the NVIDIA Container Toolkit packages
 
-1. **Configure the Production Repository:**
    ```bash
-   curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+   sudo dnf install -y nvidia-container-toolkit
+   ```
+  > **Note:** The Nvidia Container Toolkit is required on the host for running CUDA in containers. 
+
+### Installation using APT (For Debian based distros like Ubuntu)
+
+* Configure the Production Repository
+
+   ```bash
+   curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey
    sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
    
-   curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+   curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list
    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+   ```
 
-2. **Update the packages list from the repository:**
+* Update the packages list from the repository
+
    ```bash
    sudo apt-get update
-3. **Install the NVIDIA Container Toolkit packages:**
+   ```
+* Install the NVIDIA Container Toolkit packages
+
    ```bash
    sudo apt-get install -y nvidia-container-toolkit
    ```
   > **Note:** The Nvidia Container Toolkit is required for WSL to have CUDA resources while running a container. 
+
+## Setting Up CUDA Support
+
+   For additional information see:  [Support for Container Device Interface](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html)
+
+# Generate the CDI specification file
+
+   ```bash
+   sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+   ```
+
+#  Check the names of the generated devices
+
+   Open and edit the NVIDIA container runtime configuration:
+
+   ```bash
+   nvidia-ctk cdi list
+   INFO[0000] Found 1 CDI devices
+   nvidia.com/gpu=all
+   ```
+
+   > **Note:** Generate a new CDI specification after any configuration change most notably when the driver is upgraded!
 
 ## Testing the Setup
 **Based on this Documentation:**  [Running a Sample Workload](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/sample-workload.html)
 
 ---
 
-1. **Test the Installation**
-   Run the following command to verify your setup:
+
+*  **Test the Installation**
+   Run the following command to verify setup:
+
    ```bash
-   docker run --rm --gpus all ubuntu nvidia-smi
+   podman run --rm --device=nvidia.com/gpu=all fedora nvidia-smi
    ```
 
-2. **Expected Output**
-   If everything is set up correctly, you should see an output similar to this:
+# **Expected Output**
+   Verry everything is configured correctly, with output similar to this:
+
    ```text
       Thu Dec  5 19:58:40 2024
    +-----------------------------------------------------------------------------------------+
@@ -72,21 +103,8 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    +-----------------------------------------------------------------------------------------+
    ```
 
-## Installing Nvidia CUDA Toolkit (Optional)
+## SEE ALSO
+**[ramalama(1)](ramalama.1.md)**, **[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**
 
-1. **Install the CUDA Toolkit**
-   Follow the instructions in the [NVIDIA CUDA WSL User Guide](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) to install the CUDA toolkit.
-
-   - **Download the CUDA Toolkit**
-     Visit the [NVIDIA CUDA Downloads page](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=WSL-Ubuntu&target_version=2.0&target_type=deb_local) to download the appropriate version for WSL-Ubuntu.
-
-2. **Remove Existing Keys (if needed)**
-   Run this command to remove any old keys that might conflict:
-   ```bash
-   sudo apt-key del 7fa2af80
-   ```
-
-3. **Select Your Environment**
-   Head back to the [NVIDIA CUDA Downloads page](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=WSL-Ubuntu&target_version=2.0&target_type=deb_local) and choose the environment that fits your setup. Follow the installation instructions to install the CUDA package (deb format is recommended).
-
-  > **Note:** The Nvidia Cuda Toolkit enables the container runtime to build containers with CUDA. 
+## HISTORY
+Jan 2025, Originally compiled by Dan Walsh <dwalsh@redhat.com>
