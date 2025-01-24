@@ -18,7 +18,9 @@ amd_lshw() {
 
 download() {
   curl --globoff --location --proto-default https -f -o "$2" \
-      --remote-time --retry 10 --retry-max-time 10 "$1"
+      --remote-time --retry 10 --retry-max-time 10 -s "$1"
+  local bn="$(basename "$1")"
+  echo "Downloaded $bn"
 }
 
 apt_get_install() {
@@ -72,8 +74,12 @@ setup_ramalama() {
   local branch="${BRANCH:-s}"
   local url="${host}/containers/ramalama/${branch}/bin/${from_file}"
   local to_file="${2}/${from_file}"
-  download "$url" "$to_file"
 
+  if [ "$os" == "Darwin" ]; then
+    install_mac_dependencies
+  fi
+
+  download "$url" "$to_file"
   local ramalama_bin="${1}/${binfile}"
   local sharedirs=("/opt/homebrew/share" "/usr/local/share" "/usr/share")
   local syspath
@@ -83,10 +89,6 @@ setup_ramalama() {
       break
     fi
   done
-
-  if [ "$os" == "Darwin" ]; then
-    install_mac_dependencies
-  fi
 
   $sudo install -m755 -d "$syspath"
   syspath="$syspath/ramalama"
