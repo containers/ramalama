@@ -23,8 +23,27 @@ download() {
   echo "Downloaded $bn"
 }
 
+dnf_install() {
+  if ! available podman; then
+    $sudo dnf install -y --best podman || true
+  fi
+}
+
 apt_get_install() {
   apt-get -qq -y install "$1"
+}
+
+apt_install() {
+  if ! available podman; then
+    $sudo apt-get update -qq || true
+
+    # only install docker if podman can't be
+    if ! $sudo apt_get_install podman; then
+      if ! available docker; then
+        $sudo apt_get_install docker || true
+      fi
+    fi
+  fi
 }
 
 check_platform() {
@@ -49,11 +68,10 @@ check_platform() {
       sudo="sudo"
     fi
 
-    if available dnf; then
-      $sudo dnf install -y --best podman || true
+    if available dnf && ! grep -q ostree= /proc/cmdline; then
+      dnf_install
     elif available apt-get; then
-      $sudo apt-get update -qq || true
-      $sudo apt_get_install podman || $sudo apt_get_install docker || true
+      apt_install
     fi
   else
     echo "This script is intended to run on Linux and macOS only"
