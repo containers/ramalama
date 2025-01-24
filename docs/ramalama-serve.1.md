@@ -250,8 +250,12 @@ Yaml=MyTinyModel.yaml
 WantedBy=multi-user.target default.target
 ```
 
+## NVIDIA CUDA Support
+
+See **[ramalama-cuda(7)](ramalama.7.md)** for setting up the host Linux system for CUDA support.
+
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman-ps(1)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman-ps(1)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

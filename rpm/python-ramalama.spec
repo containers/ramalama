@@ -91,6 +91,7 @@ will run the AI Models within a container based on the OCI image.
 %{_datadir}/%{pypi_name}/ramalama.conf
 %{_mandir}/man1/ramalama*.1*
 %{_mandir}/man5/ramalama*.5*
+%{_mandir}/man7/ramalama*.7*
 
 %changelog
 %autochangelog

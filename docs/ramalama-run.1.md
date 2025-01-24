@@ -86,8 +86,12 @@ This program is a Python script that allows the user to interact with a terminal
  [end of text]
 ```
 
+## NVIDIA CUDA Support
+
+See **[ramalama-cuda(7)](ramalama.7.md)** for setting up the host Linux system for CUDA support.
+
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
