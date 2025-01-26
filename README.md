@@ -238,11 +238,11 @@ and install again.
 
 This project wouldn't be possible without the help of other projects like:
 
-llama.cpp
-whisper.cpp
-vllm
-podman
-huggingface
+llama.cpp  
+whisper.cpp  
+vllm  
+podman   
+huggingface  
 
 so if you like this tool, give some of these repos a :star:, and hey, give us a :star: too while you are at it.
 
