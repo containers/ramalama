@@ -49,6 +49,7 @@ Login to huggingface registry
 ```
 $ ramalama login --token=XYZ huggingface
 ```
+Logging in to Hugging Face requires the `huggingface-cli` tool. For installation and usage instructions, see the documentation of the Hugging Face command line interface: [*https://huggingface.co/docs/huggingface_hub/en/guides/cli*](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**
