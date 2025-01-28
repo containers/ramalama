@@ -62,7 +62,7 @@ configure_common_flags() {
   common_flags=("-DGGML_NATIVE=OFF")
   case "$containerfile" in
     rocm)
-      common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102")
+      common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102}")
       ;;
     cuda)
       common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
