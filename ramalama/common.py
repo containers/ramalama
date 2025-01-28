@@ -177,7 +177,9 @@ def download_file(url, dest_path, headers=None, show_progress=True):
         show_progress = False
 
     try:
-        http_client.init(url=url, headers=headers, output_file=dest_path, progress=show_progress)
+        rc = http_client.init(url=url, headers=headers, output_file=dest_path, progress=show_progress)
+        if rc:
+            raise Exception(f"Failed to download {url}.")
     except urllib.error.HTTPError as e:
         if e.code == 416:  # Range not satisfiable
             if show_progress:
