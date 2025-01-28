@@ -73,7 +73,7 @@ pip install ramalama
 
 ## Install by script
 > [!TIP]
-> If you are a MacOS user, this is the preferred method.
+> If you are a macOS user, this is the preferred method.
 
 
 Install RamaLama by running this one-liner:
