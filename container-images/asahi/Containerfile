@@ -1,4 +1,4 @@
-FROM fedora:41
+FROM fedora:42
 
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
