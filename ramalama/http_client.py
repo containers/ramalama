@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import sys
 import time
 import urllib.request
 import urllib.error
@@ -20,8 +19,7 @@ class HttpClient:
 
         self.file_size = self.set_resume_point(output_file_partial)
         self.printed = False
-        if self.urlopen(url, headers):
-            return 1
+        self.urlopen(url, headers)
 
         self.total_to_download = int(self.response.getheader('content-length', 0))
         if response_str is not None:
@@ -29,14 +27,10 @@ class HttpClient:
         else:
             out = File()
             if not out.open(output_file_partial, "ab"):
-                print("Failed to open file")
-
-                return 1
+                raise IOError("Failed to open file")
 
             if out.lock():
-                print("Failed to exclusively lock file")
-
-                return 1
+                raise IOError("Failed to exclusively lock file")
 
             self.now_downloaded = 0
             self.start_time = time.time()
@@ -48,26 +42,18 @@ class HttpClient:
         if self.printed:
             print("\n")
 
-        return 0
-
     def urlopen(self, url, headers):
         headers["Range"] = f"bytes={self.file_size}-"
         request = urllib.request.Request(url, headers=headers)
         try:
             self.response = urllib.request.urlopen(request)
         except urllib.error.HTTPError as e:
-            print(f"Request failed: {e.code}", file=sys.stderr)
-            return 1
+            raise IOError(f"Request failed: {e.code}") from e
         except urllib.error.URLError as e:
-            print(f"Network error: {e.reason}", file=sys.stderr)
-            return 1
+            raise IOError(f"Network error: {e.reason}") from e
 
         if self.response.status not in (200, 206):
-            print(f"Request failed: {self.response.status}", file=sys.stderr)
-
-            return 1
-
-        return 0
+            raise IOError(f"Request failed: {self.response.status}")
 
     def perform_download(self, file, progress):
         self.total_to_download += self.file_size
