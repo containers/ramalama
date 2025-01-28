@@ -197,7 +197,8 @@ class Model:
             or os.getenv("CUDA_VISIBLE_DEVICES")
             or (
                 # linux and macOS report aarch64 differently
-                platform.machine() in {"aarch64", "arm64"} and os.path.exists("/dev/dri")
+                platform.machine() in {"aarch64", "arm64"}
+                and os.path.exists("/dev/dri")
             )
         ):
             if runner:
@@ -243,6 +244,25 @@ class Model:
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_run(args, model_path, prompt)
         self.execute_model(model_path, exec_args, args)
+
+    def perplexity(self, args):
+        self.check_name_and_container(args)
+        model_path = self.get_model_path(args)
+        exec_args = self.build_exec_args_perplexity(args, model_path)
+        self.execute_model(model_path, exec_args, args)
+
+    def build_exec_args_perplexity(self, args, model_path):
+        exec_model_path = MNT_FILE if args.container else model_path
+        exec_args = ["llama-perplexity"]
+
+        get_gpu()
+        gpu_args = self.gpu_args(force=args.gpu)
+        if gpu_args is not None:
+            exec_args.extend(gpu_args)
+
+        exec_args += ["-m", exec_model_path]
+
+        return exec_args
 
     def check_name_and_container(self, args):
         if hasattr(args, "name") and args.name:

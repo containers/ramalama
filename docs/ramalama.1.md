@@ -139,9 +139,11 @@ show RamaLama version
 | [ramalama-push(1)](ramalama-push.1.md)            | push AI Models from local storage to remote registries     |
 | [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Models from local storage                        |
 | [ramalama-run(1)](ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
+| [ramalama-perplexity(1)](ramalama-perplexity.1.md)| calculate the perplexity value of an AI Model              |
 | [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
 | [ramalama-stop(1)](ramalama-stop.1.md)            | stop named container that is running AI Model              |
-| [ramalama-version(1)](ramalama-version.1.md)      | display version of RamaLama
+| [ramalama-version(1)](ramalama-version.1.md)      | display version of RamaLama                                |
+
 ## CONFIGURATION FILES
 
 

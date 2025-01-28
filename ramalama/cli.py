@@ -228,6 +228,7 @@ def configure_subcommands(parser):
     list_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
+    perplexity_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
     rm_parser(subparsers)
@@ -874,3 +875,14 @@ def New(model, args):
         return OCI(model, args.engine)
 
     raise KeyError(f'transport "{transport}" not supported. Must be oci, huggingface, or ollama.')
+
+
+def perplexity_parser(subparsers):
+    parser = subparsers.add_parser("perplexity", help="calculate perplexity for specified AI Model")
+    parser.add_argument("MODEL")  # positional argument
+    parser.set_defaults(func=perplexity_cli)
+
+
+def perplexity_cli(args):
+    model = New(args.MODEL, args)
+    model.perplexity(args)

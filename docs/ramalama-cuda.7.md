@@ -77,7 +77,7 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    ```
 
 # **Expected Output**
-   Verry everything is configured correctly, with output similar to this:
+   Verify everything is configured correctly, with output similar to this:
 
    ```text
       Thu Dec  5 19:58:40 2024
