@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:41 as builder
+FROM quay.io/fedora/fedora:42 as builder
 
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
 
@@ -12,7 +12,7 @@ RUN dnf install -y lspci clinfo intel-opencl g++ cmake git libcurl-devel intel-o
     cmake --build . --config Release -j -v ; \
     cmake --install . --prefix /llama-cpp
 
-FROM quay.io/fedora/fedora:41
+FROM quay.io/fedora/fedora:42
 
 ENV LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib/:/opt/intel/oneapi/mkl/2025.0/lib:/opt/intel/oneapi/compiler/2025.0/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.0/lib/clang/19/lib:/opt/intel/oneapi/compiler/2025.0/lib:/opt/intel/oneapi/umf/0.9/lib:/opt/intel/oneapi/tbb/2022.0/lib:/opt/intel/oneapi/tcm/1.2/lib:/opt/intel/oneapi/redist/opt/compiler/lib:/opt/intel/oneapi/redist/lib/clang/19/lib:/opt/intel/oneapi/redist/lib:/opt/intel/oneapi/mkl/2025.0/lib:/opt/intel/oneapi/compiler/2025.0/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.0/lib/clang/19/lib:/opt/intel/oneapi/compiler/2025.0/lib:/opt/intel/oneapi/umf/0.9/lib:/opt/intel/oneapi/tbb/2022.0/lib:/opt/intel/oneapi/tcm/1.2/lib:/opt/intel/oneapi/redist/opt/compiler/lib:/opt/intel/oneapi/redist/lib/clang/19/lib:/opt/intel/oneapi/redist/lib"
 
