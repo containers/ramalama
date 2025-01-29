@@ -6,6 +6,7 @@ import errno
 import subprocess
 import sys
 
+
 def add_pipx_venvs_bin_to_path():
     """
     Adds available pipx virtual environments bin directories to PATH.
@@ -15,6 +16,7 @@ def add_pipx_venvs_bin_to_path():
     pipx_bin_path = os.path.expanduser(f'~/.local/pipx/venvs/ramalama/bin')
     if os.path.exists(pipx_bin_path):
         os.environ["PATH"] += ":" + pipx_bin_path
+
 
 def add_site_packages_to_syspath(base_path):
     """
@@ -35,9 +37,10 @@ def add_site_packages_to_syspath(base_path):
         for path in matched_paths:
             sys.path.insert(0, path)
 
+
 def main(args):
     sharedirs = ["/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
-    syspath = next((d for d in sharedirs if os.path.exists(d+"/ramalama/cli.py")), None)
+    syspath = next((d for d in sharedirs if os.path.exists(d + "/ramalama/cli.py")), None)
     if syspath:
         sys.path.insert(0, syspath)
 
@@ -56,6 +59,7 @@ def main(args):
     # if autocomplete doesn't exist, just do nothing, don't break
     try:
         import argcomplete
+
         argcomplete.autocomplete(parser)
     except Exception:
         None
@@ -89,6 +93,8 @@ def main(args):
         sys.exit(0)
     except ValueError as e:
         eprint(e, errno.EINVAL)
+    except IOError as e:
+        eprint(e, errno.EIO)
 
 
 if __name__ == "__main__":
