@@ -1,0 +1,32 @@
+FROM quay.io/fedora/fedora:41 as builder
+
+COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
+
+RUN dnf install -y lspci clinfo intel-opencl g++ cmake git libcurl-devel intel-oneapi-base-toolkit ; \
+    git clone https://github.com/ggerganov/llama.cpp.git -b b4523 ; \
+    cd llama.cpp ; \
+    mkdir -p build ; \
+    cd build ; \
+    source /opt/intel/oneapi/setvars.sh ; \
+    cmake .. -DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DLLAMA_CURL=ON -DGGML_CCACHE=OFF -DGGML_NATIVE=ON ; \
+    cmake --build . --config Release -j -v ; \
+    cmake --install . --prefix /llama-cpp
+
+FROM quay.io/fedora/fedora:41
+
+ENV LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib/:/opt/intel/oneapi/mkl/2025.0/lib:/opt/intel/oneapi/compiler/2025.0/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.0/lib/clang/19/lib:/opt/intel/oneapi/compiler/2025.0/lib:/opt/intel/oneapi/umf/0.9/lib:/opt/intel/oneapi/tbb/2022.0/lib:/opt/intel/oneapi/tcm/1.2/lib:/opt/intel/oneapi/redist/opt/compiler/lib:/opt/intel/oneapi/redist/lib/clang/19/lib:/opt/intel/oneapi/redist/lib:/opt/intel/oneapi/mkl/2025.0/lib:/opt/intel/oneapi/compiler/2025.0/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.0/lib/clang/19/lib:/opt/intel/oneapi/compiler/2025.0/lib:/opt/intel/oneapi/umf/0.9/lib:/opt/intel/oneapi/tbb/2022.0/lib:/opt/intel/oneapi/tcm/1.2/lib:/opt/intel/oneapi/redist/opt/compiler/lib:/opt/intel/oneapi/redist/lib/clang/19/lib:/opt/intel/oneapi/redist/lib"
+
+COPY --from=builder /llama-cpp/bin/ /usr/local/bin/
+COPY --from=builder /llama-cpp/lib/ /usr/local/lib/
+COPY --from=builder /llama-cpp/lib64/ /usr/local/lib64/
+COPY --from=builder /llama-cpp/include/ /usr/local/include/
+COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
+
+RUN dnf install -y intel-opencl libcurl lspci clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl ; \
+    chown 0:0 /etc/passwd ; \
+    chown 0:0 /etc/group ; \
+    chmod g=u /etc/passwd /etc/group ; \
+    useradd -u 1000 -g render -G video -s /bin/bash -d /home/llama-user llama-user
+
+USER 1000
+WORKDIR /home/llama-user
