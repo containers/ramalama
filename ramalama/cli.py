@@ -967,7 +967,7 @@ def rm_cli(args):
 def New(model, args):
     if model.startswith("huggingface://") or model.startswith("hf://") or model.startswith("hf.co/"):
         return Huggingface(model)
-    if model.startswith("ollama"):
+    if model.startswith("ollama://") or "ollama.com/library/" in model:
         return Ollama(model)
     if model.startswith("oci://") or model.startswith("docker://"):
         return OCI(model, args.engine)
