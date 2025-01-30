@@ -188,6 +188,8 @@ class Model:
             if k == "CUDA_VISIBLE_DEVICES":
                 conman_args += ["--device", "nvidia.com/gpu=all"]
             conman_args += ["-e", f"{k}={v}"]
+        if args.network_mode != "":
+            conman_args += ["--network", args.network_mode]
         return conman_args
 
     def gpu_args(self, args, runner=False):
