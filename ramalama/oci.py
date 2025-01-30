@@ -174,7 +174,19 @@ LABEL {ociimage_car}
             else:
                 c.write(model_raw)
         imageid = (
-            run_cmd([self.conman, "build", "--no-cache", "-q", "-f", containerfile.name, contextdir], debug=args.debug)
+            run_cmd(
+                [
+                    self.conman,
+                    "build",
+                    "--no-cache",
+                    f"--network={args.network_mode}",
+                    "-q",
+                    "-f",
+                    containerfile.name,
+                    contextdir,
+                ],
+                debug=args.debug,
+            )
             .stdout.decode("utf-8")
             .strip()
         )
