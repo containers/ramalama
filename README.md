@@ -249,6 +249,10 @@ huggingface
 
 so if you like this tool, give some of these repos a :star:, and hey, give us a :star: too while you are at it.
 
+## macOS
+
+To run ramalama project on macOS, [follow our dedicated guide](docs/README-macOS.md)
+
 ## Community
 
 [`Matrix`](https://matrix.to/#/#ramalama:fedoraproject.org)
