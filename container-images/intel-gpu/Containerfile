@@ -2,13 +2,13 @@ FROM quay.io/fedora/fedora:41 as builder
 
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
 
-RUN dnf install -y lspci clinfo intel-opencl g++ cmake git libcurl-devel intel-oneapi-base-toolkit ; \
+RUN dnf install -y intel-opencl g++ cmake git tar libcurl-devel intel-oneapi-mkl-sycl-devel intel-oneapi-dnnl-devel intel-oneapi-compiler-dpcpp-cpp ; \
     git clone https://github.com/ggerganov/llama.cpp.git -b b4523 ; \
     cd llama.cpp ; \
     mkdir -p build ; \
     cd build ; \
     source /opt/intel/oneapi/setvars.sh ; \
-    cmake .. -DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DLLAMA_CURL=ON -DGGML_CCACHE=OFF -DGGML_NATIVE=ON ; \
+    cmake .. -DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DLLAMA_CURL=ON -DGGML_CCACHE=OFF -DGGML_NATIVE=OFF ; \
     cmake --build . --config Release -j -v ; \
     cmake --install . --prefix /llama-cpp
 
