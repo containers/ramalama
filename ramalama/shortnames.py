@@ -11,6 +11,7 @@ class Shortnames:
     def __init__(self):
         file_paths = [
             "/usr/share/ramalama/shortnames.conf",
+            "/usr/local/share/ramalama/shortnames.conf",
             "/etc/ramalama/shortnames.conf",
             os.path.expanduser("~/.local/share/ramalama/shortnames.conf"),
             os.path.expanduser("~/.config/ramalama/shortnames.conf"),

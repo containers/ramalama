@@ -12,10 +12,11 @@ a TOML format that can be easily modified and versioned.
 RamaLama reads the he following paths for global configuration that effects all users.
 
 | Paths       |
-| -----------------------------------       |
-| __/usr/share/ramalama/ramalama.conf__     |
-| __/etc/ramalama/ramalama.conf__           |
-| __/etc/ramalama/ramalama.conf.d/\*.conf__ |
+| -----------------------------------         |
+| __/usr/share/ramalama/ramalama.conf__       |
+| __/usr/local/share/ramalama/ramalama.conf__ |
+| __/etc/ramalama/ramalama.conf__             |
+| __/etc/ramalama/ramalama.conf.d/\*.conf__   |
 
 For user specific configuration it reads
 
