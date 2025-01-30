@@ -59,6 +59,7 @@ def load_config():
     config = {}
     config_paths = [
         "/usr/share/ramalama/ramalama.conf",
+        "/usr/local/share/ramalama/ramalama.conf",
         "/etc/ramalama/ramalama.conf",
     ]
     config_home = os.getenv("XDG_CONFIG_HOME", os.path.join("~", ".config"))

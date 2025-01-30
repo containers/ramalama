@@ -60,10 +60,11 @@ the model. The following table specifies the order which RamaLama reads the file
 . Any duplicate names that exist override previously defined shortnames.
 
 | Shortnames type | Path                                            |
-| --------------- | ---------------------------------------- |
-| Distribution    | /usr/share/ramalama/shortnames.conf      |
-| Administrators  | /etc/ramamala/shortnames.conf            |
-| Users           | $HOME/.config/ramalama/shortnames.conf   |
+| --------------- | ----------------------------------------  |
+| Distribution    | /usr/share/ramalama/shortnames.conf       |
+| Local install   | /usr/local/share/ramalama/shortnames.conf |
+| Administrators  | /etc/ramamala/shortnames.conf             |
+| Users           | $HOME/.config/ramalama/shortnames.conf    |
 
 ```code
 $ cat /usr/share/ramalama/shortnames.conf
