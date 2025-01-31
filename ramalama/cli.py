@@ -663,6 +663,8 @@ def _get_source(args):
     if smodel.type == "OCI":
         return src
     else:
+        if not smodel.exists(args):
+            return smodel.pull(args)
         return smodel.path(args)
 
 
