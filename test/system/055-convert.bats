@@ -10,7 +10,7 @@ load helpers
     run_ramalama 2 convert tiny
     is "$output" ".*ramalama convert: error: the following arguments are required: TARGET"
     run_ramalama 1 convert bogus foobar
-    is "$output" "Error: bogus does not exist"
+    is "$output" "Error: bogus was not found in the Ollama registry"
 }
 
 @test "ramalama convert file to image" {
