@@ -26,7 +26,7 @@ load setup_suite
 
     random_image_name=i_$(safename)
     run_ramalama 1 pull ${random_image_name}
-    is "$output" "Error: failed to pull https://registry.ollama.ai/v2/library/${random_image_name}: HTTP Error 404: Not Found" "image does not exist"
+    is "$output" "Error: ${random_image_name} was not found in the Ollama registry"
 }
 
 # bats test_tags=distro-integration
