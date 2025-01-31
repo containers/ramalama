@@ -305,7 +305,7 @@ class Model:
 
     def build_exec_args_run(self, args, model_path, prompt):
         exec_model_path = model_path if not args.container else MNT_FILE
-        exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}", "--jinja"]
+        exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
 
         if args.seed:
             exec_args += ["--seed", args.seed]
