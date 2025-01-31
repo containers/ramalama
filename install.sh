@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cleanup() {
-  rm -rf "$TMP" &
+  rm -rf "$tmp" &
 }
 
 available() {
@@ -17,10 +17,15 @@ amd_lshw() {
 }
 
 download() {
-  curl --globoff --location --proto-default https -f -o "$2" \
-      --remote-time --retry 10 --retry-max-time 10 -s "$1"
-  local bn="$(basename "$1")"
-  echo "Downloaded $bn"
+  if $local_install; then
+    cp "$1" "$2"
+  else
+    curl --globoff --location --proto-default https -f -o "$2" \
+        --remote-time --retry 10 --retry-max-time 10 -s "$1"
+    local bn
+    bn="$(basename "$1")"
+    echo "Downloaded $bn"
+  fi
 }
 
 dnf_install() {
@@ -46,22 +51,35 @@ apt_install() {
   fi
 }
 
-check_platform() {
-  if [ "$os" = "Darwin" ]; then
-    if [ "$EUID" -eq 0 ]; then
-      echo "This script is intended to run as non-root on macOS"
-      return 1
-    fi
+install_mac_dependencies() {
+  if [ "$EUID" -eq 0 ]; then
+    echo "This script is intended to run as non-root on macOS"
 
-    if ! available "brew"; then
-      echo "RamaLama requires brew to complete installation. Install brew and add the"
-      echo "directory containing brew to the PATH before continuing to install RamaLama"
-      return 2
-    fi
+    return 1
+  fi
+
+  if ! available "brew"; then
+    echo "RamaLama requires brew to complete installation. Install brew and add the"
+    echo "directory containing brew to the PATH before continuing to install RamaLama"
+
+    return 2
+  fi
+
+  brew install llama.cpp
+}
+
+check_platform() {
+  if $local_install; then
+    return 0
+  fi
+
+  if [ "$os" = "Darwin" ]; then
+    install_mac_dependencies
   elif [ "$os" = "Linux" ]; then
     if [ "$EUID" -ne 0 ]; then
       if ! available sudo; then
         error "This script is intended to run as root on Linux"
+
         return 3
       fi
 
@@ -75,14 +93,11 @@ check_platform() {
     fi
   else
     echo "This script is intended to run on Linux and macOS only"
+
     return 4
   fi
 
   return 0
-}
-
-install_mac_dependencies() {
-  brew install llama.cpp
 }
 
 setup_ramalama() {
@@ -91,10 +106,9 @@ setup_ramalama() {
   local host="https://raw.githubusercontent.com"
   local branch="${BRANCH:-s}"
   local url="${host}/containers/ramalama/${branch}/bin/${from_file}"
-  local to_file="${2}/${from_file}"
-
-  if [ "$os" == "Darwin" ]; then
-    install_mac_dependencies
+  local to_file="${tmp}/${from_file}"
+  if $local_install; then
+    url="bin/${from_file}"
   fi
 
   download "$url" "$to_file"
@@ -112,14 +126,17 @@ setup_ramalama() {
   syspath="$syspath/ramalama"
   $sudo install -m755 -d "$syspath"
   $sudo install -m755 "$to_file" "$ramalama_bin"
-
   local python_files=("cli.py" "huggingface.py" "model.py" "ollama.py" \
                       "common.py" "__init__.py" "quadlet.py" "kube.py" \
                       "oci.py" "version.py" "shortnames.py" "toml_parser.py" \
                       "file.py" "http_client.py" "url.py" "annotations.py")
-
   for i in "${python_files[@]}"; do
-    url="${host}/containers/ramalama/${branch}/ramalama/${i}"
+    if $local_install; then
+      url="ramalama/${i}"
+    else
+      url="${host}/containers/ramalama/${branch}/ramalama/${i}"
+    fi
+
     download "$url" "$to_file"
     $sudo install -m755 "$to_file" "${syspath}/${i}"
   done
@@ -127,6 +144,20 @@ setup_ramalama() {
 
 main() {
   set -e -o pipefail
+
+  local local_install="false"
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -l)
+        local_install="true"
+        shift
+        ;;
+      *)
+        break
+    esac
+  done
+
   local os
   os="$(uname -s)"
   local sudo=""
@@ -145,10 +176,11 @@ main() {
     exit 5
   fi
 
-  TMP="$(mktemp -d)"
+  local tmp
+  tmp="$(mktemp -d)"
   trap cleanup EXIT
 
-  setup_ramalama "$bindir" "$TMP"
+  setup_ramalama "$bindir"
 }
 
 main "$@"
