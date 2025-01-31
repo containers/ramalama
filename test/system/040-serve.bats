@@ -45,7 +45,7 @@ verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name
      fi
 
     run_ramalama 1 serve MODEL
-    is "$output" ".*Error: failed to pull .*MODEL" "failed to pull model"
+    is "$output" "Error: MODEL was not found in the Ollama registry"
 }
 
 @test "ramalama --detach serve" {
