@@ -89,8 +89,8 @@ setup_ramalama() {
   local binfile="ramalama"
   local from_file="${binfile}"
   local host="https://raw.githubusercontent.com"
-  local branch="main"
-  local url="${host}/kush-gupt/ramalama/${branch}/bin/${from_file}"
+  local branch="${BRANCH:-s}"
+  local url="${host}/containers/ramalama/${branch}/bin/${from_file}"
   local to_file="${2}/${from_file}"
 
   if [ "$os" == "Darwin" ]; then
