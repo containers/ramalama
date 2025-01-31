@@ -107,6 +107,8 @@ class Ollama(Model):
         try:
             return init_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, self.model)
         except urllib.error.HTTPError as e:
+            if "Not Found" in e.reason:
+                raise KeyError(f"{self.model} was not found in the Ollama registry")
             raise KeyError(f"failed to pull {registry_head}: " + str(e).strip("'"))
 
     def model_path(self, args):
