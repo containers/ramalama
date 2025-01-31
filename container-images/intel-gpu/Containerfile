@@ -2,15 +2,17 @@ FROM quay.io/fedora/fedora:41 as builder
 
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
 
-RUN dnf install -y intel-opencl g++ cmake git tar libcurl-devel intel-oneapi-mkl-sycl-devel intel-oneapi-dnnl-devel intel-oneapi-compiler-dpcpp-cpp ; \
-    git clone https://github.com/ggerganov/llama.cpp.git -b b4523 ; \
-    cd llama.cpp ; \
-    mkdir -p build ; \
-    cd build ; \
-    source /opt/intel/oneapi/setvars.sh ; \
-    cmake .. -DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DLLAMA_CURL=ON -DGGML_CCACHE=OFF -DGGML_NATIVE=OFF ; \
-    cmake --build . --config Release -j -v ; \
-    cmake --install . --prefix /llama-cpp
+RUN dnf install -y intel-opencl g++ cmake git tar libcurl-devel intel-oneapi-mkl-sycl-devel intel-oneapi-dnnl-devel intel-oneapi-compiler-dpcpp-cpp && \
+    git clone https://github.com/ggerganov/llama.cpp.git -b 5783575c9d99c4d9370495800663aa5397ceb0be && \
+    cd llama.cpp && \
+    mkdir -p build && \
+    cd build && \
+    source /opt/intel/oneapi/setvars.sh && \
+    cmake .. -DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DLLAMA_CURL=ON -DGGML_CCACHE=OFF -DGGML_NATIVE=OFF && \
+    cmake --build . --config Release -j -v && \
+    cmake --install . --prefix /llama-cpp && \
+    cd ../.. && \
+    rm -rf llama.cpp
 
 FROM quay.io/fedora/fedora:41
 
@@ -22,10 +24,10 @@ COPY --from=builder /llama-cpp/lib64/ /usr/local/lib64/
 COPY --from=builder /llama-cpp/include/ /usr/local/include/
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
 
-RUN dnf install -y intel-opencl libcurl lspci clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl ; \
-    chown 0:0 /etc/passwd ; \
-    chown 0:0 /etc/group ; \
-    chmod g=u /etc/passwd /etc/group ; \
+RUN dnf install -y intel-opencl libcurl lspci clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl && \
+    chown 0:0 /etc/passwd && \
+    chown 0:0 /etc/group && \
+    chmod g=u /etc/passwd /etc/group && \
     useradd -u 1000 -g render -G video -s /bin/bash -d /home/llama-user llama-user
 
 USER 1000
