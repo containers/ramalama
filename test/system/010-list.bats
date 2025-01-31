@@ -15,10 +15,10 @@ load helpers
     run_ramalama list -n
     assert "${lines[0]}" !~ "$headings" "header line should not be there"
 
-    run_ramalama list --quiet
+    run_ramalama --quiet list
     assert "${lines[0]}" !~ "$headings" "header line should not be there"
 
-    run_ramalama list --q
+    run_ramalama -q list
     assert "${lines[0]}" !~ "$headings" "header line should not be there"
 }
 

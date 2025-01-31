@@ -130,6 +130,9 @@ Needed to access the gpu on some systems, but has an impact on security, use wit
 do not run RamaLama in the default container (default: False)
 The default can be overridden in the ramalama.conf file.
 
+#### **--quiet**
+Decrease output verbosity.
+
 #### **--runtime**=*llama.cpp* | *vllm*
 specify the runtime to use, valid options are 'llama.cpp' and 'vllm' (default: llama.cpp)
 The default can be overridden in the ramalama.conf file.

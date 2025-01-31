@@ -198,7 +198,7 @@ def download_file(url, dest_path, headers=None, show_progress=True):
     while retries < max_retries:
         try:
             # Initialize HTTP client for the request
-            http_client.init(url=url, headers=headers, output_file=dest_path, progress=show_progress)
+            http_client.init(url=url, headers=headers, output_file=dest_path, show_progress=show_progress)
             return  # Exit function if successful
 
         except urllib.error.HTTPError as e:

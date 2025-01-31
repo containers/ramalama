@@ -166,11 +166,6 @@ def configure_arguments(parser):
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
     parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="display debug messages",
-    )
-    parser.add_argument(
         "--dryrun", dest="dryrun", action="store_true", help="show container runtime command without executing it"
     )
     parser.add_argument("--dry-run", dest="dryrun", action="store_true", help=argparse.SUPPRESS)
@@ -214,6 +209,13 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         help="store AI Models in the specified directory",
     )
     parser.add_argument("-v", "--version", dest="version", action="store_true", help="show RamaLama version")
+    verbosity_group = parser.add_mutually_exclusive_group()
+    verbosity_group.add_argument("--quiet", "-q", dest="quiet", action="store_true", help="reduce output.")
+    verbosity_group.add_argument(
+        "--debug",
+        action="store_true",
+        help="display debug messages",
+    )
 
 
 def configure_subcommands(parser):
@@ -514,7 +516,6 @@ def list_parser(subparsers):
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("--json", dest="json", action="store_true", help="print using json")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
-    parser.add_argument("-q", "--quiet", dest="quiet", action="store_true", help="print only Model names")
     parser.set_defaults(func=list_cli)
 
 
