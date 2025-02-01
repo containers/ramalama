@@ -190,6 +190,21 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
         help="offload the workload to the GPU",
     )
     parser.add_argument(
+        "--ngl",
+        dest="ngl",
+        type=int,
+        default=config.get("ngl", 999),
+        help="Number of layers to offload to the gpu, if available"
+    )
+    parser.add_argument(
+        "--keep-groups",
+        dest="podman_keep_groups",
+        default=config.get("keep_groups", False),
+        action="store_true",
+        help="""pass `--group-add keep-groups` to podman, if using podman.
+Needed to access gpu on some systems, but has security implications.""",
+    )
+    parser.add_argument(
         "--image",
         default=config.get("image"),
         help="OCI container image to run with the specified AI model",

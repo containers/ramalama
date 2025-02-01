@@ -160,6 +160,8 @@ class Model:
 
         if os.path.basename(args.engine) == "podman":
             conman_args += ["--pull=newer"]
+            if args.podman_keep_groups:
+                conman_args += ["--group-add", "keep-groups"]
         elif os.path.basename(args.engine) == "docker":
             try:
                 run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
@@ -188,10 +190,10 @@ class Model:
             conman_args += ["-e", f"{k}={v}"]
         return conman_args
 
-    def gpu_args(self, force=False, runner=False):
+    def gpu_args(self, args, runner=False):
         gpu_args = []
         if (
-            force
+            args.gpu
             or os.getenv("HIP_VISIBLE_DEVICES")
             or os.getenv("ASAHI_VISIBLE_DEVICES")
             or os.getenv("CUDA_VISIBLE_DEVICES")
@@ -206,7 +208,7 @@ class Model:
             else:
                 gpu_args += ["-ngl"]  # single dash
 
-            gpu_args += ["999"]
+            gpu_args += [ f'{args.ngl}' ]
 
         return gpu_args
 
@@ -256,7 +258,7 @@ class Model:
         exec_args = ["llama-perplexity"]
 
         get_gpu()
-        gpu_args = self.gpu_args(force=args.gpu)
+        gpu_args = self.gpu_args(args=args)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
 
@@ -295,7 +297,7 @@ class Model:
         exec_args = ["llama-bench"]
 
         get_gpu()
-        gpu_args = self.gpu_args(force=args.gpu)
+        gpu_args = self.gpu_args(args=args)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
 
@@ -314,7 +316,7 @@ class Model:
             exec_args += ["-v"]
 
         get_gpu()
-        gpu_args = self.gpu_args(force=args.gpu, runner=True)
+        gpu_args = self.gpu_args(args=args, runner=True)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
 
@@ -379,7 +381,7 @@ class Model:
             exec_args = ["--port", args.port, "--model", MNT_FILE, "--max_model_len", "2048"]
         else:
             get_gpu()
-            gpu_args = self.gpu_args(force=args.gpu)
+            gpu_args = self.gpu_args(args=args)
             if gpu_args is not None:
                 exec_args.extend(gpu_args)
             exec_args.extend(["--host", args.host])

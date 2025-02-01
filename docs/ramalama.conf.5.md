@@ -86,6 +86,15 @@ IP address for llama.cpp to listen on.
 OCI container image to run with the specified AI model
 RAMALAMA_IMAGE environment variable overrides this field.
 
+**keep_groups**=false
+
+Pass `--group-add keep-groups` to podman, when using podman.
+In some cases this is needed to access the gpu from a rootless container
+
+**ngl**=999
+
+Default number of layers to offload to the gpu
+
 **port**="8080"
 
 Specify default port for services to listen on
