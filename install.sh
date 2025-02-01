@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cleanup() {
-  rm -rf "$tmp" &
+  rm -rf "$TMP" &
 }
 
 available() {
@@ -106,7 +106,7 @@ setup_ramalama() {
   local host="https://raw.githubusercontent.com"
   local branch="${BRANCH:-s}"
   local url="${host}/containers/ramalama/${branch}/bin/${from_file}"
-  local to_file="${tmp}/${from_file}"
+  local to_file="$TMP/${from_file}"
   if $local_install; then
     url="bin/${from_file}"
   fi
@@ -176,8 +176,7 @@ main() {
     exit 5
   fi
 
-  local tmp
-  tmp="$(mktemp -d)"
+  TMP="$(mktemp -d)"
   trap cleanup EXIT
 
   setup_ramalama "$bindir"
