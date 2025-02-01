@@ -175,7 +175,7 @@ class Model:
         if hasattr(args, "port"):
             conman_args += ["-p", f"{args.port}:{args.port}"]
 
-        if sys.platform == "darwin" or os.path.exists("/dev/dri"):
+        if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
             conman_args += ["--device", "/dev/dri"]
 
         if os.path.exists("/dev/kfd"):
