@@ -208,7 +208,7 @@ class Model:
             else:
                 gpu_args += ["-ngl"]  # single dash
 
-            gpu_args += [ f'{args.ngl}' ]
+            gpu_args += [f'{args.ngl}']
 
         return gpu_args
 

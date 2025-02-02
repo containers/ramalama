@@ -197,7 +197,7 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
         dest="ngl",
         type=int,
         default=config.get("ngl", 999),
-        help="Number of layers to offload to the gpu, if available"
+        help="Number of layers to offload to the gpu, if available",
     )
     parser.add_argument(
         "--keep-groups",
@@ -304,7 +304,7 @@ def show_gpus_available_cli(args):
 
     return {
         "Detected GPUs": gpu_info if gpu_info else [{"GPU": "None", "VRAM": "N/A", "INFO": "No GPUs detected"}],
-        "INFO": errors if errors else "No errors"
+        "INFO": errors if errors else "No errors",
     }
 
 
