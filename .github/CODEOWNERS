@@ -1,0 +1,5 @@
+# See github docs for more info on the syntax:
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default to all maintainers if nothing more specific matches
+* @rhatdan @ericcurtin @bmahabirbu @maxamillion @dougsland @swarajpande5 @jhjaggars @cgruver 
