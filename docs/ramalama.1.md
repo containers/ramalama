@@ -110,6 +110,13 @@ The default can be overridden in the ramalama.conf file or via the the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
 RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
 
+#### **--keep-groups**
+pass --group-add keep-groups to podman (default: False)
+Needed to access the gpu on some systems, but has an impact on security, use with caution.
+
+#### **--ngl**
+number of gpu layers (default: 999)
+
 #### **--nocontainer**
 do not run RamaLama in the default container (default: False)
 The default can be overridden in the ramalama.conf file.
