@@ -19,10 +19,7 @@ import glob
 import platform
 import logging
 
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 class GPUDetector:
@@ -46,7 +43,9 @@ class GPUDetector:
         try:
             result = subprocess.run(
                 ["nvidia-smi", "--query-gpu=index,memory.total", "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, check=True
+                capture_output=True,
+                text=True,
+                check=True,
             )
             output = result.stdout.strip()
 
@@ -68,8 +67,6 @@ class GPUDetector:
         """Detects AMD GPUs using sysfs on Linux or system_profiler on macOS."""
         if platform.system() == "Linux":
             self._read_gpu_memory('/sys/bus/pci/devices/*/mem_info_vram_total', "AMD GPU", "HIP_VISIBLE_DEVICES")
-        elif platform.system() == "Darwin":  # macOS
-            self.get_macos_gpu()  # macOS detection covers AMD GPUs
 
     def _read_gpu_memory(self, path_pattern, gpu_name, env_var):
         """Helper function to read GPU VRAM from `/sys/class/drm/`."""
@@ -98,7 +95,9 @@ class GPUDetector:
             pass  # No Intel GPU found
 
         # Step 2: Use `/sys/class/drm/` to read VRAM info
-        vram_info = self._read_gpu_memory('/sys/class/drm/card*/device/mem_info_vram_total', "Intel GPU", "ONEAPI_DEVICE_SELECTOR")
+        vram_info = self._read_gpu_memory(
+            '/sys/class/drm/card*/device/mem_info_vram_total', "Intel GPU", "ONEAPI_DEVICE_SELECTOR"
+        )
 
         # If lspci found an Intel GPU, add VRAM info
         if gpus:
@@ -112,33 +111,19 @@ class GPUDetector:
     def get_macos_gpu(self):
         """Detect GPUs on macOS using system_profiler SPDisplaysDataType."""
         try:
-            output = subprocess.check_output(
-                ["system_profiler", "SPDisplaysDataType"], text=True
-            )
+            output = subprocess.check_output(["system_profiler", "SPDisplaysDataType"], text=True)
             gpus = []
             gpu_info = {}
-            inside_gpu_section = False  # Tracks when we are inside a GPU block
-
             for line in output.splitlines():
                 line = line.strip()
-
-                # Start detecting a new GPU section
-                if line.endswith(":") and "Displays:" not in line:
-                    if gpu_info:  # Store the previous GPU before starting a new one
-                        gpus.append(gpu_info)
-                        gpu_info = {}
-                    inside_gpu_section = True
-                    gpu_info["GPU"] = line[:-1]  # Remove trailing colon from GPU name
-
-                elif inside_gpu_section:
-                    if "Chipset Model:" in line:
-                        gpu_info["GPU"] = line.split(":")[1].strip()
-                    elif "Total Number of Cores:" in line:
-                        gpu_info["Cores"] = line.split(":")[1].strip()
-                    elif "Vendor:" in line:
-                        gpu_info["Vendor"] = line.split(":")[1].strip()
-                    elif "Metal Support:" in line:
-                        gpu_info["Metal"] = line.split(":")[1].strip()
+                if "Chipset Model:" in line:
+                    gpu_info["GPU"] = line.split(":")[1].strip()
+                elif "Total Number of Cores:" in line:
+                    gpu_info["Cores"] = line.split(":")[1].strip()
+                elif "Vendor:" in line:
+                    gpu_info["Vendor"] = line.split(":")[1].strip()
+                elif "Metal Support:" in line:
+                    gpu_info["Metal"] = line.split(":")[1].strip()
 
             # Ensure the last detected GPU is added
             if gpu_info:
@@ -156,7 +141,6 @@ class GPUDetector:
         except Exception as e:
             logging.error(f"Unexpected error while detecting macOS GPU: {e}")
             return [{"GPU": "Unknown", "Error": str(e)}]
-
 
     def detect_best_gpu(self, gpu_template):
         """
@@ -219,11 +203,7 @@ class GPUDetector:
             raise RuntimeError(f"GPU detection is not supported on {system}.")
 
         if best_gpu is not None:
-            gpu_template.append({
-                "index": best_gpu["GPU"],
-                "vram": f"{best_vram} MiB",
-                "env": best_env
-            })
+            gpu_template.append({"index": best_gpu["GPU"], "vram": f"{best_vram} MiB", "env": best_env})
             return True  # GPU detected and added successfully
         else:
             logging.warning("No compatible GPUs found.")
