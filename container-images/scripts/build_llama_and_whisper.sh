@@ -6,6 +6,7 @@ dnf_install() {
                   "procps-ng" "git" "dnf-plugins-core" "libcurl-devel")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
+  local blas_rpms=("openblas-devel")
   local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel" \
                   "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero" \
                   "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
@@ -17,16 +18,19 @@ dnf_install() {
     dnf install -y "$url"
     crb enable # this is in epel-release, can only install epel-release via url
     dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
-    local uname_m
-    uname_m="$(uname -m)"
-    dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
-    url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
-    dnf config-manager --add-repo "$url"
-    url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
-    curl --retry 8 --retry-all-errors -o \
-      /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
-    rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-    dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
+    # x86_64 and aarch64 means kompute
+    if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ] ;then
+      dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
+      url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
+      dnf config-manager --add-repo "$url"
+      url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
+      curl --retry 8 --retry-all-errors -o \
+	      /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
+      rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
+      dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
+    else
+      dnf install -y "${blas_rpms[@]}"
+    fi
   fi
 
   if [ "$containerfile" = "asahi" ]; then
@@ -116,6 +120,7 @@ main() {
 
   local containerfile="$1"
   local install_prefix
+  local uname_m="$(uname -m)"
   set_install_prefix
   local common_flags
   configure_common_flags
@@ -125,7 +130,11 @@ main() {
   common_flags+=("-DLLAMA_CURL=ON")
   case "$containerfile" in
     ramalama)
-      common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
+      if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ] ;then
+        common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
+      else
+        common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
+      fi
       ;;
   esac
 
