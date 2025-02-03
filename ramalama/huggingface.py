@@ -45,7 +45,7 @@ class Huggingface(Model):
 
     def login(self, args):
         if not self.hf_cli_available:
-            raise NotImplementedError("huggingface-cli not available, skipping login.")
+            raise NotImplementedError(missing_huggingface)
         conman_args = ["huggingface-cli", "login"]
         if args.token:
             conman_args.extend(["--token", args.token])
@@ -53,7 +53,7 @@ class Huggingface(Model):
 
     def logout(self, args):
         if not self.hf_cli_available:
-            raise NotImplementedError("huggingface-cli not available, skipping logout.")
+            raise NotImplementedError(missing_huggingface)
         conman_args = ["huggingface-cli", "logout"]
         if args.token:
             conman_args.extend(["--token", args.token])
@@ -124,8 +124,7 @@ class Huggingface(Model):
 
     def push(self, source, args):
         if not self.hf_cli_available:
-            print("huggingface-cli not available, skipping push.")
-            return
+            raise NotImplementedError(missing_huggingface)
         proc = run_cmd(
             [
                 "huggingface-cli",
