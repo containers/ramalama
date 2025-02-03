@@ -7,6 +7,21 @@ on:
       - main
 
 jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bash codespell python3-argcomplete pipx
+          make install-requirements
+      - name: Run lint
+        shell: bash
+        run: make lint
+
   bats:
     runs-on: ubuntu-24.04
     steps:
