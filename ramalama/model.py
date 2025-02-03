@@ -153,6 +153,7 @@ class Model:
             "-i",
             "--label",
             "RAMALAMA",
+            f"--network={args.network_mode}",
             "--security-opt=label=disable",
             "--name",
             name,

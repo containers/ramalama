@@ -37,6 +37,9 @@ show this help message and exit
 #### **--name**, **-n**
 name of the container to run the Model in
 
+#### **--network-mode**=*none*
+set the network mode for the container
+
 #### **--seed**=
 Specify seed rather than using random seed model interaction
 
