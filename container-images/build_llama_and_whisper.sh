@@ -58,13 +58,15 @@ function main() {
 
   case ${container_image} in
     ramalama)
+      dnf --enablerepo=ubi-9-appstream-rpms install -y "${common_rpms[@]}"
       dnfPrepUbi
-      dnf --enablerepo=ubi-9-appstream-rpms install -y mesa-vulkan-drivers "${common_rpms[@]}" "${vulkan_rpms[@]}"
+      dnf --enablerepo=ubi-9-appstream-rpms install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
       LLAMA_CPP_CMAKE_FLAGS+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
     ;;
     rocm)
+      dnf --enablerepo=ubi-9-appstream-rpms install -y "${common_rpms[@]}"
       dnfPrepUbi
-      dnf --enablerepo=ubi-9-appstream-rpms install -y "${common_rpms[@]}" "${vulkan_rpms[@]}" rocm-dev hipblas-devel rocblas-devel
+      dnf install -y "${vulkan_rpms[@]}" rocm-dev hipblas-devel rocblas-devel
       LLAMA_CPP_CMAKE_FLAGS+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102}")
       WHISPER_CPP_CMAKE_FLAGS+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102}")
     ;;
@@ -76,8 +78,9 @@ function main() {
       install_prefix=/llama-cpp
     ;;
     vulkan)
+      dnf --enablerepo=ubi-9-appstream-rpms install -y "${common_rpms[@]}"
       dnfPrepUbi
-      dnf --enablerepo=ubi-9-appstream-rpms install -y mesa-vulkan-drivers "${common_rpms[@]}" "${vulkan_rpms[@]}"
+      dnf --enablerepo=ubi-9-appstream-rpms install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
       LLAMA_CPP_CMAKE_FLAGS+=("-DGGML_VULKAN=1")
       WHISPER_CPP_CMAKE_FLAGS+=("-DGGML_VULKAN=1")
     ;;
