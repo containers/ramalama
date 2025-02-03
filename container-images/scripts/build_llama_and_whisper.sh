@@ -6,6 +6,9 @@ dnf_install() {
                   "procps-ng" "git" "dnf-plugins-core" "libcurl-devel")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
+  local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel" \
+                  "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero" \
+                  "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
 
   # All the UBI-based ones
   if [ "$containerfile" = "ramalama" ] || [ "$containerfile" = "rocm" ] || \
@@ -37,6 +40,11 @@ dnf_install() {
     # shellcheck disable=SC1091
     . /opt/rh/gcc-toolset-12/enable
   fi
+
+  if [ "$containerfile" = "intel-gpu" ]; then
+    dnf install -y "${rpm_list[@]}" "${intel_rpms[@]}"
+    source /opt/intel/oneapi/setvars.sh
+  fi
 }
 
 cmake_check_warnings() {
@@ -51,7 +59,7 @@ cmake_steps() {
 }
 
 set_install_prefix() {
-  if [ "$containerfile" = "cuda" ]; then
+  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ]; then
     install_prefix="/tmp/install"
   else
     install_prefix="/usr"
@@ -69,6 +77,9 @@ configure_common_flags() {
       ;;
     vulkan | asahi)
       common_flags+=("-DGGML_VULKAN=1")
+      ;;
+    intel-gpu)
+      common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
       ;;
   esac
 }

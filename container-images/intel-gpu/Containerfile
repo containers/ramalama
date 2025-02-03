@@ -1,32 +1,24 @@
 FROM quay.io/fedora/fedora:41 as builder
 
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
+COPY scripts/build_llama_and_whisper.sh /
 
-RUN dnf install -y intel-opencl g++ cmake git tar libcurl-devel intel-oneapi-mkl-sycl-devel intel-oneapi-dnnl-devel intel-oneapi-compiler-dpcpp-cpp ; \
-    git clone https://github.com/ggerganov/llama.cpp.git -b b4523 ; \
-    cd llama.cpp ; \
-    mkdir -p build ; \
-    cd build ; \
-    source /opt/intel/oneapi/setvars.sh ; \
-    cmake .. -DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DLLAMA_CURL=ON -DGGML_CCACHE=OFF -DGGML_NATIVE=OFF ; \
-    cmake --build . --config Release -j -v ; \
-    cmake --install . --prefix /llama-cpp
+RUN chmod +x /build_llama_and_whisper.sh ; \
+    /build_llama_and_whisper.sh intel-gpu
 
 FROM quay.io/fedora/fedora:41
 
-ENV LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib/:/opt/intel/oneapi/mkl/2025.0/lib:/opt/intel/oneapi/compiler/2025.0/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.0/lib/clang/19/lib:/opt/intel/oneapi/compiler/2025.0/lib:/opt/intel/oneapi/umf/0.9/lib:/opt/intel/oneapi/tbb/2022.0/lib:/opt/intel/oneapi/tcm/1.2/lib:/opt/intel/oneapi/redist/opt/compiler/lib:/opt/intel/oneapi/redist/lib/clang/19/lib:/opt/intel/oneapi/redist/lib:/opt/intel/oneapi/mkl/2025.0/lib:/opt/intel/oneapi/compiler/2025.0/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.0/lib/clang/19/lib:/opt/intel/oneapi/compiler/2025.0/lib:/opt/intel/oneapi/umf/0.9/lib:/opt/intel/oneapi/tbb/2022.0/lib:/opt/intel/oneapi/tcm/1.2/lib:/opt/intel/oneapi/redist/opt/compiler/lib:/opt/intel/oneapi/redist/lib/clang/19/lib:/opt/intel/oneapi/redist/lib"
-
-COPY --from=builder /llama-cpp/bin/ /usr/local/bin/
-COPY --from=builder /llama-cpp/lib/ /usr/local/lib/
-COPY --from=builder /llama-cpp/lib64/ /usr/local/lib64/
-COPY --from=builder /llama-cpp/include/ /usr/local/include/
+COPY --from=builder /tmp/install/ /usr/
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
+COPY --chown=0:0 intel-gpu/entrypoint.sh /
 
-RUN dnf install -y intel-opencl libcurl lspci clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl ; \
+RUN dnf install -y procps-ng python3 python3-pip python3-devel intel-level-zero oneapi-level-zero intel-compute-runtime libcurl lspci clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl ; \
     chown 0:0 /etc/passwd ; \
     chown 0:0 /etc/group ; \
-    chmod g=u /etc/passwd /etc/group ; \
-    useradd -u 1000 -g render -G video -s /bin/bash -d /home/llama-user llama-user
+    chmod g=u /etc/passwd /etc/group /home ; \
+    chmod +x /entrypoint.sh
 
-USER 1000
-WORKDIR /home/llama-user
+USER 10000
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD [ "tail", "-f", "/dev/null" ]
