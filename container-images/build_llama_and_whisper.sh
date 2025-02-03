@@ -53,7 +53,7 @@ function main() {
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" "spirv-tools" "glslc" "glslang")
   local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel" "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero" "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
 
-  LLAMA_CPP_CMAKE_FLAGS+=("-DGGML_CCACHE=OFF" "-DGGML_NATIVE=OFF" "-DBUILD_SHARED_LIBS=NO" "-DLLAMA_CURL=ON")
+  LLAMA_CPP_CMAKE_FLAGS+=("-DGGML_CCACHE=OFF" "-DGGML_NATIVE=OFF" "-DLLAMA_CURL=ON")
   WHISPER_CPP_CMAKE_FLAGS+=("-DGGML_CCACHE=OFF" "-DGGML_NATIVE=OFF" "-DBUILD_SHARED_LIBS=NO")
 
   case ${container_image} in
