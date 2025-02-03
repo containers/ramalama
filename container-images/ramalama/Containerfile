@@ -1,5 +1,6 @@
 FROM registry.access.redhat.com/ubi9/ubi:9.5-1736404036
 
-COPY ../scripts /scripts
-RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "ramalama"
+COPY build_llama_and_whisper.sh /
+
+RUN chmod +x /build_llama_and_whisper.sh ; \
+    /build_llama_and_whisper.sh ramalama

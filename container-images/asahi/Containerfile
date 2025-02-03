@@ -1,6 +1,6 @@
-FROM fedora:41
+FROM quay.io/fedora/fedora:41
 
-COPY ../scripts /scripts
-RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "asahi"
+COPY build_llama_and_whisper.sh /
 
+RUN chmod +x /build_llama_and_whisper.sh ; \
+    /build_llama_and_whisper.sh asahi

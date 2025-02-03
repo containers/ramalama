@@ -109,7 +109,7 @@ process_all_targets() {
   local command="$1"
   local option="$2"
   for i in container-images/*; do
-    if [ "$i" == "container-images/scripts" ]; then
+    if [ "$i" == "container-images/build_llama_and_whisper.sh" ]; then
       continue
     fi
     build "$i" "$command" "$option"
