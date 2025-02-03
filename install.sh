@@ -130,7 +130,7 @@ setup_ramalama() {
                       "common.py" "__init__.py" "quadlet.py" "kube.py" \
                       "oci.py" "version.py" "shortnames.py" "toml_parser.py" \
                       "file.py" "http_client.py" "url.py" "annotations.py" \
-                      "gpu_detector.py" )
+                      "gpu_detector.py", "console.py")
   for i in "${python_files[@]}"; do
     if $local_install; then
       url="ramalama/${i}"
