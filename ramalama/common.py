@@ -4,16 +4,24 @@ import glob
 import hashlib
 import os
 import random
+import logging
 import shutil
 import string
 import subprocess
+import time
 import sys
 import urllib.request
 import urllib.error
+import ramalama.console as console
+
 from ramalama.http_client import HttpClient
+
+
+logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 
 MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
+HTTP_RANGE_NOT_SATISFIABLE = 416
 
 
 def container_manager():
@@ -165,25 +173,61 @@ def download_file(url, dest_path, headers=None, show_progress=True):
         headers (dict): Optional headers to include in the request.
         show_progress (bool): Whether to show a progress bar during download.
 
-    Returns:
-        None
+    Raises:
+        RuntimeError: If the download fails after multiple attempts.
     """
-    http_client = HttpClient()
-
     headers = headers or {}
 
-    # if we are not a tty, don't show progress, can pollute CI output and such
+    # If not running in a TTY, disable progress to prevent CI pollution
     if not sys.stdout.isatty():
         show_progress = False
 
-    try:
-        http_client.init(url=url, headers=headers, output_file=dest_path, progress=show_progress)
-    except urllib.error.HTTPError as e:
-        if e.code == 416:  # Range not satisfiable
-            if show_progress:
-                print(f"File {url} already fully downloaded.")
-        else:
-            raise e
+    http_client = HttpClient()
+    max_retries = 5  # Stop after 5 failures
+    retries = 0
+
+    while retries < max_retries:
+        try:
+            # Initialize HTTP client for the request
+            http_client.init(url=url, headers=headers, output_file=dest_path, progress=show_progress)
+            return  # Exit function if successful
+
+        except urllib.error.HTTPError as e:
+            if e.code == HTTP_RANGE_NOT_SATISFIABLE:  # "Range Not Satisfiable" error (file already downloaded)
+                return  # No need to retry
+
+        except urllib.error.URLError as e:
+            console.error(f"Network Error: {e.reason}")
+            retries += 1
+
+        except TimeoutError:
+            retries += 1
+            console.warning(f"TimeoutError: The server took too long to respond. Retrying {retries}/{max_retries}...")
+
+        except RuntimeError as e:  # Catch network-related errors from HttpClient
+            retries += 1
+            console.warning(f"{e}. Retrying {retries}/{max_retries}...")
+
+        except IOError as e:
+            retries += 1
+            console.warning(f"I/O Error: {e}. Retrying {retries}/{max_retries}...")
+
+        except Exception as e:
+            console.error(f"Unexpected error: {str(e)}")
+            raise
+
+        if retries >= max_retries:
+            error_message = (
+                "\nDownload failed after multiple attempts.\n"
+                "Possible causes:\n"
+                "- Internet connection issue\n"
+                "- Server is down or unresponsive\n"
+                "- Firewall or proxy blocking the request\n"
+            )
+            console.error(error_message)
+            sys.exit(1)
+
+        time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
 
 
 def engine_version(engine):
