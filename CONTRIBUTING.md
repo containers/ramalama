@@ -96,7 +96,7 @@ Markdown versions can be viewed in the `docs/` directory.
 
 ### Setting up Podman Farm to build Multi-Arch Images
 
-Some of the RamaLama images are intended to run on aarch64 as well as x86_64, e.g. `ramalama` & `vulkan`.
+Some of the RamaLama images are intended to run on aarch64 as well as x86_64, e.g., `ramalama` & `vulkan`.
 
 Podman Farm is a great tool for building multi-arch image manifests.  Docs here - [Podman Farm](https://docs.podman.io/en/latest/markdown/podman-farm.1.html)
 
@@ -127,7 +127,7 @@ To set up `podman farm` you need to first have `podman` installed on systems wit
    podman farm update <farm-name> --add <connection-name>
    ```
 
-   __Note:__ use the same <user> that you used for the SSH trust.
+   __Note:__ use the same <user> for the connection that you used to set up the SSH trust.
 
 1. Once you have added all of the desired connections to your podman farm, you can now build a multi-arch image.
 
@@ -141,12 +141,12 @@ Example using an Apple Silicon based machine as the workstation, and an Intel Li
 1. Set up Podman Farm -
 
    ```bash
-   ssh-copy-id root@10.11.12.13
+   ssh-copy-id <your-linux-user-id>@10.11.12.13
    podman machine init -m 8192 # Give the machine plenty of RAM
    podman machine start
    podman farm create ramalama
    podman farm update ramalama --add podman-machine-default # Add the local podman system to the farm
-   podman system connection add x86_64 root@10.11.12.13 # Add a podman system connection to the remote host
+   podman system connection add x86_64 <your-linux-user-id>@10.11.12.13 # Add a podman system connection to the remote host
    podman farm update ramalama --add x86_64 # Add the remote host to the farm
    ```
 1. Build a multi-arch image
