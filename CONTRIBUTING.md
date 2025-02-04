@@ -334,7 +334,7 @@ respect all people who contribute through reporting issues, posting feature
 requests, updating documentation, submitting pull requests or patches, and other
 activities to any of the projects under the containers umbrella. The full code of conduct guidelines can be
 include Buildah, Conmon, Image, Podman, Ramalama, Storage, Skopeo, et al.
-found [here](https://github.com/containers).
+found [here]([https://github.com/containers](https://github.com/caradelia/ramalama/blob/main/CODE-OF-CONDUCT.md)).
 
 
 ### Bot Interactions
