@@ -4,7 +4,7 @@ import platform
 
 from ramalama.common import (
     container_manager,
-    default_image,
+    DEFAULT_IMAGE,
     exec_cmd,
     genname,
     run_cmd,
@@ -106,7 +106,7 @@ class Model:
         return False
 
     def _image(self, args):
-        if args.image != default_image():
+        if args.image != DEFAULT_IMAGE:
             return args.image
 
         env_vars = get_env_vars()

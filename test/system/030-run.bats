@@ -30,8 +30,8 @@ load helpers
 	run_ramalama 1 --nocontainer run --name foobar tiny
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
 
-	RAMALAMA_IMAGE=${image} run_ramalama --dryrun run ${model}
-	is "$output" ".*${image}:latest llama-run" "verify image name"
+	RAMALAMA_IMAGE=${image}:1234 run_ramalama --dryrun run ${model}
+	is "$output" ".*${image}:1234 llama-run" "verify image name"
     else
 	run_ramalama --dryrun run -c 4096 ${model}
 	is "$output" 'llama-run -c 4096 --temp 0.8.*/path/to/model.*' "dryrun correct"
