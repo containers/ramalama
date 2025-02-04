@@ -64,9 +64,6 @@ IP address for llama.cpp to listen on.
 #### **--name**, **-n**
 Name of the container to run the Model in.
 
-#### **--network-mode**=*default*
-set the network mode for the container
-
 #### **--port**, **-p**
 port for AI Model server to listen on
 
