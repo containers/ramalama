@@ -93,7 +93,7 @@ parse_arguments() {
         rm_after_build="true"
         shift
         ;;
-      build|push)
+      build|push|multi-arch)
         command="$1"
         shift
         ;;
@@ -116,12 +116,24 @@ process_all_targets() {
   done
 }
 
+process_multi_arch_targets() {
+  for i in $(cat ./multi-arch-targets.list); do
+    build_multi_arch "$i"
+  done
+}
+
+build_multi_arch() {
+  local target="$1"
+  podman farm build -t quay.io/ramalama/"$target" -f container-images/"$target"/Containerfile ./container-images
+}
+
 print_usage() {
   echo "Usage: $(basename "$0") [-h|--help] [-d] <command> [target]"
   echo
   echo "Commands:"
   echo "  build        Build the container images"
   echo "  push         Push the container images"
+  echo "  multi-arch   Build and Push multi-arch images with podman farm"
   echo
   echo "Options:"
   echo "  -d           Some option description"
@@ -149,12 +161,25 @@ main() {
     print_usage
     exit 1
   fi
+  if [ "$command" = "multi-arch" ] && [ "$conman_bin" != "podman" ]; then
+    echo "Error: command 'multi-arch' only works with podman farm"
+    print_usage
+    exit 1
+  fi
 
   target="${target:-all}"
-  if [ "$target" = "all" ]; then
-    process_all_targets "$command" "$option"
+  if [ "$command" = "multi-arch" ]; then
+    if [ "$target" = "all" ]; then
+      process_multi_arch_targets
+    else
+      build_multi_arch "$target"
+    fi
   else
-    build "container-images/$target" "$command" "$option"
+    if [ "$target" = "all" ]; then
+      process_all_targets "$command" "$option"
+    else
+      build "container-images/$target" "$command" "$option"
+    fi
   fi
 }
 
