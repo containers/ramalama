@@ -94,6 +94,70 @@ To build RamaLama's manpages, you can run `make docs`.
 Built documentation will be placed in the `docs/` directory.
 Markdown versions can be viewed in the `docs/` directory.
 
+### Setting up Podman Farm to build Multi-Arch Images
+
+Some of the RamaLama images are intended to run on aarch64 as well as x86_64, e.g., `ramalama` & `vulkan`.
+
+Podman Farm is a great tool for building multi-arch image manifests.  Docs here - [Podman Farm](https://docs.podman.io/en/latest/markdown/podman-farm.1.html)
+
+To set up `podman farm` you need to first have `podman` installed on systems with the desired build architectures.
+
+1. Start the podman socket listener on all systems.
+
+   ```bash
+   systemctl enable podman --now
+   ```
+
+1. Create an `ssh` trust between your workstation and the other systems:
+
+   ```bash
+   ssh-copy-id <user>@<hostname>
+   ```
+
+1. Create a podman farm:
+
+   ```bash
+   podman farm create <farm-name>
+   ```
+
+1. Create a podman system connection to the remote host and add it to the podman farm:
+
+   ```bash
+   podman system connection add <connection-name> <user>@<hostname>
+   podman farm update <farm-name> --add <connection-name>
+   ```
+
+   __Note:__ use the same <user> for the connection that you used to set up the SSH trust.
+
+1. Once you have added all of the desired connections to your podman farm, you can now build a multi-arch image.
+
+   ```bash
+   podman login <registry-of-choice>
+   podman farm build -t <registry-of-choice>/<image-name> -f path/to/Containerfile ./path/
+   ```
+
+Example using an Apple Silicon based machine as the workstation, and an Intel Linux machine as a remote host with IP 10.11.12.13: 
+
+1. Set up Podman Farm -
+
+   ```bash
+   ssh-copy-id <your-linux-user-id>@10.11.12.13
+   podman machine init -m 8192 # Give the machine plenty of RAM
+   podman machine start
+   podman farm create ramalama
+   podman farm update ramalama --add podman-machine-default # Add the local podman system to the farm
+   podman system connection add x86_64 <your-linux-user-id>@10.11.12.13 # Add a podman system connection to the remote host
+   podman farm update ramalama --add x86_64 # Add the remote host to the farm
+   ```
+1. Build a multi-arch image
+
+   ```bash
+   git clone https://github.com/containers/ramalama.git
+   cd ramalama
+   podman login quay.io
+   podman farm build -t quay.io/<your-quay-user-id>/ramalama/vulkan -f container-images/vulkan/Containerfile ./container-images
+   ```
+
 ## Testing
 
 RamaLama provides an extensive suite of regression tests in the `test/` directory.
