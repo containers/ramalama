@@ -27,7 +27,7 @@ add_build_platform() {
   fi
 
   conman_build+=("--platform" "$platform")
-  conman_build+=("-t" "quay.io/ramalama/$image_name")
+  conman_build+=("-t" "$REGISTRY_PATH/$image_name")
   conman_build+=("-f" "$image_name/Containerfile" ".")
 }
 
@@ -41,7 +41,7 @@ build() {
   cd "container-images"
   local image_name="${1//container-images\//}"
   local conman_build=("${conman[@]}")
-  local conman_show_size=("${conman[@]}" "images" "--filter" "reference='quay.io/ramalama/$image_name'")
+  local conman_show_size=("${conman[@]}" "images" "--filter" "reference='$REGISTRY_PATH/$image_name'")
   if [ "$3" == "-d" ]; then
       add_build_platform
       echo "${conman_build[@]}"
@@ -58,10 +58,13 @@ build() {
       rm_container_image
       ;;
     push)
-      "${conman[@]}" push "quay.io/ramalama/$image_name"
+      "${conman[@]}" push "$REGISTRY_PATH/$image_name"
+      ;;
+    multi-arch)
+      podman farm build -t "$REGISTRY_PATH"/"$image_name" -f "$image_name"/Containerfile .
       ;;
     *)
-      echo "Invalid command: ${2:-}. Use 'build' or 'push'."
+      echo "Invalid command: ${2:-}. Use 'build', 'push' or 'multi-arch'."
       return 1
       ;;
   esac
@@ -112,19 +115,11 @@ process_all_targets() {
     if [ "$i" == "container-images/scripts" ]; then
       continue
     fi
+    if [ "$command" = "multi-arch" ] && [ !-f $"i"/.multi-arch ]; then
+      continue
+    fi
     build "$i" "$command" "$option"
   done
-}
-
-process_multi_arch_targets() {
-  for i in $(cat ./multi-arch-targets.list); do
-    build_multi_arch "$i"
-  done
-}
-
-build_multi_arch() {
-  local target="$1"
-  podman farm build -t quay.io/ramalama/"$target" -f container-images/"$target"/Containerfile ./container-images
 }
 
 print_usage() {
@@ -142,6 +137,9 @@ print_usage() {
   echo "Targets:"
   echo "  Specify the target container image to build or push"
   echo "  If no target is specified, all container images will be processed"
+  echo "Destination Registry:"
+  echo "  Override the target registry path by setting the env var REGISTRY_PATH"
+  echo "  default - quay.io/ramalama"
 }
 
 main() {
@@ -168,20 +166,13 @@ main() {
   fi
 
   target="${target:-all}"
-  if [ "$command" = "multi-arch" ]; then
-    if [ "$target" = "all" ]; then
-      process_multi_arch_targets
-    else
-      build_multi_arch "$target"
-    fi
+  if [ "$target" = "all" ]; then
+    process_all_targets "$command" "$option"
   else
-    if [ "$target" = "all" ]; then
-      process_all_targets "$command" "$option"
-    else
-      build "container-images/$target" "$command" "$option"
-    fi
+    build "container-images/$target" "$command" "$option"
   fi
 }
 
+REGISTRY_PATH=${REGISTRY_PATH:-quay.io/ramalama}
 main "$@"
 
