@@ -39,10 +39,10 @@ jobs:
           chmod +x install.sh
           sudo ./install.sh -l
 
-      - name: Ramalama info
+      - name: RamaLama info
         run: |
           ramalama info
 
-      - name: Ramalama info
+      - name: RamaLama pull
         run: |
           ramalama pull tinyllama
