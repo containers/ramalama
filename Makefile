@@ -16,6 +16,8 @@ help:
 	@echo
 	@echo "  - make build"
 	@echo "  - make build IMAGE=ramalama"
+	@echo "  - make multi-arch"
+	@echo "  - make multi-arch IMAGE=ramalama"
 	@echo
 	@echo "Build docs"
 	@echo
@@ -80,6 +82,10 @@ build:
 .PHONY: build_rm
 build_rm:
 	./container_build.sh -r build $(IMAGE)
+
+.PHONY: build_multi_arch
+build_multi_arch
+	./container_build.sh multi-arch $(IMAGE)
 
 .PHONY: install-docs
 install-docs: docs
