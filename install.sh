@@ -43,9 +43,9 @@ apt_install() {
     $sudo apt-get update -qq || true
 
     # only install docker if podman can't be
-    if ! $sudo apt_get_install podman; then
+    if ! $sudo apt install -y podman; then
       if ! available docker; then
-        $sudo apt_get_install docker || true
+        $sudo apt install -y docker || true
       fi
     fi
   fi
