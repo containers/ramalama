@@ -449,12 +449,6 @@ def bench_cli(args):
 
 def bench_parser(subparsers):
     parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
-    parser.add_argument(
-        "--network-mode",
-        type=str,
-        default="none",
-        help="set the network mode for the container",
-    )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=bench_cli)
 
@@ -678,13 +672,6 @@ type of OCI Model Image to push.
 Model "car" includes base image with the model stored in a /models subdir.
 Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
-    # https://docs.podman.io/en/latest/markdown/podman-build.1.html#network-mode-net
-    parser.add_argument(
-        "--network-mode",
-        type=str,
-        default="none",
-        help="sets the configuration for network namespaces when handling RUN instructions",
-    )
     parser.add_argument("SOURCE")  # positional argument
     parser.add_argument("TARGET")  # positional argument
     parser.set_defaults(func=convert_cli)
@@ -804,15 +791,6 @@ def _run(parser):
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     _run(parser)
-    # Disable network access by default, and give the option to pass any supported network mode into
-    # podman if needed:
-    # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
-    parser.add_argument(
-        "--network-mode",
-        type=str,
-        default="none",
-        help="set the network mode for the container",
-    )
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument(
         "ARGS", nargs="*", help="Overrides the default prompt, and the output is returned without entering the chatbot"
@@ -837,17 +815,6 @@ def serve_parser(subparsers):
     )
     parser.add_argument(
         "-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on"
-    )
-    # --network-mode=default lets the container listen on localhost, and is an option that's compatible
-    # with podman and docker. It should use the bridge driver for rootful podman, the pasta driver for
-    # rootless podman, and the bridge driver for docker:
-    # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
-    # https://docs.docker.com/engine/network/#drivers
-    parser.add_argument(
-        "--network-mode",
-        type=str,
-        default="default",
-        help="set the network mode for the container",
     )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
