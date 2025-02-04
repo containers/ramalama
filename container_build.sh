@@ -115,8 +115,13 @@ process_all_targets() {
     if [ "$i" == "container-images/scripts" ]; then
       continue
     fi
-    if [ "$command" = "multi-arch" ] && [ ! -f "$i"/.multi-arch ]; then
-      continue
+    # skip images that don't make sense for multi-arch builds
+    if [ "$command" = "multi-arch" ]; then
+      case "${i//container-images\//}" in
+        rocm|intel-gpu)
+          continue
+          ;;
+      esac
     fi
     build "$i" "$command" "$option"
   done
