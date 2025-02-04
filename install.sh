@@ -35,12 +35,12 @@ dnf_install() {
 }
 
 apt_get_install() {
-  apt-get -qq -y install "$1"
+  apt-get -y install "$1"
 }
 
 apt_install() {
   if ! available podman; then
-    $sudo apt-get update -qq || true
+    $sudo apt-get update || true
 
     # only install docker if podman can't be
     if ! $sudo apt_get_install podman; then
@@ -130,7 +130,7 @@ setup_ramalama() {
                       "common.py" "__init__.py" "quadlet.py" "kube.py" \
                       "oci.py" "version.py" "shortnames.py" "toml_parser.py" \
                       "file.py" "http_client.py" "url.py" "annotations.py" \
-                      "gpu_detector.py", "console.py" )
+                      "gpu_detector.py" "console.py")
   for i in "${python_files[@]}"; do
     if $local_install; then
       url="ramalama/${i}"
