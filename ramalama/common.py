@@ -244,12 +244,16 @@ def get_gpu():
         return
 
     # ASAHI CASE
-    if os.path.exists('/etc/os-release'):
-        with open('/etc/os-release', 'r') as file:
-            if "asahi" in file.read().lower():
-                # Set Env Var and break
-                os.environ["ASAHI_VISIBLE_DEVICES"] = "1"
-                return
+    if os.path.exists('/proc/device-tree/compatible'):
+        try:
+            with open('/proc/device-tree/compatible', 'rb') as f:
+                content = f.read().split(b"\0")
+                # Check if "apple,arm-platform" is in the content
+                if b"apple,arm-platform" in content:
+                    os.environ["ASAHI_VISIBLE_DEVICES"] = "1"
+        except OSError:
+            # Handle the case where the file does not exist
+            pass
 
     # NVIDIA CASE
     try:
