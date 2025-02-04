@@ -22,6 +22,9 @@ path of the authentication file for OCI registries
 #### **--help**, **-h**
 Print usage message
 
+#### **--network-mode**=*none*
+sets the configuration for network namespaces when handling RUN instructions
+
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
 
