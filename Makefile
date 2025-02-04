@@ -84,7 +84,7 @@ build_rm:
 	./container_build.sh -r build $(IMAGE)
 
 .PHONY: build_multi_arch
-build_multi_arch
+build_multi_arch:
 	./container_build.sh multi-arch $(IMAGE)
 
 .PHONY: install-docs
