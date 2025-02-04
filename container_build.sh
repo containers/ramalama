@@ -115,7 +115,7 @@ process_all_targets() {
     if [ "$i" == "container-images/scripts" ]; then
       continue
     fi
-    if [ "$command" = "multi-arch" ] && [ !-f $"i"/.multi-arch ]; then
+    if [ "$command" = "multi-arch" ] && [ ! -f "$i"/.multi-arch ]; then
       continue
     fi
     build "$i" "$command" "$option"
