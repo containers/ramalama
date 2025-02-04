@@ -61,6 +61,8 @@ jobs:
     packages: [ramalama-fedora]
     dist_git_branches: &fedora_targets
       - fedora-all
+      - epel10
+      - epel9
 
   - job: koji_build
     trigger: commit
@@ -72,3 +74,5 @@ jobs:
     packages: [ramalama-fedora]
     dist_git_branches:
       - fedora-branched # rawhide updates are created automatically
+      - epel10
+      - epel9
