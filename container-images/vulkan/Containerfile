@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.5-1736404036
+FROM registry.access.redhat.com/ubi9/ubi:9.5-1738643550
 
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
