@@ -11,6 +11,8 @@ Below summarizes the processes that we follow.
 * [Contributing To RamaLama](#contributing-to-ramalama)
 * [Submitting Pull Requests](#submitting-pull-requests)
 * [Communications](#communications)
+* [Code of Conduct](#code-of-conduct)
+  
 
 ## Reporting Issues
 
@@ -323,6 +325,9 @@ For discussions around issues/bugs and features, you can use the GitHub
 and
 [PRs](https://github.com/containers/ramalama/pulls)
 tracking system.
+
+## Code of Conduct
+
 
 ### Bot Interactions
 
