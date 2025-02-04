@@ -70,7 +70,14 @@ build() {
 }
 
 determine_platform() {
-  local platform="linux/amd64"
+  case $conman_bin in
+    podman)
+      local platform="$(podman info --format '{{ .Version.OsArch }}' 2>/dev/null)"
+      ;;
+    docker)
+      local platform="$(docker info --format '{{ .ClientInfo.Os }}/{{ .ClientInfo.Arch }}' 2>/dev/null)"
+      ;;
+  esac
   if [ "$(uname -m)" = "aarch64" ] || { [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; }; then
     platform="linux/arm64"
   fi
