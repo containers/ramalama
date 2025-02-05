@@ -27,14 +27,20 @@ install_pytorch() {
 }
 
 clone_and_build_pragmatic() {
-if [ "$2" == "docling" ]; then
-   ${PYTHON_VERSION} pip install docling --extra-index-url https://download.pytorch.org/whl/$1
-fi
   git clone https://github.com/redhat-et/PRAGmatic
   cd PRAGmatic
   git submodule update --init --recursive
 
-  ${PYTHON_VERSION} pip install -r requirements.txt --prefix=/usr
+  if [ "$2" == "docling" ]; then
+      ${PYTHON_VERSION} pip install docling --extra-index-url https://download.pytorch.org/whl/$1
+      ${PYTHON_VERSION} pip install -r requirements.txt --prefix=/usr
+  else
+      ${PYTHON_VERSION} pip install torch --extra-index-url https://download.pytorch.org/whl/$1
+      tmpfile=$(mktemp)
+      grep -v docling requirements.txt > ${tmpfile}
+      ${PYTHON_VERSION} pip install -r /tmp/nodocling.txt --prefix=/usr
+      rm ${tmpfile}
+  fi
   ${PYTHON_VERSION} pip install --prefix=/usr .
   cd ..
 }
