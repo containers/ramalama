@@ -92,9 +92,10 @@ RAMALAMA_IMAGE environment variable overrides this field.
 Pass `--group-add keep-groups` to podman, when using podman.
 In some cases this is needed to access the gpu from a rootless container
 
-**ngl**=999
+**ngl**=-1
 
-Default number of layers to offload to the gpu
+number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
+The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
 **port**="8080"
 
