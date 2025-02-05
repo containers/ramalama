@@ -285,12 +285,14 @@ class Model:
         return prompt
 
     def get_model_path(self, args):
+        model_path = self.exists(args)
+        if model_path:
+            return model_path
+
         if args.dryrun:
             return "/path/to/model"
 
-        model_path = self.exists(args)
-        if not model_path:
-            model_path = self.pull(args)
+        model_path = self.pull(args)
 
         return model_path
 
