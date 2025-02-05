@@ -7,17 +7,26 @@ SHAREDIR ?= ${PREFIX}/share
 PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
-
+IMAGE ?= ramalama
+GPU ?= cpu
 
 default: help
 
 help:
-	@echo "Build Container"
+	@echo "Build Container Image"
 	@echo
 	@echo "  - make build"
 	@echo "  - make build IMAGE=ramalama"
 	@echo "  - make multi-arch"
 	@echo "  - make multi-arch IMAGE=ramalama"
+	@echo
+	@echo "Build RAG Container Image"
+	@echo
+	@echo "  - make build-rag IMAGE=quay.io/ramalama/ramalama GPU=ramalama"
+	@echo
+	@echo "Build Docling Container Image"
+	@echo
+	@echo "  - make build-docling IMAGE=quay.io/ramalama/ramalama GPU=ramalama"
 	@echo
 	@echo "Build docs"
 	@echo
@@ -79,13 +88,21 @@ install: docs completions
 build:
 	./container_build.sh build $(IMAGE)
 
-.PHONY: build_rm
-build_rm:
+.PHONY: build-rm
+build-rm:
 	./container_build.sh -r build $(IMAGE)
 
 .PHONY: build_multi_arch
 build_multi_arch:
 	./container_build.sh multi-arch $(IMAGE)
+
+.PHONY: build-rag
+build-rag:
+	podman build --build-arg IMAGE=${IMAGE} --build-arg GPU=${GPU} -t ${IMAGE}-rag container-images/pragmatic
+
+.PHONY: build-docling
+build-docling:
+	podman build --build-arg IMAGE=${IMAGE} --build-arg CONTENT=docling --build-arg GPU=${GPU} -t ${IMAGE}-docling container-images/pragmatic
 
 .PHONY: install-docs
 install-docs: docs
