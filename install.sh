@@ -100,6 +100,29 @@ check_platform() {
   return 0
 }
 
+setup_version_file() {
+  local config_dir="$HOME/.config/ramalama"
+  local version_file="$config_dir/version"
+
+  # Ensure ~/.config/ramalama/ exists
+  mkdir -p "$config_dir"
+
+  version="0.0.0"
+  # Try to get version from Git
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    version=$(git describe --tags --long --always)
+    # Format version properly (strip 'g' from commit hash)
+    if [[ "$version" =~ ([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)-g([a-f0-9]+) ]]; then
+      version="${BASH_REMATCH[1]}.dev${BASH_REMATCH[2]}+${BASH_REMATCH[3]}"
+    fi
+  fi
+
+  # Save version to file
+  echo "$version" > "$version_file"
+
+  echo "Saved version: $version in $version_file"
+}
+
 setup_ramalama() {
   local binfile="ramalama"
   local from_file="${binfile}"
@@ -181,7 +204,7 @@ main() {
   trap cleanup EXIT
 
   setup_ramalama "$bindir"
+  setup_version_file
 }
 
 main "$@"
-
