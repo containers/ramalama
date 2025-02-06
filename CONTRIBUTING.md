@@ -53,12 +53,6 @@ This section describes how to make a contribution to RamaLama.
 
 ### Prepare your environment
 
-Read the [install documentation to see how to install dependencies](https://ramalama.io/getting-started/installation#build-and-run-dependencies).
-
-The install documentation will illustrate the following steps:
-- Installation of required tools
-- Installing RamaLama from source
-
 The minimum version of Python required to use RamaLama is PYTHON 3.12
 
 ### Fork and clone RamaLama
