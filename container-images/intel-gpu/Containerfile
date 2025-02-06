@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:41 as builder
+FROM quay.io/fedora/fedora:43 as builder
 
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
 COPY scripts/build_llama_and_whisper.sh /
@@ -6,7 +6,7 @@ COPY scripts/build_llama_and_whisper.sh /
 RUN chmod +x /build_llama_and_whisper.sh ; \
     /build_llama_and_whisper.sh intel-gpu
 
-FROM quay.io/fedora/fedora:41
+FROM quay.io/fedora/fedora:43
 
 COPY --from=builder /tmp/install/ /usr/
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
