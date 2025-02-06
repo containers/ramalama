@@ -28,7 +28,7 @@ Supported transports:
 | HuggingFace   | [`huggingface.co`](https://www.huggingface.co)      |
 | Ollama        | [`ollama.com`](https://www.ollama.com)              |
 | OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)|
-||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), and [`Artifactory`](https://artifactory.com)|
+||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), [`Pulp`](https://pulpproject.org), and [`Artifactory`](https://artifactory.com)|
 
 RamaLama uses the Ollama registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
