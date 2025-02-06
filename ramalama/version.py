@@ -1,16 +1,9 @@
-import importlib.metadata
-
-"""Version of RamaLamaPy."""
-
+import setuptools_scm
 
 def version():
-    try:
-        return importlib.metadata.version("ramalama")
-    except importlib.metadata.PackageNotFoundError:
-        return "0"
+    """Returns the package version dynamically from Git."""
+    return setuptools_scm.get_version()
 
-    return "0"
-
-
-def print_version(args):
-    print("ramalama version %s" % version())
+def print_version(args=None):
+    """Prints the current version of the package."""
+    print(f"ramalama version {version()}")

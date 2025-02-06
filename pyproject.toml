@@ -14,6 +14,12 @@ readme = "README.md"
 license = {file = "LICENSE"}
 keywords = ["ramalama", "llama", "AI"]
 
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+
 [project.urls]
 Homepage = "https://github.com/containers/ramalama"
 Documentation = "https://github.com/containers/ramalama/tree/main/docs"
