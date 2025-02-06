@@ -118,9 +118,9 @@ class Model:
 
         if args.runtime == "vllm":
             if gpu_type == "HIP_VISIBLE_DEVICES":
-                return "quay.io/modh/vllm:rhoai-2.17-rocm"
+                return "quay.io/modh/vllm:rhoai-2.18-rocm"
 
-            return "quay.io/modh/vllm:rhoai-2.17-cuda"
+            return "quay.io/modh/vllm:rhoai-2.18-cuda"
 
         split = version().split(".")
         vers = ".".join(split[:2])
