@@ -129,6 +129,7 @@ class Model:
             "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
             "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
             "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
+            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
         }
 
         image = images.get(gpu_type, args.image)
@@ -199,6 +200,7 @@ class Model:
             or os.getenv("HIP_VISIBLE_DEVICES")
             or os.getenv("ASAHI_VISIBLE_DEVICES")
             or os.getenv("CUDA_VISIBLE_DEVICES")
+            or os.getenv("INTEL_VISIBLE_DEVICES")
             or (
                 # linux and macOS report aarch64 differently
                 platform.machine() in {"aarch64", "arm64"}
