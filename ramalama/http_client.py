@@ -71,7 +71,7 @@ class HttpClient:
                 accumulated_size += size
                 if time.time() - last_update_time >= 0.1:
                     self.now_downloaded += accumulated_size
-                    self.update_progress(self.now_downloaded, self.total_to_download)
+                    self.update_progress(accumulated_size)
                     accumulated_size = 0
                     last_update_time = time.time()
 
