@@ -156,6 +156,9 @@ class Model:
             "--security-opt=label=disable",
             "--name",
             name,
+            "--env=HOME=/tmp",
+            "--cap-drop=all",
+            "--security-opt=no-new-privileges",
         ]
 
         if os.path.basename(args.engine) == "podman":
