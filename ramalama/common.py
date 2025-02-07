@@ -283,15 +283,15 @@ def get_gpu():
         return
 
     # INTEL iGPU CASE (Look for ARC GPU)
-    if os.path.exists('/sys/bus/pci/drivers/i915/0000:00:02.0/device'):
-        try:
-            with open('/sys/bus/pci/drivers/i915/0000:00:02.0/device', 'rb') as f:
-                content = f.read()
-                if b"0x7d55" in content:
-                    os.environ["INTEL_VISIBLE_DEVICES"] = "1"
-        except OSError:
-            # Handle the case where the file does not exist
-            pass
+    igpu_num = 0
+    for fp in sorted(glob.glob('/sys/bus/pci/drivers/i915/*/device')):
+        with open(fp, 'rb') as file:
+            content = file.read()
+            if b"0x7d55" in content:
+                igpu_num += 1
+
+    if igpu_num:
+        os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
 
 def get_env_vars():
     prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_", "INTEL_")
