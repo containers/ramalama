@@ -32,31 +32,35 @@ def container_manager():
         return engine
 
     if available("podman"):
-        if sys.platform != "darwin":
+        if sys.platform != "darwin" or is_krunkit_running() or is_podman_machine_running():
             return "podman"
 
-        podman_machine_list = ["podman", "machine", "list"]
-        conman_args = ["podman", "machine", "list", "--format", "{{ .VMType }}"]
-        try:
-            output = run_cmd(podman_machine_list).stdout.decode("utf-8").strip()
-            if "running" not in output:
-                return None
-
-            output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-            if output == "krunkit" or output == "libkrun":
-                return "podman"
-            else:
-                return None
-
-        except subprocess.CalledProcessError:
-            pass
-
-        return "podman"
+        return None
 
     if available("docker"):
         return "docker"
 
     return None
+
+
+def is_krunkit_running():
+    result = subprocess.run(["pgrep", "krunkit"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return result.returncode == 0
+
+
+def is_podman_machine_running():
+    podman_machine_list = ["podman", "machine", "list"]
+    conman_args = ["podman", "machine", "list", "--format", "{{ .VMType }}"]
+    try:
+        output = run_cmd(podman_machine_list).stdout.decode("utf-8").strip()
+        if "running" not in output:
+            return False
+
+        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+        return output in {"krunkit", "libkrun"}
+
+    except subprocess.CalledProcessError:
+        return False
 
 
 def perror(*args, **kwargs):
