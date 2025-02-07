@@ -3,6 +3,7 @@
 import glob
 import hashlib
 import os
+import re
 import random
 import logging
 import shutil
@@ -32,31 +33,26 @@ def container_manager():
         return engine
 
     if available("podman"):
-        if sys.platform != "darwin":
+        if sys.platform != "darwin" or is_podman_machine_running_with_krunkit():
             return "podman"
 
-        podman_machine_list = ["podman", "machine", "list"]
-        conman_args = ["podman", "machine", "list", "--format", "{{ .VMType }}"]
-        try:
-            output = run_cmd(podman_machine_list).stdout.decode("utf-8").strip()
-            if "running" not in output:
-                return None
-
-            output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-            if output == "krunkit" or output == "libkrun":
-                return "podman"
-            else:
-                return None
-
-        except subprocess.CalledProcessError:
-            pass
-
-        return "podman"
+        return None
 
     if available("docker"):
         return "docker"
 
     return None
+
+
+def is_podman_machine_running_with_krunkit():
+    podman_machine_list = ["podman", "machine", "list", "--all-providers"]
+    try:
+        output = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
+        return re.search("krun.*running", output)
+    except subprocess.CalledProcessError:
+        pass
+
+    return False
 
 
 def perror(*args, **kwargs):
