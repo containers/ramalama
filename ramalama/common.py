@@ -279,9 +279,19 @@ def get_gpu():
         os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
         return
 
+    # INTEL iGPU CASE (Look for ARC GPU)
+    igpu_num = 0
+    for fp in sorted(glob.glob('/sys/bus/pci/drivers/i915/*/device')):
+        with open(fp, 'rb') as file:
+            content = file.read()
+            if b"0x7d55" in content:
+                igpu_num += 1
+
+    if igpu_num:
+        os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
 
 def get_env_vars():
-    prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_")
+    prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_", "INTEL_")
     env_vars = {k: v for k, v in os.environ.items() if k.startswith(prefixes)}
 
     # gpu_type, gpu_num = get_gpu()
