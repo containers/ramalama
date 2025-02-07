@@ -23,7 +23,8 @@ MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
 HTTP_RANGE_NOT_SATISFIABLE = 416
 
-DEFAULT_IMAGE="quay.io/ramalama/ramalama"
+DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
+
 
 def container_manager():
     engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
