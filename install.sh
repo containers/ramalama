@@ -126,11 +126,11 @@ setup_ramalama() {
   syspath="$syspath/ramalama"
   $sudo install -m755 -d "$syspath"
   $sudo install -m755 "$to_file" "$ramalama_bin"
-  local python_files=("cli.py" "huggingface.py" "model.py" "ollama.py" \
-                      "common.py" "__init__.py" "quadlet.py" "kube.py" \
-                      "oci.py" "version.py" "shortnames.py" "toml_parser.py" \
-                      "file.py" "http_client.py" "url.py" "annotations.py" \
-                      "gpu_detector.py" "console.py")
+  local python_files=("cli.py" "gguf_parser.py" "huggingface.py" "model.py" \
+                      "model_inspect.py" "ollama.py" "common.py" "__init__.py" \
+                      "quadlet.py" "kube.py" "oci.py" "version.py" "shortnames.py" \
+                      "toml_parser.py" "file.py" "http_client.py" "url.py" \
+                      "annotations.py" "gpu_detector.py" "console.py")
   for i in "${python_files[@]}"; do
     if $local_install; then
       url="ramalama/${i}"
