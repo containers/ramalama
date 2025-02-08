@@ -290,6 +290,7 @@ def get_gpu():
     if igpu_num:
         os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
 
+
 def get_env_vars():
     prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_", "INTEL_")
     env_vars = {k: v for k, v in os.environ.items() if k.startswith(prefixes)}

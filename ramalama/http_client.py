@@ -18,9 +18,7 @@ class HttpClient:
             output_file_partial = output_file + ".partial"
 
         self.file_size = self.set_resume_point(output_file_partial)
-        self.printed = False
         self.urlopen(url, headers)
-
         self.total_to_download = int(self.response.getheader('content-length', 0))
         if response_str is not None:
             response_str.append(self.response.read().decode('utf-8'))
@@ -38,9 +36,6 @@ class HttpClient:
 
         if output_file:
             os.rename(output_file_partial, output_file)
-
-        if self.printed:
-            print("\n")
 
     def urlopen(self, url, headers):
         headers["Range"] = f"bytes={self.file_size}-"
@@ -70,10 +65,13 @@ class HttpClient:
             if progress:
                 accumulated_size += size
                 if time.time() - last_update_time >= 0.1:
-                    self.now_downloaded += accumulated_size
                     self.update_progress(accumulated_size)
                     accumulated_size = 0
                     last_update_time = time.time()
+
+        if accumulated_size:
+            self.update_progress(accumulated_size)
+            print("\033[K", end="\r")
 
     def human_readable_time(self, seconds):
         hrs = int(seconds) // 3600
@@ -141,7 +139,6 @@ class HttpClient:
         progress_bar_width = self.calculate_progress_bar_width(progress_prefix, progress_suffix)
         progress_bar = self.generate_progress_bar(progress_bar_width, percentage)
         self.print_progress(progress_prefix, progress_bar, progress_suffix)
-        self.printed = True
 
     def calculate_speed(self, now_downloaded, start_time):
         now = time.time()
