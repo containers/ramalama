@@ -183,10 +183,10 @@ class Model:
 
         # Check for env var RAMALAMA_GPU_DEVICE to explicitly declare the GPU device path
         device_override=0
-        for k, v in os.environ.items():
-            if k == "RAMALAMA_GPU_DEVICE":
-                conman_args += ["--device", v]
-                device_override=1
+        gpu_device = os.environ.get("RAMALAMA_GPU_DEVICE")
+        if gpu_device:
+            conman_args += ["--device", gpu_device]
+            device_override=1
         if device_override != 1:
             if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
                 conman_args += ["--device", "/dev/dri"]
