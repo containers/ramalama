@@ -181,17 +181,24 @@ class Model:
         if hasattr(args, "port"):
             conman_args += ["-p", f"{args.port}:{args.port}"]
 
-        if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
-            conman_args += ["--device", "/dev/dri"]
+        # Check for env var RAMALAMA_GPU_DEVICE to explicitly declare the GPU device path
+        device_override=0
+        for k, v in os.environ.items():
+            if k == "RAMALAMA_GPU_DEVICE":
+                conman_args += ["--device", v]
+                device_override=1
+        if device_override != 1:
+            if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
+                conman_args += ["--device", "/dev/dri"]
 
-        if os.path.exists("/dev/kfd"):
-            conman_args += ["--device", "/dev/kfd"]
+            if os.path.exists("/dev/kfd"):
+                conman_args += ["--device", "/dev/kfd"]
 
-        for k, v in get_env_vars().items():
-            # Special case for Cuda
-            if k == "CUDA_VISIBLE_DEVICES":
-                conman_args += ["--device", "nvidia.com/gpu=all"]
-            conman_args += ["-e", f"{k}={v}"]
+            for k, v in get_env_vars().items():
+                # Special case for Cuda
+                if k == "CUDA_VISIBLE_DEVICES":
+                    conman_args += ["--device", "nvidia.com/gpu=all"]
+                conman_args += ["-e", f"{k}={v}"]
         if args.network_mode != "":
             conman_args += ["--network", args.network_mode]
         return conman_args
