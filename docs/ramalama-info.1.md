@@ -26,7 +26,7 @@ The `Runtime` field indicates which backend engine is used to execute the AI mod
     - `llama.cpp`: Uses the llama.cpp library for model execution
     - `vllm`: Uses the vLLM library for model execution
 
-The `Store` field indicates the directory path where Ramalama stores its persistent data, including downloaded models, configuration files, and cached data. By default, this is located in the user's local share directory.
+The `Store` field indicates the directory path where RamaLama stores its persistent data, including downloaded models, configuration files, and cached data. By default, this is located in the user's local share directory.
 
 The `UseContainer` field indicates whether RamaLama will use containers or run the AI Models natively.
 
