@@ -98,13 +98,16 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 | Command                                                | Description                                                |
 | ------------------------------------------------------ | ---------------------------------------------------------- |
 | [ramalama(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama.1.md)                      | primary RamaLama man page                                  |
+| [ramalama-bench(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-bench.1.md)| benchmark specified AI Model                                         |
 | [ramalama-containers(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-containers.1.md)| list all RamaLama containers                               |
+| [ramalama-convert(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-convert.1.md)      | convert AI Model from local storage to OCI Image           |
 | [ramalama-info(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-info.1.md)            | display RamaLama configuration information                 |
+| [ramalama-inspect(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-inspect.1.md)            | display RamaLama configuration information           |
 | [ramalama-list(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-login.1.md)          | login to remote registry                                   |
 | [ramalama-logout(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-logout.1.md)        | logout from remote registry                                |
+| [ramalama-perplexity(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-perplexity.1.md)| calculate perplexity for specified AI Model                |
 | [ramalama-pull(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-pull.1.md)            | pull AI Model from Model registry to local storage         |
-| [ramalama-convert(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-convert.1.md)      | convert AI Model from local storage to OCI Image           |
 | [ramalama-push(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-push.1.md)            | push AI Model from local storage to remote registry        |
 | [ramalama-rm(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-rm.1.md)                | remove AI Model from local storage                         |
 | [ramalama-run(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-run.1.md)              | run specified AI Model as a chatbot                        |

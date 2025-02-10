@@ -238,10 +238,10 @@ def configure_subcommands(parser):
     """Add subcommand parsers to the main argument parser."""
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
-    help_parser(subparsers)
     bench_parser(subparsers)
     containers_parser(subparsers)
     convert_parser(subparsers)
+    help_parser(subparsers)
     info_parser(subparsers)
     inspect_parser(subparsers)
     list_parser(subparsers)
@@ -501,7 +501,7 @@ def list_containers(args):
 
 
 def info_parser(subparsers):
-    parser = subparsers.add_parser("info", help="Display information pertaining to setup of RamaLama.")
+    parser = subparsers.add_parser("info", help="display information pertaining to setup of RamaLama.")
     parser.add_argument("--container", default=config.get('container', use_container()), help=argparse.SUPPRESS)
     parser.set_defaults(func=info_cli)
 
@@ -625,7 +625,7 @@ def list_cli(args):
 
 
 def help_parser(subparsers):
-    parser = subparsers.add_parser("help", help="help about any command")
+    parser = subparsers.add_parser("help")
     # Do not run in a container
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=help_cli)
