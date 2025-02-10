@@ -84,7 +84,9 @@ def in_existing_cache(model_name, model_tag):
 
 class Ollama(Model):
     def __init__(self, model):
-        super().__init__(model.removeprefix("ollama://"))
+        model = rm_until_substring(model, "ollama.com/library/")
+        model = rm_until_substring(model, "://")
+        super().__init__(model)
         self.type = "Ollama"
 
     def _local(self, args):
