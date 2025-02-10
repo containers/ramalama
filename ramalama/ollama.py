@@ -2,7 +2,7 @@ import os
 import urllib.request
 import json
 from ramalama.common import run_cmd, verify_checksum, download_file
-from ramalama.model import Model
+from ramalama.model import Model, rm_until_substring
 
 
 def fetch_manifest_data(registry_head, model_tag, accept):
@@ -60,7 +60,9 @@ def init_pull(repos, accept, registry_head, model_name, model_tag, models, model
 
 class Ollama(Model):
     def __init__(self, model):
-        super().__init__(model.removeprefix("ollama://"))
+        model = rm_until_substring(model, "ollama.com/library/")
+        model = rm_until_substring(model, "://")
+        super().__init__(model)
         self.type = "Ollama"
 
     def _local(self, args):

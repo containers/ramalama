@@ -486,3 +486,12 @@ def distinfo_volume():
         return ""
 
     return f"-v{path}:/usr/share/ramalama/{dist_info}:ro"
+
+
+def rm_until_substring(model, substring):
+    pos = model.find(substring)
+    if pos == -1:
+        return model
+
+    # Create a new string starting after the found substring
+    return ''.join(model[i] for i in range(pos + len(substring), len(model)))
