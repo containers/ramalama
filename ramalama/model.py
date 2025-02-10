@@ -43,6 +43,9 @@ class Model:
 
     def __init__(self, model):
         self.model = model
+        split = self.model.rsplit("/", 1)
+        self.directory = split[0] if len(split) > 1 else ""
+        self.filename = split[1] if len(split) > 1 else split[0]
 
     def login(self, args):
         raise NotImplementedError(f"ramalama login for {self.type} not implemented")

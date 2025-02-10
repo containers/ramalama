@@ -38,9 +38,6 @@ class Huggingface(Model):
         model = model.removeprefix("hf.co/")
         super().__init__(model)
         self.type = "huggingface"
-        split = self.model.rsplit("/", 1)
-        self.directory = split[0] if len(split) > 1 else ""
-        self.filename = split[1] if len(split) > 1 else split[0]
         self.hf_cli_available = is_huggingface_cli_available()
 
     def login(self, args):
