@@ -100,6 +100,16 @@ check_platform() {
   return 0
 }
 
+get_installation_dir() {
+  local sharedirs=("/opt/homebrew/share" "/usr/local/share" "/usr/share")
+  for dir in "${sharedirs[@]}"; do
+    if [ -d "$dir" ]; then
+      echo "$dir/ramalama"
+      break
+    fi
+  done
+}
+
 setup_ramalama() {
   local binfile="ramalama"
   local from_file="${binfile}"
@@ -114,13 +124,7 @@ setup_ramalama() {
   download "$url" "$to_file"
   local ramalama_bin="${1}/${binfile}"
   local sharedirs=("/opt/homebrew/share" "/usr/local/share" "/usr/share")
-  local syspath
-  for dir in "${sharedirs[@]}"; do
-    if [ -d "$dir" ]; then
-      syspath="$dir/ramalama"
-      break
-    fi
-  done
+  local syspath=$(get_installation_dir)
 
   $sudo install -m755 -d "$syspath"
   syspath="$syspath/ramalama"
@@ -154,6 +158,9 @@ main() {
         local_install="true"
         shift
         ;;
+      get_*)
+        get_installation_dir
+        return;;
       *)
         break
     esac
@@ -184,4 +191,3 @@ main() {
 }
 
 main "$@"
-
