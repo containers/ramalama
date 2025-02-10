@@ -59,7 +59,7 @@ class HttpClient:
         while True:
             data = self.response.read(1024)
             if not data:
-                break
+                return
 
             size = file.write(data)
             if progress:
@@ -69,8 +69,10 @@ class HttpClient:
                     accumulated_size = 0
                     last_update_time = time.time()
 
-        if accumulated_size:
+        if accumulated_size > 0:
             self.update_progress(accumulated_size)
+
+        if progress:
             print("\033[K", end="\r")
 
     def human_readable_time(self, seconds):
