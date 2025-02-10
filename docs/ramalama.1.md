@@ -106,7 +106,7 @@ OCI container image to run with specified AI model. By default RamaLama uses
 `quay.io/ramalama/ramalama:latest`. The --image option allows users to override
 the default.
 
-The default can be overridden in the ramalama.conf file or via the the
+The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
 RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
 
