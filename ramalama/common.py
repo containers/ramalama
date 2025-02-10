@@ -17,7 +17,6 @@ import ramalama.console as console
 
 from ramalama.http_client import HttpClient
 
-
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 
 MNT_DIR = "/mnt/models"

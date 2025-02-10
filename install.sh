@@ -100,6 +100,16 @@ check_platform() {
   return 0
 }
 
+get_installation_dir() {
+  local sharedirs=("/opt/homebrew/share" "/usr/local/share" "/usr/share")
+  for dir in "${sharedirs[@]}"; do
+    if [ -d "$dir" ]; then
+      echo "$dir/ramalama"
+      break
+    fi
+  done
+}
+
 setup_ramalama() {
   local binfile="ramalama"
   local from_file="${binfile}"
@@ -114,23 +124,17 @@ setup_ramalama() {
   download "$url" "$to_file"
   local ramalama_bin="${1}/${binfile}"
   local sharedirs=("/opt/homebrew/share" "/usr/local/share" "/usr/share")
-  local syspath
-  for dir in "${sharedirs[@]}"; do
-    if [ -d "$dir" ]; then
-      syspath="$dir/ramalama"
-      break
-    fi
-  done
+  local syspath=$(get_installation_dir)
 
   $sudo install -m755 -d "$syspath"
   syspath="$syspath/ramalama"
   $sudo install -m755 -d "$syspath"
   $sudo install -m755 "$to_file" "$ramalama_bin"
-  local python_files=("cli.py" "huggingface.py" "model.py" "ollama.py" \
-                      "common.py" "__init__.py" "quadlet.py" "kube.py" \
-                      "oci.py" "version.py" "shortnames.py" "toml_parser.py" \
-                      "file.py" "http_client.py" "url.py" "annotations.py" \
-                      "gpu_detector.py" "console.py")
+  local python_files=("cli.py" "gguf_parser.py" "huggingface.py" "model.py" \
+                      "model_inspect.py" "ollama.py" "common.py" "__init__.py" \
+                      "quadlet.py" "kube.py" "oci.py" "version.py" "shortnames.py" \
+                      "toml_parser.py" "file.py" "http_client.py" "url.py" \
+                      "annotations.py" "gpu_detector.py" "console.py")
   for i in "${python_files[@]}"; do
     if $local_install; then
       url="ramalama/${i}"
@@ -154,6 +158,9 @@ main() {
         local_install="true"
         shift
         ;;
+      get_*)
+        get_installation_dir
+        return;;
       *)
         break
     esac
@@ -184,4 +191,3 @@ main() {
 }
 
 main "$@"
-

@@ -11,7 +11,6 @@ class URL(Model):
         super().__init__(model)
         split = self.model.rsplit("/", 1)
         self.directory = split[0].removeprefix("/") if len(split) > 1 else ""
-        self.filename = split[1] if len(split) > 1 else split[0]
 
     def pull(self, args):
         model_path = self.model_path(args)

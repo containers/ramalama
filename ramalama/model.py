@@ -15,6 +15,8 @@ from ramalama.version import version
 from ramalama.quadlet import Quadlet
 from ramalama.kube import Kube
 from ramalama.common import MNT_DIR, MNT_FILE
+from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
+from ramalama.gguf_parser import GGUFInfoParser
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
 
@@ -41,6 +43,9 @@ class Model:
 
     def __init__(self, model):
         self.model = model
+        split = self.model.rsplit("/", 1)
+        self.directory = split[0] if len(split) > 1 else ""
+        self.filename = split[1] if len(split) > 1 else split[0]
 
     def login(self, args):
         raise NotImplementedError(f"ramalama login for {self.type} not implemented")
@@ -301,6 +306,16 @@ class Model:
 
         return model_path
 
+    def get_model_registry(self, args):
+        model_path = self.get_model_path(args)
+        if not model_path or args.dryrun:
+            return ""
+
+        parts = model_path.replace(args.store, "").split(os.sep)
+        if len(parts) < 3:
+            return ""
+        return parts[2]
+
     def build_exec_args_bench(self, args, model_path):
         exec_model_path = MNT_FILE if args.container else model_path
         exec_args = ["llama-bench"]
@@ -466,6 +481,18 @@ class Model:
 
     def check_valid_model_path(self, relative_target_path, model_path):
         return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
+
+    def inspect(self, args):
+        model_name = self.filename
+        model_path = self.get_model_path(args)
+        model_registry = self.get_model_registry(args)
+
+        if GGUFInfoParser.is_model_gguf(model_path):
+            gguf_info: GGUFModelInfo = GGUFInfoParser.parse(model_name, model_registry, model_path, args)
+            print(gguf_info.serialize(json=args.json, all=args.all))
+            return
+
+        print(ModelInfoBase(model_name, model_registry, model_path).serialize(json=args.json))
 
 
 def dry_run(args):

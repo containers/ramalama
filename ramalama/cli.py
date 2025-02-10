@@ -243,6 +243,7 @@ def configure_subcommands(parser):
     containers_parser(subparsers)
     convert_parser(subparsers)
     info_parser(subparsers)
+    inspect_parser(subparsers)
     list_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
@@ -994,3 +995,16 @@ def perplexity_parser(subparsers):
 def perplexity_cli(args):
     model = New(args.MODEL, args)
     model.perplexity(args)
+
+
+def inspect_parser(subparsers):
+    parser = subparsers.add_parser("inspect", help="inspect an AI Model")
+    parser.add_argument("MODEL")  # positional argument
+    parser.add_argument("--all", dest="all", action="store_true", help="display all available information of AI Model")
+    parser.add_argument("--json", dest="json", action="store_true", help="display AI Model information in JSON format")
+    parser.set_defaults(func=inspect_cli)
+
+
+def inspect_cli(args):
+    model = New(args.MODEL, args)
+    model.inspect(args)

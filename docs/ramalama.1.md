@@ -141,6 +141,7 @@ show RamaLama version
 | [ramalama-bench(1)](ramalama-bench.1.md)          | benchmark specified AI Model                               |
 | [ramalama-convert(1)](ramalama-convert.1.md)      | convert AI Models from local storage to OCI Image          |
 | [ramalama-info(1)](ramalama-info.1.md)            | Display RamaLama configuration information                 |
+| [ramalama-inspect(1)](ramalama-inspect.1.md)      | inspect the specified AI Model                             |
 | [ramalama-list(1)](ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](ramalama-login.1.md)          | login to remote registry                                   |
 | [ramalama-logout(1)](ramalama-logout.1.md)        | logout from remote registry                                |
