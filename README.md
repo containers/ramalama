@@ -1,4 +1,4 @@
-![RAMALAMA logo](logos/PNG/ramalama-logo-full-vertical-added-bg.png)
+![RAMALAMA logo](https://github.com/containers/ramalama/raw/main/logos/PNG/ramalama-logo-full-vertical-added-bg.png)
 
 # RamaLama
 
