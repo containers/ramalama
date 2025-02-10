@@ -66,7 +66,7 @@ def in_existing_cache(model_name, model_tag):
         return None
     default_ollama_caches=[
         os.path.join(os.environ['HOME'], '.ollama/models'),
-        '/usr/share/ollama/.ollama/models'
+        '/usr/share/ollama/.ollama/models',
         f'C:\\Users\\{os.getlogin()}\\.ollama\\models'
     ]
 
