@@ -429,7 +429,7 @@ def human_duration(d):
         return f"{d // 31536000} years"
 
 
-def list_files_by_modification():
+def list_files_by_modification(args):
     paths = Path().rglob("*")
     models = []
     for path in paths:
@@ -438,7 +438,11 @@ def list_files_by_modification():
                 path = str(path).replace("file/", "file:///")
                 perror(f"{path} does not exist")
                 continue
-        models.append(path)
+        if os.path.exists(path):
+            models.append(path)
+        else:
+            print(f"Broken symlink found in: {args.store}/models/{path} \nAttempting removal")
+            New(str(path).replace("/", "://", 1), args).remove(args)
 
     return sorted(models, key=lambda p: os.path.getmtime(p), reverse=True)
 
@@ -536,7 +540,7 @@ def _list_models(args):
     models = []
 
     # Collect model data
-    for path in list_files_by_modification():
+    for path in list_files_by_modification(args):
         if path.is_symlink():
             if str(path).startswith("file/"):
                 name = str(path).replace("/", ":///", 1)
