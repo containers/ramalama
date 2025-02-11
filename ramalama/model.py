@@ -165,6 +165,7 @@ class Model:
             "--env=HOME=/tmp",
             "--cap-drop=all",
             "--security-opt=no-new-privileges",
+            "--init",
         ]
 
         if os.path.basename(args.engine) == "podman":
