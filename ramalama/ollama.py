@@ -79,7 +79,8 @@ def in_existing_cache(model_name, model_tag):
                     if layer["mediaType"] == "application/vnd.ollama.image.model":
                         layer_digest = layer["digest"]
                         ollama_digest_path = os.path.join(cache_dir, 'blobs', layer_digest)
-                        return str(ollama_digest_path).replace(':','-')
+                        if os.path.exists(str(ollama_digest_path).replace(':','-')):
+                          return str(ollama_digest_path).replace(':','-')
     return None
 
 class Ollama(Model):
