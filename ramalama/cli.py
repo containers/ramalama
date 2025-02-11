@@ -438,7 +438,8 @@ def list_files_by_modification():
                 path = str(path).replace("file/", "file:///")
                 perror(f"{path} does not exist")
                 continue
-        models.append(path)
+        if os.path.exists(path):
+            models.append(path)
 
     return sorted(models, key=lambda p: os.path.getmtime(p), reverse=True)
 
