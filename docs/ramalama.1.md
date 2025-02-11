@@ -29,9 +29,24 @@ used within the VM.
 
 Default settings for flags are defined in `ramalama.conf(5)`.
 
-RamaLama supports multiple AI model registries types called transports. Supported transports:
+## SECURITY
+
+### Test and run your models more securely
+
+Because RamaLama defaults to running AI models inside of rootless containers using Podman on Docker. These containers isolate the AI models from information on the underlying host. With RamaLama containers, the AI model is mounted as a volume into the container in read/only mode. This results in the process running the model, llama.cpp or vLLM, being isolated from the host.  In addition, since `ramalama run` uses the --network=none option, the container can not reach the network and leak any information out of the system. Finally, containers are run with --rm options which means that any content written during the running of the container is wiped out when the application exits.
+
+### Here’s how RamaLama delivers a robust security footprint:
+
+    ✅ Container Isolation – AI models run within isolated containers, preventing direct access to the host system.
+    ✅ Read-Only Volume Mounts – The AI model is mounted in read-only mode, meaning that processes inside the container cannot modify host files.
+    ✅ No Network Access – ramalama run is executed with --network=none, meaning the model has no outbound connectivity for which information can be leaked.
+    ✅ Auto-Cleanup – Containers run with --rm, wiping out any temporary data once the session ends.
+    ✅ Drop All Linux Capabilities – No access to Linux capabilities to attack the underlying host.
+    ✅ No New Privileges – Linux Kernel feature which disables container processes from gaining additional privileges.
 
 ## MODEL TRANSPORTS
+
+RamaLama supports multiple AI model registries types called transports. Supported transports:
 
 | Transports    | Prefix | Web Site                                            |
 | ------------- | ------ | --------------------------------------------------- |
@@ -156,6 +171,15 @@ show RamaLama version
 
 ## CONFIGURATION FILES
 
+**ramalama.conf** (`/usr/share/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf`, `$HOME/.config/ramalama/ramalama.conf`)
+
+RamaLama has builtin defaults for command line options. These defaults can be overridden using the ramalama.conf configuration files.
+
+Distributions ship the `/usr/share/ramalama/ramalama.conf` file with their default settings. Administrators can override fields in this file by creating the `/etc/ramalama/ramalama.conf` file.  Users can further modify defaults by creating the `$HOME/.config/ramalama/ramalama.conf` file. RamaLama merges its builtin defaults with the specified fields from these files, if they exist. Fields specified in the users file override the administrator's file, which overrides the distribution's file, which override the built-in defaults.
+
+RamaLama uses builtin defaults if no ramalama.conf file is found.
+
+If the **RAMALAMA_CONFIG** environment variable is set, then its value is used for the ramalama.conf file rather than the default.
 
 ## SEE ALSO
 **[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**, **docker(1)**, **[ramalama.conf(5)](ramalama.conf.5.md)**
