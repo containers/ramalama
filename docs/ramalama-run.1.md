@@ -34,6 +34,9 @@ size of the prompt context (default: 2048, 0 = loaded from model)
 #### **--help**, **-h**
 show this help message and exit
 
+#### **--keepalive**
+duration to keep a model loaded (e.g. 5m)
+
 #### **--name**, **-n**
 name of the container to run the Model in
 
@@ -70,9 +73,9 @@ ramalama run granite
 >
 ```
 
-Run command with local downloaoded model
+Run command with local downloaded model for 10 minutes
 ```
-ramalama run file:///tmp/mymodel
+ramalama run --keepalive 10m file:///tmp/mymodel
 >
 ```
 
@@ -89,9 +92,15 @@ This program is a Python script that allows the user to interact with a terminal
  [end of text]
 ```
 
+## Exit Codes:
+
+0   Success
+124 RamaLama command did not exit within the keepalive time.
+
+
 ## NVIDIA CUDA Support
 
-See **[ramalama-cuda(7)](ramalama.7.md)** for setting up the host Linux system for CUDA support.
+See **[ramalama-cuda(7)](ramalama-cuda.7.md)** for setting up the host Linux system for CUDA support.
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**

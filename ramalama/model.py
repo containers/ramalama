@@ -188,11 +188,11 @@ class Model:
             conman_args += ["-p", f"{args.port}:{args.port}"]
 
         # Check for env var RAMALAMA_DEVICE to explicitly declare the GPU device path
-        device_override=0
+        device_override = 0
         gpu_device = os.environ.get("RAMALAMA_DEVICE")
         if gpu_device:
             conman_args += ["--device", gpu_device]
-            device_override=1
+            device_override = 1
         if device_override != 1:
             if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
                 conman_args += ["--device", "/dev/dri"]
@@ -265,6 +265,8 @@ class Model:
         prompt = self.build_prompt(args)
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_run(args, model_path, prompt)
+        if args.keepalive:
+            exec_args = ["timeout", args.keepalive] + exec_args
         self.execute_model(model_path, exec_args, args)
 
     def perplexity(self, args):
