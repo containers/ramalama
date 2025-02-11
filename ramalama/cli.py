@@ -7,6 +7,7 @@ import subprocess
 import platform
 import time
 import ramalama.oci
+import ramalama.rag
 
 from ramalama.huggingface import Huggingface
 from ramalama.common import (
@@ -250,6 +251,7 @@ def configure_subcommands(parser):
     perplexity_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
+    rag_parser(subparsers)
     rm_parser(subparsers)
     run_parser(subparsers)
     serve_parser(subparsers)
@@ -916,6 +918,33 @@ def version_parser(subparsers):
     # Do not run in a container
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=print_version)
+
+
+def rag_parser(subparsers):
+    parser = subparsers.add_parser(
+        "rag",
+        help="generate and convert retrieval augmented generation (RAG) data from provided documents into an OCI Image",
+    )
+    parser.add_argument(
+        "--network-mode",
+        type=str,
+        default="none",
+        help="set the network mode for the container",
+    )
+    parser.add_argument(
+        "PATH",
+        nargs="*",
+        help="""\
+Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
+formatted files to be processed""",
+    )
+    parser.add_argument("IMAGE", help="OCI Image name to contain processed rag data")
+    parser.set_defaults(func=rag_cli)
+
+
+def rag_cli(args):
+    rag = ramalama.rag.Rag(args.IMAGE)
+    rag.generate(args)
 
 
 def rm_parser(subparsers):

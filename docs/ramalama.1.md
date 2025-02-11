@@ -163,6 +163,7 @@ show RamaLama version
 | [ramalama-perplexity(1)](ramalama-perplexity.1.md)| calculate the perplexity value of an AI Model              |
 | [ramalama-pull(1)](ramalama-pull.1.md)            | pull AI Models from Model registries to local storage      |
 | [ramalama-push(1)](ramalama-push.1.md)            | push AI Models from local storage to remote registries     |
+| [ramalama-rag(1)](ramalama-rag.1.md)              | generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image |
 | [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Models from local storage                        |
 | [ramalama-run(1)](ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
 | [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
