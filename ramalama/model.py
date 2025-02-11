@@ -186,9 +186,9 @@ class Model:
         if hasattr(args, "port"):
             conman_args += ["-p", f"{args.port}:{args.port}"]
 
-        # Check for env var RAMALAMA_GPU_DEVICE to explicitly declare the GPU device path
+        # Check for env var RAMALAMA_DEVICE to explicitly declare the GPU device path
         device_override=0
-        gpu_device = os.environ.get("RAMALAMA_GPU_DEVICE")
+        gpu_device = os.environ.get("RAMALAMA_DEVICE")
         if gpu_device:
             conman_args += ["--device", gpu_device]
             device_override=1
