@@ -60,8 +60,14 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install podman bats bash codespell python3-argcomplete pipx
+           sudo apt-get install podman bats bash codespell python3-argcomplete pipx git cmake
            make install-requirements
+           git clone https://github.com/ggerganov/llama.cpp
+           cd llama.cpp
+           git submodule update --init --recursive
+           cmake -B build -DGGML_NATIVE=OFF
+           cmake --build build --config Release
+           sudo cmake --install build
 
       - name: Upgrade to podman 5
         run: |
@@ -134,7 +140,7 @@ jobs:
       - name: install golang
         shell: bash
         run: |
-           brew install go bats bash jq
+           brew install go bats bash jq llama.cpp
            make install-requirements
       - name: Run a one-line script
         shell: bash
