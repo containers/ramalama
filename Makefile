@@ -94,7 +94,7 @@ build_multi_arch:
 
 .PHONY: build-rag
 build-rag:
-	podman build --build-arg IMAGE=${IMAGE} --build-arg GPU=${GPU} -t ${IMAGE}-rag container-images/pragmatic
+	podman build --no-cache --build-arg IMAGE=${IMAGE} --build-arg GPU=${GPU} -t ${IMAGE}-rag container-images/pragmatic
 
 .PHONY: install-docs
 install-docs: docs
