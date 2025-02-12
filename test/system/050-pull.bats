@@ -31,20 +31,20 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama pull huggingface" {
-    run_ramalama pull hf://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+    run_ramalama pull hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
-    is "$output" ".*afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k" "image was actually pulled locally"
-    run_ramalama rm hf://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+    is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
+    run_ramalama rm hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
-    run_ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+    run_ramalama pull huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
-    is "$output" ".*afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k" "image was actually pulled locally"
-    run_ramalama rm huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+    is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
+    run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
-    RAMALAMA_TRANSPORT=huggingface run_ramalama pull afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+    RAMALAMA_TRANSPORT=huggingface run_ramalama pull Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
-    is "$output" ".*afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k" "image was actually pulled locally"
-    run_ramalama rm huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
+    is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
+    run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
     run_ramalama pull hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0
     run_ramalama list

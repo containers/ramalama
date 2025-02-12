@@ -1,25 +1,33 @@
 #!/bin/bash
 
+available() {
+  command -v "$1" >/dev/null
+}
+
+dnf_install_intel_gpu() {
+  local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel" \
+                  "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero" \
+                  "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
+  dnf install -y "${rpm_list[@]}" "${intel_rpms[@]}"
+
+  # shellcheck source=/dev/null
+  . /opt/intel/oneapi/setvars.sh
+}
+
 dnf_install() {
   local rpm_list=("python3" "python3-pip" "python3-argcomplete" \
                   "python3-dnf-plugin-versionlock" "gcc-c++" "cmake" "vim" \
                   "procps-ng" "git" "dnf-plugins-core" "libcurl-devel")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
-  local blas_rpms=("openblas-devel")
-  local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel" \
-                  "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero" \
-                  "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
-
-  # All the UBI-based ones
   if [ "$containerfile" = "ramalama" ] || [ "$containerfile" = "rocm" ] || \
-    [ "$containerfile" = "vulkan" ]; then
+    [ "$containerfile" = "vulkan" ]; then # All the UBI-based ones
     local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
     dnf install -y "$url"
     crb enable # this is in epel-release, can only install epel-release via url
     dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
     # x86_64 and aarch64 means kompute
-    if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ] ;then
+    if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
       dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
       url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
       dnf config-manager --add-repo "$url"
@@ -29,26 +37,25 @@ dnf_install() {
       rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
       dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
     else
-      dnf install -y "${blas_rpms[@]}"
+      dnf install -y "openblas-devel"
     fi
-  fi
 
-  if [ "$containerfile" = "asahi" ]; then
+    if [ "$containerfile" = "rocm" ]; then
+      dnf install -y rocm-dev hipblas-devel rocblas-devel
+    fi
+  elif [ "$containerfile" = "asahi" ]; then
     dnf copr enable -y @asahi/fedora-remix-branding
     dnf install -y asahi-repos
     dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}" "${rpm_list[@]}"
-  elif [ "$containerfile" = "rocm" ]; then
-    dnf install -y rocm-dev hipblas-devel rocblas-devel
   elif [ "$containerfile" = "cuda" ]; then
     dnf install -y "${rpm_list[@]}" gcc-toolset-12
     # shellcheck disable=SC1091
     . /opt/rh/gcc-toolset-12/enable
+  elif [ "$containerfile" = "intel-gpu" ]; then
+    dnf_install_intel_gpu
   fi
 
-  if [ "$containerfile" = "intel-gpu" ]; then
-    dnf install -y "${rpm_list[@]}" "${intel_rpms[@]}"
-    source /opt/intel/oneapi/setvars.sh
-  fi
+  dnf -y clean all
 }
 
 cmake_check_warnings() {
@@ -120,17 +127,18 @@ main() {
 
   local containerfile="$1"
   local install_prefix
-  local uname_m="$(uname -m)"
+  local uname_m
+  uname_m="$(uname -m)"
   set_install_prefix
   local common_flags
   configure_common_flags
   common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
-  dnf_install
+  available dnf && dnf_install
   clone_and_build_whisper_cpp
   common_flags+=("-DLLAMA_CURL=ON")
   case "$containerfile" in
     ramalama)
-      if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ] ;then
+      if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
         common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
       else
         common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
@@ -139,7 +147,6 @@ main() {
   esac
 
   clone_and_build_llama_cpp
-  dnf -y clean all
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
   ldconfig # needed for libraries
 }
