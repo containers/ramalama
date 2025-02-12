@@ -26,19 +26,30 @@ HTTP_RANGE_NOT_SATISFIABLE = 416
 DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
 
+_engine = ""
+
+
 def container_manager():
+    global _engine
+    if _engine != "":
+        if _engine == "None":
+            return None
+        return _engine
+
+    _engine = "None"
     engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
     if engine is not None:
-        return engine
+        _engine = engine
+        return _engine
 
     if available("podman"):
         if sys.platform != "darwin" or is_podman_machine_running_with_krunkit():
-            return "podman"
-
-        return None
+            _engine = "podman"
+        return _engine
 
     if available("docker"):
-        return "docker"
+        _engine = "docker"
+        return _engine
 
     return None
 
