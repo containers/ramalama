@@ -821,6 +821,7 @@ def _run(parser):
         help="require HTTPS and verify certificates when contacting registries",
     )
 
+
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     _run(parser)

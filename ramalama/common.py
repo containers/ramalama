@@ -26,17 +26,14 @@ HTTP_RANGE_NOT_SATISFIABLE = 416
 DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
 
-_engine = ""
+_engine = -1  # -1 means cached variable not set yet
 
 
 def container_manager():
     global _engine
-    if _engine != "":
-        if _engine == "None":
-            return None
+    if _engine != -1:
         return _engine
 
-    _engine = "None"
     engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
     if engine is not None:
         _engine = engine
@@ -51,7 +48,8 @@ def container_manager():
         _engine = "docker"
         return _engine
 
-    return None
+    _engine = None
+    return _engine
 
 
 def is_podman_machine_running_with_krunkit():
