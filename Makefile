@@ -24,10 +24,6 @@ help:
 	@echo
 	@echo "  - make build-rag IMAGE=quay.io/ramalama/ramalama GPU=ramalama"
 	@echo
-	@echo "Build Docling Container Image"
-	@echo
-	@echo "  - make build-docling IMAGE=quay.io/ramalama/ramalama GPU=ramalama"
-	@echo
 	@echo "Build docs"
 	@echo
 	@echo "  - make docs"
@@ -99,10 +95,6 @@ build_multi_arch:
 .PHONY: build-rag
 build-rag:
 	podman build --build-arg IMAGE=${IMAGE} --build-arg GPU=${GPU} -t ${IMAGE}-rag container-images/pragmatic
-
-.PHONY: build-docling
-build-docling:
-	podman build --build-arg IMAGE=${IMAGE} --build-arg CONTENT=docling --build-arg GPU=${GPU} -t ${IMAGE}-docling container-images/pragmatic
 
 .PHONY: install-docs
 install-docs: docs
