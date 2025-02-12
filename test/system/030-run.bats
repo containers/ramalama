@@ -64,8 +64,16 @@ load helpers
 }
 
 @test "ramalama run tiny with prompt" {
-      skip_if_notlocal
-      run_ramalama run --name foobar tiny "Write a 1 line poem"
+    skip_if_notlocal
+    run_ramalama run --name foobar tiny "Write a 1 line poem"
+}
+
+@test "ramalama run --keepalive" {
+    # FIXME: the following skips can be removed, once we install llama-run on
+    # test systems.
+    skip_if_nocontainer 
+    skip_if_darwin
+    run_ramalama 124 run --keepalive 1s tiny
 }
 
 # vim: filetype=sh

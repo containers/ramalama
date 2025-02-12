@@ -64,10 +64,10 @@ def init_pull(repos, accept, registry_head, model_name, model_tag, models, model
 def in_existing_cache(model_name, model_tag):
     if not available("ollama"):
         return None
-    default_ollama_caches=[
+    default_ollama_caches = [
         os.path.join(os.environ['HOME'], '.ollama/models'),
         '/usr/share/ollama/.ollama/models',
-        f'C:\\Users\\{os.getlogin()}\\.ollama\\models'
+        f'C:\\Users\\{os.getlogin()}\\.ollama\\models',
     ]
 
     for cache_dir in default_ollama_caches:
@@ -79,9 +79,10 @@ def in_existing_cache(model_name, model_tag):
                     if layer["mediaType"] == "application/vnd.ollama.image.model":
                         layer_digest = layer["digest"]
                         ollama_digest_path = os.path.join(cache_dir, 'blobs', layer_digest)
-                        if os.path.exists(str(ollama_digest_path).replace(':','-')):
-                          return str(ollama_digest_path).replace(':','-')
+                        if os.path.exists(str(ollama_digest_path).replace(':', '-')):
+                            return str(ollama_digest_path).replace(':', '-')
     return None
+
 
 class Ollama(Model):
     def __init__(self, model):

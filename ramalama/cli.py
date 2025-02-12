@@ -800,6 +800,16 @@ def _run(parser):
         help="size of the prompt context (0 = loaded from model)",
     )
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
+    # Disable network access by default, and give the option to pass any supported network mode into
+    # podman if needed:
+    # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
+    parser.add_argument(
+        "--network-mode",
+        type=str,
+        default="none",
+        help="set the network mode for the container",
+    )
+
     parser.add_argument("--seed", help="override random seed")
     parser.add_argument(
         "--temp", default=config.get('temp', "0.8"), help="temperature of the response from the AI model"
@@ -811,23 +821,15 @@ def _run(parser):
         help="require HTTPS and verify certificates when contacting registries",
     )
 
-
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     _run(parser)
-    # Disable network access by default, and give the option to pass any supported network mode into
-    # podman if needed:
-    # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
-    parser.add_argument(
-        "--network-mode",
-        type=str,
-        default="none",
-        help="set the network mode for the container",
-    )
+    parser.add_argument("--keepalive", type=str, help="Duration to keep a model loaded (e.g. 5m)")
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument(
         "ARGS", nargs="*", help="Overrides the default prompt, and the output is returned without entering the chatbot"
     )
+    parser._actions.sort(key=lambda x: x.option_strings)
     parser.set_defaults(func=run_cli)
 
 
@@ -848,12 +850,6 @@ def serve_parser(subparsers):
     )
     parser.add_argument(
         "-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on"
-    )
-    parser.add_argument(
-        "--network-mode",
-        type=str,
-        default="",
-        help="set the network mode for the container",
     )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
