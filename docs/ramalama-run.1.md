@@ -40,7 +40,7 @@ duration to keep a model loaded (e.g. 5m)
 #### **--name**, **-n**
 name of the container to run the Model in
 
-#### **--network-mode**=*none*
+#### **--network**=*none*
 set the network mode for the container
 
 #### **--seed**=

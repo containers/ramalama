@@ -457,7 +457,7 @@ def bench_cli(args):
 def bench_parser(subparsers):
     parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
     parser.add_argument(
-        "--network-mode",
+        "--network",
         type=str,
         default="none",
         help="set the network mode for the container",
@@ -687,7 +687,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
     # https://docs.podman.io/en/latest/markdown/podman-build.1.html#network-mode-net
     parser.add_argument(
-        "--network-mode",
+        "--network",
         type=str,
         default="none",
         help="sets the configuration for network namespaces when handling RUN instructions",
@@ -723,7 +723,7 @@ def push_parser(subparsers):
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--network-mode",
+        "--network",
         type=str,
         default="none",
         help="set the network mode for the container",
@@ -806,7 +806,7 @@ def _run(parser):
     # podman if needed:
     # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
     parser.add_argument(
-        "--network-mode",
+        "--network",
         type=str,
         default="none",
         help="set the network mode for the container",
@@ -926,7 +926,7 @@ def rag_parser(subparsers):
         help="generate and convert retrieval augmented generation (RAG) data from provided documents into an OCI Image",
     )
     parser.add_argument(
-        "--network-mode",
+        "--network",
         type=str,
         default="none",
         help="set the network mode for the container",

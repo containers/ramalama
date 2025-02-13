@@ -64,7 +64,7 @@ IP address for llama.cpp to listen on.
 #### **--name**, **-n**
 Name of the container to run the Model in.
 
-#### **--network-mode**=*""*
+#### **--network**=*""*
 set the network mode for the container
 
 #### **--port**, **-p**

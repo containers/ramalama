@@ -179,7 +179,7 @@ LABEL {ociimage_car}
                     self.conman,
                     "build",
                     "--no-cache",
-                    f"--network={args.network_mode}",
+                    f"--network={args.network}",
                     "-q",
                     "-f",
                     containerfile.name,
