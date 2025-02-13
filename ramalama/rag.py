@@ -31,7 +31,7 @@ COPY {base} /vector.db
                     args.engine,
                     "build",
                     "--no-cache",
-                    f"--network={args.network_mode}",
+                    f"--network={args.network}",
                     "-q",
                     "-t",
                     target,
@@ -58,8 +58,8 @@ COPY {base} /vector.db
         rag_image = ":".join(s)
 
         exec_args = [args.engine, "run", "--rm"]
-        if args.network_mode != "":
-            exec_args += ["--network", args.network_mode]
+        if args.network != "":
+            exec_args += ["--network", args.network]
         for path in args.PATH:
             if os.path.exists(path):
                 fpath = os.path.realpath(path)

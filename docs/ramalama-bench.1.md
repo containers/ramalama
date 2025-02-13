@@ -28,7 +28,7 @@ URL support means if a model is on a web site or even on your local system, you 
 #### **--help**, **-h**
 show this help message and exit
 
-#### **--network-mode**=*none*
+#### **--network**=*none*
 set the network mode for the container
 
 ## DESCRIPTION

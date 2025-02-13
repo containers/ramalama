@@ -22,7 +22,7 @@ positional arguments:
 #### **--help**, **-h**
 Print usage message
 
-#### **--network-mode**=*none*
+#### **--network**=*none*
 sets the configuration for network namespaces when handling RUN instructions
 
 ## EXAMPLES
