@@ -13,7 +13,7 @@ class HttpClient:
     def __init__(self):
         pass
 
-    def init(self, url, headers, output_file, progress, response_str=None):
+    def init(self, url, headers, output_file, show_progress, response_str=None):
         output_file_partial = None
         if output_file:
             output_file_partial = output_file + ".partial"
@@ -33,7 +33,7 @@ class HttpClient:
 
             self.now_downloaded = 0
             self.start_time = time.time()
-            self.perform_download(out.file, progress)
+            self.perform_download(out.file, show_progress)
 
         if output_file:
             os.rename(output_file_partial, output_file)
@@ -46,7 +46,7 @@ class HttpClient:
         if self.response.status not in (200, 206):
             raise IOError(f"Request failed: {self.response.status}")
 
-    def perform_download(self, file, progress):
+    def perform_download(self, file, show_progress):
         self.total_to_download += self.file_size
         self.now_downloaded = 0
         self.start_time = time.time()
@@ -58,7 +58,7 @@ class HttpClient:
                 return
 
             size = file.write(data)
-            if progress:
+            if show_progress:
                 accumulated_size += size
                 if time.time() - last_update_time >= 0.1:
                     self.update_progress(accumulated_size)
@@ -68,7 +68,7 @@ class HttpClient:
         if accumulated_size > 0:
             self.update_progress(accumulated_size)
 
-        if progress:
+        if show_progress:
             print("\033[K", end="\r")
 
     def human_readable_time(self, seconds):

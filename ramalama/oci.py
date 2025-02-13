@@ -283,6 +283,8 @@ Tagging build instead"""
             raise NotImplementedError("OCI images require a container engine like Podman or Docker")
 
         conman_args = [args.engine, "pull"]
+        if args.quiet:
+            conman_args.extend(['--quiet'])
         if str(args.tlsverify).lower() == "false":
             conman_args.extend([f"--tls-verify={args.tlsverify}"])
         if args.authfile:
