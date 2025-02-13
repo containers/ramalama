@@ -1,6 +1,8 @@
 FROM registry.access.redhat.com/ubi9/ubi:9.5-1739449058
 
-COPY ../scripts /scripts
-RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "vulkan"
+ENV MODEL_PATH=/mnt/models/model.file
+
+COPY --chmod=755 ../scripts /usr/bin
+
+RUN /usr/bin/build_llama_and_whisper.sh "ramalama"
 
