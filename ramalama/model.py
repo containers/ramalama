@@ -223,6 +223,9 @@ class Model:
                 and os.path.exists("/dev/dri")
             )
         ):
+            if args.ngl < 0:
+                args.ngl = 999
+
             if runner:
                 gpu_args += ["--ngl"]  # double dash
             else:
