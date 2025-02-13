@@ -168,6 +168,19 @@ class Model:
             "--init",
         ]
 
+        container_labels = []
+        if hasattr(args, "MODEL"):
+            container_labels += ["--label", f"ai.ramalama.model={args.MODEL}"]
+        if hasattr(args, "engine"):
+            container_labels += ["--label", f"ai.ramalama.engine={args.engine}"]
+        if hasattr(args, "runtime"):
+            container_labels += ["--label", f"ai.ramalama.runtime={args.runtime}"]
+        if hasattr(args, "port"):
+            container_labels += ["--label", f"ai.ramalama.port={args.port}"]
+        if hasattr(args, "subcommand"):
+            container_labels += ["--label", f"ai.ramalama.command={args.subcommand}"]
+        conman_args.extend(container_labels)
+
         if os.path.basename(args.engine) == "podman":
             conman_args += ["--pull=newer"]
             if args.podman_keep_groups:
