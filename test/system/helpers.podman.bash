@@ -1001,7 +1001,9 @@ function is() {
     # This is a multi-line message, which may in turn contain multi-line
     # output, so let's format it ourself to make it more readable.
     local -a actual_split
-    readarray -t actual_split <<<"$actual"
+    while IFS= read -r line; do
+      actual_split+=("$line")
+    done <<< "$actual"
     printf "#/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n" >&2
     printf "#|     FAIL: $testname\n"                          >&2
     printf "#| expected: '%s'%s\n" "$expect" "$is_expr"        >&2
