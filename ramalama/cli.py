@@ -233,6 +233,12 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         help="store AI Models in the specified directory",
     )
     parser.add_argument("-v", "--version", dest="version", action="store_true", help="show RamaLama version")
+    # parser.add_argument("--device",
+    #     dest="device",
+    #     action='append',
+    #     type=str,
+    #     # nargs=1,
+    #     help="Device to leak in to the running container")
 
 
 def configure_subcommands(parser):
@@ -801,6 +807,11 @@ def _run(parser):
         default=config.get('ctx_size', 2048),
         help="size of the prompt context (0 = loaded from model)",
     )
+    parser.add_argument("--device",
+        dest="device",
+        action='append',
+        type=str,
+        help="Device to leak in to the running container")
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     # Disable network access by default, and give the option to pass any supported network mode into
     # podman if needed:
@@ -811,7 +822,12 @@ def _run(parser):
         default="none",
         help="set the network mode for the container",
     )
-
+    parser.add_argument(
+        "--privileged",
+        dest="privileged",
+        action="store_true",
+        help="give extended privileges to container"
+    )
     parser.add_argument("--seed", help="override random seed")
     parser.add_argument(
         "--temp", default=config.get('temp', "0.8"), help="temperature of the response from the AI model"
