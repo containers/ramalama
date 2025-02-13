@@ -9,8 +9,7 @@ load helpers
     run_ramalama 2 info bogus
     is "$output" ".*ramalama: error: unrecognized arguments: bogus"
 
-    run_ramalama --version
-    run_ramalama -v
+    run_ramalama version
     version=$(cut -f3 -d " " <<<"$output")
 
     run_ramalama version

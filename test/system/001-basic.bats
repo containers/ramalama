@@ -17,9 +17,6 @@ function setup() {
 @test "ramalama version" {
     run_ramalama version
     is "$output" "ramalama version .*"               "'Version line' in output with version command"
-
-    run_ramalama -v
-    is "$output" "ramalama version .*"               "'Version line' in output with -v "
 }
 
 # vim: filetype=sh

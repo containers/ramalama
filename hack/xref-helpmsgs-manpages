@@ -116,7 +116,6 @@ OPTIONS:
   -n, --dry-run  make no actual changes
 
   --help         display this message
-  --version      display program name and version
 END_USAGE
 
     exit;

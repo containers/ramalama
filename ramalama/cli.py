@@ -208,7 +208,6 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         default=config.get("store"),
         help="store AI Models in the specified directory",
     )
-    parser.add_argument("-v", "--version", dest="version", action="store_true", help="show RamaLama version")
     verbosity_group = parser.add_mutually_exclusive_group()
     verbosity_group.add_argument("--quiet", "-q", dest="quiet", action="store_true", help="reduce output.")
     verbosity_group.add_argument(
