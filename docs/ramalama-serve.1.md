@@ -46,6 +46,9 @@ The default is TRUE. The --nocontainer option forces this option to False.
 
 Use the `ramalama stop` command to stop the container running the served ramalama Model.
 
+#### **--device**
+declare host device to leak into the container 
+
 #### **--generate**=type
 Generate specified configuration format for running the AI Model as a service
 
@@ -69,6 +72,9 @@ set the network mode for the container
 
 #### **--port**, **-p**
 port for AI Model server to listen on
+
+#### **--privileged**
+give extended privileges to container
 
 #### **--seed**=
 Specify seed rather than using random seed model interaction

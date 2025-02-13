@@ -31,6 +31,9 @@ path of the authentication file for OCI registries
 #### **--ctx-size**, **-c**
 size of the prompt context (default: 2048, 0 = loaded from model)
 
+#### **--device**
+declare host device to leak into the container 
+
 #### **--help**, **-h**
 show this help message and exit
 
@@ -42,6 +45,9 @@ name of the container to run the Model in
 
 #### **--network**=*none*
 set the network mode for the container
+
+#### **--privileged**
+give extended privileges to container
 
 #### **--seed**=
 Specify seed rather than using random seed model interaction
