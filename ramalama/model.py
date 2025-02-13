@@ -189,7 +189,6 @@ class Model:
 
         if args.device:
             for device_arg in args.device:
-                print(device_arg)
                 conman_args += ["--device", device_arg]
         else:
             if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):

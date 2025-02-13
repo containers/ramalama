@@ -233,12 +233,6 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         help="store AI Models in the specified directory",
     )
     parser.add_argument("-v", "--version", dest="version", action="store_true", help="show RamaLama version")
-    # parser.add_argument("--device",
-    #     dest="device",
-    #     action='append',
-    #     type=str,
-    #     # nargs=1,
-    #     help="Device to leak in to the running container")
 
 
 def configure_subcommands(parser):
