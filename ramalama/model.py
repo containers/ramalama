@@ -158,7 +158,7 @@ class Model:
             "--rm",
             "-i",
             "--label",
-            "RAMALAMA",
+            "ai.ramalama",
             "--security-opt=label=disable",
             "--name",
             name,

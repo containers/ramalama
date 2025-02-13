@@ -4,7 +4,7 @@ load helpers
 load helpers.registry
 load setup_suite
 
-verify_begin=".*run --rm -i --label RAMALAMA --security-opt=label=disable --name"
+verify_begin=".*run --rm -i --label ai.ramalama --security-opt=label=disable --name"
 
 @test "ramalama --dryrun serve basic output" {
     model=m_$(safename)

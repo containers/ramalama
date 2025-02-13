@@ -480,7 +480,7 @@ def _list_containers(args):
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "ps", "-a", "--filter", "label=RAMALAMA"]
+    conman_args = [conman, "ps", "-a", "--filter", "label=ai.ramalama"]
     if hasattr(args, "noheading") and args.noheading:
         conman_args += ["--noheading"]
 
