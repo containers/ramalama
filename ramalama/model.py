@@ -200,13 +200,10 @@ class Model:
         if hasattr(args, "port"):
             conman_args += ["-p", f"{args.port}:{args.port}"]
 
-        # Check for env var RAMALAMA_DEVICE to explicitly declare the GPU device path
-        device_override = 0
-        gpu_device = os.environ.get("RAMALAMA_DEVICE")
-        if gpu_device:
-            conman_args += ["--device", gpu_device]
-            device_override = 1
-        if device_override != 1:
+        if args.device:
+            for device_arg in args.device:
+                conman_args += ["--device", device_arg]
+        else:
             if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
                 conman_args += ["--device", "/dev/dri"]
 

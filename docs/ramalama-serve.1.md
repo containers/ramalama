@@ -46,6 +46,15 @@ The default is TRUE. The --nocontainer option forces this option to False.
 
 Use the `ramalama stop` command to stop the container running the served ramalama Model.
 
+#### **--device**
+Add a host device to the container. Optional permissions parameter  can
+be  used  to  specify device permissions by combining r for read, w for
+write, and m for mknod(2).
+
+Example: --device=/dev/dri/renderD128:/dev/xvdc:rwm
+
+The device specifiaction is passed directly to the underlying container engine.  See documentation of the supported container engine for more information.
+
 #### **--generate**=type
 Generate specified configuration format for running the AI Model as a service
 
@@ -69,6 +78,24 @@ set the network mode for the container
 
 #### **--port**, **-p**
 port for AI Model server to listen on
+
+#### **--privileged**
+By  default, RamaLama containers are unprivileged (=false) and cannot, for
+example, modify parts of the operating system. This is  because  by  de‐
+fault  a  container is only allowed limited access to devices. A "privi‐
+leged" container is given the same access to devices as the user launch‐
+ing the container, with the exception of virtual consoles  (/dev/tty\d+)
+when running in systemd mode (--systemd=always).
+
+A  privileged container turns off the security features that isolate the
+container from the host. Dropped Capabilities,  limited  devices,  read-
+only  mount points, Apparmor/SELinux separation, and Seccomp filters are
+all disabled.  Due to the disabled  security  features,  the  privileged
+field  should  almost never be set as containers can easily break out of
+confinement.
+
+Containers running in a user namespace (e.g., rootless containers)  can‐
+not have more privileges than the user that launched them.
 
 #### **--seed**=
 Specify seed rather than using random seed model interaction
