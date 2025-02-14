@@ -222,8 +222,7 @@ class Model:
     def gpu_args(self, args, runner=False):
         gpu_args = []
         if (
-            args.gpu > 0
-            or os.getenv("HIP_VISIBLE_DEVICES")
+            os.getenv("HIP_VISIBLE_DEVICES")
             or os.getenv("ASAHI_VISIBLE_DEVICES")
             or os.getenv("CUDA_VISIBLE_DEVICES")
             or os.getenv("INTEL_VISIBLE_DEVICES")

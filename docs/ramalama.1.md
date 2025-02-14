@@ -110,9 +110,6 @@ show container runtime command without executing it (default: False)
 run RamaLama using the specified container engine. Default is `podman` if installed otherwise docker.
 The default can be overridden in the ramalama.conf file or via the RAMALAMA_CONTAINER_ENGINE environment variable.
 
-#### **--gpu**
-offload the workload to the GPU (default: False)
-
 #### **--help**, **-h**
 show this help message and exit
 
@@ -128,10 +125,6 @@ RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)
 Needed to access the gpu on some systems, but has an impact on security, use with caution.
-
-#### **--ngl**
-number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
-The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
 #### **--nocontainer**
 do not run RamaLama in the default container (default: False)
