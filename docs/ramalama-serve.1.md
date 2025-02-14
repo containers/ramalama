@@ -53,7 +53,7 @@ write, and m for mknod(2).
 
 Example: --device=/dev/dri/renderD128:/dev/xvdc:rwm
 
-The device specifiaction is passed directly to the underlying container engine.  See documentation of the supported container engine for more information.
+The device specification is passed directly to the underlying container engine.  See documentation of the supported container engine for more information.
 
 #### **--generate**=type
 Generate specified configuration format for running the AI Model as a service
@@ -75,6 +75,10 @@ Name of the container to run the Model in.
 
 #### **--network**=*""*
 set the network mode for the container
+
+#### **--ngl**
+number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
+The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
 #### **--port**, **-p**
 port for AI Model server to listen on

@@ -187,20 +187,6 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
 The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
     )
     parser.add_argument(
-        "--gpu",
-        dest="gpu",
-        default=False,
-        action="store_true",
-        help="offload the workload to the GPU",
-    )
-    parser.add_argument(
-        "--ngl",
-        dest="ngl",
-        type=int,
-        default=config.get("ngl", -1),
-        help="Number of layers to offload to the gpu, if available",
-    )
-    parser.add_argument(
         "--keep-groups",
         dest="podman_keep_groups",
         default=config.get("keep_groups", False),
@@ -461,6 +447,13 @@ def bench_parser(subparsers):
         type=str,
         default="none",
         help="set the network mode for the container",
+    )
+    parser.add_argument(
+        "--ngl",
+        dest="ngl",
+        type=int,
+        default=config.get("ngl", -1),
+        help="Number of layers to offload to the gpu, if available",
     )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=bench_cli)
@@ -815,7 +808,17 @@ def _run(parser):
         help="set the network mode for the container",
     )
     parser.add_argument(
-        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
+        "--ngl",
+        dest="ngl",
+        type=int,
+        default=config.get("ngl", -1),
+        help="Number of layers to offload to the gpu, if available",
+    )
+    parser.add_argument(
+        "--privileged",
+        dest="privileged",
+        action="store_true",
+        help="give extended privileges to container"
     )
     parser.add_argument("--seed", help="override random seed")
     parser.add_argument(
@@ -1023,6 +1026,7 @@ def New(model, args):
 
 def perplexity_parser(subparsers):
     parser = subparsers.add_parser("perplexity", help="calculate perplexity for specified AI Model")
+    _run(parser)
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=perplexity_cli)
 

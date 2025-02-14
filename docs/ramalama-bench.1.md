@@ -31,6 +31,10 @@ show this help message and exit
 #### **--network**=*none*
 set the network mode for the container
 
+#### **--ngl**
+number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
+The default -1, means use whatever is automatically deemed appropriate (0 or 999)
+
 ## DESCRIPTION
 Benchmark specified AI Model.
 
