@@ -17,6 +17,7 @@ from ramalama.kube import Kube
 from ramalama.common import MNT_DIR, MNT_FILE
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
 from ramalama.gguf_parser import GGUFInfoParser
+from ramalama.model_store import ModelStore
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
 
@@ -41,11 +42,17 @@ class Model:
     model = ""
     type = "Model"
 
-    def __init__(self, model):
+    def __init__(self, model, store_path="", model_registry=""):
         self.model = model
+        self.model_tag = "latest"
+        if ":" in model:
+            self.model, self.model_tag = model.split(":", 1)
+
         split = self.model.rsplit("/", 1)
         self.directory = split[0] if len(split) > 1 else ""
         self.filename = split[1] if len(split) > 1 else split[0]
+
+        self.store = ModelStore(store_path, self.filename, self.directory, model_registry)
 
     def login(self, args):
         raise NotImplementedError(f"ramalama login for {self.type} not implemented")

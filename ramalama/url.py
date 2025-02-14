@@ -2,13 +2,14 @@ import os
 from ramalama.common import download_file
 from ramalama.model import Model, rm_until_substring
 from urllib.parse import urlparse
+from ramalama.model_store import ModelRegistry
 
 
 class URL(Model):
-    def __init__(self, model):
+    def __init__(self, model, store_path=""):
         self.type = urlparse(model).scheme
         model = rm_until_substring(model, "://")
-        super().__init__(model)
+        super().__init__(model, store_path,ModelRegistry.URL)
         split = self.model.rsplit("/", 1)
         self.directory = split[0].removeprefix("/") if len(split) > 1 else ""
 

@@ -21,6 +21,7 @@ logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s -
 
 MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
+HTTP_NOT_FOUND = 404
 HTTP_RANGE_NOT_SATISFIABLE = 416
 
 DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
@@ -154,6 +155,19 @@ def verify_checksum(filename):
     # Compare the checksums
     return sha256_hash.hexdigest() == expected_checksum
 
+def generate_sha256(to_hash: str) -> str:
+    """
+    Generates a sha256 for a string.
+
+    Args:
+    to_hash (str): The string to generate the sha256 hash for.
+
+    Returns:
+    str: Hex digest of the input appended to the prefix sha256:
+    """
+    h = hashlib.new("sha256")
+    h.update(to_hash.encode("utf-8"))
+    return f"sha256:{h.hexdigest()}"
 
 # default_image function should figure out which GPU the system uses t
 # then running appropriate container image.
@@ -199,8 +213,9 @@ def download_file(url, dest_path, headers=None, show_progress=True):
             return  # Exit function if successful
 
         except urllib.error.HTTPError as e:
-            if e.code == HTTP_RANGE_NOT_SATISFIABLE:  # "Range Not Satisfiable" error (file already downloaded)
-                return  # No need to retry
+            # "Range Not Satisfiable" error (file already downloaded)
+            if e.code in [HTTP_RANGE_NOT_SATISFIABLE, HTTP_NOT_FOUND]:
+                raise e
 
         except urllib.error.URLError as e:
             console.error(f"Network Error: {e.reason}")

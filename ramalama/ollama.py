@@ -1,8 +1,9 @@
 import os
 import urllib.request
 import json
-from ramalama.common import run_cmd, verify_checksum, download_file, available
+from ramalama.common import run_cmd, available
 from ramalama.model import Model, rm_until_substring
+from ramalama.model_store import ModelRegistry, SnapshotFile
 
 
 def fetch_manifest_data(registry_head, model_tag, accept):
@@ -14,53 +15,6 @@ def fetch_manifest_data(registry_head, model_tag, accept):
         manifest_data = json.load(response)
     return manifest_data
 
-
-def pull_config_blob(repos, accept, registry_head, manifest_data):
-    cfg_hash = manifest_data["config"]["digest"]
-    config_blob_path = os.path.join(repos, "blobs", cfg_hash)
-
-    os.makedirs(os.path.dirname(config_blob_path), exist_ok=True)
-
-    url = f"{registry_head}/blobs/{cfg_hash}"
-    headers = {"Accept": accept}
-    download_file(url, config_blob_path, headers=headers, show_progress=False)
-
-
-def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path):
-    layer_blob_path = os.path.join(repos, "blobs", layer_digest)
-    url = f"{registry_head}/blobs/{layer_digest}"
-    headers = {"Accept": accept}
-    local_blob = in_existing_cache(model_name, model_tag)
-    if local_blob is not None:
-        run_cmd(["ln", "-sf", local_blob, layer_blob_path])
-    else:
-        download_file(url, layer_blob_path, headers=headers, show_progress=True)
-        # Verify checksum after downloading the blob
-        if not verify_checksum(layer_blob_path):
-            print(f"Checksum mismatch for blob {layer_blob_path}, retrying download...")
-            os.remove(layer_blob_path)
-            download_file(url, layer_blob_path, headers=headers, show_progress=True)
-            if not verify_checksum(layer_blob_path):
-                raise ValueError(f"Checksum verification failed for blob {layer_blob_path}")
-
-    os.makedirs(models, exist_ok=True)
-    relative_target_path = os.path.relpath(layer_blob_path, start=os.path.dirname(model_path))
-    run_cmd(["ln", "-sf", relative_target_path, model_path])
-
-
-def init_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, model):
-    manifest_data = fetch_manifest_data(registry_head, model_tag, accept)
-    pull_config_blob(repos, accept, registry_head, manifest_data)
-    for layer in manifest_data["layers"]:
-        layer_digest = layer["digest"]
-        if layer["mediaType"] != "application/vnd.ollama.image.model":
-            continue
-
-        pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path)
-
-    return model_path
-
-
 def in_existing_cache(model_name, model_tag):
     if not available("ollama"):
         return None
@@ -71,7 +25,9 @@ def in_existing_cache(model_name, model_tag):
     ]
 
     for cache_dir in default_ollama_caches:
-        manifest_path = os.path.join(cache_dir, 'manifests', 'registry.ollama.ai', model_name, model_tag)
+        manifest_path = os.path.join(
+            cache_dir, 'manifests', 'registry.ollama.ai', model_name, model_tag
+        )
         if os.path.exists(manifest_path):
             with open(manifest_path, 'r') as file:
                 manifest_data = json.load(file)
@@ -83,75 +39,96 @@ def in_existing_cache(model_name, model_tag):
                             return str(ollama_digest_path).replace(':', '-')
     return None
 
-
 class Ollama(Model):
-    def __init__(self, model):
+    def __init__(self, model, store_path=""):
         model = rm_until_substring(model, "ollama.com/library/")
         model = rm_until_substring(model, "://")
-        super().__init__(model)
-        self.type = "Ollama"
 
-    def _local(self, args):
-        models = args.store + "/models/ollama"
-        if "/" in self.model:
-            model_full = self.model
-            self._models = os.path.join(models, model_full.rsplit("/", 1)[0])
-        else:
-            model_full = "library/" + self.model
+        super().__init__(model, store_path, ModelRegistry.OLLAMA)
 
-        if ":" in model_full:
-            model_name, model_tag = model_full.split(":", 1)
-        else:
-            model_name = model_full
-            model_tag = "latest"
+    def pull(self, debug = False):
+        hash, cached_files, all = self.store.get_cached_files(self.model_tag)
+        if all:
+            return self.store.get_snapshot_file_path(hash, self.filename)
 
-        model_base = os.path.basename(model_name)
-        model_path = os.path.join(models, f"{model_base}:{model_tag}")
-        return model_path, models, model_base, model_name, model_tag
-
-    def exists(self, args):
-        model_path, _, _, _, _ = self._local(args)
-        if not os.path.exists(model_path):
-            return None
-
-        return model_path
-
-    def path(self, args):
-        model_path, _, _, _, _ = self._local(args)
-        if not os.path.exists(model_path):
-            raise KeyError(f"{self.model} does not exist")
-
-        return model_path
-
-    def pull(self, args):
-        repos = args.store + "/repos/ollama"
-        model_path, models, model_base, model_name, model_tag = self._local(args)
-        if os.path.exists(model_path):
-            return model_path
-
-        registry = "https://registry.ollama.ai"
+        registry = "https://registry.ollama.ai/v2/library"
         accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
-        registry_head = f"{registry}/v2/{model_name}"
+        registry_head = f"{registry}/{self.model}"
+
         try:
-            return init_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, self.model)
+            manifest_data = fetch_manifest_data(registry_head, self.model_tag, accept)
+        except urllib.error.HTTPError as e:
+            if "Not Found" in e.reason:
+                raise KeyError(f"Manifest for {self.model} was not found in the Ollama registry")
+            raise KeyError(f"failed to fetch manifest: " + str(e).strip("'"))
+
+        model_hash = manifest_data["config"]["digest"]
+        model_digest = ""
+        chat_template_digest = ""
+        for layer in manifest_data["layers"]:
+            layer_digest = layer["digest"]
+            if layer["mediaType"] == "application/vnd.ollama.image.model":
+                model_digest = layer_digest
+            elif layer["mediaType"] == "application/vnd.ollama.image.template":
+                chat_template_digest = layer_digest
+
+        files: list[SnapshotFile] = []
+        model_file_name = self.store.model_name
+        config_file_name = "config.json"
+        chat_template_file_name = "chat_template"
+        ollama_cache_path = in_existing_cache(self.model, self.model_tag)
+
+        blob_url = f"{registry_head}/blobs"
+        headers = {"Accept": accept}
+
+        if (
+            model_digest != ""
+            and model_file_name not in cached_files
+            and ollama_cache_path is None
+        ):
+            files.append(
+                SnapshotFile(
+                    url=f"{blob_url}/{model_digest}",
+                    header=headers,
+                    hash=model_digest,
+                    name=model_file_name,
+                    should_show_progress=True,
+                    should_verify_checksum=True,
+                )
+            )
+        if config_file_name not in cached_files:
+            files.append(
+                SnapshotFile(
+                    url=f"{blob_url}/{model_hash}",
+                    header=headers,
+                    hash=model_hash,
+                    name=config_file_name,
+                    should_show_progress=False,
+                    should_verify_checksum=False,
+                )
+            )
+        if chat_template_digest != "" and chat_template_file_name not in cached_files:
+            files.append(
+                SnapshotFile(
+                    url=f"{blob_url}/{chat_template_digest}",
+                    header=headers,
+                    hash=chat_template_digest,
+                    name=chat_template_file_name,
+                    should_show_progress=True,
+                    should_verify_checksum=True,
+                )
+            )
+
+        try:
+            self.store.new_snapshot(self.model_tag, model_hash, files)
         except urllib.error.HTTPError as e:
             if "Not Found" in e.reason:
                 raise KeyError(f"{self.model} was not found in the Ollama registry")
-            raise KeyError(f"failed to pull {registry_head}: " + str(e).strip("'"))
+            raise KeyError(f"failed to pull: " + str(e).strip("'"))
 
-    def model_path(self, args):
-        models = args.store + "/models/ollama"
-        if "/" in self.model:
-            model_full = self.model
-            models = os.path.join(models, model_full.rsplit("/", 1)[0])
-        else:
-            model_full = "library/" + self.model
+        # If a model has been downloaded via ollama cli, only create symlink in the snapshots directory
+        if ollama_cache_path is not None:
+            snapshot_model_path = self.store.get_snapshot_file_path(model_hash, model_file_name)
+            os.symlink(ollama_cache_path, snapshot_model_path)
 
-        if ":" in model_full:
-            model_name, model_tag = model_full.split(":", 1)
-        else:
-            model_name = model_full
-            model_tag = "latest"
-
-        model_base = os.path.basename(model_name)
-        return os.path.join(models, f"{model_base}:{model_tag}")
+        return self.store.get_snapshot_file_path(model_hash, model_file_name)

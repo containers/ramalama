@@ -1,8 +1,9 @@
 import os
 import pathlib
 import urllib.request
-from ramalama.common import available, run_cmd, exec_cmd, download_file, verify_checksum, perror
+from ramalama.common import available, run_cmd, exec_cmd, download_file, verify_checksum, perror, generate_sha256
 from ramalama.model import Model, rm_until_substring
+from ramalama.model_store import ModelRegistry, SnapshotFile
 
 missing_huggingface = """
 Optional: Huggingface models require the huggingface-cli module.
@@ -14,29 +15,30 @@ pip install huggingface_hub
 
 def is_huggingface_cli_available():
     """Check if huggingface-cli is available on the system."""
-    if available("huggingface-cli"):
-        return True
-    else:
-        return False
+    return available("huggingface-cli")
 
-
-def fetch_checksum_from_api(url):
+def fetch_checksum_from_api(organization, file):
     """Fetch the SHA-256 checksum from the model's metadata API."""
-    with urllib.request.urlopen(url) as response:
-        data = response.read().decode()
-    # Extract the SHA-256 checksum from the `oid sha256` line
-    for line in data.splitlines():
-        if line.startswith("oid sha256:"):
-            return line.split(":", 1)[1].strip()
-    raise ValueError("SHA-256 checksum not found in the API response.")
-
+    checksum_api_url = f"https://huggingface.co/{organization}/raw/main/{file}"
+    try:
+        with urllib.request.urlopen(checksum_api_url) as response:
+            data = response.read().decode()
+        # Extract the SHA-256 checksum from the `oid sha256` line
+        for line in data.splitlines():
+            if line.startswith("oid sha256:"):
+                return line.replace("oid", "").strip()
+        raise ValueError("SHA-256 checksum not found in the API response.")
+    except urllib.error.HTTPError as e:
+        raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
+    except urllib.error.URLError as e:
+        raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
 
 class Huggingface(Model):
-    def __init__(self, model):
+    def __init__(self, model, store_path=""):
         model = rm_until_substring(model, "hf.co/")
         model = rm_until_substring(model, "://")
-        super().__init__(model)
-        self.type = "huggingface"
+        super().__init__(model, store_path, ModelRegistry.HUGGINGFACE)
+
         self.hf_cli_available = is_huggingface_cli_available()
 
     def login(self, args):
@@ -55,68 +57,97 @@ class Huggingface(Model):
             conman_args.extend(["--token", args.token])
         self.exec(conman_args, args)
 
-    def pull(self, args):
-        model_path = self.model_path(args)
-        directory_path = os.path.join(args.store, "repos", "huggingface", self.directory, self.filename)
-        os.makedirs(directory_path, exist_ok=True)
+    def pull(self, debug = False):
+        hash, cached_files, all = self.store.get_cached_files(self.model_tag)
+        if all:
+            return self.store.get_snapshot_file_path(hash, self.filename)
 
-        symlink_dir = os.path.dirname(model_path)
-        os.makedirs(symlink_dir, exist_ok=True)
+        # Fetch the SHA-256 checksum of model from the API and use as snapshot hash
+        snapshot_hash = fetch_checksum_from_api(self.store.model_organization, self.store.model_name)
+        
+        blob_url = f"https://huggingface.co/{self.store.model_organization}/resolve/main"
+        headers = {}
 
+        files: list[SnapshotFile] = []
+        model_file_name = self.store.model_name
+        config_file_name = "config.json"
+        generation_config_file_name = "generation_config.json"
+        tokenizer_config_file_name = "tokenizer_config.json"
+
+        if model_file_name not in cached_files:
+            files.append(
+                SnapshotFile(
+                    url=f"{blob_url}/{model_file_name}",
+                    header=headers,
+                    hash=snapshot_hash,
+                    name=model_file_name,
+                    should_show_progress=True,
+                    should_verify_checksum=True,
+                )
+            )
+        if config_file_name not in cached_files:
+            files.append(
+                SnapshotFile(
+                    url=f"{blob_url}/{config_file_name}",
+                    header=headers,
+                    hash=generate_sha256(config_file_name),
+                    name=config_file_name,
+                    should_show_progress=False,
+                    should_verify_checksum=False,
+                    required=False,
+                )
+            )
+        if generation_config_file_name not in cached_files:
+            files.append(
+                SnapshotFile(
+                    url=f"{blob_url}/{generation_config_file_name}",
+                    header=headers,
+                    hash=generate_sha256(generation_config_file_name),
+                    name=generation_config_file_name,
+                    should_show_progress=False,
+                    should_verify_checksum=False,
+                    required=False,
+                )
+            )
+        if tokenizer_config_file_name not in cached_files:
+            files.append(
+                SnapshotFile(
+                    url=f"{blob_url}/{tokenizer_config_file_name}",
+                    header=headers,
+                    hash=generate_sha256(tokenizer_config_file_name),
+                    name=tokenizer_config_file_name,
+                    should_show_progress=False,
+                    should_verify_checksum=False,
+                    required=False,
+                )
+            )
+            
         try:
-            return self.url_pull(args, model_path, directory_path)
+            self.store.new_snapshot(self.model_tag, snapshot_hash, files)
         except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
-            if self.hf_cli_available:
-                return self.hf_pull(args, model_path, directory_path)
-            perror("URL pull failed and huggingface-cli not available")
-            raise KeyError(f"Failed to pull model: {str(e)}")
+            if not self.hf_cli_available:
+                perror("URL pull failed and huggingface-cli not available")
+                raise KeyError(f"Failed to pull model: {str(e)}")
 
-    def hf_pull(self, args, model_path, directory_path):
-        conman_args = ["huggingface-cli", "download", "--local-dir", directory_path, self.model]
-        run_cmd(conman_args, debug=args.debug)
+            model_prefix = ""
+            if self.store.model_organization != "":
+                    model_prefix = f"{self.store.model_organization}/"
 
-        relative_target_path = os.path.relpath(directory_path, start=os.path.dirname(model_path))
-        pathlib.Path(model_path).unlink(missing_ok=True)
-        os.symlink(relative_target_path, model_path)
-        return model_path
+            self.store.prepare_new_snapshot(self.model_tag, snapshot_hash, files)
+            for file in files:
+                model = model_prefix + file
+                conman_args = ["huggingface-cli", "download", "--local-dir", self.store.blob_directory, model]
+                if run_cmd(conman_args, debug=debug) != 0 and not file.required:
+                    continue
+                
+                file_hash = generate_sha256(file)
+                blob_path = os.path.join(self.store.blob_directory, file_hash)
+                os.rename(src=os.path.join(self.store.blob_directory, model), dst=blob_path)
 
-    def url_pull(self, args, model_path, directory_path):
-        # Fetch the SHA-256 checksum from the API
-        checksum_api_url = f"https://huggingface.co/{self.directory}/raw/main/{self.filename}"
-        try:
-            sha256_checksum = fetch_checksum_from_api(checksum_api_url)
-        except urllib.error.HTTPError as e:
-            raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
-        except urllib.error.URLError as e:
-            raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
+                relative_target_path = os.path.relpath(blob_path, start=self.store.get_snapshot_directory(snapshot_hash))
+                os.symlink(relative_target_path, self.store.get_snapshot_file_path(snapshot_hash, file.name))
 
-        target_path = os.path.join(directory_path, f"sha256:{sha256_checksum}")
-
-        if os.path.exists(target_path) and verify_checksum(target_path):
-            relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
-            if not self.check_valid_model_path(relative_target_path, model_path):
-                pathlib.Path(model_path).unlink(missing_ok=True)
-                os.symlink(relative_target_path, model_path)
-            return model_path
-
-        # Download the model file to the target path
-        url = f"https://huggingface.co/{self.directory}/resolve/main/{self.filename}"
-        download_file(url, target_path, headers={}, show_progress=True)
-        if not verify_checksum(target_path):
-            print(f"Checksum mismatch for {target_path}, retrying download...")
-            os.remove(target_path)
-            download_file(url, target_path, headers={}, show_progress=True)
-            if not verify_checksum(target_path):
-                raise ValueError(f"Checksum verification failed for {target_path}")
-
-        relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
-        if self.check_valid_model_path(relative_target_path, model_path):
-            # Symlink is already correct, no need to update it
-            return model_path
-
-        pathlib.Path(model_path).unlink(missing_ok=True)
-        os.symlink(relative_target_path, model_path)
-        return model_path
+        return self.store.get_snapshot_file_path(snapshot_hash, model_file_name)
 
     def push(self, source, args):
         if not self.hf_cli_available:
