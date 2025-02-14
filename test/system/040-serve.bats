@@ -4,7 +4,7 @@ load helpers
 load helpers.registry
 load setup_suite
 
-verify_begin=".*run --rm -i --label ai.ramalama --security-opt=label=disable --name"
+verify_begin=".*run --rm -i --label ai.ramalama --name"
 
 @test "ramalama --dryrun serve basic output" {
     model=m_$(safename)
@@ -30,9 +30,16 @@ verify_begin=".*run --rm -i --label ai.ramalama --security-opt=label=disable --n
 
 	run_ramalama --dryrun serve --seed 1234 ${model}
 	is "$output" ".*--seed 1234" "verify seed is set"
+	assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
+	assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
 
-	run_ramalama 1 --nocontainer serve --name foobar tiny
-	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
+	if is_container; then
+	    run_ramalama --dryrun serve --privileged ${model}
+	    is "$output" ".*--privileged" "verify --privileged is set"
+	    assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
+	    assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
+	fi
+
 	run_ramalama stop --all
     else
 	run_ramalama --dryrun serve ${model}
@@ -41,7 +48,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --security-opt=label=disable --n
 	assert "$output" =~ ".*--host 127.0.0.1" "Outside container overrides host to 127.0.0.1"
 	assert "$output" =~ ".*--seed abcd" "Verify seed is set"
 	run_ramalama 1 --nocontainer serve --name foobar tiny
-	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
+	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
      fi
 
     run_ramalama 1 serve MODEL

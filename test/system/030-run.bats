@@ -9,7 +9,7 @@ load helpers
     if is_container; then
 	run_ramalama info
 	conman=$(jq .Engine.Name <<< $output | tr -d '"' )
-	verify_begin="${conman} run --rm -i --label ai.ramalama --security-opt=label=disable --name"
+	verify_begin="${conman} run --rm -i --label ai.ramalama --name"
 
 	run_ramalama --dryrun run ${model}
 	is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
@@ -26,19 +26,30 @@ load helpers
 
 	run_ramalama --dryrun run --name foobar ${model}
 	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
+	assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
+	assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
 
-	run_ramalama 1 --nocontainer run --name foobar tiny
-	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
-
+	if is_container; then
+	    run_ramalama --dryrun run --privileged ${model}
+	    is "$output" ".*--privileged" "verify --privileged is set"
+	    assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
+	    assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
+	else
+	    run_ramalama 1 run --name foobar tiny
+	    is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
+	    run_ramalama 1 run --privileged tiny
+	    is "${lines[0]}"  "Error: --nocontainer and --privileged options conflict. The --privileged option requires a container." "conflict between nocontainer and --privileged line"
+	fi
 	RAMALAMA_IMAGE=${image}:1234 run_ramalama --dryrun run ${model}
 	is "$output" ".*${image}:1234 llama-run" "verify image name"
+
     else
 	run_ramalama --dryrun run -c 4096 ${model}
 	is "$output" 'llama-run -c 4096 --temp 0.8.*/path/to/model.*' "dryrun correct"
 	is "$output" ".*-c 4096" "verify model name"
 
 	run_ramalama 1 run --ctx-size=4096 --name foobar tiny
-	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. --name requires a container." "conflict between nocontainer and --name line"
+	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
     fi
 }
 

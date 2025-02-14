@@ -160,14 +160,19 @@ class Model:
             "-i",
             "--label",
             "ai.ramalama",
-            "--security-opt=label=disable",
             "--name",
             name,
             "--env=HOME=/tmp",
-            "--cap-drop=all",
-            "--security-opt=no-new-privileges",
             "--init",
         ]
+        if args.privileged:
+            conman_args += ["--privileged"]
+        else:
+            conman_args += [
+                "--security-opt=label=disable",
+                "--cap-drop=all",
+                "--security-opt=no-new-privileges",
+            ]
 
         container_labels = []
         if hasattr(args, "MODEL"):
@@ -268,13 +273,13 @@ class Model:
         return True
 
     def bench(self, args):
-        self.check_name_and_container(args)
+        self.validate_args(args)
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_bench(args, model_path)
         self.execute_model(model_path, exec_args, args)
 
     def run(self, args):
-        self.check_name_and_container(args)
+        self.validate_args(args)
         prompt = self.build_prompt(args)
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_run(args, model_path, prompt)
@@ -283,7 +288,7 @@ class Model:
         self.execute_model(model_path, exec_args, args)
 
     def perplexity(self, args):
-        self.check_name_and_container(args)
+        self.validate_args(args)
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_perplexity(args, model_path)
         self.execute_model(model_path, exec_args, args)
@@ -300,11 +305,6 @@ class Model:
         exec_args += ["-m", exec_model_path]
 
         return exec_args
-
-    def check_name_and_container(self, args):
-        if hasattr(args, "name") and args.name:
-            if not args.container:
-                raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
 
     def build_prompt(self, args):
         prompt = ""
@@ -389,9 +389,18 @@ class Model:
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
     def validate_args(self, args):
+        if args.container:
+            return
+        if args.privileged:
+            raise KeyError(
+                "--nocontainer and --privileged options conflict. The --privileged option requires a container."
+            )
         if hasattr(args, "name") and args.name:
-            if not args.container and not args.generate:
-                raise KeyError("--nocontainer and --name options conflict. --name requires a container.")
+            if hasattr(args, "generate"):
+                # Do not fail on serve if user specified --generate
+                if args.generate:
+                    return
+            raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
     def build_exec_args_serve(self, args, exec_model_path):
         if args.runtime == "vllm":
