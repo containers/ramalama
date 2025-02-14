@@ -801,11 +801,9 @@ def _run(parser):
         default=config.get('ctx_size', 2048),
         help="size of the prompt context (0 = loaded from model)",
     )
-    parser.add_argument("--device",
-        dest="device",
-        action='append',
-        type=str,
-        help="Device to leak in to the running container")
+    parser.add_argument(
+        "--device", dest="device", action='append', type=str, help="Device to leak in to the running container"
+    )
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     # Disable network access by default, and give the option to pass any supported network mode into
     # podman if needed:
@@ -817,10 +815,7 @@ def _run(parser):
         help="set the network mode for the container",
     )
     parser.add_argument(
-        "--privileged",
-        dest="privileged",
-        action="store_true",
-        help="give extended privileges to container"
+        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
     )
     parser.add_argument("--seed", help="override random seed")
     parser.add_argument(
