@@ -37,6 +37,22 @@ rm_container_image() {
   fi
 }
 
+add_entrypoint() {
+    containerfile=$(mktemp)
+    cat > ${containerfile} <<EOF
+FROM $2
+ENTRYPOINT [ "/usr/bin/$3.sh" ]
+EOF
+    echo $1 build --no-cache -t "$2-$3" -f ${containerfile} .
+    eval $1 build --no-cache -t "$2-$3" -f ${containerfile} .
+    rm ${containerfile}
+}
+
+add_entrypoints() {
+    add_entrypoint "$1" "$2" "whisper-server"
+    add_entrypoint "$1" "$2" "llama-server"
+}
+
 build() {
   cd "container-images"
   local image_name="${1//container-images\//}"
@@ -55,6 +71,7 @@ build() {
       echo "${conman_build[@]}"
       "${conman_build[@]}"
       "${conman_show_size[@]}"
+      add_entrypoints "${conman[@]}" "$REGISTRY_PATH"/"$image_name"
       rm_container_image
       ;;
     push)
@@ -62,6 +79,7 @@ build() {
       ;;
     multi-arch)
       podman farm build -t "$REGISTRY_PATH"/"$image_name" -f "$image_name"/Containerfile .
+      add_entrypoints "podman farm" "$REGISTRY_PATH"/"$image_name"
       ;;
     *)
       echo "Invalid command: ${2:-}. Use 'build', 'push' or 'multi-arch'."
