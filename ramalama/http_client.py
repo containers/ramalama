@@ -40,12 +40,7 @@ class HttpClient:
     def urlopen(self, url, headers):
         headers["Range"] = f"bytes={self.file_size}-"
         request = urllib.request.Request(url, headers=headers)
-        try:
-            self.response = urllib.request.urlopen(request)
-        except urllib.error.HTTPError as e:
-            raise IOError(f"Request failed: {e.code}") from e
-        except urllib.error.URLError as e:
-            raise IOError(f"Network error: {e.reason}") from e
+        self.response = urllib.request.urlopen(request)
 
         if self.response.status not in (200, 206):
             raise IOError(f"Request failed: {self.response.status}")
