@@ -71,6 +71,9 @@ confinement.
 Containers running in a user namespace (e.g., rootless containers)  can‐
 not have more privileges than the user that launched them.
 
+#### **--seed**=
+Specify seed rather than using random seed model interaction
+
 #### **--temp**="0.8"
 Temperature of the response from the AI Model
 llama.cpp explains this as:
@@ -80,6 +83,9 @@ llama.cpp explains this as:
     The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+
+#### **--tls-verify**=*true*
+require HTTPS and verify certificates when contacting OCI registries
 
 ## DESCRIPTION
 Calculate the perplexity of an AI Model. Perplexity measures how well the model can predict the next token with lower values being better.
