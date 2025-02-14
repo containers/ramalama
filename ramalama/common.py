@@ -31,26 +31,27 @@ DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 _engine = -1  # -1 means cached variable not set yet
 
 
+def get_engine():
+    engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
+    if engine is not None:
+        return engine
+
+    if available("podman") and (sys.platform != "darwin" or is_podman_machine_running_with_krunkit()):
+        return "podman"
+
+    if available("docker") and sys.platform != "darwin":
+        return "docker"
+
+    return None
+
+
 def container_manager():
     global _engine
     if _engine != -1:
         return _engine
 
-    engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
-    if engine is not None:
-        _engine = engine
-        return _engine
+    _engine = get_engine()
 
-    if available("podman"):
-        if sys.platform != "darwin" or is_podman_machine_running_with_krunkit():
-            _engine = "podman"
-        return _engine
-
-    if available("docker"):
-        _engine = "docker"
-        return _engine
-
-    _engine = None
     return _engine
 
 
