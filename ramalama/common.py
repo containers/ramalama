@@ -21,7 +21,9 @@ logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s -
 
 MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
-HTTP_RANGE_NOT_SATISFIABLE = 416
+
+HTTP_NOT_FOUND = 404
+HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already downloaded)
 
 DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
@@ -199,7 +201,7 @@ def download_file(url, dest_path, headers=None, show_progress=True):
             return  # Exit function if successful
 
         except urllib.error.HTTPError as e:
-            if e.code == HTTP_RANGE_NOT_SATISFIABLE:  # "Range Not Satisfiable" error (file already downloaded)
+            if e.code in [HTTP_RANGE_NOT_SATISFIABLE, HTTP_NOT_FOUND]:
                 return  # No need to retry
 
         except urllib.error.URLError as e:
