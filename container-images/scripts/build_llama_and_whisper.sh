@@ -1,5 +1,4 @@
 #!/bin/bash
-source /etc/os-release
 
 available() {
   command -v "$1" >/dev/null
@@ -23,13 +22,13 @@ dnf_install() {
                      "spirv-tools" "glslc" "glslang")
   if [ "$containerfile" = "ramalama" ] || [ "$containerfile" = "rocm" ] || \
     [ "$containerfile" = "vulkan" ]; then # All the UBI-based ones
-    if [[ "${ID}" == "rhel" || "${ID}" == "redhat" || "${ID}" == "centos" ]]; then
+    if [ "${ID}" = "fedora" ]; then
+      dnf install -y "${rpm_list[@]}"
+    else
       local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
       dnf install -y "$url"
       crb enable # this is in epel-release, can only install epel-release via url
       dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
-    elif [ "${ID}" = "fedora" ]; then
-      dnf install -y "${rpm_list[@]}"
     fi
     # x86_64 and aarch64 means kompute
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
@@ -148,6 +147,8 @@ clone_and_build_ramalama() {
 }
 
 main() {
+  source /etc/os-release
+
   set -ex
 
   local containerfile="$1"
