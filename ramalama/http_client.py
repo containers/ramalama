@@ -43,7 +43,7 @@ class HttpClient:
         try:
             self.response = urllib.request.urlopen(request)
         except urllib.error.HTTPError as e:
-            raise IOError(f"Request failed: {e.code}") from e
+            raise e
         except urllib.error.URLError as e:
             raise IOError(f"Network error: {e.reason}") from e
 

@@ -12,6 +12,7 @@ from ramalama.common import (
     perror,
     run_cmd,
 )
+from ramalama.model_store import ModelRegistry
 
 prefix = "oci://"
 
@@ -102,8 +103,9 @@ def list_models(args):
 
 
 class OCI(Model):
-    def __init__(self, model, conman):
-        super().__init__(model.removeprefix(prefix).removeprefix("docker://"))
+    def __init__(self, model, conman, store_path=""):
+        model_name = model.removeprefix(prefix).removeprefix("docker://")
+        super().__init__(model_name, store_path, ModelRegistry.OCI)
         for t in MODEL_TYPES:
             if self.model.startswith(t + "://"):
                 raise ValueError(f"{model} invalid: Only OCI Model types supported")

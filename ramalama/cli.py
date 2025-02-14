@@ -1007,21 +1007,21 @@ def rm_cli(args):
 
 def New(model, args):
     if model.startswith("huggingface://") or model.startswith("hf://") or model.startswith("hf.co/"):
-        return Huggingface(model)
+        return Huggingface(model, args.store)
     if model.startswith("ollama://") or "ollama.com/library/" in model:
-        return Ollama(model)
+        return Ollama(model, args.store)
     if model.startswith("oci://") or model.startswith("docker://"):
-        return OCI(model, args.engine)
+        return OCI(model, args.engine, args.store)
     if model.startswith("http://") or model.startswith("https://") or model.startswith("file://"):
-        return URL(model)
+        return URL(model, args.store)
 
     transport = config.get("transport", "ollama")
     if transport == "huggingface":
-        return Huggingface(model)
+        return Huggingface(model, args.store)
     if transport == "ollama":
-        return Ollama(model)
+        return Ollama(model, args.store)
     if transport == "oci":
-        return OCI(model, args.engine)
+        return OCI(model, args.engine, args.store)
 
     raise KeyError(f'transport "{transport}" not supported. Must be oci, huggingface, or ollama.')
 
