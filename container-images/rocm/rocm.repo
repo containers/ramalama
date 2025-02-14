@@ -1,6 +1,6 @@
 [ROCm]
 name=ROCm
-baseurl=https://repo.radeon.com/rocm/rhel9/6.3.1/main
+baseurl=https://repo.radeon.com/rocm/rhel9/6.3.2/main
 enabled=1
 priority=50
 gpgcheck=1
