@@ -44,7 +44,13 @@ help:
 
 .PHONY: install-requirements
 install-requirements:
-	pipx install black flake8 argcomplete wheel huggingface_hub codespell
+	pipx install \
+			black~=25.0 \
+			flake8~=7.0 \
+			argcomplete~=3.0 \
+			wheel~=0.45.0 \
+			huggingface_hub~=0.28.0 \
+			codespell~=2.0
 
 .PHONY: install-completions
 install-completions: completions
