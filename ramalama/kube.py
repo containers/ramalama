@@ -1,8 +1,7 @@
 import os
 
-
+from ramalama.common import MNT_DIR, genname, get_env_vars
 from ramalama.version import version
-from ramalama.common import genname, MNT_DIR, get_env_vars
 
 
 class Kube:

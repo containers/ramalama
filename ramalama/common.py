@@ -2,19 +2,19 @@
 
 import glob
 import hashlib
-import os
-import re
-import random
 import logging
+import os
+import random
+import re
 import shutil
 import string
 import subprocess
-import time
 import sys
-import urllib.request
+import time
 import urllib.error
-import ramalama.console as console
+import urllib.request
 
+import ramalama.console as console
 from ramalama.http_client import HttpClient
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")

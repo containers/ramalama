@@ -1,7 +1,8 @@
 import os
 import pathlib
 import urllib.request
-from ramalama.common import available, run_cmd, exec_cmd, download_file, verify_checksum, perror
+
+from ramalama.common import available, download_file, exec_cmd, perror, run_cmd, verify_checksum
 from ramalama.model import Model, rm_until_substring
 
 missing_huggingface = """

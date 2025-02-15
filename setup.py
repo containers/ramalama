@@ -1,5 +1,6 @@
-import setuptools
 import os
+
+import setuptools
 from setuptools import find_packages
 from setuptools.command.build_py import build_py as build_py_orig
 

@@ -1,6 +1,6 @@
 import os
 
-from ramalama.common import default_image, MNT_DIR, MNT_FILE, get_env_vars
+from ramalama.common import MNT_DIR, MNT_FILE, default_image, get_env_vars
 
 
 class Quadlet:

@@ -1,7 +1,8 @@
 import os
+from urllib.parse import urlparse
+
 from ramalama.common import download_file
 from ramalama.model import Model, rm_until_substring
-from urllib.parse import urlparse
 
 
 class URL(Model):

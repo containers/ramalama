@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 
 
 def is_locale_utf8():

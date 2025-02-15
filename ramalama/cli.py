@@ -1,29 +1,24 @@
-from pathlib import Path
 import argparse
 import glob
 import json
 import os
-import subprocess
 import platform
+import subprocess
 import time
+from pathlib import Path
+
 import ramalama.oci
 import ramalama.rag
-
+from ramalama.common import container_manager, default_image, perror, run_cmd
+from ramalama.gpu_detector import GPUDetector
 from ramalama.huggingface import Huggingface
-from ramalama.common import (
-    container_manager,
-    default_image,
-    perror,
-    run_cmd,
-)
 from ramalama.model import MODEL_TYPES
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
-from ramalama.url import URL
 from ramalama.shortnames import Shortnames
 from ramalama.toml_parser import TOMLParser
-from ramalama.version import version, print_version
-from ramalama.gpu_detector import GPUDetector
+from ramalama.url import URL
+from ramalama.version import print_version, version
 
 shortnames = Shortnames()
 
@@ -795,16 +790,9 @@ def _run(parser):
         help="size of the prompt context (0 = loaded from model)",
     )
     parser.add_argument(
-        "--device",
-        dest="device",
-        action='append',
-        type=str,
-        help="Device to leak in to the running container")
-    parser.add_argument(
-        "-n", 
-        "--name",
-        dest="name",
-        help="name of container in which the Model will be run")
+        "--device", dest="device", action='append', type=str, help="Device to leak in to the running container"
+    )
+    parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     # Disable network access by default, and give the option to pass any supported network mode into
     # podman if needed:
     # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
@@ -822,14 +810,9 @@ def _run(parser):
         help="Number of layers to offload to the gpu, if available",
     )
     parser.add_argument(
-        "--privileged",
-        dest="privileged",
-        action="store_true",
-        help="give extended privileges to container"
+        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
     )
-    parser.add_argument(
-        "--seed", 
-        help="override random seed")
+    parser.add_argument("--seed", help="override random seed")
     parser.add_argument(
         "--temp", default=config.get('temp', "0.8"), help="temperature of the response from the AI model"
     )

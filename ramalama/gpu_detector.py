@@ -14,10 +14,10 @@ The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 """
 
-import subprocess
 import glob
-import platform
 import logging
+import platform
+import subprocess
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 
