@@ -112,8 +112,15 @@ docs:
 
 .PHONY: lint
 lint:
-	black --line-length 120 --exclude 'venv/*' *.py ramalama/*.py  # Format the code
-	flake8 --max-line-length=120 --exclude=venv *.py ramalama/*.py  # Check for any inconsistencies
+	flake8 *.py ramalama/*.py
+
+.PHONY: check-format
+check-format:
+	black --check --diff *.py ramalama/*.py
+
+.PHONY: format
+format:
+	black *.py ramalama/*.py
 
 .PHONY: codespell
 codespell:
