@@ -45,12 +45,13 @@ help:
 .PHONY: install-requirements
 install-requirements:
 	pipx install \
-			black~=25.0 \
-			flake8~=7.0 \
 			argcomplete~=3.0 \
-			wheel~=0.45.0 \
+			black~=25.0 \
+			codespell~=2.0 \
+			flake8~=7.0 \
 			huggingface_hub~=0.28.0 \
-			codespell~=2.0
+			isort~=6.0 \
+			wheel~=0.45.0 \
 
 .PHONY: install-completions
 install-completions: completions
@@ -117,10 +118,12 @@ lint:
 .PHONY: check-format
 check-format:
 	black --check --diff *.py ramalama/*.py
+	isort --check --diff *.py ramalama/*.py
 
 .PHONY: format
 format:
 	black *.py ramalama/*.py
+	isort *.py ramalama/*.py
 
 .PHONY: codespell
 codespell:
