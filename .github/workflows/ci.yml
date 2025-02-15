@@ -18,9 +18,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bash codespell python3-argcomplete pipx
           make install-requirements
+
+      - name: Run format check
+        run: |
+          make check-format
+
       - name: Run lint
-        shell: bash
-        run: make lint
+        run: |
+          make lint
 
   bats:
     runs-on: ubuntu-24.04

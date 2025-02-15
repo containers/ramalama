@@ -3,8 +3,9 @@
 import os
 import shutil
 import time
-import urllib.request
 import urllib.error
+import urllib.request
+
 from ramalama.file import File
 
 

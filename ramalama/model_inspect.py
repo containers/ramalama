@@ -1,9 +1,8 @@
-import sys
-import shutil
 import json
-
-from typing import Dict, Any
+import shutil
+import sys
 from dataclasses import dataclass
+from typing import Any, Dict
 
 
 def get_terminal_width():

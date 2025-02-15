@@ -1,7 +1,8 @@
+import json
 import os
 import urllib.request
-import json
-from ramalama.common import run_cmd, verify_checksum, download_file, available
+
+from ramalama.common import available, download_file, run_cmd, verify_checksum
 from ramalama.model import Model, rm_until_substring
 
 

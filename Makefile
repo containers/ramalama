@@ -44,7 +44,14 @@ help:
 
 .PHONY: install-requirements
 install-requirements:
-	pipx install black flake8 argcomplete wheel huggingface_hub codespell
+	pipx install \
+			argcomplete~=3.0 \
+			black~=25.0 \
+			codespell~=2.0 \
+			flake8~=7.0 \
+			huggingface_hub~=0.28.0 \
+			isort~=6.0 \
+			wheel~=0.45.0 \
 
 .PHONY: install-completions
 install-completions: completions
@@ -106,8 +113,17 @@ docs:
 
 .PHONY: lint
 lint:
-	black --line-length 120 --exclude 'venv/*' *.py ramalama/*.py  # Format the code
-	flake8 --max-line-length=120 --exclude=venv *.py ramalama/*.py  # Check for any inconsistencies
+	flake8 *.py ramalama/*.py
+
+.PHONY: check-format
+check-format:
+	black --check --diff *.py ramalama/*.py
+	isort --check --diff *.py ramalama/*.py
+
+.PHONY: format
+format:
+	black *.py ramalama/*.py
+	isort *.py ramalama/*.py
 
 .PHONY: codespell
 codespell:

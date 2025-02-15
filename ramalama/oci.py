@@ -4,14 +4,8 @@ import subprocess
 import tempfile
 
 import ramalama.annotations as annotations
-from ramalama.model import Model, MODEL_TYPES
-from ramalama.common import (
-    engine_version,
-    exec_cmd,
-    MNT_FILE,
-    perror,
-    run_cmd,
-)
+from ramalama.common import MNT_FILE, engine_version, exec_cmd, perror, run_cmd
+from ramalama.model import MODEL_TYPES, Model
 
 prefix = "oci://"
 

@@ -1,8 +1,7 @@
 import io
 import struct
-
 from enum import IntEnum
-from typing import Dict, Any
+from typing import Any, Dict
 
 import ramalama.console as console
 from ramalama.model_inspect import GGUFModelInfo, Tensor
