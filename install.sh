@@ -34,18 +34,18 @@ dnf_install() {
   fi
 }
 
-apt_get_install() {
-  apt-get -y install "$1"
+apt_install() {
+  apt install -y "$1"
 }
 
-apt_install() {
+apt_update_install() {
   if ! available podman; then
-    $sudo apt-get update || true
+    $sudo apt update || true
 
     # only install docker if podman can't be
-    if ! $sudo apt_get_install podman; then
+    if ! $sudo apt_install podman; then
       if ! available docker; then
-        $sudo apt_get_install docker || true
+        $sudo apt_install docker || true
       fi
     fi
   fi
@@ -88,8 +88,8 @@ check_platform() {
 
     if available dnf && ! grep -q ostree= /proc/cmdline; then
       dnf_install
-    elif available apt-get; then
-      apt_install
+    elif available apt; then
+      apt_update_install
     fi
   else
     echo "This script is intended to run on Linux and macOS only"
