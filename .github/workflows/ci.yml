@@ -18,9 +18,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bash codespell python3-argcomplete pipx
           make install-requirements
+
+      - name: Run format check
+        run: |
+          make check-format
+
       - name: Run lint
-        shell: bash
-        run: make lint
+        run: |
+          make lint
 
   bats:
     runs-on: ubuntu-24.04
@@ -60,8 +65,9 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install podman bats bash codespell python3-argcomplete pipx
+           sudo apt-get install podman bats bash codespell python3-argcomplete pipx git cmake libcurl4-openssl-dev
            make install-requirements
+           sudo ./container-images/scripts/build_llama_and_whisper.sh
 
       - name: Upgrade to podman 5
         run: |
@@ -134,7 +140,7 @@ jobs:
       - name: install golang
         shell: bash
         run: |
-           brew install go bats bash jq
+           brew install go bats bash jq llama.cpp
            make install-requirements
       - name: Run a one-line script
         shell: bash

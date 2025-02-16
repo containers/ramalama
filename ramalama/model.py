@@ -1,20 +1,23 @@
 import os
-import sys
 import platform
+import sys
 
 from ramalama.common import (
-    container_manager,
     DEFAULT_IMAGE,
+    MNT_DIR,
+    MNT_FILE,
+    container_manager,
     exec_cmd,
     genname,
-    run_cmd,
-    get_gpu,
     get_env_vars,
+    get_gpu,
+    run_cmd,
 )
-from ramalama.version import version
-from ramalama.quadlet import Quadlet
+from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
-from ramalama.common import MNT_DIR, MNT_FILE
+from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
+from ramalama.quadlet import Quadlet
+from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
 
@@ -41,6 +44,9 @@ class Model:
 
     def __init__(self, model):
         self.model = model
+        split = self.model.rsplit("/", 1)
+        self.directory = split[0] if len(split) > 1 else ""
+        self.filename = split[1] if len(split) > 1 else split[0]
 
     def login(self, args):
         raise NotImplementedError(f"ramalama login for {self.type} not implemented")
@@ -118,9 +124,9 @@ class Model:
 
         if args.runtime == "vllm":
             if gpu_type == "HIP_VISIBLE_DEVICES":
-                return "quay.io/modh/vllm:rhoai-2.17-rocm"
+                return "quay.io/modh/vllm:rhoai-2.18-rocm"
 
-            return "quay.io/modh/vllm:rhoai-2.17-cuda"
+            return "quay.io/modh/vllm:rhoai-2.18-cuda"
 
         split = version().split(".")
         vers = ".".join(split[:2])
@@ -129,6 +135,7 @@ class Model:
             "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
             "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
             "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
+            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
         }
 
         image = images.get(gpu_type, args.image)
@@ -152,11 +159,28 @@ class Model:
             "--rm",
             "-i",
             "--label",
-            "RAMALAMA",
+            "ai.ramalama",
             "--security-opt=label=disable",
             "--name",
             name,
+            "--env=HOME=/tmp",
+            "--cap-drop=all",
+            "--security-opt=no-new-privileges",
+            "--init",
         ]
+
+        container_labels = []
+        if hasattr(args, "MODEL"):
+            container_labels += ["--label", f"ai.ramalama.model={args.MODEL}"]
+        if hasattr(args, "engine"):
+            container_labels += ["--label", f"ai.ramalama.engine={args.engine}"]
+        if hasattr(args, "runtime"):
+            container_labels += ["--label", f"ai.ramalama.runtime={args.runtime}"]
+        if hasattr(args, "port"):
+            container_labels += ["--label", f"ai.ramalama.port={args.port}"]
+        if hasattr(args, "subcommand"):
+            container_labels += ["--label", f"ai.ramalama.command={args.subcommand}"]
+        conman_args.extend(container_labels)
 
         if os.path.basename(args.engine) == "podman":
             conman_args += ["--pull=newer"]
@@ -177,34 +201,41 @@ class Model:
         if hasattr(args, "port"):
             conman_args += ["-p", f"{args.port}:{args.port}"]
 
-        if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
-            conman_args += ["--device", "/dev/dri"]
+        if args.device:
+            for device_arg in args.device:
+                conman_args += ["--device", device_arg]
+        else:
+            if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
+                conman_args += ["--device", "/dev/dri"]
 
-        if os.path.exists("/dev/kfd"):
-            conman_args += ["--device", "/dev/kfd"]
+            if os.path.exists("/dev/kfd"):
+                conman_args += ["--device", "/dev/kfd"]
 
-        for k, v in get_env_vars().items():
-            # Special case for Cuda
-            if k == "CUDA_VISIBLE_DEVICES":
-                conman_args += ["--device", "nvidia.com/gpu=all"]
-            conman_args += ["-e", f"{k}={v}"]
-        if args.network_mode != "":
-            conman_args += ["--network", args.network_mode]
+            for k, v in get_env_vars().items():
+                # Special case for Cuda
+                if k == "CUDA_VISIBLE_DEVICES":
+                    conman_args += ["--device", "nvidia.com/gpu=all"]
+                conman_args += ["-e", f"{k}={v}"]
+        if args.network != "":
+            conman_args += ["--network", args.network]
         return conman_args
 
     def gpu_args(self, args, runner=False):
         gpu_args = []
         if (
-            args.gpu
-            or os.getenv("HIP_VISIBLE_DEVICES")
+            os.getenv("HIP_VISIBLE_DEVICES")
             or os.getenv("ASAHI_VISIBLE_DEVICES")
             or os.getenv("CUDA_VISIBLE_DEVICES")
+            or os.getenv("INTEL_VISIBLE_DEVICES")
             or (
                 # linux and macOS report aarch64 differently
                 platform.machine() in {"aarch64", "arm64"}
                 and os.path.exists("/dev/dri")
             )
         ):
+            if args.ngl < 0:
+                args.ngl = 999
+
             if runner:
                 gpu_args += ["--ngl"]  # double dash
             else:
@@ -247,6 +278,8 @@ class Model:
         prompt = self.build_prompt(args)
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_run(args, model_path, prompt)
+        if args.keepalive:
+            exec_args = ["timeout", args.keepalive] + exec_args
         self.execute_model(model_path, exec_args, args)
 
     def perplexity(self, args):
@@ -285,14 +318,26 @@ class Model:
         return prompt
 
     def get_model_path(self, args):
+        model_path = self.exists(args)
+        if model_path:
+            return model_path
+
         if args.dryrun:
             return "/path/to/model"
 
-        model_path = self.exists(args)
-        if not model_path:
-            model_path = self.pull(args)
+        model_path = self.pull(args)
 
         return model_path
+
+    def get_model_registry(self, args):
+        model_path = self.get_model_path(args)
+        if not model_path or args.dryrun:
+            return ""
+
+        parts = model_path.replace(args.store, "").split(os.sep)
+        if len(parts) < 3:
+            return ""
+        return parts[2]
 
     def build_exec_args_bench(self, args, model_path):
         exec_model_path = MNT_FILE if args.container else model_path
@@ -460,6 +505,18 @@ class Model:
     def check_valid_model_path(self, relative_target_path, model_path):
         return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
 
+    def inspect(self, args):
+        model_name = self.filename
+        model_path = self.get_model_path(args)
+        model_registry = self.get_model_registry(args)
+
+        if GGUFInfoParser.is_model_gguf(model_path):
+            gguf_info: GGUFModelInfo = GGUFInfoParser.parse(model_name, model_registry, model_path, args)
+            print(gguf_info.serialize(json=args.json, all=args.all))
+            return
+
+        print(ModelInfoBase(model_name, model_registry, model_path).serialize(json=args.json))
+
 
 def dry_run(args):
     for arg in args:
@@ -479,3 +536,12 @@ def distinfo_volume():
         return ""
 
     return f"-v{path}:/usr/share/ramalama/{dist_info}:ro"
+
+
+def rm_until_substring(model, substring):
+    pos = model.find(substring)
+    if pos == -1:
+        return model
+
+    # Create a new string starting after the found substring
+    return ''.join(model[i] for i in range(pos + len(substring), len(model)))

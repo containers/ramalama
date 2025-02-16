@@ -1,28 +1,24 @@
-from pathlib import Path
 import argparse
 import glob
 import json
 import os
-import subprocess
 import platform
+import subprocess
 import time
-import ramalama.oci
+from pathlib import Path
 
+import ramalama.oci
+import ramalama.rag
+from ramalama.common import container_manager, default_image, perror, run_cmd
+from ramalama.gpu_detector import GPUDetector
 from ramalama.huggingface import Huggingface
-from ramalama.common import (
-    container_manager,
-    default_image,
-    perror,
-    run_cmd,
-)
 from ramalama.model import MODEL_TYPES
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
-from ramalama.url import URL
 from ramalama.shortnames import Shortnames
 from ramalama.toml_parser import TOMLParser
-from ramalama.version import version, print_version
-from ramalama.gpu_detector import GPUDetector
+from ramalama.url import URL
+from ramalama.version import print_version, version
 
 shortnames = Shortnames()
 
@@ -186,20 +182,6 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
 The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
     )
     parser.add_argument(
-        "--gpu",
-        dest="gpu",
-        default=False,
-        action="store_true",
-        help="offload the workload to the GPU",
-    )
-    parser.add_argument(
-        "--ngl",
-        dest="ngl",
-        type=int,
-        default=config.get("ngl", 999),
-        help="Number of layers to offload to the gpu, if available",
-    )
-    parser.add_argument(
         "--keep-groups",
         dest="podman_keep_groups",
         default=config.get("keep_groups", False),
@@ -238,17 +220,19 @@ def configure_subcommands(parser):
     """Add subcommand parsers to the main argument parser."""
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
-    help_parser(subparsers)
     bench_parser(subparsers)
     containers_parser(subparsers)
     convert_parser(subparsers)
+    help_parser(subparsers)
     info_parser(subparsers)
+    inspect_parser(subparsers)
     list_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
     perplexity_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
+    rag_parser(subparsers)
     rm_parser(subparsers)
     run_parser(subparsers)
     serve_parser(subparsers)
@@ -428,7 +412,7 @@ def human_duration(d):
         return f"{d // 31536000} years"
 
 
-def list_files_by_modification():
+def list_files_by_modification(args):
     paths = Path().rglob("*")
     models = []
     for path in paths:
@@ -437,7 +421,11 @@ def list_files_by_modification():
                 path = str(path).replace("file/", "file:///")
                 perror(f"{path} does not exist")
                 continue
-        models.append(path)
+        if os.path.exists(path):
+            models.append(path)
+        else:
+            print(f"Broken symlink found in: {args.store}/models/{path} \nAttempting removal")
+            New(str(path).replace("/", "://", 1), args).remove(args)
 
     return sorted(models, key=lambda p: os.path.getmtime(p), reverse=True)
 
@@ -450,10 +438,17 @@ def bench_cli(args):
 def bench_parser(subparsers):
     parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
     parser.add_argument(
-        "--network-mode",
+        "--network",
         type=str,
         default="none",
         help="set the network mode for the container",
+    )
+    parser.add_argument(
+        "--ngl",
+        dest="ngl",
+        type=int,
+        default=config.get("ngl", -1),
+        help="Number of layers to offload to the gpu, if available",
     )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=bench_cli)
@@ -473,7 +468,7 @@ def _list_containers(args):
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "ps", "-a", "--filter", "label=RAMALAMA"]
+    conman_args = [conman, "ps", "-a", "--filter", "label=ai.ramalama"]
     if hasattr(args, "noheading") and args.noheading:
         conman_args += ["--noheading"]
 
@@ -500,7 +495,7 @@ def list_containers(args):
 
 
 def info_parser(subparsers):
-    parser = subparsers.add_parser("info", help="Display information pertaining to setup of RamaLama.")
+    parser = subparsers.add_parser("info", help="display information pertaining to setup of RamaLama.")
     parser.add_argument("--container", default=config.get('container', use_container()), help=argparse.SUPPRESS)
     parser.set_defaults(func=info_cli)
 
@@ -535,7 +530,7 @@ def _list_models(args):
     models = []
 
     # Collect model data
-    for path in list_files_by_modification():
+    for path in list_files_by_modification(args):
         if path.is_symlink():
             if str(path).startswith("file/"):
                 name = str(path).replace("/", ":///", 1)
@@ -624,7 +619,7 @@ def list_cli(args):
 
 
 def help_parser(subparsers):
-    parser = subparsers.add_parser("help", help="help about any command")
+    parser = subparsers.add_parser("help")
     # Do not run in a container
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=help_cli)
@@ -680,7 +675,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
     # https://docs.podman.io/en/latest/markdown/podman-build.1.html#network-mode-net
     parser.add_argument(
-        "--network-mode",
+        "--network",
         type=str,
         default="none",
         help="sets the configuration for network namespaces when handling RUN instructions",
@@ -716,7 +711,7 @@ def push_parser(subparsers):
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--network-mode",
+        "--network",
         type=str,
         default="none",
         help="set the network mode for the container",
@@ -794,7 +789,29 @@ def _run(parser):
         default=config.get('ctx_size', 2048),
         help="size of the prompt context (0 = loaded from model)",
     )
+    parser.add_argument(
+        "--device", dest="device", action='append', type=str, help="Device to leak in to the running container"
+    )
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
+    # Disable network access by default, and give the option to pass any supported network mode into
+    # podman if needed:
+    # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
+    parser.add_argument(
+        "--network",
+        type=str,
+        default="none",
+        help="set the network mode for the container",
+    )
+    parser.add_argument(
+        "--ngl",
+        dest="ngl",
+        type=int,
+        default=config.get("ngl", -1),
+        help="Number of layers to offload to the gpu, if available",
+    )
+    parser.add_argument(
+        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
+    )
     parser.add_argument("--seed", help="override random seed")
     parser.add_argument(
         "--temp", default=config.get('temp', "0.8"), help="temperature of the response from the AI model"
@@ -810,19 +827,12 @@ def _run(parser):
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     _run(parser)
-    # Disable network access by default, and give the option to pass any supported network mode into
-    # podman if needed:
-    # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
-    parser.add_argument(
-        "--network-mode",
-        type=str,
-        default="none",
-        help="set the network mode for the container",
-    )
+    parser.add_argument("--keepalive", type=str, help="Duration to keep a model loaded (e.g. 5m)")
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument(
         "ARGS", nargs="*", help="Overrides the default prompt, and the output is returned without entering the chatbot"
     )
+    parser._actions.sort(key=lambda x: x.option_strings)
     parser.set_defaults(func=run_cli)
 
 
@@ -843,12 +853,6 @@ def serve_parser(subparsers):
     )
     parser.add_argument(
         "-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on"
-    )
-    parser.add_argument(
-        "--network-mode",
-        type=str,
-        default="",
-        help="set the network mode for the container",
     )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
@@ -916,6 +920,33 @@ def version_parser(subparsers):
     parser.set_defaults(func=print_version)
 
 
+def rag_parser(subparsers):
+    parser = subparsers.add_parser(
+        "rag",
+        help="generate and convert retrieval augmented generation (RAG) data from provided documents into an OCI Image",
+    )
+    parser.add_argument(
+        "--network",
+        type=str,
+        default="none",
+        help="set the network mode for the container",
+    )
+    parser.add_argument(
+        "PATH",
+        nargs="*",
+        help="""\
+Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
+formatted files to be processed""",
+    )
+    parser.add_argument("IMAGE", help="OCI Image name to contain processed rag data")
+    parser.set_defaults(func=rag_cli)
+
+
+def rag_cli(args):
+    rag = ramalama.rag.Rag(args.IMAGE)
+    rag.generate(args)
+
+
 def rm_parser(subparsers):
     parser = subparsers.add_parser("rm", help="remove AI Model from local storage")
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
@@ -967,7 +998,7 @@ def rm_cli(args):
 def New(model, args):
     if model.startswith("huggingface://") or model.startswith("hf://") or model.startswith("hf.co/"):
         return Huggingface(model)
-    if model.startswith("ollama"):
+    if model.startswith("ollama://") or "ollama.com/library/" in model:
         return Ollama(model)
     if model.startswith("oci://") or model.startswith("docker://"):
         return OCI(model, args.engine)
@@ -987,6 +1018,7 @@ def New(model, args):
 
 def perplexity_parser(subparsers):
     parser = subparsers.add_parser("perplexity", help="calculate perplexity for specified AI Model")
+    _run(parser)
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=perplexity_cli)
 
@@ -994,3 +1026,16 @@ def perplexity_parser(subparsers):
 def perplexity_cli(args):
     model = New(args.MODEL, args)
     model.perplexity(args)
+
+
+def inspect_parser(subparsers):
+    parser = subparsers.add_parser("inspect", help="inspect an AI Model")
+    parser.add_argument("MODEL")  # positional argument
+    parser.add_argument("--all", dest="all", action="store_true", help="display all available information of AI Model")
+    parser.add_argument("--json", dest="json", action="store_true", help="display AI Model information in JSON format")
+    parser.set_defaults(func=inspect_cli)
+
+
+def inspect_cli(args):
+    model = New(args.MODEL, args)
+    model.inspect(args)

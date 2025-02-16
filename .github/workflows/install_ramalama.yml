@@ -1,0 +1,53 @@
+name: Install RamaLama
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  install_ramalama:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]  # Runs on Ubuntu, macOS, and Fedora
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Dependencies (Ubuntu)
+        timeout-minutes: 10
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y lshw curl
+
+      - name: Set Up Dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          if ! command -v brew &> /dev/null; then
+            echo "Homebrew is required but not found. Please install it."
+            exit 1
+          fi
+
+      - name: Run RamaLama Installer
+        run: |
+          chmod +x install.sh
+          sudo ./install.sh -l
+        
+      - name: Verify RamaLama installation
+        run: |
+          install_dir=$(sudo ./install.sh get_installation_dir)/ramalama/
+          ls -f -A ramalama/ | while read file; do ls -f -A $install_dir | grep $file; done 
+      
+      - name: Ramalama info
+        run: |
+          ramalama info
+
+      - name: RamaLama pull
+        run: |
+          ramalama pull tinyllama

@@ -7,15 +7,22 @@ SHAREDIR ?= ${PREFIX}/share
 PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
-
+IMAGE ?= ramalama
+GPU ?= cpu
 
 default: help
 
 help:
-	@echo "Build Container"
+	@echo "Build Container Image"
 	@echo
 	@echo "  - make build"
 	@echo "  - make build IMAGE=ramalama"
+	@echo "  - make multi-arch"
+	@echo "  - make multi-arch IMAGE=ramalama"
+	@echo
+	@echo "Build RAG Container Image"
+	@echo
+	@echo "  - make build-rag IMAGE=quay.io/ramalama/ramalama GPU=ramalama"
 	@echo
 	@echo "Build docs"
 	@echo
@@ -37,7 +44,14 @@ help:
 
 .PHONY: install-requirements
 install-requirements:
-	pipx install black flake8 argcomplete wheel huggingface_hub codespell
+	pipx install \
+			argcomplete~=3.0 \
+			black~=25.0 \
+			codespell~=2.0 \
+			flake8~=7.0 \
+			huggingface_hub~=0.28.0 \
+			isort~=6.0 \
+			wheel~=0.45.0 \
 
 .PHONY: install-completions
 install-completions: completions
@@ -77,9 +91,17 @@ install: docs completions
 build:
 	./container_build.sh build $(IMAGE)
 
-.PHONY: build_rm
-build_rm:
+.PHONY: build-rm
+build-rm:
 	./container_build.sh -r build $(IMAGE)
+
+.PHONY: build_multi_arch
+build_multi_arch:
+	./container_build.sh multi-arch $(IMAGE)
+
+.PHONY: build-rag
+build-rag:
+	podman build --no-cache --build-arg IMAGE=${IMAGE} --build-arg GPU=${GPU} -t ${IMAGE}-rag container-images/pragmatic
 
 .PHONY: install-docs
 install-docs: docs
@@ -91,8 +113,17 @@ docs:
 
 .PHONY: lint
 lint:
-	black --line-length 120 --exclude 'venv/*' *.py ramalama/*.py  # Format the code
-	flake8 --max-line-length=120 --exclude=venv *.py ramalama/*.py  # Check for any inconsistencies
+	flake8 *.py ramalama/*.py
+
+.PHONY: check-format
+check-format:
+	black --check --diff *.py ramalama/*.py
+	isort --check --diff *.py ramalama/*.py
+
+.PHONY: format
+format:
+	black *.py ramalama/*.py
+	isort *.py ramalama/*.py
 
 .PHONY: codespell
 codespell:

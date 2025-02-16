@@ -69,4 +69,4 @@ jobs:
 
       - name: Build Images
         run: |
-          make build_rm
+          make build-rm

@@ -27,7 +27,7 @@ add_build_platform() {
   fi
 
   conman_build+=("--platform" "$platform")
-  conman_build+=("-t" "quay.io/ramalama/$image_name")
+  conman_build+=("-t" "$REGISTRY_PATH/$image_name")
   conman_build+=("-f" "$image_name/Containerfile" ".")
 }
 
@@ -41,7 +41,7 @@ build() {
   cd "container-images"
   local image_name="${1//container-images\//}"
   local conman_build=("${conman[@]}")
-  local conman_show_size=("${conman[@]}" "images" "--filter" "reference='quay.io/ramalama/$image_name'")
+  local conman_show_size=("${conman[@]}" "images" "--filter" "reference='$REGISTRY_PATH/$image_name'")
   if [ "$3" == "-d" ]; then
       add_build_platform
       echo "${conman_build[@]}"
@@ -58,10 +58,13 @@ build() {
       rm_container_image
       ;;
     push)
-      "${conman[@]}" push "quay.io/ramalama/$image_name"
+      "${conman[@]}" push "$REGISTRY_PATH/$image_name"
+      ;;
+    multi-arch)
+      podman farm build -t "$REGISTRY_PATH"/"$image_name" -f "$image_name"/Containerfile .
       ;;
     *)
-      echo "Invalid command: ${2:-}. Use 'build' or 'push'."
+      echo "Invalid command: ${2:-}. Use 'build', 'push' or 'multi-arch'."
       return 1
       ;;
   esac
@@ -100,7 +103,7 @@ parse_arguments() {
         rm_after_build="true"
         shift
         ;;
-      build|push)
+      build|push|multi-arch)
         command="$1"
         shift
         ;;
@@ -119,6 +122,14 @@ process_all_targets() {
     if [ "$i" == "container-images/scripts" ]; then
       continue
     fi
+    # skip images that don't make sense for multi-arch builds
+    if [ "$command" = "multi-arch" ]; then
+      case "${i//container-images\//}" in
+        rocm|intel-gpu)
+          continue
+          ;;
+      esac
+    fi
     build "$i" "$command" "$option"
   done
 }
@@ -129,6 +140,7 @@ print_usage() {
   echo "Commands:"
   echo "  build        Build the container images"
   echo "  push         Push the container images"
+  echo "  multi-arch   Build and Push multi-arch images with podman farm"
   echo
   echo "Options:"
   echo "  -d           Some option description"
@@ -137,6 +149,9 @@ print_usage() {
   echo "Targets:"
   echo "  Specify the target container image to build or push"
   echo "  If no target is specified, all container images will be processed"
+  echo "Destination Registry:"
+  echo "  Override the target registry path by setting the env var REGISTRY_PATH"
+  echo "  default - quay.io/ramalama"
 }
 
 main() {
@@ -156,6 +171,11 @@ main() {
     print_usage
     exit 1
   fi
+  if [ "$command" = "multi-arch" ] && [ "$conman_bin" != "podman" ]; then
+    echo "Error: command 'multi-arch' only works with podman farm"
+    print_usage
+    exit 1
+  fi
 
   target="${target:-all}"
   if [ "$target" = "all" ]; then
@@ -165,5 +185,6 @@ main() {
   fi
 }
 
+REGISTRY_PATH=${REGISTRY_PATH:-quay.io/ramalama}
 main "$@"
 

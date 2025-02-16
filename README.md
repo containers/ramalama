@@ -1,4 +1,4 @@
-![RAMALAMA logo](logos/PNG/ramalama-logo-full-vertical-added-bg.png)
+![RAMALAMA logo](https://github.com/containers/ramalama/raw/main/logos/PNG/ramalama-logo-full-vertical-added-bg.png)
 
 # RamaLama
 
@@ -17,18 +17,32 @@ RamaLama then pulls AI Models from model registries. Starting a chatbot or a res
 
 When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behaviour. When neither are installed RamaLama will attempt to run the model with software on the local system.
 
-RamaLama supports multiple AI model registries types called transports.
-Supported transports:
+## SECURITY
 
+### Test and run your models more securely
+
+Because RamaLama defaults to running AI models inside of rootless containers using Podman or Docker. These containers isolate the AI models from information on the underlying host. With RamaLama containers, the AI model is mounted as a volume into the container in read/only mode. This results in the process running the model, llama.cpp or vLLM, being isolated from the host.  In addition, since `ramalama run` uses the --network=none option, the container can not reach the network and leak any information out of the system. Finally, containers are run with --rm options which means that any content written during the running of the container is wiped out when the application exits.
+
+### Here’s how RamaLama delivers a robust security footprint:
+
+     ✅ Container Isolation – AI models run within isolated containers, preventing direct access to the host system.
+     ✅ Read-Only Volume Mounts – The AI model is mounted in read-only mode, meaning that processes inside the container cannot modify host files.
+     ✅ No Network Access – ramalama run is executed with --network=none, meaning the model has no outbound connectivity for which information can be leaked.
+     ✅ Auto-Cleanup – Containers run with --rm, wiping out any temporary data once the session ends.
+     ✅ Drop All Linux Capabilities – No access to Linux capabilities to attack the underlying host.
+     ✅ No New Privileges – Linux Kernel feature which disables container processes from gaining additional privileges.
 
 ## TRANSPORTS
+
+RamaLama supports multiple AI model registries types called transports.
+Supported transports:
 
 | Transports    | Web Site                                            |
 | ------------- | --------------------------------------------------- |
 | HuggingFace   | [`huggingface.co`](https://www.huggingface.co)      |
 | Ollama        | [`ollama.com`](https://www.ollama.com)              |
 | OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)|
-||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), and [`Artifactory`](https://artifactory.com)|
+||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), [`Pulp`](https://pulpproject.org), and [`Artifactory`](https://artifactory.com)|
 
 RamaLama uses the Ollama registry transport by default. Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
@@ -98,14 +112,18 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 | Command                                                | Description                                                |
 | ------------------------------------------------------ | ---------------------------------------------------------- |
 | [ramalama(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama.1.md)                      | primary RamaLama man page                                  |
+| [ramalama-bench(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-bench.1.md)| benchmark specified AI Model                                         |
 | [ramalama-containers(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-containers.1.md)| list all RamaLama containers                               |
+| [ramalama-convert(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-convert.1.md)      | convert AI Model from local storage to OCI Image           |
 | [ramalama-info(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-info.1.md)            | display RamaLama configuration information                 |
+| [ramalama-inspect(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-inspect.1.md)      | inspect the specified AI Model                             |
 | [ramalama-list(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-login.1.md)          | login to remote registry                                   |
 | [ramalama-logout(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-logout.1.md)        | logout from remote registry                                |
+| [ramalama-perplexity(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-perplexity.1.md)| calculate perplexity for specified AI Model                |
 | [ramalama-pull(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-pull.1.md)            | pull AI Model from Model registry to local storage         |
-| [ramalama-convert(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-convert.1.md)      | convert AI Model from local storage to OCI Image           |
 | [ramalama-push(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-push.1.md)            | push AI Model from local storage to remote registry        |
+| [ramalama-rag(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-rag.1.md)              | generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image|
 | [ramalama-rm(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-rm.1.md)                | remove AI Model from local storage                         |
 | [ramalama-run(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
 | [ramalama-serve(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-serve.1.md)          | serve REST API on specified AI Model                       |

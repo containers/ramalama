@@ -1,6 +1,6 @@
 [project]
 name = "ramalama"
-version = "0.5.5"
+version = "0.6.0"
 dependencies = [
   "argcomplete",
 ]
@@ -21,7 +21,7 @@ Repository = "https://github.com/containers/ramalama"
 Issues = "https://github.com/containers/ramalama/issues"
 
 [tool.black]
-line-length = 100
+line-length = 120
 skip-string-normalization = true
 preview = true
 target-version = ["py36"]
@@ -36,11 +36,16 @@ exclude = '''
   | dist
   | docs
   | hack
+  | venv
 )/
 '''
 [tool.isort]
 profile = "black"
-line_length = 100
+line_length = 120
+
+[tool.flake8]
+max-line-length = 120
+
 [tool.pytest.ini_options]
 log_cli = true
 log_cli_level = "DEBUG"

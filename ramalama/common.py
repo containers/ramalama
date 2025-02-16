@@ -2,60 +2,68 @@
 
 import glob
 import hashlib
+import logging
 import os
 import random
-import logging
+import re
 import shutil
 import string
 import subprocess
-import time
 import sys
-import urllib.request
+import time
 import urllib.error
+import urllib.request
+
 import ramalama.console as console
-
 from ramalama.http_client import HttpClient
-
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 
 MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
-HTTP_RANGE_NOT_SATISFIABLE = 416
 
-DEFAULT_IMAGE="quay.io/ramalama/ramalama"
+HTTP_NOT_FOUND = 404
+HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already downloaded)
 
-def container_manager():
+DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
+
+
+_engine = -1  # -1 means cached variable not set yet
+
+
+def get_engine():
     engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
     if engine is not None:
         return engine
 
-    if available("podman"):
-        if sys.platform != "darwin":
-            return "podman"
-
-        podman_machine_list = ["podman", "machine", "list"]
-        conman_args = ["podman", "machine", "list", "--format", "{{ .VMType }}"]
-        try:
-            output = run_cmd(podman_machine_list).stdout.decode("utf-8").strip()
-            if "running" not in output:
-                return None
-
-            output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-            if output == "krunkit" or output == "libkrun":
-                return "podman"
-            else:
-                return None
-
-        except subprocess.CalledProcessError:
-            pass
-
+    if available("podman") and (sys.platform != "darwin" or is_podman_machine_running_with_krunkit()):
         return "podman"
 
-    if available("docker"):
+    if available("docker") and sys.platform != "darwin":
         return "docker"
 
     return None
+
+
+def container_manager():
+    global _engine
+    if _engine != -1:
+        return _engine
+
+    _engine = get_engine()
+
+    return _engine
+
+
+def is_podman_machine_running_with_krunkit():
+    podman_machine_list = ["podman", "machine", "list", "--all-providers"]
+    try:
+        output = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
+        return re.search("krun.*running", output)
+    except subprocess.CalledProcessError:
+        pass
+
+    return False
 
 
 def perror(*args, **kwargs):
@@ -194,7 +202,7 @@ def download_file(url, dest_path, headers=None, show_progress=True):
             return  # Exit function if successful
 
         except urllib.error.HTTPError as e:
-            if e.code == HTTP_RANGE_NOT_SATISFIABLE:  # "Range Not Satisfiable" error (file already downloaded)
+            if e.code in [HTTP_RANGE_NOT_SATISFIABLE, HTTP_NOT_FOUND]:
                 return  # No need to retry
 
         except urllib.error.URLError as e:
@@ -282,9 +290,20 @@ def get_gpu():
         os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
         return
 
+    # INTEL iGPU CASE (Look for ARC GPU)
+    igpu_num = 0
+    for fp in sorted(glob.glob('/sys/bus/pci/drivers/i915/*/device')):
+        with open(fp, 'rb') as file:
+            content = file.read()
+            if b"0x7d55" in content:
+                igpu_num += 1
+
+    if igpu_num:
+        os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
+
 
 def get_env_vars():
-    prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_")
+    prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_", "INTEL_")
     env_vars = {k: v for k, v in os.environ.items() if k.startswith(prefixes)}
 
     # gpu_type, gpu_num = get_gpu()

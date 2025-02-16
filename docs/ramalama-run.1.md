@@ -31,14 +31,48 @@ path of the authentication file for OCI registries
 #### **--ctx-size**, **-c**
 size of the prompt context (default: 2048, 0 = loaded from model)
 
+#### **--device**
+Add a host device to the container. Optional permissions parameter  can
+be  used  to  specify device permissions by combining r for read, w for
+write, and m for mknod(2).
+
+Example: --device=/dev/dri/renderD128:/dev/xvdc:rwm
+
+The device specification is passed directly to the underlying container engine.  See documentation of the supported container engine for more information.
+
 #### **--help**, **-h**
 show this help message and exit
+
+#### **--keepalive**
+duration to keep a model loaded (e.g. 5m)
 
 #### **--name**, **-n**
 name of the container to run the Model in
 
-#### **--network-mode**=*none*
+#### **--network**=*none*
 set the network mode for the container
+
+#### **--ngl**
+number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
+The default -1, means use whatever is automatically deemed appropriate (0 or 999)
+
+#### **--privileged**
+By  default, RamaLama containers are unprivileged (=false) and cannot, for
+example, modify parts of the operating system. This is  because  by  de‐
+fault  a  container is only allowed limited access to devices. A "privi‐
+leged" container is given the same access to devices as the user launch‐
+ing the container, with the exception of virtual consoles  (/dev/tty\d+)
+when running in systemd mode (--systemd=always).
+
+A  privileged container turns off the security features that isolate the
+container from the host. Dropped Capabilities,  limited  devices,  read-
+only  mount points, Apparmor/SELinux separation, and Seccomp filters are
+all disabled.  Due to the disabled  security  features,  the  privileged
+field  should  almost never be set as containers can easily break out of
+confinement.
+
+Containers running in a user namespace (e.g., rootless containers)  can‐
+not have more privileges than the user that launched them.
 
 #### **--seed**=
 Specify seed rather than using random seed model interaction
@@ -70,9 +104,9 @@ ramalama run granite
 >
 ```
 
-Run command with local downloaoded model
+Run command with local downloaded model for 10 minutes
 ```
-ramalama run file:///tmp/mymodel
+ramalama run --keepalive 10m file:///tmp/mymodel
 >
 ```
 
@@ -89,9 +123,15 @@ This program is a Python script that allows the user to interact with a terminal
  [end of text]
 ```
 
+## Exit Codes:
+
+0   Success
+124 RamaLama command did not exit within the keepalive time.
+
+
 ## NVIDIA CUDA Support
 
-See **[ramalama-cuda(7)](ramalama.7.md)** for setting up the host Linux system for CUDA support.
+See **[ramalama-cuda(7)](ramalama-cuda.7.md)** for setting up the host Linux system for CUDA support.
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**

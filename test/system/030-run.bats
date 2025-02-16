@@ -9,7 +9,7 @@ load helpers
     if is_container; then
 	run_ramalama info
 	conman=$(jq .Engine.Name <<< $output | tr -d '"' )
-	verify_begin="${conman} run --rm -i --label RAMALAMA --security-opt=label=disable --name"
+	verify_begin="${conman} run --rm -i --label ai.ramalama --security-opt=label=disable --name"
 
 	run_ramalama --dryrun run ${model}
 	is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
@@ -64,8 +64,12 @@ load helpers
 }
 
 @test "ramalama run tiny with prompt" {
-      skip_if_notlocal
-      run_ramalama run --name foobar tiny "Write a 1 line poem"
+    skip_if_notlocal
+    run_ramalama run --name foobar tiny "Write a 1 line poem"
+}
+
+@test "ramalama run --keepalive" {
+    run_ramalama 124 run --keepalive 1s tiny
 }
 
 # vim: filetype=sh

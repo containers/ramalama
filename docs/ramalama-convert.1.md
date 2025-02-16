@@ -16,7 +16,7 @@ The model can be from RamaLama model storage in Huggingface, Ollama, or local mo
 #### **--help**, **-h**
 Print usage message
 
-#### **--network-mode**=*none*
+#### **--network**=*none*
 sets the configuration for network namespaces when handling RUN instructions
 
 #### **--type**=*raw* | *car*

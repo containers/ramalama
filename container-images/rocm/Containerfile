@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.5-1738643550
+FROM registry.access.redhat.com/ubi9/ubi:9.5-1739449058
 
 COPY rocm/amdgpu.repo /etc/yum.repos.d/
 COPY rocm/rocm.repo /etc/yum.repos.d/

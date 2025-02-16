@@ -1,6 +1,6 @@
 [amdgpu]
 name=amdgpu
-baseurl=https://repo.radeon.com/amdgpu/6.3.1/rhel/9.5/main/x86_64/
+baseurl=https://repo.radeon.com/amdgpu/6.3.2/rhel/9.5/main/x86_64/
 enabled=1
 priority=50
 gpgcheck=1

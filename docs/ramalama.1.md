@@ -29,9 +29,24 @@ used within the VM.
 
 Default settings for flags are defined in `ramalama.conf(5)`.
 
-RamaLama supports multiple AI model registries types called transports. Supported transports:
+## SECURITY
+
+### Test and run your models more securely
+
+Because RamaLama defaults to running AI models inside of rootless containers using Podman on Docker. These containers isolate the AI models from information on the underlying host. With RamaLama containers, the AI model is mounted as a volume into the container in read/only mode. This results in the process running the model, llama.cpp or vLLM, being isolated from the host.  In addition, since `ramalama run` uses the --network=none option, the container can not reach the network and leak any information out of the system. Finally, containers are run with --rm options which means that any content written during the running of the container is wiped out when the application exits.
+
+### Here’s how RamaLama delivers a robust security footprint:
+
+    ✅ Container Isolation – AI models run within isolated containers, preventing direct access to the host system.
+    ✅ Read-Only Volume Mounts – The AI model is mounted in read-only mode, meaning that processes inside the container cannot modify host files.
+    ✅ No Network Access – ramalama run is executed with --network=none, meaning the model has no outbound connectivity for which information can be leaked.
+    ✅ Auto-Cleanup – Containers run with --rm, wiping out any temporary data once the session ends.
+    ✅ Drop All Linux Capabilities – No access to Linux capabilities to attack the underlying host.
+    ✅ No New Privileges – Linux Kernel feature which disables container processes from gaining additional privileges.
 
 ## MODEL TRANSPORTS
+
+RamaLama supports multiple AI model registries types called transports. Supported transports:
 
 | Transports    | Prefix | Web Site                                            |
 | ------------- | ------ | --------------------------------------------------- |
@@ -95,9 +110,6 @@ show container runtime command without executing it (default: False)
 run RamaLama using the specified container engine. Default is `podman` if installed otherwise docker.
 The default can be overridden in the ramalama.conf file or via the RAMALAMA_CONTAINER_ENGINE environment variable.
 
-#### **--gpu**
-offload the workload to the GPU (default: False)
-
 #### **--help**, **-h**
 show this help message and exit
 
@@ -106,16 +118,13 @@ OCI container image to run with specified AI model. By default RamaLama uses
 `quay.io/ramalama/ramalama:latest`. The --image option allows users to override
 the default.
 
-The default can be overridden in the ramalama.conf file or via the the
+The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
 RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
 
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)
 Needed to access the gpu on some systems, but has an impact on security, use with caution.
-
-#### **--ngl**
-number of gpu layers (default: 999)
 
 #### **--nocontainer**
 do not run RamaLama in the default container (default: False)
@@ -136,24 +145,35 @@ show RamaLama version
 
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
-| [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
 | [ramalama-bench(1)](ramalama-bench.1.md)          | benchmark specified AI Model                               |
+| [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
 | [ramalama-convert(1)](ramalama-convert.1.md)      | convert AI Models from local storage to OCI Image          |
-| [ramalama-info(1)](ramalama-info.1.md)            | Display RamaLama configuration information                 |
+| [ramalama-info(1)](ramalama-info.1.md)            | display RamaLama configuration information                 |
+| [ramalama-inspect(1)](ramalama-inspect.1.md)      | inspect the specified AI Model                             |
 | [ramalama-list(1)](ramalama-list.1.md)            | list all downloaded AI Models                              |
 | [ramalama-login(1)](ramalama-login.1.md)          | login to remote registry                                   |
 | [ramalama-logout(1)](ramalama-logout.1.md)        | logout from remote registry                                |
+| [ramalama-perplexity(1)](ramalama-perplexity.1.md)| calculate the perplexity value of an AI Model              |
 | [ramalama-pull(1)](ramalama-pull.1.md)            | pull AI Models from Model registries to local storage      |
 | [ramalama-push(1)](ramalama-push.1.md)            | push AI Models from local storage to remote registries     |
+| [ramalama-rag(1)](ramalama-rag.1.md)              | generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image |
 | [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Models from local storage                        |
 | [ramalama-run(1)](ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
-| [ramalama-perplexity(1)](ramalama-perplexity.1.md)| calculate the perplexity value of an AI Model              |
 | [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
 | [ramalama-stop(1)](ramalama-stop.1.md)            | stop named container that is running AI Model              |
 | [ramalama-version(1)](ramalama-version.1.md)      | display version of RamaLama                                |
 
 ## CONFIGURATION FILES
 
+**ramalama.conf** (`/usr/share/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf`, `$HOME/.config/ramalama/ramalama.conf`)
+
+RamaLama has builtin defaults for command line options. These defaults can be overridden using the ramalama.conf configuration files.
+
+Distributions ship the `/usr/share/ramalama/ramalama.conf` file with their default settings. Administrators can override fields in this file by creating the `/etc/ramalama/ramalama.conf` file.  Users can further modify defaults by creating the `$HOME/.config/ramalama/ramalama.conf` file. RamaLama merges its builtin defaults with the specified fields from these files, if they exist. Fields specified in the users file override the administrator's file, which overrides the distribution's file, which override the built-in defaults.
+
+RamaLama uses builtin defaults if no ramalama.conf file is found.
+
+If the **RAMALAMA_CONFIG** environment variable is set, then its value is used for the ramalama.conf file rather than the default.
 
 ## SEE ALSO
 **[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**, **docker(1)**, **[ramalama.conf(5)](ramalama.conf.5.md)**

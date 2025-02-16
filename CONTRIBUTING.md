@@ -11,6 +11,8 @@ Below summarizes the processes that we follow.
 * [Contributing To RamaLama](#contributing-to-ramalama)
 * [Submitting Pull Requests](#submitting-pull-requests)
 * [Communications](#communications)
+* [Code of Conduct](#code-of-conduct)
+
 
 ## Reporting Issues
 
@@ -52,12 +54,6 @@ If you lack permissions to do so, you can ping the `@containers/ramalama-maintai
 This section describes how to make a contribution to RamaLama.
 
 ### Prepare your environment
-
-Read the [install documentation to see how to install dependencies](https://ramalama.io/getting-started/installation#build-and-run-dependencies).
-
-The install documentation will illustrate the following steps:
-- Installation of required tools
-- Installing RamaLama from source
 
 The minimum version of Python required to use RamaLama is PYTHON 3.12
 
@@ -136,7 +132,7 @@ To set up `podman farm` you need to first have `podman` installed on systems wit
    podman farm build -t <registry-of-choice>/<image-name> -f path/to/Containerfile ./path/
    ```
 
-Example using an Apple Silicon based machine as the workstation, and an Intel Linux machine as a remote host with IP 10.11.12.13: 
+Example using an Apple Silicon based machine as the workstation, and an Intel Linux machine as a remote host with IP 10.11.12.13:
 
 1. Set up Podman Farm -
 
@@ -282,9 +278,9 @@ The following git config settings can be used to add a pretty format for outputt
 
 ```
 [core]
-        abbrev = 12
+	abbrev = 12
 [pretty]
-        fixes = Fixes: %h (\"%s\")
+	fixes = Fixes: %h (\"%s\")
 ```
 
 ### Sign your PRs
@@ -387,6 +383,16 @@ For discussions around issues/bugs and features, you can use the GitHub
 and
 [PRs](https://github.com/containers/ramalama/pulls)
 tracking system.
+
+## Code of Conduct
+
+As contributors and maintainers of the projects under the [Containers](https://github.com/containers) repository,
+and in the interest of fostering an open and welcoming community, we pledge to
+respect all people who contribute through reporting issues, posting feature
+requests, updating documentation, submitting pull requests or patches, and other
+activities to any of the projects under the containers umbrella. The full code of conduct guidelines can be
+found [here](https://github.com/containers/common/blob/main/CODE-OF-CONDUCT.md).
+
 
 ### Bot Interactions
 
