@@ -1,11 +1,12 @@
 #!/bin/bash
-if [ -n ${MODEL_PATH} ]; then
+
+if [ -n "${MODEL_PATH}" ]; then
     whisper-server \
 	-tr \
-	--model ${MODEL_PATH} \
+	--model "${MODEL_PATH}" \
 	--convert \
-	--host ${HOST:=0.0.0.0} \
-	--port ${PORT:=8001}
+	--host "${HOST:=0.0.0.0}" \
+	--port "${PORT:=8001}"
     exit 0
 fi
 

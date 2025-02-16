@@ -10,7 +10,7 @@ dnf_install_intel_gpu() {
                   "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
   dnf install -y "${rpm_list[@]}" "${intel_rpms[@]}"
 
-  # shellcheck source=/dev/null
+  # shellcheck disable=SC1091
   . /opt/intel/oneapi/setvars.sh
 }
 

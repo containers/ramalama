@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ -z ${HOME} ]
+if [ -z "${HOME}" ]
 then
   export HOME=/home/llama-user
 fi
@@ -18,8 +18,8 @@ then
   then
     echo "${USER_NAME:-llama-user}:x:$(id -u):0:${USER_NAME:-llama-user} user:${HOME}:/bin/bash" >> /etc/passwd
     echo "${USER_NAME:-llama-user}:x:$(id -u):" >> /etc/group
-    render_group="$(cat /etc/group | grep 'render:x')"
-    video_group="$(cat /etc/group | grep 'video:x')"
+    render_group="$(grep 'render:x' /etc/group)"
+    video_group="$(grep 'video:x' /etc/group)"
     render_group_new="${render_group}${USER_NAME:-llama-user}"
     video_group_new="${video_group}${USER_NAME:-llama-user}"
     sed "s|${render_group}|${render_group_new}|g" /etc/group > /tmp/group
@@ -30,17 +30,18 @@ then
 fi
 
 # Configure Z shell
-if [ ! -f ${HOME}/.zshrc ]
+if [ ! -f "${HOME}/.zshrc" ]
 then
-  (echo "source /opt/intel/oneapi/setvars.sh") > ${HOME}/.zshrc
+  (echo ". /opt/intel/oneapi/setvars.sh") > "${HOME}/.zshrc"
 fi
 
 # Configure Bash shell
-if [ ! -f ${HOME}/.bashrc ]
+if [ ! -f "${HOME}/.bashrc" ]
 then
-  (echo "source /opt/intel/oneapi/setvars.sh") > ${HOME}/.bashrc
+  (echo ". /opt/intel/oneapi/setvars.sh") > "${HOME}/.bashrc"
 fi
 
-source /opt/intel/oneapi/setvars.sh
+# shellcheck disable=SC1091
+. /opt/intel/oneapi/setvars.sh
 
 exec "$@"
