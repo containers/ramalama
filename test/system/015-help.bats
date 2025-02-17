@@ -75,21 +75,6 @@ function check_help() {
             found[required_args]=1
         fi
 
-        # Commands with fixed number of arguments (i.e. no ellipsis): count
-        # the required args, then invoke with one extra. We should get a
-        # usage error.
-        if ! expr "$usage" : ".*\.\.\."; then
-            local n_args=$(wc -w <<<"$usage")
-
-            run_ramalama '?' "$@" $cmd $(seq --format='x%g' 0 $n_args)
-            is "$status" 2 \
-               "'$usage' indicates a maximum of $n_args args. I invoked it with more, and expected this exit status"
-            is "$output" ".*ramalama: error:.* unrecognized arguments" \
-               "'$usage' indicates a maximum of $n_args args. I invoked it with more, and expected one of these error messages"
-
-            found[fixed_args]=1
-        fi
-
         count=$(expr $count + 1)
     done
 

@@ -56,6 +56,8 @@ set the network mode for the container
 number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
 The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
+Pull image policy. The default is **missing**.
+
 #### **--privileged**
 By  default, RamaLama containers are unprivileged (=false) and cannot, for
 example, modify parts of the operating system. This is  because  by  de‐
@@ -73,6 +75,13 @@ confinement.
 
 Containers running in a user namespace (e.g., rootless containers)  can‐
 not have more privileges than the user that launched them.
+
+#### **--pull**=*policy*
+
+- **always**: Always pull the image and throw an error if the pull fails.
+- **missing**: Only pull the image when it does not exist in the local containers storage.  Throw an error if no image is found and the pull fails.
+- **never**: Never pull the image but use the one from the local containers storage.  Throw an error when no image is found.
+- **newer**: Pull if the image on the registry is newer than the one in the local containers storage.  An image is considered to be newer when the digests are different.  Comparing the time stamps is prone to errors.  Pull errors are suppressed if a local image was found.
 
 #### **--seed**=
 Specify seed rather than using random seed model interaction

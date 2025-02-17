@@ -101,6 +101,13 @@ confinement.
 Containers running in a user namespace (e.g., rootless containers)  can‐
 not have more privileges than the user that launched them.
 
+#### **--pull**=*policy*
+
+- **always**: Always pull the image and throw an error if the pull fails.
+- **missing**: Only pull the image when it does not exist in the local containers storage.  Throw an error if no image is found and the pull fails.
+- **never**: Never pull the image but use the one from the local containers storage.  Throw an error when no image is found.
+- **newer**: Pull if the image on the registry is newer than the one in the local containers storage.  An image is considered to be newer when the digests are different.  Comparing the time stamps is prone to errors.  Pull errors are suppressed if a local image was found.
+
 #### **--seed**=
 Specify seed rather than using random seed model interaction
 

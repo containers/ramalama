@@ -246,6 +246,10 @@ function is_container() {
     [ "${_RAMALAMA_TEST_OPTS}" != "--nocontainer" ]
 }
 
+function not_docker() {
+    [[ "${_RAMALAMA_TEST_OPTS}" != "--engine=docker" ]]
+}
+
 function skip_if_nocontainer() {
     if [[ "${_RAMALAMA_TEST_OPTS}" == "--nocontainer" ]]; then
 	skip "Not supported with --nocontainer"
