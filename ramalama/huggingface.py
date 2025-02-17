@@ -71,11 +71,11 @@ class Huggingface(Model):
                 return self.hf_pull(args, model_path, directory_path)
             perror("URL pull failed and huggingface-cli not available")
             raise KeyError(f"Failed to pull model: {str(e)}")
-    
+
     def in_existing_cache(self, args, target_path, sha256_checksum):
         if self.hf_cli_available is False:
             return False
-        
+
         default_hf_caches = [
             os.path.join(os.environ['HOME'], '.cache/huggingface/hub'),
         ]
