@@ -435,14 +435,23 @@ def bench_cli(args):
     model.bench(args)
 
 
-def bench_parser(subparsers):
-    parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
+def add_network_argument(parser, dflt="none"):
+    # Disable network access by default, and give the option to pass any supported network mode into
+    # podman if needed:
+    # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
+    # https://docs.podman.io/en/latest/markdown/podman-build.1.html#network-mode-net
     parser.add_argument(
         "--network",
+        "--net",
         type=str,
-        default="none",
+        default=dflt,
         help="set the network mode for the container",
     )
+
+
+def bench_parser(subparsers):
+    parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
+    add_network_argument(parser)
     parser.add_argument(
         "--ngl",
         dest="ngl",
@@ -673,13 +682,7 @@ type of OCI Model Image to push.
 Model "car" includes base image with the model stored in a /models subdir.
 Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
-    # https://docs.podman.io/en/latest/markdown/podman-build.1.html#network-mode-net
-    parser.add_argument(
-        "--network",
-        type=str,
-        default="none",
-        help="sets the configuration for network namespaces when handling RUN instructions",
-    )
+    add_network_argument(parser)
     parser.add_argument("SOURCE")  # positional argument
     parser.add_argument("TARGET")  # positional argument
     parser.set_defaults(func=convert_cli)
@@ -710,12 +713,7 @@ def push_parser(subparsers):
         default=config['carimage'],
         help=argparse.SUPPRESS,
     )
-    parser.add_argument(
-        "--network",
-        type=str,
-        default="none",
-        help="set the network mode for the container",
-    )
+    add_network_argument(parser)
     parser.add_argument(
         "--type",
         default="raw",
@@ -780,7 +778,7 @@ def push_cli(args):
             raise e
 
 
-def _run(parser):
+def run_serve_perplexity_args(parser):
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument(
         "-c",
@@ -793,15 +791,6 @@ def _run(parser):
         "--device", dest="device", action='append', type=str, help="Device to leak in to the running container"
     )
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
-    # Disable network access by default, and give the option to pass any supported network mode into
-    # podman if needed:
-    # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
-    parser.add_argument(
-        "--network",
-        type=str,
-        default="none",
-        help="set the network mode for the container",
-    )
     parser.add_argument(
         "--ngl",
         dest="ngl",
@@ -826,7 +815,8 @@ def _run(parser):
 
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
-    _run(parser)
+    run_serve_perplexity_args(parser)
+    add_network_argument(parser)
     parser.add_argument("--keepalive", type=str, help="Duration to keep a model loaded (e.g. 5m)")
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument(
@@ -843,7 +833,8 @@ def run_cli(args):
 
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
-    _run(parser)
+    run_serve_perplexity_args(parser)
+    add_network_argument(parser, "")
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
     parser.add_argument("--host", default=config.get('host', "0.0.0.0"), help="IP address to listen")
     parser.add_argument(
@@ -925,12 +916,7 @@ def rag_parser(subparsers):
         "rag",
         help="generate and convert retrieval augmented generation (RAG) data from provided documents into an OCI Image",
     )
-    parser.add_argument(
-        "--network",
-        type=str,
-        default="none",
-        help="set the network mode for the container",
-    )
+    add_network_argument(parser)
     parser.add_argument(
         "PATH",
         nargs="*",
@@ -1018,7 +1004,8 @@ def New(model, args):
 
 def perplexity_parser(subparsers):
     parser = subparsers.add_parser("perplexity", help="calculate perplexity for specified AI Model")
-    _run(parser)
+    run_serve_perplexity_args(parser)
+    add_network_argument(parser)
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=perplexity_cli)
 
