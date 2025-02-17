@@ -17,13 +17,13 @@ EOF
 	verify_begin="${conman} run --rm -i --label ai.ramalama --name"
 
 	run_ramalama --dryrun run ${model}
-	is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
+	is "$output" "${verify_begin} ramalama_.*--network none.*" "dryrun correct"
 	is "$output" ".*${model}" "verify model name"
 	is "$output" ".*-c 2048" "verify model name"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
-	run_ramalama --dryrun run --seed 9876 -c 4096 --name foobar ${model}
-	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
+	run_ramalama --dryrun run --seed 9876 -c 4096 --net bridge --name foobar ${model}
+	is "$output" "${verify_begin} foobar.*--network bridge.*" "dryrun correct with --name"
 	is "$output" ".*${model}" "verify model name"
 	is "$output" ".*-c 4096" "verify ctx-size is set"
 	is "$output" ".*--temp 0.8" "verify temp is set"
