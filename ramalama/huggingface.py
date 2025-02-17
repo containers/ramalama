@@ -71,7 +71,7 @@ class Huggingface(Model):
                 return self.hf_pull(args, model_path, directory_path)
             perror("URL pull failed and huggingface-cli not available")
             raise KeyError(f"Failed to pull model: {str(e)}")
-        
+
     def _fetch_snapshot_path(self, cache_dir, namespace, repo):
         cache_path = os.path.join(cache_dir, f'models--{namespace}--{repo}')
         main_ref_path = os.path.join(cache_path, 'refs', 'main')
@@ -89,26 +89,25 @@ class Huggingface(Model):
         default_hf_caches = [os.path.join(os.environ['HOME'], '.cache/huggingface/hub')]
         namespace, repo = os.path.split(str(self.directory))
 
-
         for cache_dir in default_hf_caches:
-                snapshot_path, cache_path = self._fetch_snapshot_path(cache_dir, namespace, repo)
-                if not snapshot_path or not os.path.exists(snapshot_path):
-                    continue
+            snapshot_path, cache_path = self._fetch_snapshot_path(cache_dir, namespace, repo)
+            if not snapshot_path or not os.path.exists(snapshot_path):
+                continue
 
-                file_path = os.path.join(snapshot_path, self.filename)
-                if not os.path.exists(file_path):
-                    continue
+            file_path = os.path.join(snapshot_path, self.filename)
+            if not os.path.exists(file_path):
+                continue
 
-                blob_path = pathlib.Path(file_path).resolve()
-                if not os.path.exists(blob_path):
-                    continue
+            blob_path = pathlib.Path(file_path).resolve()
+            if not os.path.exists(blob_path):
+                continue
 
-                blob_file = os.path.relpath(blob_path, start=os.path.join(cache_path, 'blobs'))
-                if str(blob_file) != str(sha256_checksum):
-                    continue
+            blob_file = os.path.relpath(blob_path, start=os.path.join(cache_path, 'blobs'))
+            if str(blob_file) != str(sha256_checksum):
+                continue
 
-                os.symlink(blob_path, target_path)
-                return True
+            os.symlink(blob_path, target_path)
+            return True
         return False
 
     def hf_pull(self, args, model_path, directory_path):
