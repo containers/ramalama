@@ -15,7 +15,7 @@ dnf_install_intel_gpu() {
 }
 
 dnf_install() {
-  local rpm_list=("python3" "python3-pip" "python3-argcomplete" \
+  local rpm_list=("podman-remote" "python3" "python3-pip" "python3-argcomplete" \
                   "python3-dnf-plugin-versionlock" "gcc-c++" "cmake" "vim" \
                   "procps-ng" "git" "dnf-plugins-core" "libcurl-devel")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
@@ -122,6 +122,17 @@ clone_and_build_llama_cpp() {
   rm -rf llama.cpp
 }
 
+clone_and_build_ramalama() {
+  # link podman-remote to podman for use by RamaLama
+  ln -sf /usr/bin/podman-remote /usr/bin/podman
+  git clone https://github.com/containers/ramalama
+  cd ramalama
+  git submodule update --init --recursive
+  pip install . --prefix=/usr
+  cd ..
+  rm -rf ramalama
+}
+
 main() {
   set -ex
 
@@ -134,6 +145,9 @@ main() {
   configure_common_flags
   common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
   available dnf && dnf_install
+  if [ -n "$containerfile" ]; then 
+      clone_and_build_ramalama
+  fi
   clone_and_build_whisper_cpp
   common_flags+=("-DLLAMA_CURL=ON")
   case "$containerfile" in
