@@ -433,6 +433,7 @@ sub ramalama_help {
             if ($line =~ /^\s{1,10}(--\S+)\s/) {
                 print "> ramalama @_ $1\n"                        if $debug;
                 $opt = $1;
+                $opt =~ tr/,//d;
                 $help{$opt} = 1;
             }
 
