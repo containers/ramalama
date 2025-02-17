@@ -8,7 +8,7 @@ from ramalama.model_inspect import GGUFModelInfo, Tensor
 
 
 # Based on ggml_type in
-# https://github.com/ggerganov/ggml/blob/master/docs/gguf.md#file-structure
+# https://github.com/ggml-org/ggml/blob/master/docs/gguf.md#file-structure
 class GGML_TYPE(IntEnum):
     GGML_TYPE_F32 = (0,)
     GGML_TYPE_F16 = (1,)
@@ -43,7 +43,7 @@ class GGML_TYPE(IntEnum):
 
 
 # Based on gguf_metadata_value_type in
-# https://github.com/ggerganov/ggml/blob/master/docs/gguf.md#file-structure
+# https://github.com/ggml-org/ggml/blob/master/docs/gguf.md#file-structure
 class GGUFValueType(IntEnum):
     UINT8 = (0,)  # 8-bit unsigned integer
     INT8 = (1,)  # 8-bit signed integer
