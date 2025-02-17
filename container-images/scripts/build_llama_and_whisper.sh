@@ -113,7 +113,7 @@ clone_and_build_whisper_cpp() {
 clone_and_build_llama_cpp() {
   local llama_cpp_sha="4078c77f9891831f29ffc7c315c8ec6695ba5ce7"
 
-  git clone https://github.com/ggerganov/llama.cpp
+  git clone https://github.com/ggml-org/llama.cpp
   cd llama.cpp
   git submodule update --init --recursive
   git reset --hard "$llama_cpp_sha"
