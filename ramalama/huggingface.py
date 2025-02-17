@@ -72,6 +72,44 @@ class Huggingface(Model):
             perror("URL pull failed and huggingface-cli not available")
             raise KeyError(f"Failed to pull model: {str(e)}")
 
+    def _fetch_snapshot_path(self, cache_dir, namespace, repo):
+        cache_path = os.path.join(cache_dir, f'models--{namespace}--{repo}')
+        main_ref_path = os.path.join(cache_path, 'refs', 'main')
+        if not (os.path.exists(cache_path) and os.path.exists(main_ref_path)):
+            return None, None
+        with open(main_ref_path, 'r') as file:
+            snapshot = file.read().strip()
+        snapshot_path = os.path.join(cache_path, 'snapshots', snapshot)
+        return snapshot_path, cache_path
+
+    def in_existing_cache(self, args, target_path, sha256_checksum):
+        if not self.hf_cli_available:
+            return False
+
+        default_hf_caches = [os.path.join(os.environ['HOME'], '.cache/huggingface/hub')]
+        namespace, repo = os.path.split(str(self.directory))
+
+        for cache_dir in default_hf_caches:
+            snapshot_path, cache_path = self._fetch_snapshot_path(cache_dir, namespace, repo)
+            if not snapshot_path or not os.path.exists(snapshot_path):
+                continue
+
+            file_path = os.path.join(snapshot_path, self.filename)
+            if not os.path.exists(file_path):
+                continue
+
+            blob_path = pathlib.Path(file_path).resolve()
+            if not os.path.exists(blob_path):
+                continue
+
+            blob_file = os.path.relpath(blob_path, start=os.path.join(cache_path, 'blobs'))
+            if str(blob_file) != str(sha256_checksum):
+                continue
+
+            os.symlink(blob_path, target_path)
+            return True
+        return False
+
     def hf_pull(self, args, model_path, directory_path):
         conman_args = ["huggingface-cli", "download", "--local-dir", directory_path, self.model]
         run_cmd(conman_args, debug=args.debug)
@@ -92,6 +130,9 @@ class Huggingface(Model):
             raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
 
         target_path = os.path.join(directory_path, f"sha256:{sha256_checksum}")
+
+        if not os.path.exists(target_path):
+            self.in_existing_cache(args, target_path, sha256_checksum)
 
         if os.path.exists(target_path) and verify_checksum(target_path):
             relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
