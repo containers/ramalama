@@ -71,9 +71,38 @@ class Huggingface(Model):
                 return self.hf_pull(args, model_path, directory_path)
             perror("URL pull failed and huggingface-cli not available")
             raise KeyError(f"Failed to pull model: {str(e)}")
+    
+    def in_existing_cache(self, args, target_path, sha256_checksum):
+        if self.hf_cli_available is False:
+            return False
+        
+        default_hf_caches = [
+            os.path.join(os.environ['HOME'], '.cache/huggingface/hub'),
+        ]
+
+        split = str(self.directory).rsplit("/")
+        namespace = split[0] if len(split) > 1 else ""
+        repo = split[1] if len(split) > 1 else split[0]
+
+        for cache_dir in default_hf_caches:
+            cache_path = os.path.join(cache_dir, f'models--{namespace}--{repo}')
+            main_ref_path = os.path.join(cache_path, 'refs', 'main')
+            snapshot_path = None
+
+            if os.path.exists(cache_path) and os.path.exists(main_ref_path):
+                with open(main_ref_path, 'r') as file:
+                    snapshot_path = os.path.join(cache_path, 'snapshots', file.read())
+                if snapshot_path is not None and os.path.exists(os.path.join(snapshot_path, self.filename)):
+                    blob_path = pathlib.Path(os.path.join(snapshot_path, self.filename)).resolve()
+                    if os.path.exists(blob_path):
+                        blob_file = os.path.relpath(blob_path, start=os.path.join(cache_path, 'blobs'))
+                        if blob_file == str(sha256_checksum):
+                            os.symlink(blob_path, target_path)
+                            return True
+        return False
 
     def hf_pull(self, args, model_path, directory_path):
-        conman_args = ["huggingface-cli", "download", "--local-dir", directory_path, self.model]
+        conman_args = ["huggingface-cli", "download", "--local-dir", directory_path, self.directory, self.filename]
         run_cmd(conman_args, debug=args.debug)
 
         relative_target_path = os.path.relpath(directory_path, start=os.path.dirname(model_path))
@@ -92,6 +121,9 @@ class Huggingface(Model):
             raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
 
         target_path = os.path.join(directory_path, f"sha256:{sha256_checksum}")
+
+        if not os.path.exists(target_path):
+            self.in_existing_cache(args, target_path, sha256_checksum)
 
         if os.path.exists(target_path) and verify_checksum(target_path):
             relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
