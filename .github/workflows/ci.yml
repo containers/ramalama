@@ -38,6 +38,12 @@ jobs:
            sudo apt-get install podman bats bash codespell python3-argcomplete pipx
            make install-requirements
 
+      - name: install ollama and hf-cli
+        shell: bash
+        run: |
+           sudo curl -fsSL https://ollama.com/install.sh | sh
+           pip install -U "huggingface_hub[cli]"
+
       - name: Upgrade to podman 5
         run: |
            set -e
@@ -69,6 +75,12 @@ jobs:
            make install-requirements
            sudo ./container-images/scripts/build_llama_and_whisper.sh
 
+      - name: install ollama and hf-cli
+        shell: bash
+        run: |
+           sudo curl -fsSL https://ollama.com/install.sh | sh
+           pip install -U "huggingface_hub[cli]"
+
       - name: Upgrade to podman 5
         run: |
            set -e
@@ -94,6 +106,12 @@ jobs:
            sudo apt-get update
            sudo apt-get install bats bash codespell python3-argcomplete pipx
            make install-requirements
+
+      - name: install ollama and hf-cli
+        shell: bash
+        run: |
+           sudo curl -fsSL https://ollama.com/install.sh | sh
+           pip install -U "huggingface_hub[cli]"
 
       - name: Upgrade to podman 5
         run: |
@@ -142,6 +160,12 @@ jobs:
         run: |
            brew install go bats bash jq llama.cpp
            make install-requirements
+
+      - name: install ollama and hf-cli
+        shell: bash
+        run: |
+           brew install ollama huggingface-cli
+
       - name: Run a one-line script
         shell: bash
         run: |
