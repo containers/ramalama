@@ -53,6 +53,29 @@ load setup_suite
 }
 
 # bats test_tags=distro-integration
+@test "ramalama pull huggingface-cli cache" {
+    skip_if_no_hf-cli
+    huggingface-cli download Felladrin/gguf-smollm-360M-instruct-add-basics smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+
+    run_ramalama pull hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+    run_ramalama list
+    is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally from hf-cli cache"
+    run_ramalama rm hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+
+    run_ramalama pull huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+    run_ramalama list
+    is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally from hf-cli cache"
+    run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+
+    RAMALAMA_TRANSPORT=huggingface run_ramalama pull Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+    run_ramalama list
+    is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally from hf-cli cache"
+    run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+
+    rm -rf ~/.cache/huggingface/hub/models--Felladrin--gguf-smollm-360M-instruct-add-basics
+}
+
+# bats test_tags=distro-integration
 @test "ramalama pull oci" {
     skip "Waiting for podman artiface support" 
     run_ramalama pull oci://quay.io/mmortari/gguf-py-example:v1
