@@ -158,3 +158,8 @@ jobs:
            make validate
            pipx install .
            make bats-nocontainer
+
+# FIXME: ci script should be able to run on MAC.
+#      - name: Run ci
+#        shell: bash
+#        run: make ci
