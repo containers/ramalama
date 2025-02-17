@@ -30,7 +30,7 @@ URL support means if a model is on a web site or even on your local system, you 
 ## REST API ENDPOINTS
 Under the hood, `ramalama-serve` uses the `LLaMA.cpp` HTTP server by default.
 
-For REST API endpoint documentation, see: [https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md#api-endpoints](https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md#api-endpoints)
+For REST API endpoint documentation, see: [https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md#api-endpoints](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md#api-endpoints)
 
 ## OPTIONS
 
