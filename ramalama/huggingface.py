@@ -102,7 +102,7 @@ class Huggingface(Model):
         return False
 
     def hf_pull(self, args, model_path, directory_path):
-        conman_args = ["huggingface-cli", "download", "--local-dir", directory_path, self.directory, self.filename]
+        conman_args = ["huggingface-cli", "download", "--local-dir", directory_path, self.model]
         run_cmd(conman_args, debug=args.debug)
 
         relative_target_path = os.path.relpath(directory_path, start=os.path.dirname(model_path))
