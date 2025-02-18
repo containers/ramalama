@@ -77,6 +77,14 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 ## Install
 
+## Install on Fedora
+
+RamaLama is available in [Fedora 40](https://fedoraproject.org/) and later. To install it, run:
+
+```
+sudo dnf install python3-ramalama
+```
+
 ## Install via PyPi
 
 RamaLama is available via PyPi [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
