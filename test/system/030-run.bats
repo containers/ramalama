@@ -5,6 +5,11 @@ load helpers
 @test "ramalama --dryrun run basic output" {
     model=tiny
     image=m_$(safename)
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+pull="missing"
+EOF
 
     if is_container; then
 	run_ramalama info
@@ -23,6 +28,18 @@ load helpers
 	is "$output" ".*-c 4096" "verify ctx-size is set"
 	is "$output" ".*--temp 0.8" "verify temp is set"
 	is "$output" ".*--seed 9876" "verify seed is set"
+	if not_docker; then
+	   is "$output" ".*--pull=newer" "verify pull is newer"
+	fi
+
+	run_ramalama --dryrun run --pull=never -c 4096 --name foobar ${model}
+	is "$output" ".*--pull=never" "verify pull is never"
+
+	RAMALAMA_CONFIG=${conf} run_ramalama --dryrun run ${model}
+	is "$output" ".*--pull=missing" "verify pull is missing"
+
+	run_ramalama 2 --dryrun run --pull=bogus ${model}
+	is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"
 
 	run_ramalama --dryrun run --name foobar ${model}
 	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"

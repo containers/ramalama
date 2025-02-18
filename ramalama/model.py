@@ -187,15 +187,16 @@ class Model:
             container_labels += ["--label", f"ai.ramalama.command={args.subcommand}"]
         conman_args.extend(container_labels)
 
-        if os.path.basename(args.engine) == "podman":
-            conman_args += ["--pull=newer"]
-            if args.podman_keep_groups:
-                conman_args += ["--group-add", "keep-groups"]
-        elif os.path.basename(args.engine) == "docker":
+        if os.path.basename(args.engine) == "podman" and args.podman_keep_groups:
+            conman_args += ["--group-add", "keep-groups"]
+
+        if os.path.basename(args.engine) == "docker" and args.pull == "newer":
             try:
                 run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
             except Exception:  # Ignore errors, the run command will handle it.
                 pass
+        else:
+            conman_args += [f"--pull={args.pull}"]
 
         if sys.stdout.isatty() or sys.stdin.isatty():
             conman_args += ["-t"]

@@ -461,7 +461,7 @@ def bench_parser(subparsers):
         dest="ngl",
         type=int,
         default=config.get("ngl", -1),
-        help="Number of layers to offload to the gpu, if available",
+        help="number of layers to offload to the gpu, if available",
     )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=bench_cli)
@@ -791,7 +791,7 @@ def run_serve_perplexity_args(parser):
         help="size of the prompt context (0 = loaded from model)",
     )
     parser.add_argument(
-        "--device", dest="device", action='append', type=str, help="Device to leak in to the running container"
+        "--device", dest="device", action='append', type=str, help="device to leak in to the running container"
     )
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
     parser.add_argument(
@@ -799,10 +799,18 @@ def run_serve_perplexity_args(parser):
         dest="ngl",
         type=int,
         default=config.get("ngl", -1),
-        help="Number of layers to offload to the gpu, if available",
+        help="number of layers to offload to the gpu, if available",
     )
     parser.add_argument(
         "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
+    )
+    parser.add_argument(
+        "--pull",
+        dest="pull",
+        type=str,
+        default=config.get('pull', "newer"),
+        choices=["always", "missing", "never", "newer"],
+        help='pull image policy',
     )
     parser.add_argument("--seed", help="override random seed")
     parser.add_argument(
@@ -820,10 +828,10 @@ def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     run_serve_perplexity_args(parser)
     add_network_argument(parser)
-    parser.add_argument("--keepalive", type=str, help="Duration to keep a model loaded (e.g. 5m)")
+    parser.add_argument("--keepalive", type=str, help="duration to keep a model loaded (e.g. 5m)")
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument(
-        "ARGS", nargs="*", help="Overrides the default prompt, and the output is returned without entering the chatbot"
+        "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
     )
     parser._actions.sort(key=lambda x: x.option_strings)
     parser.set_defaults(func=run_cli)
