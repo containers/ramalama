@@ -64,9 +64,6 @@ def main(args):
     except Exception:
         None
 
-    if args.version:
-        return ramalama.print_version(args)
-
     def eprint(e, exit_code):
         ramalama.perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)

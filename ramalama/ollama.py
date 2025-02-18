@@ -16,7 +16,7 @@ def fetch_manifest_data(registry_head, model_tag, accept):
     return manifest_data
 
 
-def pull_config_blob(repos, accept, registry_head, manifest_data):
+def pull_config_blob(repos, accept, registry_head, manifest_data, show_progress):
     cfg_hash = manifest_data["config"]["digest"]
     config_blob_path = os.path.join(repos, "blobs", cfg_hash)
 
@@ -27,7 +27,7 @@ def pull_config_blob(repos, accept, registry_head, manifest_data):
     download_file(url, config_blob_path, headers=headers, show_progress=False)
 
 
-def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path):
+def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path, show_progress):
     layer_blob_path = os.path.join(repos, "blobs", layer_digest)
     url = f"{registry_head}/blobs/{layer_digest}"
     headers = {"Accept": accept}
@@ -35,7 +35,7 @@ def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, mo
     if local_blob is not None:
         run_cmd(["ln", "-sf", local_blob, layer_blob_path])
     else:
-        download_file(url, layer_blob_path, headers=headers, show_progress=True)
+        download_file(url, layer_blob_path, headers=headers, show_progress=show_progress)
         # Verify checksum after downloading the blob
         if not verify_checksum(layer_blob_path):
             print(f"Checksum mismatch for blob {layer_blob_path}, retrying download...")
@@ -49,15 +49,15 @@ def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, mo
     run_cmd(["ln", "-sf", relative_target_path, model_path])
 
 
-def init_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, model):
+def init_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, model, show_progress):
     manifest_data = fetch_manifest_data(registry_head, model_tag, accept)
-    pull_config_blob(repos, accept, registry_head, manifest_data)
+    pull_config_blob(repos, accept, registry_head, manifest_data, show_progress)
     for layer in manifest_data["layers"]:
         layer_digest = layer["digest"]
         if layer["mediaType"] != "application/vnd.ollama.image.model":
             continue
 
-        pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path)
+        pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path, show_progress)
 
     return model_path
 
@@ -130,11 +130,14 @@ class Ollama(Model):
         if os.path.exists(model_path):
             return model_path
 
+        show_progress = not args.quiet
         registry = "https://registry.ollama.ai"
         accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
         registry_head = f"{registry}/v2/{model_name}"
         try:
-            return init_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, self.model)
+            return init_pull(
+                repos, accept, registry_head, model_name, model_tag, models, model_path, self.model, show_progress
+            )
         except urllib.error.HTTPError as e:
             if "Not Found" in e.reason:
                 raise KeyError(f"{self.model} was not found in the Ollama registry")

@@ -29,9 +29,10 @@ class URL(Model):
             os.symlink(self.model, os.path.join(symlink_dir, self.filename))
             os.symlink(self.model, target_path)
         else:
+            show_progress = not args.quiet
             url = self.type + "://" + self.model
             # Download the model file to the target path
-            download_file(url, target_path, headers={}, show_progress=True)
+            download_file(url, target_path, headers={}, show_progress=show_progress)
             relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
             if self.check_valid_model_path(relative_target_path, model_path):
                 # Symlink is already correct, no need to update it
