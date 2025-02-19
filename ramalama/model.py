@@ -447,6 +447,7 @@ class Model:
         return exec_args
 
     def generate_container_config(self, model_path, args, exec_args):
+        self.image = self._image(args)
         if args.generate == "quadlet":
             self.quadlet(model_path, args, exec_args)
         elif args.generate == "kube":
@@ -488,17 +489,17 @@ class Model:
         self.execute_command(model_path, exec_args, args)
 
     def quadlet(self, model, args, exec_args):
-        quadlet = Quadlet(model, args, exec_args)
+        quadlet = Quadlet(model, self.image, args, exec_args)
         quadlet.generate()
 
     def quadlet_kube(self, model, args, exec_args):
-        kube = Kube(model, args, exec_args)
+        kube = Kube(model, self.image, args, exec_args)
         kube.generate()
-        quadlet = Quadlet(model, args, exec_args)
+        quadlet = Quadlet(model, self.image, args, exec_args)
         quadlet.kube()
 
     def kube(self, model, args, exec_args):
-        kube = Kube(model, args, exec_args)
+        kube = Kube(model, self.image, args, exec_args)
         kube.generate()
 
     def path(self, args):

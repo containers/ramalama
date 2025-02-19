@@ -9,7 +9,7 @@ on:
 jobs:
   lint:
     name: Lint Code
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.10
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -28,7 +28,7 @@ jobs:
           make lint
 
   bats:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.10
     steps:
       - uses: actions/checkout@v4
       - name: install bats
@@ -58,7 +58,7 @@ jobs:
            make bats
 
   bats-nocontainer:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.10
     steps:
       - uses: actions/checkout@v4
       - name: install bats
@@ -85,7 +85,7 @@ jobs:
            make bats-nocontainer
 
   docker:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.10
     steps:
       - uses: actions/checkout@v4
       - name: install bats
