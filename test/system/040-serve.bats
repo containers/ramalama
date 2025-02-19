@@ -16,12 +16,13 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 
 	run_ramalama --dryrun serve --name foobar ${model}
 	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
+	assert "$output" !~ ".*--network" "--network is not part of the output"
 	assert "$output" =~ ".*--host 0.0.0.0" "verify host 0.0.0.0 is added when run within container"
 	is "$output" ".*${model}" "verify model name"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
-	run_ramalama --dryrun serve --host 127.1.2.3 --name foobar ${model}
-	assert "$output" =~ ".*--host 127.1.2.3" "verify --host is modified when run within container"
+	run_ramalama --dryrun serve --network bridge --host 127.1.2.3 --name foobar ${model}
+	assert "$output" =~ "--network bridge.*--host 127.1.2.3" "verify --host is modified when run within container"
 	is "$output" ".*${model}" "verify model name"
 	is "$output" ".*--temp 0.8" "verify temp is set"
 
