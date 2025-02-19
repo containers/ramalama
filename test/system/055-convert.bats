@@ -37,20 +37,30 @@ load helpers
 
 @test "ramalama convert tiny to image" {
     skip_if_darwin
+    skip_if_docker
     run_ramalama pull tiny
-    run_ramalama convert tiny oci://ramalama/tiny
+    run_ramalama convert tiny oci://quay.io/ramalama/tiny
     run_ramalama list
     is "$output" ".*ramalama/tiny:latest"
-    run_ramalama rm ramalama/tiny
+#    FIXME:  This test will work on all podman 5.3 and greater clients.
+#    right now Ubuntu test suite is stuck on podman 5.0.3 Ubuntu 24.10 support
+#    it bug github is stuck on 24.04.  Should change when 25.04 is released
+#    if is_container and not_docker; then
+#       cname=c_$(safename)
+#       run_podman version
+#       run_ramalama serve -n ${cname} -d quay.io/ramalama/tiny
+#       run_ramalama stop ${cname}
+#    fi
+    run_ramalama rm quay.io/ramalama/tiny
     run_ramalama list
-    assert "$output" !~ ".*ramalama/tiny" "image was removed"
+    assert "$output" !~ ".*quay.io/ramalama/tiny" "image was removed"
 
-    run_ramalama convert ollama://tinyllama oci://ramalama/tiny
+    run_ramalama convert ollama://tinyllama oci://quay.io/ramalama/tinyllama
     run_ramalama list
-    is "$output" ".*ramalama/tiny:latest"
-    run_ramalama rm ramalama/tiny
+    is "$output" ".*quay.io/ramalama/tinyllama:latest"
+    run_ramalama rm quay.io/ramalama/tinyllama
     run_ramalama list
-    assert "$output" !~ ".*ramalama/tiny" "image was removed"
+    assert "$output" !~ ".*ramalama/tinyllama" "image was removed"
 
     podman image prune --force
 }
