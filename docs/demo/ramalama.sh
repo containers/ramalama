@@ -79,7 +79,7 @@ run() {
     exec_color "ramalama --dryrun run granite | grep --color -- --network.*none"
     echo ""
 
-    echo_color "run granite via RamaLama rune"
+    echo_color "run granite via RamaLama run"
     exec_color "ramalama run --ngl 0 granite"
     echo ""
 
