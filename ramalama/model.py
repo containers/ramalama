@@ -228,15 +228,17 @@ class Model:
 
     def gpu_args(self, args, runner=False):
         gpu_args = []
+        machine = platform.machine()
         if (
             os.getenv("HIP_VISIBLE_DEVICES")
             or os.getenv("ASAHI_VISIBLE_DEVICES")
             or os.getenv("CUDA_VISIBLE_DEVICES")
             or os.getenv("INTEL_VISIBLE_DEVICES")
             or (
-                # linux and macOS report aarch64 differently
-                platform.machine() in {"aarch64", "arm64"}
-                and os.path.exists("/dev/dri")
+                # linux and macOS report aarch64 differently, on Apple Silicon
+                # (arm64), we should have acceleration on regardless.
+                machine == "arm64"
+                or (machine == "aarch64" and os.path.exists("/dev/dri"))
             )
         ):
             if args.ngl < 0:
