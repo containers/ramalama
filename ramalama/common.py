@@ -36,7 +36,7 @@ def get_engine():
     if engine is not None:
         return engine
 
-    if available("podman") and (sys.platform != "darwin" or is_podman_machine_running_with_krunkit()):
+    if available("podman"):
         return "podman"
 
     if available("docker") and sys.platform != "darwin":
@@ -55,7 +55,7 @@ def container_manager():
     return _engine
 
 
-def is_podman_machine_running_with_krunkit():
+def krunkit():
     podman_machine_list = ["podman", "machine", "list", "--all-providers"]
     try:
         output = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()

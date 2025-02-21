@@ -11,6 +11,7 @@ from ramalama.common import (
     genname,
     get_env_vars,
     get_gpu,
+    krunkit,
     run_cmd,
 )
 from ramalama.gguf_parser import GGUFInfoParser
@@ -211,7 +212,7 @@ class Model:
             for device_arg in args.device:
                 conman_args += ["--device", device_arg]
         else:
-            if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
+            if os.path.exists("/dev/dri") or krunkit():
                 conman_args += ["--device", "/dev/dri"]
 
             if os.path.exists("/dev/kfd"):
@@ -237,8 +238,8 @@ class Model:
             or (
                 # linux and macOS report aarch64 differently, on Apple Silicon
                 # (arm64), we should have acceleration on regardless.
-                machine == "arm64"
-                or (machine == "aarch64" and os.path.exists("/dev/dri"))
+                machine
+                in {"arm64", "aarch64"}
             )
         ):
             if args.ngl < 0:
