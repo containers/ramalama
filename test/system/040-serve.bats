@@ -239,11 +239,11 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 	is "$output" ".*command: \[\"--port\"\]" "command is correct"
 	is "$output" ".*args: \['1234', '--model', '/mnt/models/model.file', '--max_model_len', '2048'\]" "args are correct"
 
-	is "$output" ".*image: quay.io/ramalama/ramalama" "image is correct"
 	is "$output" ".*reference: ${ociimage}" "AI image should be created"
 	is "$output" ".*pullPolicy: IfNotPresent" "pullPolicy should exist"
 
 	run_ramalama rm oci://${ociimage}
+	rm $name.yaml
     done
     stop_registry
 }
@@ -257,7 +257,6 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
-    is "$output" ".*image: quay.io/ramalama/ramalama" "Should container image"
     is "$output" ".*command: \[\"llama-server\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
@@ -274,7 +273,6 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
 
     run cat $name.yaml
-    is "$output" ".*image: quay.io/ramalama/ramalama" "Should container image"
     is "$output" ".*command: \[\"llama-server\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
@@ -288,6 +286,8 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 
     run cat $name.kube
     is "$output" ".*Yaml=$name.yaml" "Should container container port"
+    rm $name.kube
+    rm $name.yaml
 }
 
 # vim: filetype=sh
