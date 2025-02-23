@@ -187,6 +187,14 @@ class Model:
             container_labels += ["--label", f"ai.ramalama.command={args.subcommand}"]
         conman_args.extend(container_labels)
 
+        # if args.subcommand is run add LLAMA_PROMPT_PREFIX to the container
+        if hasattr(args, "subcommand") and args.subcommand == "run":
+            # if podman
+            if os.path.basename(args.engine) == "podman":
+                conman_args += ["--env", "LLAMA_PROMPT_PREFIX=🦭 > "]
+            elif os.path.basename(args.engine) == "docker":
+                conman_args += ["--env", "LLAMA_PROMPT_PREFIX=🐋 > "]
+
         if os.path.basename(args.engine) == "podman" and args.podman_keep_groups:
             conman_args += ["--group-add", "keep-groups"]
 
@@ -357,6 +365,11 @@ class Model:
 
     def build_exec_args_run(self, args, model_path, prompt):
         exec_model_path = model_path if not args.container else MNT_FILE
+
+        # override prompt if not set to the local call
+        if "LLAMA_PROMPT_PREFIX" not in os.environ:
+            os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
+
         exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
 
         if args.seed:
