@@ -33,7 +33,7 @@ def list_manifests(args):
         "manifest=true",
         "--format",
         '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}",\
-        "size":"{{ .Size }}", "ID":"{{ .ID }}"},',
+        "size":{{ .VirtualSize }}, "ID":"{{ .ID }}"},',
     ]
     output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
     if output == "":
@@ -79,18 +79,38 @@ def list_models(args):
     if conman is None:
         return []
 
+    # if engine is docker, size will be retrieved from the inspect command later
+    # if engine is podman use "size":{{ .VirtualSize }}
+    formatLine = '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}"'
+    if conman == "podman":
+        formatLine += ',"size":{{ .VirtualSize }}},'
+    else:
+        formatLine += ',"id":"{{ .ID }}"},'
+
     conman_args = [
         conman,
         "images",
         "--filter",
         f"label={ocilabeltype}",
         "--format",
-        '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}","size":"{{ .Size }}"},',
+        formatLine,
     ]
     output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
     if output == "":
         return []
+
     models = json.loads("[" + output[:-1] + "]")
+    # Grab the size from the inspect command
+    if conman == "docker":
+        # grab the size from the inspect command
+        for model in models:
+            conman_args = [conman, "image", "inspect", model["id"], "--format", "{{.Size}}"]
+            output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+            # convert the number value from the string output
+            model["size"] = int(output)
+            # drop the id from the model
+            del model["id"]
+
     models += list_manifests(args)
     return models
 

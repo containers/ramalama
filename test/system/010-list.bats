@@ -23,22 +23,20 @@ load helpers
 }
 
 @test "ramalama list - json" {
-    #FIXME jq version on mac does not like regex handling
-    skip_if_darwin
     # 'created': ramalama includes fractional seconds, ramalama-remote does not
     tests="
-name              | [a-z0-9A-Z:/]\\\+
-modified          | [0-9]\\\+
-size              | [0-9]\\\+
+name              | test(\"^[a-z0-9A-Z:/]\\+\")
+modified          | tostring | test(\"^[a-z0-9A-Z:/]\\+\")
+size              | tostring | test(\"^[0-9]\\+\$\")
 "
 
     run_ramalama pull ollama://tinyllama
     run_ramalama list --json
 
-    while read field expect; do
+    while read field; do
 	actual=$(echo "$output" | jq -r ".[0].$field")
-	dprint "# actual=<$actual> expect=<$expect}>"
-	is "$actual" "$expect" "jq .$field"
+	dprint "# actual=<$actual> expect=<true}>"
+	is "$actual" "true" "jq .$field"
     done < <(parse_table "$tests")
 }
 

@@ -533,7 +533,7 @@ def human_readable_size(size):
 
 
 def get_size(file):
-    return human_readable_size(os.path.getsize(file))
+    return os.path.getsize(file)
 
 
 def _list_models(args):
@@ -612,6 +612,8 @@ def list_cli(args):
             modified = human_duration(model["modified"]) + " ago"
         except TypeError:
             modified = model["modified"]
+        # update the size to be human readable
+        model["size"] = human_readable_size(model["size"])
         name_width = max(name_width, len(model["name"]))
         modified_width = max(modified_width, len(modified))
         size_width = max(size_width, len(model["size"]))
