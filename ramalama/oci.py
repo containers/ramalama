@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import tempfile
+from datetime import datetime
 
 import ramalama.annotations as annotations
 from ramalama.common import MNT_FILE, engine_version, exec_cmd, perror, run_cmd
@@ -112,6 +113,11 @@ def list_models(args):
             del model["id"]
 
     models += list_manifests(args)
+    for model in models:
+        # Convert to ISO 8601 format
+        parsed_date = datetime.fromisoformat(model["modified"].replace(" UTC", "").replace(" ", "T"))
+        model["modified"] = parsed_date.isoformat()
+
     return models
 
 
