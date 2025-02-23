@@ -3,6 +3,6 @@ FROM $IMAGE
 
 ARG GPU=cpu
 ARG CONTENT=rag
-COPY ./build_pragmatic.sh /tmp/
+COPY ../pragmatic/build_pragmatic.sh /tmp/
 RUN echo $CONTENT
 RUN sh /tmp/build_pragmatic.sh ${GPU} ${CONTENT}

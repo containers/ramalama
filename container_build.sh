@@ -39,13 +39,13 @@ rm_container_image() {
 
 add_entrypoint() {
     containerfile=$(mktemp)
-    cat > ${containerfile} <<EOF
+    cat > "${containerfile}" <<EOF
 FROM $2
 ENTRYPOINT [ "/usr/bin/$3.sh" ]
 EOF
-    echo $1 build --no-cache -t "$2-$3" -f ${containerfile} .
-    eval $1 build --no-cache -t "$2-$3" -f ${containerfile} .
-    rm ${containerfile}
+    echo "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
+    eval "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
+    rm "${containerfile}"
 }
 
 add_entrypoints() {
@@ -91,14 +91,16 @@ build() {
 }
 
 determine_platform() {
+  local platform
   case $conman_bin in
     podman)
-      local platform="$(podman info --format '{{ .Version.OsArch }}' 2>/dev/null)"
+      platform="$(podman info --format '{{ .Version.OsArch }}' 2>/dev/null)"
       ;;
     docker)
-      local platform="$(docker info --format '{{ .ClientInfo.Os }}/{{ .ClientInfo.Arch }}' 2>/dev/null)"
+      platform="$(docker info --format '{{ .ClientInfo.Os }}/{{ .ClientInfo.Arch }}' 2>/dev/null)"
       ;;
   esac
+
   if [ "$(uname -m)" = "aarch64" ] || { [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; }; then
     platform="linux/arm64"
   fi
@@ -112,6 +114,10 @@ parse_arguments() {
       -h|--help)
         print_usage
         exit 0
+        ;;
+      -c)
+        ci="true"
+        shift
         ;;
       -d)
         option="$1"
@@ -136,18 +142,27 @@ parse_arguments() {
 process_all_targets() {
   local command="$1"
   local option="$2"
+
+  # build ramalama container image first, as other images inherit from it
+  build "container-images/ramalama" "$command" "$option"
   for i in container-images/*; do
-    if [ "$i" == "container-images/scripts" ]; then
+    # skip these directories
+    if [[ "$i" =~ ^container-images/(scripts|ramalama|pragmatic)$ ]]; then
       continue
     fi
+
+    # todo, trim and get building in CI again
+    if $ci && [[ "$i" =~ ^container-images/rocm$ ]]; then
+      continue
+    fi
+
     # skip images that don't make sense for multi-arch builds
     if [ "$command" = "multi-arch" ]; then
-      case "${i//container-images\//}" in
-        rocm|intel-gpu)
-          continue
-          ;;
-      esac
+      if [[ "$i" =~ ^container-images/(rocm|intel-gpu)$ ]]; then
+        continue
+      fi
     fi
+
     build "$i" "$command" "$option"
   done
 }
@@ -183,6 +198,7 @@ main() {
   local command=""
   local option=""
   local rm_after_build="false"
+  local ci="false"
   parse_arguments "$@"
   if [ -z "$command" ]; then
     echo "Error: command is required (build or push)"

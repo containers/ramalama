@@ -140,7 +140,7 @@ jobs:
       - name: install golang
         shell: bash
         run: |
-           brew install go bats bash jq llama.cpp
+           brew install go bats bash jq llama.cpp shellcheck
            make install-requirements
       - name: Run a one-line script
         shell: bash

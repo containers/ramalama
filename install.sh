@@ -124,8 +124,8 @@ setup_ramalama() {
   download "$url" "$to_file"
   local ramalama_bin="${1}/${binfile}"
   local sharedirs=("/opt/homebrew/share" "/usr/local/share" "/usr/share")
-  local syspath=$(get_installation_dir)
-
+  local syspath
+  syspath=$(get_installation_dir)
   $sudo install -m755 -d "$syspath"
   syspath="$syspath/ramalama"
   $sudo install -m755 -d "$syspath"
