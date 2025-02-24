@@ -11,13 +11,11 @@ import ramalama.oci
 import ramalama.rag
 from ramalama.common import container_manager, default_image, perror, run_cmd
 from ramalama.gpu_detector import GPUDetector
-from ramalama.huggingface import Huggingface
 from ramalama.model import MODEL_TYPES
+from ramalama.model_factory import ModelFactory
 from ramalama.oci import OCI
-from ramalama.ollama import Ollama
 from ramalama.shortnames import Shortnames
 from ramalama.toml_parser import TOMLParser
-from ramalama.url import URL
 from ramalama.version import print_version, version
 
 shortnames = Shortnames()
@@ -995,24 +993,7 @@ def rm_cli(args):
 
 
 def New(model, args):
-    if model.startswith("huggingface://") or model.startswith("hf://") or model.startswith("hf.co/"):
-        return Huggingface(model)
-    if model.startswith("ollama://") or "ollama.com/library/" in model:
-        return Ollama(model)
-    if model.startswith("oci://") or model.startswith("docker://"):
-        return OCI(model, args.engine)
-    if model.startswith("http://") or model.startswith("https://") or model.startswith("file://"):
-        return URL(model)
-
-    transport = config.get("transport", "ollama")
-    if transport == "huggingface":
-        return Huggingface(model)
-    if transport == "ollama":
-        return Ollama(model)
-    if transport == "oci":
-        return OCI(model, args.engine)
-
-    raise KeyError(f'transport "{transport}" not supported. Must be oci, huggingface, or ollama.')
+    return ModelFactory(model, config.get("transport", "ollama"), args.engine).create()
 
 
 def perplexity_parser(subparsers):
