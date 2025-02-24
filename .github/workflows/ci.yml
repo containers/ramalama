@@ -25,7 +25,16 @@ jobs:
 
       - name: Run lint
         run: |
-          make lint
+          # Ensure linting fails the build if issues are found
+          make lint || exit 1  
+
+      - name: Auto-format code
+        run: |
+          make format
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Automatically formatted code"
+          branch: ${{ github.head_ref }}
 
   unit-test:
     name: Unit Tests
