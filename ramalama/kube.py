@@ -5,7 +5,7 @@ from ramalama.version import version
 
 
 class Kube:
-    def __init__(self, model, args, exec_args):
+    def __init__(self, model, image, args, exec_args):
         self.ai_image = model
         if hasattr(args, "MODEL"):
             self.ai_image = args.MODEL
@@ -18,8 +18,7 @@ class Kube:
         self.model = model.removeprefix("oci://")
         self.args = args
         self.exec_args = exec_args
-
-        self.image = args.image
+        self.image = image
 
     def gen_volumes(self):
         mounts = f"""\

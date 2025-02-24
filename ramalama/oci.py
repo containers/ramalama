@@ -116,13 +116,14 @@ def list_models(args):
 
 
 class OCI(Model):
-    def __init__(self, model, conman):
+    def __init__(self, model, conman, ignore_stderr=False):
         super().__init__(model.removeprefix(prefix).removeprefix("docker://"))
         for t in MODEL_TYPES:
             if self.model.startswith(t + "://"):
                 raise ValueError(f"{model} invalid: Only OCI Model types supported")
         self.type = "OCI"
         self.conman = conman
+        self.ignore_stderr = ignore_stderr
 
     def login(self, args):
         conman_args = [self.conman, "login"]
@@ -298,7 +299,8 @@ Tagging build instead"""
             raise e
 
     def pull(self, args):
-        print(f"Downloading {self.model}...")
+        if not args.quiet:
+            print(f"Downloading {self.model}...")
         if not args.engine:
             raise NotImplementedError("OCI images require a container engine like Podman or Docker")
 
@@ -310,7 +312,7 @@ Tagging build instead"""
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
         conman_args.extend([self.model])
-        run_cmd(conman_args, debug=args.debug)
+        run_cmd(conman_args, debug=args.debug, ignore_stderr=self.ignore_stderr)
         return MNT_FILE
 
     def _registry_reference(self):
@@ -346,10 +348,10 @@ Tagging build instead"""
 
         try:
             conman_args = [self.conman, "manifest", "rm", self.model]
-            run_cmd(conman_args, debug=args.debug, ignore_stderr=ignore_stderr)
+            run_cmd(conman_args, debug=args.debug, ignore_stderr=self.ignore_stderr)
         except subprocess.CalledProcessError:
             conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
-            run_cmd(conman_args, debug=args.debug, ignore_stderr=ignore_stderr)
+            run_cmd(conman_args, debug=args.debug, ignore_stderr=self.ignore_stderr)
 
     def exists(self, args):
         try:
@@ -364,7 +366,7 @@ Tagging build instead"""
 
         conman_args = [self.conman, "image", "inspect", self.model]
         try:
-            run_cmd(conman_args, debug=args.debug)
+            run_cmd(conman_args, debug=args.debug, ignore_stderr=self.ignore_stderr)
             return self.model
         except Exception:
             return None

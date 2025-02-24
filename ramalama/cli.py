@@ -838,8 +838,17 @@ def run_parser(subparsers):
 
 
 def run_cli(args):
-    model = New(args.MODEL, args)
-    model.run(args)
+    try:
+        model = New(args.MODEL, args)
+        model.run(args)
+
+    except KeyError as e:
+        try:
+            args.quiet = True
+            model = OCI(args.MODEL, args.engine, ignore_stderr=True)
+            model.run(args)
+        except Exception:
+            raise e
 
 
 def serve_parser(subparsers):
@@ -863,8 +872,17 @@ def serve_parser(subparsers):
 def serve_cli(args):
     if not args.container:
         args.detach = False
-    model = New(args.MODEL, args)
-    model.serve(args)
+
+    try:
+        model = New(args.MODEL, args)
+        model.serve(args)
+    except KeyError as e:
+        try:
+            args.quiet = True
+            model = OCI(args.MODEL, args.engine, ignore_stderr=True)
+            model.serve(args)
+        except Exception:
+            raise e
 
 
 def stop_parser(subparsers):
@@ -969,8 +987,8 @@ def _rm_model(models, args):
                         raise e
             try:
                 # attempt to remove as a container image
-                m = OCI(model, args.engine)
-                m.remove(args, ignore_stderr=True)
+                m = OCI(model, args.engine, ignore_stderr=True)
+                m.remove(args)
                 return
             except Exception:
                 pass
