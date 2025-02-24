@@ -29,8 +29,12 @@ download() {
 }
 
 dnf_install() {
+  $sudo dnf install -y "$1"
+}
+
+dnf_install_podman() {
   if ! available podman; then
-    $sudo dnf install -y --best podman || true
+    dnf_install podman || true
   fi
 }
 
@@ -87,7 +91,7 @@ check_platform() {
     fi
 
     if available dnf && ! grep -q ostree= /proc/cmdline; then
-      dnf_install
+      dnf_install_podman
     elif available apt; then
       apt_update_install
     fi
@@ -123,16 +127,24 @@ setup_ramalama() {
 
   download "$url" "$to_file"
   local ramalama_bin="${1}/${binfile}"
-  local sharedirs=("/opt/homebrew/share" "/usr/local/share" "/usr/share")
   local syspath
   syspath=$(get_installation_dir)
+  install_ramalama_bin
+  install_ramalama_libs
+}
+
+install_ramalama_bin() {
   $sudo install -m755 -d "$syspath"
   syspath="$syspath/ramalama"
   $sudo install -m755 -d "$syspath"
   $sudo install -m755 "$to_file" "$ramalama_bin"
-  local python_files=("cli.py" "rag.py" "gguf_parser.py" "huggingface.py" "model.py" \
-                      "model_factory.py" "model_inspect.py" "ollama.py" "common.py" "__init__.py" \
-                      "quadlet.py" "kube.py" "oci.py" "version.py" "shortnames.py" \
+}
+
+install_ramalama_libs() {
+  local python_files=("cli.py" "rag.py" "gguf_parser.py" "huggingface.py" \
+                      "model.py" "model_factory.py" "model_inspect.py" \
+                      "ollama.py" "common.py" "__init__.py" "quadlet.py" \
+                      "kube.py" "oci.py" "version.py" "shortnames.py" \
                       "toml_parser.py" "file.py" "http_client.py" "url.py" \
                       "annotations.py" "gpu_detector.py" "console.py")
   for i in "${python_files[@]}"; do
@@ -147,11 +159,7 @@ setup_ramalama() {
   done
 }
 
-main() {
-  set -e -o pipefail
-
-  local local_install="false"
-  # Parse command line arguments
+parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -l)
@@ -159,17 +167,33 @@ main() {
         shift
         ;;
       get_*)
-        get_installation_dir
+        get_install_dir="true"
         return;;
       *)
         break
     esac
   done
+}
+
+main() {
+  set -e -o pipefail
+
+  local local_install="false"
+  local get_install_dir="false"
+  parse_arguments "$@"
+  if $get_install_dir; then
+    get_installation_dir
+    return 0
+  fi
 
   local os
   os="$(uname -s)"
   local sudo=""
   check_platform
+  if ! $local_install && [ -z "$BRANCH" ] && available dnf && \
+       dnf_install "python3-ramalama"; then
+    return 0
+  fi
 
   local bindirs=("/opt/homebrew/bin" "/usr/local/bin" "/usr/bin" "/bin")
   local bindir
