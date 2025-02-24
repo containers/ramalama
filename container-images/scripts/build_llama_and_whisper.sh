@@ -111,7 +111,7 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local llama_cpp_sha="4078c77f9891831f29ffc7c315c8ec6695ba5ce7"
+  local llama_cpp_sha="7ad0779f5de84a68143b2c00ab5dc94a948925d3"
 
   git clone https://github.com/ggml-org/llama.cpp
   cd llama.cpp
