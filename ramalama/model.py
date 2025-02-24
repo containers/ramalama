@@ -36,7 +36,46 @@ with the default RamaLama
 $(error)s"""
 
 
-class Model:
+class ModelBase:
+
+    def __not_implemented_error(self, param):
+        return NotImplementedError(f"ramalama {param} for '{type(self).__name__}' not implemented")
+
+    def login(self, args):
+        raise self.__not_implemented_error("login")
+
+    def logout(self, args):
+        raise self.__not_implemented_error("logout")
+
+    def pull(self, args):
+        raise self.__not_implemented_error("pull")
+
+    def push(self, source, args):
+        raise self.__not_implemented_error("push")
+
+    def remove(self, args):
+        raise self.__not_implemented_error("rm")
+
+    def bench(self, args):
+        raise self.__not_implemented_error("bench")
+
+    def run(self, args):
+        raise self.__not_implemented_error("run")
+
+    def perplexity(self, args):
+        raise self.__not_implemented_error("perplexity")
+
+    def serve(self, args):
+        raise self.__not_implemented_error("serve")
+
+    def exists(self, args):
+        raise self.__not_implemented_error("exists")
+
+    def inspect(self, args):
+        raise self.__not_implemented_error("inspect")
+
+
+class Model(ModelBase):
     """Model super class"""
 
     model = ""
@@ -47,18 +86,6 @@ class Model:
         split = self.model.rsplit("/", 1)
         self.directory = split[0] if len(split) > 1 else ""
         self.filename = split[1] if len(split) > 1 else split[0]
-
-    def login(self, args):
-        raise NotImplementedError(f"ramalama login for {self.type} not implemented")
-
-    def logout(self, args):
-        raise NotImplementedError(f"ramalama logout for {self.type} not implemented")
-
-    def pull(self, args):
-        raise NotImplementedError(f"ramalama pull for {self.type} not implemented")
-
-    def push(self, source, args):
-        raise NotImplementedError(f"ramalama push for {self.type} not implemented")
 
     def is_symlink_to(self, file_path, target_path):
         if os.path.islink(file_path):
@@ -108,8 +135,6 @@ class Model:
 
         except Exception:
             return False
-
-        return False
 
     def _image(self, args):
         if args.image != DEFAULT_IMAGE:
