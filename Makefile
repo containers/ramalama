@@ -51,6 +51,7 @@ install-requirements:
 			flake8~=7.0 \
 			huggingface_hub~=0.28.0 \
 			isort~=6.0 \
+			pytest~=8.3 \
 			wheel~=0.45.0 \
 
 .PHONY: install-completions
@@ -165,10 +166,17 @@ bats-docker:
 ci:
 	test/ci.sh
 
-.PHONY: test
-test: validate bats bats-nocontainer ci
+.PHONY: unit-tests
+unit-tests:
+	PYTHONPATH=. pytest test/unit/
+
+.PHONY: end-to-end-tests
+end-to-end-tests: validate bats bats-nocontainer ci
 	make clean
 	hack/tree_status.sh
+
+.PHONY: tests
+tests: unit-tests end-to-end-tests
 
 .PHONY: clean
 clean:
