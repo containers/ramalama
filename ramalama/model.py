@@ -23,6 +23,7 @@ from ramalama.kube import Kube
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
 from ramalama.model_store import ModelStore
 from ramalama.quadlet import Quadlet
+from ramalama.kserve import Kserve
 from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
@@ -491,7 +492,6 @@ class Model(ModelBase):
 
         if args.dryrun:
             return "/path/to/model"
-
         model_path = self.pull(args)
 
         return model_path
@@ -623,16 +623,15 @@ class Model(ModelBase):
 
     def generate_container_config(self, model_path, args, exec_args):
         self.image = self._image(args)
+        if args.generate == "kserve":
+            return self.kserve(model_path, args, exec_args)
         if args.generate == "quadlet":
-            self.quadlet(model_path, args, exec_args)
-        elif args.generate == "kube":
-            self.kube(model_path, args, exec_args)
-        elif args.generate == "quadlet/kube":
-            self.quadlet_kube(model_path, args, exec_args)
-        else:
-            return False
-
-        return True
+            return self.quadlet(model_path, args, exec_args)
+        if args.generate == "kube":
+            return self.kube(model_path, args, exec_args)
+        if args.generate == "quadlet/kube":
+            return self.quadlet_kube(model_path, args, exec_args)
+        return False
 
     def execute_command(self, model_path, exec_args, args):
         try:
@@ -664,19 +663,27 @@ class Model(ModelBase):
 
         self.execute_command(model_path, exec_args, args)
 
+    def kserve(self, model, args, exec_args):
+        kserve = Kserve(model, self.image, args, exec_args)
+        kserve.generate()
+        return True
+
     def quadlet(self, model, args, exec_args):
         quadlet = Quadlet(model, self.image, args, exec_args)
         quadlet.generate()
+        return True
 
     def quadlet_kube(self, model, args, exec_args):
         kube = Kube(model, self.image, args, exec_args)
         kube.generate()
         quadlet = Quadlet(model, self.image, args, exec_args)
         quadlet.kube()
+        return True
 
     def kube(self, model, args, exec_args):
         kube = Kube(model, self.image, args, exec_args)
         kube.generate()
+        return True
 
     def check_valid_model_path(self, relative_target_path, model_path):
         return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
