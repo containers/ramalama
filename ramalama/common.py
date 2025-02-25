@@ -311,3 +311,12 @@ def get_env_vars():
     #     env_vars[gpu_type] = str(gpu_num)
 
     return env_vars
+
+
+def rm_until_substring(input, substring):
+    pos = input.find(substring)
+    if pos == -1:
+        return input
+
+    # Create a new string starting after the found substring
+    return ''.join(input[i] for i in range(pos + len(substring), len(input)))
