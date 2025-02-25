@@ -6,7 +6,7 @@ from datetime import datetime
 
 import ramalama.annotations as annotations
 from ramalama.common import MNT_FILE, engine_version, exec_cmd, perror, run_cmd
-from ramalama.model import MODEL_TYPES, Model
+from ramalama.model import Model
 
 prefix = "oci://"
 
@@ -123,10 +123,8 @@ def list_models(args):
 
 class OCI(Model):
     def __init__(self, model, conman, ignore_stderr=False):
-        super().__init__(model.removeprefix(prefix).removeprefix("docker://"))
-        for t in MODEL_TYPES:
-            if self.model.startswith(t + "://"):
-                raise ValueError(f"{model} invalid: Only OCI Model types supported")
+        super().__init__(model)
+
         self.type = "OCI"
         self.conman = conman
         self.ignore_stderr = ignore_stderr

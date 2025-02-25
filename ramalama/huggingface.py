@@ -3,7 +3,7 @@ import pathlib
 import urllib.request
 
 from ramalama.common import available, download_file, exec_cmd, perror, run_cmd, verify_checksum
-from ramalama.model import Model, rm_until_substring
+from ramalama.model import Model
 
 missing_huggingface = """
 Optional: Huggingface models require the huggingface-cli module.
@@ -34,9 +34,8 @@ def fetch_checksum_from_api(url):
 
 class Huggingface(Model):
     def __init__(self, model):
-        model = rm_until_substring(model, "hf.co/")
-        model = rm_until_substring(model, "://")
         super().__init__(model)
+
         self.type = "huggingface"
         self.hf_cli_available = is_huggingface_cli_available()
 

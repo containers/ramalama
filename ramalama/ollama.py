@@ -3,7 +3,7 @@ import os
 import urllib.request
 
 from ramalama.common import available, download_file, run_cmd, verify_checksum
-from ramalama.model import Model, rm_until_substring
+from ramalama.model import Model
 
 
 def fetch_manifest_data(registry_head, model_tag, accept):
@@ -87,9 +87,8 @@ def in_existing_cache(model_name, model_tag):
 
 class Ollama(Model):
     def __init__(self, model):
-        model = rm_until_substring(model, "ollama.com/library/")
-        model = rm_until_substring(model, "://")
         super().__init__(model)
+
         self.type = "Ollama"
 
     def _local(self, args):

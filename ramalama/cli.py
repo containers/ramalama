@@ -13,7 +13,6 @@ from ramalama.common import container_manager, default_image, perror, run_cmd
 from ramalama.gpu_detector import GPUDetector
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
-from ramalama.oci import OCI
 from ramalama.shortnames import Shortnames
 from ramalama.toml_parser import TOMLParser
 from ramalama.version import print_version, version
@@ -699,7 +698,7 @@ def convert_cli(args):
     if not tgt:
         tgt = target
 
-    model = OCI(tgt, args.engine)
+    model = ModelFactory(tgt, engine=args.engine).create_oci()
     model.convert(source, args)
 
 
@@ -775,7 +774,7 @@ def push_cli(args):
                 raise e
         try:
             # attempt to push as a container image
-            m = OCI(tgt, config.get('engine', container_manager()))
+            m = ModelFactory(tgt, engine=config.get('engine', container_manager())).create_oci()
             m.push(source, args)
         except Exception:
             raise e
@@ -845,7 +844,7 @@ def run_cli(args):
     except KeyError as e:
         try:
             args.quiet = True
-            model = OCI(args.MODEL, args.engine, ignore_stderr=True)
+            model = ModelFactory(args.MODEL, engine=args.engine, ignore_stderr=True).create_oci()
             model.run(args)
         except Exception:
             raise e
@@ -879,7 +878,7 @@ def serve_cli(args):
     except KeyError as e:
         try:
             args.quiet = True
-            model = OCI(args.MODEL, args.engine, ignore_stderr=True)
+            model = ModelFactory(args.MODEL, engine=args.engine, ignore_stderr=True).create_oci()
             model.serve(args)
         except Exception:
             raise e
@@ -987,7 +986,7 @@ def _rm_model(models, args):
                         raise e
             try:
                 # attempt to remove as a container image
-                m = OCI(model, args.engine, ignore_stderr=True)
+                m = ModelFactory(model, engine=args.engine, ignore_stderr=True).create_oci()
                 m.remove(args)
                 return
             except Exception:
