@@ -13,6 +13,7 @@ from ramalama.common import (
     get_gpu,
     run_cmd,
 )
+from ramalama.console import EMOJI
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
@@ -213,8 +214,7 @@ class Model(ModelBase):
         conman_args.extend(container_labels)
 
         # if args.subcommand is run add LLAMA_PROMPT_PREFIX to the container
-        if hasattr(args, "subcommand") and args.subcommand == "run":
-            # if podman
+        if EMOJI and hasattr(args, "subcommand") and args.subcommand == "run":
             if os.path.basename(args.engine) == "podman":
                 conman_args += ["--env", "LLAMA_PROMPT_PREFIX=🦭 > "]
             elif os.path.basename(args.engine) == "docker":
@@ -392,7 +392,7 @@ class Model(ModelBase):
         exec_model_path = model_path if not args.container else MNT_FILE
 
         # override prompt if not set to the local call
-        if "LLAMA_PROMPT_PREFIX" not in os.environ:
+        if EMOJI and "LLAMA_PROMPT_PREFIX" not in os.environ:
             os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
 
         exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
