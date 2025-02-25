@@ -13,7 +13,6 @@ from ramalama.common import (
     get_gpu,
     run_cmd,
 )
-from ramalama.console import EMOJI
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
@@ -167,16 +166,14 @@ class Model(ModelBase):
 
         return f"{image}:latest"
 
-    def setup_container(self, args):
+    def get_container_name(self, args):
         if hasattr(args, "name") and args.name:
-            name = args.name
-        else:
-            name = genname()
+            return args.name
 
-        if not args.engine:
-            return []
+        return genname()
 
-        conman_args = [
+    def get_base_conman_args(self, args, name):
+        return [
             args.engine,
             "run",
             "--rm",
@@ -188,6 +185,8 @@ class Model(ModelBase):
             "--env=HOME=/tmp",
             "--init",
         ]
+
+    def add_privileged_options(self, conman_args, args):
         if args.privileged:
             conman_args += ["--privileged"]
         else:
@@ -197,29 +196,42 @@ class Model(ModelBase):
                 "--security-opt=no-new-privileges",
             ]
 
-        container_labels = []
+        return conman_args
+
+    def add_container_labels(self, conman_args, args):
         if hasattr(args, "MODEL"):
-            container_labels += ["--label", f"ai.ramalama.model={args.MODEL}"]
+            conman_args += ["--label", f"ai.ramalama.model={args.MODEL}"]
+
         if hasattr(args, "engine"):
-            container_labels += ["--label", f"ai.ramalama.engine={args.engine}"]
+            conman_args += ["--label", f"ai.ramalama.engine={args.engine}"]
+
         if hasattr(args, "runtime"):
-            container_labels += ["--label", f"ai.ramalama.runtime={args.runtime}"]
+            conman_args += ["--label", f"ai.ramalama.runtime={args.runtime}"]
+
         if hasattr(args, "port"):
-            container_labels += ["--label", f"ai.ramalama.port={args.port}"]
+            conman_args += ["--label", f"ai.ramalama.port={args.port}"]
+
         if hasattr(args, "subcommand"):
-            container_labels += ["--label", f"ai.ramalama.command={args.subcommand}"]
-        conman_args.extend(container_labels)
+            conman_args += ["--label", f"ai.ramalama.command={args.subcommand}"]
 
-        # if args.subcommand is run add LLAMA_PROMPT_PREFIX to the container
-        if EMOJI and hasattr(args, "subcommand") and args.subcommand == "run":
+        return conman_args
+
+    def add_subcommand_env(self, conman_args, args):
+        if hasattr(args, "subcommand") and args.subcommand == "run":
             if os.path.basename(args.engine) == "podman":
-                conman_args += ["--env", "LLAMA_PROMPT_PREFIX=🦭 > "]
+                conman_args += ["--env", "LLAMA_PROMPT_PREFIX=p > "]
             elif os.path.basename(args.engine) == "docker":
-                conman_args += ["--env", "LLAMA_PROMPT_PREFIX=🐋 > "]
+                conman_args += ["--env", "LLAMA_PROMPT_PREFIX=d > "]
 
+        return conman_args
+
+    def handle_podman_specifics(self, conman_args, args):
         if os.path.basename(args.engine) == "podman" and args.podman_keep_groups:
             conman_args += ["--group-add", "keep-groups"]
 
+        return conman_args
+
+    def handle_docker_pull(self, conman_args, args):
         if os.path.basename(args.engine) == "docker" and args.pull == "newer":
             try:
                 run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
@@ -228,15 +240,27 @@ class Model(ModelBase):
         else:
             conman_args += [f"--pull={args.pull}"]
 
+        return conman_args
+
+    def add_tty_option(self, conman_args):
         if sys.stdout.isatty() or sys.stdin.isatty():
             conman_args += ["-t"]
 
+        return conman_args
+
+    def add_detach_option(self, conman_args, args):
         if hasattr(args, "detach") and args.detach is True:
             conman_args += ["-d"]
 
+        return conman_args
+
+    def add_port_option(self, conman_args, args):
         if hasattr(args, "port"):
             conman_args += ["-p", f"{args.port}:{args.port}"]
 
+        return conman_args
+
+    def add_device_options(self, conman_args, args):
         if args.device:
             for device_arg in args.device:
                 conman_args += ["--device", device_arg]
@@ -251,9 +275,34 @@ class Model(ModelBase):
                 # Special case for Cuda
                 if k == "CUDA_VISIBLE_DEVICES":
                     conman_args += ["--device", "nvidia.com/gpu=all"]
+
                 conman_args += ["-e", f"{k}={v}"]
+
+        return conman_args
+
+    def add_network_option(self, conman_args, args):
         if args.network != "":
             conman_args += ["--network", args.network]
+
+        return conman_args
+
+    def setup_container(self, args):
+        if not args.engine:
+            return []
+
+        name = self.get_container_name(args)
+        conman_args = self.get_base_conman_args(args, name)
+        conman_args = self.add_privileged_options(conman_args, args)
+        conman_args = self.add_container_labels(conman_args, args)
+        conman_args = self.add_subcommand_env(conman_args, args)
+        conman_args = self.handle_podman_specifics(conman_args, args)
+        conman_args = self.handle_docker_pull(conman_args, args)
+        conman_args = self.add_tty_option(conman_args)
+        conman_args = self.add_detach_option(conman_args, args)
+        conman_args = self.add_port_option(conman_args, args)
+        conman_args = self.add_device_options(conman_args, args)
+        conman_args = self.add_network_option(conman_args, args)
+
         return conman_args
 
     def gpu_args(self, args, runner=False):
@@ -389,8 +438,8 @@ class Model(ModelBase):
         exec_model_path = model_path if not args.container else MNT_FILE
 
         # override prompt if not set to the local call
-        if EMOJI and "LLAMA_PROMPT_PREFIX" not in os.environ:
-            os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
+        if "LLAMA_PROMPT_PREFIX" not in os.environ:
+            os.environ["LLAMA_PROMPT_PREFIX"] = "n > "
 
         exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
 

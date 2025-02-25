@@ -855,7 +855,11 @@ def serve_parser(subparsers):
     run_serve_perplexity_args(parser)
     add_network_argument(parser, "")
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
-    parser.add_argument("--host", default=config.get('host', "0.0.0.0"), help="IP address to listen")
+    parser.add_argument(
+        "--host",
+        default=config.get('host', "0.0.0.0"),
+        help="IP address to listen",
+    )
     parser.add_argument(
         "--generate",
         choices=["quadlet", "kube", "quadlet/kube"],
