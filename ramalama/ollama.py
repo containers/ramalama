@@ -73,7 +73,7 @@ def in_existing_cache(model_name, model_tag):
 
     for cache_dir in default_ollama_caches:
         manifest_path = os.path.join(cache_dir, 'manifests', 'registry.ollama.ai', model_name, model_tag)
-        if os.path.exists(manifest_path) and os.access(manifest_path, os.R_OK):
+        if os.access(manifest_path, os.R_OK):
             with open(manifest_path, 'r') as file:
                 manifest_data = json.load(file)
                 for layer in manifest_data["layers"]:
