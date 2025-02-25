@@ -281,5 +281,12 @@ function skip_if_no_hf-cli(){
     fi
 }
 
+function skip_if_no_ollama() {
+    if ! command -v ollama 2>&1 >/dev/null
+    then
+        skip "Not supported without ollama"
+    fi
+}
+
 # END   miscellaneous tools
 ###############################################################################
