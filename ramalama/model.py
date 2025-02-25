@@ -148,10 +148,7 @@ class Model(ModelBase):
             gpu_type, _ = next(iter(env_vars.items()))
 
         if args.runtime == "vllm":
-            if gpu_type == "HIP_VISIBLE_DEVICES":
-                return "quay.io/modh/vllm:rhoai-2.18-rocm"
-
-            return "quay.io/modh/vllm:rhoai-2.18-cuda"
+            return "docker.io/vllm/vllm-openai"
 
         split = version().split(".")
         vers = ".".join(split[:2])
