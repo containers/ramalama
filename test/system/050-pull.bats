@@ -30,6 +30,37 @@ load setup_suite
 }
 
 # bats test_tags=distro-integration
+@test "ramalama pull ollama cache" {
+    skip_if_no_ollama
+
+    ollama serve &
+    sleep 3
+    ollama pull tinyllama
+    run_ramalama pull tiny
+    run_ramalama rm tiny
+    ollama rm tinyllama
+
+    ollama pull smollm:135m
+    run_ramalama pull https://ollama.com/library/smollm:135m
+    run_ramalama list
+    is "$output" ".*ollama://smollm:135m" "image was actually pulled locally from ollama cache"
+
+    ollama pull smollm:360m
+    RAMALAMA_TRANSPORT=ollama run_ramalama pull smollm:360m
+    run_ramalama pull ollama://smollm:360m
+    run_ramalama list
+    is "$output" ".*ollama://smollm:360m" "image was actually pulled locally from ollama cache"
+    run_ramalama rm ollama://smollm:135m ollama://smollm:360m
+    ollama rm smollm:135m smollm:360m
+
+    random_image_name=i_$(safename)
+    run_ramalama 1 pull ${random_image_name}
+    is "$output" "Error: ${random_image_name} was not found in the Ollama registry"
+
+    pkill ollama
+}
+
+# bats test_tags=distro-integration
 @test "ramalama pull huggingface" {
     run_ramalama pull hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
