@@ -378,14 +378,8 @@ def add_network_argument(parser, dflt="none"):
 
 def bench_parser(subparsers):
     parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
+    bench_run_serve_perplexity_args(parser)
     add_network_argument(parser)
-    parser.add_argument(
-        "--ngl",
-        dest="ngl",
-        type=int,
-        default=CONFIG["ngl"],
-        help="number of layers to offload to the gpu, if available",
-    )
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=bench_cli)
 
@@ -707,7 +701,7 @@ def push_cli(args):
 
 
 def run_serve_perplexity_args(parser):
-    parser.add_argument("--authfile", help="path of the authentication file")
+    bench_run_serve_perplexity_args(parser)
     parser.add_argument(
         "-c",
         "--ctx-size",
@@ -715,6 +709,10 @@ def run_serve_perplexity_args(parser):
         default=CONFIG['ctx_size'],
         help="size of the prompt context (0 = loaded from model)",
     )
+
+
+def bench_run_serve_perplexity_args(parser):
+    parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument(
         "--device", dest="device", action='append', type=str, help="device to leak in to the running container"
     )
