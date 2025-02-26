@@ -20,8 +20,8 @@ dnf_install() {
                   "procps-ng" "git" "dnf-plugins-core" "libcurl-devel")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
-  if [ "$containerfile" = "ramalama" ] || [ "$containerfile" = "rocm" ] || \
-    [ "$containerfile" = "vulkan" ]; then # All the UBI-based ones
+  if [[ "${containerfile}" = "ramalama" ]] || [[ "${containerfile}" =~ rocm* ]] || \
+    [[ "${containerfile}" = "vulkan" ]]; then # All the UBI-based ones
     if [ "${ID}" = "fedora" ]; then
       dnf install -y "${rpm_list[@]}"
     else
@@ -90,7 +90,7 @@ set_install_prefix() {
 configure_common_flags() {
   common_flags=("-DGGML_NATIVE=OFF")
   case "$containerfile" in
-    rocm)
+    rocm*)
       if [ "${ID}" = "fedora" ]; then
         common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
       fi
@@ -146,6 +146,25 @@ clone_and_build_ramalama() {
   rm -rf ramalama
 }
 
+clean_fedora_rocm() {
+  case "${1}" in 
+    gfx8)
+      rm -fr /usr/lib64/rocm/gfx9* /usr/lib64/rocm/gfx10* /usr/lib64/rocm/gfx11*
+      ;;
+    gfx9)
+      rm -fr /usr/lib64/rocm/gfx8* /usr/lib64/rocm/gfx10* /usr/lib64/rocm/gfx11* 
+      ;;
+    gfx10)
+      rm -fr /usr/lib64/rocm/gfx8* /usr/lib64/rocm/gfx9* /usr/lib64/rocm/gfx11* 
+      ;;
+    gfx11)
+      rm -fr /usr/lib64/rocm/gfx8* /usr/lib64/rocm/gfx9* /usr/lib64/rocm/gfx10* && \
+      ln -s /usr/lib64/rocm/gfx1103/lib/rocblas/library/TensileLibrary_lazy_gfx1103.dat \
+            /usr/lib64/rocblas/library/TensileLibrary_lazy_gfx1103.dat
+      ;;
+  esac
+}
+
 main() {
   source /etc/os-release
 
@@ -176,8 +195,12 @@ main() {
   esac
 
   clone_and_build_llama_cpp
+  if [ "${ID}" = "fedora" ]; then
+    clean_fedora_rocm "$2"
+  fi
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
   ldconfig # needed for libraries
 }
+
 
 main "$@"
