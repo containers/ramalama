@@ -119,13 +119,13 @@ lint:
 
 .PHONY: check-format
 check-format:
-	black --check --diff *.py ramalama/*.py
-	isort --check --diff *.py ramalama/*.py
+	black --check --diff *.py ramalama/*.py test/unit/*.py
+	isort --check --diff *.py ramalama/*.py test/unit/*.py
 
 .PHONY: format
 format:
-	black *.py ramalama/*.py
-	isort *.py ramalama/*.py
+	black *.py ramalama/*.py test/unit/*.py
+	isort *.py ramalama/*.py test/unit/*.py
 
 .PHONY: codespell
 codespell:
