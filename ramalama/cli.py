@@ -9,12 +9,12 @@ from pathlib import Path
 
 import ramalama.oci
 import ramalama.rag
-from ramalama.common import container_manager, default_image, perror, run_cmd
+from ramalama.common import perror, run_cmd
+from ramalama.config import CONFIG
 from ramalama.gpu_detector import GPUDetector
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
 from ramalama.shortnames import Shortnames
-from ramalama.toml_parser import TOMLParser
 from ramalama.version import print_version, version
 
 shortnames = Shortnames()
@@ -22,15 +22,6 @@ shortnames = Shortnames()
 
 class HelpException(Exception):
     pass
-
-
-def use_container():
-    use_container = os.getenv("RAMALAMA_IN_CONTAINER")
-    if use_container:
-        return use_container.lower() == "true"
-
-    conman = container_manager()
-    return conman is not None
 
 
 class ArgumentParserWithDefaults(argparse.ArgumentParser):
@@ -42,71 +33,6 @@ class ArgumentParserWithDefaults(argparse.ArgumentParser):
             if help is not None and help != "==SUPPRESS==":
                 kwargs['help'] += ' (default: {})'.format(default)
         super().add_argument(*args, **kwargs)
-
-
-def load_config():
-    """Load configuration from a list of paths, in priority order."""
-    parser = TOMLParser()
-    config_path = os.getenv("RAMALAMA_CONFIG")
-    if config_path:
-        return parser.parse_file(config_path)
-
-    config = {}
-    config_paths = [
-        "/usr/share/ramalama/ramalama.conf",
-        "/usr/local/share/ramalama/ramalama.conf",
-        "/etc/ramalama/ramalama.conf",
-    ]
-    config_home = os.getenv("XDG_CONFIG_HOME", os.path.join("~", ".config"))
-    config_paths.extend([os.path.expanduser(os.path.join(config_home, "ramalama", "ramalama.conf"))])
-
-    # Load configuration from each path
-    for path in config_paths:
-        if os.path.exists(path):
-            # Load the main config file
-            config = parser.parse_file(path)
-        if os.path.isdir(path + ".d"):
-            # Load all .conf files in ramalama.conf.d directory
-            for conf_file in sorted(Path(path + ".d").glob("*.conf")):
-                config = parser.parse_file(conf_file)
-
-    return config
-
-
-def get_store():
-    if os.geteuid() == 0:
-        return "/var/lib/ramalama"
-
-    return os.path.expanduser("~/.local/share/ramalama")
-
-
-def load_and_merge_config():
-    """Load configuration from files and merge with environment variables."""
-    config = load_config()
-    ramalama_config = config.setdefault('ramalama', {})
-
-    ramalama_config['container'] = os.getenv('RAMALAMA_IN_CONTAINER', ramalama_config.get('container', use_container()))
-    ramalama_config['engine'] = os.getenv(
-        'RAMALAMA_CONTAINER_ENGINE', ramalama_config.get('engine', container_manager())
-    )
-    ramalama_config['image'] = os.getenv('RAMALAMA_IMAGE', ramalama_config.get('image', default_image()))
-    ramalama_config['nocontainer'] = ramalama_config.get('nocontainer', False)
-    if ramalama_config['nocontainer']:
-        ramalama_config['container'] = False
-    else:
-        ramalama_config['container'] = os.getenv(
-            'RAMALAMA_IN_CONTAINER', ramalama_config.get('container', use_container())
-        )
-
-    ramalama_config['carimage'] = ramalama_config.get('carimage', "registry.access.redhat.com/ubi9-micro:latest")
-    ramalama_config['runtime'] = ramalama_config.get('runtime', 'llama.cpp')
-    ramalama_config['store'] = os.getenv('RAMALAMA_STORE', ramalama_config.get('store', get_store()))
-    ramalama_config['transport'] = os.getenv('RAMALAMA_TRANSPORT', ramalama_config.get('transport', "ollama"))
-
-    return ramalama_config
-
-
-config = load_and_merge_config()
 
 
 def init_cli():
@@ -157,7 +83,7 @@ def configure_arguments(parser):
     parser.add_argument(
         "--container",
         dest="container",
-        default=config.get("container"),
+        default=CONFIG["container"],
         action="store_true",
         help="""run RamaLama in the default container.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
@@ -172,40 +98,40 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     parser.add_argument(
         "--engine",
         dest="engine",
-        default=config.get("engine"),
+        default=CONFIG["engine"],
         help="""run RamaLama using the specified container engine.
 The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
     )
     parser.add_argument(
         "--keep-groups",
         dest="podman_keep_groups",
-        default=config.get("keep_groups", False),
+        default=CONFIG["keep_groups"],
         action="store_true",
         help="""pass `--group-add keep-groups` to podman, if using podman.
 Needed to access gpu on some systems, but has security implications.""",
     )
     parser.add_argument(
         "--image",
-        default=config.get("image"),
+        default=CONFIG["image"],
         help="OCI container image to run with the specified AI model",
     )
     parser.add_argument(
         "--nocontainer",
         dest="container",
-        default=config.get("nocontainer"),
+        default=CONFIG["nocontainer"],
         action="store_false",
         help="""do not run RamaLama in the default container.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
     parser.add_argument(
         "--runtime",
-        default=config.get("runtime"),
+        default=CONFIG["runtime"],
         choices=["llama.cpp", "vllm"],
         help="specify the runtime to use; valid options are 'llama.cpp' and 'vllm'",
     )
     parser.add_argument(
         "--store",
-        default=config.get("store"),
+        default=CONFIG["store"],
         help="store AI Models in the specified directory",
     )
     verbosity_group = parser.add_mutually_exclusive_group()
@@ -457,7 +383,7 @@ def bench_parser(subparsers):
         "--ngl",
         dest="ngl",
         type=int,
-        default=config.get("ngl", -1),
+        default=CONFIG["ngl"],
         help="number of layers to offload to the gpu, if available",
     )
     parser.add_argument("MODEL")  # positional argument
@@ -506,7 +432,7 @@ def list_containers(args):
 
 def info_parser(subparsers):
     parser = subparsers.add_parser("info", help="display information pertaining to setup of RamaLama.")
-    parser.add_argument("--container", default=config.get('container', use_container()), help=argparse.SUPPRESS)
+    parser.add_argument("--container", default=CONFIG['container'], help=argparse.SUPPRESS)
     parser.set_defaults(func=info_cli)
 
 
@@ -671,7 +597,7 @@ def convert_parser(subparsers):
     )
     parser.add_argument(
         "--carimage",
-        default=config['carimage'],
+        default=CONFIG['carimage'],
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -712,7 +638,7 @@ def push_parser(subparsers):
     parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument(
         "--carimage",
-        default=config['carimage'],
+        default=CONFIG['carimage'],
         help=argparse.SUPPRESS,
     )
     add_network_argument(parser)
@@ -774,7 +700,7 @@ def push_cli(args):
                 raise e
         try:
             # attempt to push as a container image
-            m = ModelFactory(tgt, engine=config.get('engine', container_manager())).create_oci()
+            m = ModelFactory(tgt, engine=CONFIG['engine']).create_oci()
             m.push(source, args)
         except Exception:
             raise e
@@ -786,7 +712,7 @@ def run_serve_perplexity_args(parser):
         "-c",
         "--ctx-size",
         dest="context",
-        default=config.get('ctx_size', 2048),
+        default=CONFIG['ctx_size'],
         help="size of the prompt context (0 = loaded from model)",
     )
     parser.add_argument(
@@ -797,7 +723,7 @@ def run_serve_perplexity_args(parser):
         "--ngl",
         dest="ngl",
         type=int,
-        default=config.get("ngl", -1),
+        default=CONFIG["ngl"],
         help="number of layers to offload to the gpu, if available",
     )
     parser.add_argument(
@@ -807,14 +733,12 @@ def run_serve_perplexity_args(parser):
         "--pull",
         dest="pull",
         type=str,
-        default=config.get('pull', "newer"),
+        default=CONFIG['pull'],
         choices=["always", "missing", "never", "newer"],
         help='pull image policy',
     )
     parser.add_argument("--seed", help="override random seed")
-    parser.add_argument(
-        "--temp", default=config.get('temp', "0.8"), help="temperature of the response from the AI model"
-    )
+    parser.add_argument("--temp", default=CONFIG['temp'], help="temperature of the response from the AI model")
     parser.add_argument(
         "--tls-verify",
         dest="tlsverify",
@@ -857,7 +781,7 @@ def serve_parser(subparsers):
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
     parser.add_argument(
         "--host",
-        default=config.get('host', "0.0.0.0"),
+        default=CONFIG['host'],
         help="IP address to listen",
     )
     parser.add_argument(
@@ -865,9 +789,7 @@ def serve_parser(subparsers):
         choices=["quadlet", "kube", "quadlet/kube"],
         help="generate specified configuration format for running the AI Model as a service",
     )
-    parser.add_argument(
-        "-p", "--port", default=config.get('port', "8080"), help="port for AI Model server to listen on"
-    )
+    parser.add_argument("-p", "--port", default=CONFIG['port'], help="port for AI Model server to listen on")
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
 
@@ -1014,7 +936,7 @@ def rm_cli(args):
 
 
 def New(model, args):
-    return ModelFactory(model, config.get("transport", "ollama"), args.engine).create()
+    return ModelFactory(model, CONFIG["transport"], args.engine).create()
 
 
 def perplexity_parser(subparsers):
