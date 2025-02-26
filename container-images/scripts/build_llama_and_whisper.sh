@@ -166,6 +166,7 @@ clean_fedora_rocm() {
 }
 
 main() {
+  # shellcheck disable=SC1091
   source /etc/os-release
 
   set -ex
