@@ -141,7 +141,7 @@ install_ramalama_bin() {
 }
 
 install_ramalama_libs() {
-  local python_files=("cli.py" "rag.py" "gguf_parser.py" "huggingface.py" \
+  local python_files=("cli.py" "config.py" "rag.py" "gguf_parser.py" "huggingface.py" \
                       "model.py" "model_factory.py" "model_inspect.py" \
                       "ollama.py" "common.py" "__init__.py" "quadlet.py" \
                       "kube.py" "oci.py" "version.py" "shortnames.py" \
