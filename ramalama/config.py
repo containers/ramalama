@@ -70,7 +70,7 @@ def load_config_defaults(config: Dict[str, Any]):
     config['ctx_size'] = config.get('ctx_size', 2048)
     config['pull'] = config.get('pull', "newer")
     config['temp'] = config.get('temp', "0.8")
-    config['host'] = config.get('host', "0.0.0.0")
+    config['host'] = config.get('host', "127.0.0.1")
     config['port'] = config.get('port', "8080")
 
 
