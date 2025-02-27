@@ -1,0 +1,9 @@
+FROM registry.fedoraproject.org/fedora:41
+
+ARG ROCM_VARIANT
+COPY ../scripts /scripts
+RUN chmod +x /scripts/*.sh && \
+    /scripts/build_llama_and_whisper.sh "rocm" "${ROCM_VARIANT}"
+
+ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
+ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}
