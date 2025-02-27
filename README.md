@@ -106,7 +106,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 
 ## Possible Macos installation issue
 > [!TIP]
-> If you are running on Macos and, post-install, get a message saying [SSL:CERTIFICATE_VERIFY_FAILED] when running your first model, you need to initialiswe the certifcates in your Python Version.
+> If you are running on Macos and, post-install, get a message saying [SSL:CERTIFICATE_VERIFY_FAILED] when running your first model, you need to initialize the certificates in your Python Version.
 > Open the Folder /Applications/Python 3.x (where x is the version you are running)
 > Double click the 'Install Certificates.command' file; this will setup the certs and allow Python to interact with the models.
 
