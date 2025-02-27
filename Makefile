@@ -115,7 +115,7 @@ docs:
 .PHONY: lint
 lint:
 	flake8 *.py ramalama/*.py
-	shellcheck *.sh */*.sh container-images/*/*.sh
+	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:

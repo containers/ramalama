@@ -25,9 +25,8 @@ ${bold}$ $1${reset}"
 }
 
 setup() {
-    command -v ramalama > /dev/null
-    if [[ $? != 0 ]]; then
-	echo $0 requires the ramalama package be installed
+    if ! command -v ramalama > /dev/null; then
+	echo "$0 requires the ramalama package be installed"
 	exit 1
     fi
     clear
@@ -41,30 +40,30 @@ version() {
     # RamaLama info
     exec_color "ramalama info | less"
 
-    read -p "--> clear"
+    read -r -p "--> clear"
     clear
 }
 
 pull() {
     clear
 
-    echo_color "Remove tiny model if previously pulled"
-    exec_color "ramalama rm --ignore tiny"
+    echo_color "Remove smollm:135m model if previously pulled"
+    exec_color "ramalama rm --ignore smollm:135m"
     echo ""
 
-    echo_color "RamaLama Pulling Ollama Image tiny"
-    exec_color "ramalama pull tiny"
+    echo_color "RamaLama Pulling Ollama Image smollm:135m"
+    exec_color "ramalama pull smollm:135m"
     echo ""
 
     echo_color "RamaLama List all AI Models in local store"
-    exec_color "ramalama ls | grep --color tiny"
+    exec_color "ramalama ls | grep --color smollm:135m"
     echo ""
 
     echo_color "Show RamaLama container images"
     exec_color "podman images | grep ramalama"
     echo ""
 
-    read -p "--> clear"
+    read -r -p "--> clear"
     clear
 }
 
@@ -83,7 +82,7 @@ run() {
     exec_color "ramalama run --ngl 0 granite"
     echo ""
 
-    read -p "--> clear"
+    read -r -p "--> clear"
     clear
 }
 
@@ -108,49 +107,49 @@ serve() {
     exec_color "ramalama ps"
     echo ""
 
-    read -p "--> clear"
+    read -r -p "--> clear"
     clear
 }
 
 kubernetes() {
-    echo_color "Convert tiny model from Ollama into a OCI content"
-    exec_color "ramalama convert tiny quay.io/ramalama/tiny:1.0"
+    echo_color "Convert smollm:135m model from Ollama into a OCI content"
+    exec_color "ramalama convert smollm:135m quay.io/ramalama/smollm:1.0"
     echo ""
 
     echo_color "List created image"
-    exec_color "podman images | grep --color quay.io/ramalama/tiny"
+    exec_color "podman images | grep --color quay.io/ramalama/smollm"
     echo ""
 
     echo_color "Generate kubernetes YAML file for sharing OCI AI Model"
-    exec_color "ramalama serve --generate kube --name tiny-service oci://quay.io/ramalama/tiny:1.0"
+    exec_color "ramalama serve --generate kube --name smollm-service oci://quay.io/ramalama/smollm:1.0"
     echo ""
 
     echo_color "Examine kubernetes YAML file "
-    exec_color "less tiny-service.yaml"
+    exec_color "less smollm-service.yaml"
     echo ""
 
-    read -p "--> clear"
+    read -r -p "--> clear"
     clear
 }
 
 quadlet() {
     echo_color "Generate Quadlet files for sharing AI Model"
-    exec_color "ramalama serve --generate quadlet --name tiny-service oci://quay.io/ramalama/tiny:1.0"
+    exec_color "ramalama serve --generate quadlet --name smollm-service oci://quay.io/ramalama/smollm:1.0"
     echo ""
 
     echo_color "Examine quadlet volume file "
-    exec_color "less tiny-service.volume"
+    exec_color "less smollm-service.volume"
     echo ""
 
     echo_color "Examine quadlet image file "
-    exec_color "less tiny-service.image"
+    exec_color "less smollm-service.image"
     echo ""
 
     echo_color "Examine quadlet container file "
-    exec_color "less tiny-service.container"
+    exec_color "less smollm-service.container"
     echo ""
 
-    read -p "--> clear"
+    read -r -p "--> clear"
     clear
 }
 
