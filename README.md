@@ -2,8 +2,8 @@
 
 # RamaLama
 
-The RamaLama project's goal is to make working with AI boring
-through the use of OCI containers.
+The [RamaLama](https://ramalama.ai) project's goal is to make working with
+AI boring through the use of OCI containers.
 
 RamaLama tool facilitates local management and serving of AI Models.
 
@@ -16,6 +16,8 @@ Running in containers eliminates the need for users to configure the host system
 RamaLama then pulls AI Models from model registries. Starting a chatbot or a rest API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
 
 When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behaviour. When neither are installed RamaLama will attempt to run the model with software on the local system.
+
+For blogs, release announcements and more, please checkout the [https://ramalama.ai](https://ramalama.ai) website!
 
 ## SECURITY
 
@@ -278,7 +280,15 @@ so if you like this tool, give some of these repos a :star:, and hey, give us a 
 
 ## Community
 
+For general questions and discussion, please use RamaLama's
+
 [`Matrix`](https://matrix.to/#/#ramalama:fedoraproject.org)
+
+For discussions around issues/bugs and features, you can use the GitHub
+[Issues](https://github.com/containers/ramalama/issues)
+and
+[PRs](https://github.com/containers/ramalama/pulls)
+tracking system.
 
 ## Contributors
 
