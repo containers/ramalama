@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import tempfile
+import time
 from datetime import datetime
 
 import ramalama.annotations as annotations
@@ -75,20 +76,18 @@ def list_manifests(args):
     return models
 
 
-def list_models(args):
-    conman = args.engine
-    if conman is None:
-        return []
-
-    # if engine is docker, size will be retrieved from the inspect command later
-    # if engine is podman use "size":{{ .VirtualSize }}
+def get_format_line(conman):
     formatLine = '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}"'
     if conman == "podman":
         formatLine += ',"size":{{ .VirtualSize }}},'
     else:
         formatLine += ',"id":"{{ .ID }}"},'
+    return formatLine
 
-    conman_args = [
+
+def get_conman_args(conman, ocilabeltype):
+    formatLine = get_format_line(conman)
+    return [
         conman,
         "images",
         "--filter",
@@ -96,28 +95,41 @@ def list_models(args):
         "--format",
         formatLine,
     ]
+
+
+def get_model_size(conman, model_id, debug):
+    conman_args = [conman, "image", "inspect", model_id, "--format", "{{.Size}}"]
+    output = run_cmd(conman_args, debug=debug).stdout.decode("utf-8").strip()
+    return int(output)
+
+
+def adjust_model_times(models):
+    tim = time.time()
+    for model in models:
+        model["modified"] = model["modified"].replace(" UTC", "")
+        model["modified"] = datetime.strptime(model["modified"], '%Y-%m-%d %H:%M:%S %z')
+        model["modified"] = model["modified"].timestamp()
+        model["modified"] = tim - model["modified"]
+
+
+def list_models(args):
+    conman = args.engine
+    if conman is None:
+        return []
+
+    conman_args = get_conman_args(conman, ocilabeltype)
     output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
     if output == "":
         return []
 
     models = json.loads("[" + output[:-1] + "]")
-    # Grab the size from the inspect command
     if conman == "docker":
-        # grab the size from the inspect command
         for model in models:
-            conman_args = [conman, "image", "inspect", model["id"], "--format", "{{.Size}}"]
-            output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
-            # convert the number value from the string output
-            model["size"] = int(output)
-            # drop the id from the model
+            model["size"] = get_model_size(conman, model["id"], args.debug)
             del model["id"]
 
+    adjust_model_times(models)
     models += list_manifests(args)
-    for model in models:
-        # Convert to ISO 8601 format
-        parsed_date = datetime.fromisoformat(model["modified"].replace(" UTC", "").replace(" ", "T"))
-        model["modified"] = parsed_date.isoformat()
-
     return models
 
 

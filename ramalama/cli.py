@@ -4,7 +4,7 @@ import json
 import os
 import platform
 import subprocess
-from datetime import datetime, timezone
+import time
 from pathlib import Path
 
 import ramalama.oci
@@ -466,8 +466,7 @@ def _list_models(args):
             else:
                 name = str(path).replace("/", "://", 1)
             file_epoch = path.lstat().st_mtime
-            # convert to iso format
-            modified = datetime.fromtimestamp(file_epoch, tz=timezone.utc).isoformat()
+            modified = int(time.time() - file_epoch)
             size = get_size(path)
 
             # Store data for later use
@@ -527,25 +526,26 @@ def list_cli(args):
     size_width = len("SIZE")
     for model in sorted(models, key=lambda d: d['name']):
         try:
-            delta = int(datetime.now(timezone.utc).timestamp() - datetime.fromisoformat(model["modified"]).timestamp())
-            modified = human_duration(delta) + " ago"
-            model["modified"] = modified
+            modified = human_duration(model["modified"]) + " ago"
         except TypeError:
-            pass
+            modified = model["modified"]
         # update the size to be human readable
         model["size"] = human_readable_size(model["size"])
         name_width = max(name_width, len(model["name"]))
-        modified_width = max(modified_width, len(model["modified"]))
+        modified_width = max(modified_width, len(modified))
         size_width = max(size_width, len(model["size"]))
 
     if not args.quiet and not args.noheading and not args.json:
         print(f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} {'SIZE':<{size_width}}")
 
     for model in models:
+        try:
+            modified = human_duration(model["modified"]) + " ago"
+        except TypeError:
+            modified = model["modified"]
         if args.quiet:
             print(model["name"])
         else:
-            modified = model['modified']
             print(f"{model['name']:<{name_width}} {modified:<{modified_width}} {model['size'].upper():<{size_width}}")
 
 
