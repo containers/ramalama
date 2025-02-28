@@ -62,7 +62,8 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
      fi
 
     run_ramalama 1 serve MODEL
-    is "$output" "Error: MODEL was not found in the Ollama registry"
+    assert "$output" =~ "serving on port 8080"
+    assert "$output" =~ "Error: MODEL was not found in the Ollama registry"
 }
 
 @test "ramalama --detach serve" {

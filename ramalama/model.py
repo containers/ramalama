@@ -1,5 +1,6 @@
 import os
 import platform
+import socket
 import sys
 
 from ramalama.common import (
@@ -13,6 +14,7 @@ from ramalama.common import (
     get_gpu,
     run_cmd,
 )
+from ramalama.config import DEFAULT_PORT, MAX_PORT
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
@@ -560,6 +562,7 @@ class Model(ModelBase):
 
     def serve(self, args):
         self.validate_args(args)
+        args.port = validate_port(args.port, args.debug)
         model_path = self.get_model_path(args)
         exec_model_path = MNT_FILE
         if not args.container and not args.generate:
@@ -633,3 +636,29 @@ def distinfo_volume():
         return ""
 
     return f"-v{path}:/usr/share/ramalama/{dist_info}:ro"
+
+
+def is_port_in_use(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+
+def validate_port(port:str, debug:bool) -> str:
+    if port != DEFAULT_PORT:
+        # user custom port, don't override the choice
+        return port
+    port = int(port)
+    found = False
+    # loop until we find an open port
+    while port <= MAX_PORT:
+        if not is_port_in_use(port):
+            found = True
+            break
+        if debug:
+            print(f"port {port} in use, trying another port")
+        port += 1
+
+    if not found:
+        raise IOError("no available port detected. Please ensure you have enough free ports.")
+    print(f"serving on port {port}")
+    return str(port)
