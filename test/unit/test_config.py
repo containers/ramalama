@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from ramalama.config import load_config_defaults, load_config_from_env
+from ramalama.config import DEFAULT_PORT_RANGE, int_tuple_as_str, load_config_defaults, load_config_from_env
 
 
 @pytest.mark.parametrize(
@@ -64,8 +64,8 @@ def test_load_config_from_env(env, config, expected):
                 "pull": "newer",
                 "temp": "0.8",
                 "host": "0.0.0.0",
-                "port": "8080",
                 "use_model_store": False,
+                "port": int_tuple_as_str(DEFAULT_PORT_RANGE),
             },
         ),
         (
@@ -82,8 +82,8 @@ def test_load_config_from_env(env, config, expected):
                 "pull": "newer",
                 "temp": "0.8",
                 "host": "0.0.0.0",
-                "port": "8080",
                 "use_model_store": False,
+                "port": int_tuple_as_str(DEFAULT_PORT_RANGE),
             },
         ),
     ],

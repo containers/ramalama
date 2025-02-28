@@ -5,6 +5,8 @@ from typing import Any, Dict
 from ramalama.common import container_manager, default_image
 from ramalama.toml_parser import TOMLParser
 
+DEFAULT_PORT_RANGE = (8080, 8090)
+
 
 def get_store():
     if os.geteuid() == 0:
@@ -60,6 +62,10 @@ def load_config_from_env(config: Dict[str, Any], env: Dict):
     config['transport'] = env.get('RAMALAMA_TRANSPORT', config.get('transport', "ollama"))
 
 
+def int_tuple_as_str(input: tuple) -> str:
+    return '-'.join(map(str, input))
+
+
 def load_config_defaults(config: Dict[str, Any]):
     """Set configuration defaults if these are not yet set."""
     config['nocontainer'] = config.get('nocontainer', False)
@@ -71,7 +77,8 @@ def load_config_defaults(config: Dict[str, Any]):
     config['pull'] = config.get('pull', "newer")
     config['temp'] = config.get('temp', "0.8")
     config['host'] = config.get('host', "0.0.0.0")
-    config['port'] = config.get('port', "8080")
+    # print tuple as a range to avoid confusion
+    config['port'] = config.get('port', int_tuple_as_str(DEFAULT_PORT_RANGE))
     config['use_model_store'] = config.get('use_model_store', False)
 
 
