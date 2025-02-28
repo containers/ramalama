@@ -14,6 +14,7 @@ from ramalama.config import CONFIG
 from ramalama.gpu_detector import GPUDetector
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
+from ramalama.model_store import GlobalModelStore
 from ramalama.shortnames import Shortnames
 from ramalama.version import print_version, version
 
@@ -470,7 +471,28 @@ def get_size(path):
 
 def _list_models(args):
     mycwd = os.getcwd()
-    os.chdir(f"{args.store}/models/")
+    if args.use_model_store:
+        models = GlobalModelStore(args.store).list_models()
+        ret = []
+        local_timezone = datetime.now().astimezone().tzinfo
+
+        for model, files in models.items():
+            size_sum = 0
+            last_modified = 0.0
+            for file in files:
+                size_sum += file.size
+                if file.modified > last_modified:
+                    last_modified = file.modified
+            ret.append(
+                {
+                    "name": model,
+                    "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+                    "size": size_sum,
+                }
+            )
+        return ret
+    else:
+        os.chdir(f"{args.store}/models/")
     models = []
 
     # Collect model data
@@ -980,5 +1002,11 @@ def inspect_parser(subparsers):
 
 
 def inspect_cli(args):
-    model = New(args.MODEL, args)
-    model.inspect(args)
+    import traceback
+
+    try:
+        model = New(args.MODEL, args)
+        model.inspect(args)
+    except Exception as ex:
+        print(ex)
+        print(traceback.print_exc())
