@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 from ramalama.common import rm_until_substring
 from ramalama.huggingface import Huggingface
 from ramalama.model import MODEL_TYPES
-from ramalama.model_store import ModelStore
+from ramalama.model_store import GlobalModelStore, ModelStore
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.url import URL
@@ -76,8 +76,8 @@ class ModelFactory:
 
     def set_optional_model_store(self, model: Union[Huggingface, Ollama, OCI, URL]):
         if self.use_model_store:
-            name, tag, orga = model.extract_model_identifiers()
-            model.store = ModelStore(self.store_path, name, tag, orga)
+            name, _, orga = model.extract_model_identifiers()
+            model.store = ModelStore(GlobalModelStore(self.store_path), name, type(model).__name__.lower(), orga)
 
     def create_huggingface(self) -> Huggingface:
         model = Huggingface(self.pruned_model)
