@@ -12,6 +12,16 @@ class URL(Model):
         split = self.model.rsplit("/", 1)
         self.directory = split[0].removeprefix("/") if len(split) > 1 else ""
 
+    def extract_model_identifiers(self):
+        model_name, model_tag, model_organization = super().extract_model_identifiers()
+
+        parts = model_organization.split("/")
+        if len(parts) > 2 and parts[-2] == "blob":
+            model_organization = "/".join(parts[:-2])
+            model_tag = parts[-1]
+
+        return model_name, model_tag, model_organization
+
     def pull(self, args):
         model_path = self.model_path(args)
         directory_path = os.path.join(args.store, "repos", self.type, self.directory, self.filename)

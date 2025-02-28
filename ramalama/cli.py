@@ -134,6 +134,13 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         default=CONFIG["store"],
         help="store AI Models in the specified directory",
     )
+    parser.add_argument(
+        "--use-model-store",
+        dest="use_model_store",
+        default=CONFIG["use_model_store"],
+        action="store_true",
+        help="use the model store feature",
+    )
     verbosity_group = parser.add_mutually_exclusive_group()
     verbosity_group.add_argument("--quiet", "-q", dest="quiet", action="store_true", help="reduce output.")
     verbosity_group.add_argument(
@@ -626,7 +633,7 @@ def convert_cli(args):
     if not tgt:
         tgt = target
 
-    model = ModelFactory(tgt, engine=args.engine).create_oci()
+    model = ModelFactory(tgt, args.store, args.use_model_store, engine=args.engine).create_oci()
     model.convert(source, args)
 
 
@@ -678,7 +685,7 @@ def _get_source(args):
     else:
         if not smodel.exists(args):
             return smodel.pull(args)
-        return smodel.path(args)
+        return smodel.model_path(args)
 
 
 def push_cli(args):
@@ -702,7 +709,7 @@ def push_cli(args):
                 raise e
         try:
             # attempt to push as a container image
-            m = ModelFactory(tgt, engine=CONFIG['engine']).create_oci()
+            m = ModelFactory(tgt, args.store, args.use_model_store, engine=CONFIG['engine']).create_oci()
             m.push(source, args)
         except Exception:
             raise e
@@ -774,7 +781,9 @@ def run_cli(args):
     except KeyError as e:
         try:
             args.quiet = True
-            model = ModelFactory(args.MODEL, engine=args.engine, ignore_stderr=True).create_oci()
+            model = ModelFactory(
+                args.MODEL, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
+            ).create_oci()
             model.run(args)
         except Exception:
             raise e
@@ -810,7 +819,9 @@ def serve_cli(args):
     except KeyError as e:
         try:
             args.quiet = True
-            model = ModelFactory(args.MODEL, engine=args.engine, ignore_stderr=True).create_oci()
+            model = ModelFactory(
+                args.MODEL, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
+            ).create_oci()
             model.serve(args)
         except Exception:
             raise e
@@ -918,7 +929,9 @@ def _rm_model(models, args):
                         raise e
             try:
                 # attempt to remove as a container image
-                m = ModelFactory(model, engine=args.engine, ignore_stderr=True).create_oci()
+                m = ModelFactory(
+                    model, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
+                ).create_oci()
                 m.remove(args)
                 return
             except Exception:
@@ -942,7 +955,7 @@ def rm_cli(args):
 
 
 def New(model, args):
-    return ModelFactory(model, CONFIG["transport"], args.engine).create()
+    return ModelFactory(model, args.store, args.use_model_store, CONFIG["transport"], args.engine).create()
 
 
 def perplexity_parser(subparsers):

@@ -85,9 +85,27 @@ class Model(ModelBase):
 
     def __init__(self, model):
         self.model = model
+        self.store = None
+
         split = self.model.rsplit("/", 1)
         self.directory = split[0] if len(split) > 1 else ""
         self.filename = split[1] if len(split) > 1 else split[0]
+
+    def extract_model_identifiers(self):
+        model_name = self.model
+        model_tag = "latest"
+        model_organization = ""
+
+        # extract model tag from name if exists
+        if ":" in model_name:
+            model_name, model_tag = model_name.split(":", 1)
+
+        # extract model organization from name if exists and update name
+        split = model_name.rsplit("/", 1)
+        model_organization = split[0].removeprefix("/") if len(split) > 1 else ""
+        model_name = split[1] if len(split) > 1 else split[0]
+
+        return model_name, model_tag, model_organization
 
     def is_symlink_to(self, file_path, target_path):
         if os.path.islink(file_path):

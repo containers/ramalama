@@ -65,6 +65,7 @@ def test_load_config_from_env(env, config, expected):
                 "temp": "0.8",
                 "host": "0.0.0.0",
                 "port": "8080",
+                "use_model_store": False,
             },
         ),
         (
@@ -82,6 +83,7 @@ def test_load_config_from_env(env, config, expected):
                 "temp": "0.8",
                 "host": "0.0.0.0",
                 "port": "8080",
+                "use_model_store": False,
             },
         ),
     ],
