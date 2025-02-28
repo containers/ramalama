@@ -115,7 +115,9 @@ def list_models(args):
     models += list_manifests(args)
     for model in models:
         # Convert to ISO 8601 format
-        parsed_date = datetime.fromisoformat(model["modified"].replace(" UTC", "").replace(" ", "T"))
+        parsed_date = datetime.fromisoformat(
+            model["modified"].replace(" UTC", "").replace("+0000", "+00:00").replace(" ", "T")
+        )
         model["modified"] = parsed_date.isoformat()
 
     return models
