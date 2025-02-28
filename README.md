@@ -221,7 +221,9 @@ $ ramalama stop mylama
 
 To use a UI, run a `ramalama serve` command, then connect via your browser at:
 
-127.0.0.1:8080
+127.0.0.1:<port>
+
+By default, the serving port will be a random free port within the range 8080-65536. If you wish, you can specify a free port to use with `--port/-p`. 
 
 ## Diagram
 

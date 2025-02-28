@@ -5,6 +5,8 @@ from typing import Any, Dict
 from ramalama.common import container_manager, default_image
 from ramalama.toml_parser import TOMLParser
 
+DEFAULT_PORT_RANGE = (8080,65536)
+
 
 def get_store():
     if os.geteuid() == 0:
@@ -71,7 +73,7 @@ def load_config_defaults(config: Dict[str, Any]):
     config['pull'] = config.get('pull', "newer")
     config['temp'] = config.get('temp', "0.8")
     config['host'] = config.get('host', "0.0.0.0")
-    config['port'] = config.get('port', "8080")
+    config['port'] = config.get('port', DEFAULT_PORT_RANGE)
 
 
 def load_and_merge_config() -> Dict[str, Any]:
