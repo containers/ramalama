@@ -13,7 +13,7 @@
       "type": "debugpy",
       "request": "launch",
       "program": "bin/ramalama",
-      "args": ["benchmark", "llama3.2:1b"],
+      "args": ["benchmark", "ollama://llama3.2:1b"],
       "console": "integratedTerminal",
       "purpose": [
         "debug-in-terminal"

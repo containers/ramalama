@@ -11,6 +11,8 @@
 		"--userns=keep-id",
 		"--pid=host",
 		"--security-opt=label=disable",
+		"--security-opt=unmask=ALL",
+		"--device=/dev/fuse",
 		"--systemd=false",
 		"--device=/dev/dri",
 		"--device=nvidia.com/gpu=all"
@@ -18,7 +20,7 @@
 	"remoteUser": "podman",
 	"containerUser": "podman",
 	//bind host ramalama folder to container 
-	"mounts": ["source=${localEnv:HOME}${localEnv:USERPROFILE}/.local/share/ramalama/,target=/home/podman/.local/share/ramalama/,type=bind,consistency=cached"],
+	"mounts": ["source=${localEnv:HOME}${localEnv:USERPROFILE}/.local/share/ramalama/,target=/home/podman/.local/share/ramalama/,type=bind,consistency=cached","source=/run/podman,target=/run/podman,type=bind,consistency=cached"],
 	//download recomended extentions
 	"customizations": {
 		"vscode": {
