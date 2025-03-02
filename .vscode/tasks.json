@@ -1,0 +1,23 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Project Install",
+            "command": "pip",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "args": [
+                "install",
+                "-e",
+                "."
+            ],
+            "presentation": {
+                "echo": true,
+                "panel": "shared",
+                "focus": true
+            },
+        }
+    ]
+}

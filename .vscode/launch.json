@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "name": "Run Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Run Benchmark",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "bin/ramalama",
+      "args": ["benchmark", "llama3.2:1b"],
+      "console": "integratedTerminal",
+      "purpose": [
+        "debug-in-terminal"
+      ],
+      "justMyCode": true,
+      "env": {
+      },
+    },
+  ]
+}
