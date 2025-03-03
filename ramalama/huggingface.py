@@ -57,7 +57,7 @@ def handle_repo_info(repo_name, repo_info, runtime):
         )
     if "gguf" in repo_info:
         print("There are GGUF files to choose from in this repo, use one of the following commands to run one:\n")
-    for sibling in repo_info["siblings"]:
+    for sibling in repo_info.get("siblings", []):
         if sibling["rfilename"].endswith('.gguf'):
             file = sibling["rfilename"]
             print(f"- ramalama run hf://{repo_name}/{file}")
