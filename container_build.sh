@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-_FEDORA_ROCM_VARIANTS=("gfx9" "gfx10" "gfx11")
-
 available() {
   command -v "$1" >/dev/null
 }
@@ -30,12 +28,7 @@ add_build_platform() {
 
   conman_build+=("--platform" "$platform")
   conman_build+=("-t" "$REGISTRY_PATH/$image_name")
-  if [[ "${image_name}" =~ "rocm-fedora" ]]; then
-    conman_build+=("-f" "rocm-fedora/Containerfile" "--build-arg" "ROCM_VARIANT=${image_name#*-*-}")
-  else
-    conman_build+=("-f" "$image_name/Containerfile")
-  fi
-  conman_build+=(".")
+  conman_build+=("-f" "$image_name/Containerfile" ".")
 }
 
 rm_container_image() {
@@ -65,7 +58,7 @@ build() {
   local image_name="${1//container-images\//}"
   local conman_build=("${conman[@]}")
   local conman_show_size=("${conman[@]}" "images" "--filter" "reference='$REGISTRY_PATH/$image_name'")
-  if [[ "${3}" == "-d" ]]; then
+  if [ "$3" == "-d" ]; then
       add_build_platform
       echo "${conman_build[@]}"
       cd - > /dev/null
@@ -170,13 +163,7 @@ process_all_targets() {
       fi
     fi
 
-    if [[ "${i}" =~ "rocm-fedora" ]]; then
-      for v in "${_FEDORA_ROCM_VARIANTS[@]}"; do
-          build "${i}-${v}" "$command" "$option"
-      done
-    else
-      build "$i" "$command" "$option"
-    fi
+    build "$i" "$command" "$option"
   done
 }
 

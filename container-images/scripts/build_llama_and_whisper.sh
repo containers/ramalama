@@ -146,23 +146,6 @@ clone_and_build_ramalama() {
   rm -rf ramalama
 }
 
-clean_fedora_rocm() {
-  case "${1}" in 
-    gfx8)
-      rm -fr /usr/lib64/rocm/gfx9* /usr/lib64/rocm/gfx10* /usr/lib64/rocm/gfx11*
-      ;;
-    gfx9)
-      rm -fr /usr/lib64/rocm/gfx8* /usr/lib64/rocm/gfx10* /usr/lib64/rocm/gfx11* 
-      ;;
-    gfx10)
-      rm -fr /usr/lib64/rocm/gfx8* /usr/lib64/rocm/gfx9* /usr/lib64/rocm/gfx11* 
-      ;;
-    gfx11)
-      rm -fr /usr/lib64/rocm/gfx8* /usr/lib64/rocm/gfx9* /usr/lib64/rocm/gfx10*
-      ;;
-  esac
-}
-
 main() {
   # shellcheck disable=SC1091
   source /etc/os-release
@@ -194,12 +177,8 @@ main() {
   esac
 
   clone_and_build_llama_cpp
-  if [ "${ID}" = "fedora" ]; then
-    clean_fedora_rocm "$2"
-  fi
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
   ldconfig # needed for libraries
 }
-
 
 main "$@"
