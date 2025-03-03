@@ -41,8 +41,7 @@ jobs:
         
       - name: Verify RamaLama installation
         run: |
-          install_dir=$(sudo ./install.sh get_installation_dir)/ramalama/
-          ls -f -A ramalama/ | while read file; do ls -f -A $install_dir | grep $file; done 
+          ramalama ls | grep NAME
       
       - name: Ramalama info
         run: |

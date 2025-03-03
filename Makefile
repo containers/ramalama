@@ -114,18 +114,18 @@ docs:
 
 .PHONY: lint
 lint:
-	flake8 *.py ramalama/*.py
+	flake8 *.py */*.py
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:
-	black --check --diff *.py ramalama/*.py test/unit/*.py
-	isort --check --diff *.py ramalama/*.py test/unit/*.py
+	black --check --diff *.py */*.py test/unit/*.py
+	isort --check --diff *.py */*.py test/unit/*.py
 
 .PHONY: format
 format:
-	black *.py ramalama/*.py test/unit/*.py
-	isort *.py ramalama/*.py test/unit/*.py
+	black *.py */*.py test/unit/*.py
+	isort *.py */*.py test/unit/*.py
 
 .PHONY: codespell
 codespell:
