@@ -244,7 +244,8 @@ def download_file(url, dest_path, headers=None, show_progress=True):
 
         except urllib.error.HTTPError as e:
             if e.code in [HTTP_RANGE_NOT_SATISFIABLE, HTTP_NOT_FOUND]:
-                return  # No need to retry
+                raise e
+            retries += 1
 
         except urllib.error.URLError as e:
             console.error(f"Network Error: {e.reason}")
@@ -264,7 +265,7 @@ def download_file(url, dest_path, headers=None, show_progress=True):
 
         except Exception as e:
             console.error(f"Unexpected error: {str(e)}")
-            raise
+            raise e
 
         if retries >= max_retries:
             error_message = (
@@ -274,8 +275,7 @@ def download_file(url, dest_path, headers=None, show_progress=True):
                 "- Server is down or unresponsive\n"
                 "- Firewall or proxy blocking the request\n"
             )
-            console.error(error_message)
-            sys.exit(1)
+            raise Exception(error_message)
 
         time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
 
