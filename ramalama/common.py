@@ -31,6 +31,7 @@ DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
 
 _engine = -1  # -1 means cached variable not set yet
+podman_machine_accel = False
 
 
 def get_engine():
@@ -57,43 +58,47 @@ def container_manager():
     return _engine
 
 
+def confirm_no_gpu(name, provider):
+    while True:
+        user_input = (
+            input(
+                f"Warning! Your VM {name} is using {provider}, which does not support GPU. "
+                "Only the provider libkrun has GPU support. "
+                "Do you want to proceed without GPU? (yes/no): "
+            )
+            .strip()
+            .lower()
+        )
+        if user_input in ["yes", "y"]:
+            return True
+        if user_input in ["no", "n"]:
+            return False
+        print("Invalid input. Please enter 'yes' or 'no'.")
+
+
+def handle_provider(machine):
+    global podman_machine_accel
+    name = machine.get("Name")
+    provider = machine.get("VMType")
+    running = machine.get("Running")
+    if running:
+        if provider == "applehv":
+            return confirm_no_gpu(name, provider)
+        if "krun" in provider:
+            podman_machine_accel = "True"
+            return True
+    return None
+
+
 def apple_vm():
     podman_machine_list = ["podman", "machine", "list", "--format", "json", "--all-providers"]
     try:
-        # Run the command and decode the output
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
-
-        # Parse the JSON into Python objects
         machines = json.loads(machines_json)
-
         for machine in machines:
-            name = machine.get("Name")
-            provider = machine.get("VMType")
-            running = machine.get("Running")
-
-            if provider == "applehv" and running:
-                # Ask the user if they want to use the "applehv" provider
-                while True:
-                    user_input = (
-                        input(
-                            f"Warning! Your VM {name} is using {provider}, which does not support GPU. "
-                            "Only the provider libkrun has GPU support. "
-                            "Do you want to proceed without GPU? (yes/no): "
-                        )
-                        .strip()
-                        .lower()
-                    )  # Make sure input is stripped and lowercase
-
-                    if user_input in ["yes", "y"]:
-                        os.environ["LIBKRUN"] = "False"
-                        return True
-                    elif user_input in ["no", "n"]:
-                        return False
-                    else:
-                        print("Invalid input. Please enter 'yes' or 'no'.")
-            elif provider == "libkrun" and running:
-                os.environ["LIBKRUN"] = "True"
-                return True
+            result = handle_provider(machine)
+            if result is not None:
+                return result
     except subprocess.CalledProcessError:
         pass
     return False

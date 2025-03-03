@@ -11,6 +11,7 @@ from ramalama.common import (
     genname,
     get_env_vars,
     get_gpu,
+    podman_machine_accel,
     run_cmd,
 )
 from ramalama.gguf_parser import GGUFInfoParser
@@ -265,7 +266,7 @@ class Model(ModelBase):
             for device_arg in args.device:
                 conman_args += ["--device", device_arg]
         else:
-            if os.getenv("LIBKRUN") == "True" or os.path.exists("/dev/dri"):
+            if podman_machine_accel or os.path.exists("/dev/dri"):
                 conman_args += ["--device", "/dev/dri"]
 
             if os.path.exists("/dev/kfd"):
@@ -314,9 +315,8 @@ class Model(ModelBase):
             or os.getenv("CUDA_VISIBLE_DEVICES")
             or os.getenv("INTEL_VISIBLE_DEVICES")
             or (
-                # linux and macOS report aarch64 differently, on Apple Silicon
-                # (arm64), we should have acceleration on regardless.
-                (os.getenv("LIBKRUN") == "True")
+                # linux and macOS report aarch64 (linux), arm64 (macOS)
+                podman_machine_accel
                 or (machine == "aarch64" and os.path.exists("/dev/dri"))
             )
         ):
