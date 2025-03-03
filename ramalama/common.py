@@ -2,10 +2,12 @@
 
 import glob
 import hashlib
+import json
 import logging
 import os
 import random
-import re
+
+# import re
 import shutil
 import string
 import subprocess
@@ -36,7 +38,7 @@ def get_engine():
     if engine is not None:
         return engine
 
-    if available("podman") and (sys.platform != "darwin" or is_podman_machine_running_with_krunkit()):
+    if available("podman") and (sys.platform != "darwin" or apple_vm()):
         return "podman"
 
     if available("docker") and sys.platform != "darwin":
@@ -55,14 +57,45 @@ def container_manager():
     return _engine
 
 
-def is_podman_machine_running_with_krunkit():
-    podman_machine_list = ["podman", "machine", "list", "--all-providers"]
+def apple_vm():
+    podman_machine_list = ["podman", "machine", "list", "--format", "json", "--all-providers"]
     try:
-        output = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
-        return re.search("krun.*running", output)
+        # Run the command and decode the output
+        machines_json = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
+
+        # Parse the JSON into Python objects
+        machines = json.loads(machines_json)
+
+        for machine in machines:
+            name = machine.get("Name")
+            provider = machine.get("VMType")
+            running = machine.get("Running")
+
+            if provider == "applehv" and running:
+                # Ask the user if they want to use the "applehv" provider
+                while True:
+                    user_input = (
+                        input(
+                            f"Warning! Your VM {name} is using {provider}, which does not support GPU. "
+                            "Only the provider libkrun has GPU support. "
+                            "Do you want to proceed without GPU? (yes/no): "
+                        )
+                        .strip()
+                        .lower()
+                    )  # Make sure input is stripped and lowercase
+
+                    if user_input in ["yes", "y"]:
+                        os.environ["LIBKRUN"] = "False"
+                        return True
+                    elif user_input in ["no", "n"]:
+                        return False
+                    else:
+                        print("Invalid input. Please enter 'yes' or 'no'.")
+            elif provider == "libkrun" and running:
+                os.environ["LIBKRUN"] = "True"
+                return True
     except subprocess.CalledProcessError:
         pass
-
     return False
 
 

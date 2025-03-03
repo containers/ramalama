@@ -265,7 +265,7 @@ class Model(ModelBase):
             for device_arg in args.device:
                 conman_args += ["--device", device_arg]
         else:
-            if (sys.platform == "darwin" and os.path.basename(args.engine) != "docker") or os.path.exists("/dev/dri"):
+            if os.getenv("LIBKRUN") == "True" or os.path.exists("/dev/dri"):
                 conman_args += ["--device", "/dev/dri"]
 
             if os.path.exists("/dev/kfd"):
@@ -316,7 +316,7 @@ class Model(ModelBase):
             or (
                 # linux and macOS report aarch64 differently, on Apple Silicon
                 # (arm64), we should have acceleration on regardless.
-                machine == "arm64"
+                (os.getenv("LIBKRUN") == "True")
                 or (machine == "aarch64" and os.path.exists("/dev/dri"))
             )
         ):
