@@ -176,13 +176,16 @@ def verify_checksum(filename):
     if not os.path.exists(filename):
         return False
 
-    # Check if the filename starts with "sha256:"
+    # Check if the filename starts with "sha256:" or "sha256-" and extract the checksum from filename
+    expected_checksum = ""
     fn_base = os.path.basename(filename)
-    if not fn_base.startswith("sha256:"):
-        raise ValueError(f"filename does not start with 'sha256:': {fn_base}")
+    if fn_base.startswith("sha256:"):
+        expected_checksum = fn_base.split(":")[1]
+    elif fn_base.startswith("sha256-"):
+        expected_checksum = fn_base.split("-")[1]
+    else:
+        raise ValueError(f"filename has to start with 'sha256:' or 'sha256-': {fn_base}")
 
-    # Extract the expected checksum from the filename
-    expected_checksum = fn_base.split(":")[1]
     if len(expected_checksum) != 64:
         raise ValueError("invalid checksum length in filename")
 

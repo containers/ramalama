@@ -12,9 +12,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def sanitize_hash(filename: str) -> str:
-    return filename
-    # TODO: re-enable sanitizing
-    # return filename.replace(":", "-")
+    return filename.replace(":", "-")
 
 
 class SnapshotFile:
@@ -245,7 +243,7 @@ class ModelStore:
 
             if file.should_verify_checksum:
                 if not verify_checksum(dest_path):
-                    print(f"Checksum mismatch for blob {dest_path}, retrying download...")
+                    LOGGER.info(f"Checksum mismatch for blob {dest_path}, retrying download...")
                     os.remove(dest_path)
                     file.download(dest_path, self.get_snapshot_directory(snapshot_hash))
                     if not verify_checksum(dest_path):
