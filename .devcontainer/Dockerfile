@@ -1,21 +1,19 @@
 FROM registry.fedoraproject.org/fedora:41
 
+# Support podman in podman
+# Reference: https://www.redhat.com/en/blog/podman-inside-container
+
 # Install podman, git, openssl, openssh-server, nano, python and any other requirements 
 RUN dnf update -y; \
 dnf reinstall shadow-utils -y; \
 dnf install git openssl openssh-server nano python3 python3-pip -y; \
 dnf install --nobest podman fuse-overlayfs --exclude container-selinux -y; \
-rm -rf /var/cache
+rm -rf /var/cache /var/log/dnf* /var/log/yum.*
 ENV PYTHONUNBUFFERED 1
 
 # Install ramalama package dependencies 
 RUN pip3 install argcomplete
 
-# Support podman in podman
-# Reference: https://www.redhat.com/en/blog/podman-inside-container
-RUN dnf -y update; yum -y reinstall shadow-utils; 
-RUN yum -y install --nobest podman fuse-overlayfs --exclude container-selinux ;
-RUN rm -rf /var/cache /var/log/dnf* /var/log/yum.*
 # Create podman:podman user 
 RUN useradd -d /home/podman/ -G wheel -g root -p "$(openssl passwd -1 podman)" podman; \
 echo podman:10000:5000 > /etc/subuid; \
