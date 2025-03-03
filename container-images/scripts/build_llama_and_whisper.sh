@@ -17,7 +17,7 @@ dnf_install_intel_gpu() {
 dnf_install() {
   local rpm_list=("podman-remote" "python3" "python3-pip" "python3-argcomplete" \
                   "python3-dnf-plugin-versionlock" "gcc-c++" "cmake" "vim" \
-                  "procps-ng" "git" "dnf-plugins-core" "libcurl-devel")
+                  "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
   if [[ "${containerfile}" = "ramalama" ]] || [[ "${containerfile}" =~ rocm* ]] || \
@@ -158,9 +158,7 @@ clean_fedora_rocm() {
       rm -fr /usr/lib64/rocm/gfx8* /usr/lib64/rocm/gfx9* /usr/lib64/rocm/gfx11* 
       ;;
     gfx11)
-      rm -fr /usr/lib64/rocm/gfx8* /usr/lib64/rocm/gfx9* /usr/lib64/rocm/gfx10* && \
-      ln -s /usr/lib64/rocm/gfx1103/lib/rocblas/library/TensileLibrary_lazy_gfx1103.dat \
-            /usr/lib64/rocblas/library/TensileLibrary_lazy_gfx1103.dat
+      rm -fr /usr/lib64/rocm/gfx8* /usr/lib64/rocm/gfx9* /usr/lib64/rocm/gfx10*
       ;;
   esac
 }

@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:41
+FROM registry.fedoraproject.org/fedora:42
 
 ARG ROCM_VARIANT
 COPY ../scripts /scripts
