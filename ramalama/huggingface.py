@@ -1,3 +1,4 @@
+import json
 import os
 import pathlib
 import urllib.request
@@ -32,6 +33,37 @@ def fetch_checksum_from_api(url):
     raise ValueError("SHA-256 checksum not found in the API response.")
 
 
+def get_repo_info(repo_name):
+    # Docs on API call:
+    # https://huggingface.co/docs/hub/en/api#get-apimodelsrepoid-or-apimodelsrepoidrevisionrevision
+    repo_info_url = f"https://huggingface.co/api/models/{repo_name}"
+    with urllib.request.urlopen(repo_info_url) as response:
+        if response.getcode() == 200:
+            repo_info = response.read().decode('utf-8')
+            return json.loads(repo_info)
+        else:
+            perror("Huggingface repo information pull failed")
+            raise KeyError(f"Response error code from repo info pull: {response.getcode()}")
+    return None
+
+
+def handle_repo_info(repo_name, repo_info, runtime):
+    if "safetensors" in repo_info and runtime == "llama.cpp":
+        print(
+            "\nllama.cpp does not support running safetensor models, "
+            "please use a/convert to the GGUF format using:\n"
+            f"- https://huggingface.co/models?other=base_model:quantized:{repo_name} \n"
+            "- https://huggingface.co/spaces/ggml-org/gguf-my-repo"
+        )
+    if "gguf" in repo_info:
+        print("There are GGUF files to choose from in this repo, use one of the following commands to run one:\n")
+    for sibling in repo_info.get("siblings", []):
+        if sibling["rfilename"].endswith('.gguf'):
+            file = sibling["rfilename"]
+            print(f"- ramalama run hf://{repo_name}/{file}")
+    print("\n")
+
+
 class Huggingface(Model):
     def __init__(self, model):
         super().__init__(model)
@@ -64,6 +96,12 @@ class Huggingface(Model):
         os.makedirs(symlink_dir, exist_ok=True)
 
         try:
+            # Check if huggingface repo instead of file
+            if self.directory.count("/") == 0:
+                repo_name = self.directory + "/" + self.filename
+                repo_info = get_repo_info(repo_name)
+                handle_repo_info(repo_name, repo_info, args.runtime)
+
             return self.url_pull(args, model_path, directory_path)
         except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
             if self.hf_cli_available:

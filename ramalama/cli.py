@@ -449,8 +449,16 @@ def human_readable_size(size):
     return f"{size} PB"
 
 
-def get_size(file):
-    return os.path.getsize(file)
+def get_size(path):
+    if os.path.isdir(path):
+        size = 0
+        for dirpath, dirnames, filenames in os.walk(path, followlinks=True):
+            for file in filenames:
+                filepath = os.path.join(dirpath, file)
+                if not os.path.islink(filepath):
+                    size += os.path.getsize(filepath)
+        return size
+    return os.path.getsize(path)
 
 
 def _list_models(args):
