@@ -2,6 +2,8 @@ import glob
 import logging
 import platform
 import subprocess
+import re
+import os
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -147,6 +149,47 @@ class GPUDetector:
             logging.error(f"Unexpected error while detecting macOS GPU: {e}")
             return [{"GPU": "Unknown", "Error": str(e)}]
 
+    def get_ascend_npu(self):
+        """Detects Ascend NPUs using npu-smi (Linux only)."""
+        if platform.system() != "Linux":
+            return  # Skip on macOS and other platforms
+
+        try:
+            gpus = []
+            # get total npu number
+            total_count_process = subprocess.run(["npu-smi", "info", "-l"], capture_output=True, text=True, check=True)
+            total_count_output = total_count_process.stdout
+            total_count_match = re.search(r"Total Count\s+:\s*(\d+)", total_count_output)
+            if not total_count_match:
+                print("Error: Could not determine total NPU count.")
+                return
+
+            total_count = int(total_count_match.group(1))
+            for npu_id in range(total_count):
+                gpu_info = {"GPU": npu_id, "Vendor":"Ascend", "Env":"CANN_VISIBLE_DEVICES"}
+                # get memory of each card
+                npu_info_process = subprocess.run(["npu-smi", "info", "-t", "memory", "-i", str(npu_id)], capture_output=True, text=True, check=True)
+                npu_info_output = npu_info_process.stdout
+
+                # parse memory
+                hbm_capacity_match = re.search(r"HBM Capacity\(MB\)\s+:\s*(\d+)", npu_info_output)
+                if not hbm_capacity_match:
+                    print(f"Error: Could not find HBM Capacity for NPU {npu_id}.")
+                    continue
+                hbm_capacity = int(hbm_capacity_match.group(1))
+
+                self._update_best_gpu(hbm_capacity, npu_id, "CANN_VISIBLE_DEVICES")
+                gpu_info["VRAM"] = hbm_capacity
+                gpus.append(gpu_info)
+            
+            return gpus
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to detect ascend npu on linux: {e}")
+            raise RuntimeError("`npu-smi` not found. No ASCEND NPU detected or drivers missing.")
+        except Exception as e:
+            logging.error(f"Unexpected error while detecting linux ascend npu: {e}")
+            return [{"Ascend NPU": "Unknown", "Error": str(e)}]
+
     def detect_best_gpu(self, gpu_template):
         """
         Compares Nvidia, AMD, Apple, and Intel GPUs and appends the best GPU
@@ -159,6 +202,17 @@ class GPUDetector:
         best_env = None  # For CUDA, ONEAPI, Metal, etc.
 
         if system == "Linux":
+            try:
+                ascend_gpus = self.get_ascend_npu()
+                for gpu in ascend_gpus:
+                    vram = int(gpu.get("VRAM", "0 MiB").split()[0])
+                    if vram > best_vram:
+                        best_gpu = gpu
+                        best_vram = vram
+                        best_env = "CANN"
+            except RuntimeError as e:
+                logging.warning(f"Warning: Ascend detection failed: {e}")
+
             try:
                 nvidia_gpus = self.get_nvidia_gpu()
                 for gpu in nvidia_gpus:
