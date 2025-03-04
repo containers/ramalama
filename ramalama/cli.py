@@ -1002,11 +1002,5 @@ def inspect_parser(subparsers):
 
 
 def inspect_cli(args):
-    import traceback
-
-    try:
-        model = New(args.MODEL, args)
-        model.inspect(args)
-    except Exception as ex:
-        print(ex)
-        print(traceback.print_exc())
+    model = New(args.MODEL, args)
+    model.inspect(args)

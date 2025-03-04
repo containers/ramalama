@@ -160,6 +160,21 @@ def find_working_directory():
     return os.path.dirname(__file__)
 
 
+def generate_sha256(to_hash: str) -> str:
+    """
+    Generates a sha256 for a string.
+
+    Args:
+    to_hash (str): The string to generate the sha256 hash for.
+
+    Returns:
+    str: Hex digest of the input appended to the prefix sha256:
+    """
+    h = hashlib.new("sha256")
+    h.update(to_hash.encode("utf-8"))
+    return f"sha256:{h.hexdigest()}"
+
+
 def verify_checksum(filename):
     """
     Verifies if the SHA-256 checksum of a file matches the checksum provided in

@@ -192,6 +192,9 @@ class ModelStore:
     def get_blob_file_path(self, file_hash: str) -> str:
         return os.path.join(self.blobs_directory, sanitize_hash(file_hash))
 
+    def get_partial_blob_file_path(self, file_hash: str) -> str:
+        return self.get_blob_file_path(file_hash) + ".partial"
+
     def ensure_directory_setup(self) -> None:
         os.makedirs(self.blobs_directory, exist_ok=True)
         os.makedirs(self.refs_directory, exist_ok=True)
@@ -264,8 +267,10 @@ class ModelStore:
         ref_file = self.get_ref_file(model_tag)
 
         # Remove all blobs first
-        for file in ref_file.filenames:
-            self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file))
+        if ref_file is not None:
+            for file in ref_file.filenames:
+                self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file))
+                self._remove_blob_file(self.get_partial_blob_file_path(ref_file.hash, file))
 
         # Remove snapshot directory
         snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
