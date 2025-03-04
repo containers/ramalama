@@ -21,11 +21,10 @@ download() {
     cp "$1" "$2"
   else
     curl --globoff --location --proto-default https -f -o "$2" \
-        --remote-time --retry 10 --retry-max-time 10 -s "$1"
-    local bn
-    bn="$(basename "$1")"
-    echo "Downloaded $bn"
+        --remote-time --retry 10 --retry-max-time 10 -s -S "$1"
   fi
+
+  echo -n "█"
 }
 
 dnf_install() {
@@ -104,14 +103,16 @@ check_platform() {
   return 0
 }
 
-get_installation_dir() {
-  local sharedirs=("/opt/homebrew/share" "/usr/local/share" "/usr/share")
-  for dir in "${sharedirs[@]}"; do
-    if [ -d "$dir" ]; then
-      echo "$dir/ramalama"
+get_sysdir() {
+  local bindirs=("/opt/homebrew/bin" "/usr/local/bin" "/usr/bin")
+  local bindir
+  for bindir in "${bindirs[@]}"; do
+    if echo "$PATH" | grep -q "$bindir"; then
       break
     fi
   done
+
+  sysdir="$(dirname "$bindir")"
 }
 
 setup_ramalama() {
@@ -121,42 +122,97 @@ setup_ramalama() {
   local branch="${BRANCH:-s}"
   local url="${host}/containers/ramalama/${branch}/bin/${from_file}"
   local to_file="$TMP/${from_file}"
+  local sysdir
+  get_sysdir
+
   if $local_install; then
     url="bin/${from_file}"
   fi
 
   download "$url" "$to_file"
-  local ramalama_bin="${1}/${binfile}"
-  local syspath
-  syspath=$(get_installation_dir)
+  local max_jobs
+  max_jobs="$(getconf _NPROCESSORS_ONLN)"
   install_ramalama_bin
   install_ramalama_libs
+  install_ramalama_libexecs
+  echo
 }
 
 install_ramalama_bin() {
-  $sudo install -m755 -d "$syspath"
-  syspath="$syspath/ramalama"
-  $sudo install -m755 -d "$syspath"
-  $sudo install -m755 "$to_file" "$ramalama_bin"
+  $sudo install -m755 "$to_file" "$sysdir/bin/ramalama"
+}
+
+install_dirs() {
+  local dir="$1"
+  $sudo install -m755 -d "$dir"
+  dir="$dir/ramalama"
+  $sudo install -m755 -d "$dir"
+}
+
+download_install() {
+  local url_dir="$1"
+  local dir="$2"
+  local file="$3"
+  if $local_install; then
+    url="$url_dir/$file"
+  else
+    url="$host/containers/ramalama/$branch/$url_dir/$file"
+  fi
+
+  mkdir -p "$TMP/$dir"
+  download "$url" "$TMP/$dir/$file"
+  $sudo install -m755 "$TMP/$dir/$file" "$sysdir/$dir/$file"
 }
 
 install_ramalama_libs() {
-  local python_files=("cli.py" "config.py" "rag.py" "gguf_parser.py" "huggingface.py" \
-                      "model.py" "model_factory.py" "model_inspect.py" \
-                      "ollama.py" "common.py" "__init__.py" "quadlet.py" \
-                      "kube.py" "oci.py" "version.py" "shortnames.py" \
-                      "toml_parser.py" "file.py" "http_client.py" "url.py" \
-                      "annotations.py" "gpu_detector.py" "console.py")
+  local sharedir="$sysdir/share"
+  install_dirs "$sharedir"
+  local python_files=("cli.py" "config.py" "rag.py" "gguf_parser.py" \
+                      "huggingface.py" "model.py" "model_factory.py" \
+                      "model_inspect.py" "ollama.py" "common.py" "__init__.py" \
+                      "quadlet.py" "kube.py" "oci.py" "version.py" \
+                      "shortnames.py" "toml_parser.py" "file.py" \
+                      "http_client.py" "url.py" "annotations.py" \
+                      "gpu_detector.py" "console.py")
+  local job_count=0
+  local job_queue=()
   for i in "${python_files[@]}"; do
-    if $local_install; then
-      url="ramalama/${i}"
-    else
-      url="${host}/containers/ramalama/${branch}/ramalama/${i}"
-    fi
+    download_install "ramalama" "share" "$i" &
+    job_queue+=($!)
+    ((++job_count))
 
-    download "$url" "$to_file"
-    $sudo install -m755 "$to_file" "${syspath}/${i}"
+    if ((job_count > max_jobs)); then
+      wait "${job_queue[0]}"
+      job_queue=("${job_queue[@]:1}")
+      ((--job_count))
+    fi
   done
+
+  # Wait for remaining jobs to finish
+  wait
+
+}
+
+install_ramalama_libexecs() {
+  local python_files=("client" "serve" "run")
+  local libexecdir="$sysdir/libexec"
+  install_dirs "$libexecdir"
+  local job_count=0
+  local job_queue=()
+  for i in "${python_files[@]}"; do
+    download_install "libexec" "libexec" "ramalama-$i-core" &
+    job_queue+=($!)
+    ((++job_count))
+
+    if ((job_count > max_jobs)); then
+      wait "${job_queue[0]}"
+      job_queue=("${job_queue[@]:1}")
+      ((--job_count))
+    fi
+  done
+
+  # Wait for remaining jobs to finish
+  wait
 }
 
 parse_arguments() {
@@ -166,9 +222,6 @@ parse_arguments() {
         local_install="true"
         shift
         ;;
-      get_*)
-        get_install_dir="true"
-        return;;
       *)
         break
     esac
@@ -179,12 +232,7 @@ main() {
   set -e -o pipefail
 
   local local_install="false"
-  local get_install_dir="false"
   parse_arguments "$@"
-  if $get_install_dir; then
-    get_installation_dir
-    return 0
-  fi
 
   local os
   os="$(uname -s)"
@@ -195,23 +243,10 @@ main() {
     return 0
   fi
 
-  local bindirs=("/opt/homebrew/bin" "/usr/local/bin" "/usr/bin" "/bin")
-  local bindir
-  for bindir in "${bindirs[@]}"; do
-    if echo "$PATH" | grep -q "$bindir"; then
-      break
-    fi
-  done
-
-  if [ -z "$bindir" ]; then
-    echo "No suitable bindir found in PATH"
-    exit 5
-  fi
-
   TMP="$(mktemp -d)"
   trap cleanup EXIT
 
-  setup_ramalama "$bindir"
+  setup_ramalama
 }
 
 main "$@"
