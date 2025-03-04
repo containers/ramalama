@@ -464,7 +464,7 @@ def get_size(file):
 def _list_models(args):
     mycwd = os.getcwd()
     if args.use_model_store:
-        models = GlobalModelStore(args.store).list_models()
+        models = GlobalModelStore(args.store).list_models(engine=args.engine, debug=args.debug)
         ret = []
         local_timezone = datetime.now().astimezone().tzinfo
 
