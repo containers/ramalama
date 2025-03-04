@@ -18,6 +18,7 @@ from ramalama.console import EMOJI
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
+from ramalama.model_store import ModelStore
 from ramalama.quadlet import Quadlet
 from ramalama.version import version
 
@@ -85,9 +86,51 @@ class Model(ModelBase):
 
     def __init__(self, model):
         self.model = model
+
         split = self.model.rsplit("/", 1)
         self.directory = split[0] if len(split) > 1 else ""
         self.filename = split[1] if len(split) > 1 else split[0]
+
+        self._model_name: str
+        self._model_tag: str
+        self._model_organization: str
+        self._model_type: str
+        self._model_name, self._model_tag, self._model_organization = self.extract_model_identifiers()
+        self._model_type = type(self).__name__.lower()
+
+        self.store: ModelStore = None
+
+    def extract_model_identifiers(self):
+        model_name = self.model
+        model_tag = "latest"
+        model_organization = ""
+
+        # extract model tag from name if exists
+        if ":" in model_name:
+            model_name, model_tag = model_name.split(":", 1)
+
+        # extract model organization from name if exists and update name
+        split = model_name.rsplit("/", 1)
+        model_organization = split[0].removeprefix("/") if len(split) > 1 else ""
+        model_name = split[1] if len(split) > 1 else split[0]
+
+        return model_name, model_tag, model_organization
+
+    @property
+    def name(self) -> str:
+        return self._model_name
+
+    @property
+    def tag(self) -> str:
+        return self._model_tag
+
+    @property
+    def organization(self) -> str:
+        return self._model_organization
+
+    @property
+    def model_type(self) -> str:
+        return self._model_type
 
     def is_symlink_to(self, file_path, target_path):
         if os.path.islink(file_path):
@@ -119,6 +162,11 @@ class Model(ModelBase):
                             print(f"Deleted: {file_path}")
 
     def remove(self, args):
+        if self.store is not None:
+            _, tag, _ = self.extract_model_identifiers()
+            self.store.remove_snapshot(tag)
+            return
+
         model_path = self.model_path(args)
         try:
             os.remove(model_path)
@@ -400,6 +448,22 @@ class Model(ModelBase):
 
         return prompt
 
+    def model_path(self, args):
+        if self.store is not None:
+            _, tag, _ = self.extract_model_identifiers()
+            if self.store.tag_exists(tag):
+                fhash, _, _ = self.store.get_cached_files(tag)
+                return self.store.get_snapshot_file_path(fhash, self.store.model_name)
+
+        return os.path.join(args.store, "models", self.type, self.directory, self.filename)
+
+    def exists(self, args):
+        model_path = self.model_path(args)
+        if not os.path.exists(model_path):
+            return None
+
+        return model_path
+
     def get_model_path(self, args):
         model_path = self.exists(args)
         if model_path:
@@ -586,19 +650,6 @@ class Model(ModelBase):
     def kube(self, model, args, exec_args):
         kube = Kube(model, self.image, args, exec_args)
         kube.generate()
-
-    def path(self, args):
-        return self.model_path(args)
-
-    def model_path(self, args):
-        return os.path.join(args.store, "models", self.type, self.directory, self.filename)
-
-    def exists(self, args):
-        model_path = self.model_path(args)
-        if not os.path.exists(model_path):
-            return None
-
-        return model_path
 
     def check_valid_model_path(self, relative_target_path, model_path):
         return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
