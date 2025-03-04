@@ -3,9 +3,11 @@ import os
 import shutil
 import urllib
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import ramalama.oci
 from ramalama.common import download_file, verify_checksum
 
 LOGGER = logging.getLogger(__name__)
@@ -77,6 +79,14 @@ DIRECTORY_NAME_REFS = "refs"
 DIRECTORY_NAME_SNAPSHOTS = "snapshots"
 
 
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
 class GlobalModelStore:
 
     def __init__(
@@ -89,7 +99,7 @@ class GlobalModelStore:
     def path(self) -> str:
         return self._store_base_path
 
-    def list_models(self) -> Dict[str, List[ModelFile]]:
+    def list_models(self, engine: str, debug: bool) -> Dict[str, List[ModelFile]]:
         models: Dict[str, List[ModelFile]] = {}
 
         for root, subdirs, _ in os.walk(self.path):
@@ -106,10 +116,33 @@ class GlobalModelStore:
                         file_size = os.path.getsize(snapshot_file_path)
                         models[model_name].append(ModelFile(snapshot_file, last_modified, file_size))
 
+        oci_models = ramalama.oci.list_models(
+            dotdict(
+                {
+                    "engine": engine,
+                    "debug": debug,
+                }
+            )
+        )
+        for oci_model in oci_models:
+            name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
+            # ramalama.oci.list_models provides modified as timetamp string, convert it to unix timestamp
+            modified_unix = datetime.fromisoformat(modified).timestamp()
+            models[name] = [ModelFile(name, modified_unix, size)]
+
         return models
 
-    # TODO: implement - iterating over all symlinks in snapshot dir, check valid
+    # TODO:
+    # iterating over all symlinks in snapshot dir, check valid
     def verify_snapshot(self):
+        pass
+
+    # TODO:
+    # iterating over models and check
+    #    1. for broken symlinks in snapshot dirs -> delete and update refs
+    #    2. for blobs not reached by ref->snapshot chain -> delete
+    #    3. for empty folders -> delete
+    def cleanup(self):
         pass
 
 
@@ -173,6 +206,25 @@ class ModelStore:
             return None
 
         return RefFile.from_path(self.get_ref_file_path(model_tag))
+
+    def update_ref_file(
+        self, model_tag: str, snapshot_hash: str = "", snapshot_files: list[SnapshotFile] = []
+    ) -> Optional[RefFile]:
+        ref_file_path = self.get_ref_file_path(model_tag)
+        if not os.path.exists(ref_file_path):
+            return None
+
+        ref_file: RefFile = RefFile.from_path(self.get_ref_file_path(model_tag))
+        if snapshot_hash != "":
+            ref_file.hash = snapshot_hash
+        if snapshot_files != []:
+            ref_file.filenames = [file.name for file in snapshot_files]
+
+        with open(ref_file_path, "w") as file:
+            file.write(ref_file.serialize())
+            file.flush()
+
+        return ref_file
 
     def get_snapshot_hash(self, model_tag: str) -> str:
         ref_file = self.get_ref_file(model_tag)
@@ -270,7 +322,7 @@ class ModelStore:
         if ref_file is not None:
             for file in ref_file.filenames:
                 self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file))
-                self._remove_blob_file(self.get_partial_blob_file_path(ref_file.hash, file))
+                self._remove_blob_file(self.get_partial_blob_file_path(ref_file.hash))
 
         # Remove snapshot directory
         snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)

@@ -19,10 +19,7 @@ pip install huggingface_hub
 
 def is_huggingface_cli_available():
     """Check if huggingface-cli is available on the system."""
-    if available("huggingface-cli"):
-        return True
-    else:
-        return False
+    return available("huggingface-cli")
 
 
 def fetch_checksum_from_api(organization, file):
