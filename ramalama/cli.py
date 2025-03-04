@@ -787,7 +787,8 @@ def serve_parser(subparsers):
         choices=["quadlet", "kube", "quadlet/kube"],
         help="generate specified configuration format for running the AI Model as a service",
     )
-    parser.add_argument("-p", "--port", default=CONFIG['port'], help="port for AI Model server to listen on")
+    parser.add_argument("-p", "--port", default=CONFIG['port'],
+                        help="port for AI Model server to listen on. By default a random port in a range")
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
 

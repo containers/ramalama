@@ -1,6 +1,8 @@
 import os
 import platform
+import socket
 import sys
+from random import randrange
 
 from ramalama.common import (
     DEFAULT_IMAGE,
@@ -14,6 +16,7 @@ from ramalama.common import (
     podman_machine_accel,
     run_cmd,
 )
+from ramalama.config import DEFAULT_PORT_RANGE
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
@@ -560,6 +563,7 @@ class Model(ModelBase):
 
     def serve(self, args):
         self.validate_args(args)
+        args.port = compute_serving_port(args.port, args.debug)
         model_path = self.get_model_path(args)
         exec_model_path = MNT_FILE
         if not args.container and not args.generate:
@@ -633,3 +637,42 @@ def distinfo_volume():
         return ""
 
     return f"-v{path}:/usr/share/ramalama/{dist_info}:ro"
+
+
+def compute_random_port() -> int:
+    return (randrange(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1]))
+
+
+def get_available_port_if_any(debug:bool) -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        max_attempts = 10
+
+        chosen_port = 0
+        current_attempt = 0
+        to_continue = True
+        while to_continue and current_attempt < max_attempts:
+            target_port = compute_random_port()
+            if debug:
+                print(f"Checking if {target_port} is available")
+            try:
+                s.bind(('localhost', target_port))
+            except OSError:
+                to_continue = True
+                current_attempt += 1
+            else:
+                chosen_port = target_port
+                to_continue = False
+        return chosen_port
+
+
+def compute_serving_port(port:str, debug:bool) -> str:
+    if port != DEFAULT_PORT_RANGE:
+        # user specified a custom port, don't override the choice
+        return port
+    # otherwise compute a random serving port in the range
+    target_port = get_available_port_if_any(debug)
+
+    if target_port == 0:
+        raise IOError("no available port could be detected. Please ensure you have enough free ports.")
+    print(f"serving on port {target_port}")
+    return str(target_port)
