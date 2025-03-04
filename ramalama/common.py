@@ -273,6 +273,15 @@ def get_gpu():
     except Exception:
         pass
 
+    # Ascend CASE
+    try:
+        command = ['npu-smi']
+        run_cmd(command).stdout.decode("utf-8")
+        os.environ["CANN_VISIBLE_DEVICES"] = "0"
+        return
+    except Exception:
+        pass
+
     # ROCm/AMD CASE
     i = 0
     gpu_num = 0
@@ -303,7 +312,7 @@ def get_gpu():
 
 
 def get_env_vars():
-    prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_", "INTEL_")
+    prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_", "INTEL_", "CANN_")
     env_vars = {k: v for k, v in os.environ.items() if k.startswith(prefixes)}
 
     # gpu_type, gpu_num = get_gpu()

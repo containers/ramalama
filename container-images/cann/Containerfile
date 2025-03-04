@@ -1,0 +1,35 @@
+# Base image with CANN for compilation
+ARG ASCEND_VERSION=8.0.rc2.beta1-910b-openeuler22.03-py3.10
+
+FROM quay.io/ascend/cann:${ASCEND_VERSION} AS builder
+ARG GOLANG_VERSION
+COPY ../scripts /scripts
+RUN export http_proxy=http://172.17.0.1:7890 && https_proxy=http://172.17.0.1:7890 && chmod +x /scripts/*.sh && \
+    cann_in_sys_path=/usr/local/Ascend/ascend-toolkit; \
+    cann_in_user_path=$HOME/Ascend/ascend-toolkit; \
+    if [ -f "${cann_in_sys_path}/set_env.sh" ]; then \
+        source ${cann_in_sys_path}/set_env.sh; \
+        export LD_LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${cann_in_sys_path}/latest/aarch64-linux/devlib:${LD_LIBRARY_PATH} ; \
+        export LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${LIBRARY_PATH}; \
+    elif [ -f "${cann_in_user_path}/set_env.sh" ]; then \
+        source "$HOME/Ascend/ascend-toolkit/set_env.sh"; \
+        export LD_LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${cann_in_user_path}/latest/aarch64-linux/devlib:${LD_LIBRARY_PATH}; \
+        export LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${LIBRARY_PATH}; \
+    else \
+        echo "No Ascend Toolkit found"; \
+        exit 1; \
+    fi && \
+    /scripts/build_llama_and_whisper.sh "cann"
+
+FROM quay.io/ascend/cann:${ASCEND_VERSION}
+COPY --chown=0:0 cann/entrypoint.sh /
+# RUN dnf install -y python3 && dnf clean all && rm -rf /var/cache/*dnf*
+RUN chmod +x /entrypoint.sh
+
+# Copy the entire installation directory from the builder
+COPY --from=builder /tmp/install /usr
+ENV MODEL_PATH=/mnt/models/model.file
+COPY --chmod=755 ../scripts /usr/bin
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD [ "tail", "-f", "/dev/null" ]

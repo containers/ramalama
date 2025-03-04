@@ -53,13 +53,30 @@ dnf_install() {
     . /opt/rh/gcc-toolset-12/enable
   elif [ "$containerfile" = "intel-gpu" ]; then
     dnf_install_intel_gpu
+  elif [ "$containerfile" = "cann" ]; then
+    # just for openeuler build envrionment, does not need to push to ollama github
+    dnf install -y git \
+        gcc \
+        gcc-c++ \
+        make \
+        cmake \
+        findutils \
+        yum \
+        curl-devel \
+        pigz
   fi
 
   dnf -y clean all
 }
 
 cmake_check_warnings() {
-  awk -v rc=0 '/CMake Warning:/ { rc=1 } 1; END {exit rc}'
+  # There has warnning "CMake Warning:Manually-specified variables were not used by the project" during compile of custom ascend kernels of ggml cann backend.
+  # Should remove "cann" judge condition when this warning are fixed in llama.cpp/whisper.cpp
+  if [ "$containerfile" != "cann" ]; then
+    awk -v rc=0 '/CMake Warning:/ { rc=1 } 1; END {exit rc}'
+  else
+    awk '/CMake Warning:/ {print $0}'
+  fi
 }
 
 cmake_steps() {
@@ -70,7 +87,7 @@ cmake_steps() {
 }
 
 set_install_prefix() {
-  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ]; then
+  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ] || [ "$containerfile" = "cann" ]; then
     install_prefix="/tmp/install"
   else
     install_prefix="/usr"
@@ -91,6 +108,9 @@ configure_common_flags() {
       ;;
     intel-gpu)
       common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
+      ;;
+    cann)
+      common_flags+=("-DGGML_CANN=ON" "-DSOC_TYPE=Ascend910B3")
       ;;
   esac
 }

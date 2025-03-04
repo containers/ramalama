@@ -187,6 +187,15 @@ def show_gpus_available_cli(args):
 
     else:  # Linux/Other OS GPU detection
         try:
+            ascend_gpus = gpu_detector.get_ascend_npu()
+            if ascend_gpus:
+                gpu_info.extend(ascend_gpus)
+            else:
+                errors.append({"Vendor": "Ascend", "INFO": "No GPU detected or drivers missing."})
+        except Exception as e:
+            errors.append({"Vendor": "Ascend", "INFO": str(e)})
+
+        try:
             nvidia_gpus = gpu_detector.get_nvidia_gpu()
             if nvidia_gpus:
                 gpu_info.extend(nvidia_gpus)
