@@ -60,8 +60,9 @@ Generate specified configuration format for running the AI Model as a service
 
 | Key          | Description                                                              |
 | ------------ | -------------------------------------------------------------------------|
-| quadlet      | Podman supported container definition for running AI Model under systemd |
+| kserve       | Kserve YAML definition for running the AI Model as a kserve service in Kubernetes        |
 | kube         | Kubernetes YAML definition for running the AI Model as a service         |
+| quadlet      | Podman supported container definition for running AI Model under systemd |
 | quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
 
 #### **--help**, **-h**
@@ -119,7 +120,7 @@ llama.cpp explains this as:
 
     The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
-        Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+	Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
@@ -138,6 +139,73 @@ $ podman ps
 CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS         PORTS                   NAMES
 09b0e0d26ed2  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  32 seconds ago  Up 32 seconds  0.0.0.0:8081->8081/tcp  ramalama_sTLNkijNNP
 3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8082->8082/tcp  ramalama_YMPQvJxN97
+```
+
+### Generate kserve service off of OCI Model car quay.io/ramalama/granite:1.0
+```
+./bin/ramalama serve --port 8081 --generate kserve oci://quay.io/ramalama/granite:1.0
+Generating kserve runtime file: granite-1.0-kserve-runtime.yaml
+Generating kserve file: granite-1.0-kserve.yaml
+
+$  cat granite-1.0-kserve-runtime.yaml 
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: llama.cpp-runtime
+  annotations:
+    openshift.io/display-name: KServe ServingRuntime for quay.io/ramalama/granite:1.0
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+  labels:
+    opendatahub.io/dashboard: 'true'
+spec:
+  annotations:
+    prometheus.io/port: '8081'
+    prometheus.io/path: '/metrics'
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: vLLM
+  containers:
+    - name: kserve-container
+      image: quay.io/ramalama/ramalama:latest
+      command:
+        - python
+        - -m
+        - vllm.entrypoints.openai.api_server
+      args:
+        - "--port=8081"
+        - "--model=/mnt/models"
+        - "--served-model-name={.Name}"
+      env:
+        - name: HF_HOME
+          value: /tmp/hf_home
+      ports:
+        - containerPort: 8081
+          protocol: TCP
+
+$  cat granite-1.0-kserve.yaml
+# RamaLama quay.io/ramalama/granite:1.0 AI Model Service
+# kubectl create -f to import this kserve file into Kubernetes.
+#
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: huggingface-quay.io/ramalama/granite:1.0
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: vLLM
+      storageUri: "oci://quay.io/ramalama/granite:1.0"
+      resources:
+        limits:
+          cpu: "6"
+          memory: 24Gi
+          nvidia.com/gpu: "1"
+        requests:
+          cpu: "6"
+          memory: 24Gi
+          nvidia.com/gpu: "1"
 ```
 
 ### Generate quadlet service off of HuggingFace granite Model
