@@ -160,6 +160,21 @@ def find_working_directory():
     return os.path.dirname(__file__)
 
 
+def generate_sha256(to_hash: str) -> str:
+    """
+    Generates a sha256 for a string.
+
+    Args:
+    to_hash (str): The string to generate the sha256 hash for.
+
+    Returns:
+    str: Hex digest of the input appended to the prefix sha256:
+    """
+    h = hashlib.new("sha256")
+    h.update(to_hash.encode("utf-8"))
+    return f"sha256:{h.hexdigest()}"
+
+
 def verify_checksum(filename):
     """
     Verifies if the SHA-256 checksum of a file matches the checksum provided in
@@ -176,13 +191,16 @@ def verify_checksum(filename):
     if not os.path.exists(filename):
         return False
 
-    # Check if the filename starts with "sha256:"
+    # Check if the filename starts with "sha256:" or "sha256-" and extract the checksum from filename
+    expected_checksum = ""
     fn_base = os.path.basename(filename)
-    if not fn_base.startswith("sha256:"):
-        raise ValueError(f"filename does not start with 'sha256:': {fn_base}")
+    if fn_base.startswith("sha256:"):
+        expected_checksum = fn_base.split(":")[1]
+    elif fn_base.startswith("sha256-"):
+        expected_checksum = fn_base.split("-")[1]
+    else:
+        raise ValueError(f"filename has to start with 'sha256:' or 'sha256-': {fn_base}")
 
-    # Extract the expected checksum from the filename
-    expected_checksum = fn_base.split(":")[1]
     if len(expected_checksum) != 64:
         raise ValueError("invalid checksum length in filename")
 
@@ -241,7 +259,8 @@ def download_file(url, dest_path, headers=None, show_progress=True):
 
         except urllib.error.HTTPError as e:
             if e.code in [HTTP_RANGE_NOT_SATISFIABLE, HTTP_NOT_FOUND]:
-                return  # No need to retry
+                raise e
+            retries += 1
 
         except urllib.error.URLError as e:
             console.error(f"Network Error: {e.reason}")
@@ -261,7 +280,7 @@ def download_file(url, dest_path, headers=None, show_progress=True):
 
         except Exception as e:
             console.error(f"Unexpected error: {str(e)}")
-            raise
+            raise e
 
         if retries >= max_retries:
             error_message = (
@@ -271,8 +290,7 @@ def download_file(url, dest_path, headers=None, show_progress=True):
                 "- Server is down or unresponsive\n"
                 "- Firewall or proxy blocking the request\n"
             )
-            console.error(error_message)
-            sys.exit(1)
+            raise Exception(error_message)
 
         time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
 

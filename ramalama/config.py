@@ -72,6 +72,7 @@ def load_config_defaults(config: Dict[str, Any]):
     config['temp'] = config.get('temp', "0.8")
     config['host'] = config.get('host', "0.0.0.0")
     config['port'] = config.get('port', "8080")
+    config['use_model_store'] = config.get('use_model_store', False)
 
 
 def load_and_merge_config() -> Dict[str, Any]:

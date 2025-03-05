@@ -14,6 +14,7 @@ from ramalama.config import CONFIG
 from ramalama.gpu_detector import GPUDetector
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
+from ramalama.model_store import GlobalModelStore
 from ramalama.shortnames import Shortnames
 from ramalama.version import print_version, version
 
@@ -133,6 +134,13 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         "--store",
         default=CONFIG["store"],
         help="store AI Models in the specified directory",
+    )
+    parser.add_argument(
+        "--use-model-store",
+        dest="use_model_store",
+        default=CONFIG["use_model_store"],
+        action="store_true",
+        help="use the model store feature",
     )
     verbosity_group = parser.add_mutually_exclusive_group()
     verbosity_group.add_argument("--quiet", "-q", dest="quiet", action="store_true", help="reduce output.")
@@ -463,7 +471,28 @@ def get_size(path):
 
 def _list_models(args):
     mycwd = os.getcwd()
-    os.chdir(f"{args.store}/models/")
+    if args.use_model_store:
+        models = GlobalModelStore(args.store).list_models(engine=args.engine, debug=args.debug)
+        ret = []
+        local_timezone = datetime.now().astimezone().tzinfo
+
+        for model, files in models.items():
+            size_sum = 0
+            last_modified = 0.0
+            for file in files:
+                size_sum += file.size
+                if file.modified > last_modified:
+                    last_modified = file.modified
+            ret.append(
+                {
+                    "name": model,
+                    "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+                    "size": size_sum,
+                }
+            )
+        return ret
+    else:
+        os.chdir(f"{args.store}/models/")
     models = []
 
     # Collect model data
@@ -626,7 +655,7 @@ def convert_cli(args):
     if not tgt:
         tgt = target
 
-    model = ModelFactory(tgt, engine=args.engine).create_oci()
+    model = ModelFactory(tgt, args.store, args.use_model_store, engine=args.engine).create_oci()
     model.convert(source, args)
 
 
@@ -678,7 +707,7 @@ def _get_source(args):
     else:
         if not smodel.exists(args):
             return smodel.pull(args)
-        return smodel.path(args)
+        return smodel.model_path(args)
 
 
 def push_cli(args):
@@ -702,7 +731,7 @@ def push_cli(args):
                 raise e
         try:
             # attempt to push as a container image
-            m = ModelFactory(tgt, engine=CONFIG['engine']).create_oci()
+            m = ModelFactory(tgt, args.store, args.use_model_store, engine=CONFIG['engine']).create_oci()
             m.push(source, args)
         except Exception:
             raise e
@@ -774,7 +803,9 @@ def run_cli(args):
     except KeyError as e:
         try:
             args.quiet = True
-            model = ModelFactory(args.MODEL, engine=args.engine, ignore_stderr=True).create_oci()
+            model = ModelFactory(
+                args.MODEL, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
+            ).create_oci()
             model.run(args)
         except Exception:
             raise e
@@ -810,7 +841,9 @@ def serve_cli(args):
     except KeyError as e:
         try:
             args.quiet = True
-            model = ModelFactory(args.MODEL, engine=args.engine, ignore_stderr=True).create_oci()
+            model = ModelFactory(
+                args.MODEL, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
+            ).create_oci()
             model.serve(args)
         except Exception:
             raise e
@@ -918,7 +951,9 @@ def _rm_model(models, args):
                         raise e
             try:
                 # attempt to remove as a container image
-                m = ModelFactory(model, engine=args.engine, ignore_stderr=True).create_oci()
+                m = ModelFactory(
+                    model, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
+                ).create_oci()
                 m.remove(args)
                 return
             except Exception:
@@ -942,7 +977,7 @@ def rm_cli(args):
 
 
 def New(model, args):
-    return ModelFactory(model, CONFIG["transport"], args.engine).create()
+    return ModelFactory(model, args.store, args.use_model_store, CONFIG["transport"], args.engine).create()
 
 
 def perplexity_parser(subparsers):
