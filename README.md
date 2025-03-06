@@ -116,7 +116,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 | Apple Silicon GPU (podman-machine) | :white_check_mark: |
 | Nvidia GPU (cuda)                  | :white_check_mark: |
 | AMD GPU (rocm)                     | :white_check_mark: |
-
+| Ascend NPU (Linux)                 | :white_check_mark: |
 ## COMMANDS
 
 | Command                                                | Description                                                |

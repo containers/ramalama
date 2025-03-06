@@ -1,0 +1,63 @@
+% ramalama 7
+
+# Setting Up RamaLama with Ascend NPU Support on Linux systems
+
+This guide walks through the steps required to set up RamaLama with Ascend NPU support.
+ - [Background](#background)
+ - [Hardware](#hardware)
+ - [Docker](#docker)
+ - [HISTORY](#todo)
+
+## Background
+
+**Ascend NPU** is a range of AI processors using Neural Processing Unit. It will efficiently handle matrix-matrix multiplication, dot-product and scalars.
+
+**CANN** (Compute Architecture for Neural Networks) is a heterogeneous computing architecture for AI scenarios, providing support for multiple AI frameworks on the top and serving AI processors and programming at the bottom. It plays a crucial role in bridging the gap between upper and lower layers, and is a key platform for improving the computing efficiency of Ascend AI processors. Meanwhile, it offers a highly efficient and easy-to-use programming interface for diverse application scenarios, allowing users to rapidly build AI applications and services based on the Ascend platform.
+
+## Hardware
+
+### Ascend NPU
+
+**Verified devices**
+
+| Ascend NPU                     | Status  |
+| -----------------------------  | ------- |
+| Atlas A2 Training series       | Support |
+| Atlas 800I A2 Inference series | Support |
+
+*Notes:*
+
+- If you have trouble with Ascend NPU device, please create an issue with **[CANN]** prefix/tag.
+- If you run successfully with your Ascend NPU device, please help update the upper table.
+
+## Docker
+### Install the Ascend driver
+This provides NPU acceleration using the AI cores of your Ascend NPU. And [CANN](https://www.hiascend.com/en/software/cann) is a hierarchical APIs to help you to quickly build AI applications and service based on Ascend NPU.
+
+For more information about Ascend NPU in [Ascend Community](https://www.hiascend.com/en/).
+
+Make sure to have the CANN toolkit installed. You can download it from here: [CANN Toolkit](https://www.hiascend.com/developer/download/community/result?module=cann)
+
+### Build Images
+Go to `ramalama` directory and build using make.
+```bash
+make build IMAGE=cann
+make install
+```
+
+You can test with:
+```bash
+ramalama --image quay.io/ramalama/cann:latest serve -d -p 8080 --device=/dev/davinci0 -name ollama://smollm:135m
+```
+
+In a window see the running podman container.
+```
+$ podman ps
+CONTAINER ID   IMAGE                                                         COMMAND                  CREATED             STATUS             PORTS                                          NAMES
+80fc31c131b0   quay.io/ramalama/cann:latest                                  "/bin/bash -c 'expor…"   About an hour ago   Up About an hour                                                  ame
+```
+
+Other using guides see Ramalama ([README.md](https://github.com/containers/ramalama/blob/main/README.md))
+
+## HISTORY
+Mar 2025, Originally compiled

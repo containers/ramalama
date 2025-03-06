@@ -53,13 +53,52 @@ dnf_install() {
     . /opt/rh/gcc-toolset-12/enable
   elif [ "$containerfile" = "intel-gpu" ]; then
     dnf_install_intel_gpu
+  elif [ "$containerfile" = "cann" ]; then
+    # just for openeuler build environment, does not need to push to ollama github
+    dnf install -y git \
+        gcc \
+        gcc-c++ \
+        make \
+        cmake \
+        findutils \
+        yum \
+        curl-devel \
+        pigz
   fi
 
   dnf -y clean all
 }
 
 cmake_check_warnings() {
-  awk -v rc=0 '/CMake Warning:/ { rc=1 } 1; END {exit rc}'
+  # There has warning "CMake Warning:Manually-specified variables were not used by the project" during compile of custom ascend kernels of ggml cann backend.
+  # Should remove "cann" judge condition when this warning are fixed in llama.cpp/whisper.cpp
+  if [ "$containerfile" != "cann" ]; then
+    awk -v rc=0 '/CMake Warning:/ { rc=1 } 1; END {exit rc}'
+  else
+    awk '/CMake Warning:/ {print $0}'
+  fi
+}
+
+setup_build_env() {
+  if [ "$containerfile" = "cann" ]; then
+    # source build env
+    cann_in_sys_path=/usr/local/Ascend/ascend-toolkit;
+    cann_in_user_path=$HOME/Ascend/ascend-toolkit;
+    if [ -f "${cann_in_sys_path}/set_env.sh" ]; then
+        # shellcheck disable=SC1091
+        source ${cann_in_sys_path}/set_env.sh;
+        export LD_LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${cann_in_sys_path}/latest/aarch64-linux/devlib:${LD_LIBRARY_PATH};
+        export LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${LIBRARY_PATH};
+    elif [ -f "${cann_in_user_path}/set_env.sh" ]; then
+        # shellcheck disable=SC1091
+        source "$HOME/Ascend/ascend-toolkit/set_env.sh";
+        export LD_LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${cann_in_user_path}/latest/aarch64-linux/devlib:${LD_LIBRARY_PATH};
+        export LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${LIBRARY_PATH};
+    else
+        echo "No Ascend Toolkit found";
+        exit 1;
+    fi
+  fi
 }
 
 cmake_steps() {
@@ -70,7 +109,7 @@ cmake_steps() {
 }
 
 set_install_prefix() {
-  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ]; then
+  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ] || [ "$containerfile" = "cann" ]; then
     install_prefix="/tmp/install"
   else
     install_prefix="/usr"
@@ -91,6 +130,9 @@ configure_common_flags() {
       ;;
     intel-gpu)
       common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
+      ;;
+    cann)
+      common_flags+=("-DGGML_CANN=ON" "-DSOC_TYPE=Ascend910B3")
       ;;
   esac
 }
@@ -148,6 +190,7 @@ main() {
   if [ -n "$containerfile" ]; then 
       clone_and_build_ramalama
   fi
+  setup_build_env
   clone_and_build_whisper_cpp
   common_flags+=("-DLLAMA_CURL=ON")
   case "$containerfile" in
