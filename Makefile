@@ -129,7 +129,7 @@ format:
 
 .PHONY: codespell
 codespell:
-	codespell --dictionary=- -w --skip="*/venv*"
+	codespell --dictionary=-  --ignore-words-list "cann" -w --skip="*/venv*"
 
 .PHONY: test-run
 test-run:
