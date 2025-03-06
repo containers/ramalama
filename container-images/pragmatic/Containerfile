@@ -1,8 +1,0 @@
-ARG IMAGE=quay.io/ramalama/ramalama:latest
-FROM $IMAGE
-
-ARG GPU=cpu
-ARG CONTENT=rag
-COPY ../pragmatic/build_pragmatic.sh /tmp/
-RUN echo $CONTENT
-RUN sh /tmp/build_pragmatic.sh ${GPU} ${CONTENT}

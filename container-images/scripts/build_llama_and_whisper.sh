@@ -188,6 +188,10 @@ clone_and_build_ramalama() {
   rm -rf ramalama
 }
 
+build_rag() {
+    python3 -m pip install "qdrant-client[fastembed]"  openai
+}
+
 main() {
   # shellcheck disable=SC1091
   source /etc/os-release
@@ -205,6 +209,7 @@ main() {
   available dnf && dnf_install
   if [ -n "$containerfile" ]; then 
       clone_and_build_ramalama
+      build_rag
   fi
   setup_build_env
   clone_and_build_whisper_cpp
