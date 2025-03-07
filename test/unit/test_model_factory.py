@@ -18,6 +18,9 @@ class Input:
     Engine: str
 
 
+hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
+
+
 @pytest.mark.parametrize(
     "input,expected,error",
     [
@@ -31,7 +34,7 @@ class Input:
         (Input("docker://granite-code", False, "", "podman"), OCI, None),
         (
             Input(
-                "http://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob/main/granite-3b-code-base.Q4_K_M.gguf",
+                f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
                 False,
                 "",
                 "",
@@ -41,7 +44,7 @@ class Input:
         ),
         (
             Input(
-                "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob/main/granite-3b-code-base.Q4_K_M.gguf",
+                f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
                 False,
                 "",
                 "",
@@ -111,7 +114,7 @@ def test_validate_oci_model_input(input: Input, error):
         (Input("docker://granite-code", False, "", "podman"), "granite-code"),
         (
             Input(
-                "http://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob/main/granite-3b-code-base.Q4_K_M.gguf",
+                f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
                 False,
                 "",
                 "",
@@ -120,7 +123,7 @@ def test_validate_oci_model_input(input: Input, error):
         ),
         (
             Input(
-                "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob/main/granite-3b-code-base.Q4_K_M.gguf",
+                f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
                 False,
                 "",
                 "",

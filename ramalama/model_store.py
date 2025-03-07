@@ -126,7 +126,7 @@ class GlobalModelStore:
         )
         for oci_model in oci_models:
             name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
-            # ramalama.oci.list_models provides modified as timetamp string, convert it to unix timestamp
+            # ramalama.oci.list_models provides modified as timestamp string, convert it to unix timestamp
             modified_unix = datetime.fromisoformat(modified).timestamp()
             models[name] = [ModelFile(name, modified_unix, size)]
 
