@@ -365,15 +365,17 @@ def get_gpu():
 
     if igpu_num:
         os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
+        return
 
 
 def get_env_vars():
-    prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_", "INTEL_", "CANN_")
-    env_vars = {k: v for k, v in os.environ.items() if k.startswith(prefixes)}
-
-    # gpu_type, gpu_num = get_gpu()
-    # if gpu_type not in env_vars and gpu_type in {"HIP_VISIBLE_DEVICES", "ASAHI_VISIBLE_DEVICES"}:
-    #     env_vars[gpu_type] = str(gpu_num)
+    gpu_vars = ("ASAHI_VISIBLE_DEVICES", "CUDA_VISIBLE_DEVICES", "HIP_VISIBLE_DEVICES", "HSA_VISIBLE_DEVICES", "INTEL_VISIBLE_DEVICES", "CANN_VISIBLE_DEVICES")
+    # prefixes = ("ASAHI_", "CUDA_", "HIP_", "HSA_", "INTEL_", "CANN_")
+    env_vars = {
+        k: v for k, v in os.environ.items()
+        for gpu_var in gpu_vars
+            if k == gpu_var
+        }
 
     return env_vars
 
