@@ -114,18 +114,18 @@ docs:
 
 .PHONY: lint
 lint:
-	flake8 *.py */*.py
+	flake8 *.py */*.py */*/*.py
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:
-	black --check --diff *.py */*.py test/unit/*.py
-	isort --check --diff *.py */*.py test/unit/*.py
+	black --check --diff *.py */*.py */*/*.py
+	isort --check --diff *.py */*.py */*/*.py
 
 .PHONY: format
 format:
-	black *.py */*.py test/unit/*.py
-	isort *.py */*.py test/unit/*.py
+	black *.py */*.py */*/*.py
+	isort *.py */*.py */*/*.py
 
 .PHONY: codespell
 codespell:
@@ -137,7 +137,7 @@ test-run:
 	_RAMALAMA_OPTIONS=--nocontainer _RAMALAMA_TEST=local bats -T test/system/030-run.bats
 
 .PHONY: validate
-validate: codespell lint
+validate: codespell lint check-format
 ifeq ($(OS),Linux)
 	hack/man-page-checker
 	hack/xref-helpmsgs-manpages
