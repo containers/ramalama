@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
 
-import sys
+import cmd
 
-def main(args):
-    return 0
+class RamaLamaShell(cmd.Cmd):
+    prompt = "> "
 
-if __name__ == "__main__":
-    main(sys.argv[1:])
+    def do_EOF(self, line):
+        print("")
+        return True
+
+    def default(self, line):
+        if line == "/bye":
+            return True
+
+        print(line)
+
+if __name__ == '__main__':
+    try:
+        RamaLamaShell().cmdloop()
+    except KeyboardInterrupt:
+        print("")
 
