@@ -5,7 +5,7 @@ from typing import Optional
 
 from ramalama.common import available, download_file, run_cmd, verify_checksum
 from ramalama.model import Model
-from ramalama.model_store import SnapshotFile
+from ramalama.model_store import SnapshotFile, SnapshotFileType
 
 
 def fetch_manifest_data(registry_head, model_tag, accept):
@@ -146,6 +146,7 @@ class OllamaRepository:
             url=f"{self.blob_url}/{model_digest}",
             header=self.headers,
             hash=model_digest,
+            type=SnapshotFileType.Model,
             name=self.name,
             should_show_progress=True,
             should_verify_checksum=True,
@@ -161,6 +162,7 @@ class OllamaRepository:
             url=f"{self.blob_url}/{config_hash}",
             header=self.headers,
             hash=config_hash,
+            type=SnapshotFileType.Other,
             name=OllamaRepository.FILE_NAME_CONFIG,
         )
 
@@ -183,6 +185,7 @@ class OllamaRepository:
             url=f"{self.blob_url}/{chat_template_digest}",
             header=self.headers,
             hash=chat_template_digest,
+            type=SnapshotFileType.ChatTemplate,
             name=OllamaRepository.FILE_NAME_CHAT_TEMPLATE,
         )
 

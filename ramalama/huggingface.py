@@ -7,7 +7,7 @@ import urllib.request
 
 from ramalama.common import available, download_file, exec_cmd, generate_sha256, perror, run_cmd, verify_checksum
 from ramalama.model import Model
-from ramalama.model_store import SnapshotFile
+from ramalama.model_store import SnapshotFile, SnapshotFileType
 
 missing_huggingface = """
 Optional: Huggingface models require the huggingface-cli module.
@@ -42,9 +42,9 @@ def fetch_checksum_from_api(organization, file):
 class HuggingfaceCLIFile(SnapshotFile):
 
     def __init__(
-        self, url, header, hash, name, should_show_progress=False, should_verify_checksum=False, required=True
+        self, url, header, hash, name, type, should_show_progress=False, should_verify_checksum=False, required=True
     ):
-        super().__init__(url, header, hash, name, should_show_progress, should_verify_checksum, required)
+        super().__init__(url, header, hash, name, type, should_show_progress, should_verify_checksum, required)
 
     def download(self, blob_file_path, snapshot_dir):
         # moving from the cached temp directory to blob directory
@@ -85,6 +85,7 @@ class HuggingfaceRepository:
             url=f"{self.blob_url}/{self.name}",
             header=self.headers,
             hash=snapshot_hash,
+            type=SnapshotFileType.Model,
             name=self.name,
             should_show_progress=True,
             should_verify_checksum=True,
@@ -95,6 +96,7 @@ class HuggingfaceRepository:
             url=f"{self.blob_url}/{HuggingfaceRepository.FILE_NAME_CONFIG}",
             header=self.headers,
             hash=generate_sha256(HuggingfaceRepository.FILE_NAME_CONFIG),
+            type=SnapshotFileType.Other,
             name=HuggingfaceRepository.FILE_NAME_CONFIG,
             required=False,
         )
@@ -104,6 +106,7 @@ class HuggingfaceRepository:
             url=f"{self.blob_url}/{HuggingfaceRepository.FILE_NAME_GENERATION_CONFIG}",
             header=self.headers,
             hash=generate_sha256(HuggingfaceRepository.FILE_NAME_GENERATION_CONFIG),
+            type=SnapshotFileType.Other,
             name=HuggingfaceRepository.FILE_NAME_GENERATION_CONFIG,
             required=False,
         )
@@ -113,6 +116,7 @@ class HuggingfaceRepository:
             url=f"{self.blob_url}/{HuggingfaceRepository.FILE_NAME_TOKENIZER_CONFIG}",
             header=self.headers,
             hash=generate_sha256(HuggingfaceRepository.FILE_NAME_TOKENIZER_CONFIG),
+            type=SnapshotFileType.Other,
             name=HuggingfaceRepository.FILE_NAME_TOKENIZER_CONFIG,
             required=False,
         )
@@ -327,6 +331,7 @@ class Huggingface(Model):
                     url=entry_path,
                     header={},
                     hash=sha256,
+                    type=SnapshotFileType.Other,
                     name=entry,
                 )
             )
