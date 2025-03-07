@@ -4,7 +4,7 @@ import shutil
 from ramalama.common import download_file, generate_sha256
 from ramalama.huggingface import HuggingfaceRepository
 from ramalama.model import Model
-from ramalama.model_store import SnapshotFile
+from ramalama.model_store import SnapshotFile, SnapshotFileType
 
 
 class LocalModelFile(SnapshotFile):
@@ -12,7 +12,9 @@ class LocalModelFile(SnapshotFile):
     def __init__(
         self, url, header, hash, name, should_show_progress=False, should_verify_checksum=False, required=True
     ):
-        super().__init__(url, header, hash, name, should_show_progress, should_verify_checksum, required)
+        super().__init__(
+            url, header, hash, name, SnapshotFileType.Model, should_show_progress, should_verify_checksum, required
+        )
 
     def download(self, blob_file_path, snapshot_dir):
         if not os.path.exists(self.url):
@@ -100,6 +102,7 @@ class URL(Model):
                     url=f"{self.type}://{self.model}",
                     header={},
                     hash=snapshot_hash,
+                    type=SnapshotFileType.Model,
                     name=name,
                     should_show_progress=True,
                     required=True,
