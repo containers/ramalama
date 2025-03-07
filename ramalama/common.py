@@ -376,6 +376,8 @@ def get_env_vars():
         "HSA_VISIBLE_DEVICES",
         "INTEL_VISIBLE_DEVICES",
         "CANN_VISIBLE_DEVICES",
+        "CUDA_LAUNCH_BLOCKING",
+        "HIP_SOMETHING",
     )
     env_vars = {k: v for k, v in os.environ.items() for gpu_var in gpu_vars if k == gpu_var}
 
