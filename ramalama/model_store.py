@@ -82,9 +82,15 @@ class LocalSnapshotFile(SnapshotFile):
 
 class RefFile:
 
+    SEP = "---"
+    MODEL_SUFFIX = "model"
+    CHAT_TEMPLATE_SUFFIX = "chat"
+
     def __init__(self):
         self.hash: str = ""
         self.filenames: list[str] = []
+        self.model_name: str = ""
+        self.chat_template_name: str = ""
         self._path: str = ""
 
     @property
@@ -98,12 +104,31 @@ class RefFile:
             ref_file.hash = file.readline().strip()
             filename = file.readline().strip()
             while filename != "":
-                ref_file.filenames.append(filename)
+                parts = filename.split(RefFile.SEP)
+                if len(parts) != 2:
+                    ref_file.filenames.append(filename)
+                    filename = file.readline().strip()
+                    continue
+
+                ref_file.filenames.append(parts[0])
+                if parts[1] == RefFile.MODEL_SUFFIX:
+                    ref_file.model_name = parts[0]
+                if parts[1] == RefFile.CHAT_TEMPLATE_SUFFIX:
+                    ref_file.chat_template_name = parts[0]
+
                 filename = file.readline().strip()
         return ref_file
 
     def serialize(self) -> str:
-        return "\n".join([self.hash] + self.filenames)
+        lines = [self.hash]
+        for filename in self.filenames:
+            line = f"{filename}{RefFile.SEP}"
+            if filename == self.model_name:
+                line = line + RefFile.MODEL_SUFFIX
+            elif filename == self.chat_template_name:
+                line = line + RefFile.CHAT_TEMPLATE_SUFFIX
+            lines.append(line)
+        return "\n".join(lines)
 
 
 @dataclass
@@ -322,6 +347,11 @@ class ModelStore:
             ref_file = RefFile()
             ref_file.hash = snapshot_hash
             ref_file.filenames = [file.name for file in snapshot_files]
+            for file in snapshot_files:
+                if file.type == SnapshotFileType.Model:
+                    ref_file.model_name = file.name
+                if file.type == SnapshotFileType.ChatTemplate:
+                    ref_file.chat_template_name = file.name
             with open(ref_file_path, "w") as file:
                 file.write(ref_file.serialize())
                 file.flush()
