@@ -117,6 +117,8 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 | Nvidia GPU (cuda)                  | :white_check_mark: |
 | AMD GPU (rocm)                     | :white_check_mark: |
 | Ascend NPU (Linux)                 | :white_check_mark: |
+| Intel ARC GPU (Meteor Lake 155H)   | :white_check_mark: |
+
 ## COMMANDS
 
 | Command                                                | Description                                                |
