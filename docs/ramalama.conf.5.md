@@ -78,9 +78,10 @@ Run RamaLama using the specified container engine.
 Valid options are: Podman and Docker
 This field can be overridden by the RAMALAMA_CONTAINER_ENGINE environment variable.
 
-**host**="0.0.0.0"
+**host**="127.0.0.1"
 
-IP address for llama.cpp to listen on.
+IP address for llama.cpp to listen on. Only supported when llama.cpp is running
+without a container.
 
 **image**="quay.io/ramalama/ramalama:latest"
 
