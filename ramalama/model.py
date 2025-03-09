@@ -1,5 +1,7 @@
 import os
 import platform
+import random
+import socket
 import sys
 
 from ramalama.common import (
@@ -14,6 +16,7 @@ from ramalama.common import (
     podman_machine_accel,
     run_cmd,
 )
+from ramalama.config import DEFAULT_PORT_RANGE, int_tuple_as_str
 from ramalama.console import EMOJI
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
@@ -630,6 +633,7 @@ class Model(ModelBase):
 
     def serve(self, args):
         self.validate_args(args)
+        args.port = compute_serving_port(args.port, args.debug)
         model_path = self.get_model_path(args)
         exec_model_path = MNT_FILE
         if not args.container and not args.generate:
@@ -690,3 +694,45 @@ def distinfo_volume():
         return ""
 
     return f"-v{path}:/usr/share/ramalama/{dist_info}:ro"
+
+
+def compute_ports() -> list:
+    first_port = DEFAULT_PORT_RANGE[0]
+    last_port = DEFAULT_PORT_RANGE[1]
+    ports = list(range(first_port + 1, last_port + 1))
+    random.shuffle(ports)
+    # try always the first port before the randomized others
+    return [first_port] + ports
+
+
+def get_available_port_if_any(debug: bool) -> int:
+    ports = compute_ports()
+    print(ports)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        chosen_port = 0
+        for target_port in ports:
+            if debug:
+                print(f"Checking if {target_port} is available")
+            try:
+                s.bind(('localhost', target_port))
+            except OSError:
+                continue
+            else:
+                chosen_port = target_port
+                break
+        return chosen_port
+
+
+def compute_serving_port(port: str, debug: bool) -> str:
+    if not port:
+        raise IOError("serving port can't be empty.")
+    if port != int_tuple_as_str(DEFAULT_PORT_RANGE):
+        # user specified a custom port, don't override the choice
+        return port
+    # otherwise compute a random serving port in the range
+    target_port = get_available_port_if_any(debug)
+
+    if target_port == 0:
+        raise IOError("no available port could be detected. Please ensure you have enough free ports.")
+    print(f"serving on port {target_port}")
+    return str(target_port)
