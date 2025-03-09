@@ -1,4 +1,4 @@
-{   
+{
     //may need to set these settings manually
     "dev.containers.dockerPath": "podman",
     "files.autoSaveWhenNoErrors": true,
@@ -9,5 +9,19 @@
             "label": "Compose Up",
             "template": "${composeCommand} ${configurationFile} up ${detached} ${build}"
         }
-    ]
+    ],
+    "remote.SSH.defaultExtensions": [
+        //python
+        "ms-python.debugpy",
+        "ms-python.python",
+        // black-formatter, flake8
+        "ms-python.black-formatter",
+        "ms-python.flake8",
+        // Docker 
+        "ms-azuretools.vscode-docker",
+        // Github
+        "GitHub.vscode-github-actions",
+        // Red Hat
+        "redhat.vscode-yaml"
+    ],
 }

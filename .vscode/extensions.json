@@ -8,7 +8,9 @@
         "ms-python.flake8",
         // Docker 
         "ms-azuretools.vscode-docker",
-        "ms-vscode-remote.remote-containers",
+        //ssh 
+        "ms-vscode-remote.remote-ssh", //vscode
+        "jeanp413.open-remote-ssh", //vscodium
         // Github
         "GitHub.vscode-github-actions",
         // Red Hat
