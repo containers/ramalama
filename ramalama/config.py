@@ -80,6 +80,16 @@ def load_config_defaults(config: Dict[str, Any]):
     config['runtime'] = config.get('runtime', 'llama.cpp')
     config['temp'] = config.get('temp', "0.8")
     config['use_model_store'] = config.get('use_model_store', False)
+    config['images'] = config.get(
+        'images',
+        {
+            "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
+            "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
+            "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
+            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
+            "CANN_VISIBLE_DEVICES": "quay.io/ramalama/cann",
+        },
+    )
 
 
 def load_and_merge_config() -> Dict[str, Any]:
