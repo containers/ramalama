@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.5-1739751568
+FROM registry.access.redhat.com/ubi9/ubi:9.5-1741600006
 
 ENV MODEL_PATH=/mnt/models/model.file
 
