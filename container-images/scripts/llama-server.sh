@@ -9,7 +9,7 @@ if [ -n "${MODEL_CHAT_FORMAT}" ]; then
 fi
 
 if [ -n "${MODEL_PATH}" ]; then
-    llama-server \
+    eval llama-server \
         --model "${MODEL_PATH}" \
         --host "${HOST:=0.0.0.0}" \
         --port "${PORT:=8001}" \
