@@ -759,6 +759,14 @@ def run_serve_perplexity_args(parser):
 def bench_run_serve_perplexity_args(parser):
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument(
+        "--env",
+        dest="env",
+        action='append',
+        type=str,
+        default=CONFIG["env"],
+        help="environment variables to add to the running container",
+    )
+    parser.add_argument(
         "--device", dest="device", action='append', type=str, help="device to leak in to the running container"
     )
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")

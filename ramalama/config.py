@@ -68,17 +68,17 @@ def int_tuple_as_str(input: tuple) -> str:
 
 def load_config_defaults(config: Dict[str, Any]):
     """Set configuration defaults if these are not yet set."""
-    config['nocontainer'] = config.get('nocontainer', False)
     config['carimage'] = config.get('carimage', "registry.access.redhat.com/ubi9-micro:latest")
-    config['runtime'] = config.get('runtime', 'llama.cpp')
-    config['ngl'] = config.get('ngl', -1)
-    config['keep_groups'] = config.get('keep_groups', False)
     config['ctx_size'] = config.get('ctx_size', 2048)
-    config['pull'] = config.get('pull', "newer")
-    config['temp'] = config.get('temp', "0.8")
+    config['env'] = config.get('env', [])
     config['host'] = config.get('host', "0.0.0.0")
-    # print tuple as a range to avoid confusion
+    config['keep_groups'] = config.get('keep_groups', False)
+    config['ngl'] = config.get('ngl', -1)
+    config['nocontainer'] = config.get('nocontainer', False)
     config['port'] = config.get('port', int_tuple_as_str(DEFAULT_PORT_RANGE))
+    config['pull'] = config.get('pull', "newer")
+    config['runtime'] = config.get('runtime', 'llama.cpp')
+    config['temp'] = config.get('temp', "0.8")
     config['use_model_store'] = config.get('use_model_store', False)
 
 

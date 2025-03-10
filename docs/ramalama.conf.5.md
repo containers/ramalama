@@ -72,6 +72,10 @@ RAMALAMA_IN_CONTAINER environment variable overrides this field.
 
 Size of the prompt context (0 = loaded from model)
 
+**env=[]
+
+Environment variables to be added to the environment used when running in a container engine (e.g., Podman, Docker). For example "LLAMA_ARG_THREADS=10".
+
 **engine**="podman"
 
 Run RamaLama using the specified container engine.
@@ -104,9 +108,9 @@ Specify default port for services to listen on
 **pull**="newer"
 
 - **always**: Always pull the image and throw an error if the pull fails.
-- **missing**: Only pull the image when it does not exist in the local containers storage.  Throw an error if no image is found and the pull fails.
-- **never**: Never pull the image but use the one from the local containers storage.  Throw an error when no image is found.
-- **newer**: Pull if the image on the registry is newer than the one in the local containers storage.  An image is considered to be newer when the digests are different.  Comparing the time stamps is prone to errors.  Pull errors are suppressed if a local image was found.
+- **missing**: Only pull the image when it does not exist in the local containers storage. Throw an error if no image is found and the pull fails.
+- **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
+- **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
 **runtime**="llama.cpp"
 
