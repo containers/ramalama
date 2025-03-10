@@ -173,7 +173,7 @@ install_ramalama_libs() {
                       "common.py" "__init__.py" "quadlet.py" "kube.py" \
                       "oci.py" "version.py" "shortnames.py" "toml_parser.py" \
                       "file.py" "http_client.py" "url.py" "annotations.py" \
-                      "gpu_detector.py" "console.py")
+                      "gpu_detector.py" "console.py" "go2jinja.py")
   local job_count=0
   local job_queue=()
   for i in "${python_files[@]}"; do

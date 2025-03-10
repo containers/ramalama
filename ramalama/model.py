@@ -419,9 +419,9 @@ class Model(ModelBase):
         return True
 
     def bench(self, args):
-        self.validate_args(args)
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_bench(args, model_path)
+        self.validate_args(args)
         self.execute_model(model_path, exec_args, args)
 
     def run(self, args):
@@ -538,7 +538,7 @@ class Model(ModelBase):
         if self.store is not None:
             ref_file = self.store.get_ref_file(self.tag)
             if ref_file.chat_template_name != "":
-                exec_args.extend(["--chat-template--file", MNT_CHAT_TEMPLATE_FILE])
+                exec_args.extend(["--chat-template-file", MNT_CHAT_TEMPLATE_FILE])
 
         exec_args.append(exec_model_path)
         if len(prompt) > 0:

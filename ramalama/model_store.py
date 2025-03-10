@@ -8,6 +8,7 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import ramalama.go2jinja as go2jinja
 import ramalama.oci
 from ramalama.common import download_file, generate_sha256, verify_checksum
 from ramalama.gguf_parser import GGUFInfoParser, GGUFModelInfo
@@ -125,7 +126,7 @@ class RefFile:
             line = f"{filename}{RefFile.SEP}"
             if filename == self.model_name:
                 line = line + RefFile.MODEL_SUFFIX
-            elif filename == self.chat_template_name:
+            if filename == self.chat_template_name:
                 line = line + RefFile.CHAT_TEMPLATE_SUFFIX
             lines.append(line)
         return "\n".join(lines)
@@ -385,6 +386,17 @@ class ModelStore:
         for file in snapshot_files:
             # Give preference to a chat template that has been specified in the file list
             if file.type == SnapshotFileType.ChatTemplate:
+                chat_template_file_path = self.get_blob_file_path(file.hash)
+                chat_template = ""
+                with open(chat_template_file_path, "r") as file:
+                    chat_template = file.read()
+
+                if not go2jinja.is_go_template(chat_template):
+                    return
+
+                jinja_template = go2jinja.go_to_jinja(chat_template)
+                files = [LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
+                self.update_snapshot(model_tag, snapshot_hash, files)
                 return
             if file.type == SnapshotFileType.Model:
                 model_file = file
@@ -400,6 +412,10 @@ class ModelStore:
             return
 
         files = [LocalSnapshotFile(tmpl, "chat_template", SnapshotFileType.ChatTemplate)]
+        if go2jinja.is_go_template(tmpl):
+            jinja_template = go2jinja.go_to_jinja(tmpl)
+            files.append(LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate))
+
         self.update_snapshot(model_tag, snapshot_hash, files)
 
     def new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
@@ -419,6 +435,13 @@ class ModelStore:
             return False
 
         ref_file.filenames = ref_file.filenames + [file.name for file in new_snapshot_files]
+        # update model and chat template name
+        for file in new_snapshot_files:
+            if file.type == SnapshotFileType.Model:
+                ref_file.model_name = file.name
+            if file.type == SnapshotFileType.ChatTemplate:
+                ref_file.chat_template_name = file.name
+
         with open(ref_file.path, "w") as file:
             file.write(ref_file.serialize())
             file.flush()
