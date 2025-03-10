@@ -296,6 +296,12 @@ class Model(ModelBase):
 
         return conman_args
 
+    def add_env_option(self, conman_args, args):
+        for env in args.env:
+            conman_args += ["--env", env]
+
+        return conman_args
+
     def add_tty_option(self, conman_args):
         if sys.stdout.isatty() or sys.stdin.isatty():
             conman_args += ["-t"]
@@ -355,6 +361,7 @@ class Model(ModelBase):
         conman_args = self.handle_podman_specifics(conman_args, args)
         conman_args = self.handle_docker_pull(conman_args, args)
         conman_args = self.add_tty_option(conman_args)
+        conman_args = self.add_env_option(conman_args, args)
         conman_args = self.add_detach_option(conman_args, args)
         conman_args = self.add_port_option(conman_args, args)
         conman_args = self.add_device_options(conman_args, args)

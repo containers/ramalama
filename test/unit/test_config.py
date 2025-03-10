@@ -57,6 +57,7 @@ def test_load_config_from_env(env, config, expected):
             {
                 "nocontainer": False,
                 "carimage": "registry.access.redhat.com/ubi9-micro:latest",
+                "env": [],
                 "runtime": "llama.cpp",
                 "ngl": -1,
                 "keep_groups": False,
@@ -75,6 +76,7 @@ def test_load_config_from_env(env, config, expected):
             {
                 "nocontainer": True,
                 "carimage": "registry.access.redhat.com/ubi9-micro:latest",
+                "env": [],
                 "runtime": "llama.cpp",
                 "ngl": -1,
                 "keep_groups": False,

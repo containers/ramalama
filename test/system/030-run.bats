@@ -22,6 +22,9 @@ EOF
 	is "$output" ".*-c 2048" "verify model name"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
+	run_ramalama --dryrun run --env a=b --env test=success --name foobar ${model}
+	is "$output" "${verify_begin} foobar.*--env a=b --env test=success" "dryrun correct with --env"
+
 	run_ramalama --dryrun run --seed 9876 -c 4096 --net bridge --name foobar ${model}
 	is "$output" "${verify_begin} foobar.*--network bridge.*" "dryrun correct with --name"
 	is "$output" ".*${model}" "verify model name"

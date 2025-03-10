@@ -40,6 +40,15 @@ Example: --device=/dev/dri/renderD128:/dev/xvdc:rwm
 
 The device specification is passed directly to the underlying container engine.  See documentation of the supported container engine for more information.
 
+#### **--env**=
+
+Set environment variables inside of the container.
+
+This option allows arbitrary environment variables that are available for the
+process to be launched inside of the container. If an environment variable is
+specified without a value, the container engine checks the host environment
+for a value and set the variable only if it is set on the host.
+
 #### **--help**, **-h**
 show this help message and exit
 
@@ -59,29 +68,29 @@ The default -1, means use whatever is automatically deemed appropriate (0 or 999
 Pull image policy. The default is **missing**.
 
 #### **--privileged**
-By  default, RamaLama containers are unprivileged (=false) and cannot, for
-example, modify parts of the operating system. This is  because  by  de‐
-fault  a  container is only allowed limited access to devices. A "privi‐
+By default, RamaLama containers are unprivileged (=false) and cannot, for
+example, modify parts of the operating system. This is because by de‐
+fault a container is only allowed limited access to devices. A "privi‐
 leged" container is given the same access to devices as the user launch‐
-ing the container, with the exception of virtual consoles  (/dev/tty\d+)
+ing the container, with the exception of virtual consoles (/dev/tty\d+)
 when running in systemd mode (--systemd=always).
 
-A  privileged container turns off the security features that isolate the
-container from the host. Dropped Capabilities,  limited  devices,  read-
-only  mount points, Apparmor/SELinux separation, and Seccomp filters are
-all disabled.  Due to the disabled  security  features,  the  privileged
-field  should  almost never be set as containers can easily break out of
+A privileged container turns off the security features that isolate the
+container from the host. Dropped Capabilities, limited devices, read-
+only mount points, Apparmor/SELinux separation, and Seccomp filters are
+all disabled. Due to the disabled security features, the privileged
+field should almost never be set as containers can easily break out of
 confinement.
 
-Containers running in a user namespace (e.g., rootless containers)  can‐
+Containers running in a user namespace (e.g., rootless containers) can‐
 not have more privileges than the user that launched them.
 
 #### **--pull**=*policy*
 
 - **always**: Always pull the image and throw an error if the pull fails.
-- **missing**: Only pull the image when it does not exist in the local containers storage.  Throw an error if no image is found and the pull fails.
-- **never**: Never pull the image but use the one from the local containers storage.  Throw an error when no image is found.
-- **newer**: Pull if the image on the registry is newer than the one in the local containers storage.  An image is considered to be newer when the digests are different.  Comparing the time stamps is prone to errors.  Pull errors are suppressed if a local image was found.
+- **missing**: Only pull the image when it does not exist in the local containers storage. Throw an error if no image is found and the pull fails.
+- **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
+- **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
 #### **--seed**=
 Specify seed rather than using random seed model interaction
@@ -90,11 +99,11 @@ Specify seed rather than using random seed model interaction
 Temperature of the response from the AI Model
 llama.cpp explains this as:
 
-    The lower the number is, the more deterministic the response.
+  The lower the number is, the more deterministic the response.
 
-    The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
+  The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
-        Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+    Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
