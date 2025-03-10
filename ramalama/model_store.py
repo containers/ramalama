@@ -107,7 +107,8 @@ class GlobalModelStore:
                 ref_dir = os.path.join(root, DIRECTORY_NAME_REFS)
                 for ref_file_name in os.listdir(ref_dir):
                     ref_file: RefFile = RefFile.from_path(os.path.join(ref_dir, ref_file_name))
-                    model_name = f"{root.replace(self.path, "").replace(os.sep, "", 1)}:{ref_file_name}"
+                    model_path = root.replace(self.path, "").replace(os.sep, "", 1)
+                    model_name = f"{model_path}:{ref_file_name}"
 
                     models[model_name] = []
                     for snapshot_file in ref_file.filenames:
