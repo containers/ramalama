@@ -71,6 +71,9 @@ class GGUFModelInfo(ModelInfoBase):
         self.Tensors: list[Tensor] = tensors
         self.LittleEndian: bool = uses_little_endian
 
+    def get_chat_template(self) -> str:
+        return self.Metadata.get("chat_template", "")
+
     def serialize(self, json: bool = False, all: bool = False) -> str:
         if json:
             return self.to_json(all)
