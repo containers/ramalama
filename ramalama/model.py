@@ -706,7 +706,6 @@ def compute_ports() -> list:
 
 def get_available_port_if_any(debug: bool) -> int:
     ports = compute_ports()
-    print(ports)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         chosen_port = 0
         for target_port in ports:
