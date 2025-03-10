@@ -107,7 +107,9 @@ class OllamaRepository:
         except urllib.error.HTTPError as e:
             if "Not Found" in e.reason:
                 raise KeyError(f"Manifest for {self.name}:{tag} was not found in the Ollama registry")
-            raise KeyError(f"failed to fetch manifest: {str(e).strip("'")}")
+
+            err = str(e).strip("'")
+            raise KeyError(f"failed to fetch manifest: {err}")
 
     def get_file_list(self, tag, cached_files, is_model_in_ollama_cache, manifest=None) -> list[SnapshotFile]:
         if manifest is None:
@@ -282,7 +284,9 @@ class Ollama(Model):
         except urllib.error.HTTPError as e:
             if "Not Found" in e.reason:
                 raise KeyError(f"{name}:{tag} was not found in the Ollama registry")
-            raise KeyError(f"failed to fetch snapshot files: {str(e).strip("'")}")
+
+            err = str(e).strip("'")
+            raise KeyError(f"failed to fetch snapshot files: {err}")
 
         # If a model has been downloaded via ollama cli, only create symlink in the snapshots directory
         if is_model_in_ollama_cache:
