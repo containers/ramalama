@@ -8,7 +8,6 @@ from ramalama.common import (
     DEFAULT_IMAGE,
     MNT_DIR,
     MNT_FILE,
-    container_manager,
     exec_cmd,
     genname,
     get_env_vars,
@@ -16,7 +15,7 @@ from ramalama.common import (
     podman_machine_accel,
     run_cmd,
 )
-from ramalama.config import DEFAULT_PORT_RANGE, int_tuple_as_str
+from ramalama.config import CONFIG, DEFAULT_PORT_RANGE, int_tuple_as_str
 from ramalama.console import EMOJI
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
@@ -205,15 +204,8 @@ class Model(ModelBase):
 
         split = version().split(".")
         vers = ".".join(split[:2])
-        conman = container_manager()
-        images = {
-            "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
-            "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
-            "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
-            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
-            "CANN_VISIBLE_DEVICES": "quay.io/ramalama/cann",
-        }
-
+        conman = CONFIG['engine']
+        images = CONFIG['images']
         image = images.get(gpu_type, args.image)
         if self.attempt_to_use_versioned(conman, image, vers, args):
             return f"{image}:{vers}"

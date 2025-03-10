@@ -55,7 +55,7 @@ TOML can be simplified to:
 ## RAMALAMA TABLE
 The ramalama table contains settings to configure and manage the OCI runtime.
 
-[ramalama]
+`[[ramalama]]`
 
 **carimage**="registry.access.redhat.com/ubi9-micro:latest"
 
@@ -90,6 +90,15 @@ IP address for llama.cpp to listen on.
 
 OCI container image to run with the specified AI model
 RAMALAMA_IMAGE environment variable overrides this field.
+
+`[[ramalama.images]]`
+  HIP_VISIBLE_DEVICES   = "quay.io/ramalama/rocm"
+  CUDA_VISIBLE_DEVICES  = "quay.io/ramalama/cuda"
+  ASAHI_VISIBLE_DEVICES = "quay.io/ramalama/asahi"
+  INTEL_VISIBLE_DEVICES = "quay.io/ramalama/intel-gpu"
+  CANN_VISIBLE_DEVICES  = "quay.io/ramalama/cann"
+
+Alternative images to use when RamaLama recognizes specific hardware
 
 **keep_groups**=false
 

@@ -58,6 +58,13 @@ def test_load_config_from_env(env, config, expected):
                 "nocontainer": False,
                 "carimage": "registry.access.redhat.com/ubi9-micro:latest",
                 "env": [],
+                "images": {
+                    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
+                    "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
+                    "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
+                    "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
+                    "CANN_VISIBLE_DEVICES": "quay.io/ramalama/cann",
+                },
                 "runtime": "llama.cpp",
                 "ngl": -1,
                 "keep_groups": False,
@@ -72,11 +79,17 @@ def test_load_config_from_env(env, config, expected):
         (
             {
                 "nocontainer": True,
+                "images": {
+                    "HIP_VISIBLE_DEVICES": "quay.io/repo/rocm",
+                },
             },
             {
                 "nocontainer": True,
                 "carimage": "registry.access.redhat.com/ubi9-micro:latest",
                 "env": [],
+                "images": {
+                    "HIP_VISIBLE_DEVICES": "quay.io/repo/rocm",
+                },
                 "runtime": "llama.cpp",
                 "ngl": -1,
                 "keep_groups": False,
