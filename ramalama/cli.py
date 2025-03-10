@@ -711,11 +711,10 @@ def _get_source(args):
         src = args.SOURCE
     smodel = New(src, args)
     if smodel.type == "OCI":
-        return src
-    else:
-        if not smodel.exists(args):
-            return smodel.pull(args)
-        return smodel.model_path(args)
+        raise ValueError("converting from an OCI based image %s is not supported" % src)
+    if not smodel.exists(args):
+        return smodel.pull(args)
+    return smodel.model_path(args)
 
 
 def push_cli(args):
