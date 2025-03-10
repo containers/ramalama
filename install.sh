@@ -165,7 +165,7 @@ download_install() {
 }
 
 install_ramalama_libs() {
-  local sharedir="$sysdir/share"
+  local sharedir="$sysdir/share/ramalama"
   install_dirs "$sharedir"
   local python_files=("cli.py" "config.py" "rag.py" "gguf_parser.py" \
                       "huggingface.py" "model.py" "model_factory.py" \
@@ -177,7 +177,7 @@ install_ramalama_libs() {
   local job_count=0
   local job_queue=()
   for i in "${python_files[@]}"; do
-    download_install "ramalama" "share" "$i" &
+    download_install "ramalama" "share/ramalama/ramalama" "$i" &
     job_queue+=($!)
     ((++job_count))
 
