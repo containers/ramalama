@@ -25,6 +25,9 @@ load helpers
     run_ramalama convert $RAMALAMA_TMPDIR/aimodel oci://foobar
     run_ramalama list
     is "$output" ".*foobar:latest"
+    run_ramalama 22 convert oci://foobar oci://newimage 
+    is "$output" "Error: converting from an OCI based image oci://foobar is not supported"
+
     run_ramalama rm foobar
     run_ramalama list
     assert "$output" !~ ".*foobar" "image was removed"
