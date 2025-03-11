@@ -12,9 +12,9 @@ from ramalama.common import (
     MNT_FILE,
     exec_cmd,
     genname,
-    get_env_vars,
-    get_gpu,
+    get_accel_env_vars,
     run_cmd,
+    set_accel_env_vars,
 )
 from ramalama.config import CONFIG, DEFAULT_PORT_RANGE, int_tuple_as_str
 from ramalama.console import EMOJI
@@ -193,7 +193,7 @@ class Model(ModelBase):
         if args.image != DEFAULT_IMAGE:
             return args.image
 
-        env_vars = get_env_vars()
+        env_vars = get_accel_env_vars()
 
         if not env_vars:
             gpu_type = None
@@ -327,7 +327,7 @@ class Model(ModelBase):
             if os.path.exists("/dev/davinci0"):
                 conman_args += ["--device", "/dev/davinci0"]
 
-            for k, v in get_env_vars().items():
+            for k, v in get_accel_env_vars().items():
                 # Special case for Cuda
                 if k == "CUDA_VISIBLE_DEVICES":
                     if os.path.basename(args.engine) == "docker":
@@ -447,7 +447,7 @@ class Model(ModelBase):
         exec_model_path = MNT_FILE if args.container else model_path
         exec_args = ["llama-perplexity"]
 
-        get_gpu()
+        set_accel_env_vars()
         gpu_args = self.gpu_args(args=args)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
@@ -510,7 +510,7 @@ class Model(ModelBase):
         exec_model_path = MNT_FILE if args.container else model_path
         exec_args = ["llama-bench"]
 
-        get_gpu()
+        set_accel_env_vars()
         gpu_args = self.gpu_args(args=args)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
@@ -534,7 +534,7 @@ class Model(ModelBase):
         if args.debug:
             exec_args += ["-v"]
 
-        get_gpu()
+        set_accel_env_vars()
         gpu_args = self.gpu_args(args=args, runner=True)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
@@ -607,17 +607,18 @@ class Model(ModelBase):
         return exec_args
 
     def handle_runtime(self, args, exec_args, exec_model_path):
+        set_accel_env_vars()
         if args.runtime == "vllm":
-            get_gpu()
             exec_model_path = os.path.dirname(exec_model_path)
             # Left out "vllm", "serve" the image entrypoint already starts it
             exec_args = ["--port", args.port, "--model", MNT_FILE, "--max_model_len", "2048"]
         else:
-            get_gpu()
             gpu_args = self.gpu_args(args=args)
             if gpu_args is not None:
                 exec_args.extend(gpu_args)
+
             exec_args.extend(["--host", args.host])
+
         return exec_args
 
     def generate_container_config(self, model_path, args, exec_args):

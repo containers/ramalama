@@ -1,6 +1,6 @@
 import os
 
-from ramalama.common import MNT_DIR, genname, get_env_vars
+from ramalama.common import MNT_DIR, genname, get_accel_env_vars
 from ramalama.version import version
 
 
@@ -83,7 +83,7 @@ class Kube:
 
     @staticmethod
     def _gen_env_vars():
-        env_vars = get_env_vars()
+        env_vars = get_accel_env_vars()
 
         if not env_vars:
             return ""
