@@ -73,46 +73,7 @@ AnnotationBaseImageDigest = "org.opencontainers.image.base.digest"
 # image's base image.
 AnnotationBaseImageName = "org.opencontainers.image.base.name"
 
-# AnnotationArchitecture is the annotation key for the model architecture, such
-# as `transformer`, `cnn`, `rnn`, etc.
-AnnotationArchitecture = "org.cnai.model.architecture"
-
-# AnnotationFamily is the annotation key for the model family, such as
-# `llama3`, `gpt2`, `qwen2`, etc.
-AnnotationFamily = "org.cnai.model.family"
-
-# AnnotationName is the annotation key for the model name, such as
-# `llama3-8b-instruct`, `gpt2-xl`, `qwen2-vl-72b-instruct`, etc.
-AnnotationName = "org.cnai.model.name"
-
-# AnnotationFormat is the annotation key for the model format, such as
-# `onnx`, `tensorflow`, `pytorch`, etc.
-AnnotationFormat = "org.cnai.model.format"
-
-# AnnotationParamSize is the annotation key for the size of the model
-# parameters.
-AnnotationParamSize = "org.cnai.model.param.size"
-
-# AnnotationPrecision is the annotation key for the model precision, such as
-# `bf16`, `fp16`, `int8`, etc.
-AnnotationPrecision = "org.cnai.model.precision"
-
-# AnnotationQuantization is the annotation key for the model quantization,
-# such as `awq`, `gptq`, etc.
-AnnotationQuantization = "org.cnai.model.quantization"
-
-# AnnotationReadme is the annotation key for the layer is a README.md file
-# (boolean), such as `true` or `false`.
-AnnotationReadme = "org.cnai.model.readme"
-
-# AnnotationLicense is the annotation key for the layer is a license file
-# (boolean), such as `true` or `false`.
-AnnotationLicense = "org.cnai.model.license"
-
-# AnnotationConfig is the annotation key for the layer is a configuration file
-# (boolean), such as `true` or `false`.
-AnnotationConfig = "org.cnai.model.config"
-
+# DEPRECATED: Migrate to AnnotationFilepath
 # AnnotationModel is the annotation key for the layer is a model file (boolean),
 # such as `true` or `false`.
 AnnotationModel = "org.cnai.model.model"
