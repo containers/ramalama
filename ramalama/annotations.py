@@ -1,5 +1,5 @@
 # These annotations are based off the standards:
-# https://github.com/opencontainers/image-spec/blob/main/specs-go/v1/annotations.go
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md
 # https://github.com/CloudNativeAI/model-spec
 
 # ArtifactTypeModelManifest specifies the media type for a model manifest.
