@@ -303,74 +303,102 @@ def engine_version(engine):
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
 
 
-def get_gpu():
-
-    envs = get_env_vars()
-    # If env vars already set return
-    if envs:
-        return
-
-    # ASAHI CASE
+def check_asahi():
     if os.path.exists('/proc/device-tree/compatible'):
         try:
             with open('/proc/device-tree/compatible', 'rb') as f:
                 content = f.read().split(b"\0")
-                # Check if "apple,arm-platform" is in the content
                 if b"apple,arm-platform" in content:
                     os.environ["ASAHI_VISIBLE_DEVICES"] = "1"
+                    return "asahi"
         except OSError:
-            # Handle the case where the file does not exist
             pass
 
-    # NVIDIA CASE
+    return None
+
+
+def check_nvidia():
     try:
         command = ['nvidia-smi']
         run_cmd(command).stdout.decode("utf-8")
         os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-        return
+        return "cuda"
     except Exception:
         pass
 
-    # Ascend CASE
+    return None
+
+
+def check_ascend():
     try:
         command = ['npu-smi']
         run_cmd(command).stdout.decode("utf-8")
         os.environ["CANN_VISIBLE_DEVICES"] = "0"
-        return
+        return "cann"
     except Exception:
         pass
 
-    # ROCm/AMD CASE
-    i = 0
+    return None
+
+
+def check_rocm_amd():
     gpu_num = 0
     gpu_bytes = 0
-    for fp in sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total')):
+    for i, fp in enumerate(sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total'))):
         with open(fp, 'r') as file:
             content = int(file.read())
             if content > 1073741824 and content > gpu_bytes:
                 gpu_bytes = content
                 gpu_num = i
 
-        i += 1
-
     if gpu_bytes:
         os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
-        return
+        return "hip"
 
-    # INTEL iGPU CASE (Look for ARC GPU)
+    return None
+
+
+def check_intel():
     igpu_num = 0
     for fp in sorted(glob.glob('/sys/bus/pci/drivers/i915/*/device')):
         with open(fp, 'rb') as file:
             content = file.read()
             if b"0x7d55" in content:
                 igpu_num += 1
-
     if igpu_num:
         os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
+        return "intel"
+
+    return None
+
+
+def get_accel():
+    if gpu_type := check_asahi():
+        return gpu_type
+
+    if gpu_type := check_nvidia():
+        return gpu_type
+
+    if gpu_type := check_ascend():
+        return gpu_type
+
+    if gpu_type := check_rocm_amd():
+        return gpu_type
+
+    if gpu_type := check_intel():
+        return gpu_type
+
+    return "none"
+
+
+def set_accel_env_vars():
+    if get_accel_env_vars():
         return
 
+    get_accel()
 
-def get_env_vars():
+
+def get_accel_env_vars():
     gpu_vars = (
         "ASAHI_VISIBLE_DEVICES",
         "CANN_VISIBLE_DEVICES",

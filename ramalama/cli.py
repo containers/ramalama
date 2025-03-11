@@ -2,16 +2,14 @@ import argparse
 import glob
 import json
 import os
-import platform
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
 import ramalama.oci
 import ramalama.rag
-from ramalama.common import perror, run_cmd
+from ramalama.common import get_accel, perror, run_cmd
 from ramalama.config import CONFIG
-from ramalama.gpu_detector import GPUDetector
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
 from ramalama.model_store import GlobalModelStore
@@ -173,66 +171,6 @@ def configure_subcommands(parser):
     serve_parser(subparsers)
     stop_parser(subparsers)
     version_parser(subparsers)
-
-
-def show_gpus_available_cli(args):
-    """Detect and return available GPUs, with macOS support."""
-    gpu_detector = GPUDetector()
-    gpu_info = []
-    errors = []
-
-    system = platform.system()
-
-    if system == "Darwin":  # macOS GPU detection
-        try:
-            macos_gpus = gpu_detector.get_macos_gpu()
-            if macos_gpus:
-                gpu_info.extend(macos_gpus)
-            else:
-                errors.append({"Vendor": "Apple", "INFO": "No GPU detected on macOS."})
-        except Exception as e:
-            errors.append({"Vendor": "Apple", "INFO": str(e)})
-
-    else:  # Linux/Other OS GPU detection
-        try:
-            ascend_gpus = gpu_detector.get_ascend_npu()
-            # Since Ascend devices are not required, keep quiet if no Ascend devices are detected
-            if ascend_gpus:
-                gpu_info.extend(ascend_gpus)
-        except Exception as e:
-            errors.append({"Vendor": "Ascend", "INFO": str(e)})
-
-        try:
-            nvidia_gpus = gpu_detector.get_nvidia_gpu()
-            if nvidia_gpus:
-                gpu_info.extend(nvidia_gpus)
-            else:
-                errors.append({"Vendor": "NVIDIA", "INFO": "No NVIDIA GPU detected or drivers missing."})
-        except Exception as e:
-            errors.append({"Vendor": "NVIDIA", "INFO": str(e)})
-
-        try:
-            amd_gpus = gpu_detector.get_amd_gpu()
-            if amd_gpus:
-                gpu_info.extend(amd_gpus)
-            else:
-                errors.append({"Vendor": "AMD", "INFO": "No AMD GPU detected or drivers missing."})
-        except Exception as e:
-            errors.append({"Vendor": "AMD", "INFO": str(e)})
-
-        try:
-            intel_gpus = gpu_detector.get_intel_gpu()
-            if intel_gpus:
-                gpu_info.extend(intel_gpus)
-            else:
-                errors.append({"Vendor": "Intel", "INFO": "No Intel GPU detected or drivers missing."})
-        except Exception as e:
-            errors.append({"Vendor": "Intel", "INFO": str(e)})
-
-    return {
-        "Detected GPUs": gpu_info if gpu_info else [{"GPU": "None", "VRAM": "N/A", "INFO": "No GPUs detected"}],
-        "INFO": errors if errors else "No errors",
-    }
 
 
 def parse_arguments(parser):
@@ -553,8 +491,7 @@ def info_cli(args):
     if args.engine and len(args.engine) > 0:
         info["Engine"]["Info"] = engine_info(args)
 
-    gpu_info = show_gpus_available_cli(args)
-    info["GPUs"] = gpu_info
+    info["Accelerator"] = get_accel()
     print(json.dumps(info, sort_keys=True, indent=4))
 
 

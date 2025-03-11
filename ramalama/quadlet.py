@@ -1,6 +1,6 @@
 import os
 
-from ramalama.common import MNT_DIR, MNT_FILE, get_env_vars
+from ramalama.common import MNT_DIR, MNT_FILE, get_accel_env_vars
 
 
 class Quadlet:
@@ -48,7 +48,7 @@ WantedBy=multi-user.target default.target
             name_string = f"ContainerName={self.args.name}"
 
         env_var_string = ""
-        for k, v in get_env_vars().items():
+        for k, v in get_accel_env_vars().items():
             env_var_string += f"Environment={k}={v}\n"
 
         outfile = self.name + ".container"
