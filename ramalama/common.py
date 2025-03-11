@@ -85,8 +85,9 @@ def handle_provider(machine):
         if provider == "applehv":
             return confirm_no_gpu(name, provider)
         if "krun" in provider:
-            podman_machine_accel = "True"
+            podman_machine_accel = True
             return True
+
     return None
 
 
