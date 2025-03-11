@@ -329,7 +329,11 @@ class Model(ModelBase):
             for k, v in get_env_vars().items():
                 # Special case for Cuda
                 if k == "CUDA_VISIBLE_DEVICES":
-                    conman_args += ["--device", "nvidia.com/gpu=all"]
+                    if os.path.basename(args.engine) == "docker":
+                        conman_args += ["--gpus", "all"]
+                    else:
+                        # newer Podman versions support --gpus=all, but < 5.0 do not
+                        conman_args += ["--device", "nvidia.com/gpu=all"]
 
                 conman_args += ["-e", f"{k}={v}"]
 
