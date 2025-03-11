@@ -7,20 +7,36 @@ from docling.chunking import HybridChunker
 import uuid
 import os
 import hashlib
+import argparse
 
 # Global Vars
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 SPARSE_MODEL = "prithivida/Splade_PP_en_v1"
 COLLECTION_NAME = "rag"
+# Needed for mac to not give errors
+os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
 
 # Helper Classes and Functions
 
 class Rag:
     def __init__(self):
-        self.client = qdrant_client.QdrantClient(":memory:")
+        # Setup vector database
+        self.client = qdrant_client.QdrantClient(path=os.getcwd()+"/db")
         self.client.set_model(EMBED_MODEL)
         self.client.set_sparse_model(SPARSE_MODEL)
+
+        if not self.client.collection_exists(COLLECTION_NAME):
+            self.client.create_collection(
+                collection_name=COLLECTION_NAME,
+                vectors_config=self.client.get_fastembed_vector_params(),
+                sparse_vectors_config=self.client.get_fastembed_sparse_vector_params(),  
+            )
+
+        # Setup docling class
         self.conv = Converter()
+
+        # Setup openai api
         self.llm = openai.OpenAI(api_key="your-api-key", base_url="http://localhost:8080")
         self.chat_history = []  # Store chat history
     
@@ -135,8 +151,7 @@ class Converter:
             targets.append(file_path)  # Process the single file
         else:
             # if the path provided is wrong just return false
-            # Used in Rag.add files to avoid errors
-            return False
+            raise ValueError(f"Invalid file or file path: {file_path}")
 
         result = self.doc_converter.convert_all(targets)
 
@@ -178,9 +193,24 @@ class Converter:
         # Use the first 32 characters of the hash to create a UUID
         return str(uuid.UUID(sha256_hash[:32]))
 
+def insert(file_path):
+    rag = Rag()
+    rag.insertPDF(file_path)
 
-rag = Rag()
-file_path = input("Give me file_path of pdf: ")
-#/mnt/c/Users/bmahabir/Desktop/pdfs/Resume.pdf
-rag.insertPDF(file_path)
-rag.run()
+def run_rag():
+    rag = Rag()
+    rag.run()
+
+
+parser = argparse.ArgumentParser(description="A script that interacts with Rag.")
+parser.add_argument('--insert', type=str, help='Insert a PDF file into Vector Database', metavar='FILE_PATH')
+parser.add_argument('--run', action='store_true', help='Run the RAG')
+
+args = parser.parse_args()
+
+
+if args.insert:
+    insert(args.insert)
+
+if args.run:
+    run_rag()
