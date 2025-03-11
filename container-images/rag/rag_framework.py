@@ -201,10 +201,13 @@ def run_rag():
     rag = Rag()
     rag.run()
 
+def load():
+    rag = Rag()
 
 parser = argparse.ArgumentParser(description="A script that interacts with Rag.")
 parser.add_argument('--insert', type=str, help='Insert a PDF file into Vector Database', metavar='FILE_PATH')
 parser.add_argument('--run', action='store_true', help='Run the RAG')
+parser.add_argument('--load', action='store_true', help='Pre load RAG Embedding Models')
 
 args = parser.parse_args()
 
@@ -214,3 +217,6 @@ if args.insert:
 
 if args.run:
     run_rag()
+
+if args.load:
+    load()

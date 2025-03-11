@@ -19,7 +19,7 @@ class Rag:
         contextdir = os.path.dirname(src)
         cfile = f"""\
 FROM scratch
-COPY {base} /db
+COPY {base} /
 """
         containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=True)
         # Open the file for writing.
