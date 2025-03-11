@@ -81,6 +81,21 @@ class LocalSnapshotFile(SnapshotFile):
         return os.path.relpath(blob_file_path, start=snapshot_dir)
 
 
+def validate_snapshot_files(snapshot_files: list[SnapshotFile]):
+    model_files = []
+    chat_template_files = []
+    for file in snapshot_files:
+        if file.type == SnapshotFileType.Model:
+            model_files.append(file)
+        if file.type == SnapshotFileType.ChatTemplate:
+            chat_template_files.append(file)
+
+    if len(model_files) > 1:
+        raise Exception(f"Only one model file supported, got {len(model_files)}: {model_files}")
+    if len(chat_template_files) > 1:
+        raise Exception(f"Only one chat template file supported, got {len(chat_template_files)}: {chat_template_files}")
+
+
 class RefFile:
 
     SEP = "---"
@@ -341,6 +356,7 @@ class ModelStore:
         return (ref_file.hash, cached_files, len(cached_files) == len(ref_file.filenames))
 
     def _prepare_new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
+        validate_snapshot_files(snapshot_files)
         self.ensure_directory_setup()
 
         ref_file_path = self.get_ref_file_path(model_tag)
@@ -425,6 +441,7 @@ class ModelStore:
         self._ensure_chat_template(model_tag, snapshot_hash, snapshot_files)
 
     def update_snapshot(self, model_tag: str, snapshot_hash: str, new_snapshot_files: list[SnapshotFile]) -> bool:
+        validate_snapshot_files(new_snapshot_files)
         snapshot_hash = sanitize_hash(snapshot_hash)
 
         if not self.directory_setup_exists():
