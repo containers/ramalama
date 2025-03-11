@@ -1,4 +1,5 @@
-# These annotations are based off the proposed standard:
+# These annotations are based off the standards:
+# https://github.com/opencontainers/image-spec/blob/main/specs-go/v1/annotations.go
 # https://github.com/CloudNativeAI/model-spec
 
 # ArtifactTypeModelManifest specifies the media type for a model manifest.
@@ -14,55 +15,63 @@ ArtifactTypeModelLayerGzip = "application/vnd.cnai.model.layer.v1.tar+gzip"
 
 # AnnotationCreated is the annotation key for the date and time on which the
 # model was built (date-time string as defined by RFC 3339).
-AnnotationCreated = "org.cnai.model.created"
+AnnotationCreated = "org.opencontainers.image.created"
 
 # AnnotationAuthors is the annotation key for the contact details of the people
 # or organization responsible for the model (freeform string).
-AnnotationAuthors = "org.cnai.model.authors"
+AnnotationAuthors = "org.opencontainers.image.authors"
 
 # AnnotationURL is the annotation key for the URL to find more information on
-# the model.
-AnnotationURL = "org.cnai.model.url"
+# the artifact.
+AnnotationURL = "org.opencontainers.image.url"
 
 # AnnotationDocumentation is the annotation key for the URL to get documentation
-# on the model.
-AnnotationDocumentation = "org.cnai.model.documentation"
+# on the artifact.
+AnnotationDocumentation = "org.opencontainers.image.documentation"
 
 # AnnotationSource is the annotation key for the URL to get source code for
-# building the model.
-AnnotationSource = "org.cnai.model.source"
+# building the artifact.
+AnnotationSource = "org.opencontainers.image.source"
 
 # AnnotationVersion is the annotation key for the version of the packaged
 # software.
 # The version MAY match a label or tag in the source code repository.
 # The version MAY be Semantic versioning-compatible.
-AnnotationVersion = "org.cnai.model.version"
+AnnotationVersion = "org.opencontainers.image.version"
 
 # AnnotationRevision is the annotation key for the source control revision
-# identifier for the packaged software.
-AnnotationRevision = "org.cnai.model.revision"
+# identifier for the packaged artifact.
+AnnotationRevision = "org.opencontainers.image.revision"
 
 # AnnotationVendor is the annotation key for the name of the distributing
 # entity, organization or individual.
-AnnotationVendor = "org.cnai.model.vendor"
+AnnotationVendor = "org.opencontainers.image.vendor"
 
 # AnnotationLicenses is the annotation key for the license(s) under which
 # contained software is distributed as an SPDX License Expression.
-AnnotationLicenses = "org.cnai.model.licenses"
+AnnotationLicenses = "org.opencontainers.image.licenses"
 
 # AnnotationRefName is the annotation key for the name of the reference for a
 # target.
 # SHOULD only be considered valid when on descriptors on `index.json` within
-# model layout.
-AnnotationRefName = "org.cnai.model.ref.name"
+# artifact layout.
+AnnotationRefName = "org.opencontainers.image.ref.name"
 
 # AnnotationTitle is the annotation key for the human-readable title of the
-# model.
-AnnotationTitle = "org.cnai.model.title"
+# artifact.
+AnnotationTitle = "org.opencontainers.image.title"
 
 # AnnotationDescription is the annotation key for the human-readable description
-# of the software packaged in the model.
-AnnotationDescription = "org.cnai.model.description"
+# of the software packaged in the artifact.
+AnnotationDescription = "org.opencontainers.image.description"
+
+# AnnotationBaseImageDigest is the annotation key for the digest of the image's
+# base image.
+AnnotationBaseImageDigest = "org.opencontainers.image.base.digest"
+
+# AnnotationBaseImageName is the annotation key for the image reference of the
+# image's base image.
+AnnotationBaseImageName = "org.opencontainers.image.base.name"
 
 # AnnotationArchitecture is the annotation key for the model architecture, such
 # as `transformer`, `cnn`, `rnn`, etc.
