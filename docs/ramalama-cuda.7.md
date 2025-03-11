@@ -102,6 +102,22 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    |    0   N/A  N/A        35      G   /Xwayland                                   N/A      |
    +-----------------------------------------------------------------------------------------+
    ```
+## Troubleshooting
+
+### CUDA Updates
+
+On some CUDA software updates, RamaLama stops working complaining about missing shared NVIDIA libraries for example:
+
+```
+ramalama run granite
+Error: crun: cannot stat `/lib64/libEGL_nvidia.so.565.77`: No such file or directory: OCI runtime attempted to invoke a command that was not found
+```
+
+Because the CUDA version is updated, the CDI specification file needs to be recreated.
+
+   ```bash
+   sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+   ```
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**, **[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**
