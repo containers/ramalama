@@ -4,6 +4,7 @@ import random
 import socket
 import sys
 
+import ramalama
 from ramalama.common import (
     DEFAULT_IMAGE,
     MNT_DIR,
@@ -12,7 +13,6 @@ from ramalama.common import (
     genname,
     get_env_vars,
     get_gpu,
-    podman_machine_accel,
     run_cmd,
 )
 from ramalama.config import CONFIG, DEFAULT_PORT_RANGE, int_tuple_as_str
@@ -317,7 +317,7 @@ class Model(ModelBase):
             for device_arg in args.device:
                 conman_args += ["--device", device_arg]
         else:
-            if podman_machine_accel or os.path.exists("/dev/dri"):
+            if ramalama.common.podman_machine_accel or os.path.exists("/dev/dri"):
                 conman_args += ["--device", "/dev/dri"]
 
             if os.path.exists("/dev/kfd"):
@@ -376,7 +376,7 @@ class Model(ModelBase):
             or os.getenv("CANN_VISIBLE_DEVICES")
             or (
                 # linux and macOS report aarch64 (linux), arm64 (macOS)
-                podman_machine_accel
+                ramalama.common.podman_machine_accel
                 or (machine == "aarch64" and os.path.exists("/dev/dri"))
             )
         ):
