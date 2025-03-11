@@ -7,6 +7,7 @@ import sys
 import ramalama
 from ramalama.common import (
     DEFAULT_IMAGE,
+    MNT_CHAT_TEMPLATE_FILE,
     MNT_DIR,
     MNT_FILE,
     exec_cmd,
@@ -404,6 +405,13 @@ class Model(ModelBase):
         else:
             conman_args += [f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models"]
 
+        # If a chat template is available, mount it as well
+        if self.store is not None:
+            ref_file = self.store.get_ref_file(self.tag)
+            if ref_file.chat_template_name != "":
+                chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                conman_args += [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
+
         # Make sure Image precedes cmd_args.
         conman_args += [self._image(args)] + cmd_args
 
@@ -415,9 +423,9 @@ class Model(ModelBase):
         return True
 
     def bench(self, args):
-        self.validate_args(args)
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_bench(args, model_path)
+        self.validate_args(args)
         self.execute_model(model_path, exec_args, args)
 
     def run(self, args):
@@ -465,6 +473,7 @@ class Model(ModelBase):
             if self.store.tag_exists(tag):
                 fhash, _, _ = self.store.get_cached_files(tag)
                 return self.store.get_snapshot_file_path(fhash, self.store.model_name)
+            return ""
 
         return os.path.join(args.store, "models", self.type, self.directory, self.filename)
 
@@ -529,6 +538,11 @@ class Model(ModelBase):
         gpu_args = self.gpu_args(args=args, runner=True)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
+
+        if self.store is not None:
+            ref_file = self.store.get_ref_file(self.tag)
+            if ref_file.chat_template_name != "":
+                exec_args.extend(["--chat-template-file", MNT_CHAT_TEMPLATE_FILE])
 
         exec_args.append(exec_model_path)
         if len(prompt) > 0:

@@ -52,7 +52,7 @@ install-requirements:
 			huggingface_hub~=0.28.0 \
 			isort~=6.0 \
 			pytest~=8.3 \
-			wheel~=0.45.0 \
+			wheel~=0.45.0
 
 .PHONY: install-completions
 install-completions: completions
