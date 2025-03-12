@@ -1,6 +1,62 @@
 import os
 
-from ramalama.common import get_env_vars
+from jinja2 import Template
+
+from ramalama.common import get_accel_env_vars
+
+
+def create_yaml(template_str, **params):
+    return Template(template_str).render(**params)
+
+
+KSERVE_RUNTIME_TMPL = """
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: {{ runtime }}-runtime
+spec:
+  annotations:
+    prometheus.io/port: '{{ port }}'
+    prometheus.io/path: '/metrics'
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: vLLM
+  containers:
+    - name: kserve-container
+      image: {{ image }}
+      command: ["python", "-m", "vllm.entrypoints.openai.api_server"]
+      args: ["--port={{ port }}", "--model=/mnt/models", "--served-model-name={{ name }}"]
+      env:
+        - name: HF_HOME
+          value: /tmp/hf_home
+      ports:
+        - containerPort: {{ port }}
+          protocol: TCP
+"""
+
+KSERVE_MODEL_SERVICE = """\
+# RamaLama {self.model} AI Model Service
+# kubectl create -f to import this kserve file into Kubernetes.
+#
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: huggingface-{{ model }}
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: vLLM
+      storageUri: "oci://{{ model }}"
+      resources:
+        limits:
+          cpu: "6"
+          memory: 24Gi{{ gpu }}
+        requests:
+          cpu: "6"
+          memory: 24Gi{{ gpu }}
+"""
 
 
 class Kserve:
@@ -22,7 +78,7 @@ class Kserve:
 
     def generate(self):
         env_var_string = ""
-        for k, v in get_env_vars().items():
+        for k, v in get_accel_env_vars().items():
             env_var_string += f"Environment={k}={v}\n"
 
         _gpu = ""
@@ -30,76 +86,31 @@ class Kserve:
             _gpu = 'nvidia.com/gpu'
         elif os.getenv("HIP_VISIBLE_DEVICES") != "":
             _gpu = 'amd.com/gpu'
-        if _gpu != "":
-            gpu = f'\n          {_gpu}: "1"'
 
         outfile = self.name + "-kserve-runtime.yaml"
         outfile = outfile.replace(":", "-")
         print(f"Generating kserve runtime file: {outfile}")
+
+        # In your generate() method:
+        yaml_content = create_yaml(
+            KSERVE_RUNTIME_TMPL,
+            runtime=self.runtime,
+            model=self.model,
+            gpu=_gpu if _gpu else "",
+            port=self.args.port,
+            image=self.image,
+            name=self.name,
+        )
         with open(outfile, 'w') as c:
-            c.write(
-                f"""\
-apiVersion: serving.kserve.io/v1alpha1
-kind: ServingRuntime
-metadata:
-  name: {self.runtime}-runtime
-  annotations:
-    openshift.io/display-name: KServe ServingRuntime for {self.model}
-    opendatahub.io/recommended-accelerators: '["{_gpu}"]'
-  labels:
-    opendatahub.io/dashboard: 'true'
-spec:
-  annotations:
-    prometheus.io/port: '{self.args.port}'
-    prometheus.io/path: '/metrics'
-  multiModel: false
-  supportedModelFormats:
-    - autoSelect: true
-      name: vLLM
-  containers:
-    - name: kserve-container
-      image: {self.image}
-      command:
-        - python
-        - -m
-        - vllm.entrypoints.openai.api_server
-      args:
-        - "--port={self.args.port}"
-        - "--model=/mnt/models"
-        - "--served-model-name={{.Name}}"
-      env:
-        - name: HF_HOME
-          value: /tmp/hf_home
-      ports:
-        - containerPort: {self.args.port}
-          protocol: TCP
-""")
+            c.write(yaml_content)
 
         outfile = self.name + "-kserve.yaml"
         outfile = outfile.replace(":", "-")
         print(f"Generating kserve file: {outfile}")
+        yaml_content = create_yaml(
+            KSERVE_RUNTIME_TMPL,
+            model=self.model,
+            gpu=_gpu if _gpu else "",
+        )
         with open(outfile, 'w') as c:
-            c.write(
-                f"""\
-# RamaLama {self.model} AI Model Service
-# kubectl create -f to import this kserve file into Kubernetes.
-#
-apiVersion: serving.kserve.io/v1beta1
-kind: InferenceService
-metadata:
-  name: huggingface-{self.model}
-spec:
-  predictor:
-    model:
-      modelFormat:
-        name: vLLM
-      storageUri: "oci://{self.model}"
-      resources:
-        limits:
-          cpu: "6"
-          memory: 24Gi{gpu}
-        requests:
-          cpu: "6"
-          memory: 24Gi{gpu}
-"""
-            )
+            c.write(yaml_content)

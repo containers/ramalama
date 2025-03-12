@@ -69,7 +69,7 @@ Generate specified configuration format for running the AI Model as a service
 
 | Key          | Description                                                              |
 | ------------ | -------------------------------------------------------------------------|
-| kserve       | Kserve YAML definition for running the AI Model as a kserve service in Kubernetes        |
+| kserve       | KServe YAML definition for running the AI Model as a KServe service in Kubernetes        |
 | kube         | Kubernetes YAML definition for running the AI Model as a service         |
 | quadlet      | Podman supported container definition for running AI Model under systemd |
 | quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
@@ -91,7 +91,7 @@ number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default
 The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
 #### **--port**, **-p**
-port for AI Model server to listen on. It must be available. If not specified, 
+port for AI Model server to listen on. It must be available. If not specified,
 the serving port will be 8080 if available, otherwise a free port in 8081-8090 range.
 
 #### **--privileged**
@@ -157,16 +157,11 @@ CONTAINER ID  IMAGE                             COMMAND               CREATED   
 Generating kserve runtime file: granite-1.0-kserve-runtime.yaml
 Generating kserve file: granite-1.0-kserve.yaml
 
-$  cat granite-1.0-kserve-runtime.yaml 
+$  cat granite-1.0-kserve-runtime.yaml
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
   name: llama.cpp-runtime
-  annotations:
-    openshift.io/display-name: KServe ServingRuntime for quay.io/ramalama/granite:1.0
-    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-  labels:
-    opendatahub.io/dashboard: 'true'
 spec:
   annotations:
     prometheus.io/port: '8081'
@@ -179,19 +174,19 @@ spec:
     - name: kserve-container
       image: quay.io/ramalama/ramalama:latest
       command:
-        - python
-        - -m
-        - vllm.entrypoints.openai.api_server
+	- python
+	- -m
+	- vllm.entrypoints.openai.api_server
       args:
-        - "--port=8081"
-        - "--model=/mnt/models"
-        - "--served-model-name={.Name}"
+	- "--port=8081"
+	- "--model=/mnt/models"
+	- "--served-model-name={.Name}"
       env:
-        - name: HF_HOME
-          value: /tmp/hf_home
+	- name: HF_HOME
+	  value: /tmp/hf_home
       ports:
-        - containerPort: 8081
-          protocol: TCP
+	- containerPort: 8081
+	  protocol: TCP
 
 $  cat granite-1.0-kserve.yaml
 # RamaLama quay.io/ramalama/granite:1.0 AI Model Service
@@ -205,17 +200,17 @@ spec:
   predictor:
     model:
       modelFormat:
-        name: vLLM
+	name: vLLM
       storageUri: "oci://quay.io/ramalama/granite:1.0"
       resources:
-        limits:
-          cpu: "6"
-          memory: 24Gi
-          nvidia.com/gpu: "1"
-        requests:
-          cpu: "6"
-          memory: 24Gi
-          nvidia.com/gpu: "1"
+	limits:
+	  cpu: "6"
+	  memory: 24Gi
+	  nvidia.com/gpu: "1"
+	requests:
+	  cpu: "6"
+	  memory: 24Gi
+	  nvidia.com/gpu: "1"
 ```
 
 ### Generate quadlet service off of HuggingFace granite Model

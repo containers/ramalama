@@ -19,11 +19,11 @@ from ramalama.common import (
 from ramalama.config import CONFIG, DEFAULT_PORT_RANGE, int_tuple_as_str
 from ramalama.console import EMOJI
 from ramalama.gguf_parser import GGUFInfoParser
+from ramalama.kserve import Kserve
 from ramalama.kube import Kube
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
 from ramalama.model_store import ModelStore
 from ramalama.quadlet import Quadlet
-from ramalama.kserve import Kserve
 from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
