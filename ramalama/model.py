@@ -10,6 +10,7 @@ from ramalama.common import (
     MNT_CHAT_TEMPLATE_FILE,
     MNT_DIR,
     MNT_FILE,
+    check_nvidia,
     exec_cmd,
     genname,
     get_accel_env_vars,
@@ -346,12 +347,24 @@ class Model(ModelBase):
 
         return conman_args
 
+    def add_oci_runtime(self, conman_args, args):
+        if args.oci_runtime:
+            conman_args += ["--runtime", args.oci_runtime]
+        elif check_nvidia() == "cuda":
+            if os.path.basename(args.engine) == "docker":
+                conman_args += ["--runtime", "nvidia"]
+            else:
+                conman_args += ["--runtime", "/usr/bin/nvidia-container-runtime"]
+
+        return conman_args
+
     def setup_container(self, args):
         if not args.engine:
             return []
 
         name = self.get_container_name(args)
         conman_args = self.get_base_conman_args(args, name)
+        conman_args = self.add_oci_runtime(conman_args, args)
         conman_args = self.add_privileged_options(conman_args, args)
         conman_args = self.add_container_labels(conman_args, args)
         conman_args = self.add_subcommand_env(conman_args, args)
