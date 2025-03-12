@@ -28,7 +28,13 @@ download() {
 }
 
 dnf_install() {
+  if grep -q ostree= /proc/cmdline; then
+    return 1
+  fi
+
   $sudo dnf install -y "$1"
+
+  return 0
 }
 
 dnf_install_podman() {
@@ -72,10 +78,6 @@ install_mac_dependencies() {
 }
 
 check_platform() {
-  if $local_install; then
-    return 0
-  fi
-
   if [ "$os" = "Darwin" ]; then
     install_mac_dependencies
   elif [ "$os" = "Linux" ]; then
@@ -89,7 +91,7 @@ check_platform() {
       sudo="sudo"
     fi
 
-    if available dnf && ! grep -q ostree= /proc/cmdline; then
+    if available dnf; then
       dnf_install_podman
     elif available apt; then
       apt_update_install
