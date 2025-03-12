@@ -33,7 +33,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         run_ramalama --dryrun serve --seed 1234 ${model}
         is "$output" ".*--seed 1234" "verify seed is set"
         if not_docker; then
-        is "$output" ".*--pull=newer" "verify pull is newer"
+            is "$output" ".*--pull=newer" "verify pull is newer"
         fi
         assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
         assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
@@ -50,7 +50,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
 
         run_ramalama stop --all
-        else
+    else
         run_ramalama --dryrun serve ${model}
         assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
         run_ramalama --dryrun serve --seed abcd --host 127.0.0.1 ${model}
