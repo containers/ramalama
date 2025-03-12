@@ -2,6 +2,7 @@ import argparse
 import glob
 import json
 import os
+import shlex
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -186,6 +187,8 @@ def post_parse_setup(args):
         if resolved_model:
             args.UNRESOLVED_MODEL = args.MODEL
             args.MODEL = resolved_model
+    if hasattr(args, "runtime_args"):
+        args.runtime_args = shlex.split(args.runtime_args)
 
 
 def login_parser(subparsers):
@@ -689,6 +692,13 @@ def run_serve_perplexity_args(parser):
         dest="context",
         default=CONFIG['ctx_size'],
         help="size of the prompt context (0 = loaded from model)",
+    )
+    parser.add_argument(
+        "--runtime-args",
+        dest="runtime_args",
+        default="",
+        type=str,
+        help="arguments to add to runtime invocation",
     )
 
 
