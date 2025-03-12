@@ -579,7 +579,7 @@ class Model(ModelBase):
                     return
             raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
-    def build_exec_args_serve(self, args, exec_model_path):
+    def build_exec_args_serve(self, args, exec_model_path, chat_template_path=""):
         if args.runtime == "vllm":
             exec_args = [
                 "--model",
@@ -601,6 +601,8 @@ class Model(ModelBase):
                 "--temp",
                 f"{args.temp}",
             ]
+            if chat_template_path != "":
+                exec_args.extend(["--chat-template-file", chat_template_path])
         if args.seed:
             exec_args += ["--seed", args.seed]
 
@@ -621,14 +623,14 @@ class Model(ModelBase):
 
         return exec_args
 
-    def generate_container_config(self, model_path, args, exec_args):
+    def generate_container_config(self, model_path, chat_template_path, args, exec_args):
         self.image = self._image(args)
         if args.generate == "quadlet":
-            self.quadlet(model_path, args, exec_args)
+            self.quadlet(model_path, chat_template_path, args, exec_args)
         elif args.generate == "kube":
-            self.kube(model_path, args, exec_args)
+            self.kube(model_path, chat_template_path, args, exec_args)
         elif args.generate == "quadlet/kube":
-            self.quadlet_kube(model_path, args, exec_args)
+            self.quadlet_kube(model_path, chat_template_path, args, exec_args)
         else:
             return False
 
@@ -652,30 +654,39 @@ class Model(ModelBase):
     def serve(self, args):
         self.validate_args(args)
         args.port = compute_serving_port(args.port, args.debug)
-        model_path = self.get_model_path(args)
-        exec_model_path = MNT_FILE
-        if not args.container and not args.generate:
-            exec_model_path = model_path
 
-        exec_args = self.build_exec_args_serve(args, exec_model_path)
+        model_path = self.get_model_path(args)
+        exec_model_path = MNT_FILE if args.container or args.generate else model_path
+
+        chat_template_path = ""
+        if self.store is not None:
+            ref_file = self.store.get_ref_file(self.tag)
+            if ref_file.chat_template_name != "":
+                chat_template_path = (
+                    MNT_CHAT_TEMPLATE_FILE
+                    if args.container or args.generate
+                    else self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                )
+
+        exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path)
         exec_args = self.handle_runtime(args, exec_args, exec_model_path)
-        if self.generate_container_config(model_path, args, exec_args):
+        if self.generate_container_config(model_path, chat_template_path, args, exec_args):
             return
 
         self.execute_command(model_path, exec_args, args)
 
-    def quadlet(self, model, args, exec_args):
-        quadlet = Quadlet(model, self.image, args, exec_args)
+    def quadlet(self, model, chat_template, args, exec_args):
+        quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
         quadlet.generate()
 
-    def quadlet_kube(self, model, args, exec_args):
-        kube = Kube(model, self.image, args, exec_args)
+    def quadlet_kube(self, model, chat_template, args, exec_args):
+        kube = Kube(model, chat_template, self.image, args, exec_args)
         kube.generate()
-        quadlet = Quadlet(model, self.image, args, exec_args)
+        quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
         quadlet.kube()
 
-    def kube(self, model, args, exec_args):
-        kube = Kube(model, self.image, args, exec_args)
+    def kube(self, model, chat_template, args, exec_args):
+        kube = Kube(model, chat_template, self.image, args, exec_args)
         kube.generate()
 
     def check_valid_model_path(self, relative_target_path, model_path):
