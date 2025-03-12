@@ -697,7 +697,7 @@ def run_serve_perplexity_args(parser):
         type=str,
         nargs="+",
         default=[],
-        help="arguments to add to runtime invocation"
+        help="arguments to add to runtime invocation",
     )
 
 
