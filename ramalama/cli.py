@@ -690,6 +690,14 @@ def run_serve_perplexity_args(parser):
         default=CONFIG['ctx_size'],
         help="size of the prompt context (0 = loaded from model)",
     )
+    parser.add_argument(
+        "--runtime-arg",
+        dest="runtime_args",
+        action='append',
+        type=str,
+        default=[],
+        help="argument to add to runtime invocation"
+    )
 
 
 def bench_run_serve_perplexity_args(parser):
