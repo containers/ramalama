@@ -48,8 +48,6 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         is "$output" ".*--privileged" "verify --privileged is set"
         assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
         assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
-
-        run_ramalama stop --all
     else
         run_ramalama --dryrun serve ${model}
         assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
