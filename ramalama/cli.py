@@ -691,12 +691,13 @@ def run_serve_perplexity_args(parser):
         help="size of the prompt context (0 = loaded from model)",
     )
     parser.add_argument(
-        "--runtime-arg",
+        "--runtime-args",
         dest="runtime_args",
         action='append',
         type=str,
+        nargs="+",
         default=[],
-        help="argument to add to runtime invocation"
+        help="arguments to add to runtime invocation"
     )
 
 
