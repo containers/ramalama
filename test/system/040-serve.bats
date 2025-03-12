@@ -44,12 +44,10 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         run_ramalama 2 --dryrun serve --pull=bogus ${model}
         is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"
 
-        if is_container; then
-            run_ramalama --dryrun serve --privileged ${model}
-            is "$output" ".*--privileged" "verify --privileged is set"
-            assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
-            assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
-        fi
+        run_ramalama --dryrun serve --privileged ${model}
+        is "$output" ".*--privileged" "verify --privileged is set"
+        assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
+        assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
 
         run_ramalama stop --all
         else
