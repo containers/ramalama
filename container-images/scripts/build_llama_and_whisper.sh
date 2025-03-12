@@ -97,12 +97,12 @@ setup_build_env() {
     if [ -f "${cann_in_sys_path}/set_env.sh" ]; then
         # shellcheck disable=SC1091
         source ${cann_in_sys_path}/set_env.sh;
-        export LD_LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${cann_in_sys_path}/latest/aarch64-linux/devlib:${LD_LIBRARY_PATH};
+        export LD_LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${cann_in_sys_path}/latest/${uname_m}-linux/devlib:${LD_LIBRARY_PATH};
         export LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${LIBRARY_PATH};
     elif [ -f "${cann_in_user_path}/set_env.sh" ]; then
         # shellcheck disable=SC1091
         source "$HOME/Ascend/ascend-toolkit/set_env.sh";
-        export LD_LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${cann_in_user_path}/latest/aarch64-linux/devlib:${LD_LIBRARY_PATH};
+        export LD_LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${cann_in_user_path}/latest/${uname_m}-linux/devlib:${LD_LIBRARY_PATH};
         export LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${LIBRARY_PATH};
     else
         echo "No Ascend Toolkit found";
