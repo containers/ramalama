@@ -1,10 +1,10 @@
 import os
 
-from ramalama.common import MNT_DIR, MNT_FILE, get_accel_env_vars
+from ramalama.common import MNT_CHAT_TEMPLATE_FILE, MNT_DIR, MNT_FILE, get_accel_env_vars
 
 
 class Quadlet:
-    def __init__(self, model, image, args, exec_args):
+    def __init__(self, model, chat_template, image, args, exec_args):
         self.ai_image = model
         if hasattr(args, "MODEL"):
             self.ai_image = args.MODEL
@@ -18,6 +18,7 @@ class Quadlet:
         self.args = args
         self.exec_args = exec_args
         self.image = image
+        self.chat_template = chat_template
 
     def kube(self):
         outfile = self.name + ".kube"
@@ -53,7 +54,8 @@ WantedBy=multi-user.target default.target
 
         outfile = self.name + ".container"
         print(f"Generating quadlet file: {outfile}")
-        volume = self.gen_volume()
+        model_volume = self.gen_model_volume()
+        chat_template_volume = self.gen_chat_template_volume()
         with open(outfile, 'w') as c:
             c.write(
                 f"""\
@@ -67,7 +69,8 @@ AddDevice=-/dev/kfd
 Exec={" ".join(self.exec_args)}
 Image={self.image}
 {env_var_string}
-{volume}
+{model_volume}
+{chat_template_volume}
 {name_string}
 {port_string}
 
@@ -77,7 +80,12 @@ WantedBy=multi-user.target default.target
 """
             )
 
-    def gen_volume(self):
+    def gen_chat_template_volume(self):
+        if os.path.exists(self.chat_template):
+            return f"Mount=type=bind,src={self.chat_template},target={MNT_CHAT_TEMPLATE_FILE},ro,Z"
+        return ""
+
+    def gen_model_volume(self):
         if os.path.exists(self.model):
             return f"Mount=type=bind,src={self.model},target={MNT_FILE},ro,Z"
 

@@ -5,6 +5,7 @@
 This guide walks through the steps required to set up RamaLama with Ascend NPU support.
  - [Background](#background)
  - [Hardware](#hardware)
+ - [Model](#model)
  - [Docker](#docker)
  - [HISTORY](#todo)
 
@@ -20,6 +21,7 @@ This guide walks through the steps required to set up RamaLama with Ascend NPU s
 
 **Verified devices**
 
+Table Supported Hardware List:
 | Ascend NPU                     | Status  |
 | -----------------------------  | ------- |
 | Atlas A2 Training series       | Support |
@@ -28,7 +30,10 @@ This guide walks through the steps required to set up RamaLama with Ascend NPU s
 *Notes:*
 
 - If you have trouble with Ascend NPU device, please create an issue with **[CANN]** prefix/tag.
-- If you run successfully with your Ascend NPU device, please help update the upper table.
+- If you are running successfully with an Ascend NPU device, please help update the "Supported Hardware List" table above.
+
+## Model
+Currently, Ascend NPU acceleration is only supported when the llama.cpp backend is selected. For supported models, please refer to the page [llama.cpp/backend/CANN.md](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/CANN.md).
 
 ## Docker
 ### Install the Ascend driver

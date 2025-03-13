@@ -5,7 +5,7 @@ from ramalama.version import version
 
 
 class Kube:
-    def __init__(self, model, image, args, exec_args):
+    def __init__(self, model, chat_template, image, args, exec_args):
         self.ai_image = model
         if hasattr(args, "MODEL"):
             self.ai_image = args.MODEL
@@ -19,6 +19,7 @@ class Kube:
         self.args = args
         self.exec_args = exec_args
         self.image = image
+        self.chat_template = chat_template
 
     def gen_volumes(self):
         mounts = f"""\
@@ -34,6 +35,9 @@ class Kube:
             volumes += self.gen_path_volume()
         else:
             volumes += self.gen_oci_volume()
+
+        if os.path.exists(self.chat_template):
+            volumes += self.gen_chat_template_volume()
 
         m, v = self.gen_devices()
         mounts += m
@@ -66,6 +70,12 @@ class Kube:
           reference: {self.ai_image}
           pullPolicy: IfNotPresent
         name: model"""
+
+    def gen_chat_template_volume(self):
+        return f"""
+      - hostPath:
+          path: {self.chat_template}
+        name: chat_template"""
 
     def _gen_ports(self):
         if not hasattr(self.args, "port"):
