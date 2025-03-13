@@ -26,6 +26,9 @@ EOF
 	run_ramalama --dryrun run --env a=b --env test=success --name foobar ${MODEL}
 	is "$output" "${verify_begin} foobar.*--env a=b --env test=success" "dryrun correct with --env"
 
+	run_ramalama --dryrun run --oci-runtime foobar ${MODEL}
+	is "$output" "${verify_begin} .*--runtime foobar" "dryrun correct with --oci-runtime"
+
 	run_ramalama --dryrun run --seed 9876 -c 4096 --net bridge --name foobar ${MODEL}
 	is "$output" "${verify_begin} foobar.*--network bridge.*" "dryrun correct with --name"
 	is "$output" ".*${MODEL}" "verify model name"

@@ -714,6 +714,10 @@ def bench_run_serve_perplexity_args(parser):
         help="number of layers to offload to the gpu, if available",
     )
     parser.add_argument(
+        "--oci-runtime",
+        help="override the default OCI runtime used to launch the container",
+    )
+    parser.add_argument(
         "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
     )
     parser.add_argument(

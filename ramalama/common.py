@@ -32,6 +32,7 @@ DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
 
 _engine = -1  # -1 means cached variable not set yet
+_nvidia = -1  # -1 means cached variable not set yet
 podman_machine_accel = False
 
 
@@ -318,15 +319,18 @@ def check_asahi():
 
 
 def check_nvidia():
+    global _nvidia
+    if _nvidia != -1:
+        return _nvidia
     try:
         command = ['nvidia-smi']
         run_cmd(command).stdout.decode("utf-8")
         os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-        return "cuda"
+        _nvidia = "cuda"
+        return _nvidia
     except Exception:
-        pass
-
-    return None
+        _nvidia = ""
+    return _nvidia
 
 
 def check_ascend():

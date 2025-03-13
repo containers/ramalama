@@ -57,6 +57,15 @@ set the network mode for the container
 number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
 The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
+#### **--oci-runtime**
+
+Override the default OCI runtime used to launch the container. Container
+engines like Podman and Docker, have their own default oci runtime that they
+use. Using this option RamaLama will override these defaults.
+
+On Nvidia based GPU systems, RamaLama defaults to using the
+`nvidia-container-runtime`. Use this option to override this selection.
+
 #### **--privileged**
 By default, RamaLama containers are unprivileged (=false) and cannot, for
 example, modify parts of the operating system. This is because by de‐
