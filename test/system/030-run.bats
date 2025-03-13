@@ -50,7 +50,7 @@ EOF
 	assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
 	assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
 
-    run_ramalama --dryrun run --runtime-args="--foo -bar" ${model}
+    run_ramalama --dryrun run --runtime-args="--foo -bar" ${MODEL}
     assert "$output" =~ ".*--foo" "--foo passed to runtime"
     assert "$output" =~ ".*-bar" "-bar passed to runtime"
 
