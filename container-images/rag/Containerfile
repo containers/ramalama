@@ -4,22 +4,3 @@ RUN mkdir /db
 COPY ../rag/rag_framework.py /
 COPY ../rag/build_rag.sh /tmp/
 RUN sh /tmp/build_rag.sh
-
-# buils container
-# podman build -t quickrag -f rag/Containerfile .
-
-# How to run command so far
-# podman run --rm -it --name quickrag localhost/quickrag:latest python3 rag_framework.py --run
-
-# Command to insert
-# podman run --rm -it --name quickrag --security-opt=label=disable --security-opt=no-new-privileges --mount type=bind,src=/home/brian/Downloads/Resume.pdf,destination=/Resume.pdf,ro localhost/quickrag:latest python3 rag_framework.py --insert Resume.pdf
-# command to mount file mount model 
-# podman run --rm -it --name quickrag --security-opt=label=disable --security-opt=no-new-privileges --mount type=bind,src=/home/brian/Downloads/Resume.pdf,destination=/Resume.pdf,ro --mount type=bind,src=/home/brian/.local/share/ramalama/models/ollama/llama3.2:latest,destination=/mnt/models/model.file,ro localhost/quickrag:latest
-
-# Run these commands to get everything working inside the container
-
-# Run in background
-# nohup llama-server --port 8080 -m /mnt/models/model.file -c 2048 --temp 0.8 -ngl 999 --host 0.0.0.0 > /dev/null 2>&1 &
-
-# python3 rag_framework --insert Resume.pdf
-# python3 rag_framework --run
