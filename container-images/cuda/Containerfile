@@ -1,12 +1,12 @@
 # Base image with CUDA for compilation
-FROM docker.io/nvidia/cuda:12.6.0-devel-ubi9 AS builder
+FROM docker.io/nvidia/cuda:12.8.1-devel-ubi9 AS builder
 
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
     /scripts/build_llama_and_whisper.sh "cuda"
 
 # Final runtime image
-FROM docker.io/nvidia/cuda:12.6.0-runtime-ubi9
+FROM docker.io/nvidia/cuda:12.8.1-runtime-ubi9
 
 RUN dnf install -y python3 && \
     dnf clean all && rm -rf /var/cache/*dnf*
