@@ -395,12 +395,10 @@ def translate_continue_nodes(root_nodes: list[Node]) -> list[Node]:
         continue_node.end = -1
         continue_node.content = (
             f"{GO_SYMBOL_OPEN_BRACKETS}"
-            f"{SYMBOL_REMOVE_WHITESPACE
-                if continue_node.content[len(GO_SYMBOL_OPEN_BRACKETS) + 1] == SYMBOL_REMOVE_WHITESPACE
-                else ""}{skip_variable} := 1 "
-            f"{SYMBOL_REMOVE_WHITESPACE
-               if continue_node.content[(len(GO_SYMBOL_CLOSE_BRACKETS) + 1) * -1] == SYMBOL_REMOVE_WHITESPACE
-                else ""}{GO_SYMBOL_CLOSE_BRACKETS}"
+            f"{SYMBOL_REMOVE_WHITESPACE if continue_node.content[len(GO_SYMBOL_OPEN_BRACKETS) + 1] == SYMBOL_REMOVE_WHITESPACE else ''}"
+            f"{skip_variable} := 1 "
+            f"{SYMBOL_REMOVE_WHITESPACE if continue_node.content[(len(GO_SYMBOL_CLOSE_BRACKETS) + 1) * -1] == SYMBOL_REMOVE_WHITESPACE else ''}"
+            f"{GO_SYMBOL_CLOSE_BRACKETS}"
         )
         continue_node.artificial = True
 
@@ -606,7 +604,7 @@ def tree_structure(nodes: list[Node], level: int) -> str:
     for node in nodes:
         res += (
             level * "\t" + f"{node.type}: {node.start},{node.end} - "
-            f"{"--" if node.parent is None else node.parent.type} - {node.content}\n"
+            f"{'--' if node.parent is None else node.parent.type} - {node.content}\n"
         )
         res += tree_structure(node.children, level + 1)
     return res
