@@ -393,14 +393,20 @@ def translate_continue_nodes(root_nodes: list[Node]) -> list[Node]:
         continue_node.type = NodeType.ASSIGNMENT
         continue_node.start = -1
         continue_node.end = -1
+        remove_whitespace_open = (
+            SYMBOL_REMOVE_WHITESPACE
+            if continue_node.content[len(GO_SYMBOL_OPEN_BRACKETS) + 1] == SYMBOL_REMOVE_WHITESPACE
+            else ""
+        )
+        remove_whitespace_close = (
+            SYMBOL_REMOVE_WHITESPACE
+            if continue_node.content[(len(GO_SYMBOL_CLOSE_BRACKETS) + 1) * -1] == SYMBOL_REMOVE_WHITESPACE
+            else ""
+        )
         continue_node.content = (
             f"{GO_SYMBOL_OPEN_BRACKETS}"
-            f"{SYMBOL_REMOVE_WHITESPACE
-                if continue_node.content[len(GO_SYMBOL_OPEN_BRACKETS) + 1] == SYMBOL_REMOVE_WHITESPACE
-                else ""}{skip_variable} := 1 "
-            f"{SYMBOL_REMOVE_WHITESPACE
-               if continue_node.content[(len(GO_SYMBOL_CLOSE_BRACKETS) + 1) * -1] == SYMBOL_REMOVE_WHITESPACE
-                else ""}{GO_SYMBOL_CLOSE_BRACKETS}"
+            f"{remove_whitespace_open}{skip_variable} := 1 "
+            f"{remove_whitespace_close}{GO_SYMBOL_CLOSE_BRACKETS}"
         )
         continue_node.artificial = True
 
@@ -604,11 +610,10 @@ def go_to_jinja(content: str) -> str:
 def tree_structure(nodes: list[Node], level: int) -> str:
     res = ""
     for node in nodes:
-        res += (
-            level * "\t" + f"{node.type}: {node.start},{node.end} - "
-            f"{"--" if node.parent is None else node.parent.type} - {node.content}\n"
-        )
+        parent_type = "--" if node.parent is None else node.parent.type
+        res += level * "\t" + f"{node.type}: {node.start},{node.end} - " f"{parent_type} - {node.content}\n"
         res += tree_structure(node.children, level + 1)
+
     return res
 
 
