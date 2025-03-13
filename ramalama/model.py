@@ -581,7 +581,7 @@ class Model(ModelBase):
                     return
             raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
-    def build_exec_args_serve(self, args, exec_model_path):
+    def build_exec_args_serve(self, args, exec_model_path, chat_template_path=""):
         runtime_args = shlex.split(args.runtime_args)
         if args.runtime == "vllm":
             exec_args = [
