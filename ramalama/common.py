@@ -6,8 +6,6 @@ import json
 import logging
 import os
 import random
-
-# import re
 import shutil
 import string
 import subprocess
@@ -15,6 +13,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from typing import List
 
 import ramalama.console as console
 from ramalama.http_client import HttpClient
@@ -304,6 +303,36 @@ def engine_version(engine):
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
 
 
+def resolve_cdi(spec_dirs: List[str]):
+    """Loads all CDI specs from the given directories."""
+    for spec_dir in spec_dirs:
+        for root, _, files in os.walk(spec_dir):
+            for file in files:
+                if file.endswith('.json') or file.endswith('.yaml'):
+                    if load_spec(os.path.join(root, file)):
+                        return True
+
+    return False
+
+
+def yaml_safe_load(stream) -> dict:
+    data = {}
+    for line in stream:
+        if ':' in line:
+            key, value = line.split(':', 1)
+            data[key.strip()] = value.strip()
+
+    return data
+
+
+def load_spec(path: str):
+    """Loads a single CDI spec file."""
+    with open(path, 'r') as f:
+        spec = json.load(f) if path.endswith('.json') else yaml_safe_load(f)
+
+    return spec.get('kind')
+
+
 def check_asahi():
     if os.path.exists('/proc/device-tree/compatible'):
         try:
@@ -322,14 +351,20 @@ def check_nvidia():
     global _nvidia
     if _nvidia != -1:
         return _nvidia
+
     try:
         command = ['nvidia-smi']
         run_cmd(command).stdout.decode("utf-8")
         os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-        _nvidia = "cuda"
-        return _nvidia
+
+        # ensure at least one CDI device resolves
+        if resolve_cdi(['/etc/cdi', '/var/run/cdi']):
+            _nvidia = "cuda"
+            return _nvidia
+
     except Exception:
         _nvidia = ""
+
     return _nvidia
 
 

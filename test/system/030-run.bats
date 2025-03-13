@@ -2,7 +2,7 @@
 
 load helpers
 
-MODEL=smollm:135m
+MODEL=smollm:1.7b
 
 @test "ramalama --dryrun run basic output" {
     image=m_$(safename)
