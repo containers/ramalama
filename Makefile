@@ -114,6 +114,10 @@ docs:
 
 .PHONY: lint
 lint:
+ifneq (,$(wildcard /usr/bin/python3))
+	/usr/bin/python3 -m compileall -q .
+endif
+
 	flake8 *.py */*.py */*/*.py
 	shellcheck *.sh */*.sh */*/*.sh
 
