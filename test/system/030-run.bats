@@ -53,7 +53,6 @@ EOF
     assert "$output" =~ ".*--foo" "--foo passed to runtime"
     assert "$output" =~ ".*-bar" "-bar passed to runtime"
 
-
 	if is_container; then
 	    run_ramalama --dryrun run --privileged ${model}
 	    is "$output" ".*--privileged" "verify --privileged is set"
