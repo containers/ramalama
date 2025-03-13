@@ -1,6 +1,7 @@
 import os
 import platform
 import random
+import shlex
 import socket
 import sys
 
@@ -527,7 +528,7 @@ class Model(ModelBase):
             os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
 
         exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
-        exec_args += args.runtime_args
+        exec_args += shlex.split(args.runtime_args)
 
         if args.seed:
             exec_args += ["--seed", args.seed]
@@ -581,6 +582,7 @@ class Model(ModelBase):
             raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
     def build_exec_args_serve(self, args, exec_model_path):
+        runtime_args = shlex.split(args.runtime_args)
         if args.runtime == "vllm":
             exec_args = [
                 "--model",
@@ -589,7 +591,7 @@ class Model(ModelBase):
                 args.port,
                 "--max-sequence-length",
                 f"{args.context}",
-            ] + args.runtime_args
+            ] + runtime_args
         else:
             exec_args = [
                 "llama-server",
@@ -601,7 +603,7 @@ class Model(ModelBase):
                 f"{args.context}",
                 "--temp",
                 f"{args.temp}",
-            ] + args.runtime_args
+            ] + runtime_args
         if args.seed:
             exec_args += ["--seed", args.seed]
 

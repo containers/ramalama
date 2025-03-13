@@ -58,7 +58,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
     fi
 
-    run_ramalama --dryrun serve --runtime-args=--foo --runtime-args=-bar ${model}
+    run_ramalama --dryrun serve --runtime-args="--foo -bar" ${model}
     assert "$output" =~ ".*--foo" "--foo passed to runtime"
     assert "$output" =~ ".*-bar" "-bar passed to runtime"
 
