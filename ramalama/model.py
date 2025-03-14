@@ -325,9 +325,6 @@ class Model(ModelBase):
             if os.path.exists("/dev/kfd"):
                 conman_args += ["--device", "/dev/kfd"]
 
-            if os.path.exists("/dev/davinci0"):
-                conman_args += ["--device", "/dev/davinci0"]
-
             for k, v in get_accel_env_vars().items():
                 # Special case for Cuda
                 if k == "CUDA_VISIBLE_DEVICES":
@@ -387,7 +384,7 @@ class Model(ModelBase):
             or os.getenv("ASAHI_VISIBLE_DEVICES")
             or os.getenv("CUDA_VISIBLE_DEVICES")
             or os.getenv("INTEL_VISIBLE_DEVICES")
-            or os.getenv("CANN_VISIBLE_DEVICES")
+            or os.getenv("ASCEND_VISIBLE_DEVICES")
             or (
                 # linux and macOS report aarch64 (linux), arm64 (macOS)
                 ramalama.common.podman_machine_accel

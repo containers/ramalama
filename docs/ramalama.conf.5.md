@@ -96,7 +96,7 @@ RAMALAMA_IMAGE environment variable overrides this field.
   CUDA_VISIBLE_DEVICES  = "quay.io/ramalama/cuda"
   ASAHI_VISIBLE_DEVICES = "quay.io/ramalama/asahi"
   INTEL_VISIBLE_DEVICES = "quay.io/ramalama/intel-gpu"
-  CANN_VISIBLE_DEVICES  = "quay.io/ramalama/cann"
+  ASCEND_VISIBLE_DEVICES  = "quay.io/ramalama/cann"
 
 Alternative images to use when RamaLama recognizes specific hardware
 
