@@ -65,8 +65,6 @@ set the network mode for the container
 number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
 The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
-Pull image policy. The default is **missing**.
-
 #### **--oci-runtime**
 
 Override the default OCI runtime used to launch the container. Container
@@ -95,6 +93,7 @@ Containers running in a user namespace (e.g., rootless containers) can‐
 not have more privileges than the user that launched them.
 
 #### **--pull**=*policy*
+Pull image policy. The default is **missing**.
 
 - **always**: Always pull the image and throw an error if the pull fails.
 - **missing**: Only pull the image when it does not exist in the local containers storage. Throw an error if no image is found and the pull fails.
@@ -113,6 +112,10 @@ llama.cpp explains this as:
   The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
     Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+
+#### **--threads**, **-t**
+maximum number of cpu threads to use for inferencing
+The default -1, uses the default of the underlying implementation
 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
