@@ -42,6 +42,7 @@ This provides NPU acceleration using the AI cores of your Ascend NPU. And [CANN]
 For more information about Ascend NPU in [Ascend Community](https://www.hiascend.com/en/).
 
 Make sure to have the CANN toolkit installed. You can download it from here: [CANN Toolkit](https://www.hiascend.com/developer/download/community/result?module=cann)
+Make sure the Ascend Docker runtime is installed. You can download it from here: [Ascend-docker-runtime](https://www.hiascend.com/document/detail/en/mindx-dl/300/dluserguide/clusterscheduling/dlug_installation_02_000025.html)
 
 ### Build Images
 Go to `ramalama` directory and build using make.
@@ -52,7 +53,8 @@ make install
 
 You can test with:
 ```bash
-ramalama --image quay.io/ramalama/cann:latest serve -d -p 8080 --device=/dev/davinci0 -name ollama://smollm:135m
+export ASCEND_VISIBLE_DEVICES=0
+ramalama --image quay.io/ramalama/cann:latest serve -d -p 8080 -name ollama://smollm:135m
 ```
 
 In a window see the running podman container.

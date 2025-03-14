@@ -370,9 +370,9 @@ def check_nvidia():
 
 def check_ascend():
     try:
-        command = ['npu-smi']
+        command = ['npu-smi', 'info']
         run_cmd(command).stdout.decode("utf-8")
-        os.environ["CANN_VISIBLE_DEVICES"] = "0"
+        os.environ["ASCEND_VISIBLE_DEVICES"] = "0"
         return "cann"
     except Exception:
         pass
@@ -440,7 +440,7 @@ def set_accel_env_vars():
 def get_accel_env_vars():
     gpu_vars = (
         "ASAHI_VISIBLE_DEVICES",
-        "CANN_VISIBLE_DEVICES",
+        "ASCEND_VISIBLE_DEVICES",
         "CUDA_VISIBLE_DEVICES",
         "CUDA_LAUNCH_BLOCKING",
         "HIP_VISIBLE_DEVICES",

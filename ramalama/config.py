@@ -87,7 +87,7 @@ def load_config_defaults(config: Dict[str, Any]):
             "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
             "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
             "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
-            "CANN_VISIBLE_DEVICES": "quay.io/ramalama/cann",
+            "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
         },
     )
 
