@@ -27,13 +27,13 @@ add_build_platform() {
   fi
 
   conman_build+=("--platform" "$platform")
-  conman_build+=("-t" "$REGISTRY_PATH/$image_name")
-  conman_build+=("-f" "$image_name/Containerfile" ".")
+  conman_build+=("-t" "$REGISTRY_PATH/${target}")
+  conman_build+=("-f" "${target}/Containerfile" ".")
 }
 
 rm_container_image() {
   if $rm_after_build; then
-    "$conman_bin" rmi -f "$image_name" || true
+    "$conman_bin" rmi -f "${target}" || true
   fi
 }
 
@@ -57,10 +57,10 @@ add_entrypoints() {
 }
 
 build() {
-  cd "container-images"
-  local image_name="${1//container-images\//}"
+  local target=${1}
+  cd "container-images/"
   local conman_build=("${conman[@]}")
-  local conman_show_size=("${conman[@]}" "images" "--filter" "reference='$REGISTRY_PATH/$image_name'")
+  local conman_show_size=("${conman[@]}" "images" "--filter" "reference='$REGISTRY_PATH/${target}'")
   if [ "$3" == "-d" ]; then
       add_build_platform
       echo "${conman_build[@]}"
@@ -74,15 +74,15 @@ build() {
       echo "${conman_build[@]}"
       "${conman_build[@]}"
       "${conman_show_size[@]}"
-      add_entrypoints "${conman[@]}" "$REGISTRY_PATH"/"$image_name"
+      add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}"
       rm_container_image
       ;;
     push)
-      "${conman[@]}" push "$REGISTRY_PATH/$image_name"
+      "${conman[@]}" push "$REGISTRY_PATH/${target}"
       ;;
     multi-arch)
-      podman farm build -t "$REGISTRY_PATH"/"$image_name" -f "$image_name"/Containerfile .
-      add_entrypoints "podman farm" "$REGISTRY_PATH"/"$image_name"
+      podman farm build -t "$REGISTRY_PATH"/"${target}" -f "${target}"/Containerfile .
+      add_entrypoints "podman farm" "$REGISTRY_PATH"/"${target}"
       ;;
     *)
       echo "Invalid command: ${2:-}. Use 'build', 'push' or 'multi-arch'."
@@ -150,7 +150,7 @@ process_all_targets() {
   build "container-images/ramalama" "$command" "$option"
   for i in container-images/*; do
     # skip these directories
-    if [[ "$i" =~ ^container-images/(scripts|ramalama|pragmatic)$ ]]; then
+    if [[ "$i" =~ ^container-images/(scripts|ramalama)$ ]]; then
       continue
     fi
 
@@ -218,7 +218,7 @@ main() {
   if [ "$target" = "all" ]; then
     process_all_targets "$command" "$option"
   else
-    build "container-images/$target" "$command" "$option"
+    build "$target" "$command" "$option"
   fi
 }
 
