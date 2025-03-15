@@ -143,6 +143,10 @@ llama.cpp explains this as:
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
 
+#### **--threads**, **-t**
+maximum number of cpu threads to use for inferencing
+The default -1, uses the default of the underlying implementation
+
 ## EXAMPLES
 ### Run two AI Models at the same time. Notice both are running within Podman Containers.
 ```

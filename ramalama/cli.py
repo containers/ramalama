@@ -714,6 +714,13 @@ def bench_run_serve_perplexity_args(parser):
         help="number of layers to offload to the gpu, if available",
     )
     parser.add_argument(
+        "-t",
+        "--threads",
+        type=int,
+        default=CONFIG["threads"],
+        help="maximum number of cpu threads to use, if the gpu is unavailable/saturated",
+    )
+    parser.add_argument(
         "--oci-runtime",
         help="override the default OCI runtime used to launch the container",
     )

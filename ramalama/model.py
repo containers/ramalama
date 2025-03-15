@@ -401,6 +401,9 @@ class Model(ModelBase):
 
             gpu_args += [f'{args.ngl}']
 
+        if args.threads != -1:
+            gpu_args += ["--threads", f"{args.threads}"]
+
         return gpu_args
 
     def exec_model_in_container(self, model_path, cmd_args, args):

@@ -74,6 +74,7 @@ def load_config_defaults(config: Dict[str, Any]):
     config['host'] = config.get('host', "0.0.0.0")
     config['keep_groups'] = config.get('keep_groups', False)
     config['ngl'] = config.get('ngl', -1)
+    config['threads'] = config.get('threads', -1)
     config['nocontainer'] = config.get('nocontainer', False)
     config['port'] = config.get('port', int_tuple_as_str(DEFAULT_PORT_RANGE))
     config['pull'] = config.get('pull', "newer")
