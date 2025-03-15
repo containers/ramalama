@@ -1,0 +1,6 @@
+ARG IMAGE=quay.io/ramalama/ramalama:latest
+FROM $IMAGE
+RUN mkdir /db
+COPY ../rag/rag_framework.py /
+COPY ../rag/build_rag.sh /tmp/
+RUN sh /tmp/build_rag.sh
