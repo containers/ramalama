@@ -355,10 +355,10 @@ def check_nvidia():
     try:
         command = ['nvidia-smi']
         run_cmd(command).stdout.decode("utf-8")
-        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
         # ensure at least one CDI device resolves
         if resolve_cdi(['/etc/cdi', '/var/run/cdi']):
+            os.environ["CUDA_VISIBLE_DEVICES"] = "0"
             _nvidia = "cuda"
             return _nvidia
 
