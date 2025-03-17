@@ -882,7 +882,7 @@ def rag_parser(subparsers):
         "rag",
         help="generate and convert retrieval augmented generation (RAG) data from provided documents into an OCI Image",
     )
-    add_network_argument(parser)
+    add_network_argument(parser, dflt=None)
     parser.add_argument(
         "PATH",
         nargs="*",

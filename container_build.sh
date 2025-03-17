@@ -43,8 +43,35 @@ add_entrypoint() {
 FROM $2
 ENTRYPOINT [ "/usr/bin/$3.sh" ]
 EOF
-    echo "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
-    eval "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
+echo "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
+eval "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
+rm "${containerfile}"
+}
+
+add_rag() {
+    containerfile=$(mktemp)
+    GPU=cpu
+    case $2 in
+	cuda)
+	    GPU=cuda
+	    ;;
+	rocm*)
+	    GPU=rocm
+	    ;;
+	*)
+	    GPU=cpu
+	    ;;
+    esac
+    cat > "${containerfile}" <<EOF
+ARG REGISTRY_PATH=quay.io/ramalama
+FROM ${REGISTRY_PATH}/$2
+
+COPY --chmod=755 ../scripts/ /usr/bin/
+RUN /usr/bin/build_rag.sh ${GPU}
+ENTRYPOINT []
+EOF
+    echo "$1 build --no-cache -t ${REGISTRY_PATH}/$2-rag -f ${containerfile} ."
+    eval "$1 build --no-cache -t ${REGISTRY_PATH}/$2-rag -f ${containerfile} ."
     rm "${containerfile}"
 }
 
@@ -72,6 +99,7 @@ build() {
       "${conman_build[@]}"
       "${conman_show_size[@]}"
       add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}"
+      add_rag "${conman[@]}" "${target}"
       rm_container_image
       ;;
     push)
@@ -222,4 +250,3 @@ main() {
 
 REGISTRY_PATH=${REGISTRY_PATH:-quay.io/ramalama}
 main "$@"
-

@@ -6,10 +6,10 @@ import sys
 
 import ramalama
 from ramalama.common import (
-    DEFAULT_IMAGE,
     MNT_CHAT_TEMPLATE_FILE,
     MNT_DIR,
     MNT_FILE,
+    accel_image,
     check_nvidia,
     exec_cmd,
     genname,
@@ -179,40 +179,6 @@ class Model(ModelBase):
             if not args.ignore:
                 raise KeyError(f"removing {self.model}: {e}")
         self.garbage_collection(args)
-
-    def attempt_to_use_versioned(self, conman, image, vers, args):
-        try:
-            if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True, debug=args.debug):
-                return True
-
-            return run_cmd([conman, "pull", f"{image}:{vers}"], debug=args.debug)
-
-        except Exception:
-            return False
-
-    def _image(self, args):
-        if args.image != DEFAULT_IMAGE:
-            return args.image
-
-        env_vars = get_accel_env_vars()
-
-        if not env_vars:
-            gpu_type = None
-        else:
-            gpu_type, _ = next(iter(env_vars.items()))
-
-        if args.runtime == "vllm":
-            return "docker.io/vllm/vllm-openai"
-
-        split = version().split(".")
-        vers = ".".join(split[:2])
-        conman = CONFIG['engine']
-        images = CONFIG['images']
-        image = images.get(gpu_type, args.image)
-        if self.attempt_to_use_versioned(conman, image, vers, args):
-            return f"{image}:{vers}"
-
-        return f"{image}:latest"
 
     def get_container_name(self, args):
         if hasattr(args, "name") and args.name:
@@ -426,7 +392,7 @@ class Model(ModelBase):
                 conman_args += [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
 
         # Make sure Image precedes cmd_args.
-        conman_args += [self._image(args)] + cmd_args
+        conman_args += [accel_image(CONFIG, args)] + cmd_args
 
         if args.dryrun:
             dry_run(conman_args)
@@ -638,7 +604,7 @@ class Model(ModelBase):
         return exec_args
 
     def generate_container_config(self, model_path, chat_template_path, args, exec_args):
-        self.image = self._image(args)
+        self.image = accel_image(CONFIG, args)
         if args.generate == "quadlet":
             self.quadlet(model_path, chat_template_path, args, exec_args)
         elif args.generate == "kube":
