@@ -14,9 +14,16 @@ dnf_install_intel_gpu() {
   . /opt/intel/oneapi/setvars.sh
 }
 
+dnf_remove() {
+  dnf remove -y \
+      python3-devel \
+      libcurl-devel
+  dnf -y clean all
+}
+
 dnf_install() {
   local rpm_list=("podman-remote" "python3" "python3-pip" "python3-argcomplete" \
-                  "python3-dnf-plugin-versionlock" "gcc-c++" "cmake" "vim" \
+                  "python3-dnf-plugin-versionlock" "python3-devel" "gcc-c++" "cmake" "vim" \
                   "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
@@ -225,6 +232,7 @@ main() {
   esac
 
   clone_and_build_llama_cpp
+  available dnf && dnf_remove
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
   ldconfig # needed for libraries
 }
