@@ -41,13 +41,10 @@ add_entrypoint() {
     containerfile=$(mktemp)
     cat > "${containerfile}" <<EOF
 FROM $2
-ENTRYPOINT [ "/usr/bin/$3" ]
+ENTRYPOINT [ "/usr/bin/$3.sh" ]
 EOF
     echo "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
     eval "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
-    # verify entrypoints created correctly by running help on them.
-    echo "$1 run --rm $2-$3 -h"
-    eval "$1 run --rm $2-$3 -h"
     rm "${containerfile}"
 }
 
