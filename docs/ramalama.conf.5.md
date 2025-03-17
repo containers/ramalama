@@ -140,6 +140,11 @@ llama.cpp explains this as:
 
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
+**threads**=-1
+
+maximum number of cpu threads to use for inferencing
+The default -1, uses the default of the underlying implementation
+
 **transport**="ollama"
 
 Specify the default transport to be used for pulling and pushing of AI Models.
