@@ -540,6 +540,7 @@ class Model(ModelBase):
             os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
 
         exec_args = ["llama-run", "-c", f"{args.context}", "--temp", f"{args.temp}"]
+        exec_args += args.runtime_args
 
         if args.seed:
             exec_args += ["--seed", args.seed]
@@ -601,7 +602,7 @@ class Model(ModelBase):
                 args.port,
                 "--max-sequence-length",
                 f"{args.context}",
-            ]
+            ] + args.runtime_args
         else:
             exec_args = [
                 "llama-server",
@@ -613,7 +614,7 @@ class Model(ModelBase):
                 f"{args.context}",
                 "--temp",
                 f"{args.temp}",
-            ]
+            ] + args.runtime_args
             if chat_template_path != "":
                 exec_args.extend(["--chat-template-file", chat_template_path])
         if args.seed:

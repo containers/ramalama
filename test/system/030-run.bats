@@ -53,6 +53,16 @@ EOF
 	assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
 	assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
 
+    run_ramalama --dryrun run --runtime-args="--foo -bar" ${MODEL}
+    assert "$output" =~ ".*--foo" "--foo passed to runtime"
+    assert "$output" =~ ".*-bar" "-bar passed to runtime"
+
+    run_ramalama --dryrun run --runtime-args="--foo='a b c'" ${MODEL}
+    assert "$output" =~ ".*--foo=a b c" "argument passed to runtime with spaces"
+
+    run_ramalama 1 --dryrun run --runtime-args="--foo='a b c" ${MODEL}
+    assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
+
 	if is_container; then
 	    run_ramalama --dryrun run --privileged ${MODEL}
 	    is "$output" ".*--privileged" "verify --privileged is set"

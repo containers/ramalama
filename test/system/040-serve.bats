@@ -33,7 +33,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         run_ramalama --dryrun serve --seed 1234 ${model}
         is "$output" ".*--seed 1234" "verify seed is set"
         if not_docker; then
-        is "$output" ".*--pull=newer" "verify pull is newer"
+            is "$output" ".*--pull=newer" "verify pull is newer"
         fi
         assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
         assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
@@ -44,15 +44,11 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         run_ramalama 2 --dryrun serve --pull=bogus ${model}
         is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"
 
-        if is_container; then
-            run_ramalama --dryrun serve --privileged ${model}
-            is "$output" ".*--privileged" "verify --privileged is set"
-            assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
-            assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
-        fi
-
-        run_ramalama stop --all
-        else
+        run_ramalama --dryrun serve --privileged ${model}
+        is "$output" ".*--privileged" "verify --privileged is set"
+        assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
+        assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
+    else
         run_ramalama --dryrun serve ${model}
         assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
         run_ramalama --dryrun serve --seed abcd --host 127.0.0.1 ${model}
@@ -61,6 +57,16 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         run_ramalama 1 --nocontainer serve --name foobar tiny
         is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
     fi
+
+    run_ramalama --dryrun serve --runtime-args="--foo -bar" ${model}
+    assert "$output" =~ ".*--foo" "--foo passed to runtime"
+    assert "$output" =~ ".*-bar" "-bar passed to runtime"
+
+    run_ramalama --dryrun serve --runtime-args="--foo='a b c'" ${model}
+    assert "$output" =~ ".*--foo=a b c" "argument passed to runtime with spaces"
+
+    run_ramalama 1 --dryrun serve --runtime-args="--foo='a b c" ${model}
+    assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
 
     run_ramalama 1 serve MODEL
     assert "$output" =~ "serving on port .*"
