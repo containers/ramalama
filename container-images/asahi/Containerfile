@@ -4,4 +4,3 @@ ENV ASAHI_VISIBLE_DEVICES 1
 COPY ../scripts /scripts
 RUN chmod +x /scripts/*.sh && \
     /scripts/build_llama_and_whisper.sh "asahi"
-
