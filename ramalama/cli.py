@@ -710,7 +710,39 @@ def run_serve_perplexity_args(parser):
     )
 
 
+def default_threads():
+    if CONFIG["threads"] < 0:
+        nproc = os.cpu_count()
+        if nproc and nproc > 4:
+            return int(nproc / 2)
+
+        return 4
+
+    return CONFIG["threads"]
+
+
+def add_exec_arguments(parser):
+    parser.add_argument(
+        "--ngl",
+        dest="ngl",
+        type=int,
+        default=CONFIG["ngl"],
+        help="number of layers to offload to the gpu, if available",
+    )
+
+    def_threads = default_threads()
+    parser.add_argument(
+        "-t",
+        "--threads",
+        type=int,
+        default=def_threads,
+        help=f"number of cpu threads to use, the default is {def_threads} on this system, -1 means use this default",
+    )
+    parser.add_argument("--temp", default=CONFIG['temp'], help="temperature of the response from the AI model")
+
+
 def bench_run_serve_perplexity_args(parser):
+    add_exec_arguments(parser)
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument(
         "--env",
@@ -724,20 +756,6 @@ def bench_run_serve_perplexity_args(parser):
         "--device", dest="device", action='append', type=str, help="device to leak in to the running container"
     )
     parser.add_argument("-n", "--name", dest="name", help="name of container in which the Model will be run")
-    parser.add_argument(
-        "--ngl",
-        dest="ngl",
-        type=int,
-        default=CONFIG["ngl"],
-        help="number of layers to offload to the gpu, if available",
-    )
-    parser.add_argument(
-        "-t",
-        "--threads",
-        type=int,
-        default=CONFIG["threads"],
-        help="maximum number of cpu threads to use, if the gpu is unavailable/saturated",
-    )
     parser.add_argument(
         "--oci-runtime",
         help="override the default OCI runtime used to launch the container",
@@ -754,7 +772,6 @@ def bench_run_serve_perplexity_args(parser):
         help='pull image policy',
     )
     parser.add_argument("--seed", help="override random seed")
-    parser.add_argument("--temp", default=CONFIG['temp'], help="temperature of the response from the AI model")
     parser.add_argument(
         "--tls-verify",
         dest="tlsverify",
