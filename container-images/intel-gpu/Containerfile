@@ -18,7 +18,13 @@ RUN dnf install -y procps-ng python3 python3-pip python3-devel intel-level-zero 
     chmod g=u /etc/passwd /etc/group /home ; \
     chmod +x /entrypoint.sh
 
+RUN useradd llama-user -u 10000 -d /home/llama-user -s /bin/bash; \
+groupmod -a -U llama-user render; \
+groupmod -a -U llama-user video; \
+echo ". /opt/intel/oneapi/setvars.sh" >> "/home/llama-user/.zshrc"; \
+echo ". /opt/intel/oneapi/setvars.sh" >> "/home/llama-user/.bashrc"; \
+chown llama-user:llama-user -R /home/llama-user
+
 USER 10000
 
-ENTRYPOINT ["/entrypoint.sh"]
 CMD [ "tail", "-f", "/dev/null" ]
