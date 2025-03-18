@@ -10,7 +10,6 @@ RUN chmod +x /scripts/*.sh && \
 FROM quay.io/ascend/${ASCEND_VERSION}
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr
-ENV MODEL_PATH=/mnt/models/model.file
 COPY --chmod=755 ../scripts /usr/bin
 ENTRYPOINT [ \
     "/bin/bash", \

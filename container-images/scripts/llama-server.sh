@@ -9,15 +9,13 @@ if [ -n "${MODEL_CHAT_FORMAT}" ]; then
 fi
 
 if [ -n "${MODEL_PATH}" ]; then
-    eval llama-server \
-        --model "${MODEL_PATH}" \
-        --host "${HOST:=0.0.0.0}" \
-        --port "${PORT:=8001}" \
-        --gpu_layers "${GPU_LAYERS:=0}" \
-	"${CHAT_FORMAT}"
-    exit 0
+    MODEL_PATH="/mnt/models/model.file"
 fi
-
-echo "Please set a MODEL_PATH"
-exit 1
+eval llama-server \
+     --model "${MODEL_PATH}" \
+     --host "${HOST:=0.0.0.0}" \
+     --port "${PORT:=8001}" \
+     --gpu_layers "${GPU_LAYERS:=0}" \
+     "${CHAT_FORMAT}"
+exit 0
 
