@@ -21,6 +21,89 @@ dnf_remove() {
   dnf -y clean all
 }
 
+dnf_install_asahi() {
+  dnf copr enable -y @asahi/fedora-remix-branding
+  dnf install -y asahi-repos
+  dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}" "${rpm_list[@]}"
+}
+
+dnf_install_cuda() {
+  dnf install -y "${rpm_list[@]}" gcc-toolset-12
+  # shellcheck disable=SC1091
+  . /opt/rh/gcc-toolset-12/enable
+}
+
+dnf_install_cann() {
+  # just for openeuler build environment, does not need to push to ollama github
+  dnf install -y git \
+      gcc \
+      gcc-c++ \
+      make \
+      cmake \
+      findutils \
+      yum \
+      curl-devel \
+      pigz
+}
+
+dnf_install_rocm() {
+  if [ "$containerfile" = "rocm" ]; then
+    if [ "${ID}" = "fedora" ]; then
+      dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
+    else
+      dnf install -y rocm-dev hipblas-devel rocblas-devel
+    fi
+  fi
+}
+
+dnf_install_s390() {
+  # I think this was for s390, maybe ppc also
+  dnf install -y "openblas-devel"
+}
+
+add_stream_repo() {
+  local url="https://mirror.stream.centos.org/9-stream/$1/$uname_m/os/"
+  dnf config-manager --add-repo "$url"
+  url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
+  local file="/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official"
+  if [ ! -e $file ]; then
+    curl --retry 8 --retry-all-errors -o $file "$url"
+    rpm --import $file
+  fi
+}
+
+rm_non_ubi_repos() {
+  rm -rf /etc/yum.repos.d/mirror.stream.centos.org_9-stream_* /etc/yum.repos.d/epel*
+}
+
+dnf_install_mesa() {
+  if [[ "${ID}" == "rhel" || "${ID}" == "redhat" || "${ID}" == "centos" ]]; then
+    dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
+    add_stream_repo "AppStream"
+  fi
+
+  dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
+  rm_non_ubi_repos
+}
+
+dnf_install_epel() {
+  local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+  dnf reinstall -y "$url" || dnf install -y "$url"
+  crb enable # this is in epel-release, can only install epel-release via url
+}
+
+dnf_install_ffmpeg() {
+  if [ "${ID}" = "rhel" ]; then
+    dnf_install_epel
+    add_stream_repo "AppStream"
+    add_stream_repo "BaseOS"
+    add_stream_repo "CRB"
+  fi
+
+  dnf install -y ffmpeg-free
+  rm_non_ubi_repos
+}
+
 dnf_install() {
   local rpm_list=("podman-remote" "python3" "python3-pip" "python3-argcomplete" \
                   "python3-dnf-plugin-versionlock" "python3-devel" "gcc-c++" "cmake" "vim" \
@@ -32,57 +115,31 @@ dnf_install() {
     if [ "${ID}" = "fedora" ]; then
       dnf install -y "${rpm_list[@]}"
     else
-      local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
-      dnf install -y "$url"
-      crb enable # this is in epel-release, can only install epel-release via url
+      dnf_install_epel
       dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
     fi
+
     # x86_64 and aarch64 means kompute
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
-      if [[ "${ID}" == "rhel" || "${ID}" == "redhat" || "${ID}" == "centos" ]]; then
-        dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
-        url="https://mirror.stream.centos.org/9-stream/AppStream/$uname_m/os/"
-        dnf config-manager --add-repo "$url"
-        url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
-        curl --retry 8 --retry-all-errors -o \
-            /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official "$url"
-        rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official
-      fi
-      dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
-    else
-      dnf install -y "openblas-devel"
+      dnf_install_mesa
     fi
 
-    if [ "$containerfile" = "rocm" ]; then
-      if [ "${ID}" = "fedora" ]; then
-        dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
-      else
-        dnf install -y rocm-dev hipblas-devel rocblas-devel
-      fi
+    dnf_install_rocm
+    rm_non_ubi_repos
+    if [ "$uname_m" != "x86_64" ] && ! [ "$uname_m" != "aarch64" ]; then
+      dnf_install_s390
     fi
   elif [ "$containerfile" = "asahi" ]; then
-    dnf copr enable -y @asahi/fedora-remix-branding
-    dnf install -y asahi-repos
-    dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}" "${rpm_list[@]}"
+    dnf_install_asahi
   elif [ "$containerfile" = "cuda" ]; then
-    dnf install -y "${rpm_list[@]}" gcc-toolset-12
-    # shellcheck disable=SC1091
-    . /opt/rh/gcc-toolset-12/enable
+    dnf_install_cuda
   elif [ "$containerfile" = "intel-gpu" ]; then
     dnf_install_intel_gpu
   elif [ "$containerfile" = "cann" ]; then
-    # just for openeuler build environment, does not need to push to ollama github
-    dnf install -y git \
-        gcc \
-        gcc-c++ \
-        make \
-        cmake \
-        findutils \
-        yum \
-        curl-devel \
-        pigz
+    dnf_install_cann
   fi
 
+  dnf_install_ffmpeg
   dnf -y clean all
 }
 
