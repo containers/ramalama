@@ -8,7 +8,7 @@ if [ -n "${MODEL_CHAT_FORMAT}" ]; then
     CHAT_FORMAT="--chat_template ${MODEL_CHAT_FORMAT}"
 fi
 
-if [ -n "${MODEL_PATH}" ]; then
+if [ -z "${MODEL_PATH}" ]; then
     MODEL_PATH="/mnt/models/model.file"
 fi
 eval llama-server \
