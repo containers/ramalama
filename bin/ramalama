@@ -27,7 +27,7 @@ def add_site_packages_to_syspath(base_path):
     matched_paths = glob.glob(search_pattern)
     if matched_paths:
         for path in matched_paths:
-            sys.path.insert(0, path)
+            sys.path.append(path)
         return
 
     # Fallback to a more general pattern if the specific version doesn't match
@@ -35,19 +35,19 @@ def add_site_packages_to_syspath(base_path):
     matched_paths = glob.glob(search_pattern)
     if matched_paths:
         for path in matched_paths:
-            sys.path.insert(0, path)
+            sys.path.append(path)
 
 
 def main(args):
     sharedirs = ["/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
     syspath = next((d for d in sharedirs if os.path.exists(d + "/ramalama/cli.py")), None)
     if syspath:
-        sys.path.insert(0, syspath)
+        sys.path.append(syspath)
 
     add_site_packages_to_syspath('~/.local/pipx/venvs/*')
     add_site_packages_to_syspath('/usr/local')
     add_pipx_venvs_bin_to_path()
-    sys.path.insert(0, './')
+    sys.path.append('./')
     try:
         import ramalama
     except Exception:
