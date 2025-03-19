@@ -144,21 +144,22 @@ process_all_targets() {
   local option="$2"
 
   # build ramalama container image first, as other images inherit from it
-  build "container-images/ramalama" "$command" "$option"
+  build "ramalama" "$command" "$option"
   for i in container-images/*; do
+    i=$(basename "$i")
     # skip these directories
-    if [[ "$i" =~ ^container-images/(scripts|ramalama)$ ]]; then
+    if [[ "$i" =~ ^(scripts|ramalama)$ ]]; then
       continue
     fi
 
     # todo, trim and get building in CI again
-    if $ci && [[ "$i" =~ ^container-images/rocm$ ]]; then
+    if $ci && [[ "$i" =~ ^rocm$ ]]; then
       continue
     fi
 
     # skip images that don't make sense for multi-arch builds
     if [ "$command" = "multi-arch" ]; then
-      if [[ "$i" =~ ^container-images/(rocm|intel-gpu)$ ]]; then
+      if [[ "$i" =~ ^(rocm|intel-gpu)$ ]]; then
         continue
       fi
     fi
