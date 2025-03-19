@@ -321,6 +321,18 @@ class Model(ModelBase):
 
         return conman_args
 
+    def add_rag(self, exec_args, args):
+        if not hasattr(args, "rag") or not args.rag:
+            return exec_args
+
+        if os.path.exists(args.rag):
+            rag = os.path.realpath(args.rag)
+            exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db")
+        else:
+            exec_args.append(f"--mount=type=image,source={args.rag},destination=/rag")
+
+        return exec_args
+
     def setup_container(self, args):
         if not args.engine:
             return []
@@ -339,6 +351,7 @@ class Model(ModelBase):
         conman_args = self.add_port_option(conman_args, args)
         conman_args = self.add_device_options(conman_args, args)
         conman_args = self.add_network_option(conman_args, args)
+        conman_args = self.add_rag(conman_args, args)
 
         return conman_args
 
@@ -649,6 +662,7 @@ class Model(ModelBase):
                 )
 
         exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path)
+
         exec_args = self.handle_runtime(args, exec_args, exec_model_path)
         if self.generate_container_config(model_path, chat_template_path, args, exec_args):
             return
