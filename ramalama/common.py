@@ -400,11 +400,22 @@ def check_rocm_amd():
 
 def check_intel():
     igpu_num = 0
+    intel_gpus = (
+        b"0xe20b",
+        b"0xe20c",
+        b"0x7d51",
+        b"0x7dd5",
+        b"0x7d55",
+    )
+    # Check to see if any of the device ids in intel_gpus are in the device id of the i915 driver
     for fp in sorted(glob.glob('/sys/bus/pci/drivers/i915/*/device')):
         with open(fp, 'rb') as file:
             content = file.read()
-            if b"0x7d55" in content:
-                igpu_num += 1
+            for gpu_id in intel_gpus:
+                if gpu_id in content:
+                    igpu_num += 1
+            # if b"0x7d55" in content:
+            #     igpu_num += 1
     if igpu_num:
         os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
         return "intel"
