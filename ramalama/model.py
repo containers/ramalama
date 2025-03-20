@@ -596,6 +596,10 @@ class Model(ModelBase):
             ] + args.runtime_args
             if chat_template_path != "":
                 exec_args.extend(["--chat-template-file", chat_template_path])
+
+            if args.debug:
+                exec_args.extend(["-v"])
+
         if args.seed:
             exec_args += ["--seed", args.seed]
 
