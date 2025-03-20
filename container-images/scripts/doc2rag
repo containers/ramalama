@@ -1,0 +1,104 @@
+#!/usr/bin/python3
+
+import argparse
+import hashlib
+import os
+import sys
+import uuid
+
+import qdrant_client
+from docling.chunking import HybridChunker
+from docling.document_converter import DocumentConverter
+
+SPARSE_MODEL = "prithivida/Splade_PP_en_v1"
+COLLECTION_NAME = "rag"
+
+
+# Global Vars
+EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+
+class Converter:
+    """A Class designed to handle all document conversions using Docling"""
+
+    def __init__(self, output, targets):
+        self.doc_converter = DocumentConverter()
+        self.targets = []
+        for target in targets:
+            self.add(target)
+        self.output = output
+        self.client = qdrant_client.QdrantClient(path=output)
+        self.client.set_model(EMBED_MODEL)
+        self.client.set_sparse_model(SPARSE_MODEL)
+
+    def add(self, file_path):
+        if os.path.isdir(file_path):
+            self.walk(file_path)  # Walk directory and process all files
+        else:
+            self.targets.append(file_path)  # Process the single file
+
+    def convert(self):
+        result = self.doc_converter.convert_all(self.targets)
+
+        documents, metadata, ids = [], [], []
+        chunker = HybridChunker(tokenizer=EMBED_MODEL, max_tokens=500, overlap=100)
+        for file in result:
+            chunk_iter = chunker.chunk(dl_doc=file.document)
+            for i, chunk in enumerate(chunk_iter):
+                doc_text = chunker.serialize(chunk=chunk)
+                # Extract the text and metadata from the chunk
+                doc_meta = chunk.meta.export_json_dict()
+
+                # Append to respective lists
+                documents.append(doc_text)
+                metadata.append(doc_meta)
+
+                # Generate unique ID for the chunk
+                doc_id = self.generate_hash(doc_text)
+                ids.append(doc_id)
+        return self.client.add(COLLECTION_NAME, documents=documents, metadata=metadata, ids=ids)
+
+    def walk(self, path):
+        for root, dirs, files in os.walk(path, topdown=True):
+            if len(files) == 0:
+                continue
+            for f in files:
+                file = os.path.join(root, f)
+                if os.path.isfile(file):
+                    self.targets.append(file)
+
+    def generate_hash(self, document: str) -> str:
+        """Generate a unique hash for a document."""
+        sha256_hash = hashlib.sha256(document.encode('utf-8')).hexdigest()
+
+        # Use the first 32 characters of the hash to create a UUID
+        return str(uuid.UUID(sha256_hash[:32]))
+
+
+parser = argparse.ArgumentParser(
+    prog="docling",
+    description="process source files into RAG vector database",
+)
+
+parser.add_argument("target")  # positional argument
+parser.add_argument("source", nargs='+')
+
+
+def perror(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
+def eprint(e, exit_code):
+    perror("Error: " + str(e).strip("'\""))
+    sys.exit(exit_code)
+
+
+try:
+    args = parser.parse_args()
+    converter = Converter(args.target, args.source)
+    converter.convert()
+
+except FileNotFoundError as e:
+    eprint(e, 1)
+except KeyboardInterrupt:
+    pass

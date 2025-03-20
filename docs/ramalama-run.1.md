@@ -100,6 +100,9 @@ Pull image policy. The default is **missing**.
 - **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
 - **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
+#### **--rag**=
+Specify path to Retrieval-Augmented Generation (RAG) database or an OCI Image containing a RAG database
+
 #### **--runtime-args**="*args*"
 Add *args* to the runtime (llama.cpp or vllm) invocation.
 

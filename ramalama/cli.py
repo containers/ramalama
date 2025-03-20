@@ -760,6 +760,7 @@ def run_parser(subparsers):
     run_serve_perplexity_args(parser)
     add_network_argument(parser)
     parser.add_argument("--keepalive", type=str, help="duration to keep a model loaded (e.g. 5m)")
+    parser.add_argument("--rag", help="RAG vector database or OCI Image to be served with the model")
     parser.add_argument("MODEL")  # positional argument
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
@@ -800,13 +801,25 @@ def serve_parser(subparsers):
         help="generate specified configuration format for running the AI Model as a service",
     )
     parser.add_argument("-p", "--port", default=CONFIG['port'], help="port for AI Model server to listen on")
+    parser.add_argument("--rag", help="RAG vector database or OCI Image to be served with the model")
     parser.add_argument("MODEL")  # positional argument
     parser.set_defaults(func=serve_cli)
+
+
+def _get_rag(args):
+    if os.path.exists(args.rag):
+        return
+    model = New(args.rag, args=args, transport="oci")
+    if not model.exists(args):
+        model.pull(args)
 
 
 def serve_cli(args):
     if not args.container:
         args.detach = False
+
+    if args.rag:
+        _get_rag(args)
 
     try:
         model = New(args.MODEL, args)
@@ -882,7 +895,7 @@ def rag_parser(subparsers):
         "rag",
         help="generate and convert retrieval augmented generation (RAG) data from provided documents into an OCI Image",
     )
-    add_network_argument(parser)
+    add_network_argument(parser, dflt=None)
     parser.add_argument(
         "PATH",
         nargs="*",
@@ -949,8 +962,8 @@ def rm_cli(args):
     _rm_model(models, args)
 
 
-def New(model, args):
-    return ModelFactory(model, args.store, args.use_model_store, CONFIG["transport"], args.engine).create()
+def New(model, args, transport=CONFIG["transport"]):
+    return ModelFactory(model, args.store, args.use_model_store, transport, args.engine).create()
 
 
 def perplexity_parser(subparsers):
