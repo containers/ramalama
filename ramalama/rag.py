@@ -66,8 +66,7 @@ COPY {src} /vector.db
         for path in args.PATH:
             if os.path.exists(path):
                 fpath = os.path.realpath(path)
-                rpath = os.path.relpath(path)
-                exec_args += ["-v", f"{fpath}:/docs/{rpath}:ro,z"]
+                exec_args += ["-v", f"{fpath}:/docs/{fpath}:ro,z"]
         tmpdir = "."
         if not os.access(tmpdir, os.W_OK):
             tmpdir = "/tmp"
