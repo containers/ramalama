@@ -92,6 +92,8 @@ dnf_install_epel() {
   crb enable # this is in epel-release, can only install epel-release via url
 }
 
+# There is no ffmpeg-free package in the openEuler repository. openEuler can use ffmpeg,
+# which also has the same GPL/LGPL license as ffmpeg-free.
 dnf_install_ffmpeg() {
   if [ "${ID}" = "rhel" ]; then
     dnf_install_epel
@@ -100,7 +102,11 @@ dnf_install_ffmpeg() {
     add_stream_repo "CRB"
   fi
 
-  dnf install -y ffmpeg-free
+  if [[ "${ID}" == "openEuler" ]]; then
+    dnf install -y ffmpeg
+  else
+    dnf install -y ffmpeg-free
+  fi
   rm_non_ubi_repos
 }
 

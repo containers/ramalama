@@ -17,6 +17,7 @@ from typing import List
 
 import ramalama.console as console
 from ramalama.http_client import HttpClient
+from ramalama.version import version
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -460,3 +461,39 @@ def rm_until_substring(input, substring):
 
     # Create a new string starting after the found substring
     return ''.join(input[i] for i in range(pos + len(substring), len(input)))
+
+
+def accel_image(config, args):
+    if args.image != DEFAULT_IMAGE:
+        return args.image
+
+    env_vars = get_accel_env_vars()
+
+    if not env_vars:
+        gpu_type = None
+    else:
+        gpu_type, _ = next(iter(env_vars.items()))
+
+    if args.runtime == "vllm":
+        return "docker.io/vllm/vllm-openai"
+
+    split = version().split(".")
+    vers = ".".join(split[:2])
+    conman = config['engine']
+    images = config['images']
+    image = images.get(gpu_type, args.image)
+    if attempt_to_use_versioned(conman, image, vers, args.debug):
+        return f"{image}:{vers}"
+
+    return f"{image}:latest"
+
+
+def attempt_to_use_versioned(conman, image, vers, debug):
+    try:
+        if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True, debug=debug):
+            return True
+
+        return run_cmd([conman, "pull", f"{image}:{vers}"], debug=debug)
+
+    except Exception:
+        return False
