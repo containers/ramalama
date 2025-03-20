@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
+import errno
 import glob
 import os
-import errno
 import subprocess
 import sys
 
@@ -13,7 +13,7 @@ def add_pipx_venvs_bin_to_path():
     This function looks for venv in ~/.local/pipx/venvs/ramalama/bin and
     if it exists appends it to the environment variable PATH.
     """
-    pipx_bin_path = os.path.expanduser(f'~/.local/pipx/venvs/ramalama/bin')
+    pipx_bin_path = os.path.expanduser('~/.local/pipx/venvs/ramalama/bin')
     if os.path.exists(pipx_bin_path):
         os.environ["PATH"] += ":" + pipx_bin_path
 
@@ -50,7 +50,7 @@ def main(args):
     sys.path.insert(0, './')
     try:
         import ramalama
-    except:
+    except Exception:
         print(f"ramalama module not found in sys.path: {sys.path}", file=sys.stderr)
         raise
 

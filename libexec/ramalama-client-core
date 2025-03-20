@@ -1,23 +1,78 @@
 #!/usr/bin/env python3
 
 import cmd
+import json
+import sys
+import urllib.error
+import urllib.request
+
+
+def request_data(prompt, use_completions):
+    if use_completions:
+        url = "http://127.0.0.1:8080/v1/completions"
+        data = {"prompt": prompt, "stream": True}
+    else:
+        url = "http://127.0.0.1:8080/v1/chat/completions"
+        data = {
+            "model": "gpt-4o",
+            "stream": True,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+
+    return url, data
+
+
+def req(prompt):
+    use_completions = False
+    url, data = request_data(prompt, use_completions)
+    json_data = json.dumps(data).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+    }
+
+    # Create a request
+    request = urllib.request.Request(url, data=json_data, headers=headers, method="POST")
+
+    # Send request and process the response
+    with urllib.request.urlopen(request) as response:
+        for line in response:
+            line = line.decode("utf-8").strip()
+            if line.startswith("data: {"):
+                line = line[len("data: ") :]
+                if use_completions:
+                    choice = json.loads(line)["choices"][0]["text"]
+                else:
+                    choice = json.loads(line)["choices"][0]["delta"]
+                    if "content" in choice:
+                        choice = choice["content"]
+                    else:
+                        continue
+
+                print(choice, end="")
+
+    print()
+
 
 class RamaLamaShell(cmd.Cmd):
     prompt = "> "
 
-    def do_EOF(self, line):
+    def do_EOF(self, prompt):
         print("")
         return True
 
-    def default(self, line):
-        if line == "/bye":
+    def default(self, prompt):
+        if prompt == "/bye":
             return True
 
-        print(line)
+        req(prompt)
 
-if __name__ == '__main__':
+
+def main(args):
     try:
         RamaLamaShell().cmdloop()
     except KeyboardInterrupt:
         print("")
 
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

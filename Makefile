@@ -109,18 +109,18 @@ ifneq (,$(wildcard /usr/bin/python3))
 	/usr/bin/python3 -m compileall -q .
 endif
 
-	flake8 *.py */*.py */*/*.py
+	flake8 *.py */*.py */*/*.py libexec/* bin/*
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:
-	black --check --diff *.py */*.py */*/*.py
-	isort --check --diff *.py */*.py */*/*.py
+	black --check --diff *.py */*.py */*/*.py libexec/* bin/*
+	isort --check --diff *.py */*.py */*/*.py libexec/* bin/*
 
 .PHONY: format
 format:
-	black *.py */*.py */*/*.py
-	isort *.py */*.py */*/*.py
+	black *.py */*.py */*/*.py libexec/* bin/*
+	isort *.py */*.py */*/*.py libexec/* bin/*
 
 .PHONY: codespell
 codespell:
