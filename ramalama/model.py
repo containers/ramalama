@@ -589,6 +589,8 @@ class Model(ModelBase):
                 args.port,
                 "--model",
                 exec_model_path,
+                "--alias",
+                self.model,
                 "--ctx-size",
                 f"{args.context}",
                 "--temp",
