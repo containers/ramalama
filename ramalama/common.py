@@ -25,6 +25,9 @@ MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
 MNT_CHAT_TEMPLATE_FILE = f"{MNT_DIR}/chat_template.file"
 
+RAG_DIR = "/rag"
+RAG_CONTENT = f"{MNT_DIR}/vector.db"
+
 HTTP_NOT_FOUND = 404
 HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already downloaded)
 
