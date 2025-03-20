@@ -4,6 +4,7 @@ os_name=$(uname)
 
 if [[ "$os_name" == "Darwin" ]]; then
   brew install ollama
+  brew update
   brew services start ollama
 elif [[ "$os_name" == "Linux" ]]; then
   curl -L https://ollama.com/download/ollama-linux-amd64.tgz -o ollama-linux-amd64.tgz
