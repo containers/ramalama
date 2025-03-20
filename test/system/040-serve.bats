@@ -170,7 +170,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 
     run cat tinyllama.container
     is "$output" ".*PublishPort=1234" "PublishPort should match"
-    is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
+    is "$output" ".*Exec=llama-server --port 1234 --model .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*tinyllama" "Mount line should be correct"
 
     HIP_VISIBLE_DEVICES=99 run_ramalama serve --port 1234 --generate=quadlet ${model}
@@ -214,7 +214,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 	run cat $name.container
 	is "$output" ".*PublishPort=1234" "PublishPort should match"
 	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
-	is "$output" ".*Exec=llama-server --port 1234 -m .*" "Exec line should be correct"
+	is "$output" ".*Exec=llama-server --port 1234 --model .*" "Exec line should be correct"
 	is "$output" ".*Mount=type=image,source=${ociimage},destination=/mnt/models,subpath=/models,readwrite=false" "Volume line should be correct"
 
 	if is_container; then
