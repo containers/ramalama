@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -n "${MODEL_PATH}" ]; then
+if [ -z "${MODEL_PATH}" ]; then
     MODEL_PATH="/mnt/models/model.file"
 fi
 
