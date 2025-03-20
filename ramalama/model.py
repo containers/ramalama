@@ -305,7 +305,7 @@ class Model(ModelBase):
         return conman_args
 
     def add_network_option(self, conman_args, args):
-        if args.network != "":
+        if args.network:
             conman_args += ["--network", args.network]
 
         return conman_args

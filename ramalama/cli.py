@@ -324,13 +324,21 @@ def add_network_argument(parser, dflt="none"):
     # podman if needed:
     # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
     # https://docs.podman.io/en/latest/markdown/podman-build.1.html#network-mode-net
-    parser.add_argument(
-        "--network",
-        "--net",
-        type=str,
-        default=dflt,
-        help="set the network mode for the container",
-    )
+    if dflt:
+        parser.add_argument(
+            "--network",
+            "--net",
+            type=str,
+            default=dflt,
+            help="set the network mode for the container",
+        )
+    else:
+        parser.add_argument(
+            "--network",
+            "--net",
+            type=str,
+            help="set the network mode for the container",
+        )
 
 
 def bench_parser(subparsers):
@@ -788,7 +796,7 @@ def run_cli(args):
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
     run_serve_perplexity_args(parser)
-    add_network_argument(parser, "")
+    add_network_argument(parser, dflt=None)
     parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
     parser.add_argument(
         "--host",
