@@ -259,7 +259,8 @@ clone_and_build_ramalama() {
 }
 
 build_rag() {
-    python3 -m pip install "qdrant-client[fastembed]"  openai
+    python3 -m pip install qdrant_client fastembed openai fastapi uvicorn
+    rag_framework load
 }
 
 main() {

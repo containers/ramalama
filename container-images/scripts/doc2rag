@@ -74,14 +74,21 @@ class Converter:
         # Use the first 32 characters of the hash to create a UUID
         return str(uuid.UUID(sha256_hash[:32]))
 
+def load():
+    # Dummy code to preload models
+    client = qdrant_client.QdrantClient(":memory:")
+    client.set_model(EMBED_MODEL)
+    client.set_sparse_model(SPARSE_MODEL)
 
 parser = argparse.ArgumentParser(
     prog="docling",
     description="process source files into RAG vector database",
 )
 
-parser.add_argument("target")  # positional argument
-parser.add_argument("source", nargs='+')
+parser.add_argument("load", action="store_true", help="Load models without processing files")
+parser.add_argument("target", nargs="?", help="Target database")
+parser.add_argument("source", nargs="*", help="Source files")
+
 
 
 def perror(*args, **kwargs):
@@ -92,12 +99,13 @@ def eprint(e, exit_code):
     perror("Error: " + str(e).strip("'\""))
     sys.exit(exit_code)
 
-
 try:
     args = parser.parse_args()
-    converter = Converter(args.target, args.source)
-    converter.convert()
-
+    if args.load:
+        load()
+    elif args.target and args.source:
+        converter = Converter(args.target, args.source)
+        converter.convert()
 except FileNotFoundError as e:
     eprint(e, 1)
 except KeyboardInterrupt:
