@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import tempfile
 
@@ -72,7 +73,7 @@ COPY {src} /vector.db
             tmpdir = "/tmp"
 
         ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_', delete=True)
-        vectordb = tempfile.TemporaryDirectory(dir=ragdb.name, prefix='RamaLama_rag_', delete=True)
+        vectordb = tempfile.TemporaryDirectory(dir=ragdb.name, prefix='RamaLama_rag_')
         exec_args += ["-v", f"{vectordb.name}:{vectordb.name}:z"]
         for k, v in get_accel_env_vars().items():
             # Special case for Cuda
@@ -89,7 +90,8 @@ COPY {src} /vector.db
         exec_args += ["doc2rag", vectordb.name, "/docs/"]
         try:
             run_cmd(exec_args, debug=args.debug)
+            print(self.build(vectordb.name, self.target, ragdb.name, args))
         except subprocess.CalledProcessError as e:
             raise e
-
-        print(self.build(vectordb.name, self.target, ragdb.name, args))
+        finally:
+            shutil.rmtree(ragdb.name, ignore_errors=True)
