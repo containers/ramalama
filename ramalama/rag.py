@@ -61,14 +61,18 @@ COPY {src} /vector.db
         rag_image = ":".join(s)
 
         exec_args = [args.engine, "run", "--rm"]
-        if args.network != "":
+        if args.network:
             exec_args += ["--network", args.network]
         for path in args.PATH:
             if os.path.exists(path):
                 fpath = os.path.realpath(path)
                 rpath = os.path.relpath(path)
                 exec_args += ["-v", f"{fpath}:/docs/{rpath}:ro,z"]
-        ragdb = tempfile.TemporaryDirectory(dir="/var/tmp/", prefix='RamaLama_rag_', delete=True)
+        tmpdir = "."
+        if not os.access(tmpdir, os.W_OK):
+            tmpdir = "/tmp"
+
+        ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_', delete=True)
         vectordb = tempfile.TemporaryDirectory(dir=ragdb.name, prefix='RamaLama_rag_', delete=True)
         exec_args += ["-v", f"{vectordb.name}:{vectordb.name}:z"]
         for k, v in get_accel_env_vars().items():
