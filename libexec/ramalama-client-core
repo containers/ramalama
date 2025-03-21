@@ -1,32 +1,48 @@
 #!/usr/bin/env python3
 
+import argparse
 import cmd
+import itertools
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 
 
-def request_data(prompt, use_completions):
-    if use_completions:
-        url = "http://127.0.0.1:8080/v1/completions"
-        data = {"prompt": prompt, "stream": True}
-    else:
-        url = "http://127.0.0.1:8080/v1/chat/completions"
-        data = {
-            "model": "gpt-4o",
-            "stream": True,
-            "messages": [{"role": "user", "content": prompt}],
-        }
+def construct_request_data(conversation_history):
+    data = {
+        "stream": True,
+        "messages": conversation_history,
+    }
 
-    return url, data
+    return data
 
 
-def req(prompt):
+def res(response):
     color_default = "\033[0m"
     color_yellow = "\033[33m"
-    use_completions = False
-    url, data = request_data(prompt, use_completions)
+    print(f"\r{color_yellow}", end="")
+    assistant_response = ""
+    for line in response:
+        line = line.decode("utf-8").strip()
+        if line.startswith("data: {"):
+            line = line[len("data: ") :]
+            choice = json.loads(line)["choices"][0]["delta"]
+            if "content" in choice:
+                choice = choice["content"]
+            else:
+                continue
+
+            print(choice, end="", flush=True)
+            assistant_response += choice
+
+    print(color_default)
+    return assistant_response
+
+
+def req(conversation_history, url):
+    data = construct_request_data(conversation_history)
     json_data = json.dumps(data).encode("utf-8")
     headers = {
         "Content-Type": "application/json",
@@ -35,44 +51,52 @@ def req(prompt):
     # Create a request
     request = urllib.request.Request(url, data=json_data, headers=headers, method="POST")
 
-    # Send request and process the response
-    with urllib.request.urlopen(request) as response:
-        print(color_yellow)
-        for line in response:
-            line = line.decode("utf-8").strip()
-            if line.startswith("data: {"):
-                line = line[len("data: ") :]
-                if use_completions:
-                    choice = json.loads(line)["choices"][0]["text"]
-                else:
-                    choice = json.loads(line)["choices"][0]["delta"]
-                    if "content" in choice:
-                        choice = choice["content"]
-                    else:
-                        continue
+    # Send request
+    i = 0.01
+    for c in itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']):
+        if i > 10:
+            break
 
-                print(choice, end="", flush=True)
+        try:
+            response = urllib.request.urlopen(request)
+            break
+        except Exception:
+            print(f"\r{c}", end="", flush=True)
+            time.sleep(i)
+            i *= 2
 
-    print(color_default)
+    return res(response)
 
 
 class RamaLamaShell(cmd.Cmd):
-    prompt = "> "
+    def __init__(self, prompt, host):
+        super().__init__()
+        self.conversation_history = []
+        self.prompt = prompt
+        self.url = f"{host}/v1/chat/completions"
 
-    def do_EOF(self, prompt):
+    def do_EOF(self, user_content):
         print("")
         return True
 
-    def default(self, prompt):
-        if prompt == "/bye":
+    def default(self, user_content):
+        if user_content == "/bye":
             return True
 
-        req(prompt)
+        self.conversation_history.append({"role": "user", "content": user_content})
+        self.conversation_history.append({"role": "assistant", "content": req(self.conversation_history, self.url)})
 
 
 def main(args):
+    parser = argparse.ArgumentParser(description="Run ramalama client")
+    parser.add_argument("--prefix", type=str, default="> ", help="prefix for the user prompt")
+    parser.add_argument(
+        "host", type=str, nargs="?", default="http://127.0.0.1:8080", help="the host to send requests to"
+    )
+    parsed_args = parser.parse_args(args)
+
     try:
-        RamaLamaShell().cmdloop()
+        RamaLamaShell(prompt=parsed_args.prefix, host=parsed_args.host).cmdloop()
     except KeyboardInterrupt:
         print("")
 
