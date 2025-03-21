@@ -1,6 +1,6 @@
 import os
 
-from ramalama.common import MNT_DIR, genname, get_accel_env_vars
+from ramalama.common import MNT_DIR, RAG_DIR, genname, get_accel_env_vars
 from ramalama.version import version
 
 
@@ -21,7 +21,7 @@ class Kube:
         self.image = image
         self.chat_template = chat_template
 
-    def gen_volumes(self):
+    def _gen_volumes(self):
         mounts = f"""\
         volumeMounts:
         - mountPath: {MNT_DIR}
@@ -32,19 +32,24 @@ class Kube:
       volumes:"""
 
         if os.path.exists(self.model):
-            volumes += self.gen_path_volume()
+            volumes += self._gen_path_volume()
         else:
-            volumes += self.gen_oci_volume()
+            volumes += self._gen_oci_volume()
+
+        if self.args.rag:
+            m, v = self._gen_rag_volume()
+            mounts += m
+            volumes += v
 
         if os.path.exists(self.chat_template):
-            volumes += self.gen_chat_template_volume()
+            volumes += self._gen_chat_template_volume()
 
-        m, v = self.gen_devices()
+        m, v = self._gen_devices()
         mounts += m
         volumes += v
         return mounts + volumes
 
-    def gen_devices(self):
+    def _gen_devices(self):
         mounts = ""
         volumes = ""
         for dev in ["dri", "kfd"]:
@@ -58,26 +63,39 @@ class Kube:
         name: {dev}"""
         return mounts, volumes
 
-    def gen_path_volume(self):
+    def _gen_path_volume(self):
         return f"""
       - hostPath:
           path: {self.model}
         name: model"""
 
-    def gen_oci_volume(self):
+    def _gen_oci_volume(self):
         return f"""
       - image:
           reference: {self.ai_image}
           pullPolicy: IfNotPresent
         name: model"""
 
-    def gen_chat_template_volume(self):
+    def _gen_rag_volume(self):
+        mounts = f"""
+        - mountPath: {RAG_DIR}
+          name: rag"""
+
+        volumes = f"""
+      - image:
+          reference: {self.args.rag}
+          pullPolicy: IfNotPresent
+        name: rag"""
+
+        return mounts, volumes
+
+    def _gen_chat_template_volume(self):
         return f"""
       - hostPath:
           path: {self.chat_template}
         name: chat_template"""
 
-    def _gen_ports(self):
+    def __gen_ports(self):
         if not hasattr(self.args, "port"):
             return ""
 
@@ -92,7 +110,7 @@ class Kube:
         return ports
 
     @staticmethod
-    def _gen_env_vars():
+    def __gen_env_vars():
         env_vars = get_accel_env_vars()
 
         if not env_vars:
@@ -109,9 +127,9 @@ class Kube:
         return env_spec
 
     def generate(self):
-        env_string = self._gen_env_vars()
-        port_string = self._gen_ports()
-        volume_string = self.gen_volumes()
+        env_string = self.__gen_env_vars()
+        port_string = self.__gen_ports()
+        volume_string = self._gen_volumes()
         _version = version()
 
         outfile = self.name + ".yaml"
