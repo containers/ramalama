@@ -486,6 +486,9 @@ def accel_image(config, args):
         gpu_type, _ = next(iter(env_vars.items()))
 
     if args.runtime == "vllm":
+        if "HIP_VISIBLE_DEVICES" in os.environ:
+            return "docker.io/rocm/vllm-dev:main"
+
         return "docker.io/vllm/vllm-openai"
 
     split = version().split(".")
