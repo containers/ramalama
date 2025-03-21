@@ -26,6 +26,9 @@
                 name = "ramalama";
                 src = ./.;
                 dependencies = [ (llama-cpp.override llamaCppOverrides) ];
+                nativeBuildInputs =
+                  (with pkgs; [ codespell shellcheck isort bats jq apacheHttpd ]) ++
+                  (with pkgs.python3Packages; [ flake8 black pytest ]);
               } // ramalamaOverrides)
           )
           { llamaCppOverrides.vulkanSupport = true; }
