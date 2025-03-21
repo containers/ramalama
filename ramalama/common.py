@@ -400,6 +400,7 @@ def check_rocm_amd():
 
 def check_intel():
     igpu_num = 0
+    # Device IDs for select Intel GPUs.  See: https://dgpu-docs.intel.com/devices/hardware-table.html
     intel_gpus = (
         b"0xe20b",
         b"0xe20c",
@@ -414,8 +415,6 @@ def check_intel():
             for gpu_id in intel_gpus:
                 if gpu_id in content:
                     igpu_num += 1
-            # if b"0x7d55" in content:
-            #     igpu_num += 1
     if igpu_num:
         os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
         return "intel"
