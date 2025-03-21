@@ -673,7 +673,7 @@ class Model(ModelBase):
             return
 
         # Add rag chatbot
-        if hasattr(args, "rag") or args.rag:
+        if hasattr(args, "rag") and args.rag:
             exec_args = [
                 "bash",
                 "-c",
