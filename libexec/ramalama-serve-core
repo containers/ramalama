@@ -4,6 +4,23 @@ import sys
 
 
 def main(args):
+    sys.path.append('./')
+    from ramalama.common import exec_cmd
+
+    cmd = [
+        "llama-server",
+        "--port",
+        "8080",
+        "-m",
+        "/Users/ecurtin/.local/share/ramalama/models/ollama/deepseek-r1:1.5b",
+        "-c",
+        "2048",
+        "--temp",
+        "0.8",
+        "--host",
+        "0.0.0.0",
+    ]
+    exec_cmd(cmd)
     return 0
 
 
