@@ -327,9 +327,10 @@ class Model(ModelBase):
 
         if os.path.exists(args.rag):
             rag = os.path.realpath(args.rag)
-            exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db")
+            # Added temp read write because vector database requires write access even if nothing is written
+            exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db,rw=true")
         else:
-            exec_args.append(f"--mount=type=image,source={args.rag},destination=/rag")
+            exec_args.append(f"--mount=type=image,source={args.rag},destination=/rag,rw=true")
 
         return exec_args
 
@@ -670,6 +671,14 @@ class Model(ModelBase):
         exec_args = self.handle_runtime(args, exec_args, exec_model_path)
         if self.generate_container_config(model_path, chat_template_path, args, exec_args):
             return
+
+        # Add rag chatbot
+        if hasattr(args, "rag") or args.rag:
+            exec_args = [
+                "bash",
+                "-c",
+                f"nohup {' '.join(exec_args)} &> /tmp/llama-server.log & rag_framework run /rag/vector.db",
+            ]
 
         self.execute_command(model_path, exec_args, args)
 
