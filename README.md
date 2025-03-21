@@ -117,7 +117,19 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 | Nvidia GPU (cuda)                  | :white_check_mark: |
 | AMD GPU (rocm)                     | :white_check_mark: |
 | Ascend NPU (Linux)                 | :white_check_mark: |
-| Intel ARC GPU (Meteor Lake 155H)   | :white_check_mark: |
+| Intel ARC GPUs (Linux)             | :white_check_mark: |
+
+__Note:__ The following Intel GPUs are auto-detected by Ramalama:
+
+| GPU ID | Description |
+| ------ | ----------- |
+|`0xe20b`| Intel® Arc™ B580 Graphics |
+|`0xe20c`| Intel® Arc™ B570 Graphics |
+|`0x7d51`| Intel® Graphics - Arrow Lake-H |
+|`0x7dd5`| Intel® Graphics - Meteor Lake  |
+|`0x7d55`| Intel® Arc™ Graphics - Meteor Lake |
+
+See [https://dgpu-docs.intel.com/devices/hardware-table.html](https://dgpu-docs.intel.com/devices/hardware-table.html) for more information.
 
 ## COMMANDS
 
