@@ -23,6 +23,8 @@ def request_data(prompt, use_completions):
 
 
 def req(prompt):
+    color_default = "\033[0m"
+    color_yellow = "\033[33m"
     use_completions = False
     url, data = request_data(prompt, use_completions)
     json_data = json.dumps(data).encode("utf-8")
@@ -35,6 +37,7 @@ def req(prompt):
 
     # Send request and process the response
     with urllib.request.urlopen(request) as response:
+        print(color_yellow)
         for line in response:
             line = line.decode("utf-8").strip()
             if line.startswith("data: {"):
@@ -48,9 +51,9 @@ def req(prompt):
                     else:
                         continue
 
-                print(choice, end="")
+                print(choice, end="", flush=True)
 
-    print()
+    print(color_default)
 
 
 class RamaLamaShell(cmd.Cmd):
