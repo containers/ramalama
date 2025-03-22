@@ -22,7 +22,7 @@ def construct_request_data(conversation_history):
 def res(response):
     color_default = "\033[0m"
     color_yellow = "\033[33m"
-    print(f"\r{color_yellow}", end="")
+    print("\r", end="")
     assistant_response = ""
     for line in response:
         line = line.decode("utf-8").strip()
@@ -34,10 +34,10 @@ def res(response):
             else:
                 continue
 
-            print(choice, end="", flush=True)
+            print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
             assistant_response += choice
 
-    print(color_default)
+    print("")
     return assistant_response
 
 
