@@ -16,12 +16,42 @@ amd_lshw() {
   lshw -c display -numeric -disable network | grep -q 'vendor: .* \[1002\]'
 }
 
+# Check if the system locale is UTF-8
+is_locale_utf8() {
+    for var in LC_ALL LC_CTYPE LANG; do
+      if [[ "${!var}" == *UTF-8* ]]; then
+        return 0
+      fi
+    done
+
+    return 1
+}
+
+# Detect if the terminal supports emoji output
+supports_emoji() {
+    if [ -z "$TERM" ] || [ "$TERM" == "dumb" ] || [ "$TERM" == "linux" ]; then
+      return 1
+    fi
+
+    if ! is_locale_utf8; then
+      return 1
+    fi
+
+    return 0
+}
+
 download() {
   if $local_install; then
     cp "$1" "$2"
   else
     curl --globoff --location --proto-default https -f -o "$2" \
         --remote-time --retry 10 --retry-max-time 10 -s -S "$1"
+  fi
+
+  if supports_emoji; then
+    echo -n  "🦙"
+
+    return 0
   fi
 
   echo -n "█"
@@ -75,6 +105,7 @@ install_mac_dependencies() {
   fi
 
   brew install llama.cpp
+  echo
 }
 
 check_platform() {
@@ -230,9 +261,19 @@ parse_arguments() {
   done
 }
 
+print_banner() {
+  echo -e "  _____                       _\n" \
+          "|  __ \                     | |\n" \
+          "| |__) |__ _ _ __ ___   __ _| |     __ _ _ __ ___   __ _\n" \
+          "|  _  // _\` | '_ \` _ \ / _\` | |    / _\` | '_ \` _ \ / _\` |\n" \
+          "| | \ \ (_| | | | | | | (_| | |___| (_| | | | | | | (_| |\n" \
+          "|_|  \_\__,_|_| |_| |_|\__,_|______\__,_|_| |_| |_|\__,_|\n"
+}
+
 main() {
   set -e -o pipefail
 
+  print_banner
   local local_install="false"
   parse_arguments "$@"
 
