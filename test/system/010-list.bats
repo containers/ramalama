@@ -5,7 +5,7 @@ load helpers
 @test "ramalama list - basic output" {
     headings="NAME *MODIFIED *SIZE"
 
-    run_ramalama pull ollama://tinyllama
+    run_ramalama pull ollama://smollm:135m
     run_ramalama list
     is "${lines[0]}" "$headings" "header line"
 

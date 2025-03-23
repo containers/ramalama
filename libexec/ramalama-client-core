@@ -4,6 +4,7 @@ import argparse
 import cmd
 import itertools
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -19,9 +20,18 @@ def construct_request_data(conversation_history):
     return data
 
 
-def res(response):
-    color_default = "\033[0m"
-    color_yellow = "\033[33m"
+def should_colorize():
+    t = os.getenv("TERM")
+    return t and t != "dumb" and sys.stdout.isatty()
+
+
+def res(response, color):
+    color_default = ""
+    color_yellow = ""
+    if (color == "auto" and should_colorize()) or color == "always":
+        color_default = "\033[0m"
+        color_yellow = "\033[33m"
+
     print("\r", end="")
     assistant_response = ""
     for line in response:
@@ -41,7 +51,7 @@ def res(response):
     return assistant_response
 
 
-def req(conversation_history, url):
+def req(conversation_history, url, color):
     data = construct_request_data(conversation_history)
     json_data = json.dumps(data).encode("utf-8")
     headers = {
@@ -65,15 +75,16 @@ def req(conversation_history, url):
             time.sleep(i)
             i *= 2
 
-    return res(response)
+    return res(response, color)
 
 
 class RamaLamaShell(cmd.Cmd):
-    def __init__(self, prompt, host):
+    def __init__(self, parsed_args):
         super().__init__()
         self.conversation_history = []
-        self.prompt = prompt
-        self.url = f"{host}/v1/chat/completions"
+        self.parsed_args = parsed_args
+        self.prompt = parsed_args.prefix
+        self.url = f"{parsed_args.host}/v1/chat/completions"
 
     def do_EOF(self, user_content):
         print("")
@@ -84,11 +95,20 @@ class RamaLamaShell(cmd.Cmd):
             return True
 
         self.conversation_history.append({"role": "user", "content": user_content})
-        self.conversation_history.append({"role": "assistant", "content": req(self.conversation_history, self.url)})
+        self.conversation_history.append(
+            {"role": "assistant", "content": req(self.conversation_history, self.url, self.parsed_args.color)}
+        )
 
 
 def main(args):
     parser = argparse.ArgumentParser(description="Run ramalama client")
+    parser.add_argument(
+        '--color',
+        '--colour',
+        default="auto",
+        choices=['never', 'always', 'auto'],
+        help='possible values are "never", "always" and "auto".',
+    )
     parser.add_argument("--prefix", type=str, default="> ", help="prefix for the user prompt")
     parser.add_argument(
         "host", type=str, nargs="?", default="http://127.0.0.1:8080", help="the host to send requests to"
@@ -96,7 +116,7 @@ def main(args):
     parsed_args = parser.parse_args(args)
 
     try:
-        RamaLamaShell(prompt=parsed_args.prefix, host=parsed_args.host).cmdloop()
+        RamaLamaShell(parsed_args).cmdloop()
     except KeyboardInterrupt:
         print("")
 
