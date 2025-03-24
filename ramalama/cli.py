@@ -778,9 +778,17 @@ def run_parser(subparsers):
 
 
 def run_cli(args):
+    if args.rag:
+        _get_rag(args)
+        # Passing default args for serve (added network bridge for internet access)
+        args.port = CONFIG['port']
+        args.host = CONFIG['host']
+        args.network = 'bridge'
+        args.generate = ''
+
     try:
         model = New(args.MODEL, args)
-        model.run(args)
+        model.serve(args) if args.rag else model.run(args)
 
     except KeyError as e:
         try:
@@ -788,7 +796,7 @@ def run_cli(args):
             model = ModelFactory(
                 args.MODEL, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
             ).create_oci()
-            model.run(args)
+            model.serve(args) if args.rag else model.run(args)
         except Exception:
             raise e
 
