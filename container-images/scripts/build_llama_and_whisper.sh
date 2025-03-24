@@ -8,7 +8,7 @@ dnf_install_intel_gpu() {
   local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel" \
                   "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero" \
                   "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
-  dnf install -y "${rpm_list[@]}" "${intel_rpms[@]}"
+  dnf install -y "${intel_rpms[@]}"
 
   # shellcheck disable=SC1091
   . /opt/intel/oneapi/setvars.sh
@@ -24,11 +24,11 @@ dnf_remove() {
 dnf_install_asahi() {
   dnf copr enable -y @asahi/fedora-remix-branding
   dnf install -y asahi-repos
-  dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}" "${rpm_list[@]}"
+  dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
 }
 
 dnf_install_cuda() {
-  dnf install -y "${rpm_list[@]}" gcc-toolset-12
+  dnf install -y gcc-toolset-12
   # shellcheck disable=SC1091
   . /opt/rh/gcc-toolset-12/enable
 }
@@ -51,9 +51,12 @@ dnf_install_rocm() {
     if [ "${ID}" = "fedora" ]; then
       dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
     else
+      add_stream_repo "AppStream"
       dnf install -y rocm-dev hipblas-devel rocblas-devel
     fi
   fi
+
+  rm_non_ubi_repos
 }
 
 dnf_install_s390() {
@@ -73,7 +76,8 @@ add_stream_repo() {
 }
 
 rm_non_ubi_repos() {
-  rm -rf /etc/yum.repos.d/mirror.stream.centos.org_9-stream_* /etc/yum.repos.d/epel*
+  local dir="/etc/yum.repos.d"
+  rm -rf $dir/mirror.stream.centos.org_9-stream_* $dir/epel* $dir/_copr:*
 }
 
 dnf_install_mesa() {
@@ -111,30 +115,27 @@ dnf_install_ffmpeg() {
 }
 
 dnf_install() {
-  local rpm_list=("podman-remote" "python3" "python3-pip" "python3-argcomplete" \
-                  "python3-dnf-plugin-versionlock" "python3-devel" "gcc-c++" "cmake" "vim" \
-                  "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk")
+  local rpm_list=("podman-remote" "python3" "python3-pip" \
+                  "python3-argcomplete" "python3-dnf-plugin-versionlock" \
+                  "python3-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git" \
+                  "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
-  if [ "${containerfile}" = "ramalama" ] || [[ "${containerfile}" =~ rocm* ]] || \
-    [ "${containerfile}" = "vulkan" ]; then # All the UBI-based ones
-    if [ "${ID}" = "fedora" ]; then
-      dnf install -y "${rpm_list[@]}"
-    else
-      dnf_install_epel
-      dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
-    fi
+  if [ "${ID}" = "fedora" ]; then
+    dnf install -y "${rpm_list[@]}"
+  else
+    dnf_install_epel # All the UBI-based ones
+    dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
+  fi
 
-    # x86_64 and aarch64 means kompute
+  if [ "$containerfile" = "ramalama" ]; then
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
-      dnf_install_mesa
-    fi
-
-    dnf_install_rocm
-    rm_non_ubi_repos
-    if [ "$uname_m" != "x86_64" ] && ! [ "$uname_m" != "aarch64" ]; then
+      dnf_install_mesa # on x86_64 and aarch64 we use vulkan via mesa 
+    else
       dnf_install_s390
     fi
+  elif [[ "$containerfile" =~ rocm* ]]; then
+    dnf_install_rocm
   elif [ "$containerfile" = "asahi" ]; then
     dnf_install_asahi
   elif [ "$containerfile" = "cuda" ]; then
@@ -203,13 +204,18 @@ configure_common_flags() {
       if [ "${ID}" = "fedora" ]; then
         common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
       fi
+
       common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201}")
       ;;
     cuda)
       common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
       ;;
-    vulkan | asahi)
-      common_flags+=("-DGGML_VULKAN=1")
+    ramalama | asahi)
+      if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
+        common_flags+=("-DGGML_VULKAN=ON")
+      else
+        common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
+      fi
       ;;
     intel-gpu)
       common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
@@ -259,7 +265,7 @@ clone_and_build_ramalama() {
 }
 
 pip_install() {
-    python3 -m pip install wheel qdrant_client fastembed openai fastapi uvicorn openvino  --prefix="$1"
+  python3 -m pip install wheel qdrant_client fastembed openai fastapi uvicorn openvino  --prefix="$1"
 }
 
 main() {
@@ -278,22 +284,13 @@ main() {
   common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=${install_prefix}")
   available dnf && dnf_install
   if [ -n "$containerfile" ]; then 
-      clone_and_build_ramalama "${install_prefix}"
-      pip_install "${install_prefix}"
+    clone_and_build_ramalama "${install_prefix}"
+    pip_install "${install_prefix}"
   fi
+
   setup_build_env
   clone_and_build_whisper_cpp
   common_flags+=("-DLLAMA_CURL=ON")
-  case "$containerfile" in
-    ramalama)
-      if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
-        common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
-      else
-        common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
-      fi
-      ;;
-  esac
-
   clone_and_build_llama_cpp
   available dnf && dnf_remove
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
