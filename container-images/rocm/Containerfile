@@ -2,9 +2,9 @@ FROM registry.access.redhat.com/ubi9/ubi:9.5-1741850090
 
 COPY rocm/amdgpu.repo /etc/yum.repos.d/
 COPY rocm/rocm.repo /etc/yum.repos.d/
-COPY scripts /scripts
+COPY --chmod=755 scripts /scripts
 
 ARG AMDGPU_TARGETS=
 ENV AMDGPU_TARGETS=${AMDGPU_TARGETS}
-RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "rocm"
+RUN /scripts/build_llama_and_whisper.sh "rocm" && \
+    rag_framework load

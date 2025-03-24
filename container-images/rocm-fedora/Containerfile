@@ -1,8 +1,8 @@
 FROM registry.fedoraproject.org/fedora:42
 
-COPY ../scripts /scripts
-RUN chmod +x /scripts/*.sh && \
-    /scripts/build_llama_and_whisper.sh "rocm" 
+COPY --chmod=755 ../scripts /scripts
+RUN /scripts/build_llama_and_whisper.sh "rocm" && \
+    rag_framework load
 
 ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
 ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}
