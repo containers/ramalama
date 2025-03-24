@@ -1,10 +1,9 @@
 FROM quay.io/fedora/fedora:41 as builder
 
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
-COPY scripts/build_llama_and_whisper.sh /
+COPY --chmod=755 scripts/build_llama_and_whisper.sh /
 
-RUN chmod +x /build_llama_and_whisper.sh ; \
-    /build_llama_and_whisper.sh "intel-gpu"
+RUN /build_llama_and_whisper.sh "intel-gpu"
 
 FROM quay.io/fedora/fedora:41
 
@@ -19,6 +18,7 @@ RUN dnf install -y procps-ng python3 python3-pip python3-devel intel-level-zero 
 RUN useradd llama-user -u 10000 -d /home/llama-user -s /bin/bash; \
 groupmod -a -U llama-user render; \
 groupmod -a -U llama-user video; \
+rag_framework load; \
 echo ". /opt/intel/oneapi/setvars.sh" >> "/home/llama-user/.zshrc"; \
 echo ". /opt/intel/oneapi/setvars.sh" >> "/home/llama-user/.bashrc"; \
 chown llama-user:llama-user -R /home/llama-user
