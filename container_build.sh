@@ -67,6 +67,7 @@ ARG REGISTRY_PATH=quay.io/ramalama
 FROM ${REGISTRY_PATH}/$2
 
 COPY --chmod=755 ../scripts/ /usr/bin/
+USER root
 RUN /usr/bin/build_rag.sh ${GPU}
 ENTRYPOINT []
 EOF
