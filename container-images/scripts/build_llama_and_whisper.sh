@@ -116,8 +116,8 @@ dnf_install() {
                   "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
-  if [[ "${containerfile}" = "ramalama" ]] || [[ "${containerfile}" =~ rocm* ]] || \
-    [[ "${containerfile}" = "vulkan" ]]; then # All the UBI-based ones
+  if [ "${containerfile}" = "ramalama" ] || [[ "${containerfile}" =~ rocm* ]] || \
+    [ "${containerfile}" = "vulkan" ]; then # All the UBI-based ones
     if [ "${ID}" = "fedora" ]; then
       dnf install -y "${rpm_list[@]}"
     else
@@ -190,9 +190,9 @@ cmake_steps() {
 
 set_install_prefix() {
   if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ] || [ "$containerfile" = "cann" ]; then
-    install_prefix="/tmp/install"
+    echo "/tmp/install"
   else
-    install_prefix="/usr"
+    echo "/usr"
   fi
 }
 
@@ -253,14 +253,13 @@ clone_and_build_ramalama() {
   git clone https://github.com/containers/ramalama
   cd ramalama
   git submodule update --init --recursive
-  pip install . --prefix=/usr
+  python3 -m pip install . --prefix="$1"
   cd ..
   rm -rf ramalama
 }
 
 build_rag() {
-    python3 -m pip install qdrant_client fastembed openai fastapi uvicorn
-    rag_framework load
+    python3 -m pip install wheel qdrant_client fastembed openai fastapi uvicorn  --prefix="$1"
 }
 
 main() {
@@ -271,16 +270,16 @@ main() {
 
   local containerfile="$1"
   local install_prefix
+  install_prefix=$(set_install_prefix)
   local uname_m
   uname_m="$(uname -m)"
-  set_install_prefix
   local common_flags
   configure_common_flags
-  common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=$install_prefix")
+  common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=${install_prefix}")
   available dnf && dnf_install
   if [ -n "$containerfile" ]; then 
-      clone_and_build_ramalama
-      build_rag
+      clone_and_build_ramalama "${install_prefix}"
+      build_rag "${install_prefix}"
   fi
   setup_build_env
   clone_and_build_whisper_cpp
