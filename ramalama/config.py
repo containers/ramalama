@@ -84,11 +84,11 @@ def load_config_defaults(config: Dict[str, Any]):
     config['images'] = config.get(
         'images',
         {
-            "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
-            "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
             "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
-            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
             "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
+            "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
+            "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm-fedora",
+            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
         },
     )
 
