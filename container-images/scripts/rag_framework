@@ -3,6 +3,7 @@
 # AI imports
 import qdrant_client
 import openai
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 # Regular imports
 import uuid
 import os
@@ -16,8 +17,9 @@ from fastapi import FastAPI
 import uvicorn
 
 # Global Vars
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-SPARSE_MODEL = "prithivida/Splade_PP_en_v1"
+EMBED_MODEL = "jinaai/jina-embeddings-v2-small-en"
+SPARSE_MODEL = 'prithivida/Splade_PP_en_v1'
+RANK_MODEL = 'Xenova/ms-marco-MiniLM-L-6-v2'
 COLLECTION_NAME = "rag"
 # Needed for mac to not give errors
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
@@ -36,6 +38,7 @@ class Rag:
         self.client = qdrant_client.QdrantClient(path=vector_path)
         self.client.set_model(EMBED_MODEL)
         self.client.set_sparse_model(SPARSE_MODEL)
+        self.reranker = TextCrossEncoder(model_name=RANK_MODEL)
 
         # Setup openai api
         self.llm = openai.OpenAI(api_key="your-api-key", base_url="http://localhost:8080")
@@ -53,9 +56,19 @@ class Rag:
         results = self.client.query(
             collection_name="rag",
             query_text=prompt,
-            limit=5,
+            limit=20,
         )
-        context = "\n".join(r.document for r in results)
+        result = [r.document for r in results] 
+        # reranker code to have the first 5 queries 
+        reranked_context = " ".join(
+            str(result[i]) for i, _ in sorted(
+                enumerate(self.reranker.rerank(prompt, result)),
+                key=lambda x: x[1],
+                reverse=True
+            )[:5]
+        )
+
+        # context = "\n".join(r.document for r in results)
 
         # Prepare the metaprompt with chat history and context
         metaprompt = f"""
@@ -68,7 +81,7 @@ class Rag:
             {self.format_chat_history()}
 
             ### Context:  
-            {context.strip()}  
+            {reranked_context.strip()}  
 
             ### Question:  
             {prompt.strip()}  
