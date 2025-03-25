@@ -35,9 +35,10 @@ class QueryRequest(BaseModel):
 
 class Rag(cmd.Cmd):
     prompt = "> "
-
     def __init__(self, vector_path):
-        # Setup vector database
+        # Initlialze the cmd class
+        super().__init__()
+        
         self.client = qdrant_client.QdrantClient(path=vector_path)
         self.client.set_model(EMBED_MODEL)
         self.client.set_sparse_model(SPARSE_MODEL)
@@ -186,6 +187,7 @@ def load():
     client = qdrant_client.QdrantClient(":memory:")
     client.set_model(EMBED_MODEL)
     client.set_sparse_model(SPARSE_MODEL)
+    TextCrossEncoder(model_name=RANK_MODEL)
 
 
 parser = argparse.ArgumentParser(description="A script to enable Rag")
