@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # AI imports
+import cmd
 import qdrant_client
 import openai
 from fastembed.rerank.cross_encoder import TextCrossEncoder
@@ -32,7 +33,9 @@ class QueryRequest(BaseModel):
     messages: list
     max_tokens: int = 150  # Default to 150 tokens
 
-class Rag:
+class Rag(cmd.Cmd):
+    self.prompt = "> "
+
     def __init__(self, vector_path):
         # Setup vector database
         self.client = qdrant_client.QdrantClient(path=vector_path)
@@ -43,6 +46,10 @@ class Rag:
         # Setup openai api
         self.llm = openai.OpenAI(api_key="your-api-key", base_url="http://localhost:8080")
         self.chat_history = []  # Store chat history
+
+    def do_EOF(self, user_content):
+        print("")
+        return True
     
     def query(self, prompt):
         # Add user query to chat history
@@ -124,28 +131,12 @@ class Rag:
                 formatted_history.append(f"User: {user_message}\nAI: ")
         return "\n".join(formatted_history)
 
-    def run(self):
-        print("> Welcome to the Rag Assistant!")
-        try:
-            while True:
-                # User input
-                user_input = input("> ").strip()
+    def default(self, user_content):
+        if user_content == "/bye":
+            return True
 
-                # Skip empty queries
-                if not user_input:
-                    print("> Please enter a valid query.")
-                    continue
-                
-                # Check for a specific query
-                try:
-                    self.query(user_input)
-                except KeyboardInterrupt:
-                    print("\nStream interrupted.")
-                print(" ")
+        self.query(user_content)
 
-        except KeyboardInterrupt:
-            print("\n> Exiting... Goodbye!")  # Catch any Interrupts and exit gracefully
-    
     def serve(self):
         app = FastAPI()
 
@@ -182,7 +173,10 @@ class Rag:
 
 def run_rag(vector_path):
     rag = Rag(vector_path)
-    rag.run()
+    try:
+        rag.cmdloop()
+    except KeyboardInterrupt:
+        print("")
 
 def serve_rag(vector_path):
     rag = Rag(vector_path)
