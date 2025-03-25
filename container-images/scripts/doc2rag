@@ -10,13 +10,10 @@ import qdrant_client
 from docling.chunking import HybridChunker
 from docling.document_converter import DocumentConverter
 
+# Global Vars
+EMBED_MODEL = "jinaai/jina-embeddings-v2-small-en"
 SPARSE_MODEL = "prithivida/Splade_PP_en_v1"
 COLLECTION_NAME = "rag"
-
-
-# Global Vars
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-
 
 class Converter:
     """A Class designed to handle all document conversions using Docling"""
@@ -39,24 +36,19 @@ class Converter:
 
     def convert(self):
         result = self.doc_converter.convert_all(self.targets)
-
         documents, metadata, ids = [], [], []
-        chunker = HybridChunker(tokenizer=EMBED_MODEL, max_tokens=500, overlap=100)
+        chunker = HybridChunker(tokenizer=EMBED_MODEL, overlap=100, merge_peers=True)
         for file in result:
             chunk_iter = chunker.chunk(dl_doc=file.document)
             for i, chunk in enumerate(chunk_iter):
+                # Extract the enriched text from the chunk
                 doc_text = chunker.serialize(chunk=chunk)
-                # Extract the text and metadata from the chunk
-                doc_meta = chunk.meta.export_json_dict()
-
                 # Append to respective lists
                 documents.append(doc_text)
-                metadata.append(doc_meta)
-
                 # Generate unique ID for the chunk
                 doc_id = self.generate_hash(doc_text)
                 ids.append(doc_id)
-        return self.client.add(COLLECTION_NAME, documents=documents, metadata=metadata, ids=ids)
+        return self.client.add(COLLECTION_NAME, documents=documents, ids=ids)
 
     def walk(self, path):
         for root, dirs, files in os.walk(path, topdown=True):
@@ -88,8 +80,6 @@ parser = argparse.ArgumentParser(
 parser.add_argument("load", action="store_true", help="Load models without processing files")
 parser.add_argument("target", nargs="?", help="Target database")
 parser.add_argument("source", nargs="*", help="Source files")
-
-
 
 def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
