@@ -34,7 +34,7 @@ class QueryRequest(BaseModel):
     max_tokens: int = 150  # Default to 150 tokens
 
 class Rag(cmd.Cmd):
-    self.prompt = "> "
+    prompt = "> "
 
     def __init__(self, vector_path):
         # Setup vector database
