@@ -15,13 +15,13 @@ RUN dnf install -y procps-ng python3 python3-pip python3-devel intel-level-zero 
     chown 0:0 /etc/group ; \
     chmod g=u /etc/passwd /etc/group /home ;
 
-RUN useradd llama-user -u 10000 -d /home/llama-user -s /bin/bash; \
-groupmod -a -U llama-user render; \
-groupmod -a -U llama-user video; \
-rag_framework load; \
-echo ". /opt/intel/oneapi/setvars.sh" >> "/home/llama-user/.zshrc"; \
-echo ". /opt/intel/oneapi/setvars.sh" >> "/home/llama-user/.bashrc"; \
-chown llama-user:llama-user -R /home/llama-user
+RUN useradd llama-user -u 10000 -d /home/llama-user -s /bin/bash && \
+groupmod -a -U llama-user render && \
+groupmod -a -U llama-user video && \
+echo ". /opt/intel/oneapi/setvars.sh" >> "/home/llama-user/.zshrc" && \
+echo ". /opt/intel/oneapi/setvars.sh" >> "/home/llama-user/.bashrc" && \
+chown llama-user:llama-user -R /home/llama-user && \
+/usr/bin/build_rag.sh rag
 
 USER 10000
 

@@ -74,7 +74,7 @@ COPY {src} /vector.db
 
         ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_', delete=True)
         vectordb = tempfile.TemporaryDirectory(dir=ragdb.name, prefix='RamaLama_rag_')
-        exec_args += ["-v", f"{vectordb.name}:{vectordb.name}:z"]
+        exec_args += ["-v", f"{vectordb.name}:/output:z"]
         for k, v in get_accel_env_vars().items():
             # Special case for Cuda
             if k == "CUDA_VISIBLE_DEVICES":
@@ -87,7 +87,7 @@ COPY {src} /vector.db
             exec_args += ["-e", f"{k}={v}"]
 
         exec_args += [rag_image]
-        exec_args += ["doc2rag", vectordb.name, "/docs/"]
+        exec_args += ["doc2rag", "/output", "/docs/"]
         try:
             run_cmd(exec_args, debug=args.debug)
             print(self.build(vectordb.name, self.target, ragdb.name, args))

@@ -68,7 +68,7 @@ FROM ${REGISTRY_PATH}/$2
 
 COPY --chmod=755 ../scripts/ /usr/bin/
 USER root
-RUN /usr/bin/build_rag.sh ${GPU}
+RUN /usr/bin/build_rag.sh docling ${GPU}
 ENTRYPOINT []
 EOF
     echo "$1 build --no-cache -t ${REGISTRY_PATH}/$2-rag -f ${containerfile} ."

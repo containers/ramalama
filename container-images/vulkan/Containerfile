@@ -2,6 +2,6 @@ FROM registry.access.redhat.com/ubi9/ubi:9.5-1741850090
 
 COPY --chmod=755 ../scripts /usr/bin
 
-RUN /usr/bin/build_llama_and_whisper.sh "vulkan"  && \
+RUN /usr/bin/build_llama_and_whisper.sh "vulkan" && \
     rag_framework load
 
