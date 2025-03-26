@@ -113,9 +113,10 @@ dnf_install_ffmpeg() {
 dnf_install() {
   local rpm_list=("podman-remote" "python3" "python3-pip" "python3-argcomplete" \
                   "python3-dnf-plugin-versionlock" "python3-devel" "gcc-c++" "cmake" "vim" \
-                  "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk" "python3-openvino")
+                  "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
+  dnf install -y python3-openvino || true # install wherever we can
   if [ "${containerfile}" = "ramalama" ] || [[ "${containerfile}" =~ rocm* ]] || \
     [ "${containerfile}" = "vulkan" ]; then # All the UBI-based ones
     if [ "${ID}" = "fedora" ]; then
