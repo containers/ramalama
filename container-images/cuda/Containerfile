@@ -12,5 +12,4 @@ COPY --from=builder /tmp/install /usr
 COPY --chmod=755 ../scripts /usr/bin
 
 RUN dnf install -y python3 && \
-    rag_framework load && \
-    dnf clean all && rm -rf /var/cache/*dnf*
+    /usr/bin/build_rag.sh rag

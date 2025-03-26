@@ -77,7 +77,6 @@ parser = argparse.ArgumentParser(
     description="process source files into RAG vector database",
 )
 
-parser.add_argument("load", action="store_true", help="Load models without processing files")
 parser.add_argument("target", nargs="?", help="Target database")
 parser.add_argument("source", nargs="*", help="Source files")
 
@@ -91,9 +90,9 @@ def eprint(e, exit_code):
 
 try:
     args = parser.parse_args()
-    if args.load:
+    if args.target == "load":
         load()
-    elif args.target and args.source:
+    else:
         converter = Converter(args.target, args.source)
         converter.convert()
 except FileNotFoundError as e:
