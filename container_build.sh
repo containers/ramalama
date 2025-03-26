@@ -86,7 +86,7 @@ build() {
   cd "container-images/"
   local conman_build=("${conman[@]}")
   local conman_show_size=("${conman[@]}" "images" "--filter" "reference='$REGISTRY_PATH/${target}'")
-  if [ "$3" == "-d" ]; then
+  if [ "$dryrun" == "-d" ]; then
       add_build_platform
       echo "${conman_build[@]}"
       cd - > /dev/null
@@ -149,7 +149,7 @@ parse_arguments() {
         shift
         ;;
       -d)
-        option="$1"
+        dryrun="$1"
         shift
         ;;
       -r)
@@ -170,10 +170,9 @@ parse_arguments() {
 
 process_all_targets() {
   local command="$1"
-  local option="$2"
 
   # build ramalama container image first, as other images inherit from it
-  build "ramalama" "$command" "$option"
+  build "ramalama" "$command"
   for i in container-images/*; do
     i=$(basename "$i")
     # skip these directories
@@ -193,7 +192,7 @@ process_all_targets() {
       fi
     fi
 
-    build "$i" "$command" "$option"
+    build "$i" "$command"
   done
 }
 
@@ -206,7 +205,7 @@ print_usage() {
   echo "  multi-arch   Build and Push multi-arch images with podman farm"
   echo
   echo "Options:"
-  echo "  -d           Some option description"
+  echo "  -d           Dryrun, print podman commands but don't execute"
   echo "  -r           Remove container image after build"
   echo
   echo "Targets:"
@@ -226,7 +225,7 @@ main() {
 
   local target=""
   local command=""
-  local option=""
+  local dryrun=""
   local rm_after_build="false"
   local ci="false"
   parse_arguments "$@"
@@ -243,9 +242,9 @@ main() {
 
   target="${target:-all}"
   if [ "$target" = "all" ]; then
-    process_all_targets "$command" "$option"
+    process_all_targets "$command"
   else
-    build "$target" "$command" "$option"
+    build "$target" "$command"
   fi
 }
 
