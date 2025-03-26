@@ -113,7 +113,7 @@ dnf_install_ffmpeg() {
 dnf_install() {
   local rpm_list=("podman-remote" "python3" "python3-pip" "python3-argcomplete" \
                   "python3-dnf-plugin-versionlock" "python3-devel" "gcc-c++" "cmake" "vim" \
-                  "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk" "python3-openvino")
+                  "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
   if [ "${containerfile}" = "ramalama" ] || [[ "${containerfile}" =~ rocm* ]] || \
@@ -258,8 +258,8 @@ clone_and_build_ramalama() {
   rm -rf ramalama
 }
 
-build_rag() {
-    python3 -m pip install wheel qdrant_client fastembed openai fastapi uvicorn  --prefix="$1"
+pip_install() {
+    python3 -m pip install wheel qdrant_client fastembed openai fastapi uvicorn openvino  --prefix="$1"
 }
 
 main() {
@@ -279,7 +279,7 @@ main() {
   available dnf && dnf_install
   if [ -n "$containerfile" ]; then 
       clone_and_build_ramalama "${install_prefix}"
-      build_rag "${install_prefix}"
+      pip_install "${install_prefix}"
   fi
   setup_build_env
   clone_and_build_whisper_cpp
