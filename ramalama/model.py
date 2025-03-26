@@ -245,9 +245,11 @@ class Model(ModelBase):
 
         return conman_args
 
-    def handle_docker_pull(self, conman_args, args):
+    def handle_oci_pull(self, conman_args, args):
         if os.path.basename(args.engine) == "docker" and args.pull == "newer":
             try:
+                if not args.quiet:
+                    print(f"Pulling image {args.image}...")
                 run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
             except Exception:  # Ignore errors, the run command will handle it.
                 pass
@@ -345,7 +347,7 @@ class Model(ModelBase):
         conman_args = self.add_container_labels(conman_args, args)
         conman_args = self.add_subcommand_env(conman_args, args)
         conman_args = self.handle_podman_specifics(conman_args, args)
-        conman_args = self.handle_docker_pull(conman_args, args)
+        conman_args = self.handle_oci_pull(conman_args, args)
         conman_args = self.add_tty_option(conman_args)
         conman_args = self.add_env_option(conman_args, args)
         conman_args = self.add_detach_option(conman_args, args)
