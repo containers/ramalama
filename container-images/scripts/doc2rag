@@ -40,7 +40,7 @@ class Converter:
         chunker = HybridChunker(tokenizer=EMBED_MODEL, overlap=100, merge_peers=True)
         for file in result:
             chunk_iter = chunker.chunk(dl_doc=file.document)
-            for i, chunk in enumerate(chunk_iter):
+            for chunk in enumerate(chunk_iter):
                 # Extract the enriched text from the chunk
                 doc_text = chunker.serialize(chunk=chunk)
                 # Append to respective lists
