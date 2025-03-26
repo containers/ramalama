@@ -15,18 +15,21 @@ class Rag:
         self.target = target
         set_accel_env_vars()
 
-    def build(self, source, target, contextdir, args):
+    def build(self, source, target, args):
         print(f"Building {target}...")
+        contextdir = os.path.dirname(source)
         src = os.path.basename(source)
         print(f"adding {src}...")
         cfile = f"""\
 FROM scratch
 COPY {src} /vector.db
 """
-        containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=True)
+        containerfile = tempfile.NamedTemporaryFile(dir=source)
         # Open the file for writing.
         with open(containerfile.name, 'w') as c:
             c.write(cfile)
+        if args.debug:
+            print(f"\nContainerfile: {containerfile.name}\n{cfile}")
         imageid = (
             run_cmd(
                 [
@@ -73,8 +76,9 @@ COPY {src} /vector.db
             tmpdir = "/tmp"
 
         ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_')
-        vectordb = tempfile.TemporaryDirectory(dir=ragdb.name, prefix='RamaLama_rag_')
-        exec_args += ["-v", f"{vectordb.name}:/output:z"]
+        dbdir = os.path.join(ragdb.name, "vectordb")
+        os.mkdir(dbdir)
+        exec_args += ["-v", f"{dbdir}:/output:z"]
         for k, v in get_accel_env_vars().items():
             # Special case for Cuda
             if k == "CUDA_VISIBLE_DEVICES":
@@ -90,9 +94,8 @@ COPY {src} /vector.db
         exec_args += ["doc2rag", "/output", "/docs/"]
         try:
             run_cmd(exec_args, debug=args.debug)
-            print(self.build(vectordb.name, self.target, ragdb.name, vectordb.name, args))
+            print(self.build(dbdir, self.target, args))
         except subprocess.CalledProcessError as e:
             raise e
         finally:
             shutil.rmtree(ragdb.name, ignore_errors=True)
-            shutil.rmtree(vectordb.name, ignore_errors=True)
