@@ -8,6 +8,11 @@ if [ -n "${MODEL_CHAT_FORMAT}" ]; then
     CHAT_FORMAT="--chat_template ${MODEL_CHAT_FORMAT}"
 fi
 
+# apply --jinja flag if MODEL_JINJA is set
+if [ -n "${MODEL_JINJA}" ]; then
+    CHAT_FORMAT="${CHAT_FORMAT} --jinja"
+fi
+
 if [ -z "${MODEL_PATH}" ]; then
     MODEL_PATH="/mnt/models/model.file"
 fi
