@@ -1,3 +1,4 @@
+import argparse
 from typing import Callable, Tuple, Union
 from urllib.parse import urlparse
 
@@ -15,18 +16,17 @@ class ModelFactory:
     def __init__(
         self,
         model: str,
-        store_path: str,
-        use_model_store: bool,
+        args: argparse,
         transport: str = "ollama",
-        engine: str = "podman",
         ignore_stderr: bool = False,
     ):
         self.model = model
-        self.store_path = store_path
-        self.use_model_store = use_model_store
+        self.store_path = args.store
+        self.use_model_store = args.use_model_store
         self.transport = transport
-        self.engine = engine
+        self.engine = args.engine
         self.ignore_stderr = ignore_stderr
+        self.container = args.container
 
         self.model_cls: type[Union[Huggingface, Ollama, OCI, URL]]
         self.create: Callable[[], Union[Huggingface, Ollama, OCI, URL]]
@@ -90,6 +90,9 @@ class ModelFactory:
         return model
 
     def create_oci(self) -> OCI:
+        if not self.container:
+            raise ValueError("OCI containers cannot be used with the --nocontainer option.")
+
         self.validate_oci_model_input()
         model = OCI(self.pruned_model, self.engine, self.ignore_stderr)
         self.set_optional_model_store(model)

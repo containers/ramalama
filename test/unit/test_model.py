@@ -6,6 +6,14 @@ import pytest
 from ramalama.model import compute_serving_port
 from ramalama.model_factory import ModelFactory
 
+
+class ARGS:
+    store = "/tmp/store"
+    use_model_store = False
+    engine = ""
+    container = True
+
+
 hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
 
 
@@ -52,7 +60,8 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
     ],
 )
 def test_extract_model_identifiers(model_input: str, expected_name: str, expected_tag: str, expected_orga: str):
-    name, tag, orga = ModelFactory(model_input, "/tmp/store", False).create().extract_model_identifiers()
+    args = ARGS()
+    name, tag, orga = ModelFactory(model_input, args).create().extract_model_identifiers()
     assert name == expected_name
     assert tag == expected_tag
     assert orga == expected_orga

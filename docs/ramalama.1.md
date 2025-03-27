@@ -127,8 +127,10 @@ pass --group-add keep-groups to podman (default: False)
 Needed to access the gpu on some systems, but has an impact on security, use with caution.
 
 #### **--nocontainer**
-do not run RamaLama in the default container (default: False)
+Do not run RamaLama in the default container (default: False)
 The default can be overridden in the ramalama.conf file.
+
+Note: OCI images cannot be used with the --nocontainer option. This option disables the following features: GPU acceleration, containerized environment isolation, and dynamic resource allocation. For a complete list of affected features, please see the RamaLama documentation at [link-to-feature-list].
 
 #### **--quiet**
 Decrease output verbosity.

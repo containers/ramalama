@@ -9,7 +9,9 @@ ramalama\-convert - convert AI Models from local storage to OCI Image
 ## DESCRIPTION
 Convert specified AI Model to an OCI Formatted AI Model
 
-The model can be from RamaLama model storage in Huggingface, Ollama, or local model stored on disk. Converting from an OCI model is not supported.
+The model can be from RamaLama model storage in Huggingface, Ollama, or a local model stored on disk. Converting from an OCI model is not supported.
+
+Note: The convert command must be run with containers. Use of the --nocontainer option is not allowed.
 
 ## OPTIONS
 
