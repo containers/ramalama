@@ -287,23 +287,23 @@ class Model(ModelBase):
         if args.device:
             for device_arg in args.device:
                 conman_args += ["--device", device_arg]
-        else:
-            if ramalama.common.podman_machine_accel or os.path.exists("/dev/dri"):
-                conman_args += ["--device", "/dev/dri"]
 
-            if os.path.exists("/dev/kfd"):
-                conman_args += ["--device", "/dev/kfd"]
+        if ramalama.common.podman_machine_accel or os.path.exists("/dev/dri"):
+            conman_args += ["--device", "/dev/dri"]
 
-            for k, v in get_accel_env_vars().items():
-                # Special case for Cuda
-                if k == "CUDA_VISIBLE_DEVICES":
-                    if os.path.basename(args.engine) == "docker":
-                        conman_args += ["--gpus", "all"]
-                    else:
-                        # newer Podman versions support --gpus=all, but < 5.0 do not
-                        conman_args += ["--device", "nvidia.com/gpu=all"]
+        if os.path.exists("/dev/kfd"):
+            conman_args += ["--device", "/dev/kfd"]
 
-                conman_args += ["-e", f"{k}={v}"]
+        for k, v in get_accel_env_vars().items():
+            # Special case for Cuda
+            if k == "CUDA_VISIBLE_DEVICES":
+                if os.path.basename(args.engine) == "docker":
+                    conman_args += ["--gpus", "all"]
+                else:
+                    # newer Podman versions support --gpus=all, but < 5.0 do not
+                    conman_args += ["--device", "nvidia.com/gpu=all"]
+
+            conman_args += ["-e", f"{k}={v}"]
 
         return conman_args
 
