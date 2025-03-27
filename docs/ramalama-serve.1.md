@@ -147,8 +147,8 @@ llama.cpp explains this as:
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
 #### **--threads**, **-t**
-maximum number of cpu threads to use for inferencing
-The default -1, uses the default of the underlying implementation
+Maximum number of cpu threads to use.
+The default is to use half the cores available on this system for the number of threads.
 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
