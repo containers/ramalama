@@ -180,6 +180,7 @@ Description=RamaLama $HOME/.local/share/ramalama/models/huggingface/instructlab/
 After=local-fs.target
 
 [Container]
+AddDevice=-/dev/accel
 AddDevice=-/dev/dri
 AddDevice=-/dev/kfd
 Exec=llama-server --port 1234 -m $HOME/.local/share/ramalama/models/huggingface/instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
@@ -231,6 +232,7 @@ Description=RamaLama /run/model/model.file AI Model Service
 After=local-fs.target
 
 [Container]
+AddDevice=-/dev/accel
 AddDevice=-/dev/dri
 AddDevice=-/dev/kfd
 Exec=vllm serve --port 8080 /run/model/model.file
