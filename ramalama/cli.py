@@ -805,7 +805,7 @@ def run_cli(args):
 
     try:
         model = New(args.MODEL, args)
-        model.serve(args) if args.rag else model.run(args)
+        model.serve(args, quiet=True) if args.rag else model.run(args)
 
     except KeyError as e:
         try:

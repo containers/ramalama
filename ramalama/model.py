@@ -654,9 +654,9 @@ class Model(ModelBase):
                 )
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
-    def serve(self, args):
+    def serve(self, args, quiet=False):
         self.validate_args(args)
-        args.port = compute_serving_port(args.port, args.debug)
+        args.port = compute_serving_port(args.port, args.debug, quiet)
 
         model_path = self.get_model_path(args)
         exec_model_path = MNT_FILE if args.container or args.generate else model_path
@@ -763,7 +763,7 @@ def get_available_port_if_any(debug: bool) -> int:
         return chosen_port
 
 
-def compute_serving_port(port: str, debug: bool) -> str:
+def compute_serving_port(port: str, debug: bool, quiet=False) -> str:
     if not port:
         raise IOError("serving port can't be empty.")
     if port != int_tuple_as_str(DEFAULT_PORT_RANGE):
@@ -774,5 +774,6 @@ def compute_serving_port(port: str, debug: bool) -> str:
 
     if target_port == 0:
         raise IOError("no available port could be detected. Please ensure you have enough free ports.")
-    print(f"serving on port {target_port}")
+    if not quiet:
+        print(f"serving on port {target_port}")
     return str(target_port)
