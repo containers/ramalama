@@ -247,7 +247,7 @@ class Model(ModelBase):
         return conman_args
 
     def handle_oci_pull(self, conman_args, args):
-        if os.path.basename(args.engine) == "docker" and args.pull == "newer":
+        if not args.dryrun and os.path.basename(args.engine) == "docker" and args.pull == "newer":
             try:
                 if not args.quiet:
                     print(f"Pulling image {args.image}...")
