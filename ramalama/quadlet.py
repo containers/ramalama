@@ -62,6 +62,7 @@ Description=RamaLama {self.model} AI Model Service
 After=local-fs.target
 
 [Container]
+AddDevice=-/dev/accel
 AddDevice=-/dev/dri
 AddDevice=-/dev/kfd\
 {env_var_string}

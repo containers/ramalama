@@ -1,3 +1,4 @@
+import glob
 import os
 import platform
 import random
@@ -288,11 +289,12 @@ class Model(ModelBase):
             for device_arg in args.device:
                 conman_args += ["--device", device_arg]
 
-        if ramalama.common.podman_machine_accel or os.path.exists("/dev/dri"):
+        if ramalama.common.podman_machine_accel:
             conman_args += ["--device", "/dev/dri"]
 
-        if os.path.exists("/dev/kfd"):
-            conman_args += ["--device", "/dev/kfd"]
+        for path in ["/dev/dri", "/dev/kfd", "/dev/accel", "/dev/davinci*", "/dev/devmm_svm", "/dev/hisi_hdc"]:
+            for dev in glob.glob(path):
+                conman_args += ["--device", dev]
 
         for k, v in get_accel_env_vars().items():
             # Special case for Cuda
