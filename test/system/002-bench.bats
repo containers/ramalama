@@ -15,7 +15,7 @@ function setup() {
 
 # bats test_tags=distro-integration
 @test "ramalama bench" {
-    run_ramalama bench smollm:135m
+    run_ramalama bench -t 2 smollm:135m
     is "$output" ".*model.*size.*" "model and size in output"
 }
 
