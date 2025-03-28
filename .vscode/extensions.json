@@ -1,0 +1,19 @@
+{
+    "recommendations": [
+        // python
+        "ms-python.debugpy",
+        "ms-python.python",
+        // black-formatter, flake8
+        "ms-python.black-formatter",
+        "ms-python.flake8",
+        // Docker 
+        "ms-azuretools.vscode-docker",
+        //ssh 
+        "ms-vscode-remote.remote-ssh", //vscode
+        "jeanp413.open-remote-ssh", //vscodium
+        // Github
+        "GitHub.vscode-github-actions",
+        // Red Hat
+        "redhat.vscode-yaml"
+    ]
+}
