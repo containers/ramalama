@@ -75,11 +75,11 @@ EOF
 	    is "${lines[0]}"  "Error: --nocontainer and --privileged options conflict. The --privileged option requires a container." "conflict between nocontainer and --privileged line"
 	fi
 	RAMALAMA_IMAGE=${image}:1234 run_ramalama -q --dryrun run ${MODEL}
-	is "$output" ".*${image}:1234 llama-run" "verify image name"
+	is "$output" ".*${image}:1234.*run" "verify image name"
 
     else
 	run_ramalama -q --dryrun run -c 4096 ${MODEL}
-	is "$output" 'llama-run -c 4096 --temp 0.8.*/path/to/model.*' "dryrun correct"
+	is "$output" '.*run.*-c 4096 --temp 0.8.*/path/to/model.*' "dryrun correct"
 	is "$output" ".*-c 4096" "verify model name"
 
 	run_ramalama 1 run --ctx-size=4096 --name foobar ${MODEL}

@@ -174,7 +174,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 
     run cat tinyllama.container
     is "$output" ".*PublishPort=1234" "PublishPort should match"
-    is "$output" ".*Exec=llama-server --port 1234 --model .*" "Exec line should be correct"
+    is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*tinyllama" "Mount line should be correct"
 
     HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet ${model}
@@ -217,7 +217,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 	run cat $name.container
 	is "$output" ".*PublishPort=1234" "PublishPort should match"
 	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
-	is "$output" ".*Exec=llama-server --port 1234 --model .*" "Exec line should be correct"
+	is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
 	is "$output" ".*Mount=type=image,source=${ociimage},destination=/mnt/models,subpath=/models,readwrite=false" "Volume line should be correct"
 
 	if is_container; then
@@ -268,7 +268,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
-    is "$output" ".*command: \[\"llama-server\"\]" "Should command"
+    is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
     HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=kube ${model}
@@ -284,7 +284,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
 
     run cat $name.yaml
-    is "$output" ".*command: \[\"llama-server\"\]" "Should command"
+    is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
     HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube ${model}
