@@ -42,9 +42,12 @@ podman_machine_accel = False
 def get_engine():
     engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
     if engine is not None:
+        if os.path.basename(engine) == "podman" and sys.platform == "darwin":
+            # apple_vm triggers setting global variable podman_machine_accel side effect
+            apple_vm(engine)
         return engine
 
-    if available("podman") and (sys.platform != "darwin" or apple_vm()):
+    if available("podman") and (sys.platform != "darwin" or apple_vm("podman")):
         return "podman"
 
     if available("docker") and sys.platform != "darwin":
@@ -96,8 +99,8 @@ def handle_provider(machine):
     return None
 
 
-def apple_vm():
-    podman_machine_list = ["podman", "machine", "list", "--format", "json", "--all-providers"]
+def apple_vm(engine):
+    podman_machine_list = [engine, "machine", "list", "--format", "json", "--all-providers"]
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
         machines = json.loads(machines_json)
