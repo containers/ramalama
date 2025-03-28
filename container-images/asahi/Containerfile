@@ -1,4 +1,4 @@
-FROM fedora:41
+FROM fedora:43
 
 ENV ASAHI_VISIBLE_DEVICES 1
 COPY --chmod=755 ../scripts /usr/bin
