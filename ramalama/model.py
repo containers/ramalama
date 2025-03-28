@@ -199,7 +199,8 @@ class Model(ModelBase):
             name,
             "--env=HOME=/tmp",
             "--init",
-            "--entrypoint=[]",
+            "--entrypoint",
+            "",
         ]
 
     def add_privileged_options(self, conman_args, args):
@@ -248,10 +249,11 @@ class Model(ModelBase):
         return conman_args
 
     def handle_oci_pull(self, conman_args, args):
+        self.image = accel_image(CONFIG, args)
         if not args.dryrun and os.path.basename(args.engine) == "docker" and args.pull == "newer":
             try:
                 if not args.quiet:
-                    print(f"Pulling image {args.image}...")
+                    print(f"Checking for newer image {self.image}")
                 run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
             except Exception:  # Ignore errors, the run command will handle it.
                 pass
@@ -386,7 +388,11 @@ class Model(ModelBase):
 
             gpu_args += [f'{args.ngl}']
 
-        if args.threads != -1:
+        # for some reason the --threads option is blowing up on Docker,
+        # with option not being supported by llama-run.
+        # This could be something being masked in a Docker container but not
+        # in a Podman container.
+        if args.threads != -1 and os.path.basename(args.engine) != "docker":
             gpu_args += ["--threads", f"{args.threads}"]
 
         return gpu_args
