@@ -392,7 +392,7 @@ class Model(ModelBase):
         # with option not being supported by llama-run.
         # This could be something being masked in a Docker container but not
         # in a Podman container.
-        if args.threads != -1 and os.path.basename(args.engine) != "docker":
+        if args.threads != -1 and args.engine and os.path.basename(args.engine) != "docker":
             gpu_args += ["--threads", f"{args.threads}"]
 
         return gpu_args
