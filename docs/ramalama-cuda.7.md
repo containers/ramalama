@@ -78,7 +78,7 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    Run the following command to verify setup:
 
    ```bash
-   podman run --rm --device=nvidia.com/gpu=all fedora nvidia-smi
+   podman run --rm --privileged --device=nvidia.com/gpu=all fedora nvidia-smi
    ```
 
 # **Expected Output**
