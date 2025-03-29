@@ -504,7 +504,8 @@ def accel_image(config, args):
     if attempt_to_use_versioned(conman, image, vers, args.debug):
         return f"{image}:{vers}"
 
-    return f"{image}:latest"
+    minorversion = ".".join(version().split(".")[:2])
+    return f"{image}:{minorversion}"
 
 
 def attempt_to_use_versioned(conman, image, vers, debug):

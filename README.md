@@ -11,7 +11,25 @@ On first run RamaLama inspects your system for GPU support, falling back to CPU 
 
 RamaLama uses container engines like Podman or Docker to pull the appropriate OCI image with all of the software necessary to run an AI Model for your systems setup.
 
-Running in containers eliminates the need for users to configure the host system for AI. After the initialization, RamaLama runs the AI Models within a container based on the OCI image.
+Running in containers eliminates the need for users to configure the
+host system for AI. After the initialization, RamaLama runs the AI
+Models within a container based on the OCI image. RamaLama pulls
+container image specific to the GPUs discovered on the host
+system. These images are tied to the minor version of RamaLama. For
+example RamaLama version 1.2.3 on an NVIDIA system pulls
+quay.io/ramalama/cuda:1.2. To override the default image use the
+`--image` option.
+
+Accelerated images:
+
+| Accelerator             | Image                      |
+| ------------------------| -------------------------- |
+|  CPU, Apple             | quay.io/ramalama/ramalama  |
+|  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm      |
+|  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda      |
+|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
+|  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu |
+|  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
 
 RamaLama then pulls AI Models from model registries. Starting a chatbot or a rest API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
 
@@ -100,7 +118,7 @@ pip install ramalama
 > If you are a macOS user, this is the preferred method.
 
 
-Install RamaLama by running this one-liner:
+Install RamaLama by running:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | bash
@@ -249,10 +267,10 @@ The default serving port will be 8080 if available, otherwise a free random port
 +-------+-------------------+
 	|
 	|
-        |           +------------------+           +------------------+
-        |           | Pull inferencing |           | Pull model layer |
-        +-----------| runtime (cuda)   |---------->| granite3-moe     |
-                    +------------------+           +------------------+
+	|           +------------------+           +------------------+
+	|           | Pull inferencing |           | Pull model layer |
+	+-----------| runtime (cuda)   |---------->| granite3-moe     |
+		    +------------------+           +------------------+
 						   | Repo options:    |
 						   +-+-------+------+-+
 						     |       |      |
@@ -273,7 +291,7 @@ The default serving port will be 8080 if available, otherwise a free random port
 
 ## In development
 
-Regard this alpha, everything is under development, so expect breaking changes, luckily it's easy to reset everything and re-install:
+Regarding this alpha, everything is under development, so expect breaking changes, luckily it's easy to reset everything and reinstall:
 
 ```
 rm -rf /var/lib/ramalama # only required if running as root user
@@ -286,11 +304,11 @@ and install again.
 
 This project wouldn't be possible without the help of other projects like:
 
-llama.cpp  
-whisper.cpp  
-vllm  
-podman   
-huggingface  
+llama.cpp
+whisper.cpp
+vllm
+podman
+huggingface
 
 so if you like this tool, give some of these repos a :star:, and hey, give us a :star: too while you are at it.
 
