@@ -15,7 +15,24 @@ On first run RamaLama inspects your system for GPU support, falling back to CPU 
 
 RamaLama uses container engines like Podman or Docker to pull the appropriate OCI image with all of the software necessary to run an AI Model for your systems setup.
 
-Running in containers eliminates the need for users to configure the host system for AI. After the initialization, RamaLama runs the AI Models within a container based on the OCI image.
+Running in containers eliminates the need for users to configure the host
+system for AI. After the initialization, RamaLama runs the AI Models within a
+container based on the OCI image. RamaLama pulls container image specific to
+the GPUs discovered on the host system. These images are tied to the minor
+version of RamaLama. For example RamaLama version 1.2.3 on an NVIDIA system
+pulls quay.io/ramalama/cuda:1.2. To override the default image use the
+`--image` option.
+
+Accelerated images:
+
+| Accelerator             | Image                      |
+| ------------------------| -------------------------- |
+|  CPU, Apple             | quay.io/ramalama/ramalama  |
+|  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm      |
+|  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda      |
+|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
+|  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu |
+|  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
 
 RamaLama pulls AI Models from model registries. Starting a chatbot or a rest API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
 
@@ -114,13 +131,15 @@ The default can be overridden in the ramalama.conf file or via the RAMALAMA_CONT
 show this help message and exit
 
 #### **--image**=IMAGE
-OCI container image to run with specified AI model. By default RamaLama uses
-`quay.io/ramalama/ramalama:latest`. The --image option allows users to override
-the default.
+OCI container image to run with specified AI model. RamaLama defaults to use
+images based on the accelerator it discovers. For example:
+`quay.io/ramalama/ramalama`. See the table below for all default images.
+The default image tag is based on the minor version of the RamaLama package.
+Version 1.2.3 of RamaLama pulls $IMAGE:1.2 from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the ramalama.conf file or via the
-RAMALAMA_IMAGE environment variable. `export RAMALAMA_TRANSPORT=quay.io/ramalama/aiimage:latest` tells
-RamaLama to use the `quay.io/ramalama/aiimage:latest` image.
+RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
+RamaLama to use the `quay.io/ramalama/aiimage:1.2` image.
 
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)
