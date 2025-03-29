@@ -18,6 +18,17 @@ class Input:
     Engine: str
 
 
+class ARGS:
+    store = "/tmp/store"
+    use_model_store = False
+    engine = ""
+    container = True
+
+    def __init__(self, store=False, engine=""):
+        self.use_model_store = store
+        self.engine = engine
+
+
 hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
 
 
@@ -59,11 +70,13 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
     ],
 )
 def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ollama, URL, OCI]], error):
+    args = ARGS(input.UseModelStore, input.Engine)
+
     if error is not None:
         with pytest.raises(error):
-            ModelFactory(input.Model, "/tmp/store", input.UseModelStore, input.Transport, input.Engine).create()
+            ModelFactory(input.Model, args, input.Transport).create()
     else:
-        model = ModelFactory(input.Model, "/tmp/store", input.UseModelStore, input.Transport, input.Engine).create()
+        model = ModelFactory(input.Model, args, input.Transport).create()
         assert isinstance(model, expected)
 
 
@@ -84,14 +97,14 @@ def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ol
     ],
 )
 def test_validate_oci_model_input(input: Input, error):
+    args = ARGS(input.UseModelStore, input.Engine)
+
     if error is not None:
         with pytest.raises(error):
-            ModelFactory(input.Model, "/tmp/store", input.Transport, input.Engine).validate_oci_model_input()
+            ModelFactory(input.Model, args, input.Transport).validate_oci_model_input()
         return
 
-    ModelFactory(
-        input.Model, "/tmp/store", input.UseModelStore, input.Transport, input.Engine
-    ).validate_oci_model_input()
+    ModelFactory(input.Model, args, input.Transport).validate_oci_model_input()
 
 
 @pytest.mark.parametrize(
@@ -140,7 +153,6 @@ def test_validate_oci_model_input(input: Input, error):
     ],
 )
 def test_prune_model_input(input: Input, expected: str):
-    pruned_model_input = ModelFactory(
-        input.Model, "/tmp/store", input.UseModelStore, input.Transport, input.Engine
-    ).prune_model_input()
+    args = ARGS(input.UseModelStore, input.Engine)
+    pruned_model_input = ModelFactory(input.Model, args, input.Transport).prune_model_input()
     assert pruned_model_input == expected

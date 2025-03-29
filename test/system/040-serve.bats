@@ -187,6 +187,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 @test "ramalama serve --generate=quadlet and --generate=kube with OCI" {
     skip_if_darwin
     skip_if_docker
+    skip_if_nocontainer
     local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
     local authfile=$RAMALAMA_TMPDIR/authfile.json
 
@@ -206,10 +207,8 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 	run_ramalama push $modeltype --authfile=$authfile --tls-verify=false tiny oci://${ociimage}
 	run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://${ociimage}
 	is "$output" ".*Generating quadlet file: ${name}.container" "generate .container file"
-	if is_container; then
-	   is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
-	   is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
-	fi
+	is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
+	is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
 
 	run cat $name.container
 	is "$output" ".*PublishPort=1234" "PublishPort should match"

@@ -108,6 +108,13 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama pull oci" {
+    if is_container; then
+        run_ramalama pull oci://quay.io/ramalama/smollm:135m
+    else
+        run_ramalama 22 pull oci://quay.io/ramalama/smollm:135m
+	is "$output" "Error: OCI containers cannot be used with the --nocontainer option."
+    fi
+
     skip "Waiting for podman artiface support" 
     run_ramalama pull oci://quay.io/mmortari/gguf-py-example:v1
     run_ramalama list
@@ -156,6 +163,7 @@ load setup_suite
 @test "ramalama use registry" {
     skip_if_darwin
     skip_if_docker
+    skip_if_nocontainer
     local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
     local authfile=$RAMALAMA_TMPDIR/authfile.json
 

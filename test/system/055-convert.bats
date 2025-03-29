@@ -4,17 +4,21 @@ load helpers
 
 # bats test_tags=distro-integration
 @test "ramalama convert basic" {
-    skip_if_darwin
-    run_ramalama 2 convert
-    is "$output" ".*ramalama convert: error: the following arguments are required: SOURCE, TARGET"
-    run_ramalama 2 convert tiny
-    is "$output" ".*ramalama convert: error: the following arguments are required: TARGET"
-    run_ramalama 1 convert bogus foobar
-    is "$output" "Error: bogus was not found in the Ollama registry"
+    if is_container; then
+	run_ramalama 2 convert
+	is "$output" ".*ramalama convert: error: the following arguments are required: SOURCE, TARGET"
+	run_ramalama 2 convert tiny
+	is "$output" ".*ramalama convert: error: the following arguments are required: TARGET"
+	run_ramalama 1 convert bogus foobar
+	is "$output" "Error: bogus was not found in the Ollama registry"
+   else
+	run_ramalama 22 convert tiny quay.io/ramalama/foobar
+	is "$output" "Error: convert command cannot be run with the --nocontainer option."
+   fi
 }
 
 @test "ramalama convert file to image" {
-    skip_if_darwin
+    skip_if_nocontainer
     echo "hello" > $RAMALAMA_TMPDIR/aimodel
     run_ramalama convert $RAMALAMA_TMPDIR/aimodel foobar
     run_ramalama list
@@ -25,7 +29,7 @@ load helpers
     run_ramalama convert $RAMALAMA_TMPDIR/aimodel oci://foobar
     run_ramalama list
     is "$output" ".*foobar:latest"
-    run_ramalama 22 convert oci://foobar oci://newimage 
+    run_ramalama 22 convert oci://foobar oci://newimage
     is "$output" "Error: converting from an OCI based image oci://foobar is not supported"
 
     run_ramalama rm foobar
@@ -39,7 +43,7 @@ load helpers
 }
 
 @test "ramalama convert tiny to image" {
-    skip_if_darwin
+    skip_if_nocontainer
     skip_if_docker
     run_ramalama pull tiny
     run_ramalama convert tiny oci://quay.io/ramalama/tiny

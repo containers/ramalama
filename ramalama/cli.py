@@ -193,9 +193,7 @@ def post_parse_setup(args):
 
 def login_parser(subparsers):
     parser = subparsers.add_parser("login", help="login to remote registry")
-    # Do not run in a container
     parser.add_argument("--authfile", help="path of the authentication file")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("-p", "--password", dest="password", help="password for registry")
     parser.add_argument(
         "--password-stdin", dest="passwordstdin", action="store_true", help="take the password for registry from stdin"
@@ -234,7 +232,6 @@ def login_cli(args):
 def logout_parser(subparsers):
     parser = subparsers.add_parser("logout", help="logout from remote registry")
     # Do not run in a container
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("--token", help="token for registry")
     parser.add_argument("REGISTRY", nargs="?", type=str, help="OCI Registry where AI models are stored")
     parser.set_defaults(func=logout_cli)
@@ -351,7 +348,6 @@ def bench_parser(subparsers):
 
 def containers_parser(subparsers):
     parser = subparsers.add_parser("containers", aliases=["ps"], help="list all RamaLama containers")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("--format", help="pretty-print containers to JSON or using a Go template")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
     parser.add_argument("--no-trunc", dest="notrunc", action="store_true", help="display the extended information")
@@ -391,13 +387,11 @@ def list_containers(args):
 
 def info_parser(subparsers):
     parser = subparsers.add_parser("info", help="display information pertaining to setup of RamaLama.")
-    parser.add_argument("--container", default=CONFIG['container'], help=argparse.SUPPRESS)
     parser.set_defaults(func=info_cli)
 
 
 def list_parser(subparsers):
     parser = subparsers.add_parser("list", aliases=["ls"], help="list all downloaded AI Models")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("--json", dest="json", action="store_true", help="print using json")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
     parser.set_defaults(func=list_cli)
@@ -545,7 +539,6 @@ def list_cli(args):
 def help_parser(subparsers):
     parser = subparsers.add_parser("help")
     # Do not run in a container
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=help_cli)
 
 
@@ -556,7 +549,6 @@ def help_cli(args):
 def pull_parser(subparsers):
     parser = subparsers.add_parser("pull", help="pull AI Model from Model registry to local storage")
     parser.add_argument("--authfile", help="path of the authentication file")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument(
         "--tls-verify",
         dest="tlsverify",
@@ -604,6 +596,9 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
 
 
 def convert_cli(args):
+    if not args.container:
+        raise ValueError("convert command cannot be run with the --nocontainer option.")
+
     target = args.TARGET
     source = _get_source(args)
 
@@ -611,7 +606,7 @@ def convert_cli(args):
     if not tgt:
         tgt = target
 
-    model = ModelFactory(tgt, args.store, args.use_model_store, engine=args.engine).create_oci()
+    model = ModelFactory(tgt, args).create_oci()
     model.convert(source, args)
 
 
@@ -622,7 +617,6 @@ def push_parser(subparsers):
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument("--authfile", help="path of the authentication file")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument(
         "--carimage",
         default=CONFIG['carimage'],
@@ -686,7 +680,7 @@ def push_cli(args):
                 raise e
         try:
             # attempt to push as a container image
-            m = ModelFactory(tgt, args.store, args.use_model_store, engine=CONFIG['engine']).create_oci()
+            m = ModelFactory(tgt, args, engine=CONFIG['engine']).create_oci()
             m.push(source, args)
         except Exception:
             raise e
@@ -810,9 +804,7 @@ def run_cli(args):
     except KeyError as e:
         try:
             args.quiet = True
-            model = ModelFactory(
-                args.MODEL, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
-            ).create_oci()
+            model = ModelFactory(args.MODEL, args, ignore_stderr=True).create_oci()
             model.serve(args) if args.rag else model.run(args)
         except Exception:
             raise e
@@ -860,9 +852,7 @@ def serve_cli(args):
     except KeyError as e:
         try:
             args.quiet = True
-            model = ModelFactory(
-                args.MODEL, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
-            ).create_oci()
+            model = ModelFactory(args.MODEL, args, ignore_stderr=True).create_oci()
             model.serve(args)
         except Exception:
             raise e
@@ -871,7 +861,6 @@ def serve_cli(args):
 def stop_parser(subparsers):
     parser = subparsers.add_parser("stop", help="stop named container that is running AI Model")
     parser.add_argument("-a", "--all", action="store_true", help="stop all RamaLama containers")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument(
         "--ignore", action="store_true", help="ignore errors when specified RamaLama container is missing"
     )
@@ -918,8 +907,6 @@ def stop_container(args):
 
 def version_parser(subparsers):
     parser = subparsers.add_parser("version", help="display version of AI Model")
-    # Do not run in a container
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.set_defaults(func=print_version)
 
 
@@ -947,7 +934,6 @@ def rag_cli(args):
 
 def rm_parser(subparsers):
     parser = subparsers.add_parser("rm", help="remove AI Model from local storage")
-    parser.add_argument("--container", default=False, action="store_false", help=argparse.SUPPRESS)
     parser.add_argument("-a", "--all", action="store_true", help="remove all local Models")
     parser.add_argument("--ignore", action="store_true", help="ignore errors when specified Model does not exist")
     parser.add_argument("MODEL", nargs="*")
@@ -970,9 +956,7 @@ def _rm_model(models, args):
                         raise e
             try:
                 # attempt to remove as a container image
-                m = ModelFactory(
-                    model, args.store, args.use_model_store, engine=args.engine, ignore_stderr=True
-                ).create_oci()
+                m = ModelFactory(model, args, ignore_stderr=True).create_oci()
                 m.remove(args)
                 return
             except Exception:
@@ -996,7 +980,7 @@ def rm_cli(args):
 
 
 def New(model, args, transport=CONFIG["transport"]):
-    return ModelFactory(model, args.store, args.use_model_store, transport, args.engine).create()
+    return ModelFactory(model, args, transport=transport).create()
 
 
 def perplexity_parser(subparsers):
