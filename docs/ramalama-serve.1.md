@@ -130,6 +130,8 @@ not have more privileges than the user that launched them.
 #### **--rag**=
 Specify path to Retrieval-Augmented Generation (RAG) database or an OCI Image containing a RAG database
 
+Note: RAG support requires AI Models be run within containers, --nocontainer not supported. Docker does not support image mounting, meaning Podman support required.
+
 #### **--runtime-args**="*args*"
 Add *args* to the runtime (llama.cpp or vllm) invocation.
 
@@ -327,7 +329,7 @@ WantedBy=multi-user.target default.target
 See **[ramalama-cuda(7)](ramalama.7.md)** for setting up the host Linux system for CUDA support.
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman-ps(1)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman(1)**, **podman-ps(1)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
