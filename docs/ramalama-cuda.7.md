@@ -16,7 +16,7 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    sudo dnf install -y nvidia-container-toolkit
    ```
 
-  > **Note:** The Nvidia Container Toolkit is required on the host for running CUDA in containers.
+  > **Note:** The NVIDIA Container Toolkit is required on the host for running CUDA in containers.
 
 ### Installation using APT (For Debian based distros like Ubuntu)
 
@@ -43,7 +43,7 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    sudo apt-get install -y nvidia-container-toolkit
    ```
 
-  > **Note:** The Nvidia Container Toolkit is required for WSL to have CUDA resources while running a container.
+  > **Note:** The NVIDIA Container Toolkit is required for WSL to have CUDA resources while running a container.
 
 ## Setting Up CUDA Support
 
