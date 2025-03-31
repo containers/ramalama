@@ -200,7 +200,7 @@ LABEL {ociimage_car}
                     self.conman,
                     "build",
                     "--no-cache",
-                    f"--network={args.network}",
+                    "--network=none",
                     "-q",
                     "-f",
                     containerfile.name,
