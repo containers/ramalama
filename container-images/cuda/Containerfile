@@ -13,3 +13,5 @@ COPY --chmod=755 ../scripts /usr/bin
 
 RUN dnf install -y python3 && \
     /usr/bin/build_rag.sh rag
+
+ENTRYPOINT []
