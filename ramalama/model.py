@@ -199,8 +199,6 @@ class Model(ModelBase):
             name,
             "--env=HOME=/tmp",
             "--init",
-            "--entrypoint",
-            "",
         ]
 
     def add_privileged_options(self, conman_args, args):
