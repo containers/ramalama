@@ -107,7 +107,7 @@ Image={image}
     def _gen_name(self):
         name_string = ""
         if hasattr(self.args, "name") and self.args.name:
-            name_string = f"ContainerName={self.args.name}"
+            name_string = f"\nContainerName={self.args.name}"
         return name_string
 
     def _gen_model_volume(self):
