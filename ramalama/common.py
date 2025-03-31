@@ -509,10 +509,17 @@ def accel_image(config, args):
 
 def attempt_to_use_versioned(conman, image, vers, debug):
     try:
+        # check if versioned image exists locally
         if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True, debug=debug):
             return True
 
-        return run_cmd([conman, "pull", f"{image}:{vers}"], debug=debug)
+    except Exception:
+        pass
+
+    try:
+        # attempt to pull the versioned image
+        run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True, debug=debug)
+        return True
 
     except Exception:
         return False
