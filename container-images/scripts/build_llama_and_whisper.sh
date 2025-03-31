@@ -80,8 +80,12 @@ rm_non_ubi_repos() {
   rm -rf $dir/mirror.stream.centos.org_9-stream_* $dir/epel* $dir/_copr:*
 }
 
+is_rhel_based() { # doesn't include openEuler
+  [[ "${ID}" == "rhel" || "${ID}" == "redhat" || "${ID}" == "centos" ]]
+}
+
 dnf_install_mesa() {
-  if [[ "${ID}" == "rhel" || "${ID}" == "redhat" || "${ID}" == "centos" ]]; then
+  if is_rhel_based; then
     dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
     add_stream_repo "AppStream"
   fi
@@ -99,7 +103,7 @@ dnf_install_epel() {
 # There is no ffmpeg-free package in the openEuler repository. openEuler can use ffmpeg,
 # which also has the same GPL/LGPL license as ffmpeg-free.
 dnf_install_ffmpeg() {
-  if [ "${ID}" = "rhel" ]; then
+  if is_rhel_based; then
     dnf_install_epel
     add_stream_repo "AppStream"
     add_stream_repo "BaseOS"
@@ -121,11 +125,11 @@ dnf_install() {
                   "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
-  if [ "${ID}" = "fedora" ]; then
-    dnf install -y "${rpm_list[@]}"
-  else
+  if is_rhel_based; then
     dnf_install_epel # All the UBI-based ones
     dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
+  else
+    dnf install -y "${rpm_list[@]}"
   fi
 
   if [ "$containerfile" = "ramalama" ]; then
