@@ -9,7 +9,7 @@ on:
       - "**/container-images/**"
       - ".github/workflows/ci-images.yml"
     paths-ignore:
-      - "**/container-images/rocm-fedora"
+      - "**/container-images/rocm"
   push:
     branches:
       - main
@@ -17,7 +17,7 @@ on:
       - "**/container-images/**"
       - ".github/workflows/ci-images.yml"
     paths-ignore:
-      - "**/container-images/rocm-fedora"
+      - "**/container-images/rocm"
 
 jobs:
   build:

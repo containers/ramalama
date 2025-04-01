@@ -62,7 +62,7 @@ def test_load_config_from_env(env, config, expected):
                     "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
                     "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
                     "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
-                    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm-fedora",
+                    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
                     "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
                 },
                 "runtime": "llama.cpp",
