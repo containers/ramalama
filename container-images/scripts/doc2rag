@@ -7,6 +7,7 @@ import sys
 import uuid
 
 import qdrant_client
+import docling
 from docling.chunking import HybridChunker
 from docling.document_converter import DocumentConverter
 
@@ -95,6 +96,8 @@ try:
     else:
         converter = Converter(args.target, args.source)
         converter.convert()
+except docling.exceptions.ConversionError as e:
+    eprint(e, 1)
 except FileNotFoundError as e:
     eprint(e, 1)
 except KeyboardInterrupt:
