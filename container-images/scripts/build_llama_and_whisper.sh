@@ -269,7 +269,7 @@ clone_and_build_ramalama() {
 }
 
 pip_install() {
-  python3 -m pip install wheel qdrant_client fastembed openai fastapi uvicorn openvino  --prefix="$1"
+  python3 -m pip install openvino  --prefix="$1"
 }
 
 main() {

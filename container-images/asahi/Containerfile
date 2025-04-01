@@ -2,6 +2,5 @@ FROM fedora:41
 
 ENV ASAHI_VISIBLE_DEVICES 1
 COPY --chmod=755 ../scripts /usr/bin
-RUN build_llama_and_whisper.sh "asahi" && \
-    rag_framework load
+RUN build_llama_and_whisper.sh "asahi"
 

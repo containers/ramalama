@@ -2,5 +2,4 @@ FROM registry.access.redhat.com/ubi9/ubi:9.5-1742918310
 
 COPY --chmod=755 ../scripts /usr/bin
 
-RUN build_llama_and_whisper.sh "ramalama" && \
-    rag_framework load
+RUN build_llama_and_whisper.sh "ramalama"
