@@ -1,8 +1,8 @@
 FROM registry.fedoraproject.org/fedora:42
 
-COPY --chmod=755 ../scripts/build-ci.sh /usr/bin
+COPY --chmod=755 ../scripts/build-cli.sh /usr/bin
 
-RUN build-ci.sh
+RUN build-cli.sh
 
 ENTRYPOINT [ "ramalama" ]
 
