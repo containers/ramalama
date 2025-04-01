@@ -100,7 +100,7 @@ build() {
       "${conman_build[@]}"
       echo "${conman_show_size[@]}"
       "${conman_show_size[@]}"
-      if [ "$target" != "ramalama-ci" ]; then
+      if [ "$target" != "ramalama-cli" ]; then
 	  add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}"
 	  add_rag "${conman[@]}" "${target}"
 	  rm_container_image
