@@ -1,7 +1,7 @@
 import os
 import shutil
-from sys import platform
 from pathlib import Path
+from sys import platform
 
 import pytest
 
@@ -32,7 +32,6 @@ def test_rm_until_substring(input: str, rm_until: str, expected: str):
     assert actual == expected
 
 
-
 valid_input = """{{ if .System }}<|im_start|>system
 {{ .System }}<|im_end|>
 {{ end }}{{ if .Prompt }}<|im_start|>user
@@ -45,7 +44,8 @@ tampered_input = """{"model_format":"gguf","model_family":"llama","model_familie
 
 I have been tampered with
 
-"""
+"""  # noqa: E501
+
 
 @pytest.mark.parametrize(
     "input_file_name,content,expected_error,expected_result",
@@ -69,7 +69,7 @@ def test_verify_checksum(input_file_name: str, content: str, expected_error: Exc
         os.makedirs(full_dir_path, exist_ok=True)
         with open(file_path, "w") as f:
             f.write(content)
-    
+
         if expected_error is None:
             assert verify_checksum(file_path) == expected_result
             return
