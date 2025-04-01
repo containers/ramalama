@@ -71,6 +71,10 @@ COPY {src} /vector.db
             raise e
 
     def generate(self, args):
+        # force accel_image to use -rag version
+        args.rag = "rag"
+        args.image = accel_image(CONFIG, args)
+
         if not args.container:
             raise KeyError("rag command requires a container. Can not be run with --nocontainer option.")
         if not args.engine or args.engine == "":
@@ -83,12 +87,6 @@ COPY {src} /vector.db
         args.image = accel_image(CONFIG, args)
         docsdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_docs_')
         docsdb_used = False
-
-        # Default image with "-rag" append is used for building rag data.
-        s = args.image.split(":")
-        s[0] = s[0] + "-rag"
-        rag_image = ":".join(s)
-
         exec_args = [args.engine, "run", "--rm"]
         if args.network:
             exec_args += ["--network", args.network]
@@ -115,7 +113,7 @@ COPY {src} /vector.db
 
             exec_args += ["-e", f"{k}={v}"]
 
-        exec_args += [rag_image]
+        exec_args += [args.image]
         exec_args += ["doc2rag", "/output", "/docs/"]
         try:
             run_cmd(exec_args, debug=args.debug)

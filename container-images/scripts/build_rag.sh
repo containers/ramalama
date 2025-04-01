@@ -1,8 +1,7 @@
 #!/bin/bash
 set -exu -o pipefail
 
-TYPE="${1-rag}"
-GPU="${2-cpu}"
+GPU="${1-cpu}"
 
 export PYTHON_VERSION="python3 -m"
 pyversion=$(python3 --version)
@@ -41,11 +40,8 @@ rag() {
 
 update_python
 
-if [ "$TYPE" = "docling" ]; then
-   docling "${GPU}"
-else
-   rag
-fi
+rag
+docling "${GPU}"
 
 dnf -y clean all
 rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9* /root/.cache \

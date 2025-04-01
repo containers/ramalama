@@ -501,6 +501,8 @@ def accel_image(config, args):
     conman = config['engine']
     images = config['images']
     image = images.get(gpu_type, args.image)
+    if hasattr(args, "rag") and args.rag:
+        image += "-rag"
     if attempt_to_use_versioned(conman, image, vers, args.debug):
         return f"{image}:{vers}"
 

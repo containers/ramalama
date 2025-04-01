@@ -10,7 +10,6 @@ FROM quay.io/ascend/${ASCEND_VERSION}
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr
 COPY --chmod=755 ../scripts /usr/bin
-RUN   /usr/bin/build_rag.sh rag
 ENTRYPOINT [ \
     "/bin/bash", \
     "-c", \

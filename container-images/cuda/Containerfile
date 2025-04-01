@@ -11,7 +11,6 @@ FROM docker.io/nvidia/cuda:12.8.1-runtime-ubi9
 COPY --from=builder /tmp/install /usr
 COPY --chmod=755 ../scripts /usr/bin
 
-RUN dnf install -y python3 && \
-    /usr/bin/build_rag.sh rag
+RUN dnf install -y python3
 
 ENTRYPOINT []

@@ -6,5 +6,4 @@ COPY --chmod=755 ../scripts /usr/bin
 
 ARG AMDGPU_TARGETS=
 ENV AMDGPU_TARGETS=${AMDGPU_TARGETS}
-RUN build_llama_and_whisper.sh "rocm" && \
-    rag_framework load
+RUN build_llama_and_whisper.sh "rocm"
