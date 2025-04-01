@@ -1,8 +1,0 @@
-FROM registry.fedoraproject.org/fedora:42
-
-COPY --chmod=755 ../scripts /usr/bin
-RUN build_llama_and_whisper.sh "rocm" && \
-    rag_framework load
-
-ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
-ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}
