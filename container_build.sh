@@ -85,7 +85,7 @@ build() {
   local target=${1}
   cd "container-images/"
   local conman_build=("${conman[@]}")
-  local conman_show_size=("${conman[@]}" "images" "--filter" "reference='$REGISTRY_PATH/${target}'")
+  local conman_show_size=("${conman[@]}" "images" "--filter" "reference=$REGISTRY_PATH/${target}")
   if [ "$dryrun" == "-d" ]; then
       add_build_platform
       echo "${conman_build[@]}"
@@ -98,10 +98,13 @@ build() {
       add_build_platform
       echo "${conman_build[@]}"
       "${conman_build[@]}"
+      echo "${conman_show_size[@]}"
       "${conman_show_size[@]}"
-      add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}"
-      add_rag "${conman[@]}" "${target}"
-      rm_container_image
+      if [ "$target" != "ramalama-ci" ]; then
+	  add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}"
+	  add_rag "${conman[@]}" "${target}"
+	  rm_container_image
+      fi
       ;;
     push)
       "${conman[@]}" push "$REGISTRY_PATH/${target}"
