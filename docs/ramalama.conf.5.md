@@ -11,20 +11,23 @@ a TOML format that can be easily modified and versioned.
 
 RamaLama reads the he following paths for global configuration that effects all users.
 
-| Paths       |
-| -----------------------------------         |
-| __/usr/share/ramalama/ramalama.conf__       |
-| __/usr/local/share/ramalama/ramalama.conf__ |
-| __/etc/ramalama/ramalama.conf__             |
-| __/etc/ramalama/ramalama.conf.d/\*.conf__   |
+| Paths       | Exception |
+| ----------------------------------- | ----------------------------------- |
+| __/usr/share/ramalama/ramalama.conf__       | On Linux |
+| __/usr/local/share/ramalama/ramalama.conf__ | On Linux |
+| __/etc/ramalama/ramalama.conf__             | On Linux |
+| __/etc/ramalama/ramalama.conf.d/\*.conf__   | On Linux |
+| __$HOME/.local/.pipx/venvs/usr/share/ramalama/ramalama.conf__ |On pipx installed macOS  |
+
 
 For user specific configuration it reads
 
 | Paths                                       | Exception |
 | -----------------------------------         | ------------------------------ |
-| __$XDG_CONFIG_HOME/ramalama/ramalama.conf__ |                                        |
-| __$XDG_CONFIG_HOME/ramalama/ramalama.conf.d/\*.conf__ |                              |
-| __$HOME/.config/ramalama/ramalama.conf.d/\*.conf__ | When `$XDG_CONFIG_HOME` not set |
+| __$XDG_CONFIG_HOME/ramalama/ramalama.conf__           |       |
+| __$XDG_CONFIG_HOME/ramalama/ramalama.conf.d/\*.conf__ |       |
+| __$HOME/.config/ramalama/ramalama.conf__ | `$XDG_CONFIG_HOME` not set |
+| __$HOME/.config/ramalama/ramalama.conf.d/\*.conf__ | `$XDG_CONFIG_HOME` not set |
 
 Fields specified in ramalama conf override the default options, as well as
 options in previously read ramalama.conf files.
