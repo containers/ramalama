@@ -1,0 +1,8 @@
+FROM registry.fedoraproject.org/fedora:42
+
+COPY --chmod=755 ../scripts/build-ci.sh /usr/bin
+
+RUN build-ci.sh
+
+ENTRYPOINT [ "ramalama" ]
+
