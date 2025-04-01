@@ -14,8 +14,12 @@ down and launch a container to process the data.
 NOTE: this command does not work without a container engine.
 
 positional arguments:
-  path        Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown formatted files to be processed. Can be specified multiple times.
-  image       OCI Image name to contain processed rag data
+
+  *PATH*    Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML,
+	    AsciiDoc & Markdown formatted files to be processed.
+	    Can be specified multiple times.
+
+  *IMAGE*   OCI Image name to contain processed rag data
 
 ## OPTIONS
 
@@ -28,10 +32,11 @@ sets the configuration for network namespaces when handling RUN instructions
 ## EXAMPLES
 
 ```
-$ ramalama rag https://arxiv.org/pdf/2408.09869 /tmp/pdf quay.io/rhatdan/myrag
-Fetching 9 files: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 9/9 [00:00<00:00, 68509.50it/s]
-Neither CUDA nor MPS are available - defaulting to CPU. Note: This module is much faster with a GPU.
-2024-12-04 13:49:07.372 (  70.927s) [        75AB6740]    doc_normalisation.h:448   WARN| found new `other` type: checkbox-unselected
+./bin/ramalama rag ./README.md https://github.com/containers/podman/blob/main/README.md quay.io/rhatdan/myrag
+100% |███████████████████████████████████████████████████████|  114.00 KB/    0.00 B 922.89 KB/s   59m 59s
+Building quay.io/ramalama/myrag...
+adding vectordb...
+c857ebc65c641084b34e39b740fdb6a2d9d2d97be320e6aa9439ed0ab8780fe0
 ```
 
 ## SEE ALSO

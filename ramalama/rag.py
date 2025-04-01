@@ -2,8 +2,9 @@ import os
 import shutil
 import subprocess
 import tempfile
+from urllib.parse import urlparse
 
-from ramalama.common import accel_image, get_accel_env_vars, run_cmd, set_accel_env_vars
+from ramalama.common import accel_image, download_file, get_accel_env_vars, run_cmd, set_accel_env_vars
 from ramalama.config import CONFIG
 
 
@@ -16,7 +17,7 @@ class Rag:
         set_accel_env_vars()
 
     def build(self, source, target, args):
-        print(f"Building {target}...")
+        print(f"\nBuilding {target}...")
         contextdir = os.path.dirname(source)
         src = os.path.basename(source)
         print(f"adding {src}...")
@@ -36,7 +37,7 @@ COPY {src} /vector.db
                     args.engine,
                     "build",
                     "--no-cache",
-                    f"--network={args.network}",
+                    "--network=none",
                     "-q",
                     "-t",
                     target,
@@ -51,13 +52,37 @@ COPY {src} /vector.db
         )
         return imageid
 
-    def generate(self, args):
-        args.image = accel_image(CONFIG, args)
+    def _handle_docs_path(self, path, docs_path, exec_args):
+        """Adds a volume mount if path exists, otherwise downloads from URL."""
+        if os.path.exists(path):
+            fpath = os.path.realpath(path)
+            exec_args += ["-v", f"{fpath}:/docs/{fpath}:ro,z"]
+            return False
+        try:
+            parsed = urlparse(path)
+            if parsed.scheme == "" or parsed.path == "":
+                raise ValueError(f"{path} does not exist")
+            dpath = docs_path + parsed.path
+            os.makedirs(os.path.dirname(dpath), exist_ok=True)
+            download_file(path, dpath)
+            return True  # docsdb was used
+        except RuntimeError as e:
+            shutil.rmtree(docs_path, ignore_errors=True)
+            raise e
 
+    def generate(self, args):
         if not args.container:
             raise KeyError("rag command requires a container. Can not be run with --nocontainer option.")
         if not args.engine or args.engine == "":
             raise KeyError("rag command requires a container. Can not be run without a container engine.")
+
+        tmpdir = "."
+        if not os.access(tmpdir, os.W_OK):
+            tmpdir = "/tmp"
+
+        args.image = accel_image(CONFIG, args)
+        docsdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_docs_')
+        docsdb_used = False
 
         # Default image with "-rag" append is used for building rag data.
         s = args.image.split(":")
@@ -67,13 +92,13 @@ COPY {src} /vector.db
         exec_args = [args.engine, "run", "--rm"]
         if args.network:
             exec_args += ["--network", args.network]
+
         for path in args.PATH:
-            if os.path.exists(path):
-                fpath = os.path.realpath(path)
-                exec_args += ["-v", f"{fpath}:/docs/{fpath}:ro,z"]
-        tmpdir = "."
-        if not os.access(tmpdir, os.W_OK):
-            tmpdir = "/tmp"
+            if self._handle_docs_path(path, docsdb.name, exec_args):
+                docsdb_used = True
+
+        if docsdb_used:
+            exec_args += ["-v", f"{docsdb.name}:/docs/{docsdb.name}:ro,Z"]
 
         ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_')
         dbdir = os.path.join(ragdb.name, "vectordb")
@@ -99,3 +124,4 @@ COPY {src} /vector.db
             raise e
         finally:
             shutil.rmtree(ragdb.name, ignore_errors=True)
+            shutil.rmtree(docsdb.name, ignore_errors=True)

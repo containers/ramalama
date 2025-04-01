@@ -5,6 +5,7 @@ import glob
 import os
 import subprocess
 import sys
+import urllib
 
 
 def add_pipx_venvs_bin_to_path():
@@ -71,6 +72,8 @@ def main(args):
     # Process CLI
     try:
         args.func(args)
+    except urllib.error.HTTPError as e:
+        eprint(f"pulling {e.geturl()} failed: {e} ", errno.EINVAL)
     except ramalama.HelpException:
         parser.print_help()
     except AttributeError as e:
