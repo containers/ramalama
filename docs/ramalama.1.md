@@ -44,7 +44,11 @@ On Macs with Arm support and Podman, the Podman machine must be
 configured to use the krunkit VM Type. This allows the Mac's GPU to be
 used within the VM.
 
-Default settings for flags are defined in `ramalama.conf(5)`.
+Note:
+
+On systems with NVIDIA GPUs, see **[ramalama-cuda(1)](ramalama-cuda.1.md)** to correctly configure the host system.
+
+Default settings for flags are defined in **[ramalama.conf(5)](ramalama.conf.5.md)**.
 
 ## SECURITY
 
