@@ -10,27 +10,27 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     model=m_$(safename)
 
     if is_container; then
-        run_ramalama --dryrun serve ${model}
+        run_ramalama -q --dryrun serve ${model}
         assert "$output" =~ "serving on port .*"
         is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
         is "$output" ".*${model}" "verify model name"
 
-        run_ramalama --dryrun serve --name foobar ${model}
+        run_ramalama -q --dryrun serve --name foobar ${model}
         is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
         assert "$output" !~ ".*--network" "--network is not part of the output"
         assert "$output" =~ ".*--host 0.0.0.0" "verify host 0.0.0.0 is added when run within container"
         is "$output" ".*${model}" "verify model name"
         assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
-        run_ramalama --dryrun serve --network bridge --host 127.1.2.3 --name foobar ${model}
+        run_ramalama -q --dryrun serve --network bridge --host 127.1.2.3 --name foobar ${model}
         assert "$output" =~ "--network bridge.*--host 127.1.2.3" "verify --host is modified when run within container"
         is "$output" ".*${model}" "verify model name"
         is "$output" ".*--temp 0.8" "verify temp is set"
 
-        run_ramalama --dryrun serve --temp 0.1 ${model}
+        run_ramalama -q --dryrun serve --temp 0.1 ${model}
         is "$output" ".*--temp 0.1" "verify temp is set"
 
-        run_ramalama --dryrun serve --seed 1234 ${model}
+        run_ramalama -q --dryrun serve --seed 1234 ${model}
         is "$output" ".*--seed 1234" "verify seed is set"
         if not_docker; then
             is "$output" ".*--pull=newer" "verify pull is newer"
@@ -38,34 +38,34 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
         assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
 
-        run_ramalama --dryrun serve --pull=never ${model}
+        run_ramalama -q --dryrun serve --pull=never ${model}
         is "$output" ".*--pull=never" "verify pull is never"
 
-        run_ramalama 2 --dryrun serve --pull=bogus ${model}
+        run_ramalama 2 -q --dryrun serve --pull=bogus ${model}
         is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"
 
-        run_ramalama --dryrun serve --privileged ${model}
+        run_ramalama -q --dryrun serve --privileged ${model}
         is "$output" ".*--privileged" "verify --privileged is set"
         assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
         assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
     else
-        run_ramalama --dryrun serve ${model}
+        run_ramalama -q --dryrun serve ${model}
         assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
-        run_ramalama --dryrun serve --seed abcd --host 127.0.0.1 ${model}
+        run_ramalama -q --dryrun serve --seed abcd --host 127.0.0.1 ${model}
         assert "$output" =~ ".*--host 127.0.0.1" "Outside container overrides host to 127.0.0.1"
         assert "$output" =~ ".*--seed abcd" "Verify seed is set"
         run_ramalama 1 --nocontainer serve --name foobar tiny
         is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
     fi
 
-    run_ramalama --dryrun serve --runtime-args="--foo -bar" ${model}
+    run_ramalama -q --dryrun serve --runtime-args="--foo -bar" ${model}
     assert "$output" =~ ".*--foo" "--foo passed to runtime"
     assert "$output" =~ ".*-bar" "-bar passed to runtime"
 
-    run_ramalama --dryrun serve --runtime-args="--foo='a b c'" ${model}
+    run_ramalama -q --dryrun serve --runtime-args="--foo='a b c'" ${model}
     assert "$output" =~ ".*--foo=a b c" "argument passed to runtime with spaces"
 
-    run_ramalama 1 --dryrun serve --runtime-args="--foo='a b c" ${model}
+    run_ramalama 1 -q --dryrun serve --runtime-args="--foo='a b c" ${model}
     assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
 
     run_ramalama 1 serve MODEL
@@ -78,10 +78,10 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
 
     model=m_$(safename)
 
-    run_ramalama --dryrun serve --detach ${model}
+    run_ramalama -q --dryrun serve --detach ${model}
     is "$output" "${verify_begin} ramalama_.*" "serve in detach mode"
 
-    run_ramalama --dryrun serve -d ${model}
+    run_ramalama -q --dryrun serve -d ${model}
     is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
 
     run_ramalama stop --all
@@ -165,7 +165,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     model=tiny
     name=c_$(safename)
     run_ramalama pull ${model}
-    run_ramalama serve --port 1234 --generate=quadlet ${model}
+    run_ramalama -q serve --port 1234 --generate=quadlet ${model}
     is "$output" "Generating quadlet file: tinyllama.container" "generate tinllama.container"
 
     run cat tinyllama.container
@@ -173,7 +173,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     is "$output" ".*Exec=llama-server --port 1234 --model .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*tinyllama" "Mount line should be correct"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama serve --port 1234 --generate=quadlet ${model}
+    HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet ${model}
     is "$output" "Generating quadlet file: tinyllama.container" "generate tinllama.container"
 
     run cat tinyllama.container
