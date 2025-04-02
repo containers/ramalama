@@ -194,18 +194,21 @@ LABEL {ociimage_car}
                 c.write(model_car)
             else:
                 c.write(model_raw)
+        build_cmd = [
+            self.conman,
+            "build",
+            "--no-cache",
+            "--network=none",
+            "-q",
+            "-f",
+            containerfile.name,
+        ]
+        if os.path.basename(self.conman) == "podman":
+            build_cmd += ["--layers=false"]
+        build_cmd += [contextdir]
         imageid = (
             run_cmd(
-                [
-                    self.conman,
-                    "build",
-                    "--no-cache",
-                    "--network=none",
-                    "-q",
-                    "-f",
-                    containerfile.name,
-                    contextdir,
-                ],
+                build_cmd,
                 debug=args.debug,
             )
             .stdout.decode("utf-8")
