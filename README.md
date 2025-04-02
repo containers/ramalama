@@ -137,7 +137,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 | Ascend NPU (Linux)                 | :white_check_mark: |
 | Intel ARC GPUs (Linux)             | :white_check_mark: |
 
-__Note:__ On systems with NVIDIA GPUs, see **[ramalama-cuda(1)](ramalama-cuda.1.md)** to correctly configure the host system.
+__Note:__ On systems with NVIDIA GPUs, see **[ramalama-cuda(1)](docs/ramalama-cuda.7.md)** to correctly configure the host system.
 
 __Note:__ The following Intel GPUs are auto-detected by Ramalama:
 
