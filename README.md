@@ -251,7 +251,13 @@ $ ramalama stop mylama
 
 ### UI support
 
-To use a UI, run a `ramalama serve` command, then connect via your browser at:
+By default, the `ramalama serve` command runs with a web UI enabled. To disable the web UI, use the `--webui off` flag:
+
+```
+$ ramalama serve --webui off llama3
+```
+
+When the web UI is enabled, you can connect via your browser at:
 
 127.0.0.1:< port >
 

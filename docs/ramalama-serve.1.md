@@ -155,6 +155,9 @@ The default is to use half the cores available on this system for the number of 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
 
+#### **--webui**=*on* | *off*
+Enable or disable the web UI for the served model (enabled by default). When set to "on" (the default), the web interface is properly initialized. When set to "off", the `--no-webui` option is passed to the llama-server command to disable the web interface.
+
 ## EXAMPLES
 ### Run two AI Models at the same time. Notice both are running within Podman Containers.
 ```
