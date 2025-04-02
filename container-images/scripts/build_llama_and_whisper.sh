@@ -17,7 +17,13 @@ dnf_install_intel_gpu() {
 dnf_remove() {
   dnf remove -y \
       python3-devel \
-      libcurl-devel
+      libcurl-devel \
+      git \
+      gcc \
+      gcc-c++ \
+      make \
+      cmake \
+      findutils
   dnf -y clean all
 }
 
@@ -119,7 +125,7 @@ dnf_install_ffmpeg() {
 }
 
 dnf_install() {
-  local rpm_list=("podman-remote" "python3" "python3-pip" \
+  local rpm_list=("python3" "python3-pip" \
                   "python3-argcomplete" "python3-dnf-plugin-versionlock" \
                   "python3-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git" \
                   "dnf-plugins-core" "libcurl-devel" "gawk")
@@ -258,18 +264,12 @@ clone_and_build_llama_cpp() {
 }
 
 clone_and_build_ramalama() {
-  # link podman-remote to podman for use by RamaLama
-  ln -sf /usr/bin/podman-remote /usr/bin/podman
   git clone https://github.com/containers/ramalama
   cd ramalama
   git submodule update --init --recursive
   python3 -m pip install . --prefix="$1"
   cd ..
   rm -rf ramalama
-}
-
-pip_install() {
-  python3 -m pip install openvino  --prefix="$1"
 }
 
 main() {
@@ -287,9 +287,8 @@ main() {
   configure_common_flags
   common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=${install_prefix}")
   available dnf && dnf_install
-  if [ -n "$containerfile" ]; then 
+  if [ -n "$containerfile" ]; then
     clone_and_build_ramalama "${install_prefix}"
-    pip_install "${install_prefix}"
   fi
 
   setup_build_env
