@@ -503,13 +503,13 @@ def accel_image(config, args):
     image = images.get(gpu_type, args.image)
     if hasattr(args, "rag") and args.rag:
         image += "-rag"
-    if attempt_to_use_versioned(conman, image, vers, args.debug):
+    if attempt_to_use_versioned(conman, image, vers, args.quiet, args.debug):
         return f"{image}:{vers}"
 
     return f"{image}:latest"
 
 
-def attempt_to_use_versioned(conman, image, vers, debug):
+def attempt_to_use_versioned(conman, image, vers, quiet, debug):
     try:
         # check if versioned image exists locally
         if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True, debug=debug):
@@ -520,6 +520,8 @@ def attempt_to_use_versioned(conman, image, vers, debug):
 
     try:
         # attempt to pull the versioned image
+        if not quiet:
+            print(f"Attempting to pull {image}:{vers}...")
         run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True, debug=debug)
         return True
 
