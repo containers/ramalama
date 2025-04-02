@@ -605,6 +605,7 @@ class Model(ModelBase):
                 f"{args.context}",
                 "--temp",
                 f"{args.temp}",
+                "--jinja",
             ] + args.runtime_args
             if chat_template_path != "":
                 exec_args.extend(["--chat-template-file", chat_template_path])
