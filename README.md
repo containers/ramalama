@@ -308,6 +308,14 @@ rm -rf $HOME/.local/share/ramalama
 
 and install again.
 
+## Known Issues
+
+- On certain versions of Python on macOS, certificates may not installed correctly, potentially causing SSL errors (e.g., when accessing huggingface.co). To resolve this, run the `Install Certificates` command, typically as follows:
+
+```
+/Applications/Python 3.x/Install Certificates.command
+```
+
 ## Credit where credit is due
 
 This project wouldn't be possible without the help of other projects like:
