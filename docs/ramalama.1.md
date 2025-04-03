@@ -46,7 +46,7 @@ used within the VM.
 
 Note:
 
-On systems with NVIDIA GPUs, see **[ramalama-cuda(1)](ramalama-cuda.1.md)** to correctly configure the host system.
+On systems with NVIDIA GPUs, see **[ramalama-cuda(7)](ramalama-cuda.7.md)** to correctly configure the host system.
 
 Default settings for flags are defined in **[ramalama.conf(5)](ramalama.conf.5.md)**.
 
@@ -220,7 +220,7 @@ although the recommended way is to use the ramalama.conf file.
 | RAMALAMA_TRANSPORT        | default AI Model transport (ollama, huggingface, OCI) |
 
 ## SEE ALSO
-**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**, **docker(1)**, **[ramalama.conf(5)](ramalama.conf.5.md)**
+**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**, **docker(1)**, **[ramalama.conf(5)](ramalama.conf.5.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
