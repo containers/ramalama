@@ -720,7 +720,7 @@ class Model(ModelBase):
         model_registry = self.get_model_registry(args)
 
         if GGUFInfoParser.is_model_gguf(model_path):
-            gguf_info: GGUFModelInfo = GGUFInfoParser.parse(model_name, model_registry, model_path, args)
+            gguf_info: GGUFModelInfo = GGUFInfoParser.parse(model_name, model_registry, model_path)
             print(gguf_info.serialize(json=args.json, all=args.all))
             return
 

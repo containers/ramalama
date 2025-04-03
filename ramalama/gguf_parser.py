@@ -160,7 +160,7 @@ class GGUFInfoParser:
             return value
         raise ParseError(f"Unknown type '{value_type}'")
 
-    def parse(model_name: str, model_registry: str, model_path: str, cli_args) -> GGUFModelInfo:
+    def parse(model_name: str, model_registry: str, model_path: str) -> GGUFModelInfo:
         # By default, models are little-endian encoded
         is_little_endian = True
 
