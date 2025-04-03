@@ -19,7 +19,7 @@ RUN useradd llama-user -u 10000 -d /home/llama-user -s /bin/bash && \
 groupmod -a -U llama-user render && \
 groupmod -a -U llama-user video && \
 chown llama-user:llama-user -R /home/llama-user && \
-/usr/bin/build_rag.sh rag
+python3 -m pip install openvino
 
 USER 10000
 
