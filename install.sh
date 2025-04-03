@@ -233,7 +233,7 @@ install_ramalama_libexecs() {
   local job_count=0
   local job_queue=()
   for i in "${python_files[@]}"; do
-    download_install "libexec" "libexec" "ramalama-$i-core" &
+    download_install "libexec" "libexec/ramalama" "ramalama-$i-core" &
     job_queue+=($!)
     ((++job_count))
 

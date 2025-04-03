@@ -5,6 +5,7 @@ import cmd
 import itertools
 import json
 import os
+import signal
 import sys
 import time
 import urllib.error
@@ -83,7 +84,11 @@ class RamaLamaShell(cmd.Cmd):
         super().__init__()
         self.conversation_history = []
         self.parsed_args = parsed_args
-        self.prompt = parsed_args.prefix
+        if "LLAMA_PROMPT_PREFIX" in os.environ:
+            self.prompt = os.environ["LLAMA_PROMPT_PREFIX"]
+        else:
+            self.prompt = parsed_args.prefix
+
         self.url = f"{parsed_args.host}/v1/chat/completions"
 
     def do_EOF(self, user_content):
@@ -99,9 +104,14 @@ class RamaLamaShell(cmd.Cmd):
             {"role": "assistant", "content": req(self.conversation_history, self.url, self.parsed_args.color)}
         )
 
+def do_kills(parsed_args):
+    if parsed_args.pid2kill:
+        os.kill(parsed_args.pid2kill, signal.SIGINT)
+        os.kill(parsed_args.pid2kill, signal.SIGTERM)
+        os.kill(parsed_args.pid2kill, signal.SIGKILL)
 
 def main(args):
-    parser = argparse.ArgumentParser(description="Run ramalama client")
+    parser = argparse.ArgumentParser(description="Run ramalama client core")
     parser.add_argument(
         '--color',
         '--colour',
@@ -113,12 +123,32 @@ def main(args):
     parser.add_argument(
         "host", type=str, nargs="?", default="http://127.0.0.1:8080", help="the host to send requests to"
     )
+    parser.add_argument(
+        "-c",
+        "--ctx-size",
+        dest="context",
+        default=2048,
+        help="size of the prompt context (0 = loaded from model)",
+    )
+    parser.add_argument("--kill-server", dest="pid2kill", type=int, help="server process to kill on termination of client")
+    parser.add_argument("--temp", default=0.8, help="temperature of the response from the AI model")
+    parser.add_argument(
+        "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
+    )
     parsed_args = parser.parse_args(args)
 
+    ramalama_shell = RamaLamaShell(parsed_args)
+    if parsed_args.ARGS:
+        ramalama_shell.default(" ".join(parsed_args.ARGS))
+        do_kills(parsed_args)
+        return 0
+
     try:
-        RamaLamaShell(parsed_args).cmdloop()
+        ramalama_shell.cmdloop()
     except KeyboardInterrupt:
         print("")
+
+    do_kills(parsed_args)
 
 
 if __name__ == '__main__':

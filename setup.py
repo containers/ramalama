@@ -72,5 +72,15 @@ setuptools.setup(
     + generate_completions("share", "completions")
     + generate_ramalama_conf("share/ramalama", "docs")
     + generate_man1_pages("share/man/man1", "docs")
-    + generate_man5_pages("share/man/man5", "docs"),
+    + generate_man5_pages("share/man/man5", "docs")
+    + [
+        (
+            "libexec/ramalama",
+            [
+                "libexec/ramalama/ramalama-client-core",
+                "libexec/ramalama/ramalama-run-core",
+                "libexec/ramalama/ramalama-serve-core",
+            ],
+        )
+    ],
 )

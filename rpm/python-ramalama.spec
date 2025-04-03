@@ -83,6 +83,7 @@ will run the AI Models within a container based on the OCI image.
 %files -n python%{python3_pkgversion}-%{pypi_name} -f %{pyproject_files}
 %doc README.md
 %{_bindir}/%{pypi_name}
+%{_libexecdir}/ramalama/*
 %{bash_completions_dir}/%{pypi_name}
 %{_datadir}/fish/vendor_completions.d/ramalama.fish
 %{_datadir}/zsh/vendor-completions/_ramalama
