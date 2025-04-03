@@ -613,6 +613,9 @@ class Model(ModelBase):
             if args.debug:
                 exec_args.extend(["-v"])
 
+            if hasattr(args, "webui") and args.webui == "off":
+                exec_args.extend(["--no-webui"])
+
         if args.seed:
             exec_args += ["--seed", args.seed]
 

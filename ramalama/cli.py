@@ -821,6 +821,13 @@ def serve_parser(subparsers):
         help="IP address to listen",
     )
     parser.add_argument(
+        "--webui",
+        dest="webui",
+        choices=["on", "off"],
+        default="on",
+        help="enable or disable the web UI (default: on)",
+    )
+    parser.add_argument(
         "--generate",
         choices=["quadlet", "kube", "quadlet/kube"],
         help="generate specified configuration format for running the AI Model as a service",

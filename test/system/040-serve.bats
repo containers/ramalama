@@ -14,6 +14,10 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         assert "$output" =~ "serving on port .*"
         is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
         is "$output" ".*${model}" "verify model name"
+        assert "$output" !~ ".*--no-webui"
+
+        run_ramalama --dryrun serve --webui off ${model}
+        assert "$output" =~ ".*--no-webui"
 
         run_ramalama -q --dryrun serve --name foobar ${model}
         is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
