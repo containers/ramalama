@@ -190,12 +190,22 @@ class GlobalModelStore:
                     model_path = root.replace(self.path, "").replace(os.sep, "", 1)
                     model_name = f"{model_path}:{ref_file_name}"
 
-                    models[model_name] = []
+                    collected_files = []
                     for snapshot_file in ref_file.filenames:
                         snapshot_file_path = os.path.join(root, DIRECTORY_NAME_SNAPSHOTS, ref_file.hash, snapshot_file)
+                        if not os.path.exists(snapshot_file_path):
+                            blobs_partial_file_path = os.path.join(
+                                root, DIRECTORY_NAME_BLOBS, ref_file.hash + ".partial"
+                            )
+                            if not os.path.exists(blobs_partial_file_path):
+                                continue
+                            snapshot_file_path = blobs_partial_file_path
+                            model_name = f"{model_path}:{ref_file_name} (partial)"
+
                         last_modified = os.path.getmtime(snapshot_file_path)
                         file_size = os.path.getsize(snapshot_file_path)
-                        models[model_name].append(ModelFile(snapshot_file, last_modified, file_size))
+                        collected_files.append(ModelFile(snapshot_file, last_modified, file_size))
+                    models[model_name] = collected_files
 
         oci_models = ramalama.oci.list_models(
             dotdict(
