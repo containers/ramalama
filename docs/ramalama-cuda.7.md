@@ -17,6 +17,7 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    ```
 
   > **Note:** The NVIDIA Container Toolkit is required on the host for running CUDA in containers.
+  > **Note:** If the above installation is not working for you and you are running Fedora, try removing it and using the [COPR](https://copr.fedorainfracloud.org/coprs/g/ai-ml/nvidia-container-toolkit/).
 
 ### Installation using APT (For Debian based distros like Ubuntu)
 
