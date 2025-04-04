@@ -479,7 +479,7 @@ class ModelStore:
     def _remove_blob_file(self, snapshot_file_path: str):
         blob_path = Path(snapshot_file_path).resolve()
         try:
-            if os.path.exists(blob_path) and self.base_path in blob_path.parents:
+            if os.path.exists(blob_path) and Path(self.base_path) in blob_path.parents:
                 os.remove(blob_path)
                 LOGGER.debug(f"Removed blob for '{snapshot_file_path}'")
         except Exception as ex:
