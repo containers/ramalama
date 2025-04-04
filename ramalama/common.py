@@ -12,7 +12,6 @@ import subprocess
 import sys
 import time
 import urllib.error
-import urllib.request
 from typing import List
 
 import ramalama.console as console

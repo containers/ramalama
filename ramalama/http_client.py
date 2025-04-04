@@ -3,7 +3,6 @@
 import os
 import shutil
 import time
-import urllib.error
 import urllib.request
 
 from ramalama.file import File
