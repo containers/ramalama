@@ -114,13 +114,13 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    To check the status of the boolean, run the following:
 
    ```bash
-   getseboolean container_use_devices
+   getsebool container_use_devices
    ```
 
    If the result of the command shows that the boolean is `off`, run the following to turn the boolean on:
 
    ```bash
-   sudo setseboolean -P container_use_devices
+   sudo setsebool -P container_use_devices 1
    ```
 
 ## Troubleshooting
