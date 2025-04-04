@@ -1,0 +1,23 @@
+#/rpm:
+#    summary: Verify rpm installation
+#    test: rpm -qi python3-ramalama
+
+/gpu_info:
+    summary: Display GPU info
+    test: lshw -C display
+    require:
+        - lshw
+
+/test_suite:
+    summary: Run entire test suite
+    test: make -C $TMT_TREE tests
+    require: 
+        - bats
+        - black
+        - codespell
+        - flake8
+        - isort
+        - jq
+        - make
+        - pytest
+        - shellcheck
