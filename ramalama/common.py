@@ -503,7 +503,7 @@ def accel_image(config, args):
     image = images.get(gpu_type, args.image)
     if hasattr(args, "rag") and args.rag:
         image += "-rag"
-    if attempt_to_use_versioned(conman, image, vers, args.quiet, args.debug):
+    if args.container and attempt_to_use_versioned(conman, image, vers, args.quiet, args.debug):
         return f"{image}:{vers}"
 
     return f"{image}:latest"

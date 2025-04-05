@@ -443,7 +443,7 @@ class Model(ModelBase):
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_bench(args, model_path)
         self.validate_args(args)
-        self.execute_model(model_path, exec_args, args)
+        self.execute_command(model_path, exec_args, args)
 
     def run(self, args):
         self.validate_args(args)
@@ -452,13 +452,13 @@ class Model(ModelBase):
         exec_args = self.build_exec_args_run(args, model_path, prompt)
         if args.keepalive:
             exec_args = ["timeout", args.keepalive] + exec_args
-        self.execute_model(model_path, exec_args, args)
+        self.execute_command(model_path, exec_args, args)
 
     def perplexity(self, args):
         self.validate_args(args)
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_perplexity(args, model_path)
-        self.execute_model(model_path, exec_args, args)
+        self.execute_command(model_path, exec_args, args)
 
     def build_exec_args_perplexity(self, args, model_path):
         exec_model_path = MNT_FILE if args.container else model_path
@@ -568,21 +568,6 @@ class Model(ModelBase):
             exec_args.append(prompt)
 
         return exec_args
-
-    def execute_model(self, model_path, exec_args, args):
-        try:
-            if self.exec_model_in_container(model_path, exec_args, args):
-                return
-            if args.dryrun:
-                dry_run(exec_args)
-                return
-            exec_cmd(exec_args, args.debug)
-        except FileNotFoundError as e:
-            if args.container:
-                raise NotImplementedError(
-                    file_not_found_in_container % {"cmd": exec_args[0], "error": str(e).strip("'")}
-                )
-            raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
     def validate_args(self, args):
         if args.container:
