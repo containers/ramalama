@@ -154,6 +154,10 @@ def handle_repo_info(repo_name, repo_info, runtime):
 
 
 class Huggingface(Model):
+
+    REGISTRY_URL = "https://huggingface.co/v2/"
+    ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
+
     def __init__(self, model):
         super().__init__(model)
 
@@ -190,12 +194,42 @@ class Huggingface(Model):
         try:
             # Check if huggingface repo instead of file
             if self.directory.count("/") == 0:
-                repo_name = self.directory + "/" + self.filename
+
+                model_name, model_tag, _ = self.extract_model_identifiers()
+                repo_name = self.directory + "/" + model_name
+                registry_head = f"{Huggingface.REGISTRY_URL}{repo_name}"
+
+                # XXX: refactor
+                from ramalama.ollama import init_pull
+
+                show_progress = not args.quiet
+                init_pull(
+                    os.path.join(args.store, "repos", "huggingface"),
+                    Huggingface.ACCEPT,
+                    registry_head,
+                    model_name,
+                    model_tag,
+                    os.path.join(args.store, "models", "huggingface"),
+                    model_path,
+                    self.model,
+                    show_progress,
+                )
+
+                # if we got here, we are successful, and the handle_repo_info stuff isn't relevant?
+                return
+
+                # old stuff
+                # XXX: make sure this is called with non-gguf
                 repo_info = get_repo_info(repo_name)
                 handle_repo_info(repo_name, repo_info, args.runtime)
 
             return self.url_pull(args, model_path, directory_path)
         except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
+
+            if isinstance(e, urllib.error.HTTPError) and e.reason == "Bad Request" and b"tag is not a valid" in e.fp.read():
+                # This tag does not exist
+                raise KeyError(f"{self.model} was not found in the HuggingFace registry")
+
             if self.hf_cli_available:
                 return self.hf_pull(args, model_path, directory_path)
             perror("URL pull failed and huggingface-cli not available")
