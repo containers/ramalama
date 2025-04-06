@@ -144,13 +144,6 @@ def handle_repo_info(repo_name, repo_info, runtime):
             f"- https://huggingface.co/models?other=base_model:quantized:{repo_name} \n"
             "- https://huggingface.co/spaces/ggml-org/gguf-my-repo"
         )
-    if "gguf" in repo_info:
-        print("There are GGUF files to choose from in this repo, use one of the following commands to run one:\n")
-    for sibling in repo_info.get("siblings", []):
-        if sibling["rfilename"].endswith('.gguf'):
-            file = sibling["rfilename"]
-            print(f"- ramalama run hf://{repo_name}/{file}")
-    print("\n")
 
 
 class Huggingface(Model):
@@ -203,7 +196,7 @@ class Huggingface(Model):
                 from ramalama.ollama import init_pull
 
                 show_progress = not args.quiet
-                init_pull(
+                return init_pull(
                     os.path.join(args.store, "repos", "huggingface"),
                     Huggingface.ACCEPT,
                     registry_head,
@@ -214,14 +207,6 @@ class Huggingface(Model):
                     self.model,
                     show_progress,
                 )
-
-                # if we got here, we are successful, and the handle_repo_info stuff isn't relevant?
-                return
-
-                # old stuff
-                # XXX: make sure this is called with non-gguf
-                repo_info = get_repo_info(repo_name)
-                handle_repo_info(repo_name, repo_info, args.runtime)
 
             return self.url_pull(args, model_path, directory_path)
         except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
