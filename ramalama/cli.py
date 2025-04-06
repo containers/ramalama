@@ -112,7 +112,6 @@ Needed to access gpu on some systems, but has security implications.""",
     )
     parser.add_argument(
         "--image",
-        default=CONFIG["image"],
         help="OCI container image to run with the specified AI model",
     )
     parser.add_argument(

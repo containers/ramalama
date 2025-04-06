@@ -483,9 +483,6 @@ def rm_until_substring(input, substring):
 
 
 def accel_image(config, args):
-    if args.image != DEFAULT_IMAGE:
-        return args.image
-
     env_vars = get_accel_env_vars()
 
     if not env_vars:
@@ -500,7 +497,19 @@ def accel_image(config, args):
     vers = ".".join(split[:2])
     conman = config['engine']
     images = config['images']
-    image = images.get(gpu_type, args.image)
+    # Determine the image in this order: the --image command-line
+    # option, the "images" option in the config file, and the default
+    # (either set through the RAMALAMA_IMAGE envvar or "image" config
+    # option).
+    #
+    # Note that, while the first two expect an image name without a
+    # tag, the last one includes it and thus do not further modify it.
+    if args.image:
+        image = args.image
+    else:
+        image = images.get(gpu_type)
+        if not image:
+            return config['image']
     if hasattr(args, "rag") and args.rag:
         image += "-rag"
     if args.container and attempt_to_use_versioned(conman, image, vers, args.quiet, args.debug):

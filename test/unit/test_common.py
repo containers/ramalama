@@ -2,10 +2,11 @@ import os
 import shutil
 from pathlib import Path
 from sys import platform
+from unittest.mock import Mock, patch
 
 import pytest
 
-from ramalama.common import rm_until_substring, verify_checksum
+from ramalama.common import rm_until_substring, verify_checksum, accel_image, DEFAULT_IMAGE
 
 
 @pytest.mark.parametrize(
@@ -78,3 +79,28 @@ def test_verify_checksum(input_file_name: str, content: str, expected_error: Exc
             verify_checksum(file_path)
     finally:
         shutil.rmtree(full_dir_path)
+
+DEFAULT_IMAGES = {
+    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
+}
+
+@pytest.mark.parametrize(
+    "accel_env,image_opt,images_conf,image_conf,expected_result",
+    [
+        (None, None, DEFAULT_IMAGES, f"{DEFAULT_IMAGE}:latest", DEFAULT_IMAGE),
+        ("HIP_VISIBLE_DEVICES", None, DEFAULT_IMAGES, DEFAULT_IMAGE, "quay.io/ramalama/rocm"),
+        ("HIP_VISIBLE_DEVICES", DEFAULT_IMAGE, DEFAULT_IMAGES, DEFAULT_IMAGE, DEFAULT_IMAGE),
+        ("HIP_VISIBLE_DEVICES", DEFAULT_IMAGE, DEFAULT_IMAGES, "quay.io/ramalama/rocm", DEFAULT_IMAGE),
+        ("CUDA_VISIBLE_DEVICES", DEFAULT_IMAGE, DEFAULT_IMAGES, DEFAULT_IMAGE, DEFAULT_IMAGE),
+    ],
+)
+def test_accel_image(accel_env: str, image_opt: str, images_conf: dict[str,str], image_conf: str, expected_result: str):
+    with patch.dict('os.environ', {accel_env: "1"} if accel_env else {}, clear=True):
+        args = Mock(return_value=None)
+        args.image = image_opt
+        args.rag = False
+        args.container = False
+        config = {"engine": "podman"}
+        config["images"] = images_conf
+        config["image"] = image_conf
+        assert accel_image(config, args) == expected_result + ":latest"
