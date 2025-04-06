@@ -209,7 +209,11 @@ class Huggingface(Model):
             return self.url_pull(args, model_path, directory_path)
         except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
 
-            if isinstance(e, urllib.error.HTTPError) and e.reason == "Bad Request" and b"tag is not a valid" in e.fp.read():
+            if (
+                isinstance(e, urllib.error.HTTPError)
+                and e.reason == "Bad Request"
+                and b"tag is not a valid" in e.fp.read()
+            ):
                 # This tag does not exist
                 raise KeyError(f"{self.model} was not found in the HuggingFace registry")
 
