@@ -51,7 +51,7 @@ def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, mo
     run_cmd(["ln", "-sf", relative_target_path, model_path])
 
 
-def init_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, model, show_progress):
+def ollama_repo_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, model, show_progress):
     manifest_data = fetch_manifest_data(registry_head, model_tag, accept)
     pull_config_blob(repos, accept, registry_head, manifest_data, show_progress)
     for layer in manifest_data["layers"]:
@@ -250,7 +250,7 @@ class Ollama(Model):
         accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
         registry_head = f"{registry}/v2/{model_name}"
         try:
-            return init_pull(
+            return ollama_repo_pull(
                 repos, accept, registry_head, model_name, model_tag, models, model_path, self.model, show_progress
             )
         except urllib.error.HTTPError as e:
