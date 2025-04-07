@@ -491,11 +491,11 @@ def minor_release():
 
 
 def accel_image(config, args):
+    if len(args.image.split(":")) > 1:
+        return args.image
+
     if hasattr(args, 'image_override'):
-        if len(args.image.split(":")) > 1:
-            return args.image
-        else:
-            return f"{args.image}:{minor_release()}"
+        return f"{args.image}:{minor_release()}"
 
     if args.runtime == "vllm":
         return "registry.redhat.io/rhelai1/ramalama-vllm"
