@@ -9,7 +9,7 @@ from pathlib import Path
 
 import ramalama.oci
 import ramalama.rag
-from ramalama.common import get_accel, perror, run_cmd
+from ramalama.common import accel_image, get_accel, perror, run_cmd
 from ramalama.config import CONFIG
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
@@ -118,7 +118,7 @@ Needed to access gpu on some systems, but has security implications.""",
     )
     parser.add_argument(
         "--image",
-        default=CONFIG["image"],
+        default=accel_image(CONFIG, None),
         help="OCI container image to run with the specified AI model",
         action=OverrideDefaultAction,
     )

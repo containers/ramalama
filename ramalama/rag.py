@@ -71,8 +71,10 @@ COPY {src} /vector.db
             raise e
 
     def generate(self, args):
-        # force accel_image to use -rag version
+        # force accel_image to use -rag version. Drop TAG if it exists
+        # so that accel_image will add -rag to the image specification.
         args.rag = "rag"
+        args.image = args.image.split(":")[0]
         args.image = accel_image(CONFIG, args)
 
         if not args.container:
