@@ -170,6 +170,7 @@ def configure_subcommands(parser):
     list_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
+    open_webui_parser(subparsers)
     perplexity_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
@@ -923,6 +924,13 @@ def version_parser(subparsers):
     parser = subparsers.add_parser("version", help="display version of AI Model")
     parser.set_defaults(func=print_version)
 
+
+def open_webui_parser(subparsers):
+    parser = subparsers.add_parser(
+        "open-webui",
+        help="run open-webui",
+    )
+    parser.add_argument("MODEL")
 
 def rag_parser(subparsers):
     parser = subparsers.add_parser(
