@@ -490,16 +490,26 @@ def minor_release():
     return vers
 
 
+def tagged_image(image):
+    if len(image.split(":")) > 1:
+        return image
+    return f"{image}:{minor_release()}"
+
+
 def accel_image(config, args):
-    if len(args.image.split(":")) > 1:
+    if args and len(args.image.split(":")) > 1:
         return args.image
 
     if hasattr(args, 'image_override'):
-        return f"{args.image}:{minor_release()}"
+        return tagged_image(args.image)
 
-    if args.runtime == "vllm":
-        return "registry.redhat.io/rhelai1/ramalama-vllm"
+    image = os.getenv("RAMALAMA_IMAGE")
+    if image:
+        return tagged_image(image)
 
+    conman = config['engine']
+    images = config['images']
+    set_accel_env_vars()
     env_vars = get_accel_env_vars()
 
     if not env_vars:
@@ -507,8 +517,12 @@ def accel_image(config, args):
     else:
         gpu_type, _ = next(iter(env_vars.items()))
 
-    conman = config['engine']
-    images = config['images']
+    if not args:
+        return tagged_image(images.get(gpu_type, config["image"]))
+
+    if args.runtime == "vllm":
+        return "registry.redhat.io/rhelai1/ramalama-vllm"
+
     image = images.get(gpu_type, args.image)
     if hasattr(args, "rag") and args.rag:
         image += "-rag"
