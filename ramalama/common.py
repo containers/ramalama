@@ -482,9 +482,23 @@ def rm_until_substring(input, substring):
     return ''.join(input[i] for i in range(pos + len(substring), len(input)))
 
 
+def minor_release():
+    split = version().split(".")
+    vers = ".".join(split[:2])
+    if vers == "0":
+        vers = "latest"
+    return vers
+
+
 def accel_image(config, args):
-    if args.image != DEFAULT_IMAGE:
-        return args.image
+    if hasattr(args, 'image_override'):
+        if len(args.image.split(":")) > 1:
+            return args.image
+        else:
+            return f"{args.image}:{minor_release()}"
+
+    if args.runtime == "vllm":
+        return "registry.redhat.io/rhelai1/ramalama-vllm"
 
     env_vars = get_accel_env_vars()
 
@@ -493,16 +507,13 @@ def accel_image(config, args):
     else:
         gpu_type, _ = next(iter(env_vars.items()))
 
-    if args.runtime == "vllm":
-        return "registry.redhat.io/rhelai1/ramalama-vllm"
-
-    split = version().split(".")
-    vers = ".".join(split[:2])
     conman = config['engine']
     images = config['images']
     image = images.get(gpu_type, args.image)
     if hasattr(args, "rag") and args.rag:
         image += "-rag"
+
+    vers = minor_release()
     if args.container and attempt_to_use_versioned(conman, image, vers, args.quiet, args.debug):
         return f"{image}:{vers}"
 

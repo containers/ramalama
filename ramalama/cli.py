@@ -20,6 +20,12 @@ from ramalama.version import print_version, version
 shortnames = Shortnames()
 
 
+class OverrideDefaultAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values)
+        setattr(namespace, self.dest + '_override', True)
+
+
 class HelpException(Exception):
     pass
 
@@ -110,10 +116,12 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
         help="""pass `--group-add keep-groups` to podman, if using podman.
 Needed to access gpu on some systems, but has security implications.""",
     )
+
     parser.add_argument(
         "--image",
         default=CONFIG["image"],
         help="OCI container image to run with the specified AI model",
+        action=OverrideDefaultAction,
     )
     parser.add_argument(
         "--nocontainer",
