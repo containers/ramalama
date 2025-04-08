@@ -496,6 +496,14 @@ def tagged_image(image):
     return f"{image}:{minor_release()}"
 
 
+def get_cmd_with_wrapper(cmd_args):
+    for dir in ["", "/opt/homebrew/", "/usr/local/", "/usr/"]:
+        if os.path.exists(f"{dir}libexec/ramalama/{cmd_args[0]}"):
+            return f"{dir}libexec/ramalama/{cmd_args[0]}"
+
+    return ""
+
+
 def accel_image(config, args):
     if args and len(args.image.split(":")) > 1:
         return args.image
