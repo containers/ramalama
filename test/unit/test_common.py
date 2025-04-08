@@ -2,10 +2,14 @@ import os
 import shutil
 from pathlib import Path
 from sys import platform
+import tempfile
+from unittest.mock import patch
 
 import pytest
 
-from ramalama.common import rm_until_substring, verify_checksum
+from ramalama.common import rm_until_substring, verify_checksum, accel_image, DEFAULT_IMAGE
+from ramalama.config import load_and_merge_config
+from ramalama.cli import configure_subcommands, create_argument_parser
 
 
 @pytest.mark.parametrize(
@@ -78,3 +82,49 @@ def test_verify_checksum(input_file_name: str, content: str, expected_error: Exc
             verify_checksum(file_path)
     finally:
         shutil.rmtree(full_dir_path)
+
+DEFAULT_IMAGES = {
+    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
+}
+
+@pytest.mark.parametrize(
+    "accel_env,arg_override,env_override,config_override,expected_result",
+    [
+        (None, f"{DEFAULT_IMAGE}:latest", None, None, f"{DEFAULT_IMAGE}:latest"),
+        (None, None, f"{DEFAULT_IMAGE}:latest", None, f"{DEFAULT_IMAGE}:latest"),
+        (None, None, None, f"{DEFAULT_IMAGE}:latest", f"{DEFAULT_IMAGE}:latest"),
+        ("HIP_VISIBLE_DEVICES", None, None, None, "quay.io/ramalama/rocm:latest"),
+        ("HIP_VISIBLE_DEVICES", f"{DEFAULT_IMAGE}:latest", None, None, f"{DEFAULT_IMAGE}:latest"),
+        ("HIP_VISIBLE_DEVICES", None, f"{DEFAULT_IMAGE}:latest", None, f"{DEFAULT_IMAGE}:latest"),
+    ],
+)
+def test_accel_image(accel_env: str, arg_override: str, env_override: str, config_override: str, expected_result: str):
+    with tempfile.NamedTemporaryFile('w', delete_on_close=False) as f:
+        cmdline = []
+        if arg_override:
+            cmdline.extend(["--image", arg_override])
+        cmdline.extend(["run", "granite"])
+
+        env = {}
+        if config_override:
+            f.write(f"""\
+[ramalama]
+image = "{config_override}"
+            """)
+            f.flush()
+            env["RAMALAMA_CONFIG"] = f.name
+        else:
+            env["RAMALAMA_CONFIG"] = "/dev/null"
+
+        if accel_env:
+            env[accel_env] = "1"
+        if env_override:
+            env["RAMALAMA_IMAGE"] = env_override
+
+        with patch.dict("os.environ", env, clear=True):
+            config = load_and_merge_config()
+            with patch("ramalama.cli.CONFIG", config):
+                parser = create_argument_parser("test_accel_image")
+                configure_subcommands(parser)
+                args = parser.parse_args(cmdline)
+                assert accel_image(config, args) == expected_result
