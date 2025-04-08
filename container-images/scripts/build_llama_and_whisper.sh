@@ -18,7 +18,6 @@ dnf_remove() {
   dnf remove -y \
       python3-devel \
       libcurl-devel \
-      git \
       gcc \
       gcc-c++ \
       make \
