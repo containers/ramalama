@@ -249,6 +249,10 @@ class Model(ModelBase):
         return conman_args
 
     def handle_oci_pull(self, conman_args, args):
+        # force accel_image to use -rag version. Drop TAG if it exists
+        # so that accel_image will add -rag to the image specification.
+        if hasattr(args, "rag") and args.rag:
+            args.image = args.image.split(":")[0]
         self.image = accel_image(CONFIG, args)
         if not args.dryrun and os.path.basename(args.engine) == "docker" and args.pull == "newer":
             try:
@@ -423,6 +427,10 @@ class Model(ModelBase):
                 chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
                 conman_args += [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
 
+        # force accel_image to use -rag version. Drop TAG if it exists
+        # so that accel_image will add -rag to the image specification.
+        if hasattr(args, "rag") and args.rag:
+            args.image = args.image.split(":")[0]
         # Make sure Image precedes cmd_args.
         conman_args += [accel_image(CONFIG, args)] + cmd_args
 

@@ -86,7 +86,6 @@ COPY {src} /vector.db
         if not os.access(tmpdir, os.W_OK):
             tmpdir = "/tmp"
 
-        args.image = accel_image(CONFIG, args)
         docsdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_docs_')
         docsdb_used = False
         exec_args = [args.engine, "run", "--rm"]
