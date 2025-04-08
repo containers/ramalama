@@ -15,6 +15,7 @@ from ramalama.common import (
     exec_cmd,
     genname,
     get_accel_env_vars,
+    get_cmd_with_wrapper,
     run_cmd,
     set_accel_env_vars,
 )
@@ -396,17 +397,10 @@ class Model(ModelBase):
 
         return gpu_args
 
-    def get_cmd_with_wrapper(self, cmd_args):
-        for dir in ["", "/opt/homebrew/", "/usr/local/", "/usr/"]:
-            if os.path.exists(f"{dir}libexec/ramalama/{cmd_args[0]}"):
-                return f"{dir}libexec/ramalama/{cmd_args[0]}"
-
-        return ""
-
     def exec_model_in_container(self, model_path, cmd_args, args):
         if not args.container:
             if USE_RAMALAMA_WRAPPER:
-                cmd_args[0] = self.get_cmd_with_wrapper(cmd_args)
+                cmd_args[0] = get_cmd_with_wrapper(cmd_args)
 
             return False
 

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import ramalama.oci
 import ramalama.rag
-from ramalama.common import accel_image, get_accel, perror, run_cmd
+from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, perror, run_cmd
 from ramalama.config import CONFIG
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
@@ -162,6 +162,7 @@ def configure_subcommands(parser):
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
     bench_parser(subparsers)
+    client_parser(subparsers)
     containers_parser(subparsers)
     convert_parser(subparsers)
     help_parser(subparsers)
@@ -924,6 +925,16 @@ def version_parser(subparsers):
     parser.set_defaults(func=print_version)
 
 
+def client_parser(subparsers):
+    """Add parser for client command"""
+    parser = subparsers.add_parser("client", help="interact with an OpenAI endpoint")
+    parser.add_argument("HOST", help="host to connect to")  # positional argument
+    parser.add_argument(
+        "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
+    )
+    parser.set_defaults(func=client_cli)
+
+
 def rag_parser(subparsers):
     parser = subparsers.add_parser(
         "rag",
@@ -995,6 +1006,13 @@ def rm_cli(args):
 
 def New(model, args, transport=CONFIG["transport"]):
     return ModelFactory(model, args, transport=transport).create()
+
+
+def client_cli(args):
+    """Handle client command execution"""
+    client_args = ["ramalama-client-core", "-c", "2048", "--temp", "0.8", args.HOST] + args.ARGS
+    client_args[0] = get_cmd_with_wrapper(client_args)
+    exec_cmd(client_args)
 
 
 def perplexity_parser(subparsers):
