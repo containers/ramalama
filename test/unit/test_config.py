@@ -57,7 +57,10 @@ def test_load_config_from_env(env, config, expected):
             {
                 "nocontainer": False,
                 "carimage": "registry.access.redhat.com/ubi9-micro:latest",
+                "container": True,
+                "engine": "podman",
                 "env": [],
+                "image": "quay.io/ramalama/ramalama",
                 "images": {
                     "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
                     "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
@@ -73,6 +76,8 @@ def test_load_config_from_env(env, config, expected):
                 "pull": "newer",
                 "temp": "0.8",
                 "host": "0.0.0.0",
+                "store": "~/.local/share/ramalama",
+                "transport": "ollama",
                 "use_model_store": False,
                 "port": int_tuple_as_str(DEFAULT_PORT_RANGE),
             },
@@ -87,7 +92,10 @@ def test_load_config_from_env(env, config, expected):
             {
                 "nocontainer": True,
                 "carimage": "registry.access.redhat.com/ubi9-micro:latest",
+                "container": True,
+                "engine": "podman",
                 "env": [],
+                "image": "quay.io/ramalama/ramalama",
                 "images": {
                     "HIP_VISIBLE_DEVICES": "quay.io/repo/rocm",
                 },
@@ -97,6 +105,8 @@ def test_load_config_from_env(env, config, expected):
                 "keep_groups": False,
                 "ctx_size": 2048,
                 "pull": "newer",
+                "store": "~/.local/share/ramalama",
+                "transport": "ollama",
                 "temp": "0.8",
                 "host": "0.0.0.0",
                 "use_model_store": False,
@@ -107,4 +117,6 @@ def test_load_config_from_env(env, config, expected):
 )
 def test_load_config_defaults(config, expected):
     load_config_defaults(config)
-    assert json.dumps(config, sort_keys=True) == json.dumps(expected, sort_keys=True)
+    # get_store() resolves tildes
+    config["store"] = "~/.local/share/ramalama"
+    assert json.dumps(dict(config), sort_keys=True) == json.dumps(expected, sort_keys=True)

@@ -507,6 +507,9 @@ def accel_image(config, args):
     if image:
         return tagged_image(image)
 
+    if config.is_set('image'):
+        return tagged_image(config['image'])
+
     conman = config['engine']
     images = config['images']
     set_accel_env_vars()

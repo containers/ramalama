@@ -1,4 +1,5 @@
 import os
+from collections import ChainMap
 from pathlib import Path
 from typing import Any, Dict
 
@@ -55,11 +56,16 @@ def load_config() -> Dict[str, Any]:
 
 def load_config_from_env(config: Dict[str, Any], env: Dict):
     """Load configuration from environment variables."""
-    config['container'] = env.get('RAMALAMA_IN_CONTAINER', config.get('container', use_container()))
-    config['engine'] = env.get('RAMALAMA_CONTAINER_ENGINE', config.get('engine', container_manager()))
-    config['image'] = env.get('RAMALAMA_IMAGE', config.get('image', default_image()))
-    config['store'] = env.get('RAMALAMA_STORE', config.get('store', get_store()))
-    config['transport'] = env.get('RAMALAMA_TRANSPORT', config.get('transport', "ollama"))
+    envvars = {
+        'container': 'RAMALAMA_IN_CONTAINER',
+        'engine': 'RAMALAMA_CONTAINER_ENGINE',
+        'image': 'RAMALAMA_IMAGE',
+        'store': 'RAMALAMA_STORE',
+        'transport': 'RAMALAMA_TRANSPORT',
+    }
+    for k, v in envvars.items():
+        if value := env.get(v):
+            config[k] = value
 
 
 def int_tuple_as_str(input: tuple) -> str:
@@ -68,20 +74,14 @@ def int_tuple_as_str(input: tuple) -> str:
 
 def load_config_defaults(config: Dict[str, Any]):
     """Set configuration defaults if these are not yet set."""
-    config['carimage'] = config.get('carimage', "registry.access.redhat.com/ubi9-micro:latest")
-    config['ctx_size'] = config.get('ctx_size', 2048)
-    config['env'] = config.get('env', [])
-    config['host'] = config.get('host', "0.0.0.0")
-    config['keep_groups'] = config.get('keep_groups', False)
-    config['ngl'] = config.get('ngl', -1)
-    config['threads'] = config.get('threads', -1)
-    config['nocontainer'] = config.get('nocontainer', False)
-    config['port'] = config.get('port', int_tuple_as_str(DEFAULT_PORT_RANGE))
-    config['pull'] = config.get('pull', "newer")
-    config['runtime'] = config.get('runtime', 'llama.cpp')
-    config['temp'] = config.get('temp', "0.8")
-    config['use_model_store'] = config.get('use_model_store', False)
-    config['images'] = config.get(
+    config.setdefault('carimage', "registry.access.redhat.com/ubi9-micro:latest")
+    config.setdefault('container', use_container())
+    config.setdefault('ctx_size', 2048)
+    config.setdefault('engine', container_manager())
+    config.setdefault('env', [])
+    config.setdefault('host', "0.0.0.0")
+    config.setdefault('image', default_image())
+    config.setdefault(
         'images',
         {
             "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
@@ -91,6 +91,41 @@ def load_config_defaults(config: Dict[str, Any]):
             "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
         },
     )
+    config.setdefault('keep_groups', False)
+    config.setdefault('ngl', -1)
+    config.setdefault('threads', -1)
+    config.setdefault('nocontainer', False)
+    config.setdefault('port', int_tuple_as_str(DEFAULT_PORT_RANGE))
+    config.setdefault('pull', "newer")
+    config.setdefault('runtime', 'llama.cpp')
+    config.setdefault('store', get_store())
+    config.setdefault('temp', "0.8")
+    config.setdefault('transport', "ollama")
+    config.setdefault('use_model_store', False)
+
+
+class Config(ChainMap):
+    def __init__(self, from_env, from_file, default):
+        super().__init__(from_env, from_file, default)
+
+    @property
+    def from_env(self):
+        return self.maps[0]
+
+    @property
+    def from_file(self):
+        return self.maps[1]
+
+    @property
+    def default(self):
+        return self.maps[2]
+
+    def is_set(self, key):
+        if key in self.from_env:
+            return True
+        if key in self.from_file:
+            return True
+        return False
 
 
 def load_and_merge_config() -> Dict[str, Any]:
@@ -98,10 +133,14 @@ def load_and_merge_config() -> Dict[str, Any]:
     config = load_config()
 
     ramalama_config = config.setdefault('ramalama', {})
-    load_config_from_env(ramalama_config, os.environ)
-    load_config_defaults(ramalama_config)
 
-    return ramalama_config
+    env_config = {}
+    load_config_from_env(env_config, os.environ)
+
+    default_config = {}
+    load_config_defaults(default_config)
+
+    return Config(env_config, ramalama_config, default_config)
 
 
 CONFIG = load_and_merge_config()
