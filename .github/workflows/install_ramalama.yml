@@ -34,14 +34,7 @@ jobs:
             exit 1
           fi
 
-      - name: Run RamaLama Installer (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          chmod +x install.sh
-          sudo ./install.sh -l
-
-      - name: Run RamaLama Installer (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Run RamaLama Installer
         run: |
           chmod +x install.sh
           ./install.sh -l
