@@ -30,7 +30,6 @@ from ramalama.quadlet import Quadlet
 from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
-USE_RAMALAMA_WRAPPER = False
 
 
 file_not_found = """\
@@ -406,14 +405,11 @@ class Model(ModelBase):
 
     def exec_model_in_container(self, model_path, cmd_args, args):
         if not args.container:
-            if USE_RAMALAMA_WRAPPER:
-                cmd_args[0] = get_cmd_with_wrapper(cmd_args)
+            cmd_args[0] = get_cmd_with_wrapper(cmd_args)
 
             return False
 
-        if USE_RAMALAMA_WRAPPER:
-            cmd_args[0] = f"/usr/libexec/ramalama/{cmd_args[0]}"
-
+        cmd_args[0] = f"/usr/libexec/ramalama/{cmd_args[0]}"
         conman_args = self.setup_container(args)
         if len(conman_args) == 0:
             return False
@@ -548,9 +544,7 @@ class Model(ModelBase):
         if EMOJI and "LLAMA_PROMPT_PREFIX" not in os.environ:
             os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
 
-        exec_args = ["ramalama-run-core"] if USE_RAMALAMA_WRAPPER else ["llama-run"]
-        exec_args += ["-c", f"{args.context}", "--temp", f"{args.temp}"]
-        exec_args += args.runtime_args
+        exec_args = ["ramalama-run-core", "-c", f"{args.context}", "--temp", f"{args.temp}"] + args.runtime_args
 
         if args.seed:
             exec_args += ["--seed", args.seed]
@@ -599,11 +593,8 @@ class Model(ModelBase):
                 f"{args.context}",
             ] + args.runtime_args
         else:
-            exec_args = []
-            if USE_RAMALAMA_WRAPPER:
-                exec_args += ["ramalama-serve-core"]
-
-            exec_args += [
+            exec_args = [
+                "ramalama-serve-core",
                 "llama-server",
                 "--port",
                 args.port,
