@@ -72,7 +72,9 @@ def req(conversation_history, url, color):
             response = urllib.request.urlopen(request)
             break
         except Exception:
-            print(f"\r{c}", end="", flush=True)
+            if sys.stdout.isatty():
+                print(f"\r{c}", end="", flush=True)
+
             time.sleep(i)
             i *= 2
 
