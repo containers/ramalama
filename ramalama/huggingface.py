@@ -185,8 +185,8 @@ class Huggingface(Model):
         symlink_dir = os.path.dirname(model_path)
         os.makedirs(symlink_dir, exist_ok=True)
 
+        # First try to interpret the argument as a user/repo:tag
         try:
-            # Check if huggingface repo instead of file
             if self.directory.count("/") == 0:
 
                 model_name, model_tag, _ = self.extract_model_identifiers()
@@ -206,20 +206,25 @@ class Huggingface(Model):
                     show_progress,
                 )
 
+        except urllib.error.HTTPError:
+            if model_tag != "latest":
+                # The user explicitly requested a tag, so raise an error
+                raise KeyError(f"{self.model} was not found in the HuggingFace registry")
+            else:
+                # The user did not explicitly request a tag, so assume they want the whole repository
+                pass
+
+        # Try to download the repo/file
+        try:
             return self.url_pull(args, model_path, directory_path)
         except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
 
-            if (
-                isinstance(e, urllib.error.HTTPError)
-                and e.reason == "Bad Request"
-                and b"tag is not a valid" in e.fp.read()
-            ):
-                # This tag does not exist
-                raise KeyError(f"{self.model} was not found in the HuggingFace registry")
-
             if self.hf_cli_available:
-                return self.hf_pull(args, model_path, directory_path)
-            perror("URL pull failed and huggingface-cli not available")
+                try:
+                    return self.hf_pull(args, model_path, directory_path)
+                except Exception:
+                    pass
+
             raise KeyError(f"Failed to pull model: {str(e)}")
 
     def _fetch_snapshot_path(self, cache_dir, namespace, repo):
