@@ -269,7 +269,11 @@ class Model(ModelBase):
     def add_env_option(self, conman_args, args):
         for env in args.env:
             conman_args += ["--env", env]
-
+        
+        # Add port as environment variable if it exists
+        if hasattr(args, "port"):
+            conman_args += ["--env", f"PORT={args.port}"]
+        
         return conman_args
 
     def add_tty_option(self, conman_args):
@@ -700,7 +704,7 @@ class Model(ModelBase):
             exec_args = [
                 "bash",
                 "-c",
-                f"nohup {' '.join(exec_args)} &> /tmp/llama-server.log & rag_framework run /rag/vector.db",
+                f"nohup {' '.join(exec_args)} &> /tmp/llama-server.log & rag_framework run /rag/vector.db --port {args.port}",
             ]
 
         self.execute_command(model_path, exec_args, args)
