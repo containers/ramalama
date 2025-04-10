@@ -100,11 +100,14 @@ build() {
       "${conman_build[@]}"
       echo "${conman_show_size[@]}"
       "${conman_show_size[@]}"
-      if [ "$target" != "ramalama-cli" ]; then
-	  add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}"
-	  add_rag "${conman[@]}" "${target}"
-	  rm_container_image
-      fi
+      case ${target} in
+	  ramalama-cli | llama-stack)
+	  ;;
+	  *)
+	      add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}"
+	      add_rag "${conman[@]}" "${target}"
+	      rm_container_image
+      esac
       ;;
     push)
       "${conman[@]}" push "$REGISTRY_PATH/${target}"
