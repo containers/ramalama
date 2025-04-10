@@ -1,4 +1,5 @@
 #!/bin/bash
+set -exu -o pipefail
 
 available() {
   command -v "$1" >/dev/null
@@ -273,7 +274,7 @@ main() {
 
   set -ex
 
-  local containerfile="$1"
+  local containerfile=${1-""}
   local install_prefix
   install_prefix=$(set_install_prefix)
   local uname_m
