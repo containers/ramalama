@@ -181,12 +181,13 @@ load setup_suite
 	oci://$registry
     run_ramalama pull tiny
     run_ramalama push --authfile=$authfile --tls-verify=false tiny oci://$registry/tiny
+    run_ramalama push --authfile=$authfile --tls-verify=false tiny $registry/tiny
     run_ramalama push --authfile=$authfile --tls-verify=false --type car tiny oci://$registry/tiny-car
 
     tmpfile=${RAMALAMA_TMPDIR}/mymodel
     random=$(random_string 30)
     echo $random > $tmpfile
-    run_ramalama push --authfile=$authfile --tls-verify=false --type raw $tmpfile oci://$registry/mymodel
+    run_ramalama push --authfile=$authfile --tls-verify=false --type raw $tmpfile $registry/mymodel
 
 
     run_ramalama list
