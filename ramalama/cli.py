@@ -469,7 +469,8 @@ def _list_models(args):
             # Store data for later use
             models.append({"name": name, "modified": modified, "size": size})
 
-    models.extend(ramalama.oci.list_models(args))
+    if args.container:
+        models.extend(ramalama.oci.list_models(args))
 
     os.chdir(mycwd)
     return models
