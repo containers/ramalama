@@ -1,0 +1,6 @@
+FROM registry.fedoraproject.org/fedora:42
+
+RUN dnf -y install pip && \
+    pip install -U llama-stack --prefix=/usr
+
+

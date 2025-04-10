@@ -13,33 +13,60 @@ fi
 # Once that is complete I run this script for each one of the $IMAGEs
 # This script assumes that ARM images have been pushed to ARMREPO from
 # MACS
+export ARMREPO=${ARMREPO:"quay.io/rhatdan"}
+export REPO=${REPO:"quay.io/ramalama"}
 
-release-rhatdan() {
-    podman push quay.io/ramalama/"$1" quay.io/rhatdan/"$1"
-    podman push quay.io/ramalama/"$1"-whisper-server quay.io/rhatdan/"$1"-whisper-server
-    podman push quay.io/ramalama/"$1"-llama-server quay.io/rhatdan/"$1"-llama-server
+release-arm() {
+    podman push "${REPO}/$1" "${ARMREPO}/$1"
+
+    release-ramalama "$1"
+    case ${1} in
+	ramalama-cli|     llama-stack)
+	;;
+	*)
+	    podman push "${REPO}"/"$1"-whisper-server "${ARMREPO}"/"$1"-whisper-server
+	    podman push "${REPO}"/"$1"-llama-server "${ARMREPO}"/"$1"-llama-server
+	    ;;
+    esac
 }
 
 release-ramalama() {
-    podman push quay.io/ramalama/"$1" quay.io/ramalama/"$1":0.7.3
-    podman push quay.io/ramalama/"$1" quay.io/ramalama/"$1":0.7
-    podman push quay.io/ramalama/"$1"
-}
-release() {
-    release-ramalama "$1"
-    release-ramalama "$1"-whisper-server
-    release-ramalama "$1"-llama-server
-    release-ramalama "$1"-rag
+    podman push "${REPO}"/"$1" "${REPO}"/"$1":0.7.3
+    podman push "${REPO}"/"$1" "${REPO}"/"$1":0.7
+    podman push "${REPO}"/"$1"
 }
 
-podman run quay.io/ramalama/"$1" ls -l /usr/bin/llama-server
-podman run quay.io/ramalama/"$1" ls -l /usr/bin/llama-run
-podman run quay.io/ramalama/"$1" ls -l /usr/bin/whisper-server
-podman run quay.io/ramalama/"$1"-rag rag_framework load
+release() {
+    release-ramalama "$1"
+    case ${1} in
+	ramalama-cli|     llama-stack)
+	;;
+	*)
+	    release-ramalama "$1"-whisper-server
+	    release-ramalama "$1"-llama-server
+	    release-ramalama "$1"-rag
+	    ;;
+    esac
+}
+
+case ${1} in
+    ramalama-cli)
+	podman run --rm "${REPO}"/"$1" /usr/bin/ramalama version
+	;;
+    llama-stack)
+	podman run --rm "${REPO}"/"$1" /usr/bin/llama
+	;;
+    *)
+	podman run --rm "${REPO}"/"$1" ls -l /usr/bin/llama-server
+	podman run --rm "${REPO}"/"$1" ls -l /usr/bin/llama-run
+	podman run --rm "${REPO}"/"$1" ls -l /usr/bin/whisper-server
+	podman run --rm "${REPO}"/"$1"-rag rag_framework load
+	;;
+esac
 
 uname_m=$(uname -m)
 if [ "${uname_m}" == "x86_64" ]; then
     release "$1"
 else
-    release-rhatdan "$1"
+    release-arm "$1"
 fi
