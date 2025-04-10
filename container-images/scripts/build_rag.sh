@@ -28,7 +28,7 @@ update_python() {
 }
 
 docling() {
-    ${PYTHON_VERSION} pip install wheel qdrant_client fastembed docling docling-core --extra-index-url https://download.pytorch.org/whl/"$1"
+    ${PYTHON_VERSION} pip install wheel qdrant_client fastembed docling docling-core accelerate --extra-index-url https://download.pytorch.org/whl/"$1"
     # Preloads models (assumes its installed from container_build.sh)
     doc2rag load
 }
