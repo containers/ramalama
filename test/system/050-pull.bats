@@ -109,7 +109,13 @@ load setup_suite
 # bats test_tags=distro-integration
 @test "ramalama pull oci" {
     if is_container; then
-        run_ramalama pull oci://quay.io/ramalama/smollm:135m
+        model=oci://quay.io/ramalama/smollm:135m
+        run_ramalama pull ${model}
+        run_ramalama list
+        is "$output" ".*${model}.*" "image was actually pulled locally"
+        run_ramalama --nocontainer list
+        assert "$output" !~ ".*${model}" "model is not in list"
+        run_ramalama rm ${model}
     else
         run_ramalama 22 pull oci://quay.io/ramalama/smollm:135m
 	is "$output" "Error: OCI containers cannot be used with the --nocontainer option."
