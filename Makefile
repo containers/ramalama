@@ -39,6 +39,7 @@ help:
 
 .PHONY: install-requirements
 install-requirements:
+	pip install -U pipx
 	pipx install \
 			argcomplete~=3.0 \
 			black~=25.0 \
