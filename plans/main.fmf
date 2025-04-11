@@ -1,6 +1,12 @@
-summary: Check installed rpm metadata
 discover:
-    how: shell
+    how: fmf
 execute:
     how: tmt
-    script: rpm -qi python3-ramalama
+
+provision:
+    how: artemis
+    hardware:
+        gpu:
+            device-name: GK210 (Tesla K80)
+            vendor-name: NVIDIA
+
