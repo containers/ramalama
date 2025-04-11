@@ -14,6 +14,7 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         assert "$output" =~ "serving on port .*"
         is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
         is "$output" ".*${model}" "verify model name"
+        is "$output" ".*--cache-reuse 256" "cache"
         assert "$output" !~ ".*--no-webui"
 
         run_ramalama --dryrun serve --webui off ${model}
@@ -55,6 +56,11 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     else
         run_ramalama -q --dryrun serve ${model}
         assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
+        is "$output" ".*--cache-reuse 256" "should use cache"
+        if is_darwin; then
+           is "$output" ".*--flash-attn" "use flash-attn on Darwin metal"
+        fi
+
         run_ramalama -q --dryrun serve --seed abcd --host 127.0.0.1 ${model}
         assert "$output" =~ ".*--host 127.0.0.1" "Outside container overrides host to 127.0.0.1"
         assert "$output" =~ ".*--seed abcd" "Verify seed is set"

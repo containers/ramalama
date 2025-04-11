@@ -11,6 +11,7 @@ from ramalama.common import (
     MNT_DIR,
     MNT_FILE,
     accel_image,
+    check_metal,
     check_nvidia,
     exec_cmd,
     genname,
@@ -613,6 +614,8 @@ class Model(ModelBase):
                 "--temp",
                 f"{args.temp}",
                 "--jinja",
+                "--cache-reuse",
+                "256",
             ] + args.runtime_args
 
             if chat_template_path != "":
@@ -623,6 +626,9 @@ class Model(ModelBase):
 
             if hasattr(args, "webui") and args.webui == "off":
                 exec_args.extend(["--no-webui"])
+
+            if check_nvidia() or check_metal(args):
+                exec_args.extend(["--flash-attn"])
 
         if args.seed:
             exec_args += ["--seed", args.seed]

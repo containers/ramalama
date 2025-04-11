@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import platform
 import random
 import shutil
 import string
@@ -355,6 +356,12 @@ def check_asahi():
             pass
 
     return None
+
+
+def check_metal(args):
+    if args.container:
+        return False
+    return platform.system() == "Darwin"
 
 
 def check_nvidia():
