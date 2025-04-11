@@ -8,7 +8,7 @@ Below summarizes the processes that we follow.
 
 * [Reporting Issues](#reporting-issues)
 * [Working On Issues](#working-on-issues)
-* [Contributing To RamaLama](#contributing-to-ramalama)
+* [Contributing To RamaLama](#contributing-to-ramalama-1)
 * [Submitting Pull Requests](#submitting-pull-requests)
 * [Communications](#communications)
 * [Code of Conduct](#code-of-conduct)
@@ -31,6 +31,7 @@ To make this easier, there are three types of issue templates you can use.
 * If you have a bug to report, please use *Bug Report* template.
 * If you have an idea to propose, please use the *Feature Request* template.
 * If your issue is something else, please use the default *Blank issue* template.
+
 Please include as much detail as possible, including all requested fields in the template.
 Not having all requested information - for example, a full `ramalama info` - makes it much harder to find and fix issues.
 A reproducer is the best thing you can include.
