@@ -47,6 +47,9 @@ def get_engine():
             apple_vm(engine)
         return engine
 
+    if os.path.exists("/run/.toolboxenv"):
+        return None
+
     if available("podman") and (sys.platform != "darwin" or apple_vm("podman")):
         return "podman"
 
