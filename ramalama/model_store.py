@@ -188,7 +188,12 @@ class GlobalModelStore:
                 for ref_file_name in os.listdir(ref_dir):
                     ref_file: RefFile = RefFile.from_path(os.path.join(ref_dir, ref_file_name))
                     model_path = root.replace(self.path, "").replace(os.sep, "", 1)
-                    model_name = f"{model_path}:{ref_file_name}"
+
+                    parts = model_path.split("/")
+                    model_source = parts[0]
+                    model_path_without_source = f"{os.sep}".join(parts[1:])
+
+                    model_name = f"{model_source}://{model_path_without_source}/{ref_file.model_name}:{ref_file_name}"
 
                     collected_files = []
                     for snapshot_file in ref_file.filenames:
@@ -200,7 +205,10 @@ class GlobalModelStore:
                             if not os.path.exists(blobs_partial_file_path):
                                 continue
                             snapshot_file_path = blobs_partial_file_path
-                            model_name = f"{model_path}:{ref_file_name} (partial)"
+
+                            # append indication for partial downloaded model
+                            if not model_name.endswith("(partial)"):
+                                model_name += " (partial)"
 
                         last_modified = os.path.getmtime(snapshot_file_path)
                         file_size = os.path.getsize(snapshot_file_path)
