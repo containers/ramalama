@@ -179,7 +179,7 @@ class GlobalModelStore:
     def path(self) -> str:
         return self._store_base_path
 
-    def list_models(self, engine: str, debug: bool) -> Dict[str, List[ModelFile]]:
+    def list_models(self, engine: str, debug: bool, show_container: bool) -> Dict[str, List[ModelFile]]:
         models: Dict[str, List[ModelFile]] = {}
 
         for root, subdirs, _ in os.walk(self.path):
@@ -215,19 +215,20 @@ class GlobalModelStore:
                         collected_files.append(ModelFile(snapshot_file, last_modified, file_size))
                     models[model_name] = collected_files
 
-        oci_models = ramalama.oci.list_models(
-            dotdict(
-                {
-                    "engine": engine,
-                    "debug": debug,
-                }
+        if show_container:
+            oci_models = ramalama.oci.list_models(
+                dotdict(
+                    {
+                        "engine": engine,
+                        "debug": debug,
+                    }
+                )
             )
-        )
-        for oci_model in oci_models:
-            name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
-            # ramalama.oci.list_models provides modified as timestamp string, convert it to unix timestamp
-            modified_unix = datetime.fromisoformat(modified).timestamp()
-            models[name] = [ModelFile(name, modified_unix, size)]
+            for oci_model in oci_models:
+                name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
+                # ramalama.oci.list_models provides modified as timestamp string, convert it to unix timestamp
+                modified_unix = datetime.fromisoformat(modified).timestamp()
+                models[name] = [ModelFile(name, modified_unix, size)]
 
         return models
 
