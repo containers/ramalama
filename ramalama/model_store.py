@@ -179,7 +179,7 @@ class GlobalModelStore:
     def path(self) -> str:
         return self._store_base_path
 
-    def list_models(self, engine: str, debug: bool) -> Dict[str, List[ModelFile]]:
+    def list_models(self, engine: str, debug: bool, show_container: bool) -> Dict[str, List[ModelFile]]:
         models: Dict[str, List[ModelFile]] = {}
 
         for root, subdirs, _ in os.walk(self.path):
@@ -188,7 +188,12 @@ class GlobalModelStore:
                 for ref_file_name in os.listdir(ref_dir):
                     ref_file: RefFile = RefFile.from_path(os.path.join(ref_dir, ref_file_name))
                     model_path = root.replace(self.path, "").replace(os.sep, "", 1)
-                    model_name = f"{model_path}:{ref_file_name}"
+
+                    parts = model_path.split("/")
+                    model_source = parts[0]
+                    model_path_without_source = f"{os.sep}".join(parts[1:])
+
+                    model_name = f"{model_source}://{model_path_without_source}/{ref_file.model_name}:{ref_file_name}"
 
                     collected_files = []
                     for snapshot_file in ref_file.filenames:
@@ -200,26 +205,30 @@ class GlobalModelStore:
                             if not os.path.exists(blobs_partial_file_path):
                                 continue
                             snapshot_file_path = blobs_partial_file_path
-                            model_name = f"{model_path}:{ref_file_name} (partial)"
+
+                            # append indication for partial downloaded model
+                            if not model_name.endswith("(partial)"):
+                                model_name += " (partial)"
 
                         last_modified = os.path.getmtime(snapshot_file_path)
                         file_size = os.path.getsize(snapshot_file_path)
                         collected_files.append(ModelFile(snapshot_file, last_modified, file_size))
                     models[model_name] = collected_files
 
-        oci_models = ramalama.oci.list_models(
-            dotdict(
-                {
-                    "engine": engine,
-                    "debug": debug,
-                }
+        if show_container:
+            oci_models = ramalama.oci.list_models(
+                dotdict(
+                    {
+                        "engine": engine,
+                        "debug": debug,
+                    }
+                )
             )
-        )
-        for oci_model in oci_models:
-            name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
-            # ramalama.oci.list_models provides modified as timestamp string, convert it to unix timestamp
-            modified_unix = datetime.fromisoformat(modified).timestamp()
-            models[name] = [ModelFile(name, modified_unix, size)]
+            for oci_model in oci_models:
+                name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
+                # ramalama.oci.list_models provides modified as timestamp string, convert it to unix timestamp
+                modified_unix = datetime.fromisoformat(modified).timestamp()
+                models[name] = [ModelFile(name, modified_unix, size)]
 
         return models
 
