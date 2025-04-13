@@ -691,9 +691,11 @@ def push_cli(args):
                 raise e
         try:
             # attempt to push as a container image
-            m = ModelFactory(tgt, args, engine=CONFIG['engine']).create_oci()
+            m = ModelFactory(tgt, args).create_oci()
             m.push(source, args)
-        except Exception:
+        except Exception as e1:
+            if args.debug:
+                print(e1)
             raise e
 
 
