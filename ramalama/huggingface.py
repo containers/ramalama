@@ -8,6 +8,7 @@ import urllib.request
 from ramalama.common import available, download_file, exec_cmd, generate_sha256, perror, run_cmd, verify_checksum
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFile, SnapshotFileType
+from ramalama.ollama import ollama_repo_pull
 
 missing_huggingface = """
 Optional: Huggingface models require the huggingface-cli module.
@@ -144,16 +145,13 @@ def handle_repo_info(repo_name, repo_info, runtime):
             f"- https://huggingface.co/models?other=base_model:quantized:{repo_name} \n"
             "- https://huggingface.co/spaces/ggml-org/gguf-my-repo"
         )
-    if "gguf" in repo_info:
-        print("There are GGUF files to choose from in this repo, use one of the following commands to run one:\n")
-    for sibling in repo_info.get("siblings", []):
-        if sibling["rfilename"].endswith('.gguf'):
-            file = sibling["rfilename"]
-            print(f"- ramalama run hf://{repo_name}/{file}")
-    print("\n")
 
 
 class Huggingface(Model):
+
+    REGISTRY_URL = "https://huggingface.co/v2/"
+    ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
+
     def __init__(self, model):
         super().__init__(model)
 
@@ -187,18 +185,46 @@ class Huggingface(Model):
         symlink_dir = os.path.dirname(model_path)
         os.makedirs(symlink_dir, exist_ok=True)
 
+        # First try to interpret the argument as a user/repo:tag
         try:
-            # Check if huggingface repo instead of file
             if self.directory.count("/") == 0:
-                repo_name = self.directory + "/" + self.filename
-                repo_info = get_repo_info(repo_name)
-                handle_repo_info(repo_name, repo_info, args.runtime)
 
+                model_name, model_tag, _ = self.extract_model_identifiers()
+                repo_name = self.directory + "/" + model_name
+                registry_head = f"{Huggingface.REGISTRY_URL}{repo_name}"
+
+                show_progress = not args.quiet
+                return ollama_repo_pull(
+                    os.path.join(args.store, "repos", "huggingface"),
+                    Huggingface.ACCEPT,
+                    registry_head,
+                    model_name,
+                    model_tag,
+                    os.path.join(args.store, "models", "huggingface"),
+                    model_path,
+                    self.model,
+                    show_progress,
+                )
+
+        except urllib.error.HTTPError:
+            if model_tag != "latest":
+                # The user explicitly requested a tag, so raise an error
+                raise KeyError(f"{self.model} was not found in the HuggingFace registry")
+            else:
+                # The user did not explicitly request a tag, so assume they want the whole repository
+                pass
+
+        # Try to download the repo/file
+        try:
             return self.url_pull(args, model_path, directory_path)
         except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
+
             if self.hf_cli_available:
-                return self.hf_pull(args, model_path, directory_path)
-            perror("URL pull failed and huggingface-cli not available")
+                try:
+                    return self.hf_pull(args, model_path, directory_path)
+                except Exception:
+                    pass
+
             raise KeyError(f"Failed to pull model: {str(e)}")
 
     def _fetch_snapshot_path(self, cache_dir, namespace, repo):
