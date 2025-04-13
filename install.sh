@@ -270,7 +270,7 @@ print_banner() {
           "|_|  \_\__,_|_| |_| |_|\__,_|______\__,_|_| |_| |_|\__,_|\n"
 }
 
-print_end_banner() {
+print_success_info() {
   echo
   echo "====================== Installation Completed ======================"
   echo "Success! Ramalama has been installed successfully."
@@ -282,9 +282,10 @@ print_end_banner() {
 
 check_install_success() {
   if available "ramalama"; then
-    print_end_banner
+    print_success_info
   else
     echo "Installation failed. Please check the previous output for errors."
+    exit 1
   fi
 }
 
