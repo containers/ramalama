@@ -270,6 +270,24 @@ print_banner() {
           "|_|  \_\__,_|_| |_| |_|\__,_|______\__,_|_| |_| |_|\__,_|\n"
 }
 
+print_end_banner() {
+  echo
+  echo "====================== Installation Completed ======================"
+  echo "Success! Ramalama has been installed successfully."
+  echo "For further details, check the documentation at:"
+  echo "https://github.com/containers/ramalama/tree/main/docs"
+  echo "Or use the '--help' flag to learn more about usage."
+  echo "===================================================================="
+}
+
+check_install_success() {
+  if available "ramalama"; then
+    print_end_banner
+  else
+    echo "Installation failed. Please check the previous output for errors."
+  fi
+}
+
 main() {
   set -e -o pipefail
 
@@ -290,6 +308,8 @@ main() {
   trap cleanup EXIT
 
   setup_ramalama
+
+  check_install_success
 }
 
 main "$@"
