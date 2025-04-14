@@ -220,7 +220,7 @@ def handle_repo_info(repo_name, repo_info, runtime):
     if "safetensors" in repo_info and runtime == "llama.cpp":
         print(
             "\nllama.cpp does not support running safetensor models, "
-            "please use a/convert to the GGUF format using:\n"
+            "please switch your runtime to vLLM or use a/convert to the GGUF format using:\n"
             f"- https://huggingface.co/models?other=base_model:quantized:{repo_name} \n"
             "- https://huggingface.co/spaces/ggml-org/gguf-my-repo"
         )
