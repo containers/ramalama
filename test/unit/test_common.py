@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.cli import configure_subcommands, create_argument_parser
-from ramalama.common import DEFAULT_IMAGE, accel_image, rm_until_substring, verify_checksum
+from ramalama.common import DEFAULT_IMAGE, accel_image, minor_release, rm_until_substring, verify_checksum
 from ramalama.config import load_and_merge_config
 
 
@@ -95,7 +95,7 @@ DEFAULT_IMAGES = {
         (None, f"{DEFAULT_IMAGE}:latest", None, None, f"{DEFAULT_IMAGE}:latest"),
         (None, None, f"{DEFAULT_IMAGE}:latest", None, f"{DEFAULT_IMAGE}:latest"),
         (None, None, None, f"{DEFAULT_IMAGE}:latest", f"{DEFAULT_IMAGE}:latest"),
-        ("HIP_VISIBLE_DEVICES", None, None, None, "quay.io/ramalama/rocm:latest"),
+        ("HIP_VISIBLE_DEVICES", None, None, None, f"quay.io/ramalama/rocm:{minor_release()}"),
         ("HIP_VISIBLE_DEVICES", f"{DEFAULT_IMAGE}:latest", None, None, f"{DEFAULT_IMAGE}:latest"),
         ("HIP_VISIBLE_DEVICES", None, f"{DEFAULT_IMAGE}:latest", None, f"{DEFAULT_IMAGE}:latest"),
         ("HIP_VISIBLE_DEVICES", None, None, f"{DEFAULT_IMAGE}:latest", f"{DEFAULT_IMAGE}:latest"),
