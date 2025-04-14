@@ -25,6 +25,7 @@ release-arm() {
 	*)
 	    podman push "${REPO}"/"$1"-whisper-server "${ARMREPO}"/"$1"-whisper-server
 	    podman push "${REPO}"/"$1"-llama-server "${ARMREPO}"/"$1"-llama-server
+	    podman push "${REPO}"/"$1"-rag "${ARMREPO}"/"$1"-rag
 	    ;;
     esac
 }

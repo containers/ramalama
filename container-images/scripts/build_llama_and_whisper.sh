@@ -1,5 +1,4 @@
 #!/bin/bash
-set -exu -o pipefail
 
 export PYTHONPATH=""
 export LIBRARY_PATH=""
@@ -276,7 +275,7 @@ main() {
   # shellcheck disable=SC1091
   source /etc/os-release
 
-  set -ex
+  set -ex -o pipefail
 
   local containerfile=${1-""}
   local install_prefix
