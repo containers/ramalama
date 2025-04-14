@@ -34,7 +34,7 @@ release() {
 
 case ${1} in
     ramalama-cli)
-	podman run --pull=never --rm "${REPO}/$1" /usr/bin/ramalama version
+	podman run --pull=never --rm "${REPO}/$1" version
 	release "$1"
 	;;
     llama-stack)
