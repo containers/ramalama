@@ -1,6 +1,10 @@
 #!/bin/bash
 set -exu -o pipefail
 
+export PYTHONPATH=""
+export LIBRARY_PATH=""
+export OCL_ICD_FILENAMES=""
+
 available() {
   command -v "$1" >/dev/null
 }
