@@ -420,6 +420,7 @@ class Model(ModelBase):
         if len(conman_args) == 0:
             return False
 
+        print(model_path)
         if model_path and os.path.exists(model_path):
             conman_args += [f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"]
         else:
