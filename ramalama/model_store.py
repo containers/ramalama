@@ -193,7 +193,7 @@ class GlobalModelStore:
                     model_source = parts[0]
                     model_path_without_source = f"{os.sep}".join(parts[1:])
 
-                    model_name = f"{model_source}://{model_path_without_source}/{ref_file.model_name}:{ref_file_name}"
+                    model_name = f"{model_source}://{model_path_without_source}:{ref_file_name}"
 
                     collected_files = []
                     for snapshot_file in ref_file.filenames:
@@ -278,7 +278,7 @@ class ModelStore:
 
     @property
     def model_base_directory(self) -> str:
-        return os.path.join(self.base_path, self.model_type, self.model_organization)
+        return os.path.join(self.base_path, self.model_type, self.model_organization, self.model_name)
 
     @property
     def blobs_directory(self) -> str:
