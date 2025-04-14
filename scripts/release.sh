@@ -14,8 +14,8 @@ fi
 
 # This script assumes that ARM images have been pushed to ARMREPO from
 # MACS
-export ARMREPO=${ARMREPO:"quay.io/rhatdan"}
-export REPO=${REPO:"quay.io/ramalama"}
+export ARMREPO=${ARMREPO:-"quay.io/rhatdan"}
+export REPO=${REPO:-"quay.io/ramalama"}
 
 release() {
     DEST=${REPO}/"$1"
@@ -26,7 +26,7 @@ release() {
     id=$(podman pull -q --arch arm64 "${ARMREPO}"/"$1")
     podman manifest add "$1" "$id"
     podman manifest inspect "$1"
-    podman manifest push --all "$1" "${DEST}":0.7.3
+    podman manifest push --all "$1" "${DEST}":0.7.4
     podman manifest push --all "$1" "${DEST}":0.7
     podman manifest push --all "$1" "${DEST}"
     podman manifest rm "$1"
@@ -34,18 +34,18 @@ release() {
 
 case ${1} in
     ramalama-cli)
-	podman run --rm "${REPO}"/"$1" /usr/bin/ramalama version
+	podman run --pull=never --rm "${REPO}/$1" /usr/bin/ramalama version
 	release "$1"
 	;;
     llama-stack)
-	podman run --rm "${REPO}"/"$1" /usr/bin/llama
+	podman run --pull=never --rm "${REPO}/$1" /usr/bin/llama
 	release "$1"
 	;;
     *)
-	podman run --rm "${REPO}"/"$1" ls -l /usr/bin/llama-server
-	podman run --rm "${REPO}"/"$1" ls -l /usr/bin/llama-run
-	podman run --rm "${REPO}"/"$1" ls -l /usr/bin/whisper-server
-	podman run --rm "${REPO}"/"$1"-rag rag_framework load
+	podman run --pull=never --rm "${REPO}/$1" ls -l /usr/bin/llama-server
+	podman run --pull=never --rm "${REPO}/$1" ls -l /usr/bin/llama-run
+	podman run --pull=never --rm "${REPO}/$1" ls -l /usr/bin/whisper-server
+	podman run --pull=never --rm "${REPO}/$1"-rag rag_framework load
 
 	release "$1"
 	release "$1"-whisper-server
