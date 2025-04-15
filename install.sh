@@ -98,8 +98,12 @@ install_mac_dependencies() {
   fi
 
   if ! available "brew"; then
-    echo "RamaLama requires brew to complete installation. Install brew and add the"
-    echo "directory containing brew to the PATH before continuing to install RamaLama"
+    echo "RamaLama requires brew to complete installation."
+    echo
+    echo "To install brew please run:"
+    echo
+    echo "curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash"
+    echo
 
     return 2
   fi
