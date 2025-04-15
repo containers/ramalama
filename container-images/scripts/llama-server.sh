@@ -21,6 +21,7 @@ eval llama-server \
      --host "${HOST:=0.0.0.0}" \
      --port "${PORT:=8001}" \
      --gpu_layers "${GPU_LAYERS:=0}" \
+     --ctx_size "${CTX_SIZE:=2048}" \
      "${CHAT_FORMAT}"
 exit 0
 
