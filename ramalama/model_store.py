@@ -456,6 +456,10 @@ class ModelStore:
             if file.type == SnapshotFileType.Model:
                 model_file = file
 
+        # Could not find model file in store
+        if model_file is None:
+            return
+
         model_file_path = self.get_blob_file_path(model_file.hash)
         if not GGUFInfoParser.is_model_gguf(model_file_path):
             return
