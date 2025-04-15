@@ -16,11 +16,15 @@ fi
 if [ -z "${MODEL_PATH}" ]; then
     MODEL_PATH="/mnt/models/model.file"
 fi
+if [ -n "${CTX_SIZE}" ]; then
+    CTX_SIZE_FLAG="--ctx_size ${CTX_SIZE}"
+fi
 eval llama-server \
      --model "${MODEL_PATH}" \
      --host "${HOST:=0.0.0.0}" \
      --port "${PORT:=8001}" \
      --gpu_layers "${GPU_LAYERS:=0}" \
+     "${CTX_SIZE_FLAG:=""}" \
      "${CHAT_FORMAT}"
 exit 0
 
