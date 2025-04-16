@@ -42,7 +42,7 @@ case ${1} in
 	release "$1"
 	;;
     llama-stack)
-	podman run --pull=never --rm "${REPO}/$1" /usr/bin/llama
+	podman run --pull=never --rm "${REPO}/$1" llama -h
 	release "$1"
 	;;
     *)

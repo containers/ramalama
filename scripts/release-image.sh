@@ -57,7 +57,7 @@ case ${1} in
 	podman run --pull=never --rm "${REPO}/$1" ls -l bin/ovms
 	;;
     llama-stack)
-	podman run --pull=never --rm "${REPO}/$1" /usr/bin/llama -h
+	podman run --pull=never --rm "${REPO}/$1" llama -h
 	;;
     *)
 	podman run --pull=never --rm "${REPO}/$1" ls -l /usr/bin/llama-server
