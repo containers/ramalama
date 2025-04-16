@@ -947,6 +947,14 @@ def rag_parser(subparsers):
     )
     add_network_argument(parser, dflt=None)
     parser.add_argument(
+        "--pull",
+        dest="pull",
+        type=str,
+        default=CONFIG['pull'],
+        choices=["always", "missing", "never", "newer"],
+        help='pull image policy',
+    )
+    parser.add_argument(
         "PATH",
         nargs="*",
         help="""\

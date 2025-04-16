@@ -12,6 +12,7 @@ load helpers
 
     run_ramalama --dryrun run --rag quay.io/ramalama/myrag:1.2 ollama://smollm:135m
     is "$output" ".*quay.io/ramalama/.*-rag.*" "Expected to use -rag image"
+    is "$output" ".*--pull newer.*" "Expected to use --pull newer"
 
     run_ramalama info
     engine=$(echo "$output" | jq --raw-output '.Engine.Name')

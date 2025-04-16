@@ -88,7 +88,13 @@ COPY {src} /vector.db
 
         docsdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_docs_')
         docsdb_used = False
-        exec_args = [args.engine, "run", "--rm"]
+        exec_args = [
+            args.engine,
+            "run",
+            "--rm",
+            "--pull",
+            args.pull,
+        ]
         if args.network:
             exec_args += ["--network", args.network]
 
