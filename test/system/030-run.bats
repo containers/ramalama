@@ -36,14 +36,14 @@ EOF
 	is "$output" ".*--temp 0.8" "verify temp is set"
 	is "$output" ".*--seed 9876" "verify seed is set"
 	if not_docker; then
-	   is "$output" ".*--pull=newer" "verify pull is newer"
+	   is "$output" ".*--pull newer" "verify pull is newer"
 	fi
 
 	run_ramalama -q --dryrun run --pull=never -c 4096 --name foobar ${MODEL}
-	is "$output" ".*--pull=never" "verify pull is never"
+	is "$output" ".*--pull never" "verify pull is never"
 
 	RAMALAMA_CONFIG=${conf} run_ramalama -q --dryrun run ${MODEL}
-	is "$output" ".*--pull=missing" "verify pull is missing"
+	is "$output" ".*--pull missing" "verify pull is missing"
 
 	run_ramalama 2 -q --dryrun run --pull=bogus ${MODEL}
 	is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"

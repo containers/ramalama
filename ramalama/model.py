@@ -255,17 +255,7 @@ class Model(ModelBase):
         if hasattr(args, "rag") and args.rag:
             args.image = args.image.split(":")[0]
         self.image = accel_image(CONFIG, args)
-        if not args.dryrun and os.path.basename(args.engine) == "docker" and args.pull == "newer":
-            try:
-                if not args.quiet:
-                    print(f"Checking for newer image {self.image}")
-                run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
-            except Exception:  # Ignore errors, the run command will handle it.
-                pass
-        else:
-            conman_args += [f"--pull={args.pull}"]
-
-        return conman_args
+        return self.add_pull_newer(conman_args, args)
 
     def add_env_option(self, conman_args, args):
         for env in args.env:
@@ -344,6 +334,18 @@ class Model(ModelBase):
         else:
             exec_args.append(f"--mount=type=image,source={args.rag},destination=/rag,rw=true")
 
+        return exec_args
+
+    def add_pull_newer(self, exec_args, args):
+        if not args.dryrun and os.path.basename(args.engine) == "docker" and args.pull == "newer":
+            try:
+                if not args.quiet:
+                    print(f"Checking for newer image {self.image}")
+                run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
+            except Exception:  # Ignore errors, the run command will handle it.
+                pass
+        else:
+            exec_args += ["--pull", args.pull]
         return exec_args
 
     def setup_container(self, args):
