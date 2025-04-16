@@ -43,7 +43,7 @@ class Converter:
             chunk_iter = chunker.chunk(dl_doc=file.document)
             for chunk in chunk_iter:
                 # Extract the enriched text from the chunk
-                doc_text = chunker.serialize(chunk=chunk)
+                doc_text = chunker.contextualize(chunk=chunk)
                 # Append to respective lists
                 documents.append(doc_text)
                 # Generate unique ID for the chunk
