@@ -92,11 +92,10 @@ COPY {src} /vector.db
             args.engine,
             "run",
             "--rm",
-            "--pull",
-            args.pull,
         ]
-        if args.network:
-            exec_args += ["--network", args.network]
+
+        exec_args = self.add_pull_newer(exec_args, args)
+        exec_args = self.add_network_option(exec_args, args)
 
         for path in args.PATH:
             if self._handle_docs_path(path, docsdb.name, exec_args):
@@ -130,3 +129,23 @@ COPY {src} /vector.db
         finally:
             shutil.rmtree(ragdb.name, ignore_errors=True)
             shutil.rmtree(docsdb.name, ignore_errors=True)
+
+    # FIXME: Need to create a base class between RAG and Model to share these
+    # functions.
+    def add_pull_newer(self, conman_args, args):
+        if not args.dryrun and os.path.basename(args.engine) == "docker" and args.pull == "newer":
+            try:
+                if not args.quiet:
+                    print(f"Checking for newer image {self.image}")
+                run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
+            except Exception:  # Ignore errors, the run command will handle it.
+                pass
+        else:
+            conman_args += ["--pull", args.pull]
+        return conman_args
+
+    def add_network_option(self, conman_args, args):
+        if args.network:
+            conman_args += ["--network", args.network]
+
+        return conman_args

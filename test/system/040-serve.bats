@@ -38,13 +38,13 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         run_ramalama -q --dryrun serve --seed 1234 ${model}
         is "$output" ".*--seed 1234" "verify seed is set"
         if not_docker; then
-            is "$output" ".*--pull=newer" "verify pull is newer"
+            is "$output" ".*--pull newer" "verify pull is newer"
         fi
         assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
         assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
 
-        run_ramalama -q --dryrun serve --pull=never ${model}
-        is "$output" ".*--pull=never" "verify pull is never"
+        run_ramalama -q --dryrun serve --pull never ${model}
+        is "$output" ".*--pull never" "verify pull is never"
 
         run_ramalama 2 -q --dryrun serve --pull=bogus ${model}
         is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"
