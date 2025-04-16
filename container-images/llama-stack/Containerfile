@@ -1,6 +1,11 @@
-FROM registry.fedoraproject.org/fedora:42
+FROM registry.fedoraproject.org/fedora:41
 
-RUN dnf -y install pip && \
-    pip install -U llama-stack --prefix=/usr
+RUN dnf -y update && \
+    dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config && \
+    uv run --with llama-stack llama stack build --template ollama --image-type venv --image-name /venv && \
+    dnf -y clean all
 
+COPY --chmod=755 entrypoint.sh /usr/bin/entrypoint.sh
+
+ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
 
