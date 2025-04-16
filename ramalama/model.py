@@ -568,10 +568,11 @@ class Model(ModelBase):
         if gpu_args is not None:
             exec_args.extend(gpu_args)
 
-        if self.store is not None:
-            ref_file = self.store.get_ref_file(self.tag)
-            if ref_file.chat_template_name != "":
-                exec_args.extend(["--chat-template-file", MNT_CHAT_TEMPLATE_FILE])
+        # TODO: see https://github.com/containers/ramalama/issues/1202
+        # if self.store is not None:
+        #     ref_file = self.store.get_ref_file(self.tag)
+        #     if ref_file.chat_template_name != "":
+        #         exec_args.extend(["--chat-template-file", MNT_CHAT_TEMPLATE_FILE])
 
         exec_args.append(exec_model_path)
         if len(prompt) > 0:
@@ -629,8 +630,9 @@ class Model(ModelBase):
             if rpc_nodes:
                 exec_args += ["--rpc", rpc_nodes]
 
-            if chat_template_path != "":
-                exec_args += ["--chat-template-file", chat_template_path]
+            # TODO: see https://github.com/containers/ramalama/issues/1202
+            # if chat_template_path != "":
+            #     exec_args += ["--chat-template-file", chat_template_path]
 
             if args.debug:
                 exec_args += ["-v"]
