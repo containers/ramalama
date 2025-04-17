@@ -204,7 +204,7 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         content += f"LABEL {ociimage_car if is_car else ociimage_raw}\n"
 
         return content
-    
+
     def build(self, source, target, args):
         print(f"Building {target}...")
         src = os.path.realpath(source)
@@ -215,7 +215,7 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         content = self._generate_containerfile(model_file, model_name, args)
 
         containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=False)
-        
+
         # Open the file for writing.
         with open(containerfile.name, 'w') as c:
             c.write(content)
