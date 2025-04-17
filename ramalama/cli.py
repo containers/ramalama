@@ -23,6 +23,7 @@ from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
 from ramalama.model_store import GlobalModelStore
 from ramalama.shortnames import Shortnames
+from ramalama.stack_factory import StackFactory
 from ramalama.version import print_version, version
 
 shortnames = Shortnames()
@@ -208,6 +209,7 @@ def configure_subcommands(parser):
     rm_parser(subparsers)
     run_parser(subparsers)
     serve_parser(subparsers)
+    stack_parser(subparsers)
     stop_parser(subparsers)
     version_parser(subparsers)
 
@@ -1038,6 +1040,10 @@ def New(model, args, transport=CONFIG["transport"]):
     return ModelFactory(model, args, transport=transport).create()
 
 
+def NewStack(distro, args, transport=CONFIG["transport"]):
+    return StackFactory(distro, args, transport=transport).create()
+
+
 def client_cli(args):
     """Handle client command execution"""
     client_args = ["ramalama-client-core", "-c", "2048", "--temp", "0.8", args.HOST] + args.ARGS
@@ -1070,3 +1076,14 @@ def inspect_cli(args):
     args.pull = "never"
     model = New(args.MODEL, args)
     model.inspect(args)
+
+
+def stack_parser(subparsers):
+    parser = subparsers.add_parser("stack", help="run a Llama Stack distribution")
+    parser.add_argument("DISTRO")  # positional argument
+    parser.set_defaults(func=stack_cli)
+
+
+def stack_cli(args):
+    stack = NewStack(args.DISTRO, args)
+    stack.run(args)
