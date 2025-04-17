@@ -376,7 +376,7 @@ class Huggingface(Model):
 
         try:
             # Fetch the SHA-256 checksum of model from the API and use as snapshot hash
-            snapshot_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
+            snapshot_hash = f"sha256:{fetch_checksum_from_api(organization, name)}"
 
             hf_repo = HuggingfaceRepository(name, organization)
             files = hf_repo.get_file_list(cached_files, snapshot_hash)

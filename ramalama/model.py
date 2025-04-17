@@ -125,15 +125,15 @@ class Model(ModelBase):
         return model_name, model_tag, model_organization
 
     @property
-    def name(self) -> str:
+    def model_name(self) -> str:
         return self._model_name
 
     @property
-    def tag(self) -> str:
+    def model_tag(self) -> str:
         return self._model_tag
 
     @property
-    def organization(self) -> str:
+    def model_organization(self) -> str:
         return self._model_organization
 
     @property
@@ -431,7 +431,8 @@ class Model(ModelBase):
 
         # If a chat template is available, mount it as well
         if self.store is not None:
-            ref_file = self.store.get_ref_file(self.tag)
+            _, tag, _ = self.extract_model_identifiers()
+            ref_file = self.store.get_ref_file(tag)
             if ref_file is not None and ref_file.chat_template_name != "":
                 chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
                 conman_args += [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
@@ -574,7 +575,8 @@ class Model(ModelBase):
 
         # TODO: see https://github.com/containers/ramalama/issues/1202
         # if self.store is not None:
-        #     ref_file = self.store.get_ref_file(self.tag)
+        #     _, tag, _ = self.extract_model_identifiers()
+        #     ref_file = self.store.get_ref_file(tag)
         #     if ref_file.chat_template_name != "":
         #         exec_args.extend(["--chat-template-file", MNT_CHAT_TEMPLATE_FILE])
 
@@ -704,7 +706,8 @@ class Model(ModelBase):
 
         chat_template_path = ""
         if self.store is not None:
-            ref_file = self.store.get_ref_file(self.tag)
+            _, tag, _ = self.extract_model_identifiers()
+            ref_file = self.store.get_ref_file(tag)
             if ref_file is not None and ref_file.chat_template_name != "":
                 chat_template_path = (
                     MNT_CHAT_TEMPLATE_FILE
