@@ -4,13 +4,13 @@ load helpers
 
 # bats test_tags=distro-integration
 @test "ramalama convert basic" {
-    if is_container; then
+   if is_container; then
 	run_ramalama 2 convert
 	is "$output" ".*ramalama convert: error: the following arguments are required: SOURCE, TARGET"
 	run_ramalama 2 convert tiny
 	is "$output" ".*ramalama convert: error: the following arguments are required: TARGET"
 	run_ramalama 1 convert bogus foobar
-	is "$output" "Error: bogus was not found in the Ollama registry"
+	is "$output" "Error: Manifest for bogus:latest was not found in the Ollama registry"
    else
 	run_ramalama 22 convert tiny quay.io/ramalama/foobar
 	is "$output" "Error: convert command cannot be run with the --nocontainer option."
