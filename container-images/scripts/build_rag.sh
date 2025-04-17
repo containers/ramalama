@@ -38,8 +38,13 @@ rag() {
     rag_framework load
 }
 
+to_gguf() {
+    ${PYTHON_VERSION} pip install "numpy~=1.26.4" "sentencepiece~=0.2.0" "transformers>=4.45.1,<5.0.0" git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py "protobuf>=4.21.0,<5.0.0"
+}
+
 update_python
 
+to_gguf
 rag
 docling "${GPU}"
 

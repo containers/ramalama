@@ -165,35 +165,61 @@ class OCI(Model):
         reference_dir = reference.replace(":", "/")
         return registry, reference, reference_dir
 
+    def _generate_containerfile(self, model_file, model_name, args):
+        # Generate the containerfile content
+        is_car = args.type == "car"
+        has_gguf = hasattr(args, 'gguf') and args.gguf is not None
+        content = ""
+
+        if is_car:
+            content += f"FROM {args.carimage}\n"
+        else:
+            content += f"FROM {args.image} as builder\n"
+
+        if has_gguf:
+            content += f"""\
+RUN mkdir -p /models; cd /models; ln -s {model_name}-{args.gguf}.gguf model.file
+COPY {model_name} /models/{model_name}
+RUN convert_hf_to_gguf.py --outfile /{model_name}-f16.gguf /models/{model_name}
+RUN llama-quantize /{model_name}-f16.gguf /models/{model_name}-{args.gguf}.gguf {args.gguf}
+RUN ln -s /models/{model_name}-{args.gguf}.gguf model.file
+RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
+"""
+        else:
+            content += f"RUN mkdir -p /models; cd /models; ln -s {model_name} model.file\n"
+
+        if not is_car:
+            content += "\nFROM scratch\n"
+            content += "COPY --from=builder /models /models\n"
+
+            if has_gguf:
+                content += (
+                    f"COPY --from=builder /models/{model_name}-{args.gguf}.gguf /models/{model_name}-{args.gguf}.gguf\n"
+                )
+            else:
+                content += f"COPY {model_file} /models/{model_name}\n"
+        elif not has_gguf:
+            content += f"COPY {model_file} /models/{model_name}\n"
+
+        content += f"LABEL {ociimage_car if is_car else ociimage_raw}\n"
+
+        return content
+    
     def build(self, source, target, args):
         print(f"Building {target}...")
         src = os.path.realpath(source)
         contextdir = os.path.dirname(src)
-        model = os.path.basename(src)
+        model_file = os.path.basename(src)
         model_name = os.path.basename(source)
-        model_raw = f"""\
-FROM {args.image} as builder
-RUN mkdir -p /models; cd /models; ln -s {model_name} model.file
 
-FROM scratch
-COPY --from=builder /models /models
-COPY {model} /models/{model_name}
-LABEL {ociimage_raw}
-"""
-        model_car = f"""\
-FROM {args.carimage}
-RUN mkdir -p /models; cd /models; ln -s {model_name} model.file
-COPY {model} /models/{model_name}
-LABEL {ociimage_car}
-"""
+        content = self._generate_containerfile(model_file, model_name, args)
 
         containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=False)
+        
         # Open the file for writing.
         with open(containerfile.name, 'w') as c:
-            if args.type == "car":
-                c.write(model_car)
-            else:
-                c.write(model_raw)
+            c.write(content)
+
         build_cmd = [
             self.conman,
             "build",
