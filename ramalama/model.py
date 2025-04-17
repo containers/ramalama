@@ -315,10 +315,12 @@ class Model(ModelBase):
     def add_oci_runtime(self, conman_args, args):
         if args.oci_runtime:
             conman_args += ["--runtime", args.oci_runtime]
-        elif check_nvidia() == "cuda":
+            return conman_args
+        if check_nvidia() == "cuda":
             if os.path.basename(args.engine) == "docker":
                 conman_args += ["--runtime", "nvidia"]
-            else:
+                return conman_args
+            if os.access("/usr/bin/nvidia-container-runtime", os.X_OK):
                 conman_args += ["--runtime", "/usr/bin/nvidia-container-runtime"]
 
         return conman_args
