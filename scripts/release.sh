@@ -26,6 +26,8 @@ release() {
     id=$(podman pull -q --arch arm64 "${ARMREPO}"/"$1")
     podman manifest add "$1" "$id"
     podman manifest inspect "$1"
+    digest=$(podman image inspect "${DEST}" --format '{{ .Digest }}' | cut -f2 -d':')
+    podman manifest push --all "$1" "${DEST}:${digest}"
     podman manifest push --all "$1" "${DEST}":0.7.4
     podman manifest push --all "$1" "${DEST}":0.7
     podman manifest push --all "$1" "${DEST}"
