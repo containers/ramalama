@@ -124,9 +124,14 @@ def available(cmd):
     return shutil.which(cmd) is not None
 
 
+def quoted(arr):
+    """Return string with quotes around elements containing spaces."""
+    return " ".join(['"' + element + '"' if ' ' in element else element for element in arr])
+
+
 def exec_cmd(args, debug=False, stderr2null=False):
     if debug:
-        perror("exec_cmd: ", *args)
+        perror("exec_cmd: ", quoted(args))
 
     if stderr2null:
         with open(os.devnull, 'w') as devnull:
@@ -152,7 +157,7 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     debug: if True, print debug information
     """
     if debug:
-        perror("run_cmd: ", *args)
+        perror("run_cmd: ", quoted(args))
         perror(f"Working directory: {cwd}")
         perror(f"Ignore stderr: {ignore_stderr}")
         perror(f"Ignore all: {ignore_all}")
