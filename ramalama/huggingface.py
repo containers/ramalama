@@ -387,7 +387,11 @@ class Huggingface(Model):
                 raise KeyError(f"Failed to pull model: {str(e)}")
 
             # Cleanup previously created snapshot
-            self.store.remove_snapshot(tag)
+            try:
+                self.store.remove_snapshot(tag)
+            except Exception:
+                # ignore any error when removing snapshot
+                pass
 
             # Create temporary directory for downloading via huggingface-cli
             with tempfile.TemporaryDirectory() as tempdir:
