@@ -101,7 +101,7 @@ build() {
       echo "${conman_show_size[@]}"
       "${conman_show_size[@]}"
       case ${target} in
-	  ramalama-cli | llama-stack)
+	  ramalama-cli | llama-stack | openvino)
 	  ;;
 	  *)
 	      add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}"

@@ -1,0 +1,19 @@
+FROM registry.access.redhat.com/ubi9/ubi:9.5
+
+# Install Python development dependencies
+RUN dnf install -y python3-devel wget compat-openssl11 python3-jinja2 python3-markupsafe
+# RUN pip3 install "Jinja2==3.1.6" "MarkupSafe==3.0.2"
+
+# Download and extract the Red Hat OpenVINO Model Server binary release
+RUN wget https://github.com/openvinotoolkit/model_server/releases/download/v2025.0/ovms_redhat_python_on.tar.gz && \
+    tar -xzvf ovms_redhat_python_on.tar.gz && \
+    rm ovms_redhat_python_on.tar.gz
+
+# Set environment variables for OpenVINO libraries and OVMS executable
+ENV LD_LIBRARY_PATH=/ovms/lib:/ovms/third-party:/usr/lib64:$LD_LIBRARY_PATH
+ENV PATH=/ovms/bin:/usr/local/bin:$PATH
+ENV PYTHONPATH=/ovms/lib/python
+
+WORKDIR /ovms
+
+CMD ["ovms"]
