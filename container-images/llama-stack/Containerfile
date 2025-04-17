@@ -5,7 +5,7 @@ RUN dnf -y update && \
     uv run --with llama-stack llama stack build --template ollama --image-type venv --image-name /venv && \
     dnf -y clean all
 
-COPY --chmod=755 entrypoint.sh /usr/bin/entrypoint.sh
+COPY --chmod=755 llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
 
