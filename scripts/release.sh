@@ -37,6 +37,10 @@ case ${1} in
 	podman run --pull=never --rm "${REPO}/$1" version
 	release "$1"
 	;;
+    openvino)
+	podman run --pull=never --rm "${REPO}/$1" ls -l bin/ovms
+	release "$1"
+	;;
     llama-stack)
 	podman run --pull=never --rm "${REPO}/$1" /usr/bin/llama
 	release "$1"

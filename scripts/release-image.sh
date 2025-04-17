@@ -20,7 +20,7 @@ release-arm() {
     podman push "${REPO}/$1" "${ARMREPO}/$1"
 
     case ${1} in
-	ramalama-cli|     llama-stack)
+	openvino | ramalama-cli | llama-stack)
 	;;
 	*)
 	    podman push "${REPO}"/"$1"-whisper-server "${ARMREPO}"/"$1"-whisper-server
@@ -39,7 +39,7 @@ release-ramalama() {
 release() {
     release-ramalama "$1"
     case ${1} in
-	ramalama-cli|     llama-stack)
+	openvino | ramalama-cli | llama-stack)
 	;;
 	*)
 	    release-ramalama "$1"-whisper-server
@@ -52,6 +52,9 @@ release() {
 case ${1} in
     ramalama-cli)
 	podman run --pull=never --rm "${REPO}/$1" version
+	;;
+    openvino)
+	podman run --pull=never --rm "${REPO}/$1" ls -l bin/ovms
 	;;
     llama-stack)
 	podman run --pull=never --rm "${REPO}/$1" /usr/bin/llama -h
