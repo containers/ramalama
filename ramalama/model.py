@@ -424,7 +424,6 @@ class Model(ModelBase):
         if len(conman_args) == 0:
             return False
 
-        print(model_path)
         if model_path and os.path.exists(model_path):
             conman_args += [f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"]
         else:
@@ -433,7 +432,7 @@ class Model(ModelBase):
         # If a chat template is available, mount it as well
         if self.store is not None:
             ref_file = self.store.get_ref_file(self.tag)
-            if ref_file.chat_template_name != "":
+            if ref_file is not None and ref_file.chat_template_name != "":
                 chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
                 conman_args += [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
 
@@ -706,7 +705,7 @@ class Model(ModelBase):
         chat_template_path = ""
         if self.store is not None:
             ref_file = self.store.get_ref_file(self.tag)
-            if ref_file.chat_template_name != "":
+            if ref_file is not None and ref_file.chat_template_name != "":
                 chat_template_path = (
                     MNT_CHAT_TEMPLATE_FILE
                     if args.container or args.generate
