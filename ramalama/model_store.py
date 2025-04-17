@@ -527,16 +527,8 @@ class ModelStore:
 
         # Remove snapshot directory
         snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
-        try:
-            shutil.rmtree(snapshot_directory, ignore_errors=False)
-        except Exception as ex:
-            LOGGER.error(f"Failed to remove snapshot directory '{snapshot_directory}': {ex}")
-            # only continue to remove the ref file when blobs and snapshot directory have been removed
-            return
+        shutil.rmtree(snapshot_directory, ignore_errors=False)
 
         # Remove ref file
         ref_file_path = self.get_ref_file_path(model_tag)
-        try:
-            os.remove(ref_file_path)
-        except Exception as ex:
-            LOGGER.error(f"Failed to remove ref file '{ref_file_path}': {ex}")
+        os.remove(ref_file_path)

@@ -172,7 +172,11 @@ class Model(ModelBase):
     def remove(self, args):
         if self.store is not None:
             _, tag, _ = self.extract_model_identifiers()
-            self.store.remove_snapshot(tag)
+            try:
+                self.store.remove_snapshot(tag)
+            except OSError as e:
+                if not args.ignore:
+                    raise KeyError(f"removing {self.model}: {e}")
             return
 
         model_path = self.model_path(args)
