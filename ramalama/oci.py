@@ -377,6 +377,8 @@ Tagging build instead"""
             return
         except FileNotFoundError:
             pass
+        except KeyError:
+            pass
 
         if self.conman is None:
             raise NotImplementedError("OCI Images require a container engine")
