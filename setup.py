@@ -25,6 +25,16 @@ def generate_man5_pages(share_path, docs):
     return data_files
 
 
+def generate_man7_pages(share_path, docs):
+    data_files = []
+
+    for path, _, files in os.walk(docs):
+        list_entry = (share_path, [os.path.join(path, f) for f in files if f.endswith(".7")])
+        data_files.append(list_entry)
+
+    return data_files
+
+
 def generate_ramalama_conf(share_path, docs):
     data_files = []
 
@@ -73,6 +83,7 @@ setuptools.setup(
     + generate_ramalama_conf("share/ramalama", "docs")
     + generate_man1_pages("share/man/man1", "docs")
     + generate_man5_pages("share/man/man5", "docs")
+    + generate_man7_pages("share/man/man7", "docs")
     + [
         (
             "libexec/ramalama",
