@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+
+import argparse
+import cmd
+import json
+import os
+import sys
+from urllib.parse import urlparse
+
+# Import RAG components
+from qdrant_client import QdrantClient
+from fastembed.rerank.cross_encoder import TextCrossEncoder
+import openai
+
+# Constants for embedding models
+EMBED_MODEL = "jinaai/jina-embeddings-v2-small-en"
+SPARSE_MODEL = 'prithivida/Splade_PP_en_v1'
+RANK_MODEL = 'Xenova/ms-marco-MiniLM-L-6-v2'
+COLLECTION_NAME = "rag"
+
+# Set environment variable to avoid tokenizer parallelism warnings
+os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
+def should_colorize():
+    t = os.getenv("TERM")
+    return t and t != "dumb" and sys.stdout.isatty()
+
+class RagClient(cmd.Cmd):
+    prompt = "> "
+    
+    def __init__(self, vector_path, host, args):
+        # Initialize the cmd class
+        super().__init__()
+        
+        # Initialize vector database client
+        self.client = QdrantClient(path=vector_path)
+        self.client.set_model(EMBED_MODEL)
+        self.client.set_sparse_model(SPARSE_MODEL)
+        self.reranker = TextCrossEncoder(model_name=RANK_MODEL)
+
+        # Setup OpenAI client with the provided host
+        self.host = host
+        if not host.startswith(('http://', 'https://')):
+            host = 'http://' + host
+        self.base_url = host
+        if not self.base_url.endswith('/v1'):
+            if not self.base_url.endswith('/'):
+                self.base_url += '/'
+            if not self.base_url.endswith('v1'):
+                self.base_url += 'v1'
+                
+        self.llm = openai.OpenAI(api_key="sk-dummy", base_url=self.base_url)
+        self.chat_history = []
+        self.args = args
+        
+        # Set prompt prefix
+        if "LLAMA_PROMPT_PREFIX" in os.environ:
+            self.prompt = os.environ["LLAMA_PROMPT_PREFIX"]
+        else:
+            self.prompt = args.prefix
+            
+        # Set color options
+        self.color_default = ""
+        self.color_yellow = ""
+        if (args.color == "auto" and should_colorize()) or args.color == "always":
+            self.color_default = "\033[0m"
+            self.color_yellow = "\033[33m"
+
+    def do_EOF(self, user_content):
+        print("")
+        return True
+    
+    def default(self, user_content):
+        if user_content == "/bye":
+            return True
+
+        # Add user query to chat history
+        self.chat_history.append({"role": "user", "content": user_content})
+        
+        # Ensure chat history doesn't exceed 10 messages
+        if len(self.chat_history) > 10:
+            self.chat_history.pop(0)
+        
+        # Query the vector database for relevant context
+        try:
+            results = self.client.query(
+                collection_name=COLLECTION_NAME,
+                query_text=user_content,
+                limit=20,
+            )
+            result = [r.document for r in results]
+            
+            # Rerank results to get the most relevant context
+            if result:
+                reranked_context = " ".join(
+                    str(result[i]) for i, _ in sorted(
+                        enumerate(self.reranker.rerank(user_content, result)),
+                        key=lambda x: x[1],
+                        reverse=True
+                    )[:5]
+                )
+            else:
+                reranked_context = ""
+        except Exception as e:
+            print(f"Error querying vector database: {e}")
+            reranked_context = ""
+
+        # Prepare the metaprompt with chat history and context
+        metaprompt = f"""
+            You are an expert assistant.  
+            Use the provided context and chat history to answer the question accurately and concisely.  
+            If the answer is not explicitly stated, infer the most reasonable answer based on the available information.  
+            If there is no relevant information, respond with "I don't know"—do not fabricate details.  
+
+            ### Chat History:
+            {self.format_chat_history()}
+
+            ### Context:  
+            {reranked_context.strip()}  
+
+            ### Question:  
+            {user_content.strip()}  
+
+            ### Answer:
+            """
+        
+        # Query the remote API with the metaprompt
+        try:
+            response = self.llm.chat.completions.create(
+                model="gpt-3.5-turbo",  # This is ignored by most API servers
+                messages=[{"role": "user", "content": metaprompt}],
+                stream=True,
+                temperature=float(self.args.temp)
+            )
+
+            # Process and display the response
+            print("\r", end="")
+            full_response = ""
+            for chunk in response:
+                if chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_response += content
+                    print(f"{self.color_yellow}{content}{self.color_default}", end="", flush=True)
+            
+            print("")
+            
+            # Add AI response to chat history
+            self.chat_history.append({"role": "assistant", "content": full_response})
+            
+            # Ensure chat history doesn't exceed 10 messages
+            if len(self.chat_history) > 10:
+                self.chat_history.pop(0)
+                
+            return full_response
+                
+        except Exception as e:
+            print(f"\nError communicating with API: {e}")
+            return ""
+
+    def format_chat_history(self):
+        """Format the chat history into a string for inclusion in the metaprompt."""
+        formatted_history = []
+        for i in range(0, len(self.chat_history), 2):
+            user_message = self.chat_history[i]["content"]
+            if i + 1 < len(self.chat_history):
+                ai_message = self.chat_history[i + 1]["content"]
+                formatted_history.append(f"User: {user_message}\nAI: {ai_message}")
+            else:
+                formatted_history.append(f"User: {user_message}\nAI: ")
+        return "\n".join(formatted_history)
+
+def main():
+    parser = argparse.ArgumentParser(description="Run ramalama RAG client")
+    parser.add_argument(
+        '--color',
+        '--colour',
+        default="auto",
+        choices=['never', 'always', 'auto'],
+        help='possible values are "never", "always" and "auto".',
+    )
+    parser.add_argument("--prefix", type=str, default="> ", help="prefix for the user prompt")
+    parser.add_argument("--temp", default=0.8, help="temperature of the response from the AI model")
+    parser.add_argument("vector_path", help="Path to the vector database")
+    parser.add_argument("host", help="OpenAI API endpoint to connect to")
+    parser.add_argument("args", nargs="*", help="Additional arguments to pass to the prompt")
+    
+    args = parser.parse_args()
+    
+    client = RagClient(args.vector_path, args.host, args)
+    
+    if args.args:
+        client.default(" ".join(args.args))
+        return
+        
+    try:
+        client.cmdloop()
+    except KeyboardInterrupt:
+        print("")
+
+if __name__ == "__main__":
+    main()
