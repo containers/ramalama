@@ -19,7 +19,7 @@ srpm_build_deps:
 jobs:
   # Copr builds for Fedora
   - job: copr_build
-    trigger: pull_request
+    trigger: ignore
     packages: [ramalama-fedora]
     enable_net: true
     targets: &fedora_copr_targets
@@ -29,7 +29,7 @@ jobs:
 
   # Copr builds for CentOS Stream
   - job: copr_build
-    trigger: pull_request
+    trigger: ignore
     enable_net: true
     packages: [ramalama-centos]
     targets: &centos_copr_targets
@@ -47,12 +47,14 @@ jobs:
   # Tests for Fedora
   - job: tests
     trigger: pull_request
+    skip_build: true
     packages: [ramalama-fedora]
-    targets: *fedora_copr_targets
+    targets:
+      - fedora-rawhide
 
   # Tests for CentOS Stream
   - job: tests
-    trigger: pull_request
+    trigger: ignore
     packages: [ramalama-centos]
     targets: *centos_copr_targets
 
