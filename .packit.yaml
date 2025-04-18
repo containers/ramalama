@@ -16,6 +16,9 @@ packages:
 srpm_build_deps:
   - make
 
+actions:
+  fix-spec-file: "bash .packit-copr-rpm.sh"
+
 jobs:
   # Copr builds for Fedora
   - job: copr_build
