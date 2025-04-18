@@ -6,6 +6,7 @@ import itertools
 import json
 import os
 import signal
+import subprocess
 import sys
 import time
 import urllib.error
@@ -72,6 +73,16 @@ def req(conversation_history, url, color):
             response = urllib.request.urlopen(request)
             break
         except Exception:
+            # Run the command
+            process = subprocess.run(["ps", "-ef"], capture_output=True, text=True)
+
+            # Filter the output with 'grep llama'
+            filtered_output = [line for line in process.stdout.splitlines() if "llama" in line]
+
+            # Print the results
+            for line in filtered_output:
+                print(line)
+
             if sys.stdout.isatty():
                 print(f"\r{c}", end="", flush=True)
 
@@ -100,6 +111,12 @@ class RamaLamaShell(cmd.Cmd):
     def default(self, user_content):
         if user_content == "/bye":
             return True
+
+        process = subprocess.run(["ps", "-ef"], capture_output=True, text=True)
+        print(str(self.parsed_args.pid2kill))
+        filtered_output = [line for line in process.stdout.splitlines() if str(self.parsed_args.pid2kill) in line]
+        for line in filtered_output:
+            print(line)
 
         self.conversation_history.append({"role": "user", "content": user_content})
         self.conversation_history.append(
