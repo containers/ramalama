@@ -7,6 +7,7 @@ import sys
 import uuid
 
 import qdrant_client
+from qdrant_client import models
 import docling
 from docling.chunking import HybridChunker
 from docling.document_converter import DocumentConverter
@@ -28,6 +29,18 @@ class Converter:
         self.client = qdrant_client.QdrantClient(path=output)
         self.client.set_model(EMBED_MODEL)
         self.client.set_sparse_model(SPARSE_MODEL)
+        # optimizations to reduce ram
+        self.client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=self.client.get_fastembed_vector_params(on_disk=True),
+            sparse_vectors_config= self.client.get_fastembed_sparse_vector_params(on_disk=True),
+            quantization_config=models.ScalarQuantization(
+                scalar=models.ScalarQuantizationConfig(
+                    type=models.ScalarType.INT8,
+                    always_ram=True,
+                ),
+            ),
+        )
 
     def add(self, file_path):
         if os.path.isdir(file_path):
@@ -49,7 +62,7 @@ class Converter:
                 # Generate unique ID for the chunk
                 doc_id = self.generate_hash(doc_text)
                 ids.append(doc_id)
-        return self.client.add(COLLECTION_NAME, documents=documents, ids=ids)
+        return self.client.add(COLLECTION_NAME, documents=documents, ids=ids, batch_size=1)
 
     def walk(self, path):
         for root, dirs, files in os.walk(path, topdown=True):
