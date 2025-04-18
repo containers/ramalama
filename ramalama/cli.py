@@ -17,7 +17,8 @@ except Exception:
 
 import ramalama.oci
 import ramalama.rag
-from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, perror, run_cmd
+import sys
+from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, genname, perror, run_cmd
 from ramalama.config import CONFIG
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
@@ -1044,6 +1045,33 @@ def client_parser(subparsers):
     parser = subparsers.add_parser("client", help="interact with an OpenAI endpoint")
     parser.add_argument("HOST", help="host to connect to", completer=suppressCompleter)  # positional argument
     parser.add_argument(
+        "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
+    )
+    # Add network option for container access when using RAG
+    add_network_argument(parser, dflt="bridge")
+    # Add container options similar to run/serve commands
+    parser.add_argument(
+        "--container",
+        dest="container",
+        default=CONFIG["container"],
+        action="store_true",
+        help="run RamaLama in the default container",
+    )
+    parser.add_argument(
+        "--nocontainer",
+        dest="container",
+        default=CONFIG["nocontainer"],
+        action="store_false",
+        help="do not run RamaLama in the default container",
+    )
+    parser.add_argument(
+        "--image",
+        default=accel_image(CONFIG, None),
+        help="OCI container image to run with the specified AI model",
+        action=OverrideDefaultAction,
+        completer=local_images,
+    )
+    parser.add_argument(
         "ARGS",
         nargs="*",
         help="overrides the default prompt, and the output is returned without entering the chatbot",
@@ -1135,9 +1163,77 @@ def New(model, args, transport=CONFIG["transport"]):
 
 def client_cli(args):
     """Handle client command execution"""
-    client_args = ["ramalama-client-core", "-c", "2048", "--temp", "0.8", args.HOST] + args.ARGS
-    client_args[0] = get_cmd_with_wrapper(client_args)
-    exec_cmd(client_args)
+    # Define dry_run function locally
+    def dry_run(args):
+        for arg in args:
+            if not arg:
+                continue
+            if " " in arg:
+                print('"%s"' % arg, end=" ")
+            else:
+                print("%s" % arg, end=" ")
+        print()
+        
+    if args.rag:
+        # Force container mode when using RAG
+        args.container = True
+        
+        # Get the RAG database
+        _get_rag(args)
+        
+        # Set up container execution
+        conman_args = [
+            args.engine,
+            "run",
+            "--rm",
+            "-i",
+            "--label",
+            "ai.ramalama",
+            "--name",
+            genname(),
+            "--env=HOME=/tmp",
+            "--init",
+        ]
+        
+        # Add network option
+        if args.network:
+            conman_args += ["--network", args.network]
+            
+        # Add TTY option if needed
+        if sys.stdout.isatty() or sys.stdin.isatty():
+            conman_args += ["-t"]
+            
+        # Mount the RAG database
+        if os.path.exists(args.rag):
+            rag_path = os.path.realpath(args.rag)
+            conman_args.append(f"--mount=type=bind,source={rag_path},destination=/rag/vector.db,rw=true")
+        else:
+            conman_args.append(f"--mount=type=image,source={args.rag},destination=/rag,rw=true")
+            
+        # Use the RAG-enabled image
+        #args.image = args.image.split(":")[0]
+        image = accel_image(CONFIG, args)
+        conman_args.append(image)
+        
+        # Set up the command to run inside the container
+        client_args = ["ramalama-client-rag-core", "/rag/vector.db", args.HOST]
+        if args.ARGS:
+            client_args.extend(args.ARGS)
+            
+        # Add the command to the container arguments
+        conman_args.extend(client_args)
+        
+        if args.dryrun:
+            dry_run(conman_args)
+            return
+            
+        # Execute the container
+        exec_cmd(conman_args, debug=args.debug)
+    else:
+        # Original client behavior
+        client_args = ["ramalama-client-core", "-c", "2048", "--temp", "0.8", args.HOST] + args.ARGS
+        client_args[0] = get_cmd_with_wrapper(client_args)
+        exec_cmd(client_args)
 
 
 def perplexity_parser(subparsers):
