@@ -83,7 +83,7 @@ add_entrypoints() {
 
 build() {
   local target=${1}
-  cd "container-images/"
+  cd "./container-images/"
   local conman_build=("${conman[@]}")
   local conman_show_size=("${conman[@]}" "images" "--filter" "reference=$REGISTRY_PATH/${target}")
   if [ "$dryrun" == "-d" ]; then
@@ -179,7 +179,7 @@ process_all_targets() {
 
   # build ramalama container image first, as other images inherit from it
   build "ramalama" "$command"
-  for i in container-images/*; do
+  for i in ./container-images/*; do
     i=$(basename "$i")
     # skip these directories
     if [[ "$i" =~ ^(scripts|ramalama)$ ]]; then
