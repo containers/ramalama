@@ -1,0 +1,49 @@
+#/rpm:
+#    summary: Verify rpm installation
+#    test: rpm -qi python3-ramalama
+require:
+    - bats
+    - black
+    - codespell
+    - flake8
+    - isort
+    - jq
+    - make
+    - pytest
+    - shellcheck
+
+/gpu_info:
+    tag: [ system_info, validate ]
+    summary: Display GPU info
+    test: lshw -C display
+    require:
+        - lshw
+
+/validate:
+    tag: [ validate ]
+    summary: validate
+            test: make -C $TMT_TREE/validate
+
+/unit:
+    tag: [ unit ]
+    summary: Run unit tests
+    test: make -C $TMT_TREE/unit-tests
+
+/bats-docker:
+    tag: [ system, container ]
+    summary: bats-docker tests
+    test: |
+        pushd $TMT_TREE
+        .github/scripts/install-ollama.sh
+        ./container_build.sh build ramalama
+        make bats-docker
+        popd
+
+/bats-nocontainer:
+    tag: [ system, nocontainer ]
+    summary: bats-nocontainer tests
+    test: |
+        pushd $TMT_TREE
+        .github/scripts/install-ollama.sh
+        make bats-nocontainer
+        popd
