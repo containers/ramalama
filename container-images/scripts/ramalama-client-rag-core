@@ -48,8 +48,12 @@ class RagClient(cmd.Cmd):
                 self.base_url += '/'
             if not self.base_url.endswith('v1'):
                 self.base_url += 'v1'
-                
-        self.llm = openai.OpenAI(api_key="sk-dummy", base_url=self.base_url)
+        
+        # Get API key from args or environment variable
+        api_key = args.api_key or os.environ.get("LLM_API_KEY", "sk-dummy")
+        
+        # Initialize OpenAI client with API key
+        self.llm = openai.OpenAI(api_key=api_key, base_url=self.base_url)
         self.chat_history = []
         self.args = args
         
@@ -180,6 +184,10 @@ def main():
     )
     parser.add_argument("--prefix", type=str, default="> ", help="prefix for the user prompt")
     parser.add_argument("--temp", default=0.8, help="temperature of the response from the AI model")
+    parser.add_argument(
+        "--api-key", 
+        help="API key for the OpenAI API. Can also be specified via LLM_API_KEY environment variable."
+    )
     parser.add_argument("vector_path", help="Path to the vector database")
     parser.add_argument("host", help="OpenAI API endpoint to connect to")
     parser.add_argument("args", nargs="*", help="Additional arguments to pass to the prompt")
