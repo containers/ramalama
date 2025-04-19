@@ -1047,6 +1047,10 @@ def client_parser(subparsers):
     parser.add_argument(
         "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
     )
+    parser.add_argument(
+        "--api-key", 
+        help="API key for the OpenAI API. Can also be specified via LLM_API_KEY environment variable."
+    )
     # Add network option for container access when using RAG
     add_network_argument(parser, dflt="bridge")
     # Add container options similar to run/serve commands
@@ -1195,6 +1199,10 @@ def client_cli(args):
             "--init",
         ]
         
+        # Add API key environment variable if provided
+        if args.api_key:
+            conman_args.append(f"--env=LLM_API_KEY={args.api_key}")
+        
         # Add network option
         if args.network:
             conman_args += ["--network", args.network]
@@ -1217,6 +1225,11 @@ def client_cli(args):
         
         # Set up the command to run inside the container
         client_args = ["ramalama-client-rag-core", "/rag/vector.db", args.HOST]
+        
+        # Add API key argument if provided
+        if args.api_key:
+            client_args.extend(["--api-key", args.api_key])
+            
         if args.ARGS:
             client_args.extend(args.ARGS)
             
