@@ -1,5 +1,7 @@
 #!/bin/bash
 set -exu -o pipefail
+# shellcheck disable=SC1091
+source /etc/os-release
 
 GPU="${1-cpu}"
 
@@ -12,9 +14,14 @@ $2"
     [ "$string" != "$(sort --version-sort <<< "$string")" ]
 }
 
-packages=""
+packages="git gcc gcc-c++ python3-devel"
 if [ "${GPU}" = "cuda" ]; then
-    packages="libcudnn9-devel-cuda-12 libcusparselt0 cuda-cupti-12\*"
+    packages+=" libcudnn9-devel-cuda-12 libcusparselt0 cuda-cupti-12\*"
+fi
+
+if [[ "$VERSION_ID" -ge 42 ]] ; then
+    packages+=" python3-sentencepiece-0.2.0"
+
 fi
 
 update_python() {
