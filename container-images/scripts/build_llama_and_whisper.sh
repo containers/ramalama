@@ -248,11 +248,14 @@ clone_and_build_whisper_cpp() {
 
 clone_and_build_llama_cpp() {
   local llama_cpp_sha="daa422881a0ec7944771bcc8ff8de34d11f5bd3b"
+  local install_prefix
+  install_prefix=$(set_install_prefix)
   git clone https://github.com/ggml-org/llama.cpp
   cd llama.cpp
   git submodule update --init --recursive
   git reset --hard "$llama_cpp_sha"
   cmake_steps "${common_flags[@]}"
+  install -m 755 build/bin/rpc-server "$install_prefix"/bin/rpc-server
   cd ..
   rm -rf llama.cpp
 }
@@ -287,7 +290,7 @@ main() {
 
   setup_build_env
   clone_and_build_whisper_cpp
-  common_flags+=("-DLLAMA_CURL=ON")
+  common_flags+=("-DLLAMA_CURL=ON" "-DGGML_RPC=ON")
   case "$containerfile" in
     ramalama)
       if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
