@@ -219,7 +219,6 @@ def parse_arguments(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
-    mkdirs(args.store)
     if hasattr(args, "MODEL") and args.subcommand != "rm":
         resolved_model = shortnames.resolve(args.MODEL)
         if resolved_model:
@@ -281,23 +280,6 @@ def logout_cli(args):
     registry = normalize_registry(args.REGISTRY)
     model = New(registry, args)
     return model.logout(args)
-
-
-def mkdirs(store):
-    # List of directories to create
-    directories = [
-        "models/huggingface",
-        "repos/huggingface",
-        "models/oci",
-        "repos/oci",
-        "models/ollama",
-        "repos/ollama",
-    ]
-
-    # Create each directory
-    for directory in directories:
-        full_path = os.path.join(store, directory)
-        os.makedirs(full_path, exist_ok=True)
 
 
 def human_duration(d):
