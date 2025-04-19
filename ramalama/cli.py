@@ -1048,6 +1048,11 @@ def client_parser(subparsers):
         "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
     )
     parser.add_argument(
+        "--model", 
+        default="gpt-3.5-turbo", 
+        help="model to use for chat completions (default: gpt-3.5-turbo)"
+    )
+    parser.add_argument(
         "--api-key", 
         help="API key for the OpenAI API. Can also be specified via LLM_API_KEY environment variable."
     )
@@ -1225,6 +1230,9 @@ def client_cli(args):
         
         # Set up the command to run inside the container
         client_args = ["ramalama-client-rag-core", "/rag/vector.db", args.HOST]
+        
+        # Add model argument
+        client_args.extend(["--model", args.model])
         
         # Add API key argument if provided
         if args.api_key:

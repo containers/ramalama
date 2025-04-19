@@ -131,7 +131,7 @@ class RagClient(cmd.Cmd):
         # Query the remote API with the metaprompt
         try:
             response = self.llm.chat.completions.create(
-                model="gpt-3.5-turbo",  # This is ignored by most API servers
+                model=self.args.model,  # Use the model specified in command line args
                 messages=[{"role": "user", "content": metaprompt}],
                 stream=True,
                 temperature=float(self.args.temp)
@@ -184,6 +184,11 @@ def main():
     )
     parser.add_argument("--prefix", type=str, default="> ", help="prefix for the user prompt")
     parser.add_argument("--temp", default=0.8, help="temperature of the response from the AI model")
+    parser.add_argument(
+        "--model", 
+        default="gpt-3.5-turbo", 
+        help="model to use for chat completions (default: gpt-3.5-turbo)"
+    )
     parser.add_argument(
         "--api-key", 
         help="API key for the OpenAI API. Can also be specified via LLM_API_KEY environment variable."
