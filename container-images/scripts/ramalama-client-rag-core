@@ -43,12 +43,7 @@ class RagClient(cmd.Cmd):
         if not host.startswith(('http://', 'https://')):
             host = 'http://' + host
         self.base_url = host
-        if not self.base_url.endswith('/v1'):
-            if not self.base_url.endswith('/'):
-                self.base_url += '/'
-            if not self.base_url.endswith('v1'):
-                self.base_url += 'v1'
-        
+
         # Get API key from args or environment variable
         api_key = args.api_key or os.environ.get("LLM_API_KEY", "sk-dummy")
         
