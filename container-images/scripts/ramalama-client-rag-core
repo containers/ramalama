@@ -91,7 +91,7 @@ class RagClient(cmd.Cmd):
             
             # Rerank results to get the most relevant context
             if result:
-                reranked_context = " ".join(
+                reranked_context = "\n\n".join(
                     str(result[i]) for i, _ in sorted(
                         enumerate(self.reranker.rerank(user_content, result)),
                         key=lambda x: x[1],
