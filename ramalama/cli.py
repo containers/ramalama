@@ -1229,15 +1229,14 @@ def client_cli(args):
         conman_args.append(image)
         
         # Set up the command to run inside the container
-        client_args = ["ramalama-client-rag-core", "/rag/vector.db", args.HOST]
+        client_args = ["ramalama-client-rag-core"]
         
         # Add model argument
         client_args.extend(["--model", args.model])
-        
-        # Add API key argument if provided
-        if args.api_key:
-            client_args.extend(["--api-key", args.api_key])
-            
+
+        # Finaly add mandatory arguments
+        client_args.extend(["/rag/vector.db", args.HOST])
+
         if args.ARGS:
             client_args.extend(args.ARGS)
             
