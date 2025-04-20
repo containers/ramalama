@@ -174,6 +174,20 @@ class Huggingface(Model):
             conman_args.extend(["--token", args.token])
         self.exec(conman_args, args)
 
+    def _attempt_url_pull(self, args, model_path, directory_path):
+        try:
+            return self.url_pull(args, model_path, directory_path)
+        except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
+            return self._attempt_url_pull_hf_cli(args, model_path, directory_path, e)
+
+    def _attempt_url_pull_hf_cli(self, args, model_path, directory_path, previous_exception):
+        if self.hf_cli_available:
+            try:
+                return self.hf_pull(args, model_path, directory_path)
+            except Exception:
+                pass
+        raise KeyError(f"Failed to pull model: {str(previous_exception)}")
+
     def pull(self, args):
         if self.store is not None:
             return self._pull_with_model_store()
@@ -214,18 +228,8 @@ class Huggingface(Model):
                 # The user did not explicitly request a tag, so assume they want the whole repository
                 pass
 
-        # Try to download the repo/file
-        try:
-            return self.url_pull(args, model_path, directory_path)
-        except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
-
-            if self.hf_cli_available:
-                try:
-                    return self.hf_pull(args, model_path, directory_path)
-                except Exception:
-                    pass
-
-            raise KeyError(f"Failed to pull model: {str(e)}")
+        # Interpreting as a tag did not work.  Attempt to download as a url.
+        return self._attempt_url_pull(args, model_path, directory_path)
 
     def _fetch_snapshot_path(self, cache_dir, namespace, repo):
         cache_path = os.path.join(cache_dir, f'models--{namespace}--{repo}')
