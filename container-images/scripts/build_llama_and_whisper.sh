@@ -15,14 +15,6 @@ dnf_install_intel_gpu() {
 }
 
 dnf_remove() {
-  dnf remove -y \
-      python3-devel \
-      libcurl-devel \
-      gcc \
-      gcc-c++ \
-      make \
-      cmake \
-      findutils
   dnf -y clean all
 }
 
