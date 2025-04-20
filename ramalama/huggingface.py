@@ -8,7 +8,7 @@ import urllib.request
 from ramalama.common import available, download_file, exec_cmd, generate_sha256, perror, run_cmd, verify_checksum
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFile, SnapshotFileType
-from ramalama.ollama import ollama_repo_pull
+from ramalama.ollama_repo_utils import repo_pull
 
 missing_huggingface = """
 Optional: Huggingface models require the huggingface-cli module.
@@ -208,7 +208,7 @@ class Huggingface(Model):
                 registry_head = f"{Huggingface.REGISTRY_URL}{repo_name}"
 
                 show_progress = not args.quiet
-                return ollama_repo_pull(
+                return repo_pull(
                     os.path.join(args.store, "repos", "huggingface"),
                     Huggingface.ACCEPT,
                     registry_head,
