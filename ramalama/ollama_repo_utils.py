@@ -97,7 +97,6 @@ def pull_blob(
             if not verify_checksum(layer_blob_path):
                 raise ValueError(f"Checksum verification failed for blob {layer_blob_path}")
 
-    os.makedirs(models, exist_ok=True)
     relative_target_path = os.path.relpath(layer_blob_path, start=os.path.dirname(model_path))
     run_cmd(["ln", "-sf", relative_target_path, model_path])
 
@@ -134,6 +133,7 @@ def repo_pull(
     Returns:
         Path to the pulled model
     """
+    os.makedirs(models, exist_ok=True)
     manifest_data = fetch_manifest_data(registry_head, model_tag, accept)
     pull_config_blob(repos, accept, registry_head, manifest_data, show_progress)
 
