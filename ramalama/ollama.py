@@ -3,7 +3,7 @@ import os
 import urllib.request
 from typing import Optional
 
-from ramalama.common import available, run_cmd
+from ramalama.common import available
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFile, SnapshotFileType
 from ramalama.ollama_repo_utils import fetch_manifest_data, repo_pull
@@ -196,8 +196,17 @@ class Ollama(Model):
         registry_head = f"{registry}/v2/{model_name}"
         try:
             return repo_pull(
-                repos, accept, registry_head, model_name, model_tag, models, model_path, 
-                self.model, show_progress, "application/vnd.ollama.image.model", in_existing_cache
+                repos,
+                accept,
+                registry_head,
+                model_name,
+                model_tag,
+                models,
+                model_path,
+                self.model,
+                show_progress,
+                "application/vnd.ollama.image.model",
+                in_existing_cache,
             )
         except urllib.error.HTTPError as e:
             if "Not Found" in e.reason:
