@@ -1,7 +1,7 @@
-FROM registry.fedoraproject.org/fedora:41
+FROM registry.fedoraproject.org/fedora:42
 
 RUN dnf -y update && \
-    dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config && \
+    dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config sentencepiece-devel && \
     uv run --with llama-stack llama stack build --template ollama --image-type venv --image-name /venv && \
     dnf -y clean all
 
