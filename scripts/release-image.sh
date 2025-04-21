@@ -33,7 +33,7 @@ release-arm() {
 release-ramalama() {
     digest=$(podman image inspect "${REPO}/$1" --format '{{ .Digest }}' | cut -f2 -d':')
     podman push "${REPO}/$1" "${REPO}/$1:${digest}"
-    podman push "${REPO}/$1" "${REPO}/$1":0.7.4
+    podman push "${REPO}/$1" "${REPO}/$1":0.7.5
     podman push "${REPO}/$1" "${REPO}/$1":0.7
     podman push "${REPO}/$1"
 }
