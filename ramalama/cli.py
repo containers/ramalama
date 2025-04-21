@@ -254,7 +254,7 @@ def normalize_registry(registry):
     if not registry or registry == "" or registry.startswith("oci://"):
         return "oci://"
 
-    if registry in ["ollama", "hf" "huggingface"]:
+    if registry in ["ollama", "hf", "huggingface"]:
         return registry
 
     return "oci://" + registry
