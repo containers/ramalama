@@ -3,65 +3,10 @@ import os
 import urllib.request
 from typing import Optional
 
-from ramalama.common import available, download_file, run_cmd, verify_checksum
+from ramalama.common import available
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFile, SnapshotFileType
-
-
-def fetch_manifest_data(registry_head, model_tag, accept):
-    url = f"{registry_head}/manifests/{model_tag}"
-    headers = {"Accept": accept}
-
-    request = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(request) as response:
-        manifest_data = json.load(response)
-    return manifest_data
-
-
-def pull_config_blob(repos, accept, registry_head, manifest_data, show_progress):
-    cfg_hash = manifest_data["config"]["digest"]
-    config_blob_path = os.path.join(repos, "blobs", cfg_hash)
-
-    os.makedirs(os.path.dirname(config_blob_path), exist_ok=True)
-
-    url = f"{registry_head}/blobs/{cfg_hash}"
-    headers = {"Accept": accept}
-    download_file(url, config_blob_path, headers=headers, show_progress=False)
-
-
-def pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path, show_progress):
-    layer_blob_path = os.path.join(repos, "blobs", layer_digest)
-    url = f"{registry_head}/blobs/{layer_digest}"
-    headers = {"Accept": accept}
-    local_blob = in_existing_cache(model_name, model_tag)
-    if local_blob is not None:
-        run_cmd(["ln", "-sf", local_blob, layer_blob_path])
-    else:
-        download_file(url, layer_blob_path, headers=headers, show_progress=show_progress)
-        # Verify checksum after downloading the blob
-        if not verify_checksum(layer_blob_path):
-            print(f"Checksum mismatch for blob {layer_blob_path}, retrying download...")
-            os.remove(layer_blob_path)
-            download_file(url, layer_blob_path, headers=headers, show_progress=True)
-            if not verify_checksum(layer_blob_path):
-                raise ValueError(f"Checksum verification failed for blob {layer_blob_path}")
-
-    os.makedirs(models, exist_ok=True)
-    relative_target_path = os.path.relpath(layer_blob_path, start=os.path.dirname(model_path))
-    run_cmd(["ln", "-sf", relative_target_path, model_path])
-
-
-def ollama_repo_pull(repos, accept, registry_head, model_name, model_tag, models, model_path, model, show_progress):
-    manifest_data = fetch_manifest_data(registry_head, model_tag, accept)
-    pull_config_blob(repos, accept, registry_head, manifest_data, show_progress)
-    for layer in manifest_data["layers"]:
-        layer_digest = layer["digest"]
-        if layer["mediaType"] != "application/vnd.ollama.image.model":
-            continue
-
-        pull_blob(repos, layer_digest, accept, registry_head, models, model_name, model_tag, model_path, show_progress)
-
-    return model_path
+from ramalama.ollama_repo_utils import fetch_manifest_data, repo_pull
 
 
 def in_existing_cache(model_name, model_tag):
@@ -250,8 +195,18 @@ class Ollama(Model):
         accept = "Accept: application/vnd.docker.distribution.manifest.v2+json"
         registry_head = f"{registry}/v2/{model_name}"
         try:
-            return ollama_repo_pull(
-                repos, accept, registry_head, model_name, model_tag, models, model_path, self.model, show_progress
+            return repo_pull(
+                repos,
+                accept,
+                registry_head,
+                model_name,
+                model_tag,
+                models,
+                model_path,
+                self.model,
+                show_progress,
+                "application/vnd.ollama.image.model",
+                in_existing_cache,
             )
         except urllib.error.HTTPError as e:
             if "Not Found" in e.reason:
