@@ -4,7 +4,7 @@ import importlib.metadata
 
 
 def version():
-    version = "0.7.4"
+    version = "0.7.5"
     try:
         return importlib.metadata.version("ramalama")
     except importlib.metadata.PackageNotFoundError:
