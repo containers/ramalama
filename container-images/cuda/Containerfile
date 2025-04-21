@@ -1,11 +1,12 @@
+ARG VERSION=12.8.1
 # Base image with CUDA for compilation
-FROM docker.io/nvidia/cuda:12.8.1-devel-ubi9 AS builder
+FROM docker.io/nvidia/cuda:${VERSION}-devel-ubi9 AS builder
 
 COPY --chmod=755 ../scripts /usr/bin
 RUN build_llama_and_whisper.sh "cuda"
 
 # Final runtime image
-FROM docker.io/nvidia/cuda:12.8.1-runtime-ubi9
+FROM docker.io/nvidia/cuda:${VERSION}-runtime-ubi9
 
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr

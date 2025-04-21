@@ -86,15 +86,15 @@ install: docs completions
 
 .PHONY: build
 build:
-	./container_build.sh build $(IMAGE)
+	./container_build.sh build $(IMAGE) -v "$(VERSION)"
 
 .PHONY: build-rm
 build-rm:
-	./container_build.sh -r build $(IMAGE)
+	./container_build.sh -r build $(IMAGE) -v "$(VERSION)"
 
 .PHONY: build_multi_arch
 build_multi_arch:
-	./container_build.sh multi-arch $(IMAGE)
+	./container_build.sh multi-arch $(IMAGE) -v "$(VERSION)"
 
 .PHONY: install-docs
 install-docs: docs
