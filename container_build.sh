@@ -27,7 +27,12 @@ add_build_platform() {
   fi
 
   conman_build+=("--platform" "$platform")
-  conman_build+=("-t" "$REGISTRY_PATH/${target}")
+  if [ -n "$version" ]; then
+      conman_build+=("--build-arg" "VERSION=$version")
+      conman_build+=("-t" "$REGISTRY_PATH/${target}-${version}")
+  else
+      conman_build+=("-t" "$REGISTRY_PATH/${target}")
+  fi
   conman_build+=("-f" "${target}/Containerfile" ".")
 }
 
@@ -38,17 +43,26 @@ rm_container_image() {
 }
 
 add_entrypoint() {
-    containerfile=$(mktemp)
+    tag=$2
+    if [ -n "$4" ]; then
+        tag=$tag-$4
+    fi
+    tag=$tag-$3
+     containerfile=$(mktemp)
     cat > "${containerfile}" <<EOF
 FROM $2
 ENTRYPOINT [ "/usr/bin/$3.sh" ]
 EOF
-echo "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
-eval "$1 build --no-cache -t $2-$3 -f ${containerfile} ."
+echo "$1 build --no-cache -t $tag -f ${containerfile} ."
+eval "$1 build --no-cache -t $tag -f ${containerfile} ."
 rm "${containerfile}"
 }
 
 add_rag() {
+    tag="$2"
+    if [ -n "$3" ]; then
+        tag=$tag-$3
+    fi
     containerfile=$(mktemp)
     GPU=cpu
     case $2 in
@@ -71,18 +85,19 @@ USER root
 RUN /usr/bin/build_rag.sh ${GPU}
 ENTRYPOINT []
 EOF
-    echo "$1 build --no-cache -t ${REGISTRY_PATH}/$2-rag -f ${containerfile} ."
-    eval "$1 build --no-cache -t ${REGISTRY_PATH}/$2-rag -f ${containerfile} ."
+    echo "$1 build --no-cache -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
+    eval "$1 build --no-cache -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
     rm "${containerfile}"
 }
 
 add_entrypoints() {
-    add_entrypoint "$1" "$2" "whisper-server"
-    add_entrypoint "$1" "$2" "llama-server"
+    add_entrypoint "$1" "$2" "whisper-server" "$3"
+    add_entrypoint "$1" "$2" "llama-server"   "$3"
 }
 
 build() {
   local target=${1}
+  local version="$3"
   cd "container-images/"
   local conman_build=("${conman[@]}")
   local conman_show_size=("${conman[@]}" "images" "--filter" "reference=$REGISTRY_PATH/${target}")
@@ -104,8 +119,8 @@ build() {
 	  ramalama-cli | llama-stack | openvino)
 	  ;;
 	  *)
-	      add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}"
-	      add_rag "${conman[@]}" "${target}"
+	      add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}" "${version}"
+	      add_rag "${conman[@]}" "${target}" "${version}"
 	      rm_container_image
       esac
       ;;
@@ -114,7 +129,7 @@ build() {
       ;;
     multi-arch)
       podman farm build -t "$REGISTRY_PATH"/"${target}" -f "${target}"/Containerfile .
-      add_entrypoints "podman farm" "$REGISTRY_PATH"/"${target}"
+      add_entrypoints "podman farm" "$REGISTRY_PATH"/"${target}" "${version}"
       ;;
     *)
       echo "Invalid command: ${2:-}. Use 'build', 'push' or 'multi-arch'."
@@ -160,6 +175,11 @@ parse_arguments() {
         ;;
       -r)
         rm_after_build="true"
+        shift
+        ;;
+      -v)
+        version="$2"
+        shift
         shift
         ;;
       build|push|multi-arch)
@@ -234,6 +254,7 @@ main() {
   local dryrun=""
   local rm_after_build="false"
   local ci="false"
+  local version=""
   parse_arguments "$@"
   if [ -z "$command" ]; then
     echo "Error: command is required (build or push)"
@@ -250,7 +271,7 @@ main() {
   if [ "$target" = "all" ]; then
     process_all_targets "$command"
   else
-    build "$target" "$command"
+    build "$target" "$command" "${version}"
   fi
 }
 
