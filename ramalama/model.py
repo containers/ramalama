@@ -509,6 +509,9 @@ class Model(ModelBase):
         return model_path
 
     def get_model_path(self, args):
+        if os.path.exists(args.MODEL):
+            return args.MODEL
+
         model_path = self.exists(args)
         if model_path:
             return model_path
