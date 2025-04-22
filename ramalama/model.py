@@ -551,7 +551,7 @@ class Model(ModelBase):
             os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
 
         exec_args = ["ramalama-run-core"] if USE_RAMALAMA_WRAPPER else ["llama-run"]
-        exec_args += ["-c", f"{args.context}", "--temp", f"{args.temp}"]
+        exec_args += ["--jinja", "-c", f"{args.context}", "--temp", f"{args.temp}"]
         exec_args += args.runtime_args
 
         if args.seed:
