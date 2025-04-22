@@ -621,7 +621,7 @@ class Model(ModelBase):
                 "--cache-reuse",
                 "256",
             ] + args.runtime_args
-            # Placeholder for clustering, it might be keept for override
+            # Placeholder for clustering, it might be kept for override
             rpc_nodes = os.getenv("RAMALAMA_LLAMACPP_RPC_NODES")
             if rpc_nodes:
                 exec_args += ["--rpc", rpc_nodes]
