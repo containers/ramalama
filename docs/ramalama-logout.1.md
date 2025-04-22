@@ -34,7 +34,7 @@ $ ramalama logout ollama
 
 Logout from huggingface
 ```
-$ ramalama logout --token=XYZ huggingface
+$ ramalama logout huggingface
 ```
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**
