@@ -868,6 +868,8 @@ def serve_parser(subparsers):
     parser.add_argument(
         "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
     )
+    parser.add_argument("--model-draft", help="Draft model", completer=local_models)
+
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.set_defaults(func=serve_cli)
 

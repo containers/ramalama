@@ -10,6 +10,7 @@ from ramalama.common import (
     MNT_CHAT_TEMPLATE_FILE,
     MNT_DIR,
     MNT_FILE,
+    MNT_FILE_DRAFT,
     accel_image,
     check_metal,
     check_nvidia,
@@ -268,6 +269,9 @@ class Model(ModelBase):
 
             gpu_args += [f'{args.ngl}']
 
+            if self.draft_model:
+                # Use the same arg as ngl to reduce configuration space
+                gpu_args += ["-ngld", f'{args.ngl}']
         # for some reason the --threads option is blowing up on Docker,
         # with option not being supported by llama-run.
         # This could be something being masked in a Docker container but not
@@ -292,6 +296,10 @@ class Model(ModelBase):
             self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"])
         else:
             self.engine.add([f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models"])
+
+        if self.draft_model:
+            draft_model = self.draft_model.get_model_path(args)
+            self.engine.add([f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro"])
 
         # If a chat template is available, mount it as well
         if self.store is not None:
@@ -479,6 +487,10 @@ class Model(ModelBase):
             exec_args = []
             if USE_RAMALAMA_WRAPPER:
                 exec_args += ["ramalama-serve-core"]
+            draft_model_path = None
+            if self.draft_model:
+                draft_model = self.draft_model.get_model_path(args)
+                draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
 
             exec_args += [
                 "llama-server",
@@ -496,6 +508,8 @@ class Model(ModelBase):
                 "--cache-reuse",
                 "256",
             ] + args.runtime_args
+            if draft_model_path:
+                exec_args += ['--model_draft', draft_model_path]
             # Placeholder for clustering, it might be kept for override
             rpc_nodes = os.getenv("RAMALAMA_LLAMACPP_RPC_NODES")
             if rpc_nodes:

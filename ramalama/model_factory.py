@@ -1,4 +1,5 @@
 import argparse
+import copy
 from typing import Callable, Tuple, Union
 from urllib.parse import urlparse
 
@@ -33,6 +34,11 @@ class ModelFactory:
         self.model_cls, self.create = self.detect_model_model_type()
 
         self.pruned_model = self.prune_model_input()
+        self.draft_model = None
+        if hasattr(args, 'model_draft') and args.model_draft:
+            dm_args = copy.deepcopy(args)
+            dm_args.model_draft = None
+            self.draft_model = ModelFactory(args.model_draft, dm_args, ignore_stderr=True).create()
 
     def detect_model_model_type(
         self,
@@ -82,11 +88,13 @@ class ModelFactory:
     def create_huggingface(self) -> Huggingface:
         model = Huggingface(self.pruned_model)
         self.set_optional_model_store(model)
+        model.draft_model = self.draft_model
         return model
 
     def create_ollama(self) -> Ollama:
         model = Ollama(self.pruned_model)
         self.set_optional_model_store(model)
+        model.draft_model = self.draft_model
         return model
 
     def create_oci(self) -> OCI:
@@ -96,9 +104,11 @@ class ModelFactory:
         self.validate_oci_model_input()
         model = OCI(self.pruned_model, self.engine, self.ignore_stderr)
         self.set_optional_model_store(model)
+        model.draft_model = self.draft_model
         return model
 
     def create_url(self) -> URL:
         model = URL(self.pruned_model, urlparse(self.model).scheme)
         self.set_optional_model_store(model)
+        model.draft_model = self.draft_model
         return model

@@ -23,6 +23,7 @@ logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s -
 
 MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
+MNT_FILE_DRAFT = f"{MNT_DIR}/draft_model.file"
 MNT_CHAT_TEMPLATE_FILE = f"{MNT_DIR}/chat_template.file"
 
 RAG_DIR = "/rag"
