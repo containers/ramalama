@@ -1057,6 +1057,15 @@ def rag_parser(subparsers):
         "rag",
         help="generate and convert retrieval augmented generation (RAG) data from provided documents into an OCI Image",
     )
+    parser.add_argument(
+        "--env",
+        dest="env",
+        action='append',
+        type=str,
+        default=CONFIG["env"],
+        help="environment variables to add to the running RAG container",
+        completer=local_env,
+    )
     add_network_argument(parser, dflt=None)
     parser.add_argument(
         "--pull",

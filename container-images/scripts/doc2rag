@@ -13,8 +13,8 @@ from docling.chunking import HybridChunker
 from docling.document_converter import DocumentConverter
 
 # Global Vars
-EMBED_MODEL = "jinaai/jina-embeddings-v2-small-en"
-SPARSE_MODEL = "prithivida/Splade_PP_en_v1"
+EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
+SPARSE_MODEL = os.getenv("SPARSE_MODEL", "prithivida/Splade_PP_en_v1")
 COLLECTION_NAME = "rag"
 
 class Converter:
@@ -112,6 +112,8 @@ try:
 except docling.exceptions.ConversionError as e:
     eprint(e, 1)
 except FileNotFoundError as e:
+    eprint(e, 1)
+except ValueError as e:
     eprint(e, 1)
 except KeyboardInterrupt:
     pass

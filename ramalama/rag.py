@@ -95,6 +95,7 @@ COPY {src} /vector.db
         ]
 
         exec_args = self.add_pull_newer(exec_args, args)
+        exec_args = self.add_env_option(exec_args, args)
         exec_args = self.add_network_option(exec_args, args)
 
         for path in args.PATH:
@@ -147,5 +148,11 @@ COPY {src} /vector.db
     def add_network_option(self, conman_args, args):
         if args.network:
             conman_args += ["--network", args.network]
+
+        return conman_args
+
+    def add_env_option(self, conman_args, args):
+        for env in args.env:
+            conman_args += ["--env", env]
 
         return conman_args

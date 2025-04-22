@@ -18,13 +18,17 @@ from fastapi import FastAPI
 import uvicorn
 
 # Global Vars
-EMBED_MODEL = "jinaai/jina-embeddings-v2-small-en"
-SPARSE_MODEL = 'prithivida/Splade_PP_en_v1'
-RANK_MODEL = 'Xenova/ms-marco-MiniLM-L-6-v2'
+EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
+SPARSE_MODEL = os.getenv("SPARSE_MODEL", "prithivida/Splade_PP_en_v1")
+RANK_MODEL = os.getenv("RANK_MODEL", "Xenova/ms-marco-MiniLM-L-6-v2")
 COLLECTION_NAME = "rag"
 # Needed for mac to not give errors
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
+
+def eprint(e, exit_code):
+    perror("Error: " + str(e).strip("'\""))
+    sys.exit(exit_code)
 
 # Helper Classes and Functions
 
@@ -204,11 +208,14 @@ serve_parser.set_defaults(func=serve_rag)
 load_parser = subparsers.add_parser('load', help='Preload RAG Embedding Models')
 load_parser.set_defaults(func=load)
 
-args = parser.parse_args()
+try:
+    args = parser.parse_args()
 
-if args.command:
-    # Ensure that the appropriate function gets called with the right arguments
-    if args.command in ['run', 'serve']:
-        args.func(args.vector_path)  # pass vector_path argument to the respective function
-    else:
-        args.func()  # no argument for 'load'
+    if args.command:
+        # Ensure that the appropriate function gets called with the right arguments
+        if args.command in ['run', 'serve']:
+            args.func(args.vector_path)  # pass vector_path argument to the respective function
+        else:
+            args.func()  # no argument for 'load'
+except ValueError as e:
+        eprint(e, 1)
