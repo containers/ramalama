@@ -13,6 +13,8 @@ class Rag:
     target = ""
 
     def __init__(self, target):
+        if not target.islower():
+            raise ValueError(f"invalid reference format: repository name '{target}' must be lowercase")
         self.target = target
         set_accel_env_vars()
 
