@@ -11,6 +11,7 @@ from qdrant_client import models
 import docling
 from docling.chunking import HybridChunker
 from docling.document_converter import DocumentConverter
+from docling.datamodel.base_models import InputFormat
 
 # Global Vars
 EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
@@ -85,6 +86,8 @@ def load():
     client = qdrant_client.QdrantClient(":memory:")
     client.set_model(EMBED_MODEL)
     client.set_sparse_model(SPARSE_MODEL)
+    converter = DocumentConverter()
+    converter.initialize_pipeline(InputFormat.PDF)
 
 parser = argparse.ArgumentParser(
     prog="docling",
