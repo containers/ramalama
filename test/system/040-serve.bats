@@ -81,7 +81,7 @@ verify_begin=".*run --rm"
 
     run_ramalama 1 serve MODEL
     assert "$output" =~ "serving on port .*"
-    assert "$output" =~ "Error: MODEL was not found in the Ollama registry"
+    assert "$output" =~ "Error: Manifest for MODEL:latest was not found in the Ollama registry"
 }
 
 @test "ramalama --detach serve" {

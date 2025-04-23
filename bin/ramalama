@@ -69,6 +69,13 @@ def main(args):
         ramalama.perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)
 
+    try:
+        from ramalama.migrate import ModelStoreImport
+
+        ModelStoreImport(args.store).import_all()
+    except Exception as ex:
+        print(f"Failed to import models to new store: {ex}")
+
     # Process CLI
     try:
         args.func(args)

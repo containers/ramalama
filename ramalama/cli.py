@@ -219,7 +219,6 @@ def parse_arguments(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
-    mkdirs(args.store)
     if hasattr(args, "MODEL") and args.subcommand != "rm":
         resolved_model = shortnames.resolve(args.MODEL)
         if resolved_model:
@@ -281,23 +280,6 @@ def logout_cli(args):
     registry = normalize_registry(args.REGISTRY)
     model = New(registry, args)
     return model.logout(args)
-
-
-def mkdirs(store):
-    # List of directories to create
-    directories = [
-        "models/huggingface",
-        "repos/huggingface",
-        "models/oci",
-        "repos/oci",
-        "models/ollama",
-        "repos/ollama",
-    ]
-
-    # Create each directory
-    for directory in directories:
-        full_path = os.path.join(store, directory)
-        os.makedirs(full_path, exist_ok=True)
 
 
 def human_duration(d):
@@ -624,14 +606,14 @@ def convert_cli(args):
         raise ValueError("convert command cannot be run with the --nocontainer option.")
 
     target = args.TARGET
-    source = _get_source(args)
+    source_model = _get_source_model(args)
 
     tgt = shortnames.resolve(target)
     if not tgt:
         tgt = target
 
     model = ModelFactory(tgt, args).create_oci()
-    model.convert(source, args)
+    model.convert(source_model, args)
 
 
 def push_parser(subparsers):
@@ -668,10 +650,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
     parser.set_defaults(func=push_cli)
 
 
-def _get_source(args):
-    if os.path.exists(args.SOURCE):
-        return args.SOURCE
-
+def _get_source_model(args):
     src = shortnames.resolve(args.SOURCE)
     if not src:
         src = args.SOURCE
@@ -679,33 +658,30 @@ def _get_source(args):
     if smodel.type == "OCI":
         raise ValueError("converting from an OCI based image %s is not supported" % src)
     if not smodel.exists(args):
-        return smodel.pull(args)
-    return smodel.model_path(args)
+        smodel.pull(args)
+    return smodel
 
 
 def push_cli(args):
-    if args.TARGET:
-        target = args.TARGET
-        source = _get_source(args)
-    else:
-        target = args.SOURCE
-        source = args.SOURCE
 
-    tgt = shortnames.resolve(target)
-    if not tgt:
-        tgt = target
+    source_model = _get_source_model(args)
+    target = args.SOURCE
+    if args.TARGET:
+        target = shortnames.resolve(args.TARGET)
+        if not target:
+            target = args.TARGET
+    target_model = New(target, args)
 
     try:
-        model = New(tgt, args)
-        model.push(source, args)
+        target_model.push(source_model, args)
     except NotImplementedError as e:
         for mtype in MODEL_TYPES:
-            if tgt.startswith(mtype + "://"):
+            if target.startswith(mtype + "://"):
                 raise e
         try:
             # attempt to push as a container image
-            m = ModelFactory(tgt, args).create_oci()
-            m.push(source, args)
+            m = ModelFactory(target, args).create_oci()
+            m.push(source_model, args)
         except Exception as e1:
             if args.debug:
                 print(e1)

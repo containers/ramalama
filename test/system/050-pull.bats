@@ -16,17 +16,17 @@ load setup_suite
     run_ramalama rm tiny
     run_ramalama pull https://ollama.com/library/smollm:135m
     run_ramalama list
-    is "$output" ".*ollama://smollm:135m" "image was actually pulled locally"
+    is "$output" ".*ollama://smollm/smollm:135m" "image was actually pulled locally"
 
     RAMALAMA_TRANSPORT=ollama run_ramalama pull smollm:360m
     run_ramalama pull ollama://smollm:360m
     run_ramalama list
-    is "$output" ".*ollama://smollm:360m" "image was actually pulled locally"
+    is "$output" ".*ollama://smollm/smollm:360m" "image was actually pulled locally"
     run_ramalama rm ollama://smollm:135m ollama://smollm:360m
 
     random_image_name=i_$(safename)
     run_ramalama 1 pull ${random_image_name}
-    is "$output" "Error: ${random_image_name} was not found in the Ollama registry"
+    is "$output" "Error: Manifest for ${random_image_name}:latest was not found in the Ollama registry"
 }
 
 # bats test_tags=distro-integration
@@ -43,19 +43,19 @@ load setup_suite
     ollama pull smollm:135m
     run_ramalama pull https://ollama.com/library/smollm:135m
     run_ramalama list
-    is "$output" ".*ollama://smollm:135m" "image was actually pulled locally from ollama cache"
+    is "$output" ".*ollama://smollm/smollm:135m" "image was actually pulled locally from ollama cache"
 
     ollama pull smollm:360m
     RAMALAMA_TRANSPORT=ollama run_ramalama pull smollm:360m
     run_ramalama pull ollama://smollm:360m
     run_ramalama list
-    is "$output" ".*ollama://smollm:360m" "image was actually pulled locally from ollama cache"
+    is "$output" ".*ollama://smollm/smollm:360m" "image was actually pulled locally from ollama cache"
     run_ramalama rm ollama://smollm:135m ollama://smollm:360m
     ollama rm smollm:135m smollm:360m
 
     random_image_name=i_$(safename)
     run_ramalama 1 pull ${random_image_name}
-    is "$output" "Error: ${random_image_name} was not found in the Ollama registry"
+    is "$output" "Error: Manifest for ${random_image_name}:latest was not found in the Ollama registry"
 
     pkill ollama
 }
@@ -136,34 +136,45 @@ load setup_suite
 @test "ramalama URL" {
       model=$RAMALAMA_TMPDIR/mymodel.gguf
       touch $model
-      file_url=file://${model}
-      https_url=https://github.com/containers/ramalama/blob/main/README.md
 
-      for url in $file_url $https_url; do
-          run_ramalama pull $url
-          run_ramalama list
-          is "$output" ".*$url" "URL exists"
-          run_ramalama rm $url
-          run_ramalama list
-          assert "$output" !~ ".*$url" "URL no longer exists"
-      done
+      file_url=file://${model}
+      run_ramalama pull $file_url
+      run_ramalama list
+      expected_url=$(sed "s/file\:\//url\:/" <<< $file_url):latest
+      is "$output" ".*$expected_url" "URL exists"
+      run_ramalama rm $file_url
+      run_ramalama list
+      assert "$output" !~ ".*$expected_url" "URL no longer exists"
+
+      https_url=https://github.com/containers/ramalama/blob/main/README.md
+      run_ramalama pull $https_url
+      run_ramalama list
+      expected_url=$(sed "s/https\:/url\:/" <<< $https_url):main
+      expected_url="$(sed "s/blob\/main\///" <<< $expected_url)"
+      is "$output" ".*$expected_url" "URL exists"
+      run_ramalama rm $https_url
+      run_ramalama list
+      assert "$output" !~ ".*$expected_url" "URL no longer exists"
 }
 
 @test "ramalama file URL" {
       model=$RAMALAMA_TMPDIR/mymodel.gguf
       touch $model
       url=file://${model}
+      expected_url=$(sed "s/file\:\//url\:/" <<< $url):latest
 
       run_ramalama pull $url
       run_ramalama list
-      is "$output" ".*$url" "URL exists"
-      # test if model is removed, nothing blows up
+      is "$output" ".*$expected_url" "URL exists"
+      
+      # test if original model file is removed, nothing blows up
       rm ${model}
       run_ramalama list
-      is "$output" ".*$url does not exist" "URL exists"
+      is "$output" ".*$expected_url" "URL exists"
+
       run_ramalama rm $url
       run_ramalama list
-      assert "$output" !~ ".*$url" "URL no longer exists"
+      assert "$output" !~ ".*$expected_url" "URL no longer exists"
 }
 
 @test "ramalama use registry" {
@@ -187,7 +198,7 @@ load setup_suite
     tmpfile=${RAMALAMA_TMPDIR}/mymodel
     random=$(random_string 30)
     echo $random > $tmpfile
-    run_ramalama push --authfile=$authfile --tls-verify=false --type raw $tmpfile $registry/mymodel
+    run_ramalama push --authfile=$authfile --tls-verify=false --type raw file://$tmpfile $registry/mymodel
 
 
     run_ramalama list

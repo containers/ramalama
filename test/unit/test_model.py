@@ -9,7 +9,7 @@ from ramalama.model_factory import ModelFactory
 
 class ARGS:
     store = "/tmp/store"
-    use_model_store = False
+    use_model_store = True
     engine = ""
     container = True
 

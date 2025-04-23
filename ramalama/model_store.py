@@ -5,6 +5,7 @@ import urllib
 from dataclasses import dataclass
 from datetime import datetime
 from enum import IntEnum
+from http import HTTPStatus
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -135,6 +136,15 @@ class RefFile:
                 filename = file.readline().strip()
         return ref_file
 
+    def remove_file(self, name: str):
+        if name in self.filenames:
+            self.filenames.remove(name)
+
+            if self.chat_template_name == name:
+                self.chat_template_name = ""
+            if self.model_name == name:
+                self.model_name = ""
+
     def serialize(self) -> str:
         lines = [self.hash]
         for filename in self.filenames:
@@ -145,6 +155,11 @@ class RefFile:
                 line = line + RefFile.CHAT_TEMPLATE_SUFFIX
             lines.append(line)
         return "\n".join(lines)
+
+    def write_to_file(self):
+        with open(self.path, "w") as file:
+            file.write(self.serialize())
+            file.flush()
 
 
 @dataclass
@@ -193,7 +208,7 @@ class GlobalModelStore:
                     model_source = parts[0]
                     model_path_without_source = f"{os.sep}".join(parts[1:])
 
-                    model_name = f"{model_source}://{model_path_without_source}/{ref_file.model_name}:{ref_file_name}"
+                    model_name = f"{model_source}://{model_path_without_source}:{ref_file_name}"
 
                     collected_files = []
                     for snapshot_file in ref_file.filenames:
@@ -278,7 +293,7 @@ class ModelStore:
 
     @property
     def model_base_directory(self) -> str:
-        return os.path.join(self.base_path, self.model_type, self.model_organization)
+        return os.path.join(self.base_path, self.model_type, self.model_organization, self.model_name)
 
     @property
     def blobs_directory(self) -> str:
@@ -320,9 +335,7 @@ class ModelStore:
         if snapshot_files != []:
             ref_file.filenames = [file.name for file in snapshot_files]
 
-        with open(ref_file_path, "w") as file:
-            file.write(ref_file.serialize())
-            file.flush()
+        ref_file.write_to_file()
 
         return ref_file
 
@@ -343,6 +356,12 @@ class ModelStore:
 
     def get_blob_file_path(self, file_hash: str) -> str:
         return os.path.join(self.blobs_directory, sanitize_hash(file_hash))
+
+    def get_blob_file_path_by_name(self, tag_hash: str, filename: str) -> str:
+        return str(Path(self.get_snapshot_file_path(tag_hash, filename)).resolve())
+
+    def get_blob_file_hash(self, tag_hash: str, filename: str) -> str:
+        return os.path.basename(self.get_blob_file_path_by_name(tag_hash, filename))
 
     def get_partial_blob_file_path(self, file_hash: str) -> str:
         return self.get_blob_file_path(file_hash) + ".partial"
@@ -381,6 +400,7 @@ class ModelStore:
         ref_file_path = self.get_ref_file_path(model_tag)
         if not self.file_exists(ref_file_path):
             ref_file = RefFile()
+            ref_file._path = ref_file_path
             ref_file.hash = snapshot_hash
             ref_file.filenames = [file.name for file in snapshot_files]
             for file in snapshot_files:
@@ -388,22 +408,25 @@ class ModelStore:
                     ref_file.model_name = file.name
                 if file.type == SnapshotFileType.ChatTemplate:
                     ref_file.chat_template_name = file.name
-            with open(ref_file_path, "w") as file:
-                file.write(ref_file.serialize())
-                file.flush()
+            ref_file.write_to_file()
 
         snapshot_directory = self.get_snapshot_directory(snapshot_hash)
         os.makedirs(snapshot_directory, exist_ok=True)
 
-    def _download_snapshot_files(self, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
+    def _download_snapshot_files(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
+        ref_file = self.get_ref_file(model_tag)
+
         for file in snapshot_files:
             dest_path = self.get_blob_file_path(file.hash)
             blob_relative_path = ""
             try:
                 blob_relative_path = file.download(dest_path, self.get_snapshot_directory(snapshot_hash))
-            except urllib.error.HTTPError:
+            except urllib.error.HTTPError as ex:
                 if file.required:
-                    raise
+                    raise ex
+                # remove file from ref file list to prevent a retry to download it
+                if ex.code == HTTPStatus.NOT_FOUND:
+                    ref_file.remove_file(file.name)
                 continue
 
             if file.should_verify_checksum:
@@ -415,6 +438,9 @@ class ModelStore:
                         raise ValueError(f"Checksum verification failed for blob {dest_path}")
 
             os.symlink(blob_relative_path, self.get_snapshot_file_path(snapshot_hash, file.name))
+
+        # save updated ref file
+        ref_file.write_to_file()
 
     def _ensure_chat_template(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
         model_file: SnapshotFile = None
@@ -436,6 +462,10 @@ class ModelStore:
             if file.type == SnapshotFileType.Model:
                 model_file = file
 
+        # Could not find model file in store
+        if model_file is None:
+            return
+
         model_file_path = self.get_blob_file_path(model_file.hash)
         if not GGUFInfoParser.is_model_gguf(model_file_path):
             return
@@ -456,7 +486,7 @@ class ModelStore:
     def new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
         snapshot_hash = sanitize_hash(snapshot_hash)
         self._prepare_new_snapshot(model_tag, snapshot_hash, snapshot_files)
-        self._download_snapshot_files(snapshot_hash, snapshot_files)
+        self._download_snapshot_files(model_tag, snapshot_hash, snapshot_files)
         self._ensure_chat_template(model_tag, snapshot_hash, snapshot_files)
 
     def update_snapshot(self, model_tag: str, snapshot_hash: str, new_snapshot_files: list[SnapshotFile]) -> bool:
@@ -478,11 +508,9 @@ class ModelStore:
             if file.type == SnapshotFileType.ChatTemplate:
                 ref_file.chat_template_name = file.name
 
-        with open(ref_file.path, "w") as file:
-            file.write(ref_file.serialize())
-            file.flush()
+        ref_file.write_to_file()
 
-        self._download_snapshot_files(snapshot_hash, new_snapshot_files)
+        self._download_snapshot_files(model_tag, snapshot_hash, new_snapshot_files)
         return True
 
     def _remove_blob_file(self, snapshot_file_path: str):
@@ -505,16 +533,8 @@ class ModelStore:
 
         # Remove snapshot directory
         snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
-        try:
-            shutil.rmtree(snapshot_directory, ignore_errors=False)
-        except Exception as ex:
-            LOGGER.error(f"Failed to remove snapshot directory '{snapshot_directory}': {ex}")
-            # only continue to remove the ref file when blobs and snapshot directory have been removed
-            return
+        shutil.rmtree(snapshot_directory, ignore_errors=False)
 
         # Remove ref file
         ref_file_path = self.get_ref_file_path(model_tag)
-        try:
-            os.remove(ref_file_path)
-        except Exception as ex:
-            LOGGER.error(f"Failed to remove ref file '{ref_file_path}': {ex}")
+        os.remove(ref_file_path)

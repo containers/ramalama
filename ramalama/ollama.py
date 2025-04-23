@@ -241,7 +241,7 @@ class Ollama(Model):
 
         ollama_repo = OllamaRepository(self.store.model_name)
         manifest = ollama_repo.fetch_manifest(tag)
-        ollama_cache_path = in_existing_cache(self.name, tag)
+        ollama_cache_path = in_existing_cache(self.model_name, tag)
         is_model_in_ollama_cache = ollama_cache_path is not None
         files: list[SnapshotFile] = ollama_repo.get_file_list(tag, cached_files, is_model_in_ollama_cache)
 

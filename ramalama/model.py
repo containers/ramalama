@@ -1,4 +1,5 @@
 import os
+import pathlib
 import platform
 import random
 import socket
@@ -59,7 +60,7 @@ class ModelBase:
     def pull(self, args):
         raise self.__not_implemented_error("pull")
 
-    def push(self, source, args):
+    def push(self, source_model, args):
         raise self.__not_implemented_error("push")
 
     def remove(self, args):
@@ -123,15 +124,15 @@ class Model(ModelBase):
         return model_name, model_tag, model_organization
 
     @property
-    def name(self) -> str:
+    def model_name(self) -> str:
         return self._model_name
 
     @property
-    def tag(self) -> str:
+    def model_tag(self) -> str:
         return self._model_tag
 
     @property
-    def organization(self) -> str:
+    def model_organization(self) -> str:
         return self._model_organization
 
     @property
@@ -170,7 +171,11 @@ class Model(ModelBase):
     def remove(self, args):
         if self.store is not None:
             _, tag, _ = self.extract_model_identifiers()
-            self.store.remove_snapshot(tag)
+            try:
+                self.store.remove_snapshot(tag)
+            except OSError as e:
+                if not args.ignore:
+                    raise KeyError(f"removing {self.model}: {e}")
             return
 
         model_path = self.model_path(args)
@@ -290,8 +295,9 @@ class Model(ModelBase):
 
         # If a chat template is available, mount it as well
         if self.store is not None:
-            ref_file = self.store.get_ref_file(self.tag)
-            if ref_file.chat_template_name != "":
+            _, tag, _ = self.extract_model_identifiers()
+            ref_file = self.store.get_ref_file(tag)
+            if ref_file is not None and ref_file.chat_template_name != "":
                 chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
                 self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
 
@@ -357,8 +363,10 @@ class Model(ModelBase):
         if self.store is not None:
             _, tag, _ = self.extract_model_identifiers()
             if self.store.tag_exists(tag):
-                fhash, _, _ = self.store.get_cached_files(tag)
-                return self.store.get_snapshot_file_path(fhash, self.store.model_name)
+                ref_file = self.store.get_ref_file(tag)
+                return str(
+                    pathlib.Path(self.store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
+                )
             return ""
 
         return os.path.join(args.store, "models", self.type, self.directory, self.filename)
@@ -430,10 +438,12 @@ class Model(ModelBase):
         if gpu_args is not None:
             exec_args.extend(gpu_args)
 
-        if self.store is not None:
-            ref_file = self.store.get_ref_file(self.tag)
-            if ref_file.chat_template_name != "":
-                exec_args.extend(["--chat-template-file", MNT_CHAT_TEMPLATE_FILE])
+        # TODO: see https://github.com/containers/ramalama/issues/1202
+        # if self.store is not None:
+        #     _, tag, _ = self.extract_model_identifiers()
+        #     ref_file = self.store.get_ref_file(tag)
+        #     if ref_file.chat_template_name != "":
+        #         exec_args.extend(["--chat-template-file", MNT_CHAT_TEMPLATE_FILE])
 
         exec_args.append(exec_model_path)
         if len(prompt) > 0:
@@ -491,8 +501,9 @@ class Model(ModelBase):
             if rpc_nodes:
                 exec_args += ["--rpc", rpc_nodes]
 
-            if chat_template_path != "":
-                exec_args += ["--chat-template-file", chat_template_path]
+            # TODO: see https://github.com/containers/ramalama/issues/1202
+            # if chat_template_path != "":
+            #     exec_args += ["--chat-template-file", chat_template_path]
 
             if args.debug:
                 exec_args += ["-v"]
@@ -560,8 +571,9 @@ class Model(ModelBase):
 
         chat_template_path = ""
         if self.store is not None:
-            ref_file = self.store.get_ref_file(self.tag)
-            if ref_file.chat_template_name != "":
+            _, tag, _ = self.extract_model_identifiers()
+            ref_file = self.store.get_ref_file(tag)
+            if ref_file is not None and ref_file.chat_template_name != "":
                 chat_template_path = (
                     MNT_CHAT_TEMPLATE_FILE
                     if args.container or args.generate

@@ -165,11 +165,14 @@ class OCI(Model):
         reference_dir = reference.replace(":", "/")
         return registry, reference, reference_dir
 
-    def _generate_containerfile(self, model_file, model_name, args):
+    def _generate_containerfile(self, source_model, args):
         # Generate the containerfile content
         is_car = args.type == "car"
         has_gguf = hasattr(args, 'gguf') and args.gguf is not None
         content = ""
+
+        model_name = source_model.model_name
+        ref_file = source_model.store.get_ref_file(source_model.model_tag)
 
         if is_car:
             content += f"FROM {args.carimage}\n"
@@ -177,9 +180,13 @@ class OCI(Model):
             content += f"FROM {args.image} as builder\n"
 
         if has_gguf:
-            content += f"""\
-RUN mkdir -p /models; cd /models; ln -s {model_name}-{args.gguf}.gguf model.file
-COPY {model_name} /models/{model_name}
+            content += (
+                f"RUN mkdir -p /models/{model_name}; cd /models; ln -s {model_name}-{args.gguf}.gguf model.file\n"
+            )
+            for file in ref_file.filenames:
+                blob_file_path = source_model.store.get_blob_file_hash(ref_file.hash, file)
+                content += f"COPY {blob_file_path} /models/{model_name}/{file}\n"
+            content += f"""
 RUN convert_hf_to_gguf.py --outfile /{model_name}-f16.gguf /models/{model_name}
 RUN llama-quantize /{model_name}-f16.gguf /models/{model_name}-{args.gguf}.gguf {args.gguf}
 RUN ln -s /models/{model_name}-{args.gguf}.gguf model.file
@@ -197,22 +204,22 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
                     f"COPY --from=builder /models/{model_name}-{args.gguf}.gguf /models/{model_name}-{args.gguf}.gguf\n"
                 )
             else:
-                content += f"COPY {model_file} /models/{model_name}\n"
+                for file in ref_file.filenames:
+                    blob_file_path = source_model.store.get_blob_file_hash(ref_file.hash, file)
+                    content += f"COPY {blob_file_path} /models/{model_name}/{file}\n"
         elif not has_gguf:
-            content += f"COPY {model_file} /models/{model_name}\n"
+            for file in ref_file.filenames:
+                blob_file_path = source_model.store.get_blob_file_hash(ref_file.hash, file)
+                content += f"COPY {blob_file_path} /models/{model_name}/{file}\n"
 
         content += f"LABEL {ociimage_car if is_car else ociimage_raw}\n"
 
         return content
 
-    def build(self, source, target, args):
-        print(f"Building {target}...")
-        src = os.path.realpath(source)
-        contextdir = os.path.dirname(src)
-        model_file = os.path.basename(src)
-        model_name = os.path.basename(source)
+    def build(self, source_model, args):
+        contextdir = source_model.store.blobs_directory
 
-        content = self._generate_containerfile(model_file, model_name, args)
+        content = self._generate_containerfile(source_model, args)
 
         containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=False)
 
@@ -293,32 +300,32 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         ]
         run_cmd(cmd_args, stdout=None, debug=args.debug)
 
-    def _convert(self, source, target, args):
-        print(f"Converting {source} to {target}...")
+    def _convert(self, source_model, args):
+        print(f"Converting {source_model.store.base_path} to {self.store.base_path}...")
         try:
-            run_cmd([self.conman, "manifest", "rm", target], ignore_stderr=True, stdout=None, debug=args.debug)
+            run_cmd([self.conman, "manifest", "rm", self.model], ignore_stderr=True, stdout=None, debug=args.debug)
         except subprocess.CalledProcessError:
             pass
-        imageid = self.build(source, target, args)
+        print(f"Building {self.model}...")
+        imageid = self.build(source_model, args)
         try:
-            self._create_manifest(target, imageid, args)
+            self._create_manifest(self.model, imageid, args)
         except subprocess.CalledProcessError as e:
             perror(
                 f"""\
-Failed to create manifest for OCI {target} : {e}
+Failed to create manifest for OCI {self.model} : {e}
 Tagging build instead"""
             )
-            self.tag(imageid, target, args)
+            self.tag(imageid, self.model, args)
 
-    def convert(self, source, args):
-        target = self.model.removeprefix(prefix)
-        source = source.removeprefix(prefix)
-        self._convert(source, target, args)
+    def convert(self, source_model, args):
+        self._convert(source_model, args)
 
-    def push(self, source, args):
-        target = self.model.removeprefix(prefix)
-        source = source.removeprefix(prefix)
-        print(f"Pushing {target}...")
+    def push(self, source_model, args):
+        target = self.model
+        source = source_model.model
+
+        print(f"Pushing {self.model}...")
         conman_args = [self.conman, "push"]
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
@@ -326,7 +333,7 @@ Tagging build instead"""
             conman_args.extend([f"--tls-verify={args.tlsverify}"])
         conman_args.extend([target])
         if source != target:
-            self._convert(source, target, args)
+            self._convert(source_model, args)
         try:
             run_cmd(conman_args, debug=args.debug)
         except subprocess.CalledProcessError as e:
@@ -376,6 +383,8 @@ Tagging build instead"""
             super().remove(args)
             return
         except FileNotFoundError:
+            pass
+        except KeyError:
             pass
 
         if self.conman is None:
