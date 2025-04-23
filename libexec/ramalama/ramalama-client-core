@@ -130,6 +130,7 @@ def main(args):
         default=2048,
         help="size of the prompt context (0 = loaded from model)",
     )
+    parser.add_argument("--jinja", action="store_true", help="enable jinja")
     parser.add_argument("--kill-server", dest="pid2kill", type=int, help="server process to kill on termination of client")
     parser.add_argument("--temp", default=0.8, help="temperature of the response from the AI model")
     parser.add_argument(
