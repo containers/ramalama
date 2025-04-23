@@ -4,7 +4,7 @@ load helpers
 load helpers.registry
 load setup_suite
 
-verify_begin=".*run --rm -i --label ai.ramalama --name"
+verify_begin=".*run --rm"
 
 @test "ramalama --dryrun serve basic output" {
     model=m_$(safename)
@@ -12,7 +12,8 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     if is_container; then
         run_ramalama -q --dryrun serve ${model}
         assert "$output" =~ "serving on port .*"
-        is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
+        is "$output" "${verify_begin}.*" "dryrun correct"
+        is "$output" ".*--name ramalama_.*" "dryrun correct"
         is "$output" ".*${model}" "verify model name"
         is "$output" ".*--cache-reuse 256" "cache"
         assert "$output" !~ ".*--no-webui"
@@ -21,9 +22,9 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
         assert "$output" =~ ".*--no-webui"
 
         run_ramalama -q --dryrun serve --name foobar ${model}
-        is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
+        is "$output" ".*--name foobar .*" "dryrun correct with --name"
         assert "$output" !~ ".*--network" "--network is not part of the output"
-        assert "$output" =~ ".*--host 0.0.0.0" "verify host 0.0.0.0 is added when run within container"
+        is "$output" ".*--host 0.0.0.0" "verify host 0.0.0.0 is added when run within container"
         is "$output" ".*${model}" "verify model name"
         assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
@@ -89,10 +90,12 @@ verify_begin=".*run --rm -i --label ai.ramalama --name"
     model=m_$(safename)
 
     run_ramalama -q --dryrun serve --detach ${model}
-    is "$output" "${verify_begin} ramalama_.*" "serve in detach mode"
+    is "$output" ".*-d .*" "dryrun correct"
+    is "$output" ".*--name ramalama_.*" "serve in detach mode"
 
     run_ramalama -q --dryrun serve -d ${model}
-    is "$output" "${verify_begin} ramalama_.*" "dryrun correct"
+    is "$output" ".*-d .*" "dryrun correct"
+    is "$output" ".*--name ramalama_.*" "dryrun correct"
 
     run_ramalama stop --all
 }

@@ -1,4 +1,3 @@
-import glob
 import os
 import platform
 import random
@@ -15,13 +14,12 @@ from ramalama.common import (
     check_nvidia,
     exec_cmd,
     genname,
-    get_accel_env_vars,
     get_cmd_with_wrapper,
-    run_cmd,
     set_accel_env_vars,
 )
 from ramalama.config import CONFIG, DEFAULT_PORT_RANGE, int_tuple_as_str
 from ramalama.console import EMOJI
+from ramalama.engine import Engine, dry_run
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
@@ -190,127 +188,24 @@ class Model(ModelBase):
 
         return genname()
 
-    def get_base_conman_args(self, args, name):
-        return [
-            args.engine,
-            "run",
-            "--rm",
-            "-i",
-            "--label",
-            "ai.ramalama",
-            "--name",
-            name,
-            "--env=HOME=/tmp",
-            "--init",
-        ]
-
-    def add_privileged_options(self, conman_args, args):
-        if args.privileged:
-            conman_args += ["--privileged"]
-        else:
-            conman_args += [
-                "--security-opt=label=disable",
-                "--cap-drop=all",
-                "--security-opt=no-new-privileges",
-            ]
-
-        return conman_args
-
-    def add_container_labels(self, conman_args, args):
-        if hasattr(args, "MODEL"):
-            conman_args += ["--label", f"ai.ramalama.model={args.MODEL}"]
-
-        if hasattr(args, "engine"):
-            conman_args += ["--label", f"ai.ramalama.engine={args.engine}"]
-
-        if hasattr(args, "runtime"):
-            conman_args += ["--label", f"ai.ramalama.runtime={args.runtime}"]
-
-        if hasattr(args, "port"):
-            conman_args += ["--label", f"ai.ramalama.port={args.port}"]
-
-        if hasattr(args, "subcommand"):
-            conman_args += ["--label", f"ai.ramalama.command={args.subcommand}"]
-
-        return conman_args
-
-    def add_subcommand_env(self, conman_args, args):
-        if EMOJI and hasattr(args, "subcommand") and args.subcommand == "run":
-            if os.path.basename(args.engine) == "podman":
-                conman_args += ["--env", "LLAMA_PROMPT_PREFIX=🦭 > "]
-            elif os.path.basename(args.engine) == "docker":
-                conman_args += ["--env", "LLAMA_PROMPT_PREFIX=🐋 > "]
-
-        return conman_args
-
-    def handle_podman_specifics(self, conman_args, args):
-        if os.path.basename(args.engine) == "podman" and args.podman_keep_groups:
-            conman_args += ["--group-add", "keep-groups"]
-
-        return conman_args
-
-    def handle_oci_pull(self, conman_args, args):
+    def base(self, args, name):
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
         if hasattr(args, "rag") and args.rag:
             args.image = args.image.split(":")[0]
-        self.image = accel_image(CONFIG, args)
-        return self.add_pull_newer(conman_args, args)
-
-    def add_env_option(self, conman_args, args):
-        for env in args.env:
-            conman_args += ["--env", env]
-
-        return conman_args
-
-    def add_tty_option(self, conman_args):
-        if sys.stdout.isatty() or sys.stdin.isatty():
-            conman_args += ["-t"]
-
-        return conman_args
-
-    def add_detach_option(self, conman_args, args):
-        if hasattr(args, "detach") and args.detach is True:
-            conman_args += ["-d"]
-
-        return conman_args
-
-    def add_port_option(self, conman_args, args):
-        if hasattr(args, "port"):
-            conman_args += ["-p", f"{args.port}:{args.port}"]
-
-        return conman_args
-
-    def add_device_options(self, conman_args, args):
-        if args.device:
-            for device_arg in args.device:
-                conman_args += ["--device", device_arg]
-
-        if ramalama.common.podman_machine_accel:
-            conman_args += ["--device", "/dev/dri"]
-
-        for path in ["/dev/dri", "/dev/kfd", "/dev/accel", "/dev/davinci*", "/dev/devmm_svm", "/dev/hisi_hdc"]:
-            for dev in glob.glob(path):
-                conman_args += ["--device", dev]
-
-        for k, v in get_accel_env_vars().items():
-            # Special case for Cuda
-            if k == "CUDA_VISIBLE_DEVICES":
-                if os.path.basename(args.engine) == "docker":
-                    conman_args += ["--gpus", "all"]
-                else:
-                    # newer Podman versions support --gpus=all, but < 5.0 do not
-                    conman_args += ["--device", "nvidia.com/gpu=all"]
-
-            conman_args += ["-e", f"{k}={v}"]
-
-        return conman_args
-
-    def add_network_option(self, conman_args, args):
-        if args.network:
-            conman_args += ["--network", args.network]
-
-        return conman_args
+        args.image = accel_image(CONFIG, args)
+        self.engine = Engine(args)
+        self.engine.add(
+            [
+                "-i",
+                "--label",
+                "ai.ramalama",
+                "--name",
+                name,
+                "--env=HOME=/tmp",
+                "--init",
+            ]
+        )
 
     def add_oci_runtime(self, conman_args, args):
         if args.oci_runtime:
@@ -338,39 +233,10 @@ class Model(ModelBase):
 
         return exec_args
 
-    def add_pull_newer(self, exec_args, args):
-        if not args.dryrun and os.path.basename(args.engine) == "docker" and args.pull == "newer":
-            try:
-                if not args.quiet:
-                    print(f"Checking for newer image {self.image}")
-                run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
-            except Exception:  # Ignore errors, the run command will handle it.
-                pass
-        else:
-            exec_args += ["--pull", args.pull]
-        return exec_args
-
     def setup_container(self, args):
-        if not args.engine:
-            return []
-
         name = self.get_container_name(args)
-        conman_args = self.get_base_conman_args(args, name)
-        conman_args = self.add_oci_runtime(conman_args, args)
-        conman_args = self.add_privileged_options(conman_args, args)
-        conman_args = self.add_container_labels(conman_args, args)
-        conman_args = self.add_subcommand_env(conman_args, args)
-        conman_args = self.handle_podman_specifics(conman_args, args)
-        conman_args = self.handle_oci_pull(conman_args, args)
-        conman_args = self.add_tty_option(conman_args)
-        conman_args = self.add_env_option(conman_args, args)
-        conman_args = self.add_detach_option(conman_args, args)
-        conman_args = self.add_port_option(conman_args, args)
-        conman_args = self.add_device_options(conman_args, args)
-        conman_args = self.add_network_option(conman_args, args)
-        conman_args = self.add_rag(conman_args, args)
-
-        return conman_args
+        self.base(args, name)
+        self.engine.add_container_labels()
 
     def gpu_args(self, args, runner=False):
         gpu_args = []
@@ -416,34 +282,30 @@ class Model(ModelBase):
         if USE_RAMALAMA_WRAPPER:
             cmd_args[0] = f"/usr/libexec/ramalama/{cmd_args[0]}"
 
-        conman_args = self.setup_container(args)
-        if len(conman_args) == 0:
-            return False
-
+        self.setup_container(args)
         if model_path and os.path.exists(model_path):
-            conman_args += [f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"]
+            self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"])
         else:
-            conman_args += [f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models"]
+            self.engine.add([f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models"])
 
         # If a chat template is available, mount it as well
         if self.store is not None:
             ref_file = self.store.get_ref_file(self.tag)
             if ref_file.chat_template_name != "":
                 chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                conman_args += [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
+                self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
 
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
         if hasattr(args, "rag") and args.rag:
             args.image = args.image.split(":")[0]
         # Make sure Image precedes cmd_args.
-        conman_args += [accel_image(CONFIG, args)] + cmd_args
-
+        self.engine.add([accel_image(CONFIG, args)] + cmd_args)
         if args.dryrun:
-            dry_run(conman_args)
+            self.engine.dryrun()
             return True
 
-        exec_cmd(conman_args, debug=args.debug)
+        self.engine.exec()
         return True
 
     def bench(self, args):
@@ -750,17 +612,6 @@ class Model(ModelBase):
             return
 
         print(ModelInfoBase(model_name, model_registry, model_path).serialize(json=args.json))
-
-
-def dry_run(args):
-    for arg in args:
-        if not arg:
-            continue
-        if " " in arg:
-            print('"%s"' % arg, end=" ")
-        else:
-            print("%s" % arg, end=" ")
-    print()
 
 
 def distinfo_volume():

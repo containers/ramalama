@@ -15,22 +15,23 @@ EOF
     if is_container; then
 	run_ramalama info
 	conman=$(jq .Engine.Name <<< $output | tr -d '"' )
-	verify_begin="${conman} run --rm -i --label ai.ramalama --name"
+	verify_begin="${conman} run --rm"
 
 	run_ramalama -q --dryrun run ${MODEL}
-	is "$output" "${verify_begin} ramalama_.*--network none.*" "dryrun correct"
+	is "$output" "${verify_begin}.*"
+	is "$output" ".*--network none.*" "dryrun correct"
 	is "$output" ".*${MODEL}" "verify model name"
 	is "$output" ".*-c 2048" "verify model name"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
 	run_ramalama -q --dryrun run --env a=b --env test=success --name foobar ${MODEL}
-	is "$output" "${verify_begin} foobar.*--env a=b --env test=success" "dryrun correct with --env"
+	is "$output" ".*--env a=b --env test=success" "dryrun correct with --env"
 
 	run_ramalama -q --dryrun run --oci-runtime foobar ${MODEL}
-	is "$output" "${verify_begin} .*--runtime foobar" "dryrun correct with --oci-runtime"
+	is "$output" ".*--runtime foobar" "dryrun correct with --oci-runtime"
 
 	run_ramalama -q --dryrun run --seed 9876 -c 4096 --net bridge --name foobar ${MODEL}
-	is "$output" "${verify_begin} foobar.*--network bridge.*" "dryrun correct with --name"
+	is "$output" ".*--network bridge.*" "dryrun correct with --name"
 	is "$output" ".*${MODEL}" "verify model name"
 	is "$output" ".*-c 4096" "verify ctx-size is set"
 	is "$output" ".*--temp 0.8" "verify temp is set"
@@ -49,9 +50,9 @@ EOF
 	is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"
 
 	run_ramalama -q --dryrun run --name foobar ${MODEL}
-	is "$output" "${verify_begin} foobar .*" "dryrun correct with --name"
-	assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
-	assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
+	is "$output" ".*--name foobar" "dryrun correct with --name"
+	is "$output" ".*--cap-drop=all" "verify --cap-add is present"
+	is "$output" ".*no-new-privileges" "verify --no-new-privs is not present"
 
     run_ramalama -q --dryrun run --runtime-args="--foo -bar" ${MODEL}
     assert "$output" =~ ".*--foo" "--foo passed to runtime"
@@ -79,7 +80,7 @@ EOF
 
     else
 	run_ramalama -q --dryrun run -c 4096 ${MODEL}
-	is "$output" '.*run.*-c 4096 --temp 0.8.*/path/to/model.*' "dryrun correct"
+	is "$output" '.*run.*-c 4096 --temp 0.8.*' "dryrun correct"
 	is "$output" ".*-c 4096" "verify model name"
 
 	run_ramalama 1 run --ctx-size=4096 --name foobar ${MODEL}
@@ -112,7 +113,7 @@ EOF
 }
 
 @test "ramalama run --keepalive" {
-    run_ramalama 124 run --keepalive 1s tiny
+    run_ramalama 124 --debug run --keepalive 1s tiny
 }
 
 # vim: filetype=sh
