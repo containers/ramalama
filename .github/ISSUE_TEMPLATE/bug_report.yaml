@@ -12,7 +12,6 @@ body:
     attributes:
       label: Issue Description
       description: Please explain your issue
-      value: "Describe your issue"
     validations:
       required: true
   - type: textarea
@@ -20,7 +19,6 @@ body:
     attributes:
       label: Steps to reproduce the issue
       description: Please explain the steps to reproduce the issue
-      value: "Steps to reproduce the issue\n1.\n2.\n3.\n"
     validations:
       required: true
   - type: textarea
@@ -28,7 +26,6 @@ body:
     attributes:
       label: Describe the results you received
       description: Please explain the results you are noticing
-      value: "Describe the results you received"
     validations:
       required: true
   - type: textarea
@@ -36,7 +33,6 @@ body:
     attributes:
       label: Describe the results you expected
       description: Please explain the results you are expecting
-      value: "Describe the results you expected"
     validations:
       required: true
   - type: textarea
@@ -44,7 +40,6 @@ body:
     attributes:
       label: ramalama info output
       description: Please copy and paste ramalama info output.
-      value: If you are unable to run ramalama info for any reason, please provide the ramalama version, operating system and its version and the architecture you are running.
       render: yaml
     validations:
       required: true
@@ -63,12 +58,10 @@ body:
     attributes:
       label: Additional environment details
       description: Please describe any additional environment details like (AWS, VirtualBox,...)
-      value: "Additional environment details"
   - type: textarea
     id: additional_info
     attributes:
       label: Additional information
       description: Please explain the additional information you deem important
-      value: "Additional information like issue happens only occasionally or issue happens with a particular architecture or on a particular setting"
     validations:
       required: false
