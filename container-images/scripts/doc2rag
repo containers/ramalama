@@ -5,6 +5,9 @@ import hashlib
 import os
 import sys
 import uuid
+import gc
+from pypdf import PdfReader, PdfWriter
+import tempfile
 
 import qdrant_client
 from qdrant_client import models
@@ -34,12 +37,6 @@ class Converter:
             collection_name=COLLECTION_NAME,
             vectors_config=self.client.get_fastembed_vector_params(on_disk=True),
             sparse_vectors_config= self.client.get_fastembed_sparse_vector_params(on_disk=True),
-            quantization_config=models.ScalarQuantization(
-                scalar=models.ScalarQuantizationConfig(
-                    type=models.ScalarType.INT8,
-                    always_ram=True,
-                ),
-            ),
         )
 
     def add(self, file_path):
@@ -48,21 +45,52 @@ class Converter:
         else:
             self.targets.append(file_path)  # Process the single file
 
+
     def convert(self):
-        result = self.doc_converter.convert_all(self.targets)
-        documents, metadata, ids = [], [], []
         chunker = HybridChunker(tokenizer=EMBED_MODEL, overlap=100, merge_peers=True)
-        for file in result:
-            chunk_iter = chunker.chunk(dl_doc=file.document)
-            for chunk in chunk_iter:
-                # Extract the enriched text from the chunk
-                doc_text = chunker.contextualize(chunk=chunk)
-                # Append to respective lists
-                documents.append(doc_text)
-                # Generate unique ID for the chunk
-                doc_id = self.generate_hash(doc_text)
-                ids.append(doc_id)
-        return self.client.add(COLLECTION_NAME, documents=documents, ids=ids, batch_size=1)
+
+        for path in self.targets:
+            if path.lower().endswith(".pdf") and self._pdf_page_count(path) > 20:
+                print(f"Streaming large PDF page-by-page: {path}")
+                for page_path in self._page_iterator(path):
+                    print("Converting page")
+                    result = DocumentConverter().convert(page_path)
+                    self._process_doc(result, chunker)
+                    print("done")
+                    del result
+                    gc.collect()
+            else:
+                result = self.doc_converter.convert(path)
+                self._process_doc(result, chunker)
+                gc.collect()
+
+
+    def _process_doc(self, result, chunker):
+        chunk_iter = chunker.chunk(dl_doc=result.document)
+        for chunk in chunk_iter:
+            doc_text = chunker.contextualize(chunk=chunk)
+            print(doc_text)
+            doc_id = self.generate_hash(doc_text)
+            self.client.add(COLLECTION_NAME, documents=[doc_text], ids=[doc_id], batch_size=1)
+
+    def _pdf_page_count(self, path):
+        with open(path, "rb") as f:
+            reader = PdfReader(f)
+            return len(reader.pages)
+
+    def _page_iterator(self, path):
+        with open(path, "rb") as f:
+            reader = PdfReader(f)
+            for i, page in enumerate(reader.pages):
+                print("page: ", i+1)
+                writer = PdfWriter()
+                writer.add_page(page)
+                temp_fd, temp_path = tempfile.mkstemp(suffix=f"_page_{i}.pdf")
+                with os.fdopen(temp_fd, 'wb') as tmp_file:
+                    writer.write(tmp_file)
+                yield temp_path
+                os.remove(temp_path) 
+
 
     def walk(self, path):
         for root, dirs, files in os.walk(path, topdown=True):
