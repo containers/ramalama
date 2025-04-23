@@ -23,6 +23,15 @@ positional arguments:
 
 ## OPTIONS
 
+#### **--env**=
+
+Set environment variables inside of the container.
+
+This option allows arbitrary environment variables that are available for the
+process to be launched inside of the container. If an environment variable is
+specified without a value, the container engine checks the host environment
+for a value and set the variable only if it is set on the host.
+
 #### **--help**, **-h**
 Print usage message
 
