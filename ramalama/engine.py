@@ -23,8 +23,9 @@ class Engine:
             "run",
             "--rm",
         ]
-        self.use_docker = os.path.basename(args.engine) == "docker"
-        self.use_podman = os.path.basename(args.engine) == "podman"
+        engine = os.path.basename(args.engine)
+        self.use_docker = engine == "docker"
+        self.use_podman = engine == "podman"
         self.args = args
         self.add_container_labels()
         self.add_device_options()
