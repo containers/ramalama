@@ -10,15 +10,18 @@ COPY --from=builder /tmp/install/ /usr/
 COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
 COPY --chmod=755 ../scripts /usr/bin
 
-RUN dnf install -y procps-ng python3 python3-pip python3-devel intel-level-zero oneapi-level-zero intel-compute-runtime libcurl lspci clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl && \
+RUN dnf install -y procps-ng python3 python3-pip python3-devel \
+      intel-level-zero oneapi-level-zero intel-compute-runtime libcurl lspci \
+      clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core \
+      intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl gawk && \
     chown 0:0 /etc/passwd && \
     chown 0:0 /etc/group && \
     chmod g=u /etc/passwd /etc/group /home
 
 RUN useradd llama-user -u 10000 -d /home/llama-user -s /bin/bash && \
-groupmod -a -U llama-user render && \
-groupmod -a -U llama-user video && \
-chown llama-user:llama-user -R /home/llama-user
+    groupmod -a -U llama-user render && \
+    groupmod -a -U llama-user video && \
+    chown llama-user:llama-user -R /home/llama-user
 
 USER 10000
 
