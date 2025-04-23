@@ -9,7 +9,7 @@ MODEL=smollm:1.7b
     conf=$RAMALAMA_TMPDIR/ramalama.conf
     cat >$conf <<EOF
 [ramalama]
-pull="missing"
+pull="never"
 EOF
 
     if is_container; then
@@ -30,7 +30,7 @@ EOF
 	run_ramalama -q --dryrun run --oci-runtime foobar ${MODEL}
 	is "$output" ".*--runtime foobar" "dryrun correct with --oci-runtime"
 
-	run_ramalama -q --dryrun run --seed 9876 -c 4096 --net bridge --name foobar ${MODEL}
+	RAMALAMA_CONFIG=/dev/null run_ramalama -q --dryrun run --seed 9876 -c 4096 --net bridge --name foobar ${MODEL}
 	is "$output" ".*--network bridge.*" "dryrun correct with --name"
 	is "$output" ".*${MODEL}" "verify model name"
 	is "$output" ".*-c 4096" "verify ctx-size is set"
@@ -40,11 +40,14 @@ EOF
 	   is "$output" ".*--pull newer" "verify pull is newer"
 	fi
 
+	run_ramalama -q --dryrun run ${MODEL}
+	is "$output" ".*--pull missing" "verify test defaults"
+
 	run_ramalama -q --dryrun run --pull=never -c 4096 --name foobar ${MODEL}
 	is "$output" ".*--pull never" "verify pull is never"
 
 	RAMALAMA_CONFIG=${conf} run_ramalama -q --dryrun run ${MODEL}
-	is "$output" ".*--pull missing" "verify pull is missing"
+	is "$output" ".*--pull never" "verify pull is missing"
 
 	run_ramalama 2 -q --dryrun run --pull=bogus ${MODEL}
 	is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"

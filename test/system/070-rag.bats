@@ -16,6 +16,8 @@ load helpers
     run_ramalama --dryrun run --rag quay.io/ramalama/myrag:1.2 ollama://smollm:135m
     is "$output" ".*quay.io/ramalama/.*-rag.*" "Expected to use -rag image"
     if not_docker; then
+       is "$output" ".*--pull missing.*" "Expected to use --pull missing"
+       RAMALAMA_CONFIG=/dev/null run_ramalama --dryrun run --rag quay.io/ramalama/myrag:1.2 ollama://smollm:135m
        is "$output" ".*--pull newer.*" "Expected to use --pull newer"
     fi
 
