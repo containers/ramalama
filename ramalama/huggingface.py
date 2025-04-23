@@ -313,7 +313,7 @@ class Huggingface(Model):
         os.symlink(relative_target_path, model_path)
         return model_path
 
-    def push(self, source, args):
+    def push(self, _, args):
         if not self.hf_cli_available:
             raise NotImplementedError(missing_huggingface)
         proc = run_cmd(
@@ -356,15 +356,18 @@ class Huggingface(Model):
             if entry.lower() == "readme.md":
                 snapshot_hash = sha256
                 continue
-            files.append(
-                HuggingfaceCLIFile(
-                    url=entry_path,
-                    header={},
-                    hash=sha256,
-                    type=SnapshotFileType.Other,
-                    name=entry,
-                )
+
+            hf_file = HuggingfaceCLIFile(
+                url=entry_path,
+                header={},
+                hash=sha256,
+                type=SnapshotFileType.Other,
+                name=entry,
             )
+            # try to identify the model file in the pulled repo
+            if entry.endswith(".safetensors") or entry.endswith(".gguf"):
+                hf_file.type = SnapshotFileType.Model
+            files.append(hf_file)
 
         return snapshot_hash, files
 

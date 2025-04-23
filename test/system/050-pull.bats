@@ -198,7 +198,7 @@ load setup_suite
     tmpfile=${RAMALAMA_TMPDIR}/mymodel
     random=$(random_string 30)
     echo $random > $tmpfile
-    run_ramalama push --authfile=$authfile --tls-verify=false --type raw $tmpfile $registry/mymodel
+    run_ramalama push --authfile=$authfile --tls-verify=false --type raw file://$tmpfile $registry/mymodel
 
 
     run_ramalama list

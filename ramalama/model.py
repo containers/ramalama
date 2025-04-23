@@ -1,5 +1,6 @@
 import glob
 import os
+import pathlib
 import platform
 import random
 import socket
@@ -61,7 +62,7 @@ class ModelBase:
     def pull(self, args):
         raise self.__not_implemented_error("pull")
 
-    def push(self, source, args):
+    def push(self, source_model, args):
         raise self.__not_implemented_error("push")
 
     def remove(self, args):
@@ -500,8 +501,10 @@ class Model(ModelBase):
         if self.store is not None:
             _, tag, _ = self.extract_model_identifiers()
             if self.store.tag_exists(tag):
-                fhash, _, _ = self.store.get_cached_files(tag)
-                return self.store.get_snapshot_file_path(fhash, self.store.model_name)
+                ref_file = self.store.get_ref_file(tag)
+                return str(
+                    pathlib.Path(self.store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
+                )
             return ""
 
         return os.path.join(args.store, "models", self.type, self.directory, self.filename)

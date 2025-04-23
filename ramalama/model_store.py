@@ -357,6 +357,12 @@ class ModelStore:
     def get_blob_file_path(self, file_hash: str) -> str:
         return os.path.join(self.blobs_directory, sanitize_hash(file_hash))
 
+    def get_blob_file_path_by_name(self, tag_hash: str, filename: str) -> str:
+        return str(Path(self.get_snapshot_file_path(tag_hash, filename)).resolve())
+
+    def get_blob_file_hash(self, tag_hash: str, filename: str) -> str:
+        return os.path.basename(self.get_blob_file_path_by_name(tag_hash, filename))
+
     def get_partial_blob_file_path(self, file_hash: str) -> str:
         return self.get_blob_file_path(file_hash) + ".partial"
 

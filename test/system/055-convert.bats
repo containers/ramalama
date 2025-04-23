@@ -20,13 +20,13 @@ load helpers
 @test "ramalama convert file to image" {
     skip_if_nocontainer
     echo "hello" > $RAMALAMA_TMPDIR/aimodel
-    run_ramalama convert $RAMALAMA_TMPDIR/aimodel foobar
+    run_ramalama convert file://$RAMALAMA_TMPDIR/aimodel foobar
     run_ramalama list
     is "$output" ".*foobar:latest"
     run_ramalama rm foobar
     assert "$output" !~ ".*foobar" "image was removed"
 
-    run_ramalama convert $RAMALAMA_TMPDIR/aimodel oci://foobar
+    run_ramalama convert file://$RAMALAMA_TMPDIR/aimodel oci://foobar
     run_ramalama list
     is "$output" ".*foobar:latest"
     run_ramalama 22 convert oci://foobar oci://newimage
@@ -36,7 +36,7 @@ load helpers
     run_ramalama list
     assert "$output" !~ ".*foobar" "image was removed"
 
-    run_ramalama 22 convert $RAMALAMA_TMPDIR/aimodel ollama://foobar
+    run_ramalama 22 convert file://$RAMALAMA_TMPDIR/aimodel ollama://foobar
     is "$output" "Error: ollama://foobar invalid: Only OCI Model types supported" "verify oci image"
 
     podman image prune --force
