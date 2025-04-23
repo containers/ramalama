@@ -3,8 +3,7 @@
 # RamaLama command to run; 
 RAMALAMA=${RAMALAMA:-ramalama}
 
-# RamaLama testing helper used in 331-system-check tests
-RAMALAMA_TESTING=${RAMALAMA_TESTING:-$(dirname ${BASH_SOURCE})/../../bin/ramalama-testing}
+export RAMALAMA_CONFIG=${RAMALAMA_CONFIG:-./test/system/ramalama.conf}
 
 # llama.cpp or vllm, unlikely to change. Cache, because it's expensive to determine.
 RAMALAMA_RUNTIME=

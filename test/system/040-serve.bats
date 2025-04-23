@@ -36,13 +36,16 @@ verify_begin=".*run --rm"
         run_ramalama -q --dryrun serve --temp 0.1 ${model}
         is "$output" ".*--temp 0.1" "verify temp is set"
 
-        run_ramalama -q --dryrun serve --seed 1234 ${model}
+        RAMALAMA_CONFIG=/dev/null run_ramalama -q --dryrun serve --seed 1234 ${model}
         is "$output" ".*--seed 1234" "verify seed is set"
         if not_docker; then
             is "$output" ".*--pull newer" "verify pull is newer"
         fi
         assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
         assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
+
+        run_ramalama -q --dryrun serve ${model}
+        is "$output" ".*--pull missing" "verify test default pull is missing"
 
         run_ramalama -q --dryrun serve --pull never ${model}
         is "$output" ".*--pull never" "verify pull is never"

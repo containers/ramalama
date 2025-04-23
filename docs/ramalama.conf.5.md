@@ -35,7 +35,7 @@ options in previously read ramalama.conf files.
 Config files in the `.d` directories, are added in alpha numeric sorted order and must end in `.conf`.
 
 ## ENVIRONMENT VARIABLES
-If the `RAMALAMA_CONF` environment variable is set, all system and user
+If the `RAMALAMA_CONFIG` environment variable is set, all system and user
 config files are ignored and only the specified config file is loaded.
 
 # FORMAT
