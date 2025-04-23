@@ -3,7 +3,6 @@ import glob
 import json
 import os
 import shlex
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -15,9 +14,10 @@ try:
 except Exception:
     suppressCompleter = None
 
+import ramalama.engine as engine
 import ramalama.oci
 import ramalama.rag
-from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, perror, run_cmd
+from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, perror
 from ramalama.config import CONFIG
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
@@ -43,17 +43,17 @@ def local_env(**kwargs):
 
 
 def local_models(prefix, parsed_args, **kwargs):
-    return [model['name'] for model in _list_models(parsed_args)]
+    return [model['name'] for model in engine.list_models(parsed_args)]
 
 
 def local_containers(prefix, parsed_args, **kwargs):
     parsed_args.format = '{{.Names}}'
-    return _list_containers(parsed_args)
+    return engine.containers(parsed_args)
 
 
 def local_images(prefix, parsed_args, **kwargs):
     parsed_args.format = "{{.Repository}}:{{.Tag}}"
-    return _list_images(parsed_args)
+    return engine.images(parsed_args)
 
 
 class ArgumentParserWithDefaults(argparse.ArgumentParser):
@@ -396,60 +396,11 @@ def containers_parser(subparsers):
     parser.set_defaults(func=list_containers)
 
 
-def _list_images(args):
-    conman = args.engine
-    if conman == "" or conman is None:
-        raise ValueError("no container manager (Podman, Docker) found")
-
-    conman_args = [conman, "images"]
-    if hasattr(args, "noheading") and args.noheading:
-        conman_args += ["--noheading"]
-
-    if hasattr(args, "notrunc") and args.notrunc:
-        conman_args += ["--no-trunc"]
-
-    if args.format:
-        conman_args += [f"--format={args.format}"]
-
-    try:
-        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
-        if output == "":
-            return []
-        return output.split("\n")
-    except subprocess.CalledProcessError as e:
-        perror("ramalama list command requires a running container engine")
-        raise (e)
-
-
-def _list_containers(args):
-    conman = args.engine
-    if conman == "" or conman is None:
-        raise ValueError("no container manager (Podman, Docker) found")
-
-    conman_args = [conman, "ps", "-a", "--filter", "label=ai.ramalama"]
-    if hasattr(args, "noheading") and args.noheading:
-        conman_args += ["--noheading"]
-
-    if hasattr(args, "notrunc") and args.notrunc:
-        conman_args += ["--no-trunc"]
-
-    if args.format:
-        conman_args += [f"--format={args.format}"]
-
-    try:
-        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
-        if output == "":
-            return []
-        return output.split("\n")
-    except subprocess.CalledProcessError as e:
-        perror("ramalama list command requires a running container engine")
-        raise (e)
-
-
 def list_containers(args):
-    if len(_list_containers(args)) == 0:
+    containers = engine.containers(args)
+    if len(containers) == 0:
         return
-    print("\n".join(_list_containers(args)))
+    print("\n".join(containers))
 
 
 def info_parser(subparsers):
@@ -537,21 +488,6 @@ def _list_models(args):
     return models
 
 
-def engine_info(args):
-    conman = args.engine
-    if conman == "":
-        raise ValueError("no container manager (Podman, Docker) found")
-
-    conman_args = [conman, "info", "--format", "json"]
-    try:
-        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
-        if output == "":
-            return []
-        return json.loads(output)
-    except FileNotFoundError as e:
-        return str(e)
-
-
 def info_cli(args):
     info = {
         "Engine": {
@@ -564,7 +500,7 @@ def info_cli(args):
         "Version": version(),
     }
     if args.engine and len(args.engine) > 0:
-        info["Engine"]["Info"] = engine_info(args)
+        info["Engine"]["Info"] = engine.info(args)
 
     info["Accelerator"] = get_accel()
     print(json.dumps(info, sort_keys=True, indent=4))
@@ -997,41 +933,16 @@ def stop_parser(subparsers):
     parser.set_defaults(func=stop_container)
 
 
-def _stop_container(args, name):
-    if not name:
-        raise ValueError("must specify a container name")
-    conman = args.engine
-    if conman == "":
-        raise ValueError("no container manager (Podman, Docker) found")
-
-    conman_args = [conman, "stop", "-t=0"]
-    ignore_stderr = False
-    if args.ignore:
-        if conman == "podman":
-            conman_args += ["--ignore", str(args.ignore)]
-        else:
-            ignore_stderr = True
-
-    conman_args += [name]
-    try:
-        run_cmd(conman_args, ignore_stderr=ignore_stderr, debug=args.debug)
-    except subprocess.CalledProcessError:
-        if args.ignore and conman == "docker":
-            return
-        else:
-            raise
-
-
 def stop_container(args):
     if not args.all:
-        return _stop_container(args, args.NAME)
+        return engine.stop_container(args, args.NAME)
 
     if args.NAME:
         raise ValueError("specifying --all and container name, %s, not allowed" % args.NAME)
     args.ignore = True
     args.format = "{{ .Names }}"
-    for i in _list_containers(args):
-        _stop_container(args, i)
+    for i in engine.containers(args):
+        engine.stop_container(args, i)
 
 
 def version_parser(subparsers):

@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from ramalama.common import accel_image, download_file, get_accel_env_vars, run_cmd, set_accel_env_vars
 from ramalama.config import CONFIG
+from ramalama.engine import Engine
 
 
 class Rag:
@@ -58,7 +59,7 @@ COPY {src} /vector.db
         """Adds a volume mount if path exists, otherwise downloads from URL."""
         if os.path.exists(path):
             fpath = os.path.realpath(path)
-            exec_args += ["-v", f"{fpath}:/docs/{fpath}:ro,z"]
+            self.engine.add(["-v", f"{fpath}:/docs/{fpath}:ro,z"])
             return False
         try:
             parsed = urlparse(path)
@@ -73,6 +74,8 @@ COPY {src} /vector.db
             raise e
 
     def generate(self, args):
+        args.nocapdrop = True
+        self.engine = Engine(args)
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
         args.rag = "rag"
@@ -90,71 +93,36 @@ COPY {src} /vector.db
 
         docsdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_docs_')
         docsdb_used = False
-        exec_args = [
-            args.engine,
-            "run",
-            "--rm",
-        ]
-
-        exec_args = self.add_pull_newer(exec_args, args)
-        exec_args = self.add_env_option(exec_args, args)
-        exec_args = self.add_network_option(exec_args, args)
 
         for path in args.PATH:
-            if self._handle_docs_path(path, docsdb.name, exec_args):
+            if self._handle_docs_path(path, docsdb.name, self.engine.exec_args):
                 docsdb_used = True
 
         if docsdb_used:
-            exec_args += ["-v", f"{docsdb.name}:/docs/{docsdb.name}:ro,Z"]
+            self.engine.add(["-v", f"{docsdb.name}:/docs/{docsdb.name}:ro,Z"])
 
         ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_')
         dbdir = os.path.join(ragdb.name, "vectordb")
         os.mkdir(dbdir)
-        exec_args += ["-v", f"{dbdir}:/output:z"]
+        self.engine.add(["-v", f"{dbdir}:/output:z"])
         for k, v in get_accel_env_vars().items():
             # Special case for Cuda
             if k == "CUDA_VISIBLE_DEVICES":
                 if os.path.basename(args.engine) == "docker":
-                    exec_args += ["--gpus", "all"]
+                    self.engine.add(["--gpus", "all"])
                 else:
                     # newer Podman versions support --gpus=all, but < 5.0 do not
-                    exec_args += ["--device", "nvidia.com/gpu=all"]
+                    self.engine.add(["--device", "nvidia.com/gpu=all"])
 
-            exec_args += ["-e", f"{k}={v}"]
+            self.engine.add(["-e", f"{k}={v}"])
 
-        exec_args += [args.image]
-        exec_args += ["doc2rag", "/output", "/docs/"]
+        self.engine.add([args.image])
+        self.engine.add(["doc2rag", "/output", "/docs/"])
         try:
-            run_cmd(exec_args, debug=args.debug)
+            self.engine.run()
             print(self.build(dbdir, self.target, args))
         except subprocess.CalledProcessError as e:
             raise e
         finally:
             shutil.rmtree(ragdb.name, ignore_errors=True)
             shutil.rmtree(docsdb.name, ignore_errors=True)
-
-    # FIXME: Need to create a base class between RAG and Model to share these
-    # functions.
-    def add_pull_newer(self, conman_args, args):
-        if not args.dryrun and os.path.basename(args.engine) == "docker" and args.pull == "newer":
-            try:
-                if not args.quiet:
-                    print(f"Checking for newer image {self.image}")
-                run_cmd([args.engine, "pull", "-q", args.image], ignore_all=True)
-            except Exception:  # Ignore errors, the run command will handle it.
-                pass
-        else:
-            conman_args += ["--pull", args.pull]
-        return conman_args
-
-    def add_network_option(self, conman_args, args):
-        if args.network:
-            conman_args += ["--network", args.network]
-
-        return conman_args
-
-    def add_env_option(self, conman_args, args):
-        for env in args.env:
-            conman_args += ["--env", env]
-
-        return conman_args
