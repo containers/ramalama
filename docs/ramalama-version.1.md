@@ -14,6 +14,15 @@ Print version of RamaLama
 #### **--help**, **-h**
 Print usage message
 
+## EXAMPLES
+
+```
+$ ramalama version
+ramalama version 1.2.3
+$ ramalama -q version
+1.2.3
+>
+```
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**
 
