@@ -4,14 +4,7 @@ import os
 import subprocess
 import sys
 
-from ramalama.common import (
-    check_nvidia,
-    exec_cmd,
-    get_accel_env_vars,
-    perror,
-    podman_machine_accel,
-    run_cmd,
-)
+from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, podman_machine_accel, run_cmd
 from ramalama.console import EMOJI
 
 
