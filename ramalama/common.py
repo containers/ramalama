@@ -561,17 +561,15 @@ def select_cuda_image(config):
     cuda_image = config['images'].get("CUDA_VISIBLE_DEVICES")
 
     # Check CUDA version and select appropriate image
-    cuda_major, cuda_minor = check_cuda_version()
+    cuda_version = check_cuda_version()
 
     # Select appropriate image based on CUDA version
-    if cuda_major >= 12 and cuda_minor >= 8:
+    if cuda_version >= (12, 8):
         return cuda_image  # Use the standard image for CUDA 12.8+
-    elif cuda_major == 12 and cuda_minor >= 4:
+    elif cuda_version >= (12, 4):
         return f"{cuda_image}-12.4.1"  # Use the specific version for older CUDA
     else:
-        raise RuntimeError(
-            f"CUDA version {cuda_major}.{cuda_minor} is not supported. Minimum required version is 12.4."
-        )
+        raise RuntimeError(f"CUDA version {cuda_version} is not supported. Minimum required version is 12.4.")
 
 
 def accel_image(config, args):
