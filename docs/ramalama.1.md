@@ -40,9 +40,10 @@ When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAM
 
 Note:
 
-On Macs with Arm support and Podman, the Podman machine must be
-configured to use the krunkit VM Type. This allows the Mac's GPU to be
-used within the VM.
+On MacOS systems that use Podman for containers, configure the Podman machine
+to use the `libkrun` machine provider. The `libkrun` provider enables
+containers within the Podman Machine access to the Mac's GPU.
+See **[ramalama-macos(7)](ramalama-macos.7.md)** for further information.
 
 Note:
 
@@ -221,7 +222,8 @@ although the recommended way is to use the ramalama.conf file.
 | RAMALAMA_TRANSPORT        | default AI Model transport (ollama, huggingface, OCI) |
 
 ## SEE ALSO
-**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**, **docker(1)**, **[ramalama.conf(5)](ramalama.conf.5.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**
+**[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**, **docker(1)**, **[ramalama.conf(5)](ramalama.conf.5.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**, **[ramalama-macos(7)](ramalama-macos.7.md)**
+
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

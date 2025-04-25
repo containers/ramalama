@@ -77,6 +77,7 @@ def confirm_no_gpu(name, provider):
             input(
                 f"Warning! Your VM {name} is using {provider}, which does not support GPU. "
                 "Only the provider libkrun has GPU support. "
+                "See `man ramalama-macos` for more information. "
                 "Do you want to proceed without GPU? (yes/no): "
             )
             .strip()
