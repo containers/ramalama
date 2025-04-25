@@ -11,7 +11,7 @@ maintainers = [
 ]
 description = "RamaLama is a command line tool for working with AI LLM models."
 readme = "README.md"
-license = "MIT"
+license = {file = "LICENSE"}
 keywords = ["ramalama", "llama", "AI"]
 
 [project.urls]
