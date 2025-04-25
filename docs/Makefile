@@ -59,10 +59,9 @@ install: docs
 	install -d ${DESTDIR}/${DATADIR}/ramalama
 	install -m 0644 ramalama.conf ${DESTDIR}/${DATADIR}/ramalama
 
-
 .PHONY: install-tools
 install-tools:
-	go install github.com/cpuguy83/go-md2man@latest
+	$(GO) install github.com/cpuguy83/go-md2man@latest
 
 .PHONY: clean
 clean:
