@@ -172,6 +172,9 @@ end-to-end-tests: validate bats bats-nocontainer ci
 	make clean
 	hack/tree_status.sh
 
+.PHONY: test
+test: tests
+
 .PHONY: tests
 tests: unit-tests end-to-end-tests
 
