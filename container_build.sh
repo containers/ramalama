@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+RAMALAMA_DIR=${PWD}
+
 available() {
   command -v "$1" >/dev/null
 }
@@ -27,6 +29,8 @@ add_build_platform() {
   fi
 
   conman_build+=("--platform" "$platform")
+  conman_build+=("--volume=${RAMALAMA_DIR}:/run/ramalama")
+  conman_build+=("--security-opt=label=disable")
   if [ -n "$version" ]; then
       conman_build+=("--build-arg" "VERSION=$version")
       conman_build+=("-t" "$REGISTRY_PATH/${target}-${version}")
