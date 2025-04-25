@@ -80,13 +80,17 @@ show this help message and exit
 IP address for llama.cpp to listen on.
 
 #### **--model-draft**
-The model to be used for speculative decoding, typically significantly smaller than
-the main model with the same vocabulary. It proposes next tokens the main model verify
-the proposal cheaply in case it is good the generation will be faster.
-Server logs contains statistics about it's usefulness.
+
+
+A draft model is a smaller, faster model that helps accelerate the decoding
+process of larger, more complex models, like Large Language Models (LLMs). It
+works by generating candidate sequences of tokens that the larger model then
+verifies and refines. This approach, often referred to as speculative decoding,
+can significantly improve the speed of inferencing by reducing the number of
+times the larger model needs to be invoked.
+
 Use --runtime-arg to pass the other draft model related parameters.
-Make sure you set the sampling parameters like top_k on the web UI correctly
-as well.
+Make sure the sampling parameters like top_k on the web UI are set correctly.
 
 #### **--name**, **-n**
 Name of the container to run the Model in.
