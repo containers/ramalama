@@ -64,7 +64,7 @@ CONTAINER ID   IMAGE                                                         COM
 80fc31c131b0   quay.io/ramalama/cann:latest                                  "/bin/bash -c 'expor…"   About an hour ago   Up About an hour                                                  ame
 ```
 
-Other using guides see Ramalama ([README.md](https://github.com/containers/ramalama/blob/main/README.md))
+Other using guides see RamaLama ([README.md](https://github.com/containers/ramalama/blob/main/README.md))
 
 ## HISTORY
 Mar 2025, Originally compiled

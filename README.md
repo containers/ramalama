@@ -139,7 +139,7 @@ curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | 
 
 __Note:__ On systems with NVIDIA GPUs, see **[ramalama-cuda(7)](docs/ramalama-cuda.7.md)** to correctly configure the host system.
 
-__Note:__ The following Intel GPUs are auto-detected by Ramalama:
+__Note:__ The following Intel GPUs are auto-detected by RamaLama:
 
 | GPU ID | Description |
 | ------ | ----------- |
