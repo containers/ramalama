@@ -57,7 +57,7 @@ def main(args):
         args = Namespace(
         container=False, dryrun=False, engine=None, podman_keep_groups=False,
         image='quay.io/ramalama/ramalama', runtime='llama.cpp',
-        store='/Users/ecurtin/.local/share/ramalama', use_model_store=False,
+        store=os.path.expanduser("~/.local/share/ramalama"), use_model_store=False,
         quiet=False, debug=False, subcommand='serve', ngl=-1, threads=6,
         temp=parsed_args.temp, authfile=None, env=[], device=None, name=None,
         oci_runtime=None, privileged=False, pull='newer', seed=None,
