@@ -63,7 +63,7 @@ class ArgumentParserWithDefaults(argparse.ArgumentParser):
         if default is not None and args[0] != '-h':
             kwargs['default'] = default
             if help is not None and help != "==SUPPRESS==":
-                kwargs['help'] += ' (default: {})'.format(default)
+                kwargs['help'] += f' (default: {default})'
         action = super().add_argument(*args, **kwargs)
         if completer is not None:
             action.completer = completer
@@ -411,7 +411,7 @@ def human_readable_size(size):
 def get_size(path):
     if os.path.isdir(path):
         size = 0
-        for dirpath, dirnames, filenames in os.walk(path, followlinks=True):
+        for dirpath, _, filenames in os.walk(path, followlinks=True):
             for file in filenames:
                 filepath = os.path.join(dirpath, file)
                 if not os.path.islink(filepath):
@@ -444,8 +444,7 @@ def _list_models(args):
                 }
             )
         return ret
-    else:
-        os.chdir(f"{args.store}/models/")
+    os.chdir(f"{args.store}/models/")
     models = []
 
     # Collect model data
@@ -656,7 +655,7 @@ def _get_source_model(args):
         src = args.SOURCE
     smodel = New(src, args)
     if smodel.type == "OCI":
-        raise ValueError("converting from an OCI based image %s is not supported" % src)
+        raise ValueError(f"converting from an OCI based image {src} is not supported")
     if not smodel.exists(args):
         smodel.pull(args)
     return smodel
@@ -911,10 +910,11 @@ def stop_parser(subparsers):
 
 def stop_container(args):
     if not args.all:
-        return engine.stop_container(args, args.NAME)
+        engine.stop_container(args, args.NAME)
+        return
 
     if args.NAME:
-        raise ValueError("specifying --all and container name, %s, not allowed" % args.NAME)
+        raise ValueError(f"specifying --all and container name, {args.NAME}, not allowed")
     args.ignore = True
     args.format = "{{ .Names }}"
     for i in engine.containers(args):
@@ -1022,7 +1022,7 @@ def rm_cli(args):
         raise IndexError("can not specify --all as well MODEL")
 
     models = [k['name'] for k in _list_models(args)]
-    _rm_model(models, args)
+    return _rm_model(models, args)
 
 
 def New(model, args, transport=CONFIG["transport"]):
