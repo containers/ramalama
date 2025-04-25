@@ -79,6 +79,15 @@ show this help message and exit
 #### **--host**="0.0.0.0"
 IP address for llama.cpp to listen on.
 
+#### **--model-draft**
+The model to be used for speculative decoding, typically significantly smaller than
+the main model with the same vocabulary. It proposes next tokens the main model verify
+the proposal cheaply in case it is good the generation will be faster.
+Server logs contains statistics about it's usefulness.
+Use --runtime-arg to pass the other draft model related parameters.
+Make sure you set the sampling parameters like top_k on the web UI correctly
+as well.
+
 #### **--name**, **-n**
 Name of the container to run the Model in.
 
