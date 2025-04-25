@@ -1,25 +1,11 @@
-"""
-A simple TOML parser that can parse TOML strings and files.
-It supports sections, key-value pairs, strings, integers, floats, booleans,
-and arrays.
-"""
 import re
 
 
 class TOMLParser:
-    """
-    A simple TOML parser class that can parse TOML strings and files.
-    """
     def __init__(self):
-        """
-        Initializes the TOMLParser instance.
-        """
         self.data = {}
 
     def parse(self, toml_string):
-        """
-        Parses a TOML string and returns the data attribute with the parsed data.
-        """
         current_section = self.data
         for line in toml_string.splitlines():
             line = line.strip()
@@ -40,9 +26,6 @@ class TOMLParser:
         return self.data
 
     def parse_file(self, file_path):
-        """
-        Parses a TOML file and returns the data attribute with the parsed data.
-        """
         with open(file_path, "r") as f:
             toml_string = f.read()
         self.parse(toml_string)
@@ -50,9 +33,6 @@ class TOMLParser:
         return self.data
 
     def _create_section(self, section_name):
-        """
-        Creates a section in the data dictionary based on the section name.
-        """
         keys = section_name.split(".")
         section = self.data
         for key in keys:
@@ -63,9 +43,6 @@ class TOMLParser:
         return section
 
     def _parse_value(self, value):
-        """
-        Parses a value from a TOML string and returns the appropriate Python type.
-        """
         if value.startswith('"') and value.endswith('"'):
             return value[1:-1]
         if value.startswith("[") and value.endswith("]"):
@@ -79,10 +56,6 @@ class TOMLParser:
         raise ValueError(f"Unsupported value type: {value}")
 
     def get(self, key, default=None):
-        """
-        Retrieves a value from the parsed data using a dot-separated key.
-        If the key does not exist, returns the default value.
-        """
         keys = key.split(".")
         value = self.data
         for k in keys:
