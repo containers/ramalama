@@ -7,6 +7,7 @@ import logging
 import os
 import platform
 import random
+import re
 import shutil
 import string
 import subprocess
@@ -519,6 +520,58 @@ def get_cmd_with_wrapper(cmd_args):
     return ""
 
 
+def check_cuda_version():
+    """
+    Check the CUDA version installed on the system by parsing the output of nvidia-smi --version.
+
+    Returns:
+        tuple: A tuple of (major, minor) version numbers, or (0, 0) if CUDA is not found or version can't be determined.
+    """
+    try:
+        # Run nvidia-smi --version to get version info
+        command = ['nvidia-smi', '--version']
+        output = run_cmd(command).stdout.decode("utf-8").strip()
+
+        # Look for CUDA Version in the output
+        cuda_match = re.search(r'CUDA Version\s*:\s*(\d+)\.(\d+)', output)
+        if cuda_match:
+            major = int(cuda_match.group(1))
+            minor = int(cuda_match.group(2))
+            return (major, minor)
+    except Exception:
+        pass
+
+    return (0, 0)
+
+
+def select_cuda_image(config):
+    """
+    Select appropriate CUDA image based on the detected CUDA version.
+
+    Args:
+        config: The configuration object containing the CUDA image reference
+
+    Returns:
+        str: The appropriate CUDA image name
+
+    Raises:
+        RuntimeError: If CUDA version is less than 12.4
+    """
+    # Get the default CUDA image from config
+    cuda_image = config['images'].get("CUDA_VISIBLE_DEVICES")
+
+    # Check CUDA version and select appropriate image
+    cuda_version = check_cuda_version()
+
+    # Select appropriate image based on CUDA version
+    if cuda_version >= (12, 8):
+        return cuda_image  # Use the standard image for CUDA 12.8+
+    elif cuda_version >= (12, 4):
+        return f"{cuda_image}-12.4.1"  # Use the specific version for older CUDA
+    else:
+        raise RuntimeError(f"CUDA version {cuda_version} is not supported. Minimum required version is 12.4.")
+
+
 def accel_image(config, args):
     if args and len(args.image.split(":")) > 1:
         return args.image
@@ -543,13 +596,20 @@ def accel_image(config, args):
     else:
         gpu_type, _ = next(iter(env_vars.items()))
 
+    # Get image based on detected GPU type
+    image = images.get(gpu_type, config["image"])
+
+    # Special handling for CUDA images based on version - only if the image is the default CUDA image
+    cuda_image = images.get("CUDA_VISIBLE_DEVICES")
+    if image == cuda_image:
+        image = select_cuda_image(config)
+
     if not args:
-        return tagged_image(images.get(gpu_type, config["image"]))
+        return tagged_image(image)
 
     if args.runtime == "vllm":
         return "registry.redhat.io/rhelai1/ramalama-vllm"
 
-    image = images.get(gpu_type, args.image)
     if hasattr(args, "rag") and args.rag:
         image += "-rag"
 
