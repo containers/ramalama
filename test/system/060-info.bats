@@ -15,6 +15,9 @@ load helpers
     run_ramalama version
     is "$output" "ramalama version $version"
 
+    run_ramalama -q version
+    is "$output" "$version"
+
     run_ramalama info
 
     # FIXME Engine  (podman|docker|'')

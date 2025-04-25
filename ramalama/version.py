@@ -14,4 +14,7 @@ def version():
 
 
 def print_version(args):
-    print("ramalama version %s" % version())
+    if args.quiet:
+        print(version())
+    else:
+        print("ramalama version %s" % version())
