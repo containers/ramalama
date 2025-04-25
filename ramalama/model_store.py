@@ -17,7 +17,7 @@ from ramalama.gguf_parser import GGUFInfoParser, GGUFModelInfo
 LOGGER = logging.getLogger(__name__)
 
 
-def sanitize_hash(filename: str) -> str:
+def sanitize_filename(filename: str) -> str:
     return filename.replace(":", "-")
 
 
@@ -343,7 +343,7 @@ class ModelStore:
         ref_file = self.get_ref_file(model_tag)
         if ref_file is None:
             return ""
-        return sanitize_hash(ref_file.hash)
+        return sanitize_filename(ref_file.hash)
 
     def get_snapshot_directory_from_tag(self, model_tag: str) -> str:
         return os.path.join(self.snapshots_directory, self.get_snapshot_hash(model_tag))
@@ -352,10 +352,10 @@ class ModelStore:
         return os.path.join(self.snapshots_directory, hash)
 
     def get_snapshot_file_path(self, tag_hash: str, filename: str) -> str:
-        return os.path.join(self.snapshots_directory, sanitize_hash(tag_hash), filename)
+        return os.path.join(self.snapshots_directory, sanitize_filename(tag_hash), filename)
 
     def get_blob_file_path(self, file_hash: str) -> str:
-        return os.path.join(self.blobs_directory, sanitize_hash(file_hash))
+        return os.path.join(self.blobs_directory, sanitize_filename(file_hash))
 
     def get_blob_file_path_by_name(self, tag_hash: str, filename: str) -> str:
         return str(Path(self.get_snapshot_file_path(tag_hash, filename)).resolve())
@@ -484,14 +484,14 @@ class ModelStore:
         self.update_snapshot(model_tag, snapshot_hash, files)
 
     def new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
-        snapshot_hash = sanitize_hash(snapshot_hash)
+        snapshot_hash = sanitize_filename(snapshot_hash)
         self._prepare_new_snapshot(model_tag, snapshot_hash, snapshot_files)
         self._download_snapshot_files(model_tag, snapshot_hash, snapshot_files)
         self._ensure_chat_template(model_tag, snapshot_hash, snapshot_files)
 
     def update_snapshot(self, model_tag: str, snapshot_hash: str, new_snapshot_files: list[SnapshotFile]) -> bool:
         validate_snapshot_files(new_snapshot_files)
-        snapshot_hash = sanitize_hash(snapshot_hash)
+        snapshot_hash = sanitize_filename(snapshot_hash)
 
         if not self.directory_setup_exists():
             return False
