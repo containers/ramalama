@@ -81,22 +81,27 @@ class ModelStoreImport:
                         print(f"Already imported: {root}/{file}")
                         continue
 
-                    snapshot_hash = generate_sha256(file)
-                    old_model_path = os.path.join(root, file)
+                    filename = file
+                    # remove ":" symbol and model tag from name
+                    if filename.endswith(f":{model_tag}"):
+                        filename = filename.replace(f":{model_tag}", "")
 
-                    files: list[SnapshotFile] = []
-                    files.append(
+                    snapshot_hash = generate_sha256(filename)
+                    old_model_path = os.path.join(root, filename)
+
+                    snapshot_files: list[SnapshotFile] = []
+                    snapshot_files.append(
                         ModelStoreImport.LocalModelFile(
                             url=old_model_path,
                             header={},
                             hash=snapshot_hash,
-                            name=file,
+                            name=filename,
                             required=True,
                         )
                     )
 
-                    m.store.new_snapshot(model_tag, snapshot_hash, files)
-                    print(f"Imported {old_model_path} -> {m.store.get_snapshot_file_path(snapshot_hash, file)}")
+                    m.store.new_snapshot(model_tag, snapshot_hash, snapshot_files)
+                    print(f"Imported {old_model_path} -> {m.store.get_snapshot_file_path(snapshot_hash, filename)}")
 
             except Exception as ex:
                 print(f"Failed to import {root}: {ex}")
