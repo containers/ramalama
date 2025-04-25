@@ -1948,7 +1948,7 @@ print_banner() {
 print_success_info() {
   echo
   echo "====================== Installation Completed ======================"
-  echo "Success! Ramalama has been installed successfully."
+  echo "Success! RamaLama has been installed successfully."
   echo "For further details, check the documentation at:"
   echo "https://github.com/containers/ramalama/tree/main/docs"
   echo "Or use the '--help' flag to learn more about usage."
