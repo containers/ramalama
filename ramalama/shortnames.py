@@ -1,5 +1,6 @@
 import configparser
 import os
+import sysconfig
 import tempfile
 
 
@@ -9,7 +10,9 @@ class Shortnames:
     shortnames = {}
 
     def __init__(self):
+        data_path = sysconfig.get_path("data")
         file_paths = [
+            f"{data_path}/share/ramalama/shortnames.conf",
             "/usr/share/ramalama/shortnames.conf",
             "/usr/local/share/ramalama/shortnames.conf",
             "/etc/ramalama/shortnames.conf",
