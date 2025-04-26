@@ -21,15 +21,10 @@ dnf_install() {
   dnf -y clean all
 }
 
-clone_and_build_ramalama() {
+install_ramalama() {
   # link podman-remote to podman for use by RamaLama
   ln -sf /usr/bin/podman-remote /usr/bin/podman
-  git clone https://github.com/containers/ramalama
-  cd ramalama
-  git submodule update --init --recursive
-  python3 -m pip install .
-  cd ..
-  rm -rf ramalama
+  python3 -m pip install /run/ramalama --prefix=/usr
 }
 
 main() {
@@ -38,7 +33,7 @@ main() {
 
   set -ex
   dnf_install
-  clone_and_build_ramalama
+  install_ramalama
   dnf_remove
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
 }

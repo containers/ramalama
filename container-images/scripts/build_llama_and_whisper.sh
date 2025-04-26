@@ -252,13 +252,10 @@ clone_and_build_llama_cpp() {
   rm -rf llama.cpp
 }
 
-clone_and_build_ramalama() {
-  git clone https://github.com/containers/ramalama
-  cd ramalama
-  git submodule update --init --recursive
-  python3 -m pip install . --prefix="$1"
-  cd ..
-  rm -rf ramalama
+install_ramalama() {
+  # link podman-remote to podman for use by RamaLama
+  ln -sf /usr/bin/podman-remote /usr/bin/podman
+  python3 -m pip install /run/ramalama --prefix="$1"
 }
 
 main() {
@@ -277,7 +274,7 @@ main() {
   common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=${install_prefix}")
   available dnf && dnf_install
   if [ -n "$containerfile" ]; then
-    clone_and_build_ramalama "${install_prefix}"
+    install_ramalama "${install_prefix}"
   fi
 
   setup_build_env
