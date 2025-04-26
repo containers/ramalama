@@ -272,12 +272,8 @@ class Model(ModelBase):
             if self.draft_model:
                 # Use the same arg as ngl to reduce configuration space
                 gpu_args += ["-ngld", f'{args.ngl}']
-        # for some reason the --threads option is blowing up on Docker,
-        # with option not being supported by llama-run.
-        # This could be something being masked in a Docker container but not
-        # in a Podman container.
-        if args.threads != -1 and args.engine and os.path.basename(args.engine) != "docker":
-            gpu_args += ["--threads", f"{args.threads}"]
+
+        gpu_args += ["--threads", f"{args.threads}"]
 
         return gpu_args
 
