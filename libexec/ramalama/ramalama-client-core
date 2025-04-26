@@ -97,7 +97,7 @@ class RamaLamaShell(cmd.Cmd):
         return True
 
     def default(self, user_content):
-        if user_content == "/bye":
+        if user_content in ["/bye", "exit"]:
             return True
 
         self.conversation_history.append({"role": "user", "content": user_content})
