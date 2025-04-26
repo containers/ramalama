@@ -84,6 +84,7 @@ class RamaLamaShell(cmd.Cmd):
         super().__init__()
         self.conversation_history = []
         self.parsed_args = parsed_args
+        self.request_in_process = False
         if "LLAMA_PROMPT_PREFIX" in os.environ:
             self.prompt = os.environ["LLAMA_PROMPT_PREFIX"]
         else:
@@ -100,9 +101,21 @@ class RamaLamaShell(cmd.Cmd):
             return True
 
         self.conversation_history.append({"role": "user", "content": user_content})
+        self.request_in_process = True
         self.conversation_history.append(
             {"role": "assistant", "content": req(self.conversation_history, self.url, self.parsed_args.color)}
         )
+        self.request_in_process = False
+
+    def cmdloop(self, intro=None):
+        try:
+            super().cmdloop(intro)
+        except KeyboardInterrupt:
+            print("")
+            if not self.request_in_process:
+                print("Use Ctrl + d or /bye or exit to quit.")
+
+            self.cmdloop(intro)  # Restart the command loop
 
 def do_kills(parsed_args):
     if parsed_args.pid2kill:
@@ -144,11 +157,7 @@ def main(args):
         do_kills(parsed_args)
         return 0
 
-    try:
-        ramalama_shell.cmdloop()
-    except KeyboardInterrupt:
-        print("")
-
+    ramalama_shell.cmdloop()
     do_kills(parsed_args)
 
 
