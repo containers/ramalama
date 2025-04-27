@@ -23,10 +23,12 @@ class Shortnames:
             "./shortnames.conf",  # for development
         ]
 
+        self.paths = []
         for file_path in file_paths:
             config = configparser.ConfigParser(delimiters=("="))
             config.read(file_path)
             if "shortnames" in config:
+                self.paths.append(os.path.realpath(file_path))
                 self.shortnames.update(config["shortnames"])
 
         # Remove leading and trailing quotes from keys and values

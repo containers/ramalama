@@ -474,11 +474,15 @@ def info_cli(args):
         "Engine": {
             "Name": args.engine,
         },
-        "UseContainer": args.container,
         "Image": args.image,
         "Runtime": args.runtime,
         "Store": args.store,
+        "UseContainer": args.container,
         "Version": version(),
+    }
+    info["Shortnames"] = {
+        "Files": shortnames.paths,
+        "Names": shortnames.shortnames,
     }
     if args.engine and len(args.engine) > 0:
         info["Engine"]["Info"] = engine.info(args)
