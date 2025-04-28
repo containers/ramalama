@@ -928,7 +928,7 @@ def stop_container(args):
 
 
 def version_parser(subparsers):
-    parser = subparsers.add_parser("version", help="display version of AI Model")
+    parser = subparsers.add_parser("version", help="display version of RamaLama")
     parser.set_defaults(func=print_version)
 
 

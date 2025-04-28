@@ -28,8 +28,8 @@ release() {
     podman manifest inspect "$1"
     digest=$(podman image inspect "${DEST}" --format '{{ .Digest }}' | cut -f2 -d':')
     podman manifest push --all "$1" "${DEST}:${digest}"
-    podman manifest push --all "$1" "${DEST}":0.7.5
-    podman manifest push --all "$1" "${DEST}":0.7
+    podman manifest push --all "$1" "${DEST}":0.8.0
+    podman manifest push --all "$1" "${DEST}":0.8
     podman manifest push --all "$1" "${DEST}"
     podman manifest rm "$1"
 }

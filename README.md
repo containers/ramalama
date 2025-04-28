@@ -172,7 +172,7 @@ See [https://dgpu-docs.intel.com/devices/hardware-table.html](https://dgpu-docs.
 | [ramalama-run(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
 | [ramalama-serve(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
 | [ramalama-stop(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-stop.1.md)            | stop named container that is running AI Model              |
-| [ramalama-version(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-version.1.md)      | display version of AI Model                                |
+| [ramalama-version(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-version.1.md)      | display version of RamaLama
 
 ## Usage
 
