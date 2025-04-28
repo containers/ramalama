@@ -250,6 +250,9 @@ def login_parser(subparsers):
 
 
 def normalize_registry(registry):
+    # Determine the registry to use. Check the value of `RAMALAMA_TRANSPORT` env var if no `registry` argument is set.
+    registry = registry or os.getenv("RAMALAMA_TRANSPORT") or CONFIG['transport']
+
     if not registry or registry == "" or registry.startswith("oci://"):
         return "oci://"
 

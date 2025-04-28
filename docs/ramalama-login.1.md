@@ -9,6 +9,8 @@ ramalama\-login - login to remote registry
 ## DESCRIPTION
 login to remote model registry
 
+By default, RamaLama uses the Ollama registry transport. You can override this default by configuring the `ramalama.conf` file or setting the `RAMALAMA_TRANSPORTS` environment variable. Ensure a registry transport is set before attempting to log in.
+
 ## OPTIONS
 Options are specific to registry types.
 
@@ -37,17 +39,20 @@ username for registry
 
 Login to quay.io/username oci registry
 ```
-$ ramalama login -u username quay.io/username
+$ export RAMALAMA_TRANSPORT=quay.io/username
+$ ramalama login -u username
 ```
 
 Login to ollama registry
 ```
-$ ramalama login ollama
+$ export RAMALAMA_TRANSPORT=ollama
+$ ramalama login
 ```
 
 Login to huggingface registry
 ```
-$ ramalama login --token=XYZ huggingface
+$ export RAMALAMA_TRANSPORT=huggingface
+$ ramalama login --token=XYZ
 ```
 Logging in to Hugging Face requires the `huggingface-cli` tool. For installation and usage instructions, see the documentation of the Hugging Face command line interface: [*https://huggingface.co/docs/huggingface_hub/en/guides/cli*](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
 
