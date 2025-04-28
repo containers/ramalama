@@ -397,6 +397,9 @@ class Model(ModelBase):
         if args.dryrun:
             return "/path/to/model"
 
+        if args.pull == "never":
+            raise ValueError(f"{args.MODEL} does not exists")
+
         model_path = self.pull(args)
 
         return model_path

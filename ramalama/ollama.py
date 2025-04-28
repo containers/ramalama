@@ -183,7 +183,7 @@ class Ollama(Model):
 
     def pull(self, args):
         if self.store is not None:
-            return self._pull_with_modelstore()
+            return self._pull_with_modelstore(args)
 
         repos = args.store + "/repos/ollama"
         model_path, models, model_base, model_name, model_tag = self._local(args)
@@ -233,10 +233,12 @@ class Ollama(Model):
         model_base = os.path.basename(model_name)
         return os.path.join(models, f"{model_base}:{model_tag}")
 
-    def _pull_with_modelstore(self):
+    def _pull_with_modelstore(self, args):
         name, tag, _ = self.extract_model_identifiers()
         hash, cached_files, all = self.store.get_cached_files(tag)
         if all:
+            if not args.quiet:
+                print(f"Using cached ollama://{name}:{tag} ...")
             return self.store.get_snapshot_file_path(hash, name)
 
         ollama_repo = OllamaRepository(self.store.model_name)
@@ -245,6 +247,9 @@ class Ollama(Model):
         is_model_in_ollama_cache = ollama_cache_path is not None
         files: list[SnapshotFile] = ollama_repo.get_file_list(tag, cached_files, is_model_in_ollama_cache)
 
+        if not args.quiet:
+            print(f"Downloading ollama://{name}:{tag} ...")
+            print(f"Trying to pull ollama://{name}:{tag}...")
         model_hash = ollama_repo.get_model_hash(manifest)
         try:
             self.store.new_snapshot(tag, model_hash, files)
@@ -257,6 +262,8 @@ class Ollama(Model):
 
         # If a model has been downloaded via ollama cli, only create symlink in the snapshots directory
         if is_model_in_ollama_cache:
+            if not args.quiet:
+                print(f"Using cached ollama://{name}{tag} ...")
             snapshot_model_path = self.store.get_snapshot_file_path(model_hash, self.store.model_name)
             os.symlink(ollama_cache_path, snapshot_model_path)
 
