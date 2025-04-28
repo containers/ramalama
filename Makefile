@@ -18,6 +18,8 @@ help:
 	@echo "  - make build IMAGE=ramalama"
 	@echo "  - make multi-arch"
 	@echo "  - make multi-arch IMAGE=ramalama"
+	@echo "  Build using build cache, for development only"
+	@echo "  - make build IMAGE=ramalama CACHE=-C"
 	@echo
 	@echo "Build docs"
 	@echo
@@ -86,15 +88,15 @@ install: docs completions
 
 .PHONY: build
 build:
-	./container_build.sh build $(IMAGE) -v "$(VERSION)"
+	./container_build.sh ${CACHE} build $(IMAGE) -v "$(VERSION)"
 
 .PHONY: build-rm
 build-rm:
-	./container_build.sh -r build $(IMAGE) -v "$(VERSION)"
+	./container_build.sh ${CACHE} -r build $(IMAGE) -v "$(VERSION)"
 
 .PHONY: build_multi_arch
 build_multi_arch:
-	./container_build.sh multi-arch $(IMAGE) -v "$(VERSION)"
+	./container_build.sh ${CACHE} multi-arch $(IMAGE) -v "$(VERSION)"
 
 .PHONY: install-docs
 install-docs: docs

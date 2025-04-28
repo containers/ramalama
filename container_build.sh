@@ -22,11 +22,11 @@ select_container_manager() {
 
 add_build_platform() {
   conman_build+=("build")
-
   # This build saves space
-  if ! $rm_after_build; then
-    conman_build+=("--no-cache")
+  if [ -n "${nocache}" ]; then
+      conman_build+=("${nocache}")
   fi
+
 
   conman_build+=("--platform" "$platform")
   conman_build+=("--volume=${RAMALAMA_DIR}:/run/ramalama")
@@ -57,8 +57,8 @@ add_entrypoint() {
 FROM $2
 ENTRYPOINT [ "/usr/bin/$3.sh" ]
 EOF
-echo "$1 build --no-cache -t $tag -f ${containerfile} ."
-eval "$1 build --no-cache -t $tag -f ${containerfile} ."
+echo "$1 build ${nocache} -t $tag -f ${containerfile} ."
+eval "$1 build ${nocache} -t $tag -f ${containerfile} ."
 rm "${containerfile}"
 }
 
@@ -89,8 +89,8 @@ USER root
 RUN /usr/bin/build_rag.sh ${GPU}
 ENTRYPOINT []
 EOF
-    echo "$1 build --no-cache -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
-    eval "$1 build --no-cache -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
+    echo "$1 build ${nocache} -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
+    eval "$1 build ${nocache} -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
     rm "${containerfile}"
 }
 
@@ -173,12 +173,17 @@ parse_arguments() {
         ci="true"
         shift
         ;;
+      -C)
+        nocache=""
+        shift
+        ;;
       -d)
         dryrun="$1"
         shift
         ;;
       -r)
         rm_after_build="true"
+        nocache=""
         shift
         ;;
       -v)
@@ -259,6 +264,7 @@ main() {
   local rm_after_build="false"
   local ci="false"
   local version=""
+  local nocache="--no-cache"
   parse_arguments "$@"
   if [ -z "$command" ]; then
     echo "Error: command is required (build or push)"
