@@ -55,7 +55,7 @@ COPY {src} /vector.db
         )
         return imageid
 
-    def _handle_docs_path(self, path, docs_path, exec_args):
+    def _handle_docs_path(self, path, docs_path):
         """Adds a volume mount if path exists, otherwise downloads from URL."""
         if os.path.exists(path):
             fpath = os.path.realpath(path)
@@ -95,7 +95,7 @@ COPY {src} /vector.db
         docsdb_used = False
 
         for path in args.PATH:
-            if self._handle_docs_path(path, docsdb.name, self.engine.exec_args):
+            if self._handle_docs_path(path, docsdb.name):
                 docsdb_used = True
 
         if docsdb_used:
