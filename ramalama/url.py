@@ -8,12 +8,25 @@ from ramalama.model_store import SnapshotFile, SnapshotFileType
 
 
 class LocalModelFile(SnapshotFile):
-
     def __init__(
-        self, url, header, hash, name, should_show_progress=False, should_verify_checksum=False, required=True
+        self,
+        url,
+        header,
+        model_file_hash,
+        name,
+        should_show_progress=False,
+        should_verify_checksum=False,
+        required=True,
     ):
         super().__init__(
-            url, header, hash, name, SnapshotFileType.Model, should_show_progress, should_verify_checksum, required
+            url,
+            header,
+            model_file_hash,
+            name,
+            SnapshotFileType.Model,
+            should_show_progress,
+            should_verify_checksum,
+            required,
         )
 
     def download(self, blob_file_path, snapshot_dir):
@@ -80,9 +93,9 @@ class URL(Model):
 
     def _pull_with_model_store(self):
         name, tag, _ = self.extract_model_identifiers()
-        hash, _, all = self.store.get_cached_files(tag)
-        if all:
-            return self.store.get_snapshot_file_path(hash, name)
+        model_file_hash, _, all_files = self.store.get_cached_files(tag)
+        if all_files:
+            return self.store.get_snapshot_file_path(model_file_hash, name)
 
         files: list[SnapshotFile] = []
         snapshot_hash = generate_sha256(name)
@@ -91,7 +104,7 @@ class URL(Model):
                 LocalModelFile(
                     url=self.model,  # model contains the full path here
                     header={},
-                    hash=snapshot_hash,
+                    model_file_hash=snapshot_hash,
                     name=name,
                     required=True,
                 )
