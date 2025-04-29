@@ -190,7 +190,7 @@ class Huggingface(Model):
 
     def pull(self, args):
         if self.store is not None:
-            return self._pull_with_model_store()
+            return self._pull_with_model_store(args)
 
         model_path = self.model_path(args)
         directory_path = os.path.join(args.store, "repos", "huggingface", self.directory, self.filename)
@@ -371,16 +371,21 @@ class Huggingface(Model):
 
         return snapshot_hash, files
 
-    def _pull_with_model_store(self, debug: bool = False):
+    def _pull_with_model_store(self, args, debug: bool = False):
         name, tag, organization = self.extract_model_identifiers()
         hash, cached_files, all = self.store.get_cached_files(tag)
         if all:
+            if not args.quiet:
+                print(f"Using cached huggingface://{name}:{tag} ...")
             return self.store.get_snapshot_file_path(hash, name)
 
         try:
             # Fetch the SHA-256 checksum of model from the API and use as snapshot hash
             snapshot_hash = f"sha256:{fetch_checksum_from_api(organization, name)}"
 
+            if not args.quiet:
+                print(f"Downloading huggingface://{name}:{tag} ...")
+                print(f"Trying to pull huggingface://{name}:{tag}...")
             hf_repo = HuggingfaceRepository(name, organization)
             files = hf_repo.get_file_list(cached_files, snapshot_hash)
             self.store.new_snapshot(tag, snapshot_hash, files)

@@ -1064,5 +1064,6 @@ def inspect_parser(subparsers):
 
 
 def inspect_cli(args):
+    args.pull = "never"
     model = New(args.MODEL, args)
     model.inspect(args)
