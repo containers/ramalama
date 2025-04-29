@@ -455,9 +455,14 @@ class ModelStore:
                 if not go2jinja.is_go_template(chat_template):
                     return
 
-                jinja_template = go2jinja.go_to_jinja(chat_template)
-                files = [LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
-                self.update_snapshot(model_tag, snapshot_hash, files)
+                try:
+                    jinja_template = go2jinja.go_to_jinja(chat_template)
+                    files = [
+                        LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate)
+                    ]
+                    self.update_snapshot(model_tag, snapshot_hash, files)
+                except Exception as ex:
+                    LOGGER.debug(f"Failed to convert Go Template to Jinja: {ex}")
                 return
             if file.type == SnapshotFileType.Model:
                 model_file = file
@@ -476,10 +481,23 @@ class ModelStore:
         if tmpl == "":
             return
 
-        files = [LocalSnapshotFile(tmpl, "chat_template", SnapshotFileType.ChatTemplate)]
-        if go2jinja.is_go_template(tmpl):
-            jinja_template = go2jinja.go_to_jinja(tmpl)
-            files.append(LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate))
+        is_go_template = go2jinja.is_go_template(tmpl)
+
+        # Only jinja templates are usable for the supported backends, therefore don't mark file as
+        # chat template if it is a Go Template (ollama-specific)
+        files = [
+            LocalSnapshotFile(
+                tmpl, "chat_template", SnapshotFileType.Other if is_go_template else SnapshotFileType.ChatTemplate
+            )
+        ]
+        if is_go_template:
+            try:
+                jinja_template = go2jinja.go_to_jinja(tmpl)
+                files.append(
+                    LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate)
+                )
+            except Exception as ex:
+                LOGGER.debug(f"Failed to convert Go Template to Jinja: {ex}")
 
         self.update_snapshot(model_tag, snapshot_hash, files)
 
