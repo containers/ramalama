@@ -197,7 +197,17 @@ verify_begin=".*run --rm"
 
     rm tinyllama.container
     run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus tiny
-    is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from.*quadlet.*kube.*quadlet/kube.*)" "Should fail"
+    is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from.*kserve.*kube.*quadlet.*quadlet/kube.*)" "Should fail"
+}
+
+@test "ramalama serve --generate=kserve" {
+    model=smollm:135m
+    fixed_model=$(echo $model | tr ':' '-')
+    name=c_$(safename)
+    run_ramalama pull ${model}
+    run_ramalama -q serve --port 1234 --generate=kserve ${model}
+    is "$output" "Generating kserve runtime file: ${fixed_model}-kserve-runtime.yaml.*" "generate kserve runtime file"
+    is "$output" ".*Generating kserve file: ${fixed_model}-kserve.yaml" "generate kserve file"
 }
 
 @test "ramalama serve --generate=quadlet and --generate=kube with OCI" {

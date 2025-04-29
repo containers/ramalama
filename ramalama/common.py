@@ -466,7 +466,7 @@ def get_accel():
     if gpu_type := check_intel():
         return gpu_type
 
-    return "none"
+    return "cpu"
 
 
 def set_accel_env_vars():

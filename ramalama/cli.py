@@ -861,7 +861,12 @@ def serve_parser(subparsers):
     )
     parser.add_argument(
         "--generate",
-        choices=["quadlet", "kube", "quadlet/kube"],
+        choices=[
+            "kserve",
+            "kube",
+            "quadlet",
+            "quadlet/kube",
+        ],
         help="generate specified configuration format for running the AI Model as a service",
     )
     parser.add_argument(

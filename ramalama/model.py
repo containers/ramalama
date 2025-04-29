@@ -23,6 +23,7 @@ from ramalama.config import CONFIG, DEFAULT_PORT_RANGE, int_tuple_as_str
 from ramalama.console import EMOJI
 from ramalama.engine import Engine, dry_run
 from ramalama.gguf_parser import GGUFInfoParser
+from ramalama.kserve import Kserve
 from ramalama.kube import Kube
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
 from ramalama.model_store import ModelStore
@@ -558,7 +559,9 @@ class Model(ModelBase):
 
     def generate_container_config(self, model_path, chat_template_path, args, exec_args):
         self.image = accel_image(CONFIG, args)
-        if args.generate == "quadlet":
+        if args.generate == "kserve":
+            self.kserve(model_path, chat_template_path, args, exec_args)
+        elif args.generate == "quadlet":
             self.quadlet(model_path, chat_template_path, args, exec_args)
         elif args.generate == "kube":
             self.kube(model_path, chat_template_path, args, exec_args)
@@ -617,6 +620,10 @@ class Model(ModelBase):
             ]
 
         self.execute_command(model_path, exec_args, args)
+
+    def kserve(self, model, chat_template_path, args, exec_args):
+        kserve = Kserve(model, chat_template_path, self.image, args, exec_args)
+        kserve.generate()
 
     def quadlet(self, model, chat_template, args, exec_args):
         quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
