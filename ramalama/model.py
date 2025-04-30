@@ -20,7 +20,6 @@ from ramalama.common import (
     set_accel_env_vars,
 )
 from ramalama.config import CONFIG, DEFAULT_PORT_RANGE, int_tuple_as_str
-from ramalama.console import EMOJI
 from ramalama.engine import Engine, dry_run
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
@@ -425,10 +424,6 @@ class Model(ModelBase):
 
     def build_exec_args_run(self, args, model_path, prompt):
         exec_model_path = model_path if not args.container else MNT_FILE
-
-        # override prompt if not set to the local call
-        if EMOJI and "LLAMA_PROMPT_PREFIX" not in os.environ:
-            os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
 
         exec_args = ["ramalama-run-core"] if USE_RAMALAMA_WRAPPER else ["llama-run"]
         exec_args += ["--jinja", "-c", f"{args.context}", "--temp", f"{args.temp}"]

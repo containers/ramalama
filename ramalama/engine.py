@@ -7,6 +7,8 @@ import sys
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, podman_machine_accel, run_cmd
 from ramalama.console import EMOJI
 
+MAX_PROMPT_PREFIX_LEN = 50
+
 
 class Engine:
 
@@ -90,11 +92,30 @@ class Engine:
                 ]
 
     def add_subcommand_env(self):
+        """
+        - Uses the LLAMA_PROMPT_PREFIX environment variable if defined (must be ≤ 50 characters).
+        - Falls back to a Podman-specific emoji (🦭) or Docker-specific emoji (🐋) and if not set 🦙.
+        - Appends the appropriate '--env' argument to self.exec_args.
+
+        Raises:
+            RuntimeError: If the environment-defined LLAMA_PROMPT_PREFIX exceeds MAX_PROMPT_PREFIX_LEN.
+        """
+        prefix = os.environ.get("LLAMA_PROMPT_PREFIX")
+
+        if prefix:
+            if len(prefix) > MAX_PROMPT_PREFIX_LEN:
+                raise RuntimeError(f"LLAMA_PROMPT_PREFIX must be ≤ {MAX_PROMPT_PREFIX_LEN} characters")
+
+            self.exec_args += ["--env", f"LLAMA_PROMPT_PREFIX={prefix}"]
+            return
+
         if EMOJI and hasattr(self.args, "subcommand") and self.args.subcommand == "run":
             if os.path.basename(self.args.engine) == "podman":
                 self.exec_args += ["--env", "LLAMA_PROMPT_PREFIX=🦭 > "]
-            if self.use_docker:
+            elif self.use_docker:
                 self.exec_args += ["--env", "LLAMA_PROMPT_PREFIX=🐋 > "]
+            else:
+                self.exec_args += ["--env", "LLAMA_PROMPT_PREFIX=🦙 > "]
 
     def add_env_option(self):
         if hasattr(self.args, "env"):
