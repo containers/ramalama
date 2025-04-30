@@ -531,7 +531,7 @@ def check_cuda_version():
     """
     try:
         # Run nvidia-smi --version to get version info
-        command = ['nvidia-smi', '--version']
+        command = ['nvidia-smi']
         output = run_cmd(command).stdout.decode("utf-8").strip()
 
         # Look for CUDA Version in the output
