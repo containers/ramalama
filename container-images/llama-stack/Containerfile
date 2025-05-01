@@ -9,9 +9,9 @@ RUN dnf -y update && \
     dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config sentencepiece-devel && \
     dnf -y clean all
 
-RUN uv pip install --system ramalama-stack
-
-RUN uv run llama stack run ~/.llama/distributions/ramalama/ramalama-run.yaml --image-type venv --image-name /venv
+RUN uv venv  && \
+    uv pip install ramalama-stack && \
+    uv run llama stack run  --image-type venv --image-name /.venv ~/.llama/distributions/ramalama/ramalama-run.yaml
 
 COPY --chmod=755 llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
 
