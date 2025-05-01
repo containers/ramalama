@@ -1,5 +1,5 @@
-# Ramalama Docs
-Ramalama uses man pages
+# RamaLama Docs
+RamaLama uses man pages
 
 ## Directory Structure
 | Description                          | Directory                   |

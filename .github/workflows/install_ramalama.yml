@@ -43,7 +43,7 @@ jobs:
         run: |
           ramalama ls | grep NAME
       
-      - name: Ramalama info
+      - name: RamaLama info
         run: |
           ramalama info
 
