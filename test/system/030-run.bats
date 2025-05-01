@@ -116,6 +116,7 @@ EOF
 }
 
 @test "ramalama run --keepalive" {
+    # timeout within 1 second and generate a 124 error code.
     run_ramalama 124 --debug run --keepalive 1s tiny
 }
 
