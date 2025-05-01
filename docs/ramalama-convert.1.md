@@ -17,7 +17,8 @@ Note: The convert command must be run with containers. Use of the --nocontainer 
 
 #### **--gguf**=*Q2_K* | *Q3_K_S* | *Q3_K_M* | *Q3_K_L* | *Q4_0* | *Q4_K_S* | *Q4_K_M* | *Q5_0* | *Q5_K_S* | *Q5_K_M* | *Q6_K* | *Q8_0* 
 
-Convert Safetensor models into a GGUF with the specified quantization format. To learn more about model quantization, read [this llama.cpp documentation](https://github.com/ggml-org/llama.cpp/blob/master/examples/quantize/README.md)
+Convert Safetensor models into a GGUF with the specified quantization format. To learn more about model quantization, read llama.cpp documentation:
+https://github.com/ggml-org/llama.cpp/blob/master/examples/quantize/README.md
 
 #### **--help**, **-h**
 Print usage message
