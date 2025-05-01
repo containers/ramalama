@@ -12,6 +12,7 @@ import shutil
 import string
 import subprocess
 import sys
+import sysconfig
 import time
 import urllib.error
 from typing import List
@@ -514,10 +515,11 @@ def tagged_image(image):
     return f"{image}:{minor_release()}"
 
 
-def get_cmd_with_wrapper(cmd_args):
-    for dir in ["", "/opt/homebrew/", "/usr/local/", "/usr/"]:
-        if os.path.exists(f"{dir}libexec/ramalama/{cmd_args[0]}"):
-            return f"{dir}libexec/ramalama/{cmd_args[0]}"
+def get_cmd_with_wrapper(cmd_arg):
+    data_path = sysconfig.get_path("data")
+    for dir in ["", f"{data_path}/", "/opt/homebrew/", "/usr/local/", "/usr/"]:
+        if os.path.exists(f"{dir}libexec/ramalama/{cmd_arg}"):
+            return f"{dir}libexec/ramalama/{cmd_arg}"
 
     return ""
 
@@ -575,7 +577,7 @@ def select_cuda_image(config):
 
 
 def accel_image(config, args):
-    if args and len(args.image.split(":")) > 1:
+    if args and args.image and len(args.image.split(":")) > 1:
         return args.image
 
     if hasattr(args, 'image_override'):

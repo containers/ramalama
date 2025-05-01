@@ -30,7 +30,6 @@ from ramalama.quadlet import Quadlet
 from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
-USE_RAMALAMA_WRAPPER = False
 
 
 file_not_found = """\
@@ -279,15 +278,20 @@ class Model(ModelBase):
 
     def exec_model_in_container(self, model_path, cmd_args, args):
         if not args.container:
-            if USE_RAMALAMA_WRAPPER:
-                cmd_args[0] = get_cmd_with_wrapper(cmd_args)
-
             return False
 
-        if USE_RAMALAMA_WRAPPER:
-            cmd_args[0] = f"/usr/libexec/ramalama/{cmd_args[0]}"
-
         self.setup_container(args)
+        self.setup_mounts(model_path, args)
+        self.handle_rag_mode(args, cmd_args)
+
+        if args.dryrun:
+            self.engine.dryrun()
+            return True
+
+        self.engine.exec()
+        return True
+
+    def setup_mounts(self, model_path, args):
         if model_path and os.path.exists(model_path):
             self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"])
         else:
@@ -305,18 +309,14 @@ class Model(ModelBase):
                 chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
                 self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
 
+    def handle_rag_mode(self, args, cmd_args):
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
         if hasattr(args, "rag") and args.rag:
             args.image = args.image.split(":")[0]
-        # Make sure Image precedes cmd_args.
-        self.engine.add([accel_image(CONFIG, args)] + cmd_args)
-        if args.dryrun:
-            self.engine.dryrun()
-            return True
 
-        self.engine.exec()
-        return True
+        # Make sure Image precedes cmd_args
+        self.engine.add([accel_image(CONFIG, args)] + cmd_args)
 
     def bench(self, args):
         model_path = self.get_model_path(args)
@@ -423,6 +423,12 @@ class Model(ModelBase):
 
         return exec_args
 
+    def get_ramalama_core_path(self, args, exec_cmd):
+        if not args.container:
+            return get_cmd_with_wrapper(exec_cmd)
+
+        return f"/usr/libexec/ramalama/{exec_cmd}"
+
     def build_exec_args_run(self, args, model_path, prompt):
         exec_model_path = model_path if not args.container else MNT_FILE
 
@@ -430,9 +436,14 @@ class Model(ModelBase):
         if EMOJI and "LLAMA_PROMPT_PREFIX" not in os.environ:
             os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
 
-        exec_args = ["ramalama-run-core"] if USE_RAMALAMA_WRAPPER else ["llama-run"]
-        exec_args += ["--jinja", "-c", f"{args.context}", "--temp", f"{args.temp}"]
-        exec_args += args.runtime_args
+        exec_args = [
+            self.get_ramalama_core_path(args, "ramalama-run-core"),
+            "--jinja",
+            "-c",
+            f"{args.context}",
+            "--temp",
+            f"{args.temp}",
+        ] + args.runtime_args
 
         if args.seed:
             exec_args += ["--seed", args.seed]
@@ -483,9 +494,7 @@ class Model(ModelBase):
                 f"{args.context}",
             ] + args.runtime_args
         else:
-            exec_args = []
-            if USE_RAMALAMA_WRAPPER:
-                exec_args += ["ramalama-serve-core"]
+            exec_args = [self.get_ramalama_core_path(args, "ramalama-serve-core")]
             draft_model_path = None
             if self.draft_model:
                 draft_model = self.draft_model.get_model_path(args)
