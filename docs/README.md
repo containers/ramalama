@@ -1,11 +1,36 @@
-## Directory Structure
+# Ramalama Docs
+Ramalama uses man pages
 
-|                                      | Directory                   |
+## Directory Structure
+| Description                          | Directory                   |
 | ------------------------------------ | --------------------------- |
 | Markdown source for man pages        | docs/*md                    |
 | target for output                    | docs/*.[15]                 |
 | man pages                            | docs/*.[15]                 |
 
 ## Build the Docs
+To build standard man pages,
 
-To build standard man pages, run `make install-tools` followed by `make docs`. Results will be in `docs`.
+- Make sure in `ramalama` directory
+
+```
+cd ramalama
+```
+
+- Install tools
+
+```
+make install-tools
+```
+
+- Make the man docs
+
+```
+make docs
+```
+
+- Results will be in `docs`
+
+```
+cd docs
+```
