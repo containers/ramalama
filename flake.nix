@@ -16,7 +16,7 @@
 
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
-      mkRamalama = pkgs: with pkgs;
+      mkRamaLama = pkgs: with pkgs;
         callPackage
           (
             { ramalamaOverrides ? { }
@@ -37,7 +37,7 @@
       ramalama = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          package = mkRamalama pkgs;
+          package = mkRamaLama pkgs;
         in {
           inherit package;
           app = {
