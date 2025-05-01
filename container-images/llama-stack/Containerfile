@@ -1,10 +1,9 @@
 FROM registry.fedoraproject.org/fedora:42
 
-# hack that should be removed when the following PRs are merged
-# https://github.com/containers/ramalama-stack/pull/37
-# https://github.com/meta-llama/llama-stack/pull/2049
-RUN curl --create-dirs --output ~/.llama/providers.d/remote/inference/ramalama.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/heads/main/providers.d/remote/inference/ramalama.yaml && \
-    curl --create-dirs --output ~/.llama/distributions/ramalama/ramalama-run.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/heads/main/run.yaml
+# hack that should be removed when the following bug is addressed
+# https://github.com/containers/ramalama-stack/issues/53
+RUN curl --create-dirs --output ~/.llama/providers.d/remote/inference/ramalama.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v0.1.3/src/ramalama_stack/providers.d/remote/inference/ramalama.yaml && \
+    curl --create-dirs --output ~/.llama/distributions/ramalama/ramalama-run.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v0.1.3/src/ramalama_stack/ramalama-run.yaml
 
 RUN dnf -y update && \
     dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config sentencepiece-devel && \
@@ -12,7 +11,7 @@ RUN dnf -y update && \
 
 RUN uv pip install --system ramalama-stack
 
-RUN uv run --with llama stack run ~/.llama/distributions/ramalama/ramalama-run.yaml --image-type venv --image-name /venv
+RUN uv run llama stack run ~/.llama/distributions/ramalama/ramalama-run.yaml --image-type venv --image-name /venv
 
 COPY --chmod=755 llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
 
