@@ -4,7 +4,9 @@ import os
 import subprocess
 import sys
 
-from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, podman_machine_accel, run_cmd
+# Live reference for checking global vars
+import ramalama.common
+from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.console import EMOJI
 
 
@@ -118,7 +120,7 @@ class Engine:
             for device_arg in self.args.device:
                 self.exec_args += ["--device", device_arg]
 
-        if podman_machine_accel:
+        if ramalama.common.podman_machine_accel:
             self.exec_args += ["--device", "/dev/dri"]
 
         for path in ["/dev/dri", "/dev/kfd", "/dev/accel", "/dev/davinci*", "/dev/devmm_svm", "/dev/hisi_hdc"]:
