@@ -109,23 +109,13 @@ class RamaLamaShell(cmd.Cmd):
         )
         self.request_in_process = False
 
-    def cmdloop(self, intro=None):
-        try:
-            super().cmdloop(intro)
-        except KeyboardInterrupt:
-            print("")
-            if not self.request_in_process:
-                print("Use Ctrl + d or /bye or exit to quit.")
-
-            self.cmdloop(intro)  # Restart the command loop
-
 def do_kills(parsed_args):
     if parsed_args.pid2kill:
         os.kill(parsed_args.pid2kill, signal.SIGINT)
         os.kill(parsed_args.pid2kill, signal.SIGTERM)
         os.kill(parsed_args.pid2kill, signal.SIGKILL)
 
-def main(args):
+def parse_arguments(args):
     parser = argparse.ArgumentParser(description="Run ramalama client core")
     parser.add_argument(
         '--color',
@@ -151,15 +141,38 @@ def main(args):
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
     )
-    parsed_args = parser.parse_args(args)
 
-    ramalama_shell = RamaLamaShell(parsed_args)
+    return parser.parse_args(args)
+
+def handle_args(parsed_args, ramalama_shell):
     if parsed_args.ARGS:
         ramalama_shell.default(" ".join(parsed_args.ARGS))
         do_kills(parsed_args)
+        return True
+
+    return False
+
+def run_shell_loop(ramalama_shell):
+    while True:
+        ramalama_shell.request_in_process = False
+        try:
+            ramalama_shell.cmdloop()
+        except KeyboardInterrupt:
+            print("")
+            if not ramalama_shell.request_in_process:
+                print("Use Ctrl + d or /bye or exit to quit.")
+
+            continue
+
+        break
+
+def main(args):
+    parsed_args = parse_arguments(args)
+    ramalama_shell = RamaLamaShell(parsed_args)
+    if handle_args(parsed_args, ramalama_shell):
         return 0
 
-    ramalama_shell.cmdloop()
+    run_shell_loop(ramalama_shell)
     do_kills(parsed_args)
 
 
