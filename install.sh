@@ -148,7 +148,7 @@ main() {
     fi
   fi
 
-  curl -fsSL https://astral.sh/uv/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install-uv.sh | bash
   echo
   uv tool install --force --python python3.12 ramalama
   print_success_info
