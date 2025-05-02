@@ -12,8 +12,6 @@ RUN dnf -y update && \
 RUN uv venv && \
     uv pip install ramalama-stack
 
-ENV INFERENCE_MODEL=/mnt/model/model.file
-
 COPY --chmod=755 llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
