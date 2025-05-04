@@ -41,7 +41,6 @@ def fetch_checksum_from_api(organization, file):
 
 
 class HuggingfaceCLIFile(SnapshotFile):
-
     def __init__(
         self, url, header, hash, name, type, should_show_progress=False, should_verify_checksum=False, required=True
     ):
@@ -54,7 +53,6 @@ class HuggingfaceCLIFile(SnapshotFile):
 
 
 class HuggingfaceRepository:
-
     REGISTRY_URL = "https://huggingface.co"
 
     FILE_NAME_CONFIG = "config.json"
@@ -148,7 +146,6 @@ def handle_repo_info(repo_name, repo_info, runtime):
 
 
 class Huggingface(Model):
-
     REGISTRY_URL = "https://huggingface.co/v2/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
@@ -202,7 +199,6 @@ class Huggingface(Model):
         # First try to interpret the argument as a user/repo:tag
         try:
             if self.directory.count("/") == 0:
-
                 model_name, model_tag, _ = self.extract_model_identifiers()
                 repo_name = self.directory + "/" + model_name
                 registry_head = f"{Huggingface.REGISTRY_URL}{repo_name}"

@@ -11,7 +11,6 @@ from ramalama.console import EMOJI
 
 
 class Engine:
-
     def __init__(self, args):
         self.exec_args = [
             args.engine,

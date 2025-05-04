@@ -33,8 +33,10 @@ def list_manifests(args):
         "--filter",
         "manifest=true",
         "--format",
-        '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}",\
-        "size":{{ .VirtualSize }}, "ID":"{{ .ID }}"},',
+        (
+            '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}",        "size":{{ .VirtualSize'
+            ' }}, "ID":"{{ .ID }}"},'
+        ),
     ]
     output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
     if output == "":
@@ -161,7 +163,7 @@ class OCI(Model):
             registry, reference = model.split("/", 1)
         except Exception:
             raise KeyError(
-                f"You must specify a registry for the model in the form "
+                "You must specify a registry for the model in the form "
                 f"'oci://registry.acme.org/ns/repo:tag', got instead: {self.model}"
             )
 

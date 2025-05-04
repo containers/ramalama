@@ -13,7 +13,6 @@ from ramalama.url import URL
 
 
 class ModelFactory:
-
     def __init__(
         self,
         model: str,
