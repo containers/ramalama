@@ -101,6 +101,9 @@ def list_models(args):
         return []
 
     models = json.loads("[" + output[:-1] + "]")
+    # exclude dangling images having no tag (i.e. <none>:<none>)
+    models = [model for model in models if model["name"] != "oci://<none>:<none>"]
+
     # Grab the size from the inspect command
     if conman == "docker":
         # grab the size from the inspect command
