@@ -1,0 +1,7 @@
+include README.md LICENSE
+include shortnames/shortnames.conf
+include docs/*.1
+include docs/*.5
+include docs/*.7
+recursive-include completions *
+recursive-include libexec *

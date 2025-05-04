@@ -25,7 +25,7 @@ class Shortnames:
 
         self.paths = []
         for file_path in file_paths:
-            config = configparser.ConfigParser(delimiters=("="))
+            config = configparser.ConfigParser(delimiters="=")
             config.read(file_path)
             if "shortnames" in config:
                 self.paths.append(os.path.realpath(file_path))

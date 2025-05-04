@@ -28,7 +28,6 @@ class SnapshotFileType(IntEnum):
 
 
 class SnapshotFile:
-
     def __init__(
         self,
         url: str,
@@ -60,7 +59,6 @@ class SnapshotFile:
 
 
 class LocalSnapshotFile(SnapshotFile):
-
     def __init__(
         self,
         content: str,
@@ -98,7 +96,6 @@ def validate_snapshot_files(snapshot_files: list[SnapshotFile]):
 
 
 class RefFile:
-
     SEP = "---"
     MODEL_SUFFIX = "model"
     CHAT_TEMPLATE_SUFFIX = "chat"
@@ -184,7 +181,6 @@ class dotdict(dict):
 
 
 class GlobalModelStore:
-
     def __init__(
         self,
         base_path: Path,
@@ -266,7 +262,6 @@ class GlobalModelStore:
 
 
 class ModelStore:
-
     def __init__(
         self,
         store: GlobalModelStore,

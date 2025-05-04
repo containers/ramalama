@@ -1,8 +1,12 @@
 import argparse
+import errno
 import glob
 import json
 import os
 import shlex
+import subprocess
+import sys
+import urllib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,6 +23,7 @@ import ramalama.oci
 import ramalama.rag
 from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, perror
 from ramalama.config import CONFIG
+from ramalama.migrate import ModelStoreImport
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
 from ramalama.model_store import GlobalModelStore
@@ -668,7 +673,6 @@ def _get_source_model(args):
 
 
 def push_cli(args):
-
     source_model = _get_source_model(args)
     target = args.SOURCE
     if args.TARGET:
@@ -1074,3 +1078,49 @@ def inspect_cli(args):
     args.pull = "never"
     model = New(args.MODEL, args)
     model.inspect(args)
+
+
+def main():
+    parser, args = init_cli()
+
+    try:
+        import argcomplete
+
+        argcomplete.autocomplete(parser)
+    except Exception:
+        pass
+
+    try:
+        ModelStoreImport(args.store).import_all()
+    except Exception as ex:
+        print(f"Failed to import models to new store: {ex}")
+
+    def eprint(e, exit_code):
+        perror("Error: " + str(e).strip("'\""))
+        sys.exit(exit_code)
+
+    try:
+        args.func(args)
+    except urllib.error.HTTPError as e:
+        eprint(f"pulling {e.geturl()} failed: {e}", errno.EINVAL)
+    except HelpException:
+        parser.print_help()
+    except AttributeError as e:
+        parser.print_usage()
+        print("ramalama: requires a subcommand")
+        if getattr(args, "debug", False):
+            raise e
+    except IndexError as e:
+        eprint(e, errno.EINVAL)
+    except KeyError as e:
+        eprint(e, 1)
+    except NotImplementedError as e:
+        eprint(e, errno.ENOTSUP)
+    except subprocess.CalledProcessError as e:
+        eprint(e, e.returncode)
+    except KeyboardInterrupt:
+        sys.exit(0)
+    except ValueError as e:
+        eprint(e, errno.EINVAL)
+    except IOError as e:
+        eprint(e, errno.EIO)

@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-import errno
 import glob
 import os
-import subprocess
 import sys
-import urllib
 
 
 def add_pipx_venvs_bin_to_path():
@@ -39,7 +36,7 @@ def add_site_packages_to_syspath(base_path):
             sys.path.insert(0, path)
 
 
-def main(args):
+def main():
     sharedirs = ["/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
     syspath = next((d for d in sharedirs if os.path.exists(d + "/ramalama/cli.py")), None)
     if syspath:
@@ -55,54 +52,8 @@ def main(args):
         print(f"ramalama module not found in sys.path: {sys.path}", file=sys.stderr)
         raise
 
-    parser, args = ramalama.init_cli()
-
-    # if autocomplete doesn't exist, just do nothing, don't break
-    try:
-        import argcomplete
-
-        argcomplete.autocomplete(parser)
-    except Exception:
-        None
-
-    def eprint(e, exit_code):
-        ramalama.perror("Error: " + str(e).strip("'\""))
-        sys.exit(exit_code)
-
-    try:
-        from ramalama.migrate import ModelStoreImport
-
-        ModelStoreImport(args.store).import_all()
-    except Exception as ex:
-        print(f"Failed to import models to new store: {ex}")
-
-    # Process CLI
-    try:
-        args.func(args)
-    except urllib.error.HTTPError as e:
-        eprint(f"pulling {e.geturl()} failed: {e} ", errno.EINVAL)
-    except ramalama.HelpException:
-        parser.print_help()
-    except AttributeError as e:
-        parser.print_usage()
-        print("ramalama: requires a subcommand")
-        if args.debug:
-            raise e
-    except IndexError as e:
-        eprint(e, errno.EINVAL)
-    except KeyError as e:
-        eprint(e, 1)
-    except NotImplementedError as e:
-        eprint(e, errno.ENOTSUP)
-    except subprocess.CalledProcessError as e:
-        eprint(e, e.returncode)
-    except KeyboardInterrupt:
-        sys.exit(0)
-    except ValueError as e:
-        eprint(e, errno.EINVAL)
-    except IOError as e:
-        eprint(e, errno.EIO)
+    ramalama.cli.main()
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

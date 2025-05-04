@@ -47,7 +47,6 @@ $(error)s"""
 
 
 class ModelBase:
-
     def __not_implemented_error(self, param):
         return NotImplementedError(f"ramalama {param} for '{type(self).__name__}' not implemented")
 
