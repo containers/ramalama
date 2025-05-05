@@ -10,6 +10,8 @@ from urllib.parse import urlparse
 
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
+    debug = False  # Class variable to control debug logging
+
     def log_message(self, format, *args):
         # Override to prevent default logging
         return
@@ -26,6 +28,18 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def do_DELETE(self):
         self.copy_request_to_target()
 
+    def forward_response_headers(self, response):
+        hop_by_hop_headers = [
+            'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 
+            'te', 'trailers', 'transfer-encoding', 'upgrade'
+        ]
+
+        for key, value in response.getheaders():
+            if key.lower() not in hop_by_hop_headers:
+                self.send_header(key, value)
+
+        self.end_headers()
+
     def copy_request_to_target(self):
         target_url = self.server.target_url + self.path
         method = self.command
@@ -36,31 +50,23 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             length = int(headers['Content-Length'])
             data = self.rfile.read(length)
 
-        # Print request details
-        self.print_request_details(target_url, method, headers, data)
+        if ProxyHandler.debug:
+            self.print_request_details(target_url, method, headers, data)
 
         request = urllib.request.Request(target_url, data=data, headers=dict(headers), method=method)
-        
         try:
             with urllib.request.urlopen(request) as response:
                 self.send_response(response.status)
-
-                hop_by_hop_headers = ['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailers', 'transfer-encoding', 'upgrade']
-                for key, value in response.getheaders():
-                    if key.lower() in hop_by_hop_headers:
-                        continue
-
-                    self.send_header(key, value)
-
-                self.end_headers()
+                self.forward_response_headers(response)
                 response_data = ""
                 for line in response:
                     self.wfile.write(line)
                     self.wfile.flush()
                     response_data += line.decode("utf-8")
 
-                # Print response details
-                self.print_response_details(response, response_data)
+                if ProxyHandler.debug:
+                    self.print_response_details(response, response_data)
+
         except urllib.error.HTTPError as e:
             self.send_response(e.code)
             self.end_headers()
@@ -100,12 +106,29 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         print(f"-------------------\n")
 
 def main(args):
-    sys.path.append('./')
-    from ramalama.common import exec_cmd
+    parser = argparse.ArgumentParser(description="ramalama-serve-core")
+    parser.add_argument("--debug", action="store_true", help="display debug messages")
+    parser.add_argument("receiver", help="receiver to receive requests")
+    parser.add_argument("target", help="target to forward requests to")
 
-    exec_cmd(args)
+    args = parser.parse_args()
 
     return 0
+
+    parsed_receiver = urlparse(args.receiver)
+    receiver_host = parsed_receiver.hostname
+    receiver_port = parsed_receiver.port
+
+    class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        allow_reuse_address = True
+
+    with ThreadedTCPServer((receiver_host, receiver_port), ProxyHandler) as httpd:
+        httpd.target_url = args.target
+        if args.debug:
+            ProxyHandler.debug = True
+            print(f"Proxying from {args.receiver} to {args.target}")
+
+        httpd.serve_forever()
 
 
 if __name__ == "__main__":
