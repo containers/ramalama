@@ -85,7 +85,7 @@ def main(args):
         return 0
 
     client_args = build_args(args, "ramalama-client-core")
-    client_args += ['-c', parsed_args.context, '--temp', parsed_args.temp, "--kill-server", str(pid), "http://127.0.0.1:" + str(port)] + parsed_args.ARGS
+    client_args += ['--model', parsed_args.MODEL, '-c', parsed_args.context, '--temp', parsed_args.temp, "--kill-server", str(pid), "http://127.0.0.1:" + str(port)] + parsed_args.ARGS
     exec_cmd(client_args)
 
     return 0

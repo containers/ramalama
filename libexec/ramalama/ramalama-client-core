@@ -15,6 +15,7 @@ import urllib.request
 def construct_request_data(conversation_history):
     data = {
         "stream": True,
+        "model": "smollm:135m",
         "messages": conversation_history,
     }
 
@@ -124,9 +125,10 @@ def parse_arguments(args):
         choices=['never', 'always', 'auto'],
         help='possible values are "never", "always" and "auto".',
     )
+    parser.add_argument("--model", type=str, help="prefix for the user prompt")
     parser.add_argument("--prefix", type=str, default="> ", help="prefix for the user prompt")
     parser.add_argument(
-        "host", type=str, nargs="?", default="http://127.0.0.1:8080", help="the host to send requests to"
+        "host", type=str, nargs="?", default="http://127.0.0.1:11434", help="the host to send requests to"
     )
     parser.add_argument(
         "-c",
