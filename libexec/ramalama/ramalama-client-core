@@ -53,7 +53,7 @@ def res(response, color):
     return assistant_response
 
 
-def req(conversation_history, url, color):
+def req(conversation_history, url, parsed_args):
     data = construct_request_data(conversation_history)
     json_data = json.dumps(data).encode("utf-8")
     headers = {
@@ -65,10 +65,8 @@ def req(conversation_history, url, color):
 
     # Send request
     i = 0.01
+    response = None
     for c in itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']):
-        if i > 10:
-            break
-
         try:
             response = urllib.request.urlopen(request)
             break
@@ -76,11 +74,20 @@ def req(conversation_history, url, color):
             if sys.stdout.isatty():
                 print(f"\r{c}", end="", flush=True)
 
+            if i > 32:
+                break
+
             time.sleep(i)
             i *= 2
 
-    return res(response, color)
+    if response:
+        return res(response, parsed_args.color)
 
+    from ramalama.common import perror
+    perror(f"\rError: could not connect to: {url}")
+    do_kills(parsed_args)
+
+    return None
 
 class RamaLamaShell(cmd.Cmd):
     def __init__(self, parsed_args):
@@ -105,8 +112,12 @@ class RamaLamaShell(cmd.Cmd):
 
         self.conversation_history.append({"role": "user", "content": user_content})
         self.request_in_process = True
+        response = req(self.conversation_history, self.url, self.parsed_args)
+        if not response:
+            return True
+
         self.conversation_history.append(
-            {"role": "assistant", "content": req(self.conversation_history, self.url, self.parsed_args.color)}
+            {"role": "assistant", "content": response}
         )
         self.request_in_process = False
 
@@ -169,6 +180,8 @@ def run_shell_loop(ramalama_shell):
         break
 
 def main(args):
+    sys.path.append('./')
+
     parsed_args = parse_arguments(args)
     ramalama_shell = RamaLamaShell(parsed_args)
     if handle_args(parsed_args, ramalama_shell):
