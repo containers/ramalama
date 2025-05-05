@@ -115,6 +115,7 @@ def create_argument_parser(description):
 
 def configure_arguments(parser):
     """Configure the command-line arguments for the parser."""
+    verbosity_group = parser.add_mutually_exclusive_group()
     parser.add_argument(
         "--container",
         dest="container",
@@ -122,6 +123,11 @@ def configure_arguments(parser):
         action="store_true",
         help="""run RamaLama in the default container.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
+    )
+    verbosity_group.add_argument(
+        "--debug",
+        action="store_true",
+        help="display debug messages",
     )
     parser.add_argument(
         "--dryrun",
@@ -138,19 +144,19 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
 The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
     )
     parser.add_argument(
+        "--image",
+        default=accel_image(CONFIG, None),
+        help="OCI container image to run with the specified AI model",
+        action=OverrideDefaultAction,
+        completer=local_images,
+    )
+    parser.add_argument(
         "--keep-groups",
         dest="podman_keep_groups",
         default=CONFIG["keep_groups"],
         action="store_true",
         help="""pass `--group-add keep-groups` to podman, if using podman.
 Needed to access gpu on some systems, but has security implications.""",
-    )
-    parser.add_argument(
-        "--image",
-        default=accel_image(CONFIG, None),
-        help="OCI container image to run with the specified AI model",
-        action=OverrideDefaultAction,
-        completer=local_images,
     )
     parser.add_argument(
         "--nocontainer",
@@ -160,6 +166,7 @@ Needed to access gpu on some systems, but has security implications.""",
         help="""do not run RamaLama in the default container.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
+    verbosity_group.add_argument("--quiet", "-q", dest="quiet", action="store_true", help="reduce output.")
     parser.add_argument(
         "--runtime",
         default=CONFIG["runtime"],
@@ -177,13 +184,6 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         default=CONFIG["use_model_store"],
         action="store_true",
         help="use the model store feature",
-    )
-    verbosity_group = parser.add_mutually_exclusive_group()
-    verbosity_group.add_argument("--quiet", "-q", dest="quiet", action="store_true", help="reduce output.")
-    verbosity_group.add_argument(
-        "--debug",
-        action="store_true",
-        help="display debug messages",
     )
 
 
@@ -365,8 +365,7 @@ def add_network_argument(parser, dflt="none"):
 
 def bench_parser(subparsers):
     parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
-    bench_run_serve_perplexity_args(parser)
-    add_network_argument(parser)
+    runtime_options(parser, "bench")
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.set_defaults(func=bench_cli)
 
@@ -574,16 +573,6 @@ def convert_parser(subparsers):
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--type",
-        default="raw",
-        choices=["car", "raw"],
-        help="""\
-type of OCI Model Image to push.
-
-Model "car" includes base image with the model stored in a /models subdir.
-Model "raw" contains the model and a link file model.file to it stored at /.""",
-    )
-    parser.add_argument(
         "--gguf",
         choices=[
             "Q2_K",
@@ -602,6 +591,16 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         help="GGUF quantization format",
     )
     add_network_argument(parser)
+    parser.add_argument(
+        "--type",
+        default="raw",
+        choices=["car", "raw"],
+        help="""\
+type of OCI Model Image to push.
+
+Model "car" includes base image with the model stored in a /models subdir.
+Model "raw" contains the model and a link file model.file to it stored at /.""",
+    )
     parser.add_argument("SOURCE")  # positional argument
     parser.add_argument("TARGET")  # positional argument
     parser.set_defaults(func=convert_cli)
@@ -694,24 +693,139 @@ def push_cli(args):
             raise e
 
 
-def run_serve_perplexity_args(parser):
-    bench_run_serve_perplexity_args(parser)
+def runtime_options(parser, command):
+    parser.add_argument("--authfile", help="path of the authentication file")
+    if command in ["run", "perplexity", "serve"]:
+        parser.add_argument(
+            "-c",
+            "--ctx-size",
+            dest="context",
+            default=CONFIG['ctx_size'],
+            help="size of the prompt context (0 = loaded from model)",
+            completer=suppressCompleter,
+        )
+    if command == "serve":
+        parser.add_argument(
+            "-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode"
+        )
     parser.add_argument(
-        "-c",
-        "--ctx-size",
-        dest="context",
-        default=CONFIG['ctx_size'],
-        help="size of the prompt context (0 = loaded from model)",
-        completer=suppressCompleter,
+        "--device", dest="device", action='append', type=str, help="device to leak in to the running container"
     )
     parser.add_argument(
-        "--runtime-args",
-        dest="runtime_args",
-        default="",
+        "--env",
+        dest="env",
+        action='append',
         type=str,
-        help="arguments to add to runtime invocation",
+        default=CONFIG["env"],
+        help="environment variables to add to the running container",
+        completer=local_env,
+    )
+    if command == "serve":
+        parser.add_argument(
+            "--generate",
+            choices=["quadlet", "kube", "quadlet/kube"],
+            help="generate specified configuration format for running the AI Model as a service",
+        )
+        parser.add_argument(
+            "--host",
+            default=CONFIG['host'],
+            help="IP address to listen",
+            completer=suppressCompleter,
+        )
+    if command == "run":
+        parser.add_argument(
+            "--keepalive", type=str, help="duration to keep a model loaded (e.g. 5m)", completer=suppressCompleter
+        )
+    if command == "serve":
+        parser.add_argument("--model-draft", help="Draft model", completer=local_models)
+
+    parser.add_argument(
+        "-n",
+        "--name",
+        dest="name",
+        help="name of container in which the Model will be run",
         completer=suppressCompleter,
     )
+    if command == "serve":
+        add_network_argument(parser, dflt=None)
+    else:
+        add_network_argument(parser)
+
+    parser.add_argument(
+        "--ngl",
+        dest="ngl",
+        type=int,
+        default=CONFIG["ngl"],
+        help="number of layers to offload to the gpu, if available",
+        completer=suppressCompleter,
+    )
+    parser.add_argument(
+        "--oci-runtime",
+        help="override the default OCI runtime used to launch the container",
+        completer=suppressCompleter,
+    )
+    if command == "serve":
+        parser.add_argument(
+            "-p",
+            "--port",
+            default=CONFIG['port'],
+            help="port for AI Model server to listen on",
+            completer=suppressCompleter,
+        )
+    parser.add_argument(
+        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
+    )
+    parser.add_argument(
+        "--pull",
+        dest="pull",
+        type=str,
+        default=CONFIG['pull'],
+        choices=["always", "missing", "never", "newer"],
+        help='pull image policy',
+    )
+    if command in ["run", "serve"]:
+        parser.add_argument(
+            "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
+        )
+    if command in ["perplexity", "run", "serve"]:
+        parser.add_argument(
+            "--runtime-args",
+            dest="runtime_args",
+            default="",
+            type=str,
+            help="arguments to add to runtime invocation",
+            completer=suppressCompleter,
+        )
+    parser.add_argument("--seed", help="override random seed", completer=suppressCompleter)
+    parser.add_argument(
+        "--temp",
+        default=CONFIG['temp'],
+        help="temperature of the response from the AI model",
+        completer=suppressCompleter,
+    )
+    def_threads = default_threads()
+    parser.add_argument(
+        "-t",
+        "--threads",
+        type=int,
+        default=def_threads,
+        help=f"number of cpu threads to use, the default is {def_threads} on this system, -1 means use this default",
+        completer=suppressCompleter,
+    )
+    parser.add_argument(
+        "--tls-verify",
+        dest="tlsverify",
+        default=True,
+        help="require HTTPS and verify certificates when contacting registries",
+    )
+    if command == "serve":
+        parser.add_argument(
+            "--webui",
+            dest="webui",
+            choices=["on", "off"],
+            default="on",
+            help="enable or disable the web UI (default: on)",
+        )
 
 
 def default_threads():
@@ -725,89 +839,9 @@ def default_threads():
     return CONFIG["threads"]
 
 
-def add_exec_arguments(parser):
-    parser.add_argument(
-        "--ngl",
-        dest="ngl",
-        type=int,
-        default=CONFIG["ngl"],
-        help="number of layers to offload to the gpu, if available",
-        completer=suppressCompleter,
-    )
-    def_threads = default_threads()
-    parser.add_argument(
-        "-t",
-        "--threads",
-        type=int,
-        default=def_threads,
-        help=f"number of cpu threads to use, the default is {def_threads} on this system, -1 means use this default",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--temp",
-        default=CONFIG['temp'],
-        help="temperature of the response from the AI model",
-        completer=suppressCompleter,
-    )
-
-
-def bench_run_serve_perplexity_args(parser):
-    add_exec_arguments(parser)
-    parser.add_argument("--authfile", help="path of the authentication file")
-    parser.add_argument(
-        "--env",
-        dest="env",
-        action='append',
-        type=str,
-        default=CONFIG["env"],
-        help="environment variables to add to the running container",
-        completer=local_env,
-    )
-    parser.add_argument(
-        "--device", dest="device", action='append', type=str, help="device to leak in to the running container"
-    )
-    parser.add_argument(
-        "-n",
-        "--name",
-        dest="name",
-        help="name of container in which the Model will be run",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--oci-runtime",
-        help="override the default OCI runtime used to launch the container",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
-    )
-    parser.add_argument(
-        "--pull",
-        dest="pull",
-        type=str,
-        default=CONFIG['pull'],
-        choices=["always", "missing", "never", "newer"],
-        help='pull image policy',
-    )
-    parser.add_argument("--seed", help="override random seed", completer=suppressCompleter)
-    parser.add_argument(
-        "--tls-verify",
-        dest="tlsverify",
-        default=True,
-        help="require HTTPS and verify certificates when contacting registries",
-    )
-
-
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
-    run_serve_perplexity_args(parser)
-    add_network_argument(parser)
-    parser.add_argument(
-        "--keepalive", type=str, help="duration to keep a model loaded (e.g. 5m)", completer=suppressCompleter
-    )
-    parser.add_argument(
-        "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
-    )
+    runtime_options(parser, "run")
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.add_argument(
         "ARGS",
@@ -843,39 +877,7 @@ def run_cli(args):
 
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
-    run_serve_perplexity_args(parser)
-    add_network_argument(parser, dflt=None)
-    parser.add_argument("-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode")
-    parser.add_argument(
-        "--host",
-        default=CONFIG['host'],
-        help="IP address to listen",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--webui",
-        dest="webui",
-        choices=["on", "off"],
-        default="on",
-        help="enable or disable the web UI (default: on)",
-    )
-    parser.add_argument(
-        "--generate",
-        choices=["quadlet", "kube", "quadlet/kube"],
-        help="generate specified configuration format for running the AI Model as a service",
-    )
-    parser.add_argument(
-        "-p",
-        "--port",
-        default=CONFIG['port'],
-        help="port for AI Model server to listen on",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
-    )
-    parser.add_argument("--model-draft", help="Draft model", completer=local_models)
-
+    runtime_options(parser, "serve")
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.set_defaults(func=serve_cli)
 
@@ -1050,8 +1052,7 @@ def client_cli(args):
 
 def perplexity_parser(subparsers):
     parser = subparsers.add_parser("perplexity", help="calculate perplexity for specified AI Model")
-    run_serve_perplexity_args(parser)
-    add_network_argument(parser)
+    runtime_options(parser, "perplexity")
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.set_defaults(func=perplexity_cli)
 
@@ -1063,9 +1064,9 @@ def perplexity_cli(args):
 
 def inspect_parser(subparsers):
     parser = subparsers.add_parser("inspect", help="inspect an AI Model")
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.add_argument("--all", dest="all", action="store_true", help="display all available information of AI Model")
     parser.add_argument("--json", dest="json", action="store_true", help="display AI Model information in JSON format")
+    parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.set_defaults(func=inspect_cli)
 
 
