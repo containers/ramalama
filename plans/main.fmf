@@ -1,6 +1,31 @@
-summary: Check installed rpm metadata
 discover:
-    how: shell
+    how: fmf
 execute:
     how: tmt
-    script: rpm -qi python3-ramalama
+
+provision:
+    how: artemis
+    hardware:
+        gpu:
+            device-name: GK210 (Tesla K80)
+            vendor-name: NVIDIA
+
+/validate:
+    summary: Validate tests
+    discover+:
+        filter: 'tag:validate'
+
+/unit:
+    summary: Unit tests
+    discover+:
+        filter: 'tag:unit'
+
+/bats-docker:
+    summary: System tests in container
+    discover+:
+        filter: 'tag:container'
+
+/bats-nocontainer:
+    summary: System tests run on host
+    discover+:
+        filter: 'tag:nocontainer'
