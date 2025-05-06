@@ -1030,8 +1030,11 @@ def rm_cli(args):
     if len(args.MODEL) > 0:
         raise IndexError("can not specify --all as well MODEL")
 
-    models = [k['name'] for k in _list_models(args)]
-    return _rm_model(models, args)
+    models = GlobalModelStore(args.store).list_models(
+        engine=args.engine, debug=args.debug, show_container=args.container
+    )
+
+    return _rm_model([model for model in models.keys()], args)
 
 
 def New(model, args, transport=CONFIG["transport"]):

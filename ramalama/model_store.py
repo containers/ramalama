@@ -167,6 +167,7 @@ class ModelFile:
     name: str
     modified: float
     size: int
+    is_partial: bool
 
 
 DIRECTORY_NAME_BLOBS = "blobs"
@@ -212,6 +213,7 @@ class GlobalModelStore:
 
                     collected_files = []
                     for snapshot_file in ref_file.filenames:
+                        is_partially_downloaded = False
                         snapshot_file_path = os.path.join(root, DIRECTORY_NAME_SNAPSHOTS, ref_file.hash, snapshot_file)
                         if not os.path.exists(snapshot_file_path):
                             blobs_partial_file_path = os.path.join(
@@ -223,11 +225,13 @@ class GlobalModelStore:
 
                             # append indication for partial downloaded model
                             if not model_name.endswith("(partial)"):
-                                model_name += " (partial)"
+                                is_partially_downloaded = True
 
                         last_modified = os.path.getmtime(snapshot_file_path)
                         file_size = os.path.getsize(snapshot_file_path)
-                        collected_files.append(ModelFile(snapshot_file, last_modified, file_size))
+                        collected_files.append(
+                            ModelFile(snapshot_file, last_modified, file_size, is_partially_downloaded)
+                        )
                     models[model_name] = collected_files
 
         if show_container:
@@ -243,7 +247,7 @@ class GlobalModelStore:
                 name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
                 # ramalama.oci.list_models provides modified as timestamp string, convert it to unix timestamp
                 modified_unix = datetime.fromisoformat(modified).timestamp()
-                models[name] = [ModelFile(name, modified_unix, size)]
+                models[name] = [ModelFile(name, modified_unix, size, is_partial=False)]
 
         return models
 
