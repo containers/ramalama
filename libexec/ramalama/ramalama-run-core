@@ -65,22 +65,8 @@ def main(args):
     pid = os.fork()
     if pid == 0:
         signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
-        with open(os.devnull, 'w') as devnull:
-            os.dup2(devnull.fileno(), sys.stderr.fileno())
-
-        args = Namespace(
-            container=False, dryrun=False, engine=None, podman_keep_groups=False,
-            image=None, runtime='llama.cpp',
-            store=os.path.expanduser("~/.local/share/ramalama"), use_model_store=False,
-            quiet=False, debug=False, subcommand='serve', ngl=parsed_args.ngl, threads=parsed_args.threads,
-            temp=parsed_args.temp, authfile=None, env=[], device=None, name=None,
-            oci_runtime=None, privileged=False, pull='newer', seed=None,
-            tlsverify=True, context=parsed_args.context, runtime_args=[], network=None,
-            detach=False, host='127.0.0.1', webui='on', generate=None, port=str(port),
-            rag=None, MODEL=parsed_args.MODEL, func=lambda: None,
-            UNRESOLVED_MODEL=parsed_args.MODEL
-        )
-        serve_cli(args)
+        # at this point we are already in a container so, --nocontainer always makes sense
+        exec_cmd(["ramalama", "--nocontainer", "serve", "--threads", str(parsed_args.threads), "--temp", parsed_args.temp, "--port", str(port), parsed_args.MODEL], stdout2null=True, stderr2null=True)
 
         return 0
 

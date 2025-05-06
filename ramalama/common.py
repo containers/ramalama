@@ -133,9 +133,13 @@ def quoted(arr):
     return " ".join(['"' + element + '"' if ' ' in element else element for element in arr])
 
 
-def exec_cmd(args, debug=False, stderr2null=False):
+def exec_cmd(args, debug=False, stdout2null=False, stderr2null=False):
     if debug:
         perror("exec_cmd: ", quoted(args))
+
+    if stdout2null:
+        with open(os.devnull, 'w') as devnull:
+            os.dup2(devnull.fileno(), sys.stdout.fileno())
 
     if stderr2null:
         with open(os.devnull, 'w') as devnull:
