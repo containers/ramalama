@@ -49,12 +49,7 @@ class ModelFactory:
             return Ollama, self.create_ollama
         if self.model.startswith("oci://") or self.model.startswith("docker://"):
             return OCI, self.create_oci
-        if (
-            self.model.startswith("http://")
-            or self.model.startswith("https://")
-            or self.model.startswith("file://")
-            or self.model.startswith("url://")
-        ):
+        if self.model.startswith("http://") or self.model.startswith("https://") or self.model.startswith("file://"):
             return URL, self.create_url
 
         if self.transport == "huggingface":
@@ -88,7 +83,7 @@ class ModelFactory:
     def set_optional_model_store(self, model: Union[Huggingface, Ollama, OCI, URL]):
         if self.use_model_store:
             name, _, orga = model.extract_model_identifiers()
-            model.store = ModelStore(GlobalModelStore(self.store_path), name, type(model).__name__.lower(), orga)
+            model.store = ModelStore(GlobalModelStore(self.store_path), name, model.model_type, orga)
 
     def create_huggingface(self) -> Huggingface:
         model = Huggingface(self.pruned_model)

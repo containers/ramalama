@@ -140,7 +140,8 @@ load setup_suite
       file_url=file://${model}
       run_ramalama pull $file_url
       run_ramalama list
-      expected_url=$(sed "s/file\:\//url\:/" <<< $file_url):latest
+      # remove the additional slash character
+      expected_url=$(sed "s/file\:\//file\:/" <<< $file_url):latest
       is "$output" ".*$expected_url" "URL exists"
       run_ramalama rm $file_url
       run_ramalama list
@@ -149,7 +150,7 @@ load setup_suite
       https_url=https://github.com/containers/ramalama/blob/main/README.md
       run_ramalama pull $https_url
       run_ramalama list
-      expected_url=$(sed "s/https\:/url\:/" <<< $https_url):main
+      expected_url="${https_url}":main
       expected_url="$(sed "s/blob\/main\///" <<< $expected_url)"
       is "$output" ".*$expected_url" "URL exists"
       run_ramalama rm $https_url
@@ -161,7 +162,8 @@ load setup_suite
       model=$RAMALAMA_TMPDIR/mymodel.gguf
       touch $model
       url=file://${model}
-      expected_url=$(sed "s/file\:\//url\:/" <<< $url):latest
+      # remove the additional slash character
+      expected_url=$(sed "s/file\:\//file\:/" <<< $url):latest
 
       run_ramalama pull $url
       run_ramalama list
