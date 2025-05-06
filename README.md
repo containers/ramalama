@@ -143,7 +143,7 @@ How to change transports.
 </summary>
 <br>
 
-Use the RAMALAMA_TRANSPORTS environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
+Use the RAMALAMA_TRANSPORT environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
 Individual model transports can be modified when specifying a model via the `huggingface://`, `oci://`, or `ollama://` prefix.
 
