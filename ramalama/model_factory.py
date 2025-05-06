@@ -49,7 +49,12 @@ class ModelFactory:
             return Ollama, self.create_ollama
         if self.model.startswith("oci://") or self.model.startswith("docker://"):
             return OCI, self.create_oci
-        if self.model.startswith("http://") or self.model.startswith("https://") or self.model.startswith("file://"):
+        if (
+            self.model.startswith("http://")
+            or self.model.startswith("https://")
+            or self.model.startswith("file://")
+            or self.model.startswith("url://")
+        ):
             return URL, self.create_url
 
         if self.transport == "huggingface":
