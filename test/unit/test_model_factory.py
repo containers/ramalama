@@ -64,6 +64,7 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
             None,
         ),
         (Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""), URL, None),
+        (Input("url:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""), URL, None),
         (Input("granite-code", False, "huggingface", ""), Huggingface, None),
         (Input("granite-code", False, "ollama", ""), Ollama, None),
         (Input("granite-code", False, "oci", ""), OCI, None),
@@ -145,6 +146,10 @@ def test_validate_oci_model_input(input: Input, error):
         ),
         (
             Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""),
+            "/tmp/models/granite-3b-code-base.Q4_K_M.gguf",
+        ),
+        (
+            Input("url:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""),
             "/tmp/models/granite-3b-code-base.Q4_K_M.gguf",
         ),
         (Input("granite-code", False, "huggingface", ""), "granite-code"),
