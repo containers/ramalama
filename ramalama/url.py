@@ -41,6 +41,10 @@ class URL(Model):
     def __init__(self, model, scheme):
         super().__init__(model)
 
+        # Use the URL scheme as model type so we can distinguish
+        # between the various types such as http, https and file
+        self._model_type = scheme
+
         self.type = scheme
         split = self.model.rsplit("/", 1)
         self.directory = split[0].removeprefix("/") if len(split) > 1 else ""

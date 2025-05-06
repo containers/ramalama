@@ -64,7 +64,6 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
             None,
         ),
         (Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""), URL, None),
-        (Input("url:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""), URL, None),
         (Input("granite-code", False, "huggingface", ""), Huggingface, None),
         (Input("granite-code", False, "ollama", ""), Ollama, None),
         (Input("granite-code", False, "oci", ""), OCI, None),
@@ -148,10 +147,6 @@ def test_validate_oci_model_input(input: Input, error):
             Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""),
             "/tmp/models/granite-3b-code-base.Q4_K_M.gguf",
         ),
-        (
-            Input("url:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""),
-            "/tmp/models/granite-3b-code-base.Q4_K_M.gguf",
-        ),
         (Input("granite-code", False, "huggingface", ""), "granite-code"),
         (Input("granite-code", False, "ollama", ""), "granite-code"),
         (Input("granite-code", False, "oci", ""), "granite-code"),
@@ -161,3 +156,23 @@ def test_prune_model_input(input: Input, expected: str):
     args = ARGS(input.UseModelStore, input.Engine)
     pruned_model_input = ModelFactory(input.Model, args, input.Transport).prune_model_input()
     assert pruned_model_input == expected
+
+
+@pytest.mark.parametrize(
+    "model_input,expected_type",
+    [
+        ("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", "file"),
+        (f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf", "https"),
+        (
+            "http://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob/main/granite-3b-code-base.Q4_K_M.gguf",
+            "http",
+        ),
+        ("hf://granite-code", "huggingface"),
+        ("ollama://granite-code", "ollama"),
+        ("oci://granite-code", "oci"),
+    ],
+)
+def test_set_optional_model_store(model_input: str, expected_type: str):
+    model = ModelFactory(model_input, args=ARGS(True, "podman")).create()
+    assert expected_type == model.model_type
+    assert expected_type == model.store.model_type
