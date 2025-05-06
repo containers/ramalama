@@ -69,8 +69,9 @@ Generate specified configuration format for running the AI Model as a service
 
 | Key          | Description                                                              |
 | ------------ | -------------------------------------------------------------------------|
-| quadlet      | Podman supported container definition for running AI Model under systemd |
+| kserve       | KServe YAML definition for running the AI Model as a KServe service in Kubernetes        |
 | kube         | Kubernetes YAML definition for running the AI Model as a service         |
+| quadlet      | Podman supported container definition for running AI Model under systemd |
 | quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
 
 #### **--help**, **-h**
@@ -112,7 +113,7 @@ On Nvidia based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
 
 #### **--port**, **-p**
-port for AI Model server to listen on. It must be available. If not specified, 
+port for AI Model server to listen on. It must be available. If not specified,
 the serving port will be 8080 if available, otherwise a free port in 8081-8090 range.
 
 #### **--privileged**
@@ -159,7 +160,7 @@ llama.cpp explains this as:
 
     The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
-        Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+	Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.
@@ -185,6 +186,64 @@ $ podman ps
 CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS         PORTS                   NAMES
 09b0e0d26ed2  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  32 seconds ago  Up 32 seconds  0.0.0.0:8081->8081/tcp  ramalama_sTLNkijNNP
 3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8082->8082/tcp  ramalama_YMPQvJxN97
+```
+
+### Generate kserve service off of OCI Model car quay.io/ramalama/granite:1.0
+```
+$ ramalama serve --pull=never --threads 10 --port 8081 --generate kserve oci://quay.io/rhatdan/granite
+Generating kserve runtime file: granite-cuda-kserve-runtime.yaml
+Generating kserve file: granite-cuda-kserve.yaml
+
+$  cat granite-cuda-kserve-runtime.yaml
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: llama.cpp-cuda-runtime
+  annotations:
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+  labels:
+    opendatahub.io/dashboard: 'true'
+spec:
+  annotations:
+    prometheus.io/port: '8081'
+    prometheus.io/path: '/metrics'
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: vLLM
+  containers:
+    - name: kserve-container
+      image: quay.io/ramalama/cuda:0.8
+      command: ["python", "-m", "vllm.entrypoints.openai.api_server"]
+      args: ["--port=8081", "--model=/mnt/models", "--served-model-name=granite"]
+      env:
+        - name: HF_HOME
+          value: /tmp/hf_home
+      ports:
+        - containerPort: 8081
+          protocol: TCP
+
+$  cat granite-cuda-kserve.yaml
+# RamaLama granite AI Model Service
+# kubectl create -f to import this kserve file into Kubernetes.
+#
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: huggingface-granite
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: vLLM
+      storageUri: "oci://quay.io/rhatdan/granite"
+      resources:
+        limits:
+          cpu: "10"
+          memory: 24Gi
+        requests:
+          cpu: "10"
+          memory: 24Gi
 ```
 
 ### Generate quadlet service off of HuggingFace granite Model
