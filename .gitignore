@@ -15,3 +15,6 @@ venv/
 *.volume
 __pycache__/
 .aider*
+.coverage
+coverage.json
+htmlcov/
