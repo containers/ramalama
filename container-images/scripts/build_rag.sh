@@ -14,7 +14,7 @@ $2"
     [ "$string" != "$(sort --version-sort <<< "$string")" ]
 }
 
-packages="git gcc gcc-c++"
+packages="git-core gcc gcc-c++"
 if [ "${GPU}" = "cuda" ]; then
     packages+=" libcudnn9-devel-cuda-12 libcusparselt0 cuda-cupti-12\*"
 fi

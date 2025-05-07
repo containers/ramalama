@@ -32,7 +32,7 @@ dnf_install_cuda() {
 
 dnf_install_cann() {
   # just for openeuler build environment, does not need to push to ollama github
-  dnf install -y git \
+  dnf install -y git-core \
       gcc \
       gcc-c++ \
       make \
@@ -118,7 +118,7 @@ dnf_install_ffmpeg() {
 dnf_install() {
   local rpm_list=("python3" "python3-pip" \
                   "python3-argcomplete" "python3-dnf-plugin-versionlock" \
-                  "python3-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git" \
+                  "python3-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core" \
                   "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
