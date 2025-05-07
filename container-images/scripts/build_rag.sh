@@ -35,18 +35,18 @@ update_python() {
 }
 
 docling() {
-    ${PYTHON_VERSION} pip install wheel qdrant_client fastembed docling docling-core accelerate --extra-index-url https://download.pytorch.org/whl/"$1"
+    ${PYTHON_VERSION} pip install --prefix=/usr docling docling-core accelerate --extra-index-url https://download.pytorch.org/whl/"$1"
     # Preloads models (assumes its installed from container_build.sh)
     doc2rag load
 }
 
 rag() {
-    ${PYTHON_VERSION} pip install wheel qdrant_client fastembed openai fastapi uvicorn
+    ${PYTHON_VERSION} pip install --prefix=/usr wheel qdrant_client fastembed openai fastapi uvicorn
     rag_framework load
 }
 
 to_gguf() {
-    ${PYTHON_VERSION} pip install "numpy~=1.26.4" "sentencepiece~=0.2.0" "transformers>=4.45.1,<5.0.0" git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py "protobuf>=4.21.0,<5.0.0"
+    ${PYTHON_VERSION} pip install --prefix=/usr "numpy~=1.26.4" "sentencepiece~=0.2.0" "transformers>=4.45.1,<5.0.0" git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py "protobuf>=4.21.0,<5.0.0"
 }
 
 update_python
