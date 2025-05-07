@@ -124,6 +124,19 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    sudo setsebool -P container_use_devices 1
    ```
 
+### CUDA_VISIBLE_DEVICES
+
+RamaLama respects the `CUDA_VISIBLE_DEVICES` environment variable if it's already set in your environment. If not set, RamaLama will default to using GPU device "0".
+
+You can specify which GPU devices should be visible to RamaLama by setting this variable before running RamaLama commands:
+
+```bash
+export CUDA_VISIBLE_DEVICES="0,1"  # Use GPUs 0 and 1
+ramalama run granite
+```
+
+This is particularly useful in multi-GPU systems where you want to dedicate specific GPUs to different workloads.
+
 ## Troubleshooting
 
 ### CUDA Updates

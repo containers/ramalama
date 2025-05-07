@@ -391,7 +391,9 @@ def check_nvidia():
 
         # ensure at least one CDI device resolves
         if resolve_cdi(['/etc/cdi', '/var/run/cdi']):
-            os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+            if "CUDA_VISIBLE_DEVICES" not in os.environ:
+                os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
             _nvidia = "cuda"
             return _nvidia
 
