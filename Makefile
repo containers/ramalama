@@ -38,6 +38,19 @@ help:
 	@echo "  - make clean"
 	@echo
 
+.PHONY: install-detailed-cov-requirements
+install-detailed-cov-requirements:
+	pip install \
+		pytest-cov \
+		pytest-func-cov \
+		pytest-report \
+		pytest-json \
+		pytest-html
+
+
+.PHONY: install-cov-requirements
+install-cov-requirements:
+	pip install pytest-cov
 
 .PHONY: install-requirements
 install-requirements:
@@ -168,6 +181,17 @@ ci:
 .PHONY: unit-tests
 unit-tests:
 	PYTHONPATH=. pytest test/unit/
+
+.PHONY: cov-tests
+cov-tests: install-cov-requirements
+	PYTHONPATH=. coverage run -m pytest test/unit/
+	PYTHONPATH=. coverage report -m
+
+.PHONY: detailed-cov-tests
+detailed-cov-tests: install-detailed-cov-requirements cov-tests
+	PYTHONPATH=. coverage html
+	PYTHONPATH=. coverage json
+
 
 .PHONY: end-to-end-tests
 end-to-end-tests: validate bats bats-nocontainer ci
