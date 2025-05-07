@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 from urllib.parse import urlparse
 
-from ramalama.common import accel_image, download_file, get_accel_env_vars, run_cmd, set_accel_env_vars
+from ramalama.common import accel_image, get_accel_env_vars, run_cmd, set_accel_env_vars
 from ramalama.config import CONFIG
 from ramalama.engine import Engine
 
@@ -12,6 +12,7 @@ from ramalama.engine import Engine
 class Rag:
     model = ""
     target = ""
+    urls = []
 
     def __init__(self, target):
         if not target.islower():
@@ -34,20 +35,21 @@ COPY {src} /vector.db
             c.write(cfile)
         if args.debug:
             print(f"\nContainerfile: {containerfile.name}\n{cfile}")
+        exec_args = [
+            args.engine,
+            "build",
+            "--no-cache",
+            "--network=none",
+            "-q",
+            "-t",
+            target,
+            "-f",
+            containerfile.name,
+            contextdir,
+        ]
         imageid = (
             run_cmd(
-                [
-                    args.engine,
-                    "build",
-                    "--no-cache",
-                    "--network=none",
-                    "-q",
-                    "-t",
-                    target,
-                    "-f",
-                    containerfile.name,
-                    contextdir,
-                ],
+                exec_args,
                 debug=args.debug,
             )
             .stdout.decode("utf-8")
@@ -55,23 +57,17 @@ COPY {src} /vector.db
         )
         return imageid
 
-    def _handle_docs_path(self, path, docs_path):
-        """Adds a volume mount if path exists, otherwise downloads from URL."""
-        if os.path.exists(path):
-            fpath = os.path.realpath(path)
-            self.engine.add(["-v", f"{fpath}:/docs/{fpath}:ro,z"])
-            return False
-        try:
-            parsed = urlparse(path)
-            if parsed.scheme == "" or parsed.path == "":
+    def _handle_paths(self, path):
+        """Adds a volume mount if path exists, otherwise add URL."""
+        parsed = urlparse(path)
+        if parsed.scheme in ["file", ""] and parsed.netloc == "":
+            if os.path.exists(parsed.path):
+                fpath = os.path.realpath(parsed.path)
+                self.engine.add(["-v", f"{fpath}:/docs/{fpath}:ro,z"])
+            else:
                 raise ValueError(f"{path} does not exist")
-            dpath = docs_path + parsed.path
-            os.makedirs(os.path.dirname(dpath), exist_ok=True)
-            download_file(path, dpath)
-            return True  # docsdb was used
-        except RuntimeError as e:
-            shutil.rmtree(docs_path, ignore_errors=True)
-            raise e
+            return
+        self.urls.append(path)
 
     def generate(self, args):
         args.nocapdrop = True
@@ -91,15 +87,8 @@ COPY {src} /vector.db
         if not os.access(tmpdir, os.W_OK):
             tmpdir = "/tmp"
 
-        docsdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_docs_')
-        docsdb_used = False
-
         for path in args.PATH:
-            if self._handle_docs_path(path, docsdb.name):
-                docsdb_used = True
-
-        if docsdb_used:
-            self.engine.add(["-v", f"{docsdb.name}:/docs/{docsdb.name}:ro,Z"])
+            self._handle_paths(path)
 
         ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_')
         dbdir = os.path.join(ragdb.name, "vectordb")
@@ -118,6 +107,11 @@ COPY {src} /vector.db
 
         self.engine.add([args.image])
         self.engine.add(["doc2rag", "/output", "/docs/"])
+        if len(self.urls) > 0:
+            self.engine.add(self.urls)
+        if args.dryrun:
+            self.engine.dryrun()
+            return
         try:
             self.engine.run()
             print(self.build(dbdir, self.target, args))
@@ -125,4 +119,3 @@ COPY {src} /vector.db
             raise e
         finally:
             shutil.rmtree(ragdb.name, ignore_errors=True)
-            shutil.rmtree(docsdb.name, ignore_errors=True)

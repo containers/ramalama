@@ -3,6 +3,29 @@
 load helpers
 
 # bats test_tags=distro-integration
+
+@test "ramalama dryrun" {
+    skip_if_nocontainer
+    HTTPS_FILE=https://github.com/containers/ramalama/blob/main/README.md
+    run_ramalama --dryrun rag $HTTPS_FILE quay.io/ramalama/myrag:1.2
+    is "$output" ".*doc2rag /output /docs/ $HTTPS_FILE" "Expected to see https command"
+    assert "$output" !~ ".*--network none" "Expected to not use network"
+
+    FILE=README.md
+    run_ramalama --dryrun rag $FILE quay.io/ramalama/myrag:1.2
+    is "$output" ".*-v ${PWD}/$FILE:/docs/$PWD/$FILE" "Expected to see file volume mounted in"
+    is "$output" ".*doc2rag /output /docs/" "Expected to doc2rag command"
+    is "$output" ".*--pull missing" "only pull if missing"
+
+    FILE_URL=file://${PWD}/README.md
+    run_ramalama --dryrun rag $FILE_URL quay.io/ramalama/myrag:1.2
+    is "$output" ".*-v ${PWD}/$FILE:/docs/$PWD/$FILE" "Expected to see file volume mounted in"
+
+    FILE=BOGUS
+    run_ramalama 22 --dryrun rag $FILE quay.io/ramalama/myrag:1.2
+    is "$output" "Error: BOGUS does not exist" "Throw error when file does not exist"
+}
+
 @test "ramalama rag" {
     skip_if_nocontainer
     run_ramalama 22 -q rag bogus quay.io/ramalama/myrag:1.2
