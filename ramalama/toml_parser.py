@@ -19,6 +19,8 @@ class TOMLParser:
                 key, value = line.split("=", 1)
                 key = key.strip()
                 value = self._parse_value(value.strip())
+                if key in current_section:
+                    raise ValueError(f"Duplicate key found: {key}")
                 current_section[key] = value
             else:
                 raise ValueError(f"Invalid TOML line: {line}")
