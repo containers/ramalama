@@ -44,14 +44,18 @@ def test_toml_parser_basic_parse(toml, expected):
             """
             [store]
             processes = 1
+            float_value = 1.0
             use_engine = True
             image = "my_image"
+            numbers = [1, 2, 3]
             """,
             {
                 "store": {
                     "processes": 1,
+                    "float_value": 1.0,
                     "use_engine": True,
                     "image": "my_image",
+                    "numbers": [1, 2, 3],
                 },
             },
         ),
@@ -143,12 +147,12 @@ def test_toml_parser_wrong_parse(toml_error_string):
     [
         (
             """
-        [store]
-        container = "container_value"
-        engine = "engine_value"
-        image = "image_value"
-        transport = "transport_value"
-        """,
+            [store]
+            container = "container_value"
+            engine = "engine_value"
+            image = "image_value"
+            transport = "transport_value"
+            """,
             {
                 "store": {
                     "container": "container_value",
