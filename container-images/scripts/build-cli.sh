@@ -8,13 +8,13 @@ dnf_remove() {
   dnf remove -y \
       python3-devel \
       python3-pip \
-      git 
+      git-core
   dnf -y clean all
 }
 
 dnf_install() {
   local rpm_list=("podman-remote" "python3" "python3-pip" \
-		  "python3-argcomplete" "python3-devel" "git" \
+		  "python3-argcomplete" "python3-devel" "git-core" \
 		  "vim" "procps-ng" \
                   )
   dnf install -y "${rpm_list[@]}"
