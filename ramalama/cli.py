@@ -1046,7 +1046,7 @@ def New(model, args, transport=CONFIG["transport"]):
 def client_cli(args):
     """Handle client command execution"""
     client_args = ["ramalama-client-core", "-c", "2048", "--temp", "0.8", args.HOST] + args.ARGS
-    client_args[0] = get_cmd_with_wrapper(client_args)
+    client_args[0] = get_cmd_with_wrapper(client_args[0])
     exec_cmd(client_args)
 
 
