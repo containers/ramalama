@@ -1425,7 +1425,7 @@ shotgun_install_dir_to_path() {
             fi
         done
 
-        # Fall through to previous "create + write to first file in list" behavior
+        # Fall through to previous "create + write to first file in list" behaviour
 	    if [ "$_found" = false ]; then
             add_install_dir_to_path "$_install_dir_expr" "$_env_script_path" "$_env_script_path_expr" "$_rcfiles" "$_shell"
         fi
