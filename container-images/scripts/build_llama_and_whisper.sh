@@ -1,5 +1,19 @@
 #!/bin/bash
 
+python_version() {
+  pyversion=$(python3 --version)
+  # $2 is empty when no Python is installed, so just install python3
+  if [ -n "$pyversion" ]; then
+      string="$pyversion
+Python 3.11"
+      if [ "$string" == "$(sort --version-sort <<< "$string")" ]; then
+	  echo "python3.11"
+	  return
+      fi
+  fi
+  echo "python3"
+}
+
 available() {
   command -v "$1" >/dev/null
 }
@@ -116,9 +130,9 @@ dnf_install_ffmpeg() {
 }
 
 dnf_install() {
-  local rpm_list=("python3" "python3-pip" \
+  local rpm_list=("${PYTHON}" "${PYTHON}-pip" \
                   "python3-argcomplete" "python3-dnf-plugin-versionlock" \
-                  "python3-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core" \
+                  "${PYTHON}-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core" \
                   "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
@@ -128,7 +142,9 @@ dnf_install() {
   else
     dnf install -y "${rpm_list[@]}"
   fi
-
+  if [[ "${PYTHON}" == "python3.11" ]]; then
+    ln -sf /usr/bin/python3.11 /usr/bin/python3
+  fi
   if [ "$containerfile" = "ramalama" ]; then
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
       dnf_install_mesa # on x86_64 and aarch64 we use vulkan via mesa 
@@ -256,7 +272,7 @@ install_ramalama() {
   # link podman-remote to podman for use by RamaLama
   ln -sf /usr/bin/podman-remote /usr/bin/podman
   if [ -e "/run/ramalama" ]; then
-    python3 -m pip install /run/ramalama --prefix="$1"
+    $PYTHON -m pip install /run/ramalama --prefix="$1"
   fi
 }
 
@@ -265,6 +281,8 @@ main() {
   source /etc/os-release
 
   set -ex -o pipefail
+  export PYTHON
+  PYTHON=$(python_version)
 
   local containerfile=${1-""}
   local install_prefix
