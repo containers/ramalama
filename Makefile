@@ -182,15 +182,21 @@ ci:
 unit-tests:
 	PYTHONPATH=. pytest test/unit/
 
-.PHONY: cov-tests
-cov-tests: install-cov-requirements
+.PHONY: cov-run
+cov-run: install-cov-requirements
 	PYTHONPATH=. coverage run -m pytest test/unit/
-	PYTHONPATH=. coverage report -m
+
+.PHONY: cov-tests
+cov-tests: cov-run
+	PYTHONPATH=. coverage report
 
 .PHONY: detailed-cov-tests
-detailed-cov-tests: install-detailed-cov-requirements cov-tests
+detailed-cov-tests: install-detailed-cov-requirements cov-run
+	PYTHONPATH=. coverage report -m
 	PYTHONPATH=. coverage html
 	PYTHONPATH=. coverage json
+	PYTHONPATH=. coverage lcov
+	PYTHONPATH=. coverage xml
 
 
 .PHONY: end-to-end-tests
