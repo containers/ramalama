@@ -12,15 +12,15 @@ class Shortnames:
     def __init__(self):
         data_path = sysconfig.get_path("data")
         file_paths = [
-            f"{data_path}/share/ramalama/shortnames.conf",
-            "/usr/share/ramalama/shortnames.conf",
-            "/usr/local/share/ramalama/shortnames.conf",
-            "/etc/ramalama/shortnames.conf",
-            os.path.expanduser("~/.local/share/ramalama/shortnames.conf"),
-            os.path.expanduser("~/.config/ramalama/shortnames.conf"),
-            os.path.expanduser("~/.local/pipx/venvs/ramalama/share/ramalama/shortnames.conf"),
             "./shortnames/shortnames.conf",  # for development
             "./shortnames.conf",  # for development
+            os.path.expanduser("~/.config/ramalama/shortnames.conf"),
+            f"{data_path}/share/ramalama/shortnames.conf",
+            os.path.expanduser("~/.local/share/ramalama/shortnames.conf"),
+            os.path.expanduser("~/.local/pipx/venvs/ramalama/share/ramalama/shortnames.conf"),
+            "/etc/ramalama/shortnames.conf",
+            "/usr/share/ramalama/shortnames.conf",
+            "/usr/local/share/ramalama/shortnames.conf",
         ]
 
         self.paths = []
