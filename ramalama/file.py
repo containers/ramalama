@@ -33,6 +33,18 @@ class File:
             self.file.close()
 
 
+class PlainFile:
+
+    def __init__(self, filename: str, content: str = ""):
+        self.filename = filename
+        self.content = content
+
+    def write_to_file(self, dirpath: str):
+        with open(os.path.join(dirpath, self.filename), "w") as f:
+            f.write(self.content)
+            f.flush()
+
+
 class IniFile:
 
     def __init__(self, filename: str):

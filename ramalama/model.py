@@ -624,14 +624,14 @@ class Model(ModelBase):
 
     def quadlet_kube(self, model, chat_template, args, exec_args):
         kube = Kube(model, chat_template, self.image, args, exec_args)
-        kube.generate()
+        kube.generate().write_to_file(".")
 
         quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
         quadlet.kube().write_to_file(".")
 
     def kube(self, model, chat_template, args, exec_args):
         kube = Kube(model, chat_template, self.image, args, exec_args)
-        kube.generate()
+        kube.generate().write_to_file(".")
 
     def check_valid_model_path(self, relative_target_path, model_path):
         return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
