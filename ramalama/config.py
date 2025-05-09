@@ -88,6 +88,7 @@ def load_config_defaults(config: Dict[str, Any]):
             "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
         },
     )
+    config.setdefault('api', 'none')
     config.setdefault('keep_groups', False)
     config.setdefault('ngl', -1)
     config.setdefault('threads', -1)
