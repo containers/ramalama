@@ -1,8 +1,8 @@
 name: nightly-build
 on:
-    schedule:
-    - cron: '0 0 * * *'
-    workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' 
+  workflow_dispatch:
 
 jobs:
   linux:
@@ -42,6 +42,11 @@ jobs:
 
       - name: Docker info
         run: docker info
+
+      - name: Print disk space after cleanup
+        shell: bash
+        run: |
+           df -h
 
       - name: Build a container for CPU inferencing
         run: ./container_build.sh build ramalama
