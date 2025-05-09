@@ -126,7 +126,7 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
 
 ### CUDA_VISIBLE_DEVICES
 
-RamaLama respects the `CUDA_VISIBLE_DEVICES` environment variable if it's already set in your environment. If not set, RamaLama will default to using GPU device "0".
+RamaLama respects the `CUDA_VISIBLE_DEVICES` environment variable if it's already set in your environment. If not set, RamaLama will default to using all the GPU detected by nvidia-smi.
 
 You can specify which GPU devices should be visible to RamaLama by setting this variable before running RamaLama commands:
 
