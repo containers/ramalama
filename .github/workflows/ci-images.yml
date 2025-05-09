@@ -6,18 +6,14 @@ name: ci images
 on:
   pull_request:
     paths:
-      - "**/container-images/**"
+      - "container-images/**"
       - ".github/workflows/ci-images.yml"
-    paths-ignore:
-      - "**/container-images/rocm"
   push:
     branches:
       - main
     paths:
-      - "**/container-images/**"
+      - "container-images/**"
       - ".github/workflows/ci-images.yml"
-    paths-ignore:
-      - "**/container-images/rocm"
 
 jobs:
   build:
