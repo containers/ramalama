@@ -619,13 +619,15 @@ class Model(ModelBase):
 
     def quadlet(self, model, chat_template, args, exec_args):
         quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
-        quadlet.generate()
+        for generated_file in quadlet.generate():
+            generated_file.write_to_file(".")
 
     def quadlet_kube(self, model, chat_template, args, exec_args):
         kube = Kube(model, chat_template, self.image, args, exec_args)
         kube.generate()
+
         quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
-        quadlet.kube()
+        quadlet.kube().write_to_file(".")
 
     def kube(self, model, chat_template, args, exec_args):
         kube = Kube(model, chat_template, self.image, args, exec_args)
