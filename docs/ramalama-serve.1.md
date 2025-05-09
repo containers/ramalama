@@ -73,6 +73,9 @@ Generate specified configuration format for running the AI Model as a service
 | kube         | Kubernetes YAML definition for running the AI Model as a service         |
 | quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
 
+Optionally, an output directory for the generated files can be specified by
+appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
+
 #### **--help**, **-h**
 show this help message and exit
 
@@ -271,6 +274,17 @@ Image=tiny:latest.image
 $ cat tiny.image
 [Image]
 Image=quay.io/rhatdan/tiny:latest
+```
+
+### Generate quadlet service off of tiny OCI Model and output to directory
+```
+$ ramalama --runtime=vllm serve --name tiny --generate=quadlet:/etc/containers/systemd oci://quay.io/rhatdan/tiny:latest
+Generating quadlet file: tiny.container
+Generating quadlet file: tiny.image
+Generating quadlet file: tiny.volume
+
+$ ls /etc/containers/systemd
+tiny.container tiny.image tiny.volume
 ```
 
 ### Generate a kubernetes YAML file named MyTinyModel

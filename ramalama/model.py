@@ -557,12 +557,16 @@ class Model(ModelBase):
 
     def generate_container_config(self, model_path, chat_template_path, args, exec_args):
         self.image = accel_image(CONFIG, args)
-        if args.generate == "quadlet":
-            self.quadlet(model_path, chat_template_path, args, exec_args)
-        elif args.generate == "kube":
-            self.kube(model_path, chat_template_path, args, exec_args)
-        elif args.generate == "quadlet/kube":
-            self.quadlet_kube(model_path, chat_template_path, args, exec_args)
+
+        if not args.generate:
+            return False
+
+        if args.generate.gen_type == "quadlet":
+            self.quadlet(model_path, chat_template_path, args, exec_args, args.generate.output_dir)
+        elif args.generate.gen_type == "kube":
+            self.kube(model_path, chat_template_path, args, exec_args, args.generate.output_dir)
+        elif args.generate.gen_type == "quadlet/kube":
+            self.quadlet_kube(model_path, chat_template_path, args, exec_args, args.generate.output_dir)
         else:
             return False
 
@@ -617,21 +621,21 @@ class Model(ModelBase):
 
         self.execute_command(model_path, exec_args, args)
 
-    def quadlet(self, model, chat_template, args, exec_args):
+    def quadlet(self, model, chat_template, args, exec_args, output_dir):
         quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
         for generated_file in quadlet.generate():
-            generated_file.write_to_file(".")
+            generated_file.write(output_dir)
 
-    def quadlet_kube(self, model, chat_template, args, exec_args):
+    def quadlet_kube(self, model, chat_template, args, exec_args, output_dir):
         kube = Kube(model, chat_template, self.image, args, exec_args)
-        kube.generate().write_to_file(".")
+        kube.generate().write(output_dir)
 
         quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
-        quadlet.kube().write_to_file(".")
+        quadlet.kube().write(output_dir)
 
-    def kube(self, model, chat_template, args, exec_args):
+    def kube(self, model, chat_template, args, exec_args, output_dir):
         kube = Kube(model, chat_template, self.image, args, exec_args)
-        kube.generate().write_to_file(".")
+        kube.generate().write(output_dir)
 
     def check_valid_model_path(self, relative_target_path, model_path):
         return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path

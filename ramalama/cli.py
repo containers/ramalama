@@ -33,6 +33,36 @@ from ramalama.version import print_version, version
 shortnames = Shortnames()
 
 
+GENERATE_OPTIONS = ["quadlet", "kube", "quadlet/kube"]
+
+
+class ParsedGenerateInput:
+
+    def __init__(self, gen_type: str, output_dir: str):
+        self.gen_type = gen_type
+        self.output_dir = output_dir
+
+    def __str__(self):
+        return self.gen_type
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __eq__(self, value):
+        return self.gen_type == value
+
+
+def parse_generate_option(option: str) -> ParsedGenerateInput:
+    # default output directory is where ramalama has been started from
+    generate, output_dir = option, "."
+    if generate.count(":") == 1:
+        generate, output_dir = generate.split(":")
+    if output_dir == "":
+        output_dir = "."
+
+    return ParsedGenerateInput(generate, output_dir)
+
+
 class OverrideDefaultAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
@@ -727,7 +757,8 @@ def runtime_options(parser, command):
     if command == "serve":
         parser.add_argument(
             "--generate",
-            choices=["quadlet", "kube", "quadlet/kube"],
+            type=parse_generate_option,
+            choices=GENERATE_OPTIONS,
             help="generate specified configuration format for running the AI Model as a service",
         )
         parser.add_argument(
@@ -864,7 +895,7 @@ def run_cli(args):
         args.port = CONFIG['port']
         args.host = CONFIG['host']
         args.network = 'bridge'
-        args.generate = ''
+        args.generate = ParsedGenerateInput("", "")
 
     try:
         model = New(args.MODEL, args)
