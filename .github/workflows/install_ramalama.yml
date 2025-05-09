@@ -12,7 +12,7 @@ jobs:
   install_ramalama:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]  # Runs on Ubuntu, macOS, and Fedora
+        os: [ubuntu-latest, macos-latest]  # Runs on Ubuntu and macOS
 
     runs-on: ${{ matrix.os }}
 
@@ -38,11 +38,11 @@ jobs:
         run: |
           chmod +x install.sh
           ./install.sh -l
-        
+
       - name: Verify RamaLama installation
         run: |
           ramalama ls | grep NAME
-      
+
       - name: RamaLama info
         run: |
           ramalama info

@@ -52,7 +52,9 @@ jobs:
         run: ./container_build.sh build ramalama
 
       - name: Run a one-line script
-        run: make end-to-end-tests
+        run: |
+          make install-requirements
+          make end-to-end-tests
 
   macos:
     runs-on: macos-14
@@ -63,7 +65,9 @@ jobs:
         run: brew install go
       - name: Run a one-line script
         shell: bash
-        run: make end-to-end-tests
+        run: |
+          make install-requirements
+          make end-to-end-tests
 
   build:
     runs-on: ubuntu-24.04
