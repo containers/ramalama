@@ -1,24 +1,40 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "ramalama"
 version = "0.8.2"
+description = "RamaLama is a command line tool for working with AI LLM models."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+keywords = ["ramalama", "llama", "AI"]
 dependencies = [
-  "argcomplete",
+  "argcomplete"
 ]
-requires-python = ">= 3.8"
 maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
    { name="Eric Curtin", email = "ecurtin@redhat.com" },
 ]
-description = "RamaLama is a command line tool for working with AI LLM models."
-readme = "README.md"
-license = {file = "LICENSE"}
-keywords = ["ramalama", "llama", "AI"]
+
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/containers/ramalama"
 Documentation = "https://github.com/containers/ramalama/tree/main/docs"
 Repository = "https://github.com/containers/ramalama"
 Issues = "https://github.com/containers/ramalama/issues"
+
+[project.scripts]
+ramalama = "ramalama.cli:main"
+
+[tool.setuptools]
+include-package-data = true
 
 [tool.black]
 line-length = 120
@@ -39,6 +55,7 @@ exclude = '''
   | venv
 )/
 '''
+
 [tool.isort]
 profile = "black"
 line_length = 120
@@ -52,3 +69,22 @@ log_cli = true
 log_cli_level = "DEBUG"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+
+[tool.setuptools.packages.find]
+include = ["ramalama"]
+
+[tool.setuptools.data-files]
+"share/ramalama" = ["shortnames/shortnames.conf"]
+"share/man/man1" = ["docs/*.1"]
+"share/man/man5" = ["docs/*.5"]
+"share/man/man7" = ["docs/*.7"]
+"share/bash-completion/completions" = ["completions/bash-completion/completions/*"]
+"share/zsh/vendor-completions" = ["completions/zsh/vendor-completions/*"]
+"share/fish/vendor_completions.d" = ["completions/fish/vendor_completions.d/*"]
+"libexec/ramalama" = [
+  "libexec/ramalama/ramalama-client-core",
+  "libexec/ramalama/ramalama-run-core",
+  "libexec/ramalama/ramalama-serve-core",
+]
+

@@ -50,7 +50,6 @@ class ModelInfoBase:
 
 
 class GGUFModelInfo(ModelInfoBase):
-
     MAGIC_NUMBER = "GGUF"
     VERSION = 3
 

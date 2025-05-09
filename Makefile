@@ -126,18 +126,18 @@ ifneq (,$(wildcard /usr/bin/python3))
 endif
 
 	! grep -ri "#\!/usr/bin/python3" .
-	flake8 *.py */*.py */*/*.py libexec/* bin/*
+	flake8  */*.py */*/*.py libexec/* bin/*
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:
-	black --check --diff *.py */*.py */*/*.py libexec/* bin/*
-	isort --check --diff *.py */*.py */*/*.py libexec/* bin/*
+	black --check --diff */*.py */*/*.py libexec/* bin/*
+	isort --check --diff */*.py */*/*.py libexec/* bin/*
 
 .PHONY: format
 format:
-	black *.py */*.py */*/*.py libexec/* bin/*
-	isort *.py */*.py */*/*.py libexec/* bin/*
+	black */*.py */*/*.py libexec/* bin/*
+	isort */*.py */*/*.py libexec/* bin/*
 
 .PHONY: codespell
 codespell:

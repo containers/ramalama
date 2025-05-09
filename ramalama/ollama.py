@@ -33,7 +33,6 @@ def in_existing_cache(model_name, model_tag):
 
 
 class OllamaRepository:
-
     REGISTRY_URL = "https://registry.ollama.ai/v2/library"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 

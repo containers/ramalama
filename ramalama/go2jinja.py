@@ -167,7 +167,6 @@ GO_KEYWORDS: Dict[NodeType, re.Pattern] = {
 
 
 def detect_node_type(stmt: str) -> Optional[NodeType]:
-
     # from most complex to least
     ordered_regex_list = [
         (NodeType.RANGE, GO_KEYWORDS[NodeType.RANGE]),
@@ -196,7 +195,6 @@ def parse_go_template(content: str) -> list[Node]:
     start_pos = content.find(GO_SYMBOL_OPEN_BRACKETS)
     end_pos = 0
     while start_pos != -1:
-
         if end_pos == 0 and start_pos != 0:
             content_node = Node(
                 end_pos,
@@ -319,8 +317,10 @@ def translate_continue_nodes(root_nodes: list[Node]) -> list[Node]:
         if_node = Node(
             -1,
             -1,
-            f"{GO_SYMBOL_OPEN_BRACKETS} {NodeType.IF.value} {FunctionType.NEQUALS.value} {skip_variable} 1 "
-            f"{GO_SYMBOL_CLOSE_BRACKETS}",
+            (
+                f"{GO_SYMBOL_OPEN_BRACKETS} {NodeType.IF.value} {FunctionType.NEQUALS.value} {skip_variable} 1 "
+                f"{GO_SYMBOL_CLOSE_BRACKETS}"
+            ),
             NodeType.IF,
             prev=to_wrap[0].prev,
             next=to_wrap[0],
@@ -363,8 +363,10 @@ def translate_continue_nodes(root_nodes: list[Node]) -> list[Node]:
                 initial_set_node = Node(
                     -1,
                     -1,
-                    f"{GO_SYMBOL_OPEN_BRACKETS}{SYMBOL_REMOVE_WHITESPACE} {skip_variable} := 0"
-                    f"{SYMBOL_REMOVE_WHITESPACE}{GO_SYMBOL_CLOSE_BRACKETS}",
+                    (
+                        f"{GO_SYMBOL_OPEN_BRACKETS}{SYMBOL_REMOVE_WHITESPACE} {skip_variable} := 0"
+                        f"{SYMBOL_REMOVE_WHITESPACE}{GO_SYMBOL_CLOSE_BRACKETS}"
+                    ),
                     NodeType.ASSIGNMENT,
                     prev=for_node,
                     next=for_node.next,
@@ -440,7 +442,6 @@ def go_to_jinja(content: str) -> str:
         return transform_go_var_to_jinja(var, False).replace("$", "").lower()
 
     def parse_pipeline(pipeline: str) -> str:
-
         def parse_variable(pipeline: str) -> str:
             reg = re.compile(R"{}".format(f"{REGEX_VARIABLE}"))
             m = reg.match(pipeline)
@@ -611,7 +612,7 @@ def tree_structure(nodes: list[Node], level: int) -> str:
     res = ""
     for node in nodes:
         parent_type = "--" if node.parent is None else node.parent.type
-        res += level * "\t" + f"{node.type}: {node.start},{node.end} - " f"{parent_type} - {node.content}\n"
+        res += level * "\t" + f"{node.type}: {node.start},{node.end} - {parent_type} - {node.content}\n"
         res += tree_structure(node.children, level + 1)
 
     return res

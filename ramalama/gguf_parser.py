@@ -103,7 +103,6 @@ class ParseError(Exception):
 
 
 class GGUFInfoParser:
-
     def is_model_gguf(model_path: str) -> bool:
         try:
             with open(model_path, "rb") as model_file:

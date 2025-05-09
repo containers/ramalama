@@ -19,7 +19,6 @@ class dotdict(dict):
 
 
 class ModelStoreImport:
-
     def __init__(self, store_path: str):
         self.store_path = store_path
         self._old_model_path = os.path.join(store_path, "models")
@@ -27,7 +26,6 @@ class ModelStoreImport:
         self._global_store = GlobalModelStore(self.store_path)
 
     class LocalModelFile(SnapshotFile):
-
         def __init__(
             self, url, header, hash, name, should_show_progress=False, should_verify_checksum=False, required=True
         ):
