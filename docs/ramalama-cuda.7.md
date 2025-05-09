@@ -156,7 +156,7 @@ Because the CUDA version is updated, the CDI specification file needs to be recr
 
 ## SEE ALSO
 
-**[ramalama(1)](ramalama.1.md)**, **[podman(1)](https://github.com/containers/podman/blob/main/docs/podman.1.md)**
+**[ramalama(1)](ramalama.1.md)**, **[podman(1)](https://github.com/containers/podman/blob/main/docs/source/markdown/podman.1.md)**
 
 ## HISTORY
 
