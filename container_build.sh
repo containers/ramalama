@@ -101,7 +101,7 @@ add_entrypoints() {
 
 build() {
   local target=${1}
-  local version="$3"
+  local version=${3:-}
   cd "container-images/"
   local conman_build=("${conman[@]}")
   local conman_show_size=("${conman[@]}" "images" "--filter" "reference=$REGISTRY_PATH/${target}")
