@@ -53,7 +53,7 @@ Refer to the [Podman Desktop documentation](https://podman-desktop.io/docs/podma
 
 ## SEE ALSO
 
-**[ramalama(1)](ramalama.1.md)**, **[podman-machine(1)](https://github.com/containers/podman/blob/main/docs/podman-machine.1.md)**
+**[ramalama(1)](ramalama.1.md)**, **[podman-machine(1)](https://github.com/containers/podman/blob/main/docs/source/markdown/podman-machine.1.md)**
 
 ## HISTORY
 
