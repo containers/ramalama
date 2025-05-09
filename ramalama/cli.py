@@ -693,6 +693,23 @@ def push_cli(args):
             raise e
 
 
+def parse_generate_option(option: str) -> tuple[str, str]:
+    should_generate = option and (
+        option.startswith("quadlet") or option.startswith("kube") or option.startswith("quadlet/kube")
+    )
+    if not should_generate:
+        return "", ""
+
+    # default output directory is where ramalama has been started from
+    generate, output_dir = option, "."
+    if generate.count(":") == 1:
+        generate, output_dir = generate.split(":")
+    if output_dir == "":
+        output_dir = "."
+
+    return generate, output_dir
+
+
 def runtime_options(parser, command):
     parser.add_argument("--authfile", help="path of the authentication file")
     if command in ["run", "perplexity", "serve"]:
@@ -723,7 +740,7 @@ def runtime_options(parser, command):
     if command == "serve":
         parser.add_argument(
             "--generate",
-            choices=["quadlet", "kube", "quadlet/kube"],
+            type=lambda option: parse_generate_option(option),
             help="generate specified configuration format for running the AI Model as a service",
         )
         parser.add_argument(
@@ -860,7 +877,7 @@ def run_cli(args):
         args.port = CONFIG['port']
         args.host = CONFIG['host']
         args.network = 'bridge'
-        args.generate = ''
+        args.generate = ('', '')
 
     try:
         model = New(args.MODEL, args)

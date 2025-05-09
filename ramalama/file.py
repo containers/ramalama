@@ -39,7 +39,7 @@ class PlainFile:
         self.filename = filename
         self.content = content
 
-    def write_to_file(self, dirpath: str):
+    def write(self, dirpath: str):
         with open(os.path.join(dirpath, self.filename), "w") as f:
             f.write(self.content)
             f.flush()
@@ -57,7 +57,7 @@ class IniFile:
             self.config[section] = {}
         self.config[section][key] = value
 
-    def write_to_file(self, dirpath: str):
+    def write(self, dirpath: str):
         with open(os.path.join(dirpath, self.filename), "w") as f:
             self.config.write(f, space_around_delimiters=False)
             f.flush()
