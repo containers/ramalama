@@ -392,7 +392,17 @@ def check_nvidia():
         # ensure at least one CDI device resolves
         if resolve_cdi(['/etc/cdi', '/var/run/cdi']):
             if "CUDA_VISIBLE_DEVICES" not in os.environ:
-                os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+                dev_command = ['nvidia-smi', '--query-gpu=index', '--format=csv,noheader']
+                try:
+                    result = run_cmd(dev_command)
+                    output = result.stdout.decode("utf-8").strip()
+                    if not output:
+                        raise ValueError("nvidia-smi returned empty GPU indices")
+                    devices = ','.join(output.split('\n'))
+                except Exception:
+                    devices = "0"
+
+                os.environ["CUDA_VISIBLE_DEVICES"] = devices
 
             _nvidia = "cuda"
             return _nvidia
