@@ -1,0 +1,127 @@
+# Build stage
+FROM registry.access.redhat.com/ubi9 AS builder
+
+# Set AMD GPU targets as a build argument with default value
+ARG AMDGPU_TARGETS=gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201
+
+# Set environment variables
+ENV CMAKE_PREFIX_PATH=/opt/rocm:$CMAKE_PREFIX_PATH
+ENV CMAKE_AMDGPU_TARGETS=${AMDGPU_TARGETS}
+
+# Add ROCm and AMDGPU repositories
+RUN <<'EOF' tee /etc/yum.repos.d/rocm.repo > /dev/null
+[ROCm]
+name=ROCm
+baseurl=https://repo.radeon.com/rocm/rhel9/latest/main
+enabled=1
+priority=50
+gpgcheck=1
+gpgkey=https://repo.radeon.com/rocm/rocm.gpg.key
+EOF
+
+RUN <<'EOF' tee /etc/yum.repos.d/amdgpu.repo > /dev/null
+[amdgpu]
+name=amdgpu
+baseurl=https://repo.radeon.com/amdgpu/latest/el/9.6/main/x86_64/
+enabled=1
+priority=50
+gpgcheck=1
+gpgkey=https://repo.radeon.com/rocm/rocm.gpg.key
+EOF
+
+# Install dependencies and tools
+RUN dnf install -y \
+    git \
+    cmake \
+    python3.12 \
+    python3.12-devel \
+    rocm-hip-sdk \
+    miopen-hip-devel \
+    roctracer-devel \
+    amd-smi-lib && \
+    # Install uv (Python package installer)
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add uv to PATH
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Clone vllm repository with ROCm fixes
+# Note: Using a fork with ROCm fixes instead of upstream due to pending PR
+# https://github.com/vllm-project/vllm/pull/16062
+RUN git clone https://github.com/martinhoyer/vllm.git && \
+    cd vllm && \
+    git checkout rocm-fixes
+
+# Create Python virtual environment and install dependencies
+RUN echo "Building vLLM with ROCm - this may take a while..." && \
+    uv venv --python 3.12 && \
+    source .venv/bin/activate && \
+    echo "Installing PyTorch and dependencies..." && \
+    uv pip install \
+    https://repo.radeon.com/rocm/manylinux/rocm-rel-6.3.4/torch-2.4.0%2Brocm6.3.4.git7cecbf6d-cp312-cp312-linux_x86_64.whl \
+    https://repo.radeon.com/rocm/manylinux/rocm-rel-6.3.4/pytorch_triton_rocm-3.0.0%2Brocm6.3.4.git75cc27c2-cp312-cp312-linux_x86_64.whl \
+    /opt/rocm/share/amd_smi/ \
+    --default-index https://repo.radeon.com/rocm/manylinux/rocm-rel-6.3.4/ \
+    -r vllm/requirements/rocm.txt \
+    --index https://pypi.org/simple && \
+    cd vllm && \
+    echo "Running vLLM setup.py - this may take several minutes..." && \
+    python setup.py develop && \
+    uv cache clean && \
+    echo "Removing development packages..." && \
+    dnf remove -y *-devel && \
+
+# Runtime stage
+FROM registry.access.redhat.com/ubi9 AS runtime
+
+# Set AMD GPU targets as a build argument with default value
+ARG AMDGPU_TARGETS=gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201
+ENV CMAKE_AMDGPU_TARGETS=${AMDGPU_TARGETS}
+ENV CMAKE_PREFIX_PATH=/opt/rocm:$CMAKE_PREFIX_PATH
+
+# Add ROCm repositories
+RUN <<'EOF' tee /etc/yum.repos.d/rocm.repo > /dev/null
+[ROCm]
+name=ROCm
+baseurl=https://repo.radeon.com/rocm/rhel9/latest/main
+enabled=1
+priority=50
+gpgcheck=1
+gpgkey=https://repo.radeon.com/rocm/rocm.gpg.key
+EOF
+
+RUN <<'EOF' tee /etc/yum.repos.d/amdgpu.repo > /dev/null
+[amdgpu]
+name=amdgpu
+baseurl=https://repo.radeon.com/amdgpu/latest/el/9.6/main/x86_64/
+enabled=1
+priority=50
+gpgcheck=1
+gpgkey=https://repo.radeon.com/rocm/rocm.gpg.key
+EOF
+
+# Install runtime dependencies (minimal set)
+RUN dnf install -y \
+    python3.12 \
+    rocm-hip-runtime \
+    amd-smi-lib && \
+    dnf clean all
+
+# Copy from builder stage
+COPY --from=builder .venv .venv
+COPY --from=builder vllm vllm
+
+# Set PATH to include virtual environment
+ENV PATH="/root/.venv/bin:${PATH}"
+
+# Create non-root user
+RUN useradd -m -u 1000 vllm
+USER vllm
+WORKDIR /home/vllm
+
+# Set required devices for ROCm
+# Note: These are passed at runtime with docker run --device=/dev/kfd --device=/dev/dri
+# Cannot be set in Containerfile directly
+
+# Execute vLLM application
+CMD ["bash", "-c", "source .venv/bin/activate && echo 'vLLM with ROCm is ready to use'"]
