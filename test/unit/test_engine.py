@@ -26,14 +26,23 @@ class TestEngine(unittest.TestCase):
         self.assertIn("ai.ramalama.port=8080", exec_args)
         self.assertIn("ai.ramalama.command=run", exec_args)
 
+    @patch('os.access')
     @patch('ramalama.engine.check_nvidia')
-    def test_add_oci_runtime_nvidia(self, mock_check_nvidia):
+    def test_add_oci_runtime_nvidia(self, mock_check_nvidia, mock_os_access):
         mock_check_nvidia.return_value = "cuda"
+        mock_os_access.return_value = True
 
         # Test Podman
         podman_engine = Engine(self.base_args)
         self.assertIn("--runtime", podman_engine.exec_args)
         self.assertIn("/usr/bin/nvidia-container-runtime", podman_engine.exec_args)
+
+        # Test Podman wehn nvidia-container-runtime executable is missing
+        # This is expected with the official package
+        mock_os_access.return_value = False
+        podman_engine = Engine(self.base_args)
+        self.assertNotIn("--runtime", podman_engine.exec_args)
+        self.assertNotIn("/usr/bin/nvidia-container-runtime", podman_engine.exec_args)
 
         # Test Docker
         args = self.base_args
