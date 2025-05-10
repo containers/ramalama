@@ -5,10 +5,10 @@ import tempfile
 import urllib.request
 
 from ramalama.common import available, download_file, exec_cmd, perror, run_cmd, verify_checksum
+from ramalama.huggingface import HuggingfaceCLIFile, HuggingfaceRepository
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFileType
 from ramalama.ollama_repo_utils import repo_pull
-from ramalama.huggingface import HuggingfaceRepository, HuggingfaceCLIFile
 
 missing_modelscope = """
 Optional: ModelScope models require the modelscope module.
@@ -25,13 +25,18 @@ def is_modelscope_available():
 
 def fetch_checksum_from_api(organization, file):
     """Fetch the SHA-256 checksum from the model's metadata API for a given file."""
-    checksum_api_url = f"{ModelScopeRepository.REGISTRY_URL}/api/v1/models/{organization}/repo/raw?Revision=master&FilePath={file}&Needmeta=true"
+    checksum_api_url = (
+        f"{ModelScopeRepository.REGISTRY_URL}/api/v1/models/{organization}/repo/raw"
+        f"?Revision=master&FilePath={file}&Needmeta=true"
+    )
     try:
         with urllib.request.urlopen(checksum_api_url) as response:
             data = json.loads(response.read().decode())
         # Extract the SHA-256 checksum from the JSON
-        return data.get("Data", {}).get("MetaContent", {}).get("Sha256", None) or \
-               ValueError("SHA-256 checksum not found in the API response.")
+        sha256_checksum = data.get("Data", {}).get("MetaContent", {}).get("Sha256")
+        if not sha256_checksum:
+            raise ValueError("SHA-256 checksum not found in the API response.")
+        return sha256_checksum
     except urllib.error.HTTPError as e:
         raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
     except urllib.error.URLError as e:
@@ -46,6 +51,7 @@ class ModelScopeRepository(HuggingfaceRepository):
         super().__init__(name, organization)
 
         self.blob_url = f"{ModelScopeRepository.REGISTRY_URL}/{self.organization}/resolve/master"
+
 
 class ModelScope(Model):
 
@@ -134,6 +140,7 @@ class ModelScope(Model):
     def _fetch_cache_path(self, cache_dir, namespace, repo):
         def normalize_repo_name(repo):
             return repo.replace(".", "___")
+
         return os.path.join(cache_dir, 'models', namespace, normalize_repo_name(repo))
 
     def in_existing_cache(self, args, target_path, sha256_checksum):
@@ -182,7 +189,7 @@ class ModelScope(Model):
             return model_path
 
         # Download the model file to the target path
-        url = f"https://modelscope.cn/{self.directory}/resolve/main/{self.filename}"
+        url = f"https://modelscope.cn/{self.directory}/resolve/master/{self.filename}"
         download_file(url, target_path, headers={}, show_progress=True)
         if not verify_checksum(target_path):
             print(f"Checksum mismatch for {target_path}, retrying download...")
