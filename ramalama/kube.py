@@ -1,6 +1,7 @@
 import os
 
 from ramalama.common import MNT_DIR, RAG_DIR, genname, get_accel_env_vars
+from ramalama.file import PlainFile
 from ramalama.version import version
 
 
@@ -126,17 +127,17 @@ class Kube:
 
         return env_spec
 
-    def generate(self):
+    def generate(self) -> PlainFile:
         env_string = self.__gen_env_vars()
         port_string = self.__gen_ports()
         volume_string = self._gen_volumes()
         _version = version()
 
-        outfile = self.name + ".yaml"
-        print(f"Generating Kubernetes YAML file: {outfile}")
-        with open(outfile, 'w') as c:
-            c.write(
-                f"""\
+        file_name = f"{self.name}.yaml"
+        print(f"Generating Kubernetes YAML file: {file_name}")
+
+        file = PlainFile(file_name)
+        file.content = f"""\
 # Save the output of this file and use kubectl create -f to import
 # it into Kubernetes.
 #
@@ -165,4 +166,5 @@ spec:
 {env_string}
 {port_string}
 {volume_string}"""
-            )
+
+        return file
