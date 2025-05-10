@@ -74,7 +74,7 @@ class Engine:
         if check_nvidia() == "cuda":
             if self.use_docker:
                 self.exec_args += ["--runtime", "nvidia"]
-            else:
+            elif os.access("/usr/bin/nvidia-container-runtime", os.X_OK):
                 self.exec_args += ["--runtime", "/usr/bin/nvidia-container-runtime"]
 
     def add_privileged_options(self):
