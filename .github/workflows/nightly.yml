@@ -8,7 +8,9 @@ jobs:
   linux:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout ramalama
+        uses: actions/checkout@v4
+
       - name: Free Disk Space Linux
         shell: bash
         run: |
@@ -51,31 +53,40 @@ jobs:
       - name: Build a container for CPU inferencing
         run: ./container_build.sh build ramalama
 
-      - name: Run a one-line script
+      - name: Install end-to-end test requirements
         run: |
+          sudo apt-get install bats
           make install-requirements
-          make end-to-end-tests
+
+      - name: Run end-to-end tests
+        run: make end-to-end-tests
 
   macos:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
-      - name: install golang
+      - name: Checkout ramalama
+        uses: actions/checkout@v4
+
+      - name: Install golang
         shell: bash
         run: brew install go
-      - name: Run a one-line script
+
+      - name: Install end-to-end test requirements
         shell: bash
         run: |
+          brew install shellcheck
           make install-requirements
-          make end-to-end-tests
+
+      - name: Run end-to-end tests
+        shell: bash
+        run: make end-to-end-tests
 
   build:
     runs-on: ubuntu-24.04
     needs: [linux, macos]
     steps:
-        - uses: actions/checkout@v4
-          with:
-            ref: 'main'
+        - name: Checkout ramalama
+          uses: actions/checkout@v4
 
         - name: Upgrade to podman 5
           run: |
@@ -93,14 +104,14 @@ jobs:
             sudo apt-get update
             sudo apt-get install qemu-user-static
 
-        - name: Login to Registry
+        - name: Login to quay
           uses: redhat-actions/podman-login@v1.7
           with:
             registry: quay.io
             username: ${{ secrets.USERNAME }}
             password: ${{ secrets.PASSWORD }}
 
-        - name: use buildah to build images for amd and aarch64
+        - name: Build images for amd64 and arm64
           uses: redhat-actions/buildah-build@v2
           id: build_image
           with:
@@ -110,7 +121,7 @@ jobs:
               container-images/ramalama/Containerfile
             platforms: linux/amd64, linux/arm64
 
-        - name: push images to registry
+        - name: Push images to quay
           uses: redhat-actions/push-to-registry@v2.8
           with:
             image: ramalama/ramalama
