@@ -1,17 +1,30 @@
 #!/usr/bin/env python3
-
+import json
 import argparse
 import hashlib
 import os
 import sys
 import uuid
+from pathlib import Path
+import time
+import threading
+import itertools
 
-import qdrant_client
-from qdrant_client import models
 import docling
-from docling.chunking import HybridChunker
-from docling.document_converter import DocumentConverter
+from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+
+from docling_core.types.doc import DoclingDocument
+
+# Docling Setup (Turn off OCR for reduced RAM usage and increased speed)
+pipeline_options = PdfPipelineOptions()
+pipeline_options.do_ocr = False
+doc_converter = DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+        }
+    )
 
 # Global Vars
 EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
@@ -22,48 +35,52 @@ class Converter:
     """A Class designed to handle all document conversions using Docling"""
 
     def __init__(self, output, targets):
-        self.doc_converter = DocumentConverter()
+        self.doc_converter = doc_converter
         self.targets = []
         for target in targets:
             self.add(target)
         self.output = output
-        self.client = qdrant_client.QdrantClient(path=output)
-        self.client.set_model(EMBED_MODEL)
-        self.client.set_sparse_model(SPARSE_MODEL)
-        # optimizations to reduce ram
-        self.client.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=self.client.get_fastembed_vector_params(on_disk=True),
-            sparse_vectors_config= self.client.get_fastembed_sparse_vector_params(on_disk=True),
-            quantization_config=models.ScalarQuantization(
-                scalar=models.ScalarQuantizationConfig(
-                    type=models.ScalarType.INT8,
-                    always_ram=True,
-                ),
-            ),
-        )
 
     def add(self, file_path):
         if os.path.isdir(file_path):
             self.walk(file_path)  # Walk directory and process all files
         else:
             self.targets.append(file_path)  # Process the single file
+    
+    def show_progress(self, message, stop_event):
+            spinner = itertools.cycle([".", "..", "..."])
+            while not stop_event.is_set():
+                sys.stdout.write(f"\r{message} {next(spinner)}   ")
+                sys.stdout.flush()
+                time.sleep(0.5)
+            sys.stdout.write("\r" + " " * 50 + "\r")
 
     def convert(self):
-        result = self.doc_converter.convert_all(self.targets)
-        documents, metadata, ids = [], [], []
-        chunker = HybridChunker(tokenizer=EMBED_MODEL, overlap=100, merge_peers=True)
-        for file in result:
-            chunk_iter = chunker.chunk(dl_doc=file.document)
-            for chunk in chunk_iter:
-                # Extract the enriched text from the chunk
-                doc_text = chunker.contextualize(chunk=chunk)
-                # Append to respective lists
-                documents.append(doc_text)
-                # Generate unique ID for the chunk
-                doc_id = self.generate_hash(doc_text)
-                ids.append(doc_id)
-        return self.client.add(COLLECTION_NAME, documents=documents, ids=ids, batch_size=1)
+        output_dir = Path(self.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        for target in self.targets:
+            name = self.get_name(str(target))
+
+            stop_event = threading.Event()
+            progress_thread = threading.Thread(target=self.show_progress, args=(f"Converting {name}.pdf to .json", stop_event))
+            progress_thread.start()
+        
+            try:
+                result = self.doc_converter.convert(target)
+            finally:
+                stop_event.set()
+                progress_thread.join()
+
+            doc = result.document.export_to_dict()
+            output_path = output_dir / f"{name}.json"
+            with Path(output_path).open("w") as fp:
+                fp.write(json.dumps(doc))
+            print(f"Finished converting {name}.pdf to {name}.json")
+    
+    def get_name(self, path):
+        file_name = Path(path).stem
+        return file_name
 
     def walk(self, path):
         for root, dirs, files in os.walk(path, topdown=True):
@@ -74,18 +91,8 @@ class Converter:
                 if os.path.isfile(file):
                     self.targets.append(file)
 
-    def generate_hash(self, document: str) -> str:
-        """Generate a unique hash for a document."""
-        sha256_hash = hashlib.sha256(document.encode('utf-8')).hexdigest()
-
-        # Use the first 32 characters of the hash to create a UUID
-        return str(uuid.UUID(sha256_hash[:32]))
-
 def load():
     # Dummy code to preload models
-    client = qdrant_client.QdrantClient(":memory:")
-    client.set_model(EMBED_MODEL)
-    client.set_sparse_model(SPARSE_MODEL)
     converter = DocumentConverter()
     converter.initialize_pipeline(InputFormat.PDF)
 
