@@ -165,12 +165,22 @@ More information on shortnames.
 RamaLama reads shortnames.conf files if they exist. These files contain a list of name-value pairs that specify the model. The following table specifies the order in which RamaLama reads the files. Any duplicate names that exist override previously defined shortnames.
 <br>
 
-| Shortnames type | Path                                     |
-| :-------------- | :--------------------------------------- |
-| Distribution    | /usr/share/ramalama/shortnames.conf      |
-| Administrators  | /etc/ramalama/shortnames.conf            |
-| Users           | $HOME/.config/ramalama/shortnames.conf   |
+| Shortnames type    | Path                                                       |
+| :----------------  | :-------------------------------------------               |
+| System Data Path   | ${data_path}/share/ramalama/shortnames.conf                |
+| Distribution       | /usr/share/ramalama/shortnames.conf                        |
+| Local Distribution | /usr/local/share/ramalama/shortnames.conf                  |
+| Administrators     | /etc/ramalama/shortnames.conf                              |
+| User (Local Share) | ~/.local/share/ramalama/shortnames.conf                    |
+| User (Config)      | ~/.config/ramalama/shortnames.conf                         |
+| Pipx Environment   | ~/.local/pipx/venvs/ramalama/share/ramalama/shortnames.conf|
+| Development        | ./shortnames/shortnames.conf                               |
+| Development        | ./shortnames.conf                                          |
 <br>
+
+#### Notes:
+- `System Data Path` refers to the Python installation's system data directory.
+- Development paths are primarily for testing and local development use.
 
 ```
 $ cat /usr/share/ramalama/shortnames.conf
