@@ -5,9 +5,9 @@ from urllib.parse import urlparse
 
 from ramalama.common import rm_until_substring
 from ramalama.huggingface import Huggingface
-from ramalama.modelscope import ModelScope
 from ramalama.model import MODEL_TYPES
 from ramalama.model_store import GlobalModelStore, ModelStore
+from ramalama.modelscope import ModelScope
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.url import URL
