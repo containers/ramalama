@@ -14,9 +14,10 @@ registry if it does not exist in local storage.
 
 | Transports    | Prefix | Web Site                                            |
 | ------------- | ------ | --------------------------------------------------- |
-| URL based    | https://, http://, file:// | `https://web.site/ai.model`, `file://tmp/ai.model`|
-| HuggingFace   | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)      |
-| Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)              |
+| URL based     | https://, http://, file:// | `https://web.site/ai.model`, `file://tmp/ai.model`|
+| HuggingFace   | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)|
+| ModelScope    | modelscope://, ms:// | [`modelscope.cn`](https://modelscope.cn/)|
+| Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)|
 | OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
 |||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
 
@@ -112,7 +113,7 @@ On Nvidia based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
 
 #### **--port**, **-p**
-port for AI Model server to listen on. It must be available. If not specified, 
+port for AI Model server to listen on. It must be available. If not specified,
 the serving port will be 8080 if available, otherwise a free port in 8081-8090 range.
 
 #### **--privileged**

@@ -56,6 +56,14 @@ $ ramalama login --token=XYZ
 ```
 Logging in to Hugging Face requires the `huggingface-cli` tool. For installation and usage instructions, see the documentation of the Hugging Face command line interface: [*https://huggingface.co/docs/huggingface_hub/en/guides/cli*](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
 
+Login to ModelScope registry
+```
+$ export RAMALAMA_TRANSPORT=modelscope
+$ ramalama login --token=XYZ
+```
+
+Logging in to ModelScope requires the `modelscope` tool. For installation and usage instructions, see the documentation of the ModelScope command line interface: [*https://www.modelscope.cn/docs/Beginner-s-Guide/Environment-Setup*](https://www.modelscope.cn/docs/Beginner-s-Guide/Environment-Setup).
+
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**
 
