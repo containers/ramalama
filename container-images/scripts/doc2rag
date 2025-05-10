@@ -10,6 +10,13 @@ import time
 import threading
 import itertools
 
+# what we want to do hee is have 2 options
+# the first option will import db.py and convert the pdfs to docling then to markdown then to the rag
+# database of choise either qdrant or milvus
+
+# the second option will just output a json format that the docling documunt can be
+# recontructed and ingested into the llama-stack pipeline
+
 import docling
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
