@@ -151,7 +151,11 @@ determine_platform() {
       platform="$(podman info --format '{{ .Version.OsArch }}' 2>/dev/null)"
       ;;
     docker)
-      platform="$(docker info --format '{{ .ClientInfo.Os }}/{{ .ClientInfo.Arch }}' 2>/dev/null)"
+      if docker info --format '{{ .ClientInfo.Os }}' &>/dev/null; then
+        platform="$(docker info --format '{{ .ClientInfo.Os }}/{{ .ClientInfo.Arch }}' 2>/dev/null)"
+      else
+        platform="$(docker info --format '{{ .OSType }}/{{ .Architecture }}' 2>/dev/null)"
+      fi
       ;;
   esac
 
