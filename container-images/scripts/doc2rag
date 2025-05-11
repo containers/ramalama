@@ -10,21 +10,14 @@ import time
 import threading
 import itertools
 
-# what we want to do hee is have 2 options
-# the first option will import db.py and convert the pdfs to docling then to markdown then to the rag
-# database of choise either qdrant or milvus
-
-# the second option will just output a json format that the docling documunt can be
-# recontructed and ingested into the llama-stack pipeline
-
 import docling
+from docling.chunking import HybridChunker
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
-
 from docling_core.types.doc import DoclingDocument
 
-# Docling Setup (Turn off OCR for reduced RAM usage and increased speed)
+# Docling Setup (Turn off OCR (image processing) for drastically reduced RAM usage and big speed increase)
 pipeline_options = PdfPipelineOptions()
 pipeline_options.do_ocr = False
 doc_converter = DocumentConverter(
@@ -62,29 +55,131 @@ class Converter:
                 time.sleep(0.5)
             sys.stdout.write("\r" + " " * 50 + "\r")
 
-    def convert(self):
-        output_dir = Path(self.output)
-        output_dir.mkdir(parents=True, exist_ok=True)
+    def convert(self, choice):
+        results = []
+        names = []
 
         for target in self.targets:
             name = self.get_name(str(target))
-
+            names.append(name)
             stop_event = threading.Event()
-            progress_thread = threading.Thread(target=self.show_progress, args=(f"Converting {name}.pdf to .json", stop_event))
+            progress_thread = threading.Thread(target=self.show_progress, args=(f"Converting {name}.pdf to json", stop_event))
             progress_thread.start()
         
             try:
-                result = self.doc_converter.convert(target)
+                results.append(self.doc_converter.convert(target))
             finally:
                 stop_event.set()
                 progress_thread.join()
-
-            doc = result.document.export_to_dict()
-            output_path = output_dir / f"{name}.json"
-            with Path(output_path).open("w") as fp:
-                fp.write(json.dumps(doc))
+            
             print(f"Finished converting {name}.pdf to {name}.json")
+
+        if choice == "json":
+            self.export_json(results, names)
+        elif choice == "milvus":
+            self.export_milvus(results)
+        else:
+            self.export_qdrant(results)
     
+    def generate_hash(self, document: str) -> int:
+        """Generate a unique int64 hash from the document text."""
+        sha256_hash = hashlib.sha256(document.encode('utf-8')).hexdigest()
+        uuid_val = uuid.UUID(sha256_hash[:32])
+        # Convert to signed int64 (Milvus requires signed 64-bit)
+        return uuid_val.int & ((1 << 63) - 1)
+    
+    def chunk(self, docs):
+        chunker = HybridChunker(tokenizer=EMBED_MODEL, overlap=100, merge_peers=True)
+        documents, ids = [], []
+        
+        for file in docs:
+            chunk_iter = chunker.chunk(dl_doc=file.document)
+            for chunk in chunk_iter:
+                # Extract the enriched text from the chunk
+                doc_text = chunker.contextualize(chunk=chunk)
+                # Append to respective lists
+                documents.append(doc_text)
+                # Generate unique ID for the chunk
+                doc_id = self.generate_hash(doc_text)
+                ids.append(doc_id)
+        return documents, ids
+    
+    def export_json(self, docs, names):
+        print("Exporting to JSON")
+        output_dir = Path(self.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        for file, name in zip(docs, names):
+            doc = file.document.export_to_dict()
+            output_path = output_dir / f"{name}.json"
+            with output_path.open("w") as fp:
+                fp.write(json.dumps(doc))
+
+    def export_qdrant(self, docs):
+        print("Exporting to Qdrant")
+        output_dir = Path(self.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        # optional import qdrant
+        try:
+            import qdrant_client
+            from qdrant_client import models
+        except ImportError:
+            print('Qdrant Vectordb is disabled ... returning')
+            return
+        client = qdrant_client.QdrantClient(path=self.output)
+        client.set_model(EMBED_MODEL)
+        client.set_sparse_model(SPARSE_MODEL)
+        chunks, ids = self.chunk(docs)
+        client.add(COLLECTION_NAME, documents=chunks, ids=ids, batch_size=1)
+        
+    def export_milvus(self, docs):
+        # TODO: Add hybird search support
+        print("Exporting to Milvus")
+        output_dir = Path(self.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        # optional import milvus
+        try:
+            from pymilvus import MilvusClient
+            from fastembed.embedding import TextEmbedding
+            print('Milvus enabled')
+        except ImportError:
+            print('Milvus Vectordb is disabled ... returning')
+            return
+
+        data = []
+
+        qmodel = TextEmbedding(model_name=EMBED_MODEL)
+        test_embedding = next(qmodel.embed("This is a test"))
+        embedding_dim = len(test_embedding)
+
+        milvus_client = MilvusClient(uri=os.path.join(self.output, "milvus.db"))
+        collection_name = COLLECTION_NAME
+
+        milvus_client.create_collection(
+            collection_name=collection_name,
+            dimension=embedding_dim,
+        )
+        chunks, ids = self.chunk(docs)
+        batch_size = 5
+        data = []
+        for i, (chunk, id) in enumerate(zip(chunks, ids)):
+            embedding = next(qmodel.embed([chunk]))
+            milvus_client.insert(
+                collection_name=collection_name,
+                data=[{
+                    "id": id,
+                    "vector": embedding,
+                    "text": chunk
+                }]
+            )
+            # Flush every 100 records to reduce RAM usage
+            if i % 100 == 0: 
+                milvus_client.flush(collection_name=collection_name)
+            
+            print(f"\rProcessed {i+1}/{len(chunks)}", end='', flush=True) 
+
+        milvus_client.flush(collection_name=collection_name)
+                    
     def get_name(self, path):
         file_name = Path(path).stem
         return file_name
@@ -97,7 +192,6 @@ class Converter:
                 file = os.path.join(root, f)
                 if os.path.isfile(file):
                     self.targets.append(file)
-
 def load():
     # Dummy code to preload models
     converter = DocumentConverter()
@@ -110,10 +204,10 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("target", nargs="?", help="Target database")
 parser.add_argument("source", nargs="*", help="Source files")
+parser.add_argument("--choice", choices=["json", "qdrant", "milvus"], default="qdrant", help="Conversion output type")
 
 def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
-
 
 def eprint(e, exit_code):
     perror("Error: " + str(e).strip("'\""))
@@ -125,7 +219,8 @@ try:
         load()
     else:
         converter = Converter(args.target, args.source)
-        converter.convert()
+        print(args.choice)
+        converter.convert(args.choice)
 except docling.exceptions.ConversionError as e:
     eprint(e, 1)
 except FileNotFoundError as e:
