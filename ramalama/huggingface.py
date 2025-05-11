@@ -380,8 +380,8 @@ class Huggingface(Model):
             snapshot_hash = f"sha256:{fetch_checksum_from_api(organization, name)}"
 
             if not args.quiet:
-                print(f"Downloading huggingface://{name}:{tag} ...")
-                print(f"Trying to pull huggingface://{name}:{tag}...")
+                self.print_pull_message(f"hf://{name}:{tag}")
+
             hf_repo = HuggingfaceRepository(name, organization)
             files = hf_repo.get_file_list(cached_files, snapshot_hash)
             self.store.new_snapshot(tag, snapshot_hash, files)

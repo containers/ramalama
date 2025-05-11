@@ -247,8 +247,8 @@ class Ollama(Model):
         files: list[SnapshotFile] = ollama_repo.get_file_list(tag, cached_files, is_model_in_ollama_cache)
 
         if not args.quiet:
-            print(f"Downloading ollama://{name}:{tag} ...")
-            print(f"Trying to pull ollama://{name}:{tag}...")
+            self.print_pull_message(f"ollama://{name}:{tag}")
+
         model_hash = ollama_repo.get_model_hash(manifest)
         try:
             self.store.new_snapshot(tag, model_hash, files)
