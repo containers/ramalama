@@ -133,52 +133,83 @@ class Converter:
         client.add(COLLECTION_NAME, documents=chunks, ids=ids, batch_size=1)
         
     def export_milvus(self, docs):
-        # TODO: Add hybird search support
         print("Exporting to Milvus")
         output_dir = Path(self.output)
         output_dir.mkdir(parents=True, exist_ok=True)
         # optional import milvus
         try:
-            from pymilvus import MilvusClient
-            from fastembed.embedding import TextEmbedding
+            from pymilvus import MilvusClient, DataType
+            from fastembed import TextEmbedding, SparseTextEmbedding
             print('Milvus enabled')
         except ImportError:
             print('Milvus Vectordb is disabled ... returning')
             return
-
-        data = []
-
-        qmodel = TextEmbedding(model_name=EMBED_MODEL)
-        test_embedding = next(qmodel.embed("This is a test"))
-        embedding_dim = len(test_embedding)
-
+        # Setup collection
         milvus_client = MilvusClient(uri=os.path.join(self.output, "milvus.db"))
         collection_name = COLLECTION_NAME
 
+        # Setup embedding models
+        dmodel = TextEmbedding(model_name=EMBED_MODEL)
+        smodel = SparseTextEmbedding(model_name=SPARSE_MODEL)
+
+        test_embedding = next(dmodel.embed("This is a test"))
+        embedding_dim = len(test_embedding)
+
+        # Create Schema
+        schema = MilvusClient.create_schema(
+            auto_id=False,
+            enable_dynamic_field=True,
+        )
+
+        # Add fields to schema
+        schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
+        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=1000)
+        schema.add_field(field_name="sparse", datatype=DataType.SPARSE_FLOAT_VECTOR)
+        schema.add_field(field_name="dense", datatype=DataType.FLOAT_VECTOR, dim=embedding_dim)
+
+        # Prepare index
+        index_params = milvus_client.prepare_index_params()
+        index_params.add_index(
+            field_name="dense",
+            index_name="dense_index",
+            index_type="AUTOINDEX"
+        )
+
+        index_params.add_index(
+            field_name="sparse",
+            index_name="sparse_index",
+            index_type="SPARSE_INVERTED_INDEX"
+        )
+        # Create collection
         milvus_client.create_collection(
             collection_name=collection_name,
-            dimension=embedding_dim,
+            schema=schema,
+            index_params=index_params
         )
+        # Chunk and add chunks to colleciton 1 by 1
         chunks, ids = self.chunk(docs)
-        batch_size = 5
         data = []
         for i, (chunk, id) in enumerate(zip(chunks, ids)):
-            embedding = next(qmodel.embed([chunk]))
+            dense_embedding = next(dmodel.embed([chunk]))
+            sparse_embedding = next(smodel.embed([chunk]))
+            sparse_vector = sparse_embedding.as_dict()
             milvus_client.insert(
                 collection_name=collection_name,
                 data=[{
                     "id": id,
-                    "vector": embedding,
-                    "text": chunk
+                    "text": chunk,
+                    "sparse": sparse_vector,
+                    "dense": dense_embedding
                 }]
             )
             # Flush every 100 records to reduce RAM usage
             if i % 100 == 0: 
                 milvus_client.flush(collection_name=collection_name)
             
-            print(f"\rProcessed {i+1}/{len(chunks)}", end='', flush=True) 
+            print(f"\rProcessed chunk {i+1}/{len(chunks)}", end='', flush=True) 
 
         milvus_client.flush(collection_name=collection_name)
+        print("\n")
                     
     def get_name(self, path):
         file_name = Path(path).stem
@@ -219,7 +250,6 @@ try:
         load()
     else:
         converter = Converter(args.target, args.source)
-        print(args.choice)
         converter.convert(args.choice)
 except docling.exceptions.ConversionError as e:
     eprint(e, 1)

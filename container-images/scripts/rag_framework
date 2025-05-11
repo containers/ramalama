@@ -4,14 +4,13 @@
 import cmd
 import openai
 from fastembed.rerank.cross_encoder import TextCrossEncoder
-from fastembed.embedding import TextEmbedding
+from fastembed import TextEmbedding, SparseTextEmbedding
 from docling.document_converter import DocumentConverter
 from docling.chunking import HybridChunker
 from docling_core.types.doc import DoclingDocument
 # Vectordb imports
 import qdrant_client
-from qdrant_client import models
-from pymilvus import MilvusClient
+from pymilvus import MilvusClient, AnnSearchRequest, RRFRanker
 # Regular imports
 import uuid
 import os
@@ -52,15 +51,47 @@ class qdrant:
         return qdrant_results
 
 class milvus:
-    # TODO: Add hybird search support
     def __init__(self, vector_path):
         self.milvus_client = MilvusClient(uri=os.path.join(vector_path, "milvus.db"))
-        self.qmodel = TextEmbedding(model_name=EMBED_MODEL)
+        self.dmodel = TextEmbedding(model_name=EMBED_MODEL)
+        self.smodel = SparseTextEmbedding(model_name=SPARSE_MODEL)
     
     def query(self, prompt):
-        results = self.milvus_client.search(
+        dense_embedding = next(self.dmodel.embed([prompt]))
+        sparse_embedding = next(self.smodel.embed([prompt])).as_dict()
+
+        search_param_dense = {
+            "data": [dense_embedding],
+            "anns_field": "dense",
+            "param": {
+                "metric_type": "IP",
+                "params": {"nprobe": 10}
+            },
+            "limit": 10
+        }
+
+        request_dense = AnnSearchRequest(**search_param_dense)
+
+        search_param_sparse = {
+            "data": [sparse_embedding],
+            "anns_field": "sparse",
+            "param": {
+                "metric_type": "IP",
+                "params": {"drop_ratio_build": 0.2}
+            },
+            "limit": 10
+        }
+
+        request_sparse = AnnSearchRequest(**search_param_sparse)
+
+        reqs = [request_dense, request_sparse]
+
+        ranker = RRFRanker(100)
+        
+        results = self.milvus_client.hybrid_search(
             collection_name=COLLECTION_NAME,
-            data=[next(self.qmodel.embed(prompt))],
+            reqs=reqs,
+            ranker=ranker,
             limit=20,
             output_fields=["text"],
         )
