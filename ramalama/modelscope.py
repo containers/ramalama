@@ -37,10 +37,8 @@ def fetch_checksum_from_api(organization, file):
         if not sha256_checksum:
             raise ValueError("SHA-256 checksum not found in the API response.")
         return sha256_checksum
-    except urllib.error.HTTPError as e:
-        raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
-    except urllib.error.URLError as e:
-        raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
+    except (json.JSONDecodeError, urllib.error.HTTPError, urllib.error.URLError) as e:
+        raise KeyError(f"failed to pull {checksum_api_url}: {str(e).strip()}")
 
 
 class ModelScopeRepository(HuggingfaceRepository):
@@ -55,7 +53,7 @@ class ModelScopeRepository(HuggingfaceRepository):
 
 class ModelScope(Model):
 
-    REGISTRY_URL = "https://modelscope.cn"
+    REGISTRY_URL = "https://modelscope.cn/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
     def __init__(self, model):
@@ -83,7 +81,7 @@ class ModelScope(Model):
     def _attempt_url_pull(self, args, model_path, directory_path):
         try:
             return self.url_pull(args, model_path, directory_path)
-        except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
+        except (urllib.error.HTTPError, urllib.error.URLError, KeyError, ValueError) as e:
             return self._attempt_url_pull_ms(args, model_path, directory_path, e)
 
     def _attempt_url_pull_ms(self, args, model_path, directory_path, previous_exception):

@@ -174,7 +174,7 @@ class Huggingface(Model):
     def _attempt_url_pull(self, args, model_path, directory_path):
         try:
             return self.url_pull(args, model_path, directory_path)
-        except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
+        except (urllib.error.HTTPError, urllib.error.URLError, KeyError, ValueError) as e:
             return self._attempt_url_pull_hf_cli(args, model_path, directory_path, e)
 
     def _attempt_url_pull_hf_cli(self, args, model_path, directory_path, previous_exception):
