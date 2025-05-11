@@ -29,7 +29,7 @@ from ramalama.model_store import ModelStore
 from ramalama.quadlet import Quadlet
 from ramalama.version import version
 
-MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "ollama"]
+MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama"]
 
 
 file_not_found = """\

@@ -15,7 +15,7 @@ class ARGS:
 
 
 hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
-
+ms_granite_blob = "https://modelscope.cn/models/ibm-granite/granite-3b-code-base-2k-GGUF/file/view"
 
 @pytest.mark.parametrize(
     "model_input,expected_name,expected_tag,expected_orga",
@@ -33,6 +33,20 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
             "granite-3b-code-base.Q4_K_M.gguf",
             "8ee52dc636b27b99caf046e717a87fb37ad9f33e",
             "huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF",
+        ),
+        ("modelscope://granite-code", "granite-code", "latest", ""),
+        ("ms://granite-code", "granite-code", "latest", ""),
+        (
+            f"{ms_granite_blob}/master/granite-3b-code-base.Q4_K_M.gguf",
+            "granite-3b-code-base.Q4_K_M.gguf",
+            "master",
+            "modelscope.cn/models/ibm-granite/granite-3b-code-base-2k-GGUF",
+        ),
+        (
+            f"{ms_granite_blob}/f823b84ec4b84f9a6742c8a1f6a893deeca75f06/granite-3b-code-base.Q4_K_M.gguf",
+            "granite-3b-code-base.Q4_K_M.gguf",
+            "f823b84ec4b84f9a6742c8a1f6a893deeca75f06",
+            "modelscope.cn/models/ibm-granite/granite-3b-code-base-2k-GGUF",
         ),
         ("ollama://granite-code", "granite-code", "latest", ""),
         (

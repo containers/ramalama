@@ -5,6 +5,7 @@ from ramalama.common import download_file, generate_sha256
 from ramalama.huggingface import HuggingfaceRepository
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFile, SnapshotFileType
+from ramalama.modelscope import ModelScopeRepository
 
 
 class LocalModelFile(SnapshotFile):
@@ -59,6 +60,15 @@ class URL(Model):
 
         # handling huggingface specific URLs for more precise identifiers
         if len(parts) > 2 and HuggingfaceRepository.REGISTRY_URL.endswith(parts[0]) and parts[-2] == "resolve":
+            model_organization = "/".join(parts[:-2])
+            model_tag = parts[-1]
+
+        if len(parts) > 3 and parts[-3] == "file":
+            model_organization = "/".join(parts[:-3])
+            model_tag = parts[-1]
+
+        # handling modelscope specific URLs for more precise identifiers
+        if len(parts) > 2 and ModelScopeRepository.REGISTRY_URL.endswith(parts[0]) and parts[-2] == "resolve":
             model_organization = "/".join(parts[:-2])
             model_tag = parts[-1]
 

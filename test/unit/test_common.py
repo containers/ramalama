@@ -24,6 +24,8 @@ from ramalama.config import load_and_merge_config
             ".co/",
             "ibm-granite/granite-3b-code-base-2k-GGUF/blob/main/granite-3b-code-base.Q4_K_M.gguf",
         ),
+        ("modelscope://granite-code", "://", "granite-code"),
+        ("ms://granite-code", "://", "granite-code"),
         (
             "file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf",
             "",
