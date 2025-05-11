@@ -243,6 +243,28 @@ def verify_checksum(filename):
     return sha256_hash.hexdigest() == expected_checksum
 
 
+def download_and_verify(url, target_path, max_retries=2):
+    """
+    Downloads a file from a given URL and verifies its checksum.
+    If the checksum does not match, it retries the download.
+    Args:
+        url (str): The URL to download from.
+        target_path (str): The path to save the downloaded file.
+        max_retries (int): Maximum number of retries for download.
+    Raises:
+        ValueError: If checksum verification fails after multiple attempts.
+    """
+
+    for attempt in range(max_retries):
+        download_file(url, target_path, headers={}, show_progress=True)
+        if verify_checksum(target_path):
+            break
+        print(f"Checksum mismatch for {target_path}, retrying download... (Attempt {attempt + 1}/{max_retries})")
+        os.remove(target_path)
+    else:
+        raise ValueError(f"Checksum verification failed for {target_path} after multiple attempts")
+
+
 # default_image function should figure out which GPU the system uses t
 # then running appropriate container image.
 def default_image():
