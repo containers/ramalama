@@ -646,6 +646,10 @@ class Model(ModelBase):
 
         print(ModelInfoBase(model_name, model_registry, model_path).serialize(json=args.json))
 
+    def print_pull_message(self, model_name):
+        print(f"Downloading {model_name} ...")
+        print(f"Trying to pull {model_name} ...")
+
 
 def distinfo_volume():
     dist_info = "ramalama-%s.dist-info" % version()
