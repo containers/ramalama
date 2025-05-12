@@ -40,6 +40,7 @@ class PlainFile:
         self.content = content
 
     def write(self, dirpath: str):
+        dirpath = os.path.expanduser(dirpath)
         with open(os.path.join(dirpath, self.filename), "w") as f:
             f.write(self.content)
             f.flush()
@@ -58,6 +59,7 @@ class IniFile:
         self.config[section][key] = value
 
     def write(self, dirpath: str):
+        dirpath = os.path.expanduser(dirpath)
         with open(os.path.join(dirpath, self.filename), "w") as f:
             self.config.write(f, space_around_delimiters=False)
             f.flush()
