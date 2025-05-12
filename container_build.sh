@@ -29,8 +29,14 @@ add_build_platform() {
 
 
   conman_build+=("--platform" "$platform")
-  conman_build+=("--volume=${RAMALAMA_DIR}:/run/ramalama")
-  conman_build+=("--security-opt=label=disable")
+  case $conman_bin in
+    podman)
+      conman_build+=("--volume=${RAMALAMA_DIR}:/run/ramalama")
+      conman_build+=("--security-opt=label=disable")
+      ;;
+    docker)
+      ;;
+  esac
   if [ -n "$version" ]; then
       conman_build+=("--build-arg" "VERSION=$version")
       conman_build+=("-t" "$REGISTRY_PATH/${target}-${version}")
