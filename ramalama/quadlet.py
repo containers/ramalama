@@ -1,6 +1,7 @@
 import os
 
 from ramalama.common import MNT_CHAT_TEMPLATE_FILE, MNT_DIR, MNT_FILE, RAG_DIR, get_accel_env_vars
+from ramalama.file import IniFile
 
 
 class Quadlet:
@@ -25,130 +26,119 @@ class Quadlet:
             self.rag = args.rag.removeprefix("oci://")
             self.rag_name = os.path.basename(self.rag) + "-rag"
 
-    def kube(self):
-        outfile = self.name + ".kube"
-        print(f"Generating quadlet file: {outfile}")
-        with open(outfile, 'w') as c:
-            c.write(
-                f"""\
-[Unit]
-Description=RamaLama {self.model} Kubernetes YAML - AI Model Service
-After=local-fs.target
+    def kube(self) -> IniFile:
+        file_name = f"{self.name}.kube"
+        print(f"Generating quadlet file: {file_name}")
 
-[Kube]
-Yaml={self.name}.yaml
+        file = IniFile(file_name)
+        file.add("Unit", "Description", f"RamaLama {self.model} Kubernetes YAML - AI Model Service")
+        file.add("Unit", "After", "local-fs.target")
+        file.add("Kube", "Yaml", f"{self.name}.yaml")
+        # Start by default on boot
+        file.add("Install", "WantedBy", "multi-user.target default.target")
 
-[Install]
-# Start by default on boot
-WantedBy=multi-user.target default.target
-"""
-            )
+        return file
 
-    def generate(self):
-        chat_template_volume = self._gen_chat_template_volume()
-        env_var_string = self._gen_env()
-        model_volume = self._gen_model_volume()
-        name_string = self._gen_name()
-        port_string = self._gen_port()
-        rag_volume = self._gen_rag_volume()
+    def generate(self) -> list[IniFile]:
+        files = []
 
-        outfile = self.name + ".container"
-        print(f"Generating quadlet file: {outfile}")
-        with open(outfile, 'w') as c:
-            c.write(
-                f"""\
-[Unit]
-Description=RamaLama {self.model} AI Model Service
-After=local-fs.target
+        container_file_name = f"{self.name}.container"
+        print(f"Generating quadlet file: {container_file_name}")
 
-[Container]
-AddDevice=-/dev/accel
-AddDevice=-/dev/dri
-AddDevice=-/dev/kfd\
-{env_var_string}
-Exec={" ".join(self.exec_args)}
-Image={self.image}\
-{model_volume}\
-{rag_volume}\
-{chat_template_volume}\
-{name_string}\
-{port_string}
+        quadlet_file = IniFile(container_file_name)
+        quadlet_file.add("Unit", "Description", f"RamaLama {self.model} AI Model Service")
+        quadlet_file.add("Unit", "After", "local-fs.target")
+        quadlet_file.add("Container", "AddDevice", "-/dev/accel")
+        quadlet_file.add("Container", "AddDevice", "-/dev/dri")
+        quadlet_file.add("Container", "AddDevice", "-/dev/kfd")
+        quadlet_file.add("Container", "Image", f"{self.image}")
+        exec_cmd = " ".join(self.exec_args)
+        quadlet_file.add("Container", "Exec", f"{exec_cmd}")
 
-[Install]
-# Start by default on boot
-WantedBy=multi-user.target default.target
-"""
-            )
+        self._gen_chat_template_volume(quadlet_file)
+        self._gen_env(quadlet_file)
+        self._gen_name(quadlet_file)
+        self._gen_port(quadlet_file)
 
-    def _gen_chat_template_volume(self):
+        volume_files = self._gen_model_volume(quadlet_file)
+        files.extend(volume_files)
+        rag_files = self._gen_rag_volume(quadlet_file)
+        files.extend(rag_files)
+
+        # Start by default on boot
+        quadlet_file.add("Install", "WantedBy", "multi-user.target default.target")
+        files.append(quadlet_file)
+
+        return files
+
+    def _gen_chat_template_volume(self, quadlet_file: IniFile):
         if os.path.exists(self.chat_template):
-            return f"\nMount=type=bind,src={self.chat_template},target={MNT_CHAT_TEMPLATE_FILE},ro,Z"
-        return ""
+            quadlet_file.add(
+                "Container", "Mount", f"type=bind,src={self.chat_template},target={MNT_CHAT_TEMPLATE_FILE},ro,Z"
+            )
 
-    def _gen_env(self):
+    def _gen_env(self, quadlet_file: IniFile):
         env_var_string = ""
         for k, v in get_accel_env_vars().items():
-            env_var_string += f"\nEnvironment={k}={v}"
+            quadlet_file.add("Container", "Environment", f"{k}={v}")
         for e in self.args.env:
-            env_var_string += f"\nEnvironment={e}"
+            quadlet_file.add("Container", "Environment", f"{e}")
         return env_var_string
 
     def _gen_image(self, name, image):
-        outfile = name + ".image"
-        print(f"Generating quadlet file: {outfile} ")
-        with open(outfile, 'w') as c:
-            c.write(
-                f"""\
-[Image]
-Image={image}
-"""
-            )
+        image_file_name = f"{name}.image"
+        print(f"Generating quadlet file: {image_file_name} ")
+        image_file = IniFile(image_file_name)
+        image_file.add("Image", "Image", f"{image}")
+        return image_file
 
-    def _gen_name(self):
-        name_string = ""
+    def _gen_name(self, quadlet_file: IniFile):
         if hasattr(self.args, "name") and self.args.name:
-            name_string = f"\nContainerName={self.args.name}"
-        return name_string
+            quadlet_file.add("Container", "ContainerName", f"{self.args.name}")
 
-    def _gen_model_volume(self):
+    def _gen_model_volume(self, quadlet_file: IniFile):
+        files = []
+
         if os.path.exists(self.model):
-            return f"\nMount=type=bind,src={self.model},target={MNT_FILE},ro,Z"
+            quadlet_file.add("Container", "Mount", f"type=bind,src={self.model},target={MNT_FILE},ro,Z")
+            return files
 
-        outfile = self.name + ".volume"
+        volume_file_name = f"{self.name}.volume"
+        print(f"Generating quadlet file: {volume_file_name} ")
 
-        print(f"Generating quadlet file: {outfile} ")
-        with open(outfile, 'w') as c:
-            c.write(
-                f"""\
-[Volume]
-Driver=image
-Image={self.name}.image
-"""
-            )
-        self._gen_image(self.name, self.ai_image)
-        return f"\nMount=type=image,source={self.ai_image},destination={MNT_DIR},subpath=/models,readwrite=false"
+        volume_file = IniFile(volume_file_name)
+        volume_file.add("Volume", "Driver", "image")
+        volume_file.add("Volume", "Image", f"{self.name}.image")
+        files.append(volume_file)
 
-    def _gen_port(self):
-        port_string = ""
+        files.append(self._gen_image(self.name, self.ai_image))
+
+        quadlet_file.add(
+            "Container",
+            "Mount",
+            f"type=image,source={self.ai_image},destination={MNT_DIR},subpath=/models,readwrite=false",
+        )
+        return files
+
+    def _gen_port(self, quadlet_file: IniFile):
         if hasattr(self.args, "port"):
-            port_string = f"\nPublishPort={self.args.port}"
-        return port_string
+            quadlet_file.add("Container", "PublishPort", f"{self.args.port}")
 
-    def _gen_rag_volume(self):
-        rag_volume = ""
+    def _gen_rag_volume(self, quadlet_file: IniFile):
+        files = []
+
         if not hasattr(self.args, "rag") or not self.rag:
-            return rag_volume
+            return files
 
-        outfile = self.rag_name + ".volume"
+        rag_volume_file_name = f"{self.rag_name}.volume"
+        print(f"Generating quadlet file: {rag_volume_file_name} ")
 
-        print(f"Generating quadlet file: {outfile} ")
-        with open(outfile, 'w') as c:
-            c.write(
-                f"""\
-[Volume]
-Driver=image
-Image={self.rag_name}.image
-"""
-            )
-        self._gen_image(self.rag_name, self.rag)
-        return f"\nMount=type=image,source={self.rag},destination={RAG_DIR},readwrite=false"
+        volume_file = IniFile(rag_volume_file_name)
+        volume_file.add("Volume", "Driver", "image")
+        volume_file.add("Volume", "Image", f"{self.rag_name}.image")
+        files.append(volume_file)
+
+        files.append(self._gen_image(self.rag_name, self.rag))
+
+        quadlet_file.add("Container", "Mount", f"type=image,source={self.rag},destination={RAG_DIR},readwrite=false")
+        return files
