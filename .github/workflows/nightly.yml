@@ -67,14 +67,10 @@ jobs:
       - name: Checkout ramalama
         uses: actions/checkout@v4
 
-      - name: Install golang
-        shell: bash
-        run: brew install go
-
       - name: Install end-to-end test requirements
         shell: bash
         run: |
-          brew install shellcheck
+          brew install go shellcheck bats
           make install-requirements
 
       - name: Run end-to-end tests
