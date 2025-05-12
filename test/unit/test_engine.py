@@ -37,7 +37,7 @@ class TestEngine(unittest.TestCase):
         self.assertIn("--runtime", podman_engine.exec_args)
         self.assertIn("/usr/bin/nvidia-container-runtime", podman_engine.exec_args)
 
-        # Test Podman wehn nvidia-container-runtime executable is missing
+        # Test Podman when nvidia-container-runtime executable is missing
         # This is expected with the official package
         mock_os_access.return_value = False
         podman_engine = Engine(self.base_args)
