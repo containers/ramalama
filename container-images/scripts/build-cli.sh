@@ -24,7 +24,9 @@ dnf_install() {
 install_ramalama() {
   # link podman-remote to podman for use by RamaLama
   ln -sf /usr/bin/podman-remote /usr/bin/podman
-  python3 -m pip install /run/ramalama --prefix=/usr
+  if [ -e "/run/ramalama" ]; then
+    python3 -m pip install /run/ramalama --prefix=/usr
+  fi
 }
 
 main() {
