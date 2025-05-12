@@ -18,6 +18,8 @@ export ARMREPO=${ARMREPO:-"quay.io/rhatdan"}
 export REPO=${REPO:-"quay.io/ramalama"}
 
 release() {
+    version=$(bin/ramalama -q version)
+    minor_version=${version%.*}
     DEST=${REPO}/"$1"
     podman manifest rm "$1" 2>/dev/null|| true
     podman manifest create "$1"
@@ -28,8 +30,8 @@ release() {
     podman manifest inspect "$1"
     digest=$(podman image inspect "${DEST}" --format '{{ .Digest }}' | cut -f2 -d':')
     podman manifest push --all "$1" "${DEST}:${digest}"
-    podman manifest push --all "$1" "${DEST}":0.8.2
-    podman manifest push --all "$1" "${DEST}":0.8
+    podman manifest push --all "$1" "${DEST}:${version}"
+    podman manifest push --all "$1" "${DEST}:${minor_version}"
     podman manifest push --all "$1" "${DEST}"
     podman manifest rm "$1"
 }
