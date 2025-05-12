@@ -44,7 +44,7 @@ class ModelStoreImport:
         if not os.path.exists(self._old_model_path):
             return
 
-        print("Starting importing AI models to new store...")
+        print("Starting importing AI models to new store ...")
         for root, _, files in os.walk(self._old_model_path):
             if not files:
                 continue

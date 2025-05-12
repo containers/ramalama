@@ -109,7 +109,7 @@ class GGUFInfoParser:
                 magic_number = GGUFInfoParser.read_string(model_file, 4)
                 return magic_number == GGUFModelInfo.MAGIC_NUMBER
         except Exception as ex:
-            console.warning(f" Failed to read model '{model_path}': {ex}")
+            console.warning(f"Failed to read model '{model_path}': {ex}")
             return False
 
     @staticmethod
