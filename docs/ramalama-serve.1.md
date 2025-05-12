@@ -278,12 +278,12 @@ Image=quay.io/rhatdan/tiny:latest
 
 ### Generate quadlet service off of tiny OCI Model and output to directory
 ```
-$ ramalama --runtime=vllm serve --name tiny --generate=quadlet:/etc/containers/systemd oci://quay.io/rhatdan/tiny:latest
+$ ramalama --runtime=vllm serve --name tiny --generate=quadlet:~/.config/containers/systemd/ oci://quay.io/rhatdan/tiny:latest
 Generating quadlet file: tiny.container
 Generating quadlet file: tiny.image
 Generating quadlet file: tiny.volume
 
-$ ls /etc/containers/systemd
+$ ls ~/.config/containers/systemd/
 tiny.container tiny.image tiny.volume
 ```
 
