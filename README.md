@@ -164,12 +164,14 @@ More information on shortnames.
 
 RamaLama reads shortnames.conf files if they exist. These files contain a list of name-value pairs that specify the model. The following table specifies the order in which RamaLama reads the files. Any duplicate names that exist override previously defined shortnames.
 <br>
-
-| Shortnames type | Path                                     |
-| :-------------- | :--------------------------------------- |
-| Distribution    | /usr/share/ramalama/shortnames.conf      |
-| Administrators  | /etc/ramalama/shortnames.conf            |
-| Users           | $HOME/.config/ramalama/shortnames.conf   |
+| Shortnames type    | Path                                                       |
+| :----------------  | :-------------------------------------------               |
+| Development        | ./shortnames.conf                                          |
+| User (Config)      | $HOME/.config/ramalama/shortnames.conf                     |
+| User (Local Share) | $HOME/.local/share/ramalama/shortnames.conf                |
+| Administrators     | /etc/ramalama/shortnames.conf                              |
+| Distribution       | /usr/share/ramalama/shortnames.conf                        |
+| Local Distribution | /usr/local/share/ramalama/shortnames.conf                  |
 <br>
 
 ```
