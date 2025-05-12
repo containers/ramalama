@@ -136,7 +136,7 @@ class Converter:
         print("Exporting to Milvus")
         output_dir = Path(self.output)
         output_dir.mkdir(parents=True, exist_ok=True)
-        # optional import milvus
+        # Optional import milvus
         try:
             from pymilvus import MilvusClient, DataType
             from fastembed import TextEmbedding, SparseTextEmbedding
