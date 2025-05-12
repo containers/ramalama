@@ -55,15 +55,7 @@ install-cov-requirements:
 .PHONY: install-requirements
 install-requirements:
 	pip install -U pipx
-	pipx install \
-			argcomplete~=3.0 \
-			black~=25.0 \
-			codespell~=2.0 \
-			flake8~=7.0 \
-			huggingface_hub~=0.28.0 \
-			isort~=6.0 \
-			pytest~=8.3 \
-			wheel~=0.45.0
+	pipx install ".[dev]"
 
 .PHONY: install-completions
 install-completions: completions
