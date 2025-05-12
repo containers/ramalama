@@ -1124,7 +1124,7 @@ def main():
     try:
         ModelStoreImport(args.store).import_all()
     except Exception as ex:
-        print(f"Failed to import models to new store: {ex}")
+        perror(f"Error: Failed to import models to new store: {ex}")
 
     def eprint(e, exit_code):
         perror("Error: " + str(e).strip("'\""))
@@ -1138,7 +1138,7 @@ def main():
         parser.print_help()
     except AttributeError as e:
         parser.print_usage()
-        print("ramalama: requires a subcommand")
+        perror("ramalama: requires a subcommand")
         if getattr(args, "debug", False):
             raise e
     except IndexError as e:
