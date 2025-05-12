@@ -430,7 +430,7 @@ class ModelStore:
 
             if file.should_verify_checksum:
                 if not verify_checksum(dest_path):
-                    LOGGER.info(f"Checksum mismatch for blob {dest_path}, retrying download...")
+                    LOGGER.info(f"Checksum mismatch for blob {dest_path}, retrying download ...")
                     os.remove(dest_path)
                     file.download(dest_path, self.get_snapshot_directory(snapshot_hash))
                     if not verify_checksum(dest_path):

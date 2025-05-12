@@ -267,10 +267,9 @@ class ModelScope(Model):
         try:
             # Fetch the SHA-256 checksum of model from the API and use as snapshot hash
             snapshot_hash = f"sha256:{fetch_checksum_from_api(organization, name)}"
-
             if not args.quiet:
-                print(f"Downloading modelscope://{name}:{tag} ...")
-                print(f"Trying to pull modelscope://{name}:{tag}...")
+                self.print_pull_message(f"ms://{name}:{tag}")
+
             ms_repo = ModelScopeRepository(name, organization)
             files = ms_repo.get_file_list(cached_files, snapshot_hash)
             self.store.new_snapshot(tag, snapshot_hash, files)
