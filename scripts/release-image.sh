@@ -31,10 +31,12 @@ release-arm() {
 }
 
 release-ramalama() {
+    version=$(bin/ramalama -q version)
+    minor_version=${version%.*}
     digest=$(podman image inspect "${REPO}/$1" --format '{{ .Digest }}' | cut -f2 -d':')
     podman push "${REPO}/$1" "${REPO}/$1:${digest}"
-    podman push "${REPO}/$1" "${REPO}/$1":0.8.2
-    podman push "${REPO}/$1" "${REPO}/$1":0.8
+    podman push "${REPO}/$1" "${REPO}/$1:${version}"
+    podman push "${REPO}/$1" "${REPO}/$1:${minor_version}"
     podman push "${REPO}/$1"
 }
 

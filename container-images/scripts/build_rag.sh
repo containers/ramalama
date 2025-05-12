@@ -10,7 +10,7 @@ python_version() {
   # $2 is empty when no Python is installed, so just install python3
   if [ -n "$pyversion" ]; then
       string="$pyversion
-Python 3.11"
+Python 3.10"
       if [ "$string" == "$(sort --version-sort <<< "$string")" ]; then
 	  echo "python3.11"
 	  return
@@ -39,10 +39,12 @@ if [[ "$ID" = "fedora" && "$VERSION_ID" -ge 42 ]] ; then
 fi
 
 update_python() {
-    eval dnf install -y "${PYTHON}" "${PYTHON}-pip" "${PYTHON}-devel" "${packages}"
+    dnf update -y
+    dnf install -y "${PYTHON}" "${PYTHON}-pip" "${PYTHON}-devel" "${packages}"
     if [[ "${PYTHON}" == "python3.11" ]]; then
 	ln -sf /usr/bin/python3.11 /usr/bin/python3
     fi
+    rm -rf /usr/local/python3.10
 }
 
 docling() {
