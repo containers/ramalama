@@ -197,7 +197,7 @@ verify_begin=".*run --rm"
 
     rm tinyllama.container
     run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus tiny
-    is "$output" ".*error: argument --generate: invalid choice: 'bogus' (choose from.*quadlet.*kube.*quadlet/kube.*)" "Should fail"
+    is "$output" ".*error: argument --generate: invalid choice: .*bogus.* (choose from.*quadlet.*kube.*quadlet/kube.*)" "Should fail"
 }
 
 @test "ramalama serve --generate=quadlet and --generate=kube with OCI" {
@@ -311,6 +311,20 @@ verify_begin=".*run --rm"
     is "$output" ".*Yaml=$name.yaml" "Should container container port"
     rm $name.kube
     rm $name.yaml
+}
+
+@test "ramalama serve --generate=kube:/tmp" {
+    model=tiny
+    name=c_$(safename)
+    run_ramalama pull ${model}
+    run_ramalama serve --name=${name} --port 1234 --generate=kube:/tmp ${model}
+    is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+
+    run cat /tmp/$name.yaml
+    is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
+    is "$output" ".*containerPort: 1234" "Should container container port"
+
+    rm /tmp/$name.yaml
 }
 
 # vim: filetype=sh

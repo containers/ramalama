@@ -10,9 +10,9 @@ ramalama/*.patch
 dist
 .#*
 venv/
-*.container
-*.image
-*.volume
+/*.container
+/*.image
+/*.volume
 __pycache__/
 .aider*
 .coverage
