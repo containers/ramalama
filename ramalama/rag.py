@@ -21,10 +21,10 @@ class Rag:
         set_accel_env_vars()
 
     def build(self, source, target, args):
-        print(f"\nBuilding {target}...")
+        print(f"\nBuilding {target} ...")
         contextdir = os.path.dirname(source)
         src = os.path.basename(source)
-        print(f"adding {src}...")
+        print(f"adding {src} ...")
         cfile = f"""\
 FROM scratch
 COPY {src} /vector.db

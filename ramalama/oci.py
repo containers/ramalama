@@ -306,12 +306,12 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         run_cmd(cmd_args, stdout=None, debug=args.debug)
 
     def _convert(self, source_model, args):
-        print(f"Converting {source_model.store.base_path} to {self.store.base_path}...")
+        print(f"Converting {source_model.store.base_path} to {self.store.base_path} ...")
         try:
             run_cmd([self.conman, "manifest", "rm", self.model], ignore_stderr=True, stdout=None, debug=args.debug)
         except subprocess.CalledProcessError:
             pass
-        print(f"Building {self.model}...")
+        print(f"Building {self.model} ...")
         imageid = self.build(source_model, args)
         try:
             self._create_manifest(self.model, imageid, args)
@@ -330,7 +330,7 @@ Tagging build instead"""
         target = self.model
         source = source_model.model
 
-        print(f"Pushing {self.model}...")
+        print(f"Pushing {self.model} ...")
         conman_args = [self.conman, "push"]
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
@@ -347,7 +347,7 @@ Tagging build instead"""
 
     def pull(self, args):
         if not args.quiet:
-            print(f"Downloading {self.model}...")
+            print(f"Downloading {self.model} ...")
         if not args.engine:
             raise NotImplementedError("OCI images require a container engine like Podman or Docker")
 
