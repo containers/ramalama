@@ -17,6 +17,7 @@ class ARGS:
 hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
 ms_granite_blob = "https://modelscope.cn/models/ibm-granite/granite-3b-code-base-2k-GGUF/file/view"
 
+
 @pytest.mark.parametrize(
     "model_input,expected_name,expected_tag,expected_orga",
     [

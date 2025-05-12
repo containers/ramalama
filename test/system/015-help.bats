@@ -3,7 +3,7 @@
 # Tests based on 'ramalama help'
 #
 # Find all commands listed by 'ramalama --help'. Run each one, make sure it
-# provides its own --help output. 
+# provides its own --help output.
 # Any usage message that ends in '[options]' is interpreted as a command
 # that takes no further arguments; we confirm by running with 'invalid-arg'
 # and confirming that it exits with error status and message.
@@ -209,7 +209,7 @@ EOF
 @test "ramalama verify transport" {
     transport=e_$(safename)
     RAMALAMA_TRANSPORT=${transport} run_ramalama 1 pull foobar
-    is "$output" "Error: transport \"${transport}\" not supported. Must be oci, huggingface, or ollama."  "Verify bogus transport throws error"
+    is "$output" "Error: transport \"${transport}\" not supported. Must be oci, huggingface, modelscope, or ollama."  "Verify bogus transport throws error"
 
 }
 
