@@ -94,7 +94,7 @@ RamaLama is available via PyPi at [https://pypi.org/project/ramalama](https://py
 pip install ramalama
 ```
 
-### Install on Mac
+### Install script (Linux and macOS)
 Install RamaLama by running:
 ```
 curl -fsSL https://ramalama.ai/install.sh | bash
