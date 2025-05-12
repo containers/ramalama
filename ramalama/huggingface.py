@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import urllib.request
 
-from ramalama.common import available, download_file, exec_cmd, generate_sha256, perror, run_cmd, verify_checksum
+from ramalama.common import available, download_and_verify, exec_cmd, generate_sha256, perror, run_cmd, verify_checksum
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFile, SnapshotFileType
 from ramalama.ollama_repo_utils import repo_pull
@@ -174,7 +174,7 @@ class Huggingface(Model):
     def _attempt_url_pull(self, args, model_path, directory_path):
         try:
             return self.url_pull(args, model_path, directory_path)
-        except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
+        except (urllib.error.HTTPError, urllib.error.URLError, KeyError, ValueError) as e:
             return self._attempt_url_pull_hf_cli(args, model_path, directory_path, e)
 
     def _attempt_url_pull_hf_cli(self, args, model_path, directory_path, previous_exception):
@@ -274,6 +274,13 @@ class Huggingface(Model):
         os.symlink(relative_target_path, model_path)
         return model_path
 
+    def _update_symlink(self, model_path, target_path):
+        relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
+        if not self.check_valid_model_path(relative_target_path, model_path):
+            pathlib.Path(model_path).unlink(missing_ok=True)
+            os.symlink(relative_target_path, model_path)
+        return model_path
+
     def url_pull(self, args, model_path, directory_path):
         # Fetch the SHA-256 checksum from the API
         sha256_checksum = fetch_checksum_from_api(self.directory, self.filename)
@@ -284,30 +291,12 @@ class Huggingface(Model):
             self.in_existing_cache(args, target_path, sha256_checksum)
 
         if os.path.exists(target_path) and verify_checksum(target_path):
-            relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
-            if not self.check_valid_model_path(relative_target_path, model_path):
-                pathlib.Path(model_path).unlink(missing_ok=True)
-                os.symlink(relative_target_path, model_path)
-            return model_path
+            return self._update_symlink(model_path, target_path)
 
         # Download the model file to the target path
         url = f"https://huggingface.co/{self.directory}/resolve/main/{self.filename}"
-        download_file(url, target_path, headers={}, show_progress=True)
-        if not verify_checksum(target_path):
-            print(f"Checksum mismatch for {target_path}, retrying download...")
-            os.remove(target_path)
-            download_file(url, target_path, headers={}, show_progress=True)
-            if not verify_checksum(target_path):
-                raise ValueError(f"Checksum verification failed for {target_path}")
-
-        relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
-        if self.check_valid_model_path(relative_target_path, model_path):
-            # Symlink is already correct, no need to update it
-            return model_path
-
-        pathlib.Path(model_path).unlink(missing_ok=True)
-        os.symlink(relative_target_path, model_path)
-        return model_path
+        download_and_verify(url, target_path)
+        return self._update_symlink(model_path, target_path)
 
     def push(self, _, args):
         if not self.hf_cli_available:
@@ -344,9 +333,14 @@ class Huggingface(Model):
             if os.path.isdir(entry_path) or entry == ".gitattributes":
                 continue
             sha256 = ""
-            with open(os.path.join(cache_dir, f"{entry}.metadata")) as metafile:
-                metafile.readline()
-                sha256 = f"sha256:{metafile.readline().strip()}"
+            metadata_path = os.path.join(cache_dir, f"{entry}.metadata")
+            if not os.path.exists(metadata_path):
+                continue
+            with open(metadata_path) as metafile:
+                lines = metafile.readlines()
+                if len(lines) < 2:
+                    continue
+                sha256 = f"sha256:{lines[1].strip()}"
             if sha256 == "sha256:":
                 continue
             if entry.lower() == "readme.md":

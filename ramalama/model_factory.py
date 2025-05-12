@@ -7,6 +7,7 @@ from ramalama.common import rm_until_substring
 from ramalama.huggingface import Huggingface
 from ramalama.model import MODEL_TYPES
 from ramalama.model_store import GlobalModelStore, ModelStore
+from ramalama.modelscope import ModelScope
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.url import URL
@@ -28,8 +29,8 @@ class ModelFactory:
         self.ignore_stderr = ignore_stderr
         self.container = args.container
 
-        self.model_cls: type[Union[Huggingface, Ollama, OCI, URL]]
-        self.create: Callable[[], Union[Huggingface, Ollama, OCI, URL]]
+        self.model_cls: type[Union[Huggingface, ModelScope, Ollama, OCI, URL]]
+        self.create: Callable[[], Union[Huggingface, ModelScope, Ollama, OCI, URL]]
         self.model_cls, self.create = self.detect_model_model_type()
 
         self.pruned_model = self.prune_model_input()
@@ -44,6 +45,8 @@ class ModelFactory:
     ) -> Tuple[type[Union[Huggingface, Ollama, OCI, URL]], Callable[[], Union[Huggingface, Ollama, OCI, URL]]]:
         if self.model.startswith("huggingface://") or self.model.startswith("hf://") or self.model.startswith("hf.co/"):
             return Huggingface, self.create_huggingface
+        if self.model.startswith("modelscope://") or self.model.startswith("ms://"):
+            return ModelScope, self.create_modelscope
         if self.model.startswith("ollama://") or "ollama.com/library/" in self.model:
             return Ollama, self.create_ollama
         if self.model.startswith("oci://") or self.model.startswith("docker://"):
@@ -53,12 +56,14 @@ class ModelFactory:
 
         if self.transport == "huggingface":
             return Huggingface, self.create_huggingface
+        if self.transport == "modelscope":
+            return ModelScope, self.create_modelscope
         if self.transport == "ollama":
             return Ollama, self.create_ollama
         if self.transport == "oci":
             return OCI, self.create_oci
 
-        raise KeyError(f'transport "{self.transport}" not supported. Must be oci, huggingface, or ollama.')
+        raise KeyError(f'transport "{self.transport}" not supported. Must be oci, huggingface, modelscope, or ollama.')
 
     def prune_model_input(self) -> str:
         # remove protocol from model input
@@ -66,6 +71,8 @@ class ModelFactory:
 
         if self.model_cls == Huggingface:
             pruned_model_input = rm_until_substring(pruned_model_input, "hf.co/")
+        elif self.model_cls == ModelScope:
+            pruned_model_input = rm_until_substring(pruned_model_input, "modelscope.cn/")
         elif self.model_cls == Ollama:
             pruned_model_input = rm_until_substring(pruned_model_input, "ollama.com/library/")
 
@@ -79,13 +86,19 @@ class ModelFactory:
             if self.model.startswith(t + "://"):
                 raise ValueError(f"{self.model} invalid: Only OCI Model types supported")
 
-    def set_optional_model_store(self, model: Union[Huggingface, Ollama, OCI, URL]):
+    def set_optional_model_store(self, model: Union[Huggingface, ModelScope, Ollama, OCI, URL]):
         if self.use_model_store:
             name, _, orga = model.extract_model_identifiers()
             model.store = ModelStore(GlobalModelStore(self.store_path), name, model.model_type, orga)
 
     def create_huggingface(self) -> Huggingface:
         model = Huggingface(self.pruned_model)
+        self.set_optional_model_store(model)
+        model.draft_model = self.draft_model
+        return model
+
+    def create_modelscope(self) -> ModelScope:
+        model = ModelScope(self.pruned_model)
         self.set_optional_model_store(model)
         model.draft_model = self.draft_model
         return model
