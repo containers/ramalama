@@ -991,7 +991,13 @@ formatted files to be processed""",
         type=str,
         default='qdrant',
         choices=["json", "qdrant", "milvus"],
-        help='pull image policy',
+        help="Document conversion output type",
+    )
+    parser.add_argument(
+        "--ocr",
+        dest="ocr",
+        action='store_true',
+        help="PDF Image processing",
     )
     parser.set_defaults(func=rag_cli)
 

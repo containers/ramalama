@@ -17,15 +17,6 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling_core.types.doc import DoclingDocument
 
-# Docling Setup (Turn off OCR (image processing) for drastically reduced RAM usage and big speed increase)
-pipeline_options = PdfPipelineOptions()
-pipeline_options.do_ocr = False
-doc_converter = DocumentConverter(
-        format_options={
-            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-        }
-    )
-
 # Global Vars
 EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
 SPARSE_MODEL = os.getenv("SPARSE_MODEL", "prithivida/Splade_PP_en_v1")
@@ -34,8 +25,15 @@ COLLECTION_NAME = "rag"
 class Converter:
     """A Class designed to handle all document conversions using Docling"""
 
-    def __init__(self, output, targets):
-        self.doc_converter = doc_converter
+    def __init__(self, output, targets, ocr):
+        # Docling Setup (Turn off OCR (image processing) for drastically reduced RAM usage and big speed increase)
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = ocr
+        self.doc_converter = DocumentConverter(
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+                }
+            )
         self.targets = []
         for target in targets:
             self.add(target)
@@ -46,6 +44,15 @@ class Converter:
             self.walk(file_path)  # Walk directory and process all files
         else:
             self.targets.append(file_path)  # Process the single file
+    
+    def walk(self, path):
+        for root, dirs, files in os.walk(path, topdown=True):
+            if len(files) == 0:
+                continue
+            for f in files:
+                file = os.path.join(root, f)
+                if os.path.isfile(file):
+                    self.targets.append(file)
     
     def show_progress(self, message, stop_event):
             spinner = itertools.cycle([".", "..", "..."])
@@ -210,19 +217,13 @@ class Converter:
 
         milvus_client.flush(collection_name=collection_name)
         print("\n")
+        milvus_client.close()
+        print("yomama")
                     
     def get_name(self, path):
         file_name = Path(path).stem
         return file_name
 
-    def walk(self, path):
-        for root, dirs, files in os.walk(path, topdown=True):
-            if len(files) == 0:
-                continue
-            for f in files:
-                file = os.path.join(root, f)
-                if os.path.isfile(file):
-                    self.targets.append(file)
 def load():
     # Dummy code to preload models
     converter = DocumentConverter()
@@ -235,7 +236,8 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("target", nargs="?", help="Target database")
 parser.add_argument("source", nargs="*", help="Source files")
-parser.add_argument("--db", choices=["json", "qdrant", "milvus"], default="qdrant", help="Conversion output type")
+parser.add_argument("--db", choices=["json", "qdrant", "milvus"], default="qdrant", help="Document conversion output type")
+parser.add_argument("--ocr", action='store_true', help="PDF Image processing")
 
 def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -249,7 +251,8 @@ try:
     if args.target == "load":
         load()
     else:
-        converter = Converter(args.target, args.source)
+        print("ocr flag", args.ocr)
+        converter = Converter(args.target, args.source, args.ocr)
         converter.convert(args.db)
 except docling.exceptions.ConversionError as e:
     eprint(e, 1)
