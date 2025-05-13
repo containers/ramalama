@@ -985,6 +985,14 @@ Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
 formatted files to be processed""",
     )
     parser.add_argument("IMAGE", help="OCI Image name to contain processed rag data", completer=suppressCompleter)
+    parser.add_argument(
+        "--db",
+        dest="db",
+        type=str,
+        default='qdrant',
+        choices=["json", "qdrant", "milvus"],
+        help='pull image policy',
+    )
     parser.set_defaults(func=rag_cli)
 
 
