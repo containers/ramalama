@@ -103,6 +103,7 @@ def load_config_defaults(config: Dict[str, Any]):
     config.setdefault('transport', "ollama")
     config.setdefault('use_model_store', True)
     config.setdefault('ocr', False)
+    config.setdefault('db', "qdrant")
 
 
 class Config(ChainMap):

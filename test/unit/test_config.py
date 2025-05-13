@@ -81,6 +81,7 @@ def test_load_config_from_env(env, config, expected):
                 "use_model_store": True,
                 "port": int_tuple_as_str(DEFAULT_PORT_RANGE),
                 "ocr": False,
+                "db": "qdrant",
             },
         ),
         (
@@ -113,6 +114,7 @@ def test_load_config_from_env(env, config, expected):
                 "use_model_store": True,
                 "port": int_tuple_as_str(DEFAULT_PORT_RANGE),
                 "ocr": False,
+                "db": "qdrant",
             },
         ),
     ],

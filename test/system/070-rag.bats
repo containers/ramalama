@@ -21,6 +21,10 @@ load helpers
     run_ramalama --dryrun rag --ocr $FILE quay.io/ramalama/myrag:1.2
     is "$output" ".*doc2rag /output /docs/ --ocr" "Expected to see ocr flag"
 
+    # Run with Database flag
+    run_ramalama --dryrun rag --db milvus $FILE quay.io/ramalama/myrag:1.2
+    is "$output" ".*doc2rag /output /docs/ --db milvus" "Expected to see ocr flag"
+
     FILE_URL=file://${PWD}/README.md
     run_ramalama --dryrun rag $FILE_URL quay.io/ramalama/myrag:1.2
     is "$output" ".*-v ${PWD}/$FILE:/docs/$PWD/$FILE" "Expected to see file volume mounted in"
