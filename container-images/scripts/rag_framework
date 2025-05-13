@@ -2,20 +2,23 @@
 
 # AI imports
 import cmd
-import qdrant_client
 import openai
 from fastembed.rerank.cross_encoder import TextCrossEncoder
+from fastembed import TextEmbedding, SparseTextEmbedding
+from docling.document_converter import DocumentConverter
+from docling.chunking import HybridChunker
+from docling_core.types.doc import DoclingDocument
+# Vectordb imports
+import qdrant_client
+from pymilvus import MilvusClient, AnnSearchRequest, RRFRanker
 # Regular imports
 import uuid
 import os
 import hashlib
 import argparse
-
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from fastapi import FastAPI
-import uvicorn
+from pathlib import Path
+import json
+import sys
 
 # Global Vars
 EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
@@ -27,30 +30,93 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
 def eprint(e, exit_code):
-    print("Error: " + str(e).strip("'\""))
+    print("Error:", str(e).strip("'\""), file=sys.stderr)
     sys.exit(exit_code)
 
 # Helper Classes and Functions
 
-class QueryRequest(BaseModel):
-    model: str
-    messages: list
-    max_tokens: int = 150  # Default to 150 tokens
-
-class Rag(cmd.Cmd):
-    prompt = "> "
+class qdrant:
     def __init__(self, vector_path):
-        # Initlialze the cmd class
-        super().__init__()
-        
         self.client = qdrant_client.QdrantClient(path=vector_path)
         self.client.set_model(EMBED_MODEL)
         self.client.set_sparse_model(SPARSE_MODEL)
+    
+    def query(self, prompt):
+        results = self.client.query(
+            collection_name="rag",
+            query_text=prompt,
+            limit=20,
+        )
+        return [r.document for r in results] 
+
+class milvus:
+    def __init__(self, vector_path):
+        self.milvus_client = MilvusClient(uri=os.path.join(vector_path, "milvus.db"))
+        self.dmodel = TextEmbedding(model_name=EMBED_MODEL)
+        self.smodel = SparseTextEmbedding(model_name=SPARSE_MODEL)
+    
+    def query(self, prompt):
+        dense_embedding = next(self.dmodel.embed([prompt]))
+        sparse_embedding = next(self.smodel.embed([prompt])).as_dict()
+
+        search_param_dense = {
+            "data": [dense_embedding],
+            "anns_field": "dense",
+            "param": {
+                "metric_type": "IP",
+                "params": {"nprobe": 10}
+            },
+            "limit": 10
+        }
+
+        request_dense = AnnSearchRequest(**search_param_dense)
+
+        search_param_sparse = {
+            "data": [sparse_embedding],
+            "anns_field": "sparse",
+            "param": {
+                "metric_type": "IP",
+                "params": {"drop_ratio_build": 0.2}
+            },
+            "limit": 10
+        }
+
+        request_sparse = AnnSearchRequest(**search_param_sparse)
+
+        reqs = [request_dense, request_sparse]
+
+        ranker = RRFRanker(100)
+        
+        results = self.milvus_client.hybrid_search(
+            collection_name=COLLECTION_NAME,
+            reqs=reqs,
+            ranker=ranker,
+            limit=20,
+            output_fields=["text"],
+        )
+        return [hit["entity"]["text"] for hit in results[0]]
+
+class Rag(cmd.Cmd):
+    prompt = "🦭  > "
+    def __init__(self, vector_path):
+        # Initlialze the cmd class
+        super().__init__()
+
         self.reranker = TextCrossEncoder(model_name=RANK_MODEL)
+
+        if self.is_milvus(vector_path):
+            # setup mivlus
+            self.vectordb = milvus(vector_path)
+        else:
+            # setup qdrant
+            self.vectordb = qdrant(vector_path)
 
         # Setup openai api
         self.llm = openai.OpenAI(api_key="your-api-key", base_url="http://localhost:8080")
         self.chat_history = []  # Store chat history
+    
+    def is_milvus(self, vector_path):
+        return any(f.suffix == ".db" and f.is_file() for f in Path(vector_path).iterdir())
 
     def do_EOF(self, user_content):
         print("")
@@ -64,13 +130,8 @@ class Rag(cmd.Cmd):
         if len(self.chat_history) > 10:
             self.chat_history.pop(0)  # Remove the oldest message
         
-        # Query the Qdrant client for relevant context
-        results = self.client.query(
-            collection_name="rag",
-            query_text=prompt,
-            limit=20,
-        )
-        result = [r.document for r in results] 
+        # Query the Vectordb
+        result = self.vectordb.query(prompt)
         # reranker code to have the first 5 queries 
         reranked_context = " ".join(
             str(result[i]) for i, _ in sorted(
@@ -79,8 +140,6 @@ class Rag(cmd.Cmd):
                 reverse=True
             )[:5]
         )
-
-        # context = "\n".join(r.document for r in results)
 
         # Prepare the metaprompt with chat history and context
         metaprompt = f"""
@@ -141,40 +200,6 @@ class Rag(cmd.Cmd):
             return True
 
         self.query(user_content)
-
-    def serve(self):
-        app = FastAPI()
-
-        @app.post("/v1/chat/completions")
-        async def query(request: QueryRequest):
-            """API endpoint to query the Rag instance and return OpenAI-like response."""
-            
-            if not request.messages:
-                raise HTTPException(status_code=400, detail="Messages are required")
-            
-            try:
-                response_text = self.query(request.messages)
-                
-                return JSONResponse(content={
-                    "id": str(uuid.uuid4()),
-                    "object": "chat.completion",
-                    "created": 1678901234,  # Static, could use a timestamp
-                    "model": request.model,
-                    "choices": [
-                        {
-                            "message": {
-                                "role": "assistant",
-                                "content": response_text
-                            },
-                            "finish_reason": "stop",
-                            "index": 0
-                        }
-                    ]
-                })
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
-        
-        uvicorn.run(app, host="0.0.0.0", port=8080)
 
 def run_rag(vector_path):
     rag = Rag(vector_path)

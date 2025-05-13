@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
-
+import json
 import argparse
 import hashlib
 import os
 import sys
 import uuid
+from pathlib import Path
+import time
+import threading
+import itertools
 
-import qdrant_client
-from qdrant_client import models
 import docling
 from docling.chunking import HybridChunker
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
+
+# Vectordb imports
+import qdrant_client
+from qdrant_client import models
+from pymilvus import MilvusClient, DataType
+from fastembed import TextEmbedding, SparseTextEmbedding
+
 # Global Vars
 EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
 SPARSE_MODEL = os.getenv("SPARSE_MODEL", "prithivida/Splade_PP_en_v1")
@@ -34,33 +43,59 @@ class Converter:
         for target in targets:
             self.add(target)
         self.output = output
-        self.client = qdrant_client.QdrantClient(path=output)
-        self.client.set_model(EMBED_MODEL)
-        self.client.set_sparse_model(SPARSE_MODEL)
-        # optimizations to reduce ram
-        self.client.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=self.client.get_fastembed_vector_params(on_disk=True),
-            sparse_vectors_config= self.client.get_fastembed_sparse_vector_params(on_disk=True),
-            quantization_config=models.ScalarQuantization(
-                scalar=models.ScalarQuantizationConfig(
-                    type=models.ScalarType.INT8,
-                    always_ram=True,
-                ),
-            ),
-        )
 
     def add(self, file_path):
         if os.path.isdir(file_path):
             self.walk(file_path)  # Walk directory and process all files
         else:
             self.targets.append(file_path)  # Process the single file
+    
+    def show_progress(self, message, stop_event):
+            spinner = itertools.cycle([".", "..", "..."])
+            while not stop_event.is_set():
+                sys.stdout.write(f"\r{message} {next(spinner)}   ")
+                sys.stdout.flush()
+                time.sleep(0.5)
+            sys.stdout.write("\r" + " " * 50 + "\r")
 
-    def convert(self):
-        result = self.doc_converter.convert_all(self.targets)
-        documents, metadata, ids = [], [], []
+    def convert(self, choice):
+        results = []
+        names = []
+
+        for target in self.targets:
+            name = self.get_name(str(target))
+            names.append(name)
+            stop_event = threading.Event()
+            progress_thread = threading.Thread(target=self.show_progress, args=(f"Converting {name}.pdf to json", stop_event))
+            progress_thread.start()
+        
+            try:
+                results.append(self.doc_converter.convert(target))
+            finally:
+                stop_event.set()
+                progress_thread.join()
+            
+            print(f"Finished converting {name}.pdf to {name}.json")
+
+        if choice == "json":
+            self.export_json(results, names)
+        elif choice == "milvus":
+            self.export_milvus(results)
+        else:
+            self.export_qdrant(results)
+    
+    def generate_hash(self, document: str) -> int:
+        """Generate a unique int64 hash from the document text."""
+        sha256_hash = hashlib.sha256(document.encode('utf-8')).hexdigest()
+        uuid_val = uuid.UUID(sha256_hash[:32])
+        # Convert to signed int64 (Milvus requires signed 64-bit)
+        return uuid_val.int & ((1 << 63) - 1)
+    
+    def chunk(self, docs):
         chunker = HybridChunker(tokenizer=EMBED_MODEL, overlap=100, merge_peers=True)
-        for file in result:
+        documents, ids = [], []
+        
+        for file in docs:
             chunk_iter = chunker.chunk(dl_doc=file.document)
             for chunk in chunk_iter:
                 # Extract the enriched text from the chunk
@@ -70,7 +105,102 @@ class Converter:
                 # Generate unique ID for the chunk
                 doc_id = self.generate_hash(doc_text)
                 ids.append(doc_id)
-        return self.client.add(COLLECTION_NAME, documents=documents, ids=ids, batch_size=1)
+        return documents, ids
+    
+    def export_json(self, docs, names):
+        print("Exporting to JSON")
+        output_dir = Path(self.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        for file, name in zip(docs, names):
+            doc = file.document.export_to_dict()
+            output_path = output_dir / f"{name}.json"
+            with output_path.open("w") as fp:
+                fp.write(json.dumps(doc))
+
+    def export_qdrant(self, docs):
+        print("Exporting to Qdrant")
+        output_dir = Path(self.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        client = qdrant_client.QdrantClient(path=self.output)
+        client.set_model(EMBED_MODEL)
+        client.set_sparse_model(SPARSE_MODEL)
+        chunks, ids = self.chunk(docs)
+        client.add(COLLECTION_NAME, documents=chunks, ids=ids, batch_size=1)
+        
+    def export_milvus(self, docs):
+        print("Exporting to Milvus")
+        output_dir = Path(self.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        # Setup collection
+        milvus_client = MilvusClient(uri=os.path.join(self.output, "milvus.db"))
+        collection_name = COLLECTION_NAME
+
+        # Setup embedding models
+        dmodel = TextEmbedding(model_name=EMBED_MODEL)
+        smodel = SparseTextEmbedding(model_name=SPARSE_MODEL)
+
+        test_embedding = next(dmodel.embed("This is a test"))
+        embedding_dim = len(test_embedding)
+
+        # Create Schema
+        schema = MilvusClient.create_schema(
+            auto_id=False,
+            enable_dynamic_field=True,
+        )
+
+        # Add fields to schema
+        schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
+        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=1000)
+        schema.add_field(field_name="sparse", datatype=DataType.SPARSE_FLOAT_VECTOR)
+        schema.add_field(field_name="dense", datatype=DataType.FLOAT_VECTOR, dim=embedding_dim)
+
+        # Prepare index
+        index_params = milvus_client.prepare_index_params()
+        index_params.add_index(
+            field_name="dense",
+            index_name="dense_index",
+            index_type="AUTOINDEX"
+        )
+
+        index_params.add_index(
+            field_name="sparse",
+            index_name="sparse_index",
+            index_type="SPARSE_INVERTED_INDEX"
+        )
+        # Create collection
+        milvus_client.create_collection(
+            collection_name=collection_name,
+            schema=schema,
+            index_params=index_params
+        )
+        # Chunk and add chunks to colleciton 1 by 1
+        chunks, ids = self.chunk(docs)
+        data = []
+        for i, (chunk, id) in enumerate(zip(chunks, ids)):
+            dense_embedding = next(dmodel.embed([chunk]))
+            sparse_embedding = next(smodel.embed([chunk]))
+            sparse_vector = sparse_embedding.as_dict()
+            milvus_client.insert(
+                collection_name=collection_name,
+                data=[{
+                    "id": id,
+                    "text": chunk,
+                    "sparse": sparse_vector,
+                    "dense": dense_embedding
+                }]
+            )
+            # Flush every 100 records to reduce RAM usage
+            if i % 100 == 0: 
+                milvus_client.flush(collection_name=collection_name)
+            
+            print(f"\rProcessed chunk {i+1}/{len(chunks)}", end='', flush=True) 
+
+        milvus_client.flush(collection_name=collection_name)
+        print("\n")
+                    
+    def get_name(self, path):
+        return Path(path).stem
 
     def walk(self, path):
         for root, dirs, files in os.walk(path, topdown=True):
@@ -80,14 +210,6 @@ class Converter:
                 file = os.path.join(root, f)
                 if os.path.isfile(file):
                     self.targets.append(file)
-
-    def generate_hash(self, document: str) -> str:
-        """Generate a unique hash for a document."""
-        sha256_hash = hashlib.sha256(document.encode('utf-8')).hexdigest()
-
-        # Use the first 32 characters of the hash to create a UUID
-        return str(uuid.UUID(sha256_hash[:32]))
-
 def load():
     # Dummy code to preload models
     client = qdrant_client.QdrantClient(":memory:")
@@ -104,10 +226,10 @@ parser = argparse.ArgumentParser(
 parser.add_argument("target", nargs="?", help="Target database")
 parser.add_argument("source", nargs="*", help="Source files")
 parser.add_argument("--ocr", action='store_true', help="Enable embedded image text extraction from PDF (Increases RAM Usage significantly)")
+parser.add_argument("--db", choices=["json", "qdrant", "milvus"], default="qdrant", help="Conversion output type")
 
 def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
-
 
 def eprint(e, exit_code):
     perror("Error: " + str(e).strip("'\""))
@@ -119,7 +241,7 @@ try:
         load()
     else:
         converter = Converter(args.target, args.source, args.ocr)
-        converter.convert()
+        converter.convert(args.db)
 except docling.exceptions.ConversionError as e:
     eprint(e, 1)
 except FileNotFoundError as e:
