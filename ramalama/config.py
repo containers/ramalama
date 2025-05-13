@@ -102,6 +102,7 @@ def load_config_defaults(config: Dict[str, Any]):
     config.setdefault('temp', "0.8")
     config.setdefault('transport', "ollama")
     config.setdefault('use_model_store', True)
+    config.setdefault('ocr', False)
 
 
 class Config(ChainMap):
