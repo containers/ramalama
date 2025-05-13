@@ -69,7 +69,8 @@ $ cd ./ramalama/
 
 ### Using the Makefile
 
-RamaLama uses a Makefile for common actions such as compiling RamaLama, building the documentation, linting or executing unit tests.
+RamaLama uses a Makefile for common actions such as compiling RamaLama, building containers,
+building the documentation, linting, executing unit tests or generating coverage reports.
 
 You can list available actions by using:
 ```shell
