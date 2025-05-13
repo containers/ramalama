@@ -499,6 +499,9 @@ class Model(ModelBase):
                 draft_model = self.draft_model.get_model_path(args)
                 draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
 
+            if hasattr(args, "rag") and args.rag:
+                exec_args += ["rag"]
+
             exec_args += [
                 "llama-server",
                 "--port",
@@ -606,14 +609,6 @@ class Model(ModelBase):
         exec_args = self.handle_runtime(args, exec_args, exec_model_path)
         if self.generate_container_config(model_path, chat_template_path, args, exec_args):
             return
-
-        # Add rag chatbot
-        if hasattr(args, "rag") and args.rag:
-            exec_args = [
-                "bash",
-                "-c",
-                f"nohup {' '.join(exec_args)} &> /tmp/llama-server.log & rag_framework run /rag/vector.db",
-            ]
 
         self.execute_command(model_path, exec_args, args)
 

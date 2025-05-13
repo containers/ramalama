@@ -15,3 +15,11 @@ def main(args):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+
+
+# what we need to do here is create a proxy script
+# if rag is in the arguments we run the rag proxy
+
+# Test code we dont need to install ramalama for proxy testing
+# we do need llama.cpp
+# PYTHONPATH=$HOME/ramalama ./ramalama-serve-core  arguments
