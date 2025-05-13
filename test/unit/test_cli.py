@@ -51,3 +51,82 @@ def test_parse_generate_input_eq(input: str, compare: str, expected: bool):
         input == compare
     else:
         input != compare
+
+
+@pytest.mark.parametrize(
+    "duration, expected",
+    [
+        (0, "Less than a second"),
+        (1, "1 second"),
+        (2, "2 seconds"),
+        (59, "59 seconds"),
+        (60, "1 minute"),
+        (120, "2 minutes"),
+        (3600, "1 hour"),
+        (7200, "2 hours"),
+        (86400, "1 day"),
+        (172800, "2 days"),
+        (604800, "1 week"),
+        (1209600, "2 weeks"),
+        (2419200, "1 month"),
+        (4838400, "2 months"),
+        (31536000, "1 year"),
+        (63072000, "2 years"),
+        (315576000, "10 years"),
+        (3155760000, "100 years"),
+    ],
+)
+def test_human_duration(duration: int, expected: str):
+    from ramalama.cli import human_duration
+
+    assert human_duration(duration) == expected
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        (["--help"]),
+    ],
+)
+def test_help(args: list):
+    from ramalama.cli import HelpException, help_cli
+
+    with pytest.raises(HelpException):
+        help_cli(args)
+
+
+# Test human readable size
+@pytest.mark.parametrize(
+    "size, expected",
+    [
+        (0, "0 B"),
+        (1, "1 B"),
+        (1024, "1.0 KB"),
+        (2048, "2.0 KB"),
+        (1048576, "1.0 MB"),
+        (2097152, "2.0 MB"),
+        (1073741824, "1.0 GB"),
+        (1610612736, "1.5 GB"),
+        (2147483648, "2.0 GB"),
+        (1099511627776, "1.0 TB"),
+        (2199023255552, "2.0 TB"),
+    ],
+)
+def test_human_readable_size(size: int, expected: str):
+    from ramalama.cli import human_readable_size
+
+    assert human_readable_size(size) == expected
+
+
+# Test repr() for ParsedGenerateInput
+@pytest.mark.parametrize(
+    "input, expected",
+    [
+        (ParsedGenerateInput("kube", "."), "kube"),
+        (ParsedGenerateInput("kube/quadlet", "."), "kube/quadlet"),
+        (ParsedGenerateInput("kube", "/tmp"), "kube"),
+        (ParsedGenerateInput("kube/quadlet", "/tmp"), "kube/quadlet"),
+    ],
+)
+def test_parsed_generate_input_repr(input: ParsedGenerateInput, expected: str):
+    assert repr(input) == expected
