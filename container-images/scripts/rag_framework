@@ -27,7 +27,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
 def eprint(e, exit_code):
-    perror("Error: " + str(e).strip("'\""))
+    print("Error: " + str(e).strip("'\""))
     sys.exit(exit_code)
 
 # Helper Classes and Functions
