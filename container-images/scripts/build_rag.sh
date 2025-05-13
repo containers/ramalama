@@ -52,7 +52,7 @@ docling() {
 }
 
 rag() {
-    ${PYTHON} -m pip install --prefix=/usr wheel qdrant_client fastembed openai fastapi uvicorn
+    ${PYTHON} -m pip install --prefix=/usr wheel qdrant_client fastembed pymilvus openai fastapi uvicorn
     rag_framework load
 }
 

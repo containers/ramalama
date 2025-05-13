@@ -235,7 +235,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("target", nargs="?", help="Target database")
 parser.add_argument("source", nargs="*", help="Source files")
-parser.add_argument("--choice", choices=["json", "qdrant", "milvus"], default="qdrant", help="Conversion output type")
+parser.add_argument("--db", choices=["json", "qdrant", "milvus"], default="qdrant", help="Conversion output type")
 
 def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -250,7 +250,7 @@ try:
         load()
     else:
         converter = Converter(args.target, args.source)
-        converter.convert(args.choice)
+        converter.convert(args.db)
 except docling.exceptions.ConversionError as e:
     eprint(e, 1)
 except FileNotFoundError as e:
