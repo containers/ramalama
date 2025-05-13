@@ -80,6 +80,7 @@ def test_load_config_from_env(env, config, expected):
                 "transport": "ollama",
                 "use_model_store": True,
                 "port": int_tuple_as_str(DEFAULT_PORT_RANGE),
+                "ocr": False,
             },
         ),
         (
@@ -111,6 +112,7 @@ def test_load_config_from_env(env, config, expected):
                 "host": "0.0.0.0",
                 "use_model_store": True,
                 "port": int_tuple_as_str(DEFAULT_PORT_RANGE),
+                "ocr": False,
             },
         ),
     ],

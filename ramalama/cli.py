@@ -1013,6 +1013,13 @@ Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
 formatted files to be processed""",
     )
     parser.add_argument("IMAGE", help="OCI Image name to contain processed rag data", completer=suppressCompleter)
+    parser.add_argument(
+        "--ocr",
+        dest="ocr",
+        default=CONFIG["ocr"],
+        action="store_true",
+        help="Toggle PDF image processing",
+    )
     parser.set_defaults(func=rag_cli)
 
 

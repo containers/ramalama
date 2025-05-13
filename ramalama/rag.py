@@ -107,6 +107,8 @@ COPY {src} /vector.db
 
         self.engine.add([args.image])
         self.engine.add(["doc2rag", "/output", "/docs/"])
+        if args.ocr:
+            self.engine.add(["--ocr"])
         if len(self.urls) > 0:
             self.engine.add(self.urls)
         if args.dryrun:

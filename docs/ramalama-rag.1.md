@@ -38,6 +38,9 @@ Print usage message
 #### **--network**=*none*
 sets the configuration for network namespaces when handling RUN instructions
 
+#### **--ocr**
+Sets the Docling OCR flag. OCR stands for Optical Character Recognition and is used to extract text from images within PDFs converting it into raw text that an LLM can understand. This feature is useful if the PDF's one is converting has a lot of embedded images with text. This process uses a great amount of RAM so the default is false.
+
 #### **--pull**=*policy*
 Pull image policy. The default is **missing**.
 
@@ -54,6 +57,10 @@ Pull image policy. The default is **missing**.
 Building quay.io/ramalama/myrag...
 adding vectordb...
 c857ebc65c641084b34e39b740fdb6a2d9d2d97be320e6aa9439ed0ab8780fe0
+```
+
+```
+ramalama rag --ocr README.md https://mysight.edu/document quay.io/rhatdan/myrag
 ```
 
 ## SEE ALSO

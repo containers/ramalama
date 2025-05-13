@@ -17,6 +17,10 @@ load helpers
     is "$output" ".*doc2rag /output /docs/" "Expected to doc2rag command"
     is "$output" ".*--pull missing" "only pull if missing"
 
+    # Run with OCR
+    run_ramalama --dryrun rag --ocr $FILE quay.io/ramalama/myrag:1.2
+    is "$output" ".*doc2rag /output /docs/ --ocr" "Expected to see ocr flag"
+
     FILE_URL=file://${PWD}/README.md
     run_ramalama --dryrun rag $FILE_URL quay.io/ramalama/myrag:1.2
     is "$output" ".*-v ${PWD}/$FILE:/docs/$PWD/$FILE" "Expected to see file volume mounted in"
