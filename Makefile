@@ -47,7 +47,6 @@ install-detailed-cov-requirements:
 		pytest-json \
 		pytest-html
 
-
 .PHONY: install-cov-requirements
 install-cov-requirements:
 	pip install pytest-cov
@@ -55,7 +54,7 @@ install-cov-requirements:
 .PHONY: install-requirements
 install-requirements:
 	pip install -U pipx
-	pipx install ".[dev]"
+	pipx install ".[dev]" --force
 
 .PHONY: install-completions
 install-completions: completions
