@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # AI imports
 import cmd
 import openai
@@ -30,7 +28,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
 def eprint(e, exit_code):
-    print("Error: " + str(e).strip("'\""))
+    print("Error:", str(e).strip("'\""), file=sys.stderr)
     sys.exit(exit_code)
 
 # Helper Classes and Functions
@@ -98,12 +96,8 @@ class milvus:
         milvus_results = [hit["entity"]["text"] for hit in results[0]]
         return milvus_results
 
-class Rag(cmd.Cmd):
-    prompt = "🦭  > "
+class RagService():
     def __init__(self, vector_path):
-        # Initlialze the cmd class
-        super().__init__()
-
         self.reranker = TextCrossEncoder(model_name=RANK_MODEL)
 
         if self.is_milvus(vector_path):
@@ -113,8 +107,6 @@ class Rag(cmd.Cmd):
             # setup qdrant
             self.vectordb = qdrant(vector_path)
 
-        # Setup openai api
-        self.llm = openai.OpenAI(api_key="your-api-key", base_url="http://localhost:8080")
         self.chat_history = []  # Store chat history
     
     def is_milvus(self, vector_path):
@@ -124,7 +116,7 @@ class Rag(cmd.Cmd):
         print("")
         return True
     
-    def query(self, prompt):
+    def setup_query(self, prompt: str) -> str:
         # Add user query to chat history
         self.chat_history.append({"role": "user", "content": prompt})
         
@@ -162,13 +154,9 @@ class Rag(cmd.Cmd):
             ### Answer:
             """
         
-        # Query the LLM with the metaprompt
-        response = self.llm.chat.completions.create(
-            model="your-model-name",
-            messages=[{"role": "user", "content": metaprompt}],
-            stream=True 
-        )
-
+        return metaprompt
+    
+    def chat_history(self, response):
         # Collect the AI response and add it to chat history
         full_response = ""
         for chunk in response:
@@ -182,8 +170,6 @@ class Rag(cmd.Cmd):
         # Ensure chat history does not exceed 10 messages after adding the AI response
         if len(self.chat_history) > 10:
             self.chat_history.pop(0)  # Remove the oldest message
-        
-        print(" ")
 
     def format_chat_history(self):
         """Format the chat history into a string for inclusion in the metaprompt."""
@@ -196,53 +182,3 @@ class Rag(cmd.Cmd):
             else:
                 formatted_history.append(f"User: {user_message}\nAI: ")
         return "\n".join(formatted_history)
-
-    def default(self, user_content):
-        if user_content == "/bye":
-            return True
-
-        self.query(user_content)
-
-def run_rag(vector_path):
-    rag = Rag(vector_path)
-    try:
-        rag.cmdloop()
-    except KeyboardInterrupt:
-        print("")
-
-def serve_rag(vector_path):
-    rag = Rag(vector_path)
-    rag.serve()
-
-def load():
-    client = qdrant_client.QdrantClient(":memory:")
-    client.set_model(EMBED_MODEL)
-    client.set_sparse_model(SPARSE_MODEL)
-    TextCrossEncoder(model_name=RANK_MODEL)
-
-
-parser = argparse.ArgumentParser(description="A script to enable Rag")
-subparsers = parser.add_subparsers(dest='command')
-
-run_parser = subparsers.add_parser('run', help='Run RAG interactively')
-run_parser.add_argument("vector_path", type=str, help="Path to the vector database")
-run_parser.set_defaults(func=run_rag)
-
-serve_parser = subparsers.add_parser('serve', help='Run RAG as a service')
-serve_parser.add_argument("vector_path", type=str, help="Path to the vector database")
-serve_parser.set_defaults(func=serve_rag)
-
-load_parser = subparsers.add_parser('load', help='Preload RAG Embedding Models')
-load_parser.set_defaults(func=load)
-
-try:
-    args = parser.parse_args()
-
-    if args.command:
-        # Ensure that the appropriate function gets called with the right arguments
-        if args.command in ['run', 'serve']:
-            args.func(args.vector_path)  # pass vector_path argument to the respective function
-        else:
-            args.func()  # no argument for 'load'
-except ValueError as e:
-        eprint(e, 1)
