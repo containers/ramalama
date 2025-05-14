@@ -22,13 +22,12 @@ maintainers = [
 [project.optional-dependencies]
 dev = [
   "pytest~=8.3",
-  "isort~=5.0",
+  "isort~=6.0",
   "codespell~=2.0",
-  "flake8~=5.0",
+  "flake8~=7.0",
   "huggingface-hub~=0.28.0",
-  "black~=24.0",
+  "black~=25.0",
   "wheel~=0.45.0",
-  "pre-commit~=3.0.0"
 ]
 
 [project.urls]
