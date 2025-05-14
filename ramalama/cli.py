@@ -1018,7 +1018,7 @@ formatted files to be processed""",
         dest="ocr",
         default=CONFIG["ocr"],
         action="store_true",
-        help="Toggle PDF image processing",
+        help="Enable embedded image text extraction from PDF (Increases RAM Usage significantly)",
     )
     parser.set_defaults(func=rag_cli)
 

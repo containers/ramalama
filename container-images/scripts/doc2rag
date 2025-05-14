@@ -103,7 +103,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("target", nargs="?", help="Target database")
 parser.add_argument("source", nargs="*", help="Source files")
-parser.add_argument("--ocr", action='store_true', help="PDF Image processing")
+parser.add_argument("--ocr", action='store_true', help="Enable embedded image text extraction from PDF (Increases RAM Usage significantly)")
 
 def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -118,7 +118,6 @@ try:
     if args.target == "load":
         load()
     else:
-        print("OCR",args.ocr)
         converter = Converter(args.target, args.source, args.ocr)
         converter.convert()
 except docling.exceptions.ConversionError as e:
