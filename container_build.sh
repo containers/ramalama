@@ -82,9 +82,9 @@ add_rag() {
 	rocm*)
 	    GPU=rocm
 	    ;;
-  musa)
-      GPU=musa
-      ;;
+	musa)
+	    GPU=musa
+	    ;;
 	*)
 	    GPU=cpu
 	    ;;
