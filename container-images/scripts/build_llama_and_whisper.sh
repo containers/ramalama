@@ -75,10 +75,6 @@ dnf_install_s390() {
   dnf install -y "openblas-devel"
 }
 
-apt_install_musa() {
-  apt-get
-}
-
 add_stream_repo() {
   local url="https://mirror.stream.centos.org/9-stream/$1/$uname_m/os/"
   dnf config-manager --add-repo "$url"
@@ -165,8 +161,6 @@ dnf_install() {
     dnf_install_intel_gpu
   elif [ "$containerfile" = "cann" ]; then
     dnf_install_cann
-  elif [ "$containerfile" = "musa" ]; then
-    apt_install_musa
   fi
 
   dnf_install_ffmpeg
@@ -287,9 +281,8 @@ install_ramalama() {
   if [ -e "/run/ramalama" ]; then
     $PYTHON -m pip install /run/ramalama --prefix="$1"
   else
-    git clone https://github.com/makllama/ramalama
+    git clone https://github.com/containers/ramalama
     cd ramalama
-    git checkout xd/mthreads
     git submodule update --init --recursive
     $PYTHON -m pip install . --prefix="$1"
     cd ..
