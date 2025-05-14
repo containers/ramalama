@@ -35,8 +35,8 @@ update_python() {
 
         rm -rf /usr/local/python3.10
     else
-        apt update
-        apt install -y "${PYTHON}" "${PYTHON}-pip" "${PYTHON}-dev" "${pkgs[@]}"
+        apt-get update
+        apt-get install -y "${python}" "${python}-pip" "${python}-dev" "${pkgs[@]}"
     fi
 }
 
@@ -66,7 +66,7 @@ main() {
     python=$(python_version)
     local pkgs
     if available dnf; then
-        pkgs==("git-core" "gcc" "gcc-c++")
+        pkgs=("git-core" "gcc" "gcc-c++")
     else
         pkgs=("git" "gcc" "g++")
     fi
