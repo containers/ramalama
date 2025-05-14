@@ -34,7 +34,7 @@ update_python() {
         fi
 
         rm -rf /usr/local/python3.10
-    else
+    elif available apt-get; then
         apt-get update
         apt-get install -y "${python}" "${python}-pip" "${python}-dev" "${pkgs[@]}"
     fi
@@ -87,7 +87,7 @@ main() {
         dnf -y clean all
         rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9* /root/.cache \
         /root/buildinfo
-    else
+    elif available apt-get; then
         apt-get clean
         rm -rf /var/lib/apt/lists/*
     fi
