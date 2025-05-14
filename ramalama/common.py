@@ -490,6 +490,18 @@ def check_intel():
     return None
 
 
+def check_mthreads():
+    try:
+        command = ['mthreads-gmi']
+        run_cmd(command).stdout.decode("utf-8")
+        os.environ["MUSA_VISIBLE_DEVICES"] = "0"
+        return "musa"
+    except Exception:
+        pass
+
+    return None
+
+
 def get_accel():
     if gpu_type := check_asahi():
         return gpu_type
@@ -504,6 +516,9 @@ def get_accel():
         return gpu_type
 
     if gpu_type := check_intel():
+        return gpu_type
+
+    if gpu_type := check_mthreads():
         return gpu_type
 
     return "none"
@@ -526,6 +541,7 @@ def get_accel_env_vars():
         "HSA_VISIBLE_DEVICES",
         "HSA_OVERRIDE_GFX_VERSION",
         "INTEL_VISIBLE_DEVICES",
+        "MUSA_VISIBLE_DEVICES",
     )
     env_vars = {k: v for k, v in os.environ.items() for gpu_var in gpu_vars if k == gpu_var}
 

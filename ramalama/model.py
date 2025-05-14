@@ -251,6 +251,7 @@ class Model(ModelBase):
             or os.getenv("CUDA_VISIBLE_DEVICES")
             or os.getenv("INTEL_VISIBLE_DEVICES")
             or os.getenv("ASCEND_VISIBLE_DEVICES")
+            or os.getenv("MUSA_VISIBLE_DEVICES")
             or (
                 # linux and macOS report aarch64 (linux), arm64 (macOS)
                 ramalama.common.podman_machine_accel

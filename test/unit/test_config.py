@@ -67,6 +67,7 @@ def test_load_config_from_env(env, config, expected):
                     "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
                     "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
                     "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
+                    "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
                 },
                 "runtime": "llama.cpp",
                 "ngl": -1,

@@ -26,6 +26,14 @@ install_ramalama() {
   ln -sf /usr/bin/podman-remote /usr/bin/podman
   if [ -e "/run/ramalama" ]; then
     python3 -m pip install /run/ramalama --prefix=/usr
+  else
+    git clone https://github.com/makllama/ramalama
+    cd ramalama
+    git checkout xd/mthreads
+    git submodule update --init --recursive
+    python3 -m pip install .
+    cd ..
+    rm -rf ramalama
   fi
 }
 
