@@ -27,9 +27,8 @@ install_ramalama() {
   if [ -e "/run/ramalama" ]; then
     python3 -m pip install /run/ramalama --prefix=/usr
   else
-    git clone https://github.com/makllama/ramalama
+    git clone https://github.com/containers/ramalama
     cd ramalama
-    git checkout xd/mthreads
     git submodule update --init --recursive
     python3 -m pip install .
     cd ..
