@@ -15,6 +15,8 @@ COPY --chmod=755 ../scripts /usr/bin
 # Workaround for CUDA libraries not in the ld path in base container
 RUN echo "/usr/local/cuda-12.8/compat" > /etc/ld.so.conf.d/99_cuda_compat.conf && ldconfig
 
-RUN dnf install -y python3
+RUN dnf install -y python3.11 python3.11-pip python3.11-devel && \
+    dnf -y clean all && \
+    ln -sf /usr/bin/python3.11 /usr/bin/python3
 
 ENTRYPOINT []

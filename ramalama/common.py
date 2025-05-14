@@ -243,6 +243,30 @@ def verify_checksum(filename):
     return sha256_hash.hexdigest() == expected_checksum
 
 
+def download_and_verify(url, target_path, max_retries=2):
+    """
+    Downloads a file from a given URL and verifies its checksum.
+    If the checksum does not match, it retries the download.
+    Args:
+        url (str): The URL to download from.
+        target_path (str): The path to save the downloaded file.
+        max_retries (int): Maximum number of retries for download.
+    Raises:
+        ValueError: If checksum verification fails after multiple attempts.
+    """
+
+    for attempt in range(max_retries):
+        download_file(url, target_path, headers={}, show_progress=True)
+        if verify_checksum(target_path):
+            break
+        console.warning(
+            f"Checksum mismatch for {target_path}, retrying download ... (Attempt {attempt + 1}/{max_retries})"
+        )
+        os.remove(target_path)
+    else:
+        raise ValueError(f"Checksum verification failed for {target_path} after multiple attempts")
+
+
 # default_image function should figure out which GPU the system uses t
 # then running appropriate container image.
 def default_image():
@@ -297,15 +321,15 @@ def download_file(url, dest_path, headers=None, show_progress=True):
 
         except TimeoutError:
             retries += 1
-            console.warning(f"TimeoutError: The server took too long to respond. Retrying {retries}/{max_retries}...")
+            console.warning(f"TimeoutError: The server took too long to respond. Retrying {retries}/{max_retries} ...")
 
         except RuntimeError as e:  # Catch network-related errors from HttpClient
             retries += 1
-            console.warning(f"{e}. Retrying {retries}/{max_retries}...")
+            console.warning(f"{e}. Retrying {retries}/{max_retries} ...")
 
         except IOError as e:
             retries += 1
-            console.warning(f"I/O Error: {e}. Retrying {retries}/{max_retries}...")
+            console.warning(f"I/O Error: {e}. Retrying {retries}/{max_retries} ...")
 
         except Exception as e:
             console.error(f"Unexpected error: {str(e)}")
@@ -652,7 +676,7 @@ def attempt_to_use_versioned(conman, image, vers, quiet, debug):
     try:
         # attempt to pull the versioned image
         if not quiet:
-            print(f"Attempting to pull {image}:{vers}...")
+            print(f"Attempting to pull {image}:{vers} ...")
         run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True, debug=debug)
         return True
 

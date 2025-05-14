@@ -5,6 +5,7 @@ import pytest
 
 from ramalama.huggingface import Huggingface
 from ramalama.model_factory import ModelFactory
+from ramalama.modelscope import ModelScope
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.url import URL
@@ -39,6 +40,8 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
         (Input("huggingface://granite-code", False, "", ""), Huggingface, None),
         (Input("hf://granite-code", False, "", ""), Huggingface, None),
         (Input("hf.co/granite-code", False, "", ""), Huggingface, None),
+        (Input("modelscope://granite-code", False, "", ""), ModelScope, None),
+        (Input("ms://granite-code", False, "", ""), ModelScope, None),
         (Input("ollama://granite-code", False, "", ""), Ollama, None),
         (Input("ollama.com/library/granite-code", False, "", ""), Ollama, None),
         (Input("oci://granite-code", False, "", "podman"), OCI, None),
@@ -90,6 +93,8 @@ def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ol
         (Input("huggingface://granite-code", False, "", ""), ValueError),
         (Input("hf://granite-code", False, "", ""), ValueError),
         (Input("hf.co/granite-code", False, "", ""), None),
+        (Input("modelscope://granite-code", False, "", ""), ValueError),
+        (Input("ms://granite-code", False, "", ""), ValueError),
         (Input("ollama://granite-code", False, "", ""), ValueError),
         (Input("ollama.com/library/granite-code", False, "", ""), None),
         (Input("granite-code", False, "ollama", ""), None),
@@ -117,6 +122,12 @@ def test_validate_oci_model_input(input: Input, error):
         ),
         (Input("hf://granite-code", False, "", ""), "granite-code"),
         (Input("hf.co/granite-code", False, "", ""), "granite-code"),
+        (Input("modelscope://granite-code", False, "", ""), "granite-code"),
+        (
+            Input("modelscope://ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", False, "", ""),
+            "ibm-granite/granite-3b-code-base-2k-GGUF/granite-code",
+        ),
+        (Input("ms://granite-code", False, "", ""), "granite-code"),
         (Input("ollama://granite-code", False, "", ""), "granite-code"),
         (Input("ollama.com/library/granite-code", False, "", ""), "granite-code"),
         (

@@ -18,9 +18,10 @@ try:
 except Exception:
     suppressCompleter = None
 
-import ramalama.engine as engine
+
 import ramalama.oci
 import ramalama.rag
+from ramalama import engine
 from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, perror
 from ramalama.config import CONFIG
 from ramalama.migrate import ModelStoreImport
@@ -31,6 +32,36 @@ from ramalama.shortnames import Shortnames
 from ramalama.version import print_version, version
 
 shortnames = Shortnames()
+
+
+GENERATE_OPTIONS = ["quadlet", "kube", "quadlet/kube"]
+
+
+class ParsedGenerateInput:
+
+    def __init__(self, gen_type: str, output_dir: str):
+        self.gen_type = gen_type
+        self.output_dir = output_dir
+
+    def __str__(self):
+        return self.gen_type
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __eq__(self, value):
+        return self.gen_type == value
+
+
+def parse_generate_option(option: str) -> ParsedGenerateInput:
+    # default output directory is where ramalama has been started from
+    generate, output_dir = option, "."
+    if generate.count(":") == 1:
+        generate, output_dir = generate.split(":")
+    if output_dir == "":
+        output_dir = "."
+
+    return ParsedGenerateInput(generate, output_dir)
 
 
 class OverrideDefaultAction(argparse.Action):
@@ -48,7 +79,7 @@ def local_env(**kwargs):
 
 
 def local_models(prefix, parsed_args, **kwargs):
-    return [model['name'] for model in engine.list_models(parsed_args)]
+    return [model['name'] for model in _list_models(parsed_args)]
 
 
 def local_containers(prefix, parsed_args, **kwargs):
@@ -261,7 +292,7 @@ def normalize_registry(registry):
     if not registry or registry == "" or registry.startswith("oci://"):
         return "oci://"
 
-    if registry in ["ollama", "hf", "huggingface"]:
+    if registry in ["ollama", "hf", "huggingface", "ms", "modelscope"]:
         return registry
 
     return "oci://" + registry
@@ -293,34 +324,31 @@ def logout_cli(args):
 def human_duration(d):
     if d < 1:
         return "Less than a second"
-    elif d == 1:
+    if d == 1:
         return "1 second"
-    elif d < 60:
+    if d < 60:
         return f"{d} seconds"
-    elif d < 120:
+    if d < 120:
         return "1 minute"
-    elif d < 3600:
+    if d < 3600:
         return f"{d // 60} minutes"
-    elif d < 7200:
+    if d < 7200:
         return "1 hour"
-    elif d < 86400:
+    if d < 86400:
         return f"{d // 3600} hours"
-    elif d < 172800:
+    if d < 172800:
         return "1 day"
-    elif d < 604800:
+    if d < 604800:
         return f"{d // 86400} days"
-    elif d < 1209600:
+    if d < 1209600:
         return "1 week"
-    elif d < 2419200:
+    if d < 2419200:
         return f"{d // 604800} weeks"
-    elif d < 4838400:
+    if d < 4838400:
         return "1 month"
-    elif d < 31536000:
+    if d < 31536000:
         return f"{d // 2419200} months"
-    elif d < 63072000:
-        return "1 year"
-    else:
-        return f"{d // 31536000} years"
+    return "1 year" if d < 63072000 else f"{d // 31536000} years"
 
 
 def list_files_by_modification(args):
@@ -441,8 +469,7 @@ def _list_models(args):
             last_modified = 0.0
             for file in files:
                 size_sum += file.size
-                if file.modified > last_modified:
-                    last_modified = file.modified
+                last_modified = max(file.modified, last_modified)
             ret.append(
                 {
                     "name": model,
@@ -727,7 +754,8 @@ def runtime_options(parser, command):
     if command == "serve":
         parser.add_argument(
             "--generate",
-            choices=["quadlet", "kube", "quadlet/kube"],
+            type=parse_generate_option,
+            choices=GENERATE_OPTIONS,
             help="generate specified configuration format for running the AI Model as a service",
         )
         parser.add_argument(
@@ -864,7 +892,7 @@ def run_cli(args):
         args.port = CONFIG['port']
         args.host = CONFIG['host']
         args.network = 'bridge'
-        args.generate = ''
+        args.generate = ParsedGenerateInput("", "")
 
     try:
         model = New(args.MODEL, args)
@@ -1107,7 +1135,7 @@ def main():
     try:
         ModelStoreImport(args.store).import_all()
     except Exception as ex:
-        print(f"Failed to import models to new store: {ex}")
+        perror(f"Error: Failed to import models to new store: {ex}")
 
     def eprint(e, exit_code):
         perror("Error: " + str(e).strip("'\""))
@@ -1121,7 +1149,7 @@ def main():
         parser.print_help()
     except AttributeError as e:
         parser.print_usage()
-        print("ramalama: requires a subcommand")
+        perror("ramalama: requires a subcommand")
         if getattr(args, "debug", False):
             raise e
     except IndexError as e:

@@ -1,50 +1,9 @@
 #!/usr/bin/env python3
 
-import glob
-import os
 import sys
 
 
-def add_pipx_venvs_bin_to_path():
-    """
-    Adds available pipx virtual environments bin directories to PATH.
-    This function looks for venv in ~/.local/pipx/venvs/ramalama/bin and
-    if it exists appends it to the environment variable PATH.
-    """
-    pipx_bin_path = os.path.expanduser('~/.local/pipx/venvs/ramalama/bin')
-    if os.path.exists(pipx_bin_path):
-        os.environ["PATH"] += ":" + pipx_bin_path
-
-
-def add_site_packages_to_syspath(base_path):
-    """
-    Adds site-packages directories from a given base path to sys.path.
-    """
-    python_version = f'{sys.version_info.major}.{sys.version_info.minor}'
-    search_pattern = os.path.expanduser(f'{base_path}/lib/python{python_version}/site-packages')
-    matched_paths = glob.glob(search_pattern)
-    if matched_paths:
-        for path in matched_paths:
-            sys.path.insert(0, path)
-        return
-
-    # Fallback to a more general pattern if the specific version doesn't match
-    search_pattern = os.path.expanduser(f'{base_path}/lib/python*/site-packages')
-    matched_paths = glob.glob(search_pattern)
-    if matched_paths:
-        for path in matched_paths:
-            sys.path.insert(0, path)
-
-
 def main():
-    sharedirs = ["/opt/homebrew/share/ramalama", "/usr/local/share/ramalama", "/usr/share/ramalama"]
-    syspath = next((d for d in sharedirs if os.path.exists(d + "/ramalama/cli.py")), None)
-    if syspath:
-        sys.path.insert(0, syspath)
-
-    add_site_packages_to_syspath('~/.local/pipx/venvs/*')
-    add_site_packages_to_syspath('/usr/local')
-    add_pipx_venvs_bin_to_path()
     sys.path.insert(0, './')
     try:
         import ramalama

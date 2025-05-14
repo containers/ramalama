@@ -69,7 +69,8 @@ $ cd ./ramalama/
 
 ### Using the Makefile
 
-RamaLama uses a Makefile for common actions such as compiling RamaLama, building the documentation, and linting.
+RamaLama uses a Makefile for common actions such as compiling RamaLama, building containers,
+building the documentation, linting, executing unit tests or generating coverage reports.
 
 You can list available actions by using:
 ```shell
@@ -80,7 +81,7 @@ Usage: make <target>
 
 ### Install required tools
 
-Makefile allow you to install needed development tools (e.g. the linter):
+The Makefile allows you to install needed development tools (e.g. the linter):
 ```shell
 $ make install-requirements
 ```
@@ -172,7 +173,7 @@ There are several types of tests run by RamaLama's upstream CI.
 
 ### Python Format and lint
 
-All code changes must pass ``make validate``.
+All code changes must pass `make validate`.
 
 ### System Tests
 
@@ -205,7 +206,7 @@ Regardless of the type of PR, all PRs should include:
 * Well-documented code changes, both through comments in the code itself and high-quality commit messages.
 * Additional tests. Ideally, they should fail w/o your code change applied.
   (With a few exceptions, CI hooks will block your PR unless your change
-  includes files named `*_test.go` or under the `test/` subdirectory. Repo
+  includes files under the `test/` subdirectory. Repo
   admins may bypass this restriction by setting the 'No New Tests' GitHub
   label on the PR).
 * Documentation updates to reflect the changes made in the pull request.

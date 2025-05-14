@@ -5,7 +5,7 @@ python_version() {
   # $2 is empty when no Python is installed, so just install python3
   if [ -n "$pyversion" ]; then
       string="$pyversion
-Python 3.11"
+Python 3.10"
       if [ "$string" == "$(sort --version-sort <<< "$string")" ]; then
 	  echo "python3.11"
 	  return

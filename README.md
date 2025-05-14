@@ -94,10 +94,10 @@ RamaLama is available via PyPi at [https://pypi.org/project/ramalama](https://py
 pip install ramalama
 ```
 
-### Install on Mac
+### Install script (Linux and macOS)
 Install RamaLama by running:
 ```
-curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install.sh | bash
+curl -fsSL https://ramalama.ai/install.sh | bash
 ```
 
 #### Default Container Engine
@@ -130,6 +130,7 @@ RamaLama supports multiple AI model registries types called transports.
 | Transports               |  Web Site                                            |
 | :-------------           | :--------------------------------------------------- |
 | HuggingFace              | [`huggingface.co`](https://www.huggingface.co)       |
+| ModelScope               | [`modelscope.cn`](https://www.modelscope.cn)         |
 | Ollama                   | [`ollama.com`](https://www.ollama.com)               |
 | OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)   |
 |                          |Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), [`Pulp`](https://pulpproject.org), and [`Artifactory`](https://jfrog.com/artifactory/)|
@@ -145,7 +146,7 @@ How to change transports.
 
 Use the RAMALAMA_TRANSPORT environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
-Individual model transports can be modified when specifying a model via the `huggingface://`, `oci://`, or `ollama://` prefix.
+Individual model transports can be modified when specifying a model via the `huggingface://`, `oci://`, `modelscope://`, or `ollama://` prefix.
 
 Example:
 ```
@@ -164,12 +165,14 @@ More information on shortnames.
 
 RamaLama reads shortnames.conf files if they exist. These files contain a list of name-value pairs that specify the model. The following table specifies the order in which RamaLama reads the files. Any duplicate names that exist override previously defined shortnames.
 <br>
-
-| Shortnames type | Path                                     |
-| :-------------- | :--------------------------------------- |
-| Distribution    | /usr/share/ramalama/shortnames.conf      |
-| Administrators  | /etc/ramalama/shortnames.conf            |
-| Users           | $HOME/.config/ramalama/shortnames.conf   |
+| Shortnames type    | Path                                                       |
+| :----------------  | :-------------------------------------------               |
+| Development        | ./shortnames.conf                                          |
+| User (Config)      | $HOME/.config/ramalama/shortnames.conf                     |
+| User (Local Share) | $HOME/.local/share/ramalama/shortnames.conf                |
+| Administrators     | /etc/ramalama/shortnames.conf                              |
+| Distribution       | /usr/share/ramalama/shortnames.conf                        |
+| Local Distribution | /usr/local/share/ramalama/shortnames.conf                  |
 <br>
 
 ```

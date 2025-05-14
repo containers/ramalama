@@ -14,9 +14,10 @@ registry if it does not exist in local storage.
 
 | Transports    | Prefix | Web Site                                            |
 | ------------- | ------ | --------------------------------------------------- |
-| URL based    | https://, http://, file:// | `https://web.site/ai.model`, `file://tmp/ai.model`|
-| HuggingFace   | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)      |
-| Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)              |
+| URL based     | https://, http://, file:// | `https://web.site/ai.model`, `file://tmp/ai.model`|
+| HuggingFace   | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)|
+| ModelScope    | modelscope://, ms:// | [`modelscope.cn`](https://modelscope.cn/)|
+| Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)|
 | OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
 |||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
 
@@ -73,6 +74,9 @@ Generate specified configuration format for running the AI Model as a service
 | kube         | Kubernetes YAML definition for running the AI Model as a service         |
 | quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
 
+Optionally, an output directory for the generated files can be specified by
+appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
+
 #### **--help**, **-h**
 show this help message and exit
 
@@ -112,7 +116,7 @@ On Nvidia based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
 
 #### **--port**, **-p**
-port for AI Model server to listen on. It must be available. If not specified, 
+port for AI Model server to listen on. It must be available. If not specified,
 the serving port will be 8080 if available, otherwise a free port in 8081-8090 range.
 
 #### **--privileged**
@@ -271,6 +275,17 @@ Image=tiny:latest.image
 $ cat tiny.image
 [Image]
 Image=quay.io/rhatdan/tiny:latest
+```
+
+### Generate quadlet service off of tiny OCI Model and output to directory
+```
+$ ramalama --runtime=vllm serve --name tiny --generate=quadlet:~/.config/containers/systemd/ oci://quay.io/rhatdan/tiny:latest
+Generating quadlet file: tiny.container
+Generating quadlet file: tiny.image
+Generating quadlet file: tiny.volume
+
+$ ls ~/.config/containers/systemd/
+tiny.container tiny.image tiny.volume
 ```
 
 ### Generate a kubernetes YAML file named MyTinyModel
