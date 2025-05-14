@@ -15,7 +15,7 @@ class Engine:
         self.exec_args = [
             args.engine,
             "run",
-            # "--rm",
+            "--rm",
         ]
         self.use_docker = os.path.basename(args.engine) == "docker"
         self.use_podman = os.path.basename(args.engine) == "podman"
@@ -161,7 +161,6 @@ class Engine:
         dry_run(self.exec_args)
 
     def run(self):
-        print(f"Running command: {self.exec_args}")
         run_cmd(self.exec_args, debug=self.debug)
 
     def exec(self):
