@@ -102,6 +102,8 @@ COPY {src} /vector.db
                 else:
                     # newer Podman versions support --gpus=all, but < 5.0 do not
                     self.engine.add(["--device", "nvidia.com/gpu=all"])
+            elif k == "MUSA_VISIBLE_DEVICES":
+                self.exec_args += ["--env", "MTHREADS_VISIBLE_DEVICES=all"]
 
             self.engine.add(["-e", f"{k}={v}"])
 

@@ -12,6 +12,10 @@ amd_lshw() {
   lshw -c display -numeric -disable network | grep -q 'vendor: .* \[1002\]'
 }
 
+mthreads_lshw() {
+  lshw -c display -numeric -disable network | grep -q 'vendor: .* \[1ED5\]'
+}
+
 dnf_install() {
   if grep -q ostree= /proc/cmdline; then
     return 1
