@@ -1,4 +1,4 @@
-% ramalama 7
+% ramalama-musa 7
 
 # Setting Up RamaLama with MUSA Support on Linux systems
 
