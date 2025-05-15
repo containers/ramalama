@@ -95,11 +95,12 @@ OCI container image to run with the specified AI model
 RAMALAMA_IMAGE environment variable overrides this field.
 
 `[[ramalama.images]]`
-  HIP_VISIBLE_DEVICES   = "quay.io/ramalama/rocm"
-  CUDA_VISIBLE_DEVICES  = "quay.io/ramalama/cuda"
-  ASAHI_VISIBLE_DEVICES = "quay.io/ramalama/asahi"
-  INTEL_VISIBLE_DEVICES = "quay.io/ramalama/intel-gpu"
-  ASCEND_VISIBLE_DEVICES  = "quay.io/ramalama/cann"
+  HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm"
+  CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda"
+  ASAHI_VISIBLE_DEVICES  = "quay.io/ramalama/asahi"
+  INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu"
+  ASCEND_VISIBLE_DEVICES = "quay.io/ramalama/cann"
+  MUSA_VISIBLE_DEVICES   = "quay.io/ramalama/musa"
 
 Alternative images to use when RamaLama recognizes specific hardware
 
