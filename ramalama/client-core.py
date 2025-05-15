@@ -177,7 +177,7 @@ def run_shell_loop(ramalama_shell):
 
         break
 
-def main(args):
+def client_core_main(args):
     sys.path.append('./')
 
     parsed_args = parse_arguments(args)
@@ -188,6 +188,3 @@ def main(args):
     run_shell_loop(ramalama_shell)
     do_kills(parsed_args)
 
-
-if __name__ == '__main__':
-    main(sys.argv[1:])

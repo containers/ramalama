@@ -55,7 +55,7 @@ def initialize_args():
     return parsed_args, port
 
 
-def main(args):
+def run_core_main(args):
     sys.path.append('./')
     from ramalama.cli import serve_cli
     from ramalama.common import exec_cmd
@@ -83,5 +83,3 @@ def build_args(args, new_command):
 
     return new_args
 
-if __name__ == "__main__":
-    main(sys.argv)
