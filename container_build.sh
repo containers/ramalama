@@ -125,14 +125,6 @@ build() {
       "${conman_build[@]}"
       echo "${conman_show_size[@]}"
       "${conman_show_size[@]}"
-      case ${target} in
-	  ramalama-cli | llama-stack | openvino)
-	  ;;
-	  *)
-	      add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}" "${version}"
-	      add_rag "${conman[@]}" "${target}" "${version}"
-	      rm_container_image
-      esac
       ;;
     push)
       "${conman[@]}" push "$REGISTRY_PATH/${target}"

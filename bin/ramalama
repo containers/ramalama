@@ -1,18 +1,10 @@
-#!/usr/bin/env python3
+#!/bin/bash
 
-import sys
+set -euo pipefail
 
+model_file="/Users/ecurtin/.local/share/ramalama/store/huggingface/ggml-org/SmolVLM-500M-Instruct-GGUF/SmolVLM-500M-Instruct-Q8_0.gguf/blobs/sha256-9d4612de6a42214499e301494a3ecc2be0abdd9de44e663bda63f1152fad1bf4"
+mmproj_file="/Users/ecurtin/.local/share/ramalama/store/huggingface/ggml-org/SmolVLM-500M-Instruct-GGUF/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf/blobs/sha256-d1eb8b6b23979205fdf63703ed10f788131a3f812c7b1f72e0119d5d81295150"
+img="8f1bf2fab573"
 
-def main():
-    sys.path.insert(0, './')
-    try:
-        import ramalama
-    except Exception:
-        print(f"ramalama module not found in sys.path: {sys.path}", file=sys.stderr)
-        raise
+podman run --rm --label ai.ramalama.model=ollama://smollm:135m --label ai.ramalama.engine=podman --label ai.ramalama.runtime=llama.cpp --label ai.ramalama.port=8080 --label ai.ramalama.command=serve --device /dev/dri -p 8080:8080 --security-opt=label=disable --cap-drop=all --security-opt=no-new-privileges --pull newer -t -i --label ai.ramalama --name ramalama_NtwoYxx7nR --env=HOME=/tmp --init --label ai.ramalama.model=ollama://smollm:135m --label ai.ramalama.engine=podman --label ai.ramalama.runtime=llama.cpp --label ai.ramalama.port=8080 --label ai.ramalama.command=serve --mount=type=bind,src=$model_file,destination=/mnt/models/model.file,ro --mount=type=bind,src=$mmproj_file,destination=/mnt/models/mmproj.file,ro $img /usr/libexec/ramalama/ramalama-serve-core llama-server --port 8080 --model /mnt/models/model.file --mmproj /mnt/models/mmproj.file --alias smolvlm:500m --cache-reuse 256 -ngl 999 --threads 6 --host 0.0.0.0
 
-    ramalama.cli.main()
-
-
-if __name__ == "__main__":
-    main()
