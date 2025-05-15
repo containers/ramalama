@@ -19,7 +19,7 @@ from ramalama.common import (
     get_cmd_with_wrapper,
     set_accel_env_vars,
 )
-from ramalama.config import CONFIG, DEFAULT_PORT_RANGE, int_tuple_as_str
+from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
 from ramalama.console import EMOJI
 from ramalama.engine import Engine, dry_run
 from ramalama.gguf_parser import GGUFInfoParser
@@ -693,11 +693,10 @@ def get_available_port_if_any(debug: bool) -> int:
 
 
 def compute_serving_port(port: str, debug: bool, quiet=False) -> str:
-    if not port:
-        raise IOError("serving port can't be empty.")
-    if port != int_tuple_as_str(DEFAULT_PORT_RANGE):
-        # user specified a custom port, don't override the choice
+    # user probably specified a custom port, don't override the choice
+    if port != "" and port != str(DEFAULT_PORT):
         return port
+
     # otherwise compute a random serving port in the range
     target_port = get_available_port_if_any(debug)
 

@@ -64,6 +64,13 @@ def parse_generate_option(option: str) -> ParsedGenerateInput:
     return ParsedGenerateInput(generate, output_dir)
 
 
+def parse_port_option(option: str) -> str:
+    port = int(option)
+    if port <= 0 or port >= 65535:
+        raise ValueError(f"Invalid port '{port}'")
+    return str(port)
+
+
 class OverrideDefaultAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
@@ -800,6 +807,7 @@ def runtime_options(parser, command):
         parser.add_argument(
             "-p",
             "--port",
+            type=parse_port_option,
             default=CONFIG['port'],
             help="port for AI Model server to listen on",
             completer=suppressCompleter,

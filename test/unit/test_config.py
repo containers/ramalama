@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from ramalama.config import DEFAULT_PORT_RANGE, int_tuple_as_str, load_config_defaults, load_config_from_env
+from ramalama.config import DEFAULT_PORT, load_config_defaults, load_config_from_env
 
 
 @pytest.mark.parametrize(
@@ -79,7 +79,7 @@ def test_load_config_from_env(env, config, expected):
                 "store": "~/.local/share/ramalama",
                 "transport": "ollama",
                 "use_model_store": True,
-                "port": int_tuple_as_str(DEFAULT_PORT_RANGE),
+                "port": str(DEFAULT_PORT),
                 "ocr": False,
             },
         ),
@@ -111,7 +111,7 @@ def test_load_config_from_env(env, config, expected):
                 "temp": "0.8",
                 "host": "0.0.0.0",
                 "use_model_store": True,
-                "port": int_tuple_as_str(DEFAULT_PORT_RANGE),
+                "port": str(DEFAULT_PORT),
                 "ocr": False,
             },
         ),
