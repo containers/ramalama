@@ -1020,6 +1020,14 @@ formatted files to be processed""",
         action="store_true",
         help="Enable embedded image text extraction from PDF (Increases RAM Usage significantly)",
     )
+    parser.add_argument(
+        "--db",
+        dest="db",
+        type=str,
+        default=CONFIG["db"],
+        choices=["json", "qdrant", "milvus"],
+        help='Select vector database output format',
+    )
     parser.set_defaults(func=rag_cli)
 
 

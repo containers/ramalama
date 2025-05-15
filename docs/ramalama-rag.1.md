@@ -38,6 +38,13 @@ Print usage message
 #### **--network**=*none*
 sets the configuration for network namespaces when handling RUN instructions
 
+#### **--db**=*database*
+Sets the output format for the processed documents.
+
+- **json**: Outputs documents in Docling JSON format, which is useful for direct ingestion for RAG pipelines that support Docling. While this format still needs to be converted to a vector database, it enables users to experiment with different conversions without reprocessing the original files through Docling.
+- **qdrant**: Outputs the documents to a qdrant database. Inside the folder is a collection of files that holds the data for a RAG pipeline with qdrant support.
+- **milvus**: Outputs the documents to a milvus database. Inside the folder there is a single milvus.db sqlite file that holds the data and can be used with a RAG milvus pipeline.
+
 #### **--ocr**
 Sets the Docling OCR flag. OCR stands for Optical Character Recognition and is used to extract text from images within PDFs converting it into raw text that an LLM can understand. This feature is useful if the PDF's one is converting has a lot of embedded images with text. This process uses a great amount of RAM so the default is false.
 
@@ -61,6 +68,10 @@ c857ebc65c641084b34e39b740fdb6a2d9d2d97be320e6aa9439ed0ab8780fe0
 
 ```
 ramalama rag --ocr README.md https://mysight.edu/document quay.io/rhatdan/myrag
+```
+
+```
+ramalama rag --db milvus README.md https://mysight.edu/document quay.io/rhatdan/myrag
 ```
 
 ## SEE ALSO
