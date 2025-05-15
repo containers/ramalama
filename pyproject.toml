@@ -7,7 +7,7 @@ name = "ramalama"
 version = "0.8.3"
 description = "RamaLama is a command line tool for working with AI LLM models."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 keywords = ["ramalama", "llama", "AI"]
 dependencies = [
@@ -21,7 +21,24 @@ maintainers = [
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=7.0",
+  "pytest~=8.3",
+  "isort~=6.0",
+  "codespell~=2.0",
+  "flake8~=7.0",
+  "huggingface-hub~=0.28.0",
+  "black~=25.0",
+  "wheel~=0.45.0",
+]
+cov = [
+  "pytest-cov"
+]
+cov-detailed = [
+  "ramalama[cov]",
+  "pytest-cov",
+  "pytest-func-cov",
+  "pytest-report",
+  "pytest-json",
+  "pytest-html"
 ]
 
 [project.urls]
