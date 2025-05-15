@@ -16,7 +16,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y bash codespell python3-argcomplete uv
+          sudo apt-get install -y bash codespell python3-argcomplete
           make install-requirements
 
       - name: Run format check
@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y bash codespell python3-argcomplete uv
+          sudo apt-get install -y bash codespell python3-argcomplete
           make install-requirements
 
       - name: Run unit tests
@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install podman bats bash codespell python3-argcomplete uv
+           sudo apt-get install podman bats bash codespell python3-argcomplete
            make install-requirements
 
       - name: install ollama
@@ -85,7 +85,7 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install podman bats bash codespell python3-argcomplete uv git cmake libcurl4-openssl-dev
+           sudo apt-get install podman bats bash codespell python3-argcomplete git cmake libcurl4-openssl-dev
            make install-requirements
            sudo ./container-images/scripts/build_llama_and_whisper.sh
 
@@ -116,7 +116,7 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install bats bash codespell python3-argcomplete uv
+           sudo apt-get install bats bash codespell python3-argcomplete
            make install-requirements
 
       - name: install ollama
