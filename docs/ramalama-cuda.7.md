@@ -1,4 +1,4 @@
-% ramalama 7
+% ramalama-cuda 7
 
 # Setting Up RamaLama with CUDA Support on Linux systems
 
