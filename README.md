@@ -33,6 +33,7 @@ RamaLama eliminates the need to configure the host system by instead pulling a c
 |  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
 |  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu |
 |  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
+|  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
 
 ### GPU support inspection
 On first run, RamaLama inspects your system for GPU support, falling back to CPU if none are present. RamaLama uses container engines like Podman or Docker to pull the appropriate OCI image with all necessary software to run an AI Model for your system setup.
@@ -62,6 +63,7 @@ RamaLama then pulls AI Models from model registries, starting a chatbot or REST 
 | AMD GPU (rocm)                     | &check;                     |
 | Ascend NPU (Linux)                 | &check;                     |
 | Intel ARC GPUs (Linux)             | &check; See note below      |
+| Moore Threads GPU (musa / Linux)   | &check; See note below      |
 
 ### Nvidia GPUs
 On systems with NVIDIA GPUs, see [ramalama-cuda](docs/ramalama-cuda.7.md) documentation for the correct host system configuration.
@@ -80,6 +82,9 @@ The following Intel GPUs are auto-detected by RamaLama:
 See the [Intel hardware table](https://dgpu-docs.intel.com/devices/hardware-table.html) for more information.
 <br>
 <br>
+
+### Moore Threads GPUs
+On systems with Moore Threads GPUs, see [ramalama-musa](docs/ramalama-musa.7.md) documentation for the correct host system configuration.
 
 ## Install
 ### Install on Fedora
