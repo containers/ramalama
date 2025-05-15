@@ -33,6 +33,7 @@ Accelerated images:
 |  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
 |  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu |
 |  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
+|  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
 
 RamaLama pulls AI Models from model registries. Starting a chatbot or a rest API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
 
