@@ -12,7 +12,7 @@ IMAGE ?= ramalama
 default: help
 
 help:
-	@echo "Build Container Image"
+	@echo "Build Container Image"x
 	@echo
 	@echo "  - make build"
 	@echo "  - make build IMAGE=ramalama"
@@ -38,23 +38,23 @@ help:
 	@echo "  - make clean"
 	@echo
 
+
+.PHONY: verify-uv
+verify-uv:
+	command -v uv >/dev/null 2>&1 || ./install-uv.sh
+	@if [ ! -d ".venv" ]; then uv venv; fi
+
 .PHONY: install-detailed-cov-requirements
-install-detailed-cov-requirements:
-	pip install \
-		pytest-cov \
-		pytest-func-cov \
-		pytest-report \
-		pytest-json \
-		pytest-html
+install-detailed-cov-requirements: verify-uv
+	uv pip install ".[cov-detailed]"
 
 .PHONY: install-cov-requirements
-install-cov-requirements:
-	pip install pytest-cov
+install-cov-requirements: verify-uv
+	uv pip install ".[cov]"
 
 .PHONY: install-requirements
-install-requirements:
-	pip install -U pipx
-	pipx install ".[dev]" --force
+install-requirements: verify-uv
+	uv pip install ".[dev]"
 
 .PHONY: install-completions
 install-completions: completions

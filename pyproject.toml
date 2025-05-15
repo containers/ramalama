@@ -29,6 +29,17 @@ dev = [
   "black~=25.0",
   "wheel~=0.45.0",
 ]
+cov = [
+  "pytest-cov"
+]
+cov-detailed = [
+  "ramalama[cov]",
+  "pytest-cov",
+  "pytest-func-cov",
+  "pytest-report",
+  "pytest-json",
+  "pytest-html"
+]
 
 [project.urls]
 Homepage = "https://github.com/containers/ramalama"
