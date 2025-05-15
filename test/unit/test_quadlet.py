@@ -50,8 +50,6 @@ def test_quadlet_generate(input: Input, expected_files_path: Path):
         with io.StringIO() as sio:
             file.config.write(sio)
             sio.seek(0)  # rewind
-            print(sio.read())
-            sio.seek(0)
             assert expected_files[file.filename] == sio.read()
             del expected_files[file.filename]
 

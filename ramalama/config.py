@@ -7,6 +7,7 @@ from ramalama.common import container_manager, default_image
 from ramalama.toml_parser import TOMLParser
 
 DEFAULT_PORT_RANGE = (8080, 8090)
+DEFAULT_PORT = DEFAULT_PORT_RANGE[0]
 
 
 def get_store():
@@ -68,10 +69,6 @@ def load_config_from_env(config: Dict[str, Any], env: Dict):
             config[k] = value
 
 
-def int_tuple_as_str(input: tuple) -> str:
-    return '-'.join(map(str, input))
-
-
 def load_config_defaults(config: Dict[str, Any]):
     """Set configuration defaults if these are not yet set."""
     config.setdefault('carimage', "registry.access.redhat.com/ubi9-micro:latest")
@@ -95,7 +92,7 @@ def load_config_defaults(config: Dict[str, Any]):
     config.setdefault('ngl', -1)
     config.setdefault('threads', -1)
     config.setdefault('nocontainer', False)
-    config.setdefault('port', int_tuple_as_str(DEFAULT_PORT_RANGE))
+    config.setdefault('port', str(DEFAULT_PORT))
     config.setdefault('pull', "newer")
     config.setdefault('runtime', 'llama.cpp')
     config.setdefault('store', get_store())
