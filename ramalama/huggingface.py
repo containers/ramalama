@@ -247,6 +247,14 @@ class Huggingface(Model):
                 pass
         raise KeyError(f"Failed to pull model: {str(previous_exception)}")
 
+    def extract_model_identifiers(self):
+        model_name, model_tag, model_organization = super().extract_model_identifiers()
+        if '/' not in model_organization:
+            # if it is a repo then normalize the case insensitive quantization tag
+            if model_tag != "latest":
+                model_tag = model_tag.upper()
+        return model_name, model_tag, model_organization
+
     def pull(self, args):
         if self.store is not None:
             return self._pull_with_model_store(args)
