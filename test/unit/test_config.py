@@ -55,6 +55,7 @@ def test_load_config_from_env(env, config, expected):
         (
             {},
             {
+                "api": "none",
                 "nocontainer": False,
                 "carimage": "registry.access.redhat.com/ubi9-micro:latest",
                 "container": True,
@@ -86,12 +87,14 @@ def test_load_config_from_env(env, config, expected):
         ),
         (
             {
+                "api": "llama-stack",
                 "nocontainer": True,
                 "images": {
                     "HIP_VISIBLE_DEVICES": "quay.io/repo/rocm",
                 },
             },
             {
+                "api": "llama-stack",
                 "nocontainer": True,
                 "carimage": "registry.access.redhat.com/ubi9-micro:latest",
                 "container": True,

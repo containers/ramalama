@@ -241,7 +241,6 @@ class Model(ModelBase):
     def setup_container(self, args):
         name = self.get_container_name(args)
         self.base(args, name)
-        self.engine.add_container_labels()
 
     def gpu_args(self, args, runner=False):
         gpu_args = []
@@ -285,6 +284,9 @@ class Model(ModelBase):
         self.setup_mounts(model_path, args)
         self.handle_rag_mode(args, cmd_args)
 
+        # Make sure Image precedes cmd_args
+        self.engine.add([accel_image(CONFIG, args)] + cmd_args)
+
         if args.dryrun:
             self.engine.dryrun()
             return True
@@ -318,9 +320,6 @@ class Model(ModelBase):
         # so that accel_image will add -rag to the image specification.
         if hasattr(args, "rag") and args.rag:
             args.image = args.image.split(":")[0]
-
-        # Make sure Image precedes cmd_args
-        self.engine.add([accel_image(CONFIG, args)] + cmd_args)
 
     def bench(self, args):
         model_path = self.get_model_path(args)
@@ -592,7 +591,6 @@ class Model(ModelBase):
 
     def serve(self, args, quiet=False):
         self.validate_args(args)
-        args.port = compute_serving_port(args.port, args.debug, quiet)
 
         model_path = self.get_model_path(args)
         exec_model_path = MNT_FILE if args.container or args.generate else model_path
