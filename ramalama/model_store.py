@@ -94,11 +94,11 @@ def validate_snapshot_files(snapshot_files: list[SnapshotFile]):
             mmproj_files.append(file)
 
     if len(model_files) > 1:
-        raise Exception(f"Only one model file supported, got {len(model_files)}: {model_files}")
+        raise ValueError(f"Only one model supported, got {len(model_files)}: {model_files}")
     if len(chat_template_files) > 1:
-        raise Exception(f"Only one chat template file supported, got {len(chat_template_files)}: {chat_template_files}")
+        raise ValueError(f"Only one chat template supported, got {len(chat_template_files)}: {chat_template_files}")
     if len(mmproj_files) > 1:
-        raise Exception(f"Only one mmproj file supported, got {len(mmproj_files)}: {mmproj_files}")
+        raise ValueError(f"Only one mmproj supported, got {len(mmproj_files)}: {mmproj_files}")
 
 
 class RefFile:

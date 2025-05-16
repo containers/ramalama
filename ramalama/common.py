@@ -344,7 +344,7 @@ def download_file(url, dest_path, headers=None, show_progress=True):
                 "- Server is down or unresponsive\n"
                 "- Firewall or proxy blocking the request\n"
             )
-            raise Exception(error_message)
+            raise ConnectionError(error_message)
 
         time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
 
