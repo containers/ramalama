@@ -18,6 +18,10 @@ def initialize_parser():
         default=2048,
         help="size of the prompt context (0 = loaded from model)",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+    )
     parser.add_argument("--jinja", action="store_true", help="enable jinja")
     parser.add_argument("--temp", default=0.8, help="temperature of the response from the AI model")
     parser.add_argument(
@@ -66,7 +70,8 @@ def main(args):
     if pid == 0:
         signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
         # at this point we are already in a container so, --nocontainer always makes sense
-        exec_cmd(["ramalama", "--nocontainer", "serve", "--threads", str(parsed_args.threads), "--temp", parsed_args.temp, "--port", str(port), parsed_args.MODEL], stdout2null=True, stderr2null=True)
+        dont_print_output = (not parsed_args.debug) and (not parsed_args.verbose)
+        exec_cmd(["ramalama", "--nocontainer", "serve", "--threads", str(parsed_args.threads), "--temp", parsed_args.temp, "--port", str(port), parsed_args.MODEL], stdout2null=dont_print_output, stderr2null=dont_print_output)
 
         return 0
 

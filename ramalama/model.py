@@ -448,7 +448,7 @@ class Model(ModelBase):
             exec_args += ["--seed", args.seed]
 
         if args.debug:
-            exec_args += ["-v"]
+            exec_args += ["-v"]  # Change to --debug sometime
 
         set_accel_env_vars()
         gpu_args = self.gpu_args(args=args, runner=True)
