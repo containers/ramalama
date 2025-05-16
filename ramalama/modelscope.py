@@ -45,10 +45,10 @@ class ModelScopeRepository(HuggingfaceRepository):
 
     REGISTRY_URL = "https://modelscope.cn"
 
-    def __init__(self, name: str, organization: str):
-        super().__init__(name, organization)
-
+    def fetch_metadata(self):
         self.blob_url = f"{ModelScopeRepository.REGISTRY_URL}/{self.organization}/resolve/master"
+        self.model_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
+        self.model_filename = self.name
 
 
 class ModelScope(Model):
@@ -265,13 +265,12 @@ class ModelScope(Model):
             return self.store.get_snapshot_file_path(hash, name)
 
         try:
-            # Fetch the SHA-256 checksum of model from the API and use as snapshot hash
-            snapshot_hash = f"sha256:{fetch_checksum_from_api(organization, name)}"
             if not args.quiet:
                 self.print_pull_message(f"ms://{name}:{tag}")
 
-            ms_repo = ModelScopeRepository(name, organization)
-            files = ms_repo.get_file_list(cached_files, snapshot_hash)
+            ms_repo = ModelScopeRepository(name, organization, tag)
+            snapshot_hash = ms_repo.model_hash
+            files = ms_repo.get_file_list(cached_files)
             self.store.new_snapshot(tag, snapshot_hash, files)
         except Exception as e:
             if not self.ms_available:
@@ -294,4 +293,4 @@ class ModelScope(Model):
                 snapshot_hash, files = self._collect_cli_files(tempdir)
                 self.store.new_snapshot(tag, snapshot_hash, files)
 
-        return self.store.get_snapshot_file_path(snapshot_hash, self.store.model_name)
+        return self.store.get_snapshot_file_path(snapshot_hash, self.store.get_ref_file(tag).model_name)
