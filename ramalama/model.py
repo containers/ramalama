@@ -11,6 +11,7 @@ from ramalama.common import (
     MNT_DIR,
     MNT_FILE,
     MNT_FILE_DRAFT,
+    MNT_MMPROJ_FILE,
     accel_image,
     check_metal,
     check_nvidia,
@@ -307,6 +308,9 @@ class Model(ModelBase):
             if ref_file is not None and ref_file.chat_template_name != "":
                 chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
                 self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
+            if ref_file is not None and ref_file.mmproj_name != "":
+                mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
 
     def handle_rag_mode(self, args, cmd_args):
         # force accel_image to use -rag version. Drop TAG if it exists
@@ -482,7 +486,7 @@ class Model(ModelBase):
                     return
             raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
-    def build_exec_args_serve(self, args, exec_model_path, chat_template_path=""):
+    def build_exec_args_serve(self, args, exec_model_path, chat_template_path="", mmproj_path=""):
         if args.runtime == "vllm":
             exec_args = [
                 "--model",
@@ -499,12 +503,10 @@ class Model(ModelBase):
                 draft_model = self.draft_model.get_model_path(args)
                 draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
 
+            exec_args += ["llama-server", "--port", args.port, "--model", exec_model_path]
+            if mmproj_path:
+                exec_args += ["--mmproj", mmproj_path]
             exec_args += [
-                "llama-server",
-                "--port",
-                args.port,
-                "--model",
-                exec_model_path,
                 "--alias",
                 self.model,
                 "--ctx-size",
@@ -595,6 +597,7 @@ class Model(ModelBase):
         exec_model_path = MNT_FILE if args.container or args.generate else model_path
 
         chat_template_path = ""
+        mmproj_path = ""
         if self.store is not None:
             _, tag, _ = self.extract_model_identifiers()
             ref_file = self.store.get_ref_file(tag)
@@ -604,8 +607,14 @@ class Model(ModelBase):
                     if args.container or args.generate
                     else self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
                 )
+            if ref_file is not None and ref_file.mmproj_name != "":
+                mmproj_path = (
+                    MNT_MMPROJ_FILE
+                    if args.container or args.generate
+                    else self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                )
 
-        exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path)
+        exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path, mmproj_path)
 
         exec_args = self.handle_runtime(args, exec_args, exec_model_path)
         if self.generate_container_config(model_path, chat_template_path, args, exec_args):
