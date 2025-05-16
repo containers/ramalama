@@ -470,22 +470,24 @@ class Huggingface(Model):
                 hf_repo = HuggingfaceRepository(name, organization, tag)
             snapshot_hash = hf_repo.model_hash
             files = hf_repo.get_file_list(cached_files)
-            self.store.new_snapshot(tag, snapshot_hash, files)
+            try:
+                self.store.new_snapshot(tag, snapshot_hash, files)
+            except Exception as e:
+                # Cleanup failed snapshot
+                try:
+                    self.store.remove_snapshot(tag)
+                except Exception as exc:
+                    if args.debug:
+                        perror(f"ignoring failure to remove snapshot: {exc}")
+                    # ignore any error when removing snapshot
+                    pass
+                raise e
         except Exception as e:
             if not self.hf_cli_available:
                 perror("URL pull failed and huggingface-cli not available")
                 raise KeyError(f"Failed to pull model: {str(e)}")
             if args.debug:
                 perror(f"ignoring failure to get file list: {e}")
-
-            # Cleanup previously created snapshot
-            try:
-                self.store.remove_snapshot(tag)
-            except Exception as exc:
-                if args.debug:
-                    perror(f"ignoring failure to remove snapshot: {exc}")
-                # ignore any error when removing snapshot
-                pass
 
             # Create temporary directory for downloading via huggingface-cli
             with tempfile.TemporaryDirectory() as tempdir:
