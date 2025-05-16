@@ -229,7 +229,7 @@ def parse_go_template(content: str) -> list[Node]:
 
         end_pos = content.find(GO_SYMBOL_CLOSE_BRACKETS, start_pos) + len(GO_SYMBOL_CLOSE_BRACKETS)
         if end_pos == -1:
-            raise Exception("Found opening without closing brackets")
+            raise IndexError("Found opening without closing brackets")
 
         stmt = content[start_pos:end_pos]
         node_type = detect_node_type(stmt)

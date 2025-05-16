@@ -1163,6 +1163,8 @@ def main():
         eprint(e, e.returncode)
     except KeyboardInterrupt:
         sys.exit(0)
+    except ConnectionError as e:
+        eprint(e, errno.EINVAL)
     except ValueError as e:
         eprint(e, errno.EINVAL)
     except IOError as e:

@@ -241,7 +241,9 @@ class Huggingface(Model):
         if self.hf_cli_available:
             try:
                 return self.hf_pull(args, model_path, directory_path)
-            except Exception:
+            except Exception as exc:
+                if args.debug:
+                    perror(f"failed to hf_pull: {exc}")
                 pass
         raise KeyError(f"Failed to pull model: {str(previous_exception)}")
 
@@ -444,11 +446,15 @@ class Huggingface(Model):
             if not self.hf_cli_available:
                 perror("URL pull failed and huggingface-cli not available")
                 raise KeyError(f"Failed to pull model: {str(e)}")
+            if args.debug:
+                perror(f"ignoring failure to get file list: {e}")
 
             # Cleanup previously created snapshot
             try:
                 self.store.remove_snapshot(tag)
-            except Exception:
+            except Exception as exc:
+                if args.debug:
+                    perror(f"ignoring failure to remove snapshot: {exc}")
                 # ignore any error when removing snapshot
                 pass
 
