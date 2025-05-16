@@ -40,6 +40,26 @@ def fetch_checksum_from_api(organization, file):
         raise KeyError(f"failed to pull {checksum_api_url}: " + str(e).strip("'"))
 
 
+def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
+    # Replicate llama.cpp -hf logic
+    # https://github.com/ggml-org/llama.cpp/blob/7f323a589f8684c0eb722e7309074cb5eac0c8b5/common/arg.cpp#L611
+    token = None  # TODO(owalsh): follow-up PR to use the cached hf token if it exists
+    repo_manifest_url = f"{HuggingfaceRepository.REGISTRY_URL}/v2/{repo_name}/manifests/{tag}"
+    request = urllib.request.Request(
+        url=repo_manifest_url,
+        headers={
+            'User-agent': 'llama-cpp',  # Note: required to return ggufFile field
+            'Accept': 'application/json',
+        },
+    )
+    if token is not None:
+        request.add_header('Authorization', f"Bearer {token}")
+
+    with urllib.request.urlopen(request) as response:
+        repo_manifest = response.read().decode('utf-8')
+        return json.loads(repo_manifest)
+
+
 class HuggingfaceCLIFile(SnapshotFile):
     def __init__(
         self, url, header, hash, name, type, should_show_progress=False, should_verify_checksum=False, required=True
@@ -59,17 +79,37 @@ class HuggingfaceRepository:
     FILE_NAME_GENERATION_CONFIG = "generation_config.json"
     FILE_NAME_TOKENIZER_CONFIG = "tokenizer_config.json"
 
-    def __init__(self, name: str, organization: str):
+    def __init__(self, name: str, organization: str, tag: str = 'latest'):
         self.name = name
         self.organization = organization
-
-        self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/resolve/main"
+        self.tag = tag
         self.headers = {}
+        self.blob_url = None
+        self.model_filename = None
+        self.model_hash = None
+        self.mmproj_filename = None
+        self.mmproj_hash = None
+        self.fetch_metadata()
 
-    def get_file_list(self, cached_files: list[str], snapshot_hash: str) -> list[SnapshotFile]:
+    def fetch_metadata(self):
+        # Repo org/name. Fetch repo manifest to determine model/mmproj file
+        self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/{self.name}/resolve/main"
+        self.manifest = fetch_repo_manifest(f"{self.organization}/{self.name}", self.tag)
+        try:
+            self.model_filename = self.manifest['ggufFile']['rfilename']
+            self.model_hash = self.manifest['ggufFile']['blobId']
+        except KeyError:
+            perror("Repository manifest missing ggufFile data")
+            raise
+        self.mmproj_filename = self.manifest.get('mmprojFile', {}).get('rfilename', None)
+        self.mmproj_hash = self.manifest.get('mmprojFile', {}).get('blobId', None)
+
+    def get_file_list(self, cached_files: list[str]) -> list[SnapshotFile]:
         files = []
-        if self.name not in cached_files:
-            files.append(self.model_file(snapshot_hash))
+        if self.model_filename not in cached_files:
+            files.append(self.model_file())
+        if self.mmproj_filename and self.mmproj_filename not in cached_files:
+            files.append(self.mmproj_file())
         if HuggingfaceRepository.FILE_NAME_CONFIG not in cached_files:
             files.append(self.config_file())
         if HuggingfaceRepository.FILE_NAME_GENERATION_CONFIG not in cached_files:
@@ -79,13 +119,25 @@ class HuggingfaceRepository:
 
         return files
 
-    def model_file(self, snapshot_hash: str) -> SnapshotFile:
+    def model_file(self) -> SnapshotFile:
         return SnapshotFile(
-            url=f"{self.blob_url}/{self.name}",
+            url=f"{self.blob_url}/{self.model_filename}",
             header=self.headers,
-            hash=snapshot_hash,
+            hash=self.model_hash,
             type=SnapshotFileType.Model,
-            name=self.name,
+            name=self.model_filename,
+            should_show_progress=True,
+            should_verify_checksum=True,
+        )
+
+    def mmproj_file(self) -> SnapshotFile:
+        return SnapshotFile(
+            url=f"{self.blob_url}/{self.mmproj_filename}",
+            header=self.headers,
+            hash=self.mmproj_hash,
+            type=SnapshotFileType.Mmproj,
+            name=self.mmproj_filename,
+            required=False,
             should_show_progress=True,
             should_verify_checksum=True,
         )
@@ -119,6 +171,14 @@ class HuggingfaceRepository:
             name=HuggingfaceRepository.FILE_NAME_TOKENIZER_CONFIG,
             required=False,
         )
+
+
+class HuggingfaceRepositoryModel(HuggingfaceRepository):
+    def fetch_metadata(self):
+        # Model url. organization is <org>/<repo>, name is model file path
+        self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/resolve/main"
+        self.model_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
+        self.model_filename = self.name
 
 
 def get_repo_info(repo_name):
@@ -366,18 +426,19 @@ class Huggingface(Model):
         hash, cached_files, all = self.store.get_cached_files(tag)
         if all:
             if not args.quiet:
-                print(f"Using cached huggingface://{name}:{tag} ...")
+                print(f"Using cached hf://{organization}/{name}:{tag} ...")
             return self.store.get_snapshot_file_path(hash, name)
 
         try:
-            # Fetch the SHA-256 checksum of model from the API and use as snapshot hash
-            snapshot_hash = f"sha256:{fetch_checksum_from_api(organization, name)}"
-
             if not args.quiet:
-                self.print_pull_message(f"hf://{name}:{tag}")
+                self.print_pull_message(f"hf://{organization}/{name}:{tag}")
 
-            hf_repo = HuggingfaceRepository(name, organization)
-            files = hf_repo.get_file_list(cached_files, snapshot_hash)
+            if '/' in organization:
+                hf_repo = HuggingfaceRepositoryModel(name, organization, tag)
+            else:
+                hf_repo = HuggingfaceRepository(name, organization, tag)
+            snapshot_hash = hf_repo.model_hash
+            files = hf_repo.get_file_list(cached_files)
             self.store.new_snapshot(tag, snapshot_hash, files)
         except Exception as e:
             if not self.hf_cli_available:
@@ -400,4 +461,4 @@ class Huggingface(Model):
                 snapshot_hash, files = self._collect_cli_files(tempdir)
                 self.store.new_snapshot(tag, snapshot_hash, files)
 
-        return self.store.get_snapshot_file_path(snapshot_hash, self.store.model_name)
+        return self.store.get_snapshot_file_path(snapshot_hash, self.store.get_ref_file(tag).model_name)
