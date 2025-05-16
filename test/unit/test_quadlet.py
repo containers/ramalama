@@ -8,10 +8,11 @@ from ramalama.quadlet import Quadlet
 
 
 class Args:
-    def __init__(self, name: str = "", rag: str = "", env: list = []):
+    def __init__(self, name: str = "", rag: str = "", port: str = "", env: list = []):
         self.name = name
         self.rag = rag
         self.env = env
+        self.port = port
 
 
 class Input:
@@ -34,6 +35,7 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
     [
         (Input(model="tinyllama"), DATA_PATH / "empty"),
         (Input(model="tinyllama", image="testimage"), DATA_PATH / "basic"),
+        (Input(model="tinyllama", image="testimage", args=Args(port="2020")), DATA_PATH / "portmapping"),
     ],
 )
 def test_quadlet_generate(input: Input, expected_files_path: Path):
@@ -48,7 +50,6 @@ def test_quadlet_generate(input: Input, expected_files_path: Path):
         with io.StringIO() as sio:
             file.config.write(sio)
             sio.seek(0)  # rewind
-
             assert expected_files[file.filename] == sio.read()
             del expected_files[file.filename]
 

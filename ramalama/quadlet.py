@@ -121,8 +121,8 @@ class Quadlet:
         return files
 
     def _gen_port(self, quadlet_file: IniFile):
-        if hasattr(self.args, "port"):
-            quadlet_file.add("Container", "PublishPort", f"{self.args.port}")
+        if hasattr(self.args, "port") and self.args.port != "":
+            quadlet_file.add("Container", "PublishPort", f"{self.args.port}:{self.args.port}")
 
     def _gen_rag_volume(self, quadlet_file: IniFile):
         files = []
