@@ -86,6 +86,7 @@ def load_config_defaults(config: Dict[str, Any]):
             "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
             "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
             "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
+            "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
         },
     )
     config.setdefault('keep_groups', False)

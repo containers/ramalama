@@ -1,5 +1,9 @@
 #!/bin/bash
 
+available() {
+  command -v "$1" >/dev/null
+}
+
 python_version() {
   pyversion=$(python3 --version)
   # $2 is empty when no Python is installed, so just install python3
@@ -22,13 +26,18 @@ $2"
 }
 
 update_python() {
-    dnf update -y
-    dnf install -y "${python}" "${python}-pip" "${python}-devel" "${pkgs[@]}"
-    if [[ "${python}" == "python3.11" ]]; then
-	ln -sf /usr/bin/python3.11 /usr/bin/python3
-    fi
+    if available dnf; then
+        dnf update -y
+        dnf install -y "${python}" "${python}-pip" "${python}-devel" "${pkgs[@]}"
+        if [[ "${python}" == "python3.11" ]]; then
+            ln -sf /usr/bin/python3.11 /usr/bin/python3
+        fi
 
-    rm -rf /usr/local/python3.10
+        rm -rf /usr/local/python3.10
+    elif available apt-get; then
+        apt-get update
+        apt-get install -y "${python}" "${python}-pip" "${python}-dev" "${pkgs[@]}"
+    fi
 }
 
 docling() {
@@ -55,7 +64,12 @@ main() {
     local gpu="${1-cpu}"
     local python
     python=$(python_version)
-    local pkgs=("git-core" "gcc" "gcc-c++")
+    local pkgs
+    if available dnf; then
+        pkgs=("git-core" "gcc" "gcc-c++")
+    else
+        pkgs=("git" "gcc" "g++")
+    fi
     if [ "${gpu}" = "cuda" ]; then
         pkgs+=("libcudnn9-devel-cuda-12" "libcusparselt0" "cuda-cupti-12-*")
     fi
@@ -69,9 +83,14 @@ main() {
     rag
     docling "${gpu}"
 
-    dnf -y clean all
-    rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9* /root/.cache \
-       /root/buildinfo
+    if available dnf; then
+        dnf -y clean all
+        rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9* /root/.cache \
+        /root/buildinfo
+    elif available apt-get; then
+        apt-get clean
+        rm -rf /var/lib/apt/lists/*
+    fi
     ldconfig
 }
 

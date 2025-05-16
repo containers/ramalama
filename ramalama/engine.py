@@ -134,6 +134,8 @@ class Engine:
                 else:
                     # newer Podman versions support --gpus=all, but < 5.0 do not
                     self.exec_args += ["--device", "nvidia.com/gpu=all"]
+            elif k == "MUSA_VISIBLE_DEVICES":
+                self.exec_args += ["--env", "MTHREADS_VISIBLE_DEVICES=all"]
 
             self.exec_args += ["-e", f"{k}={v}"]
 

@@ -147,7 +147,7 @@ dnf_install() {
   fi
   if [ "$containerfile" = "ramalama" ]; then
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
-      dnf_install_mesa # on x86_64 and aarch64 we use vulkan via mesa 
+      dnf_install_mesa # on x86_64 and aarch64 we use vulkan via mesa
     else
       dnf_install_s390
     fi
@@ -207,7 +207,7 @@ cmake_steps() {
 }
 
 set_install_prefix() {
-  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ] || [ "$containerfile" = "cann" ]; then
+  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ] || [ "$containerfile" = "cann" ] || [ "$containerfile" = "musa" ]; then
     echo "/tmp/install"
   else
     echo "/usr"
@@ -236,13 +236,20 @@ configure_common_flags() {
     cann)
       common_flags+=("-DGGML_CANN=ON" "-DSOC_TYPE=Ascend910B3")
       ;;
+    musa)
+      common_flags+=("-DGGML_MUSA=ON")
+      ;;
   esac
 }
 
 clone_and_build_whisper_cpp() {
   local whisper_flags=("${common_flags[@]}")
   local whisper_cpp_sha="d682e150908e10caa4c15883c633d7902d385237"
-  whisper_flags+=("-DBUILD_SHARED_LIBS=NO")
+  whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
+  # See: https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#compilation-options
+  if [ "$containerfile" = "musa" ]; then
+    whisper_flags+=("-DCMAKE_POSITION_INDEPENDENT_CODE=ON")
+  fi
 
   git clone https://github.com/ggerganov/whisper.cpp
   cd whisper.cpp
@@ -273,6 +280,13 @@ install_ramalama() {
   ln -sf /usr/bin/podman-remote /usr/bin/podman
   if [ -e "/run/ramalama" ]; then
     $PYTHON -m pip install /run/ramalama --prefix="$1"
+  else
+    git clone https://github.com/containers/ramalama
+    cd ramalama
+    git submodule update --init --recursive
+    $PYTHON -m pip install . --prefix="$1"
+    cd ..
+    rm -rf ramalama
   fi
 }
 
