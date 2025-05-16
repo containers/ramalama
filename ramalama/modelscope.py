@@ -268,7 +268,7 @@ class ModelScope(Model):
             if not args.quiet:
                 self.print_pull_message(f"ms://{name}:{tag}")
 
-            ms_repo = ModelScopeRepository(name, organization, tag)
+            ms_repo = ModelScopeRepository(name, organization)
             snapshot_hash = ms_repo.model_hash
             files = ms_repo.get_file_list(cached_files)
             self.store.new_snapshot(tag, snapshot_hash, files)
