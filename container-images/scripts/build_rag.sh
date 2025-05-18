@@ -27,12 +27,11 @@ $2"
 
 update_python() {
     if available dnf; then
-        dnf update -y
+        dnf update -y --allowerasing
         dnf install -y "${python}" "${python}-pip" "${python}-devel" "${pkgs[@]}"
         if [[ "${python}" == "python3.11" ]]; then
             ln -sf /usr/bin/python3.11 /usr/bin/python3
         fi
-
         rm -rf /usr/local/python3.10
     elif available apt-get; then
         apt-get update
