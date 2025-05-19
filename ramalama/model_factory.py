@@ -1,11 +1,12 @@
 import argparse
 import copy
+import re
 from typing import Callable, Tuple, Union
 from urllib.parse import urlparse
 
 from ramalama.common import rm_until_substring
 from ramalama.huggingface import Huggingface
-from ramalama.model import MODEL_TYPES
+from ramalama.model import MODEL_TYPES, SPLIT_MODEL_RE, is_split_file_model
 from ramalama.model_store import GlobalModelStore, ModelStore
 from ramalama.modelscope import ModelScope
 from ramalama.oci import OCI
@@ -20,6 +21,7 @@ class ModelFactory:
         args: argparse,
         transport: str = "ollama",
         ignore_stderr: bool = False,
+        no_children: bool = False,
     ):
         self.model = model
         self.store_path = args.store
@@ -39,6 +41,25 @@ class ModelFactory:
             dm_args = copy.deepcopy(args)
             dm_args.model_draft = None
             self.draft_model = ModelFactory(args.model_draft, dm_args, ignore_stderr=True).create()
+        if (not no_children) and is_split_file_model(model):
+            sm_args = copy.deepcopy(args)
+            sm_args.model_draft = None
+            if is_split_file_model(model):
+                match = re.match(SPLIT_MODEL_RE, model)
+                path_part = match[1]
+                filename_base = match[2]
+                total_parts = int(match[3])
+                # the model will be nr=1 (first) the child will be the higher numbers
+                self.split_model = {}
+
+                self.mnt_path = f"{filename_base}-00001-of-{total_parts:05d}.gguf"
+                for i in range(total_parts - 1):
+                    i_off = i + 2
+                    src_file = f"{path_part}/{filename_base}-{i_off:05d}-of-{total_parts:05d}.gguf"
+                    dst_file = f"{filename_base}-{i_off:05d}-of-{total_parts:05d}.gguf"
+                    self.split_model[dst_file] = ModelFactory(
+                        src_file, sm_args, ignore_stderr=True, no_children=True
+                    ).create()
 
     def detect_model_model_type(
         self,
@@ -123,4 +144,7 @@ class ModelFactory:
         model = URL(self.pruned_model, urlparse(self.model).scheme)
         self.set_optional_model_store(model)
         model.draft_model = self.draft_model
+        if hasattr(self, 'split_model'):
+            model.split_model = self.split_model
+            model.mnt_path = self.mnt_path
         return model
