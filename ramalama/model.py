@@ -2,6 +2,7 @@ import os
 import pathlib
 import platform
 import random
+import re
 import socket
 import sys
 
@@ -31,6 +32,7 @@ from ramalama.quadlet import Quadlet
 from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama"]
+SPLIT_MODEL_RE = r'(.*)/([^/]*)-00001-of-(\d{5})\.gguf'
 
 
 file_not_found = """\
@@ -45,6 +47,11 @@ RamaLama requires the server application be installed in the container images.
 Either install a package containing the "%(cmd)s" command in the container or run
 with the default RamaLama
 $(error)s"""
+
+
+def is_split_file_model(model_path):
+    """returns true if ends with -%05d-of-%05d.gguf"""
+    return bool(re.match(SPLIT_MODEL_RE, model_path))
 
 
 class ModelBase:
@@ -294,7 +301,16 @@ class Model(ModelBase):
 
     def setup_mounts(self, model_path, args):
         if model_path and os.path.exists(model_path):
-            self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"])
+            if hasattr(self, 'split_model'):
+                self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_DIR}/{self.mnt_path},ro"])
+
+                for k, v in self.split_model.items():
+                    part_path = v.model_path(args)
+                    src_file = f"{part_path}"
+                    dst_file = f"{MNT_DIR}/{k}"
+                    self.engine.add([f"--mount=type=bind,src={src_file},destination={dst_file},ro"])
+            else:
+                self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"])
         else:
             self.engine.add([f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models"])
 
@@ -595,7 +611,12 @@ class Model(ModelBase):
         args.port = compute_serving_port(args.port, args.debug, quiet)
 
         model_path = self.get_model_path(args)
-        exec_model_path = MNT_FILE if args.container or args.generate else model_path
+        if is_split_file_model(model_path):
+            mnt_file = MNT_DIR + '/' + self.mnt_path
+        else:
+            mnt_file = MNT_FILE
+
+        exec_model_path = mnt_file if args.container or args.generate else model_path
 
         chat_template_path = ""
         mmproj_path = ""
