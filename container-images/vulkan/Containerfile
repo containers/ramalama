@@ -1,0 +1,4 @@
+FROM registry.access.redhat.com/ubi9/ubi:9.6-1747219013
+
+COPY --chmod=755 ../scripts /usr/bin
+RUN build_llama_and_whisper.sh "vulkan"
