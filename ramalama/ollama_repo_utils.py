@@ -26,7 +26,7 @@ def fetch_manifest_data(registry_head, model_tag, accept):
     return manifest_data
 
 
-def pull_config_blob(repos, accept, registry_head, manifest_data, show_progress):
+def pull_config_blob(repos, accept, registry_head, manifest_data):
     """
     Pull configuration blob for a model.
 
@@ -52,7 +52,6 @@ def pull_blob(
     layer_digest,
     accept,
     registry_head,
-    models,
     model_name,
     model_tag,
     model_path,
@@ -109,7 +108,6 @@ def repo_pull(
     model_tag,
     models,
     model_path,
-    model,
     show_progress,
     media_type="application/vnd.ollama.image.model",
     in_existing_cache_fn=None,
@@ -135,7 +133,7 @@ def repo_pull(
     """
     os.makedirs(models, exist_ok=True)
     manifest_data = fetch_manifest_data(registry_head, model_tag, accept)
-    pull_config_blob(repos, accept, registry_head, manifest_data, show_progress)
+    pull_config_blob(repos, accept, registry_head, manifest_data)
 
     for layer in manifest_data["layers"]:
         layer_digest = layer["digest"]
@@ -147,7 +145,6 @@ def repo_pull(
             layer_digest,
             accept,
             registry_head,
-            models,
             model_name,
             model_tag,
             model_path,
