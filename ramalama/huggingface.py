@@ -23,11 +23,26 @@ def is_huggingface_cli_available():
     return available("huggingface-cli")
 
 
+def huggingface_token():
+    """Return cached Hugging Face token if it exists otherwise None"""
+    token_path = os.path.expanduser(os.path.join("~", ".cache", "huggingface", "token"))
+    if os.path.exists(token_path):
+        try:
+            with open(token_path) as tokenfile:
+                return tokenfile.read().strip()
+        except OSError:
+            pass
+
+
 def fetch_checksum_from_api(organization, file):
     """Fetch the SHA-256 checksum from the model's metadata API for a given file."""
     checksum_api_url = f"{HuggingfaceRepository.REGISTRY_URL}/{organization}/raw/main/{file}"
+    request = urllib.request.Request(url=checksum_api_url)
+    token = huggingface_token()
+    if token is not None:
+        request.add_header('Authorization', f"Bearer {token}")
     try:
-        with urllib.request.urlopen(checksum_api_url) as response:
+        with urllib.request.urlopen(request) as response:
             data = response.read().decode()
         # Extract the SHA-256 checksum from the `oid sha256` line
         for line in data.splitlines():
@@ -43,7 +58,7 @@ def fetch_checksum_from_api(organization, file):
 def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
     # Replicate llama.cpp -hf logic
     # https://github.com/ggml-org/llama.cpp/blob/7f323a589f8684c0eb722e7309074cb5eac0c8b5/common/arg.cpp#L611
-    token = None  # TODO(owalsh): follow-up PR to use the cached hf token if it exists
+    token = huggingface_token()
     repo_manifest_url = f"{HuggingfaceRepository.REGISTRY_URL}/v2/{repo_name}/manifests/{tag}"
     request = urllib.request.Request(
         url=repo_manifest_url,
@@ -103,6 +118,9 @@ class HuggingfaceRepository:
             raise
         self.mmproj_filename = self.manifest.get('mmprojFile', {}).get('rfilename', None)
         self.mmproj_hash = self.manifest.get('mmprojFile', {}).get('blobId', None)
+        token = huggingface_token()
+        if token is not None:
+            self.headers['Authorization'] = f"Bearer {token}"
 
     def get_file_list(self, cached_files: list[str]) -> list[SnapshotFile]:
         files = []
@@ -179,6 +197,9 @@ class HuggingfaceRepositoryModel(HuggingfaceRepository):
         self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/resolve/main"
         self.model_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
         self.model_filename = self.name
+        token = huggingface_token()
+        if token is not None:
+            self.headers['Authorization'] = f"Bearer {token}"
 
 
 def get_repo_info(repo_name):
@@ -449,22 +470,24 @@ class Huggingface(Model):
                 hf_repo = HuggingfaceRepository(name, organization, tag)
             snapshot_hash = hf_repo.model_hash
             files = hf_repo.get_file_list(cached_files)
-            self.store.new_snapshot(tag, snapshot_hash, files)
+            try:
+                self.store.new_snapshot(tag, snapshot_hash, files)
+            except Exception as e:
+                # Cleanup failed snapshot
+                try:
+                    self.store.remove_snapshot(tag)
+                except Exception as exc:
+                    if args.debug:
+                        perror(f"ignoring failure to remove snapshot: {exc}")
+                    # ignore any error when removing snapshot
+                    pass
+                raise e
         except Exception as e:
             if not self.hf_cli_available:
                 perror("URL pull failed and huggingface-cli not available")
                 raise KeyError(f"Failed to pull model: {str(e)}")
             if args.debug:
                 perror(f"ignoring failure to get file list: {e}")
-
-            # Cleanup previously created snapshot
-            try:
-                self.store.remove_snapshot(tag)
-            except Exception as exc:
-                if args.debug:
-                    perror(f"ignoring failure to remove snapshot: {exc}")
-                # ignore any error when removing snapshot
-                pass
 
             # Create temporary directory for downloading via huggingface-cli
             with tempfile.TemporaryDirectory() as tempdir:
