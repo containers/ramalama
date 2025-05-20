@@ -71,7 +71,7 @@ run() {
     echo_color "Serve granite via RamaLama run"
     exec_color "ramalama --dryrun run granite | grep --color podman"
     echo ""
-    exec_color "ramalama --dryrun run granite | grep --color quay.io.*latest"
+    exec_color "ramalama --dryrun run granite | grep --color quay.io"
     echo ""
     exec_color "ramalama --dryrun run granite | grep --color -- --cap-drop.*privileges"
     echo ""
