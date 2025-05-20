@@ -161,6 +161,8 @@ dnf_install() {
     dnf_install_intel_gpu
   elif [ "$containerfile" = "cann" ]; then
     dnf_install_cann
+  elif [ "$containerfile" = "vulkan" ]; then
+      dnf_install_mesa # we use vulkan via mesa
   fi
 
   dnf_install_ffmpeg
