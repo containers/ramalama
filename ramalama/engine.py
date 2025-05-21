@@ -23,6 +23,7 @@ class Engine:
         self.add_container_labels()
         self.add_device_options()
         self.add_env_option()
+        self._add_proxy_settings_for_run()  # <<< NEW METHOD CALL for proxy fix
         self.add_network()
         self.add_oci_runtime()
         self.add_port_option()
@@ -34,6 +35,37 @@ class Engine:
         self.handle_podman_specifics()
         self.add_detach_option()
         self.debug = args.debug
+
+    def _add_proxy_settings_for_run(self):
+        """
+        Internal method to adjust proxy settings for the 'run' subcommand.
+        When 'ramalama run' is used, the container operates with '--network none'.
+        This method ensures that any host proxy settings do not interfere with
+        the internal client trying to connect to the internal server on 127.0.0.1.
+        """
+        if hasattr(self.args, "subcommand") and self.args.subcommand == "run":
+            no_proxy_essentials = {"localhost", "127.0.0.1"}
+
+            current_no_proxy_upper = os.getenv('NO_PROXY', '')
+            current_no_proxy_lower = os.getenv('no_proxy', '')
+
+            existing_parts = set()
+            if current_no_proxy_upper:
+                existing_parts.update(part.strip() for part in current_no_proxy_upper.split(',') if part.strip())
+            if current_no_proxy_lower:
+                existing_parts.update(part.strip() for part in current_no_proxy_lower.split(',') if part.strip())
+
+            final_no_proxy_parts = existing_parts.union(no_proxy_essentials)
+            final_no_proxy_str = ",".join(sorted(list(final_no_proxy_parts)))
+
+            if final_no_proxy_str:
+                self.add(["--env", f"NO_PROXY={final_no_proxy_str}"])
+                self.add(["--env", f"no_proxy={final_no_proxy_str}"])
+
+            self.add(["--env", "http_proxy="])
+            self.add(["--env", "https_proxy="])
+            self.add(["--env", "HTTP_PROXY="])
+            self.add(["--env", "HTTPS_PROXY="])
 
     def add_label(self, label):
         self.add(["--label", label])
@@ -57,9 +89,13 @@ class Engine:
             try:
                 if not self.args.quiet:
                     print(f"Checking for newer image {self.args.image}")
-                run_cmd([self.args.engine, "pull", "-q", self.args.image], ignore_all=True)
-            except Exception:  # Ignore errors, the run command will handle it.
-                pass
+                run_cmd([self.args.engine, "pull", "-q", self.args.image], ignore_all=True, debug=self.args.debug)
+            except Exception:
+                if self.args.debug:
+                    perror(
+                        f"Note: '{self.args.engine} pull -q {self.args.image}' failed or image is not newer. "
+                        "Proceeding with local image if available."
+                    )
         else:
             self.exec_args += ["--pull", self.args.pull]
 
