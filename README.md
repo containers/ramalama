@@ -90,7 +90,7 @@ On systems with Moore Threads GPUs, see [ramalama-musa](docs/ramalama-musa.7.md)
 ### Install on Fedora
 RamaLama is available in [Fedora 40](https://fedoraproject.org/) and later. To install it, run:
 ```
-sudo dnf install python3-ramalama
+sudo dnf install ramalama
 ```
 
 ### Install via PyPi
