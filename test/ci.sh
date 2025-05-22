@@ -36,7 +36,6 @@ version_checks() {
   local arg_llama_cpp
   arg_llama_cpp=$(get_arg_llama_cpp)
   grep "$arg_llama_cpp" container-images/cuda/Containerfile
-  grep "$arg_llama_cpp" container-images/asahi/Containerfile
 }
 
 check_packaging() {

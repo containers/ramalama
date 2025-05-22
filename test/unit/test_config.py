@@ -62,7 +62,7 @@ def test_load_config_from_env(env, config, expected):
                 "env": [],
                 "image": "quay.io/ramalama/ramalama",
                 "images": {
-                    "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
+                    "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/ramalama",
                     "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
                     "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
                     "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",

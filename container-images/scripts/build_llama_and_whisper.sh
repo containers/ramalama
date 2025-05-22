@@ -32,12 +32,6 @@ dnf_remove() {
   dnf -y clean all
 }
 
-dnf_install_asahi() {
-  dnf copr enable -y @asahi/fedora-remix-branding
-  dnf install -y asahi-repos
-  dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
-}
-
 dnf_install_cuda() {
   dnf install -y gcc-toolset-12
   # shellcheck disable=SC1091
@@ -153,8 +147,6 @@ dnf_install() {
     fi
   elif [[ "$containerfile" =~ rocm* ]]; then
     dnf_install_rocm
-  elif [ "$containerfile" = "asahi" ]; then
-    dnf_install_asahi
   elif [ "$containerfile" = "cuda" ]; then
     dnf_install_cuda
   elif [ "$containerfile" = "intel-gpu" ]; then
@@ -226,9 +218,6 @@ configure_common_flags() {
       ;;
     cuda)
       common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined" "-DCMAKE_CUDA_FLAGS=\"-U__ARM_NEON -U__ARM_NEON__\"")
-      ;;
-    vulkan | asahi)
-      common_flags+=("-DGGML_VULKAN=1")
       ;;
     intel-gpu)
       common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
@@ -317,7 +306,7 @@ main() {
   case "$containerfile" in
     ramalama)
       if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
-        common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
+        common_flags+=("-DGGML_VULKAN=ON")
       else
         common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
       fi
