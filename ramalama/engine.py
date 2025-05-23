@@ -17,10 +17,11 @@ class Engine:
             "run",
             "--rm",
         ]
-        self.use_docker = os.path.basename(args.engine) == "docker"
-        self.use_podman = os.path.basename(args.engine) == "podman"
+        base = os.path.basename(args.engine)
+        self.use_docker = base == "docker"
+        self.use_podman = base == "podman"
         self.args = args
-        self.add_container_labels()
+        self.add_labels()
         self.add_device_options()
         self.add_env_option()
         self.add_network()
@@ -38,7 +39,10 @@ class Engine:
     def add_label(self, label):
         self.add(["--label", label])
 
-    def add_container_labels(self):
+    def add_name(self, name):
+        self.add(["--name", name])
+
+    def add_labels(self):
         label_map = {
             "MODEL": "ai.ramalama.model",
             "engine": "ai.ramalama.engine",
@@ -90,6 +94,9 @@ class Engine:
                     "--security-opt=no-new-privileges",
                 ]
 
+    def cap_add(self, cap):
+        self.exec_args += ["--cap-add", cap]
+
     def add_subcommand_env(self):
         if EMOJI and hasattr(self.args, "subcommand") and self.args.subcommand == "run":
             if os.path.basename(self.args.engine) == "podman":
@@ -111,7 +118,12 @@ class Engine:
             self.exec_args += ["-d"]
 
     def add_port_option(self):
-        if hasattr(self.args, "port"):
+        if not hasattr(self.args, "port") or not self.args.port or self.args.port == "":
+            return
+
+        if self.args.port.count(":") > 0:
+            self.exec_args += ["-p", self.args.port]
+        else:
             self.exec_args += ["-p", f"{self.args.port}:{self.args.port}"]
 
     def add_device_options(self):
@@ -266,3 +278,18 @@ def stop_container(args, name):
             return
         else:
             raise
+
+
+def container_connection(args, name, port):
+    if not name:
+        raise ValueError("must specify a container name")
+    if not port:
+        raise ValueError("must specify a port to check")
+
+    conman = args.engine
+    if conman == "":
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "port", name, port]
+    output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+    return "" if output == "" else output.split(">")[-1].strip()

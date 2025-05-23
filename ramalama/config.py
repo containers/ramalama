@@ -89,6 +89,7 @@ def load_config_defaults(config: Dict[str, Any]):
             "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
         },
     )
+    config.setdefault('api', 'none')
     config.setdefault('keep_groups', False)
     config.setdefault('ngl', -1)
     config.setdefault('threads', -1)
