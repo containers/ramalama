@@ -322,12 +322,16 @@ class Model(ModelBase):
         if self.store is not None:
             _, tag, _ = self.extract_model_identifiers()
             ref_file = self.store.get_ref_file(tag)
-            if ref_file is not None and ref_file.chat_template_name != "":
-                chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
-            if ref_file is not None and ref_file.mmproj_name != "":
-                mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
+            if ref_file is not None:
+                if ref_file.chat_template_name != "":
+                    chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                    self.engine.add(
+                        [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
+                    )
+
+                if ref_file.mmproj_name != "":
+                    mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                    self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
 
     def handle_rag_mode(self, args, cmd_args):
         # force accel_image to use -rag version. Drop TAG if it exists
@@ -523,6 +527,9 @@ class Model(ModelBase):
             exec_args += ["llama-server", "--port", args.port, "--model", exec_model_path]
             if mmproj_path:
                 exec_args += ["--mmproj", mmproj_path]
+            else:
+                exec_args += ["--jinja"]
+
             exec_args += [
                 "--alias",
                 self.model,
@@ -530,12 +537,13 @@ class Model(ModelBase):
                 f"{args.context}",
                 "--temp",
                 f"{args.temp}",
-                "--jinja",
                 "--cache-reuse",
                 "256",
             ] + args.runtime_args
+
             if draft_model_path:
                 exec_args += ['--model_draft', draft_model_path]
+
             # Placeholder for clustering, it might be kept for override
             rpc_nodes = os.getenv("RAMALAMA_LLAMACPP_RPC_NODES")
             if rpc_nodes:
@@ -609,7 +617,6 @@ class Model(ModelBase):
     def serve(self, args, quiet=False):
         self.validate_args(args)
         args.port = compute_serving_port(args.port, args.debug, quiet)
-
         model_path = self.get_model_path(args)
         if is_split_file_model(model_path):
             mnt_file = MNT_DIR + '/' + self.mnt_path
@@ -617,27 +624,27 @@ class Model(ModelBase):
             mnt_file = MNT_FILE
 
         exec_model_path = mnt_file if args.container or args.generate else model_path
-
         chat_template_path = ""
         mmproj_path = ""
         if self.store is not None:
             _, tag, _ = self.extract_model_identifiers()
             ref_file = self.store.get_ref_file(tag)
-            if ref_file is not None and ref_file.chat_template_name != "":
-                chat_template_path = (
-                    MNT_CHAT_TEMPLATE_FILE
-                    if args.container or args.generate
-                    else self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                )
-            if ref_file is not None and ref_file.mmproj_name != "":
-                mmproj_path = (
-                    MNT_MMPROJ_FILE
-                    if args.container or args.generate
-                    else self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                )
+            if ref_file is not None:
+                if ref_file.chat_template_name != "":
+                    chat_template_path = (
+                        MNT_CHAT_TEMPLATE_FILE
+                        if args.container or args.generate
+                        else self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                    )
+
+                if ref_file.mmproj_name != "":
+                    mmproj_path = (
+                        MNT_MMPROJ_FILE
+                        if args.container or args.generate
+                        else self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                    )
 
         exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path, mmproj_path)
-
         exec_args = self.handle_runtime(args, exec_args, exec_model_path)
         if self.generate_container_config(model_path, chat_template_path, args, exec_args):
             return
