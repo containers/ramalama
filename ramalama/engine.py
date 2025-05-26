@@ -200,7 +200,7 @@ def images(args):
         return output.split("\n")
     except subprocess.CalledProcessError as e:
         perror("ramalama list command requires a running container engine")
-        raise (e)
+        raise e
 
 
 def containers(args):
@@ -225,7 +225,7 @@ def containers(args):
         return output.split("\n")
     except subprocess.CalledProcessError as e:
         perror("ramalama list command requires a running container engine")
-        raise (e)
+        raise e
 
 
 def info(args):
@@ -264,5 +264,4 @@ def stop_container(args, name):
     except subprocess.CalledProcessError:
         if args.ignore and conman == "docker":
             return
-        else:
-            raise
+        raise
