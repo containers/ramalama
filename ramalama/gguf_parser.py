@@ -4,6 +4,7 @@ from enum import IntEnum
 from typing import Any, Dict
 
 import ramalama.console as console
+from ramalama.endian import GGUFEndian
 from ramalama.model_inspect import GGUFModelInfo, Tensor
 
 
@@ -120,80 +121,83 @@ class GGUFInfoParser:
         return model.read(length).decode("utf-8")
 
     @staticmethod
-    def read_number(model: io.BufferedReader, value_type: GGUFValueType, model_uses_little_endian: bool) -> float:
+    def read_number(model: io.BufferedReader, value_type: GGUFValueType, model_endianness: GGUFEndian) -> float:
         if value_type not in GGUF_NUMBER_FORMATS:
             raise ParseError(f"Value type '{value_type}' not in format dict")
-        typestring = f"{'<' if model_uses_little_endian else '>'}{GGUF_VALUE_TYPE_FORMAT[value_type]}"
+
+        prefix = '<' if model_endianness == GGUFEndian.LITTLE else '>'
+        typestring = f"{prefix}{GGUF_VALUE_TYPE_FORMAT[value_type]}"
         return struct.unpack(typestring, model.read(struct.calcsize(typestring)))[0]
 
     @staticmethod
-    def read_bool(model: io.BufferedReader, model_uses_little_endian: bool) -> bool:
-        typestring = f"{'<' if model_uses_little_endian else '>'}{GGUF_VALUE_TYPE_FORMAT[GGUFValueType.BOOL]}"
+    def read_bool(model: io.BufferedReader, model_endianness: GGUFEndian) -> bool:
+        prefix = '<' if model_endianness == GGUFEndian.LITTLE else '>'
+        typestring = f"{prefix}{GGUF_VALUE_TYPE_FORMAT[GGUFValueType.BOOL]}"
         value = struct.unpack(typestring, model.read(struct.calcsize(typestring)))[0]
         if value not in [0, 1]:
             raise ParseError(f"Invalid bool value '{value}'")
         return value == 1
 
     @staticmethod
-    def read_value_type(model: io.BufferedReader, model_uses_little_endian: bool) -> GGUFValueType:
-        value_type = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_uses_little_endian)
+    def read_value_type(model: io.BufferedReader, model_endianness: GGUFEndian) -> GGUFValueType:
+        value_type = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
         return GGUFValueType(value_type)
 
     @staticmethod
-    def read_value(model: io.BufferedReader, value_type: GGUFValueType, model_uses_little_endian: bool) -> Any:
+    def read_value(model: io.BufferedReader, value_type: GGUFValueType, model_endianness: GGUFEndian) -> Any:
         value = None
         if value_type in GGUF_NUMBER_FORMATS:
-            value = GGUFInfoParser.read_number(model, value_type, model_uses_little_endian)
+            value = GGUFInfoParser.read_number(model, value_type, model_endianness)
         elif value_type == GGUFValueType.BOOL:
-            value = GGUFInfoParser.read_bool(model, model_uses_little_endian)
+            value = GGUFInfoParser.read_bool(model, model_endianness)
         elif value_type == GGUFValueType.STRING:
             value = GGUFInfoParser.read_string(model)
         elif value_type == GGUFValueType.ARRAY:
-            array_type = GGUFInfoParser.read_value_type(model, model_uses_little_endian)
-            array_length = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_uses_little_endian)
-            value = [
-                GGUFInfoParser.read_value(model, array_type, model_uses_little_endian) for _ in range(array_length)
-            ]
+            array_type = GGUFInfoParser.read_value_type(model, model_endianness)
+            array_length = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
+            value = [GGUFInfoParser.read_value(model, array_type, model_endianness) for _ in range(array_length)]
 
         if value is not None:
             return value
         raise ParseError(f"Unknown type '{value_type}'")
 
     def parse(model_name: str, model_registry: str, model_path: str) -> GGUFModelInfo:
-        # By default, models are little-endian encoded
-        is_little_endian = True
+        # Pin model endianness to Little Endian by default.
+        # Models downloaded via HuggingFace are majority Little Endian.
+        model_endianness = GGUFEndian.LITTLE
 
         with open(model_path, "rb") as model:
             magic_number = GGUFInfoParser.read_string(model, 4)
             if magic_number != GGUFModelInfo.MAGIC_NUMBER:
                 raise ParseError(f"Invalid GGUF magic number '{magic_number}'")
 
-            gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, is_little_endian)
-            # If the read GGUF version is different, then the model could be big-endian encoded
-            if gguf_version != GGUFModelInfo.VERSION:
-                is_little_endian = False
-                gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, is_little_endian)
-                if gguf_version != GGUFModelInfo.VERSION:
-                    raise ParseError(f"Expected GGUF version '{GGUFModelInfo.VERSION}', but got '{gguf_version}'")
+            gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
+            if gguf_version & 0xFFFF == 0x0000:
+                model_endianness = GGUFEndian.BIG
+                model.seek(4)  # Backtrack the reader by 4 bytes to re-read
+                gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
 
-            tensor_count = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, is_little_endian)
-            metadata_kv_count = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, is_little_endian)
+            if gguf_version != GGUFModelInfo.VERSION:
+                raise ParseError(f"Expected GGUF version '{GGUFModelInfo.VERSION}', but got '{gguf_version}'")
+
+            tensor_count = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
+            metadata_kv_count = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
 
             metadata = {}
             for _ in range(metadata_kv_count):
                 key = GGUFInfoParser.read_string(model)
-                value_type = GGUFInfoParser.read_value_type(model, is_little_endian)
-                metadata[key] = GGUFInfoParser.read_value(model, value_type, is_little_endian)
+                value_type = GGUFInfoParser.read_value_type(model, model_endianness)
+                metadata[key] = GGUFInfoParser.read_value(model, value_type, model_endianness)
 
             tensors: list[Tensor] = []
             for _ in range(tensor_count):
                 name = GGUFInfoParser.read_string(model)
-                n_dimensions = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, is_little_endian)
+                n_dimensions = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
                 dimensions: list[int] = []
                 for _ in range(n_dimensions):
-                    dimensions.append(GGUFInfoParser.read_number(model, GGUFValueType.UINT64, is_little_endian))
-                tensor_type = GGML_TYPE(GGUFInfoParser.read_number(model, GGUFValueType.UINT32, is_little_endian))
-                offset = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, is_little_endian)
+                    dimensions.append(GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness))
+                tensor_type = GGML_TYPE(GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness))
+                offset = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
                 tensors.append(Tensor(name, n_dimensions, dimensions, tensor_type, offset))
 
-            return GGUFModelInfo(model_name, model_registry, model_path, metadata, tensors, is_little_endian)
+            return GGUFModelInfo(model_name, model_registry, model_path, metadata, tensors, model_endianness)
