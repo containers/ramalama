@@ -4,6 +4,8 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Dict
 
+from ramalama.endian import GGUFEndian
+
 
 def get_terminal_width():
     if sys.stdout.isatty():
@@ -60,7 +62,7 @@ class GGUFModelInfo(ModelInfoBase):
         Path: str,
         metadata: Dict[str, Any],
         tensors: list[Tensor],
-        uses_little_endian: bool,
+        endianness: GGUFEndian,
     ):
         super().__init__(Name, Registry, Path)
 
@@ -68,7 +70,7 @@ class GGUFModelInfo(ModelInfoBase):
         self.Version = GGUFModelInfo.VERSION
         self.Metadata: Dict[str, Any] = metadata
         self.Tensors: list[Tensor] = tensors
-        self.LittleEndian: bool = uses_little_endian
+        self.Endianness: GGUFEndian = endianness
 
     def get_chat_template(self) -> str:
         return self.Metadata.get("chat_template", "")
@@ -80,7 +82,7 @@ class GGUFModelInfo(ModelInfoBase):
         ret = super().serialize()
         ret = ret + adjust_new_line(f"   Format: {GGUFModelInfo.MAGIC_NUMBER}")
         ret = ret + adjust_new_line(f"   Version: {GGUFModelInfo.VERSION}")
-        ret = ret + adjust_new_line(f"   Endianness: {'little' if self.LittleEndian else 'big'}")
+        ret = ret + adjust_new_line(f"   Endianness: {'little' if self.Endianness == GGUFEndian.LITTLE else 'big'}")
         metadata_header = "   Metadata: "
         if not all:
             metadata_header = metadata_header + f"{len(self.Metadata)} entries"
