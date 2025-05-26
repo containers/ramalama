@@ -4,12 +4,12 @@ python_version() {
   pyversion=$(python3 --version)
   # $2 is empty when no Python is installed, so just install python3
   if [ -n "$pyversion" ]; then
-      string="$pyversion
+    string="$pyversion
 Python 3.10"
-      if [ "$string" == "$(sort --version-sort <<< "$string")" ]; then
-	  echo "python3.11"
-	  return
-      fi
+    if [ "$string" == "$(sort --version-sort <<<"$string")" ]; then
+      echo "python3.11"
+      return
+    fi
   fi
   echo "python3"
 }
@@ -19,9 +19,9 @@ available() {
 }
 
 dnf_install_intel_gpu() {
-  local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel" \
-                  "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero" \
-                  "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
+  local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel"
+    "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero"
+    "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
   dnf install -y "${intel_rpms[@]}"
 
   # shellcheck disable=SC1091
@@ -47,14 +47,14 @@ dnf_install_cuda() {
 dnf_install_cann() {
   # just for openeuler build environment, does not need to push to ollama github
   dnf install -y git-core \
-      gcc \
-      gcc-c++ \
-      make \
-      cmake \
-      findutils \
-      yum \
-      curl-devel \
-      pigz
+    gcc \
+    gcc-c++ \
+    make \
+    cmake \
+    findutils \
+    yum \
+    curl-devel \
+    pigz
 }
 
 dnf_install_rocm() {
@@ -130,12 +130,12 @@ dnf_install_ffmpeg() {
 }
 
 dnf_install() {
-  local rpm_list=("${PYTHON}" "${PYTHON}-pip" \
-                  "python3-argcomplete" "python3-dnf-plugin-versionlock" \
-                  "${PYTHON}-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core" \
-                  "dnf-plugins-core" "libcurl-devel" "gawk")
-  local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
-                     "spirv-tools" "glslc" "glslang")
+  local rpm_list=("${PYTHON}" "${PYTHON}-pip"
+    "python3-argcomplete" "python3-dnf-plugin-versionlock"
+    "${PYTHON}-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
+    "dnf-plugins-core" "libcurl-devel" "gawk")
+  local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools"
+    "spirv-tools" "glslc" "glslang")
   if is_rhel_based; then
     dnf_install_epel # All the UBI-based ones
     dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
@@ -180,21 +180,21 @@ cmake_check_warnings() {
 setup_build_env() {
   if [ "$containerfile" = "cann" ]; then
     # source build env
-    cann_in_sys_path=/usr/local/Ascend/ascend-toolkit;
-    cann_in_user_path=$HOME/Ascend/ascend-toolkit;
+    cann_in_sys_path=/usr/local/Ascend/ascend-toolkit
+    cann_in_user_path=$HOME/Ascend/ascend-toolkit
     if [ -f "${cann_in_sys_path}/set_env.sh" ]; then
-        # shellcheck disable=SC1091
-        source ${cann_in_sys_path}/set_env.sh;
-        export LD_LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${cann_in_sys_path}/latest/${uname_m}-linux/devlib:${LD_LIBRARY_PATH};
-        export LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${LIBRARY_PATH};
+      # shellcheck disable=SC1091
+      source ${cann_in_sys_path}/set_env.sh
+      export LD_LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${cann_in_sys_path}/latest/${uname_m}-linux/devlib:${LD_LIBRARY_PATH}
+      export LIBRARY_PATH=${cann_in_sys_path}/latest/lib64:${LIBRARY_PATH}
     elif [ -f "${cann_in_user_path}/set_env.sh" ]; then
-        # shellcheck disable=SC1091
-        source "$HOME/Ascend/ascend-toolkit/set_env.sh";
-        export LD_LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${cann_in_user_path}/latest/${uname_m}-linux/devlib:${LD_LIBRARY_PATH};
-        export LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${LIBRARY_PATH};
+      # shellcheck disable=SC1091
+      source "$HOME/Ascend/ascend-toolkit/set_env.sh"
+      export LD_LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${cann_in_user_path}/latest/${uname_m}-linux/devlib:${LD_LIBRARY_PATH}
+      export LIBRARY_PATH=${cann_in_user_path}/latest/lib64:${LIBRARY_PATH}
     else
-        echo "No Ascend Toolkit found";
-        exit 1;
+      echo "No Ascend Toolkit found"
+      exit 1
     fi
   fi
 }
@@ -217,28 +217,28 @@ set_install_prefix() {
 configure_common_flags() {
   common_flags=("-DGGML_NATIVE=OFF")
   case "$containerfile" in
-    rocm*)
-      if [ "${ID}" = "fedora" ]; then
-        common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
-      fi
+  rocm*)
+    if [ "${ID}" = "fedora" ]; then
+      common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
+    fi
 
-      common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201}")
-      ;;
-    cuda)
-      common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined" "-DCMAKE_CUDA_FLAGS=\"-U__ARM_NEON -U__ARM_NEON__\"")
-      ;;
-    vulkan | asahi)
-      common_flags+=("-DGGML_VULKAN=1")
-      ;;
-    intel-gpu)
-      common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
-      ;;
-    cann)
-      common_flags+=("-DGGML_CANN=ON" "-DSOC_TYPE=Ascend910B3")
-      ;;
-    musa)
-      common_flags+=("-DGGML_MUSA=ON")
-      ;;
+    common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201}")
+    ;;
+  cuda)
+    common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined" "-DCMAKE_CUDA_FLAGS=\"-U__ARM_NEON -U__ARM_NEON__\"")
+    ;;
+  vulkan | asahi)
+    common_flags+=("-DGGML_VULKAN=1")
+    ;;
+  intel-gpu)
+    common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
+    ;;
+  cann)
+    common_flags+=("-DGGML_CANN=ON" "-DSOC_TYPE=Ascend910B3")
+    ;;
+  musa)
+    common_flags+=("-DGGML_MUSA=ON")
+    ;;
   esac
 }
 
@@ -262,7 +262,7 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local llama_cpp_sha="e298d2fbd082a52c0f6ed02729f94e9bf630cf17"
+  local llama_cpp_sha="4265a87b59ebfc25f35adbf4db3b608995b0a78a"
   local install_prefix
   install_prefix=$(set_install_prefix)
   git clone https://github.com/ggml-org/llama.cpp
@@ -315,13 +315,13 @@ main() {
   clone_and_build_whisper_cpp
   common_flags+=("-DLLAMA_CURL=ON" "-DGGML_RPC=ON")
   case "$containerfile" in
-    ramalama)
-      if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
-        common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
-      else
-        common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
-      fi
-      ;;
+  ramalama)
+    if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
+      common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
+    else
+      common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
+    fi
+    ;;
   esac
 
   clone_and_build_llama_cpp
