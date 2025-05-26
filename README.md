@@ -30,7 +30,7 @@ RamaLama eliminates the need to configure the host system by instead pulling a c
 |  CPU, Apple             | quay.io/ramalama/ramalama  |
 |  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm      |
 |  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda      |
-|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
+|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/ramalama  |
 |  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu |
 |  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
 |  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |

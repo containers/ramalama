@@ -81,7 +81,7 @@ def load_config_defaults(config: Dict[str, Any]):
     config.setdefault(
         'images',
         {
-            "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
+            "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/ramalama",
             "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
             "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
             "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
