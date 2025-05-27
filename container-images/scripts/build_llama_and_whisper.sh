@@ -106,8 +106,9 @@ dnf_install_mesa() {
 }
 
 dnf_install_epel() {
+  local rpm_exclude_list="selinux-policy,container-selinux"
   local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
-  dnf reinstall -y "$url" || dnf install -y "$url"
+  dnf reinstall -y "$url" || dnf install -y "$url" --exclude "${rpm_exclude_list}"
   crb enable # this is in epel-release, can only install epel-release via url
 }
 
@@ -130,6 +131,7 @@ dnf_install_ffmpeg() {
 }
 
 dnf_install() {
+  local rpm_exclude_list="selinux-policy,container-selinux"
   local rpm_list=("${PYTHON}" "${PYTHON}-pip"
     "python3-argcomplete" "python3-dnf-plugin-versionlock"
     "${PYTHON}-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
@@ -138,9 +140,9 @@ dnf_install() {
     "spirv-tools" "glslc" "glslang")
   if is_rhel_based; then
     dnf_install_epel # All the UBI-based ones
-    dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}"
+    dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
   else
-    dnf install -y "${rpm_list[@]}"
+    dnf install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
   fi
   if [[ "${PYTHON}" == "python3.11" ]]; then
     ln -sf /usr/bin/python3.11 /usr/bin/python3
