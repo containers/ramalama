@@ -7,7 +7,7 @@ name = "ramalama"
 version = "0.8.5"
 description = "RamaLama is a command line tool for working with AI LLM models."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 keywords = ["ramalama", "llama", "AI"]
 dependencies = [
