@@ -174,7 +174,7 @@ class Converter:
             schema=schema,
             index_params=index_params
         )
-        # Chunk and add chunks to colleciton 1 by 1
+        # Chunk and add chunks to collection 1 by 1
         chunks, ids = self.chunk(docs)
         data = []
         for i, (chunk, id) in enumerate(zip(chunks, ids)):

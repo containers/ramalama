@@ -5,9 +5,6 @@ import cmd
 import openai
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from fastembed import TextEmbedding, SparseTextEmbedding
-from docling.document_converter import DocumentConverter
-from docling.chunking import HybridChunker
-from docling_core.types.doc import DoclingDocument
 # Vectordb imports
 import qdrant_client
 from pymilvus import MilvusClient, AnnSearchRequest, RRFRanker
