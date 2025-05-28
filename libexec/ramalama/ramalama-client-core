@@ -12,15 +12,6 @@ import urllib.error
 import urllib.request
 
 
-def construct_request_data(conversation_history):
-    data = {
-        "stream": True,
-        "messages": conversation_history,
-    }
-
-    return data
-
-
 def should_colorize():
     t = os.getenv("TERM")
     return t and t != "dumb" and sys.stdout.isatty()
@@ -53,42 +44,6 @@ def res(response, color):
     return assistant_response
 
 
-def req(conversation_history, url, parsed_args):
-    data = construct_request_data(conversation_history)
-    json_data = json.dumps(data).encode("utf-8")
-    headers = {
-        "Content-Type": "application/json",
-    }
-
-    # Create a request
-    request = urllib.request.Request(url, data=json_data, headers=headers, method="POST")
-
-    # Send request
-    i = 0.01
-    response = None
-    for c in itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']):
-        try:
-            response = urllib.request.urlopen(request)
-            break
-        except Exception:
-            if sys.stdout.isatty():
-                print(f"\r{c}", end="", flush=True)
-
-            if i > 32:
-                break
-
-            time.sleep(i)
-            i *= 2
-
-    if response:
-        return res(response, parsed_args.color)
-
-    from ramalama.common import perror
-    perror(f"\rError: could not connect to: {url}")
-    do_kills(parsed_args)
-
-    return None
-
 class RamaLamaShell(cmd.Cmd):
     def __init__(self, parsed_args):
         super().__init__()
@@ -101,6 +56,23 @@ class RamaLamaShell(cmd.Cmd):
             self.prompt = parsed_args.prefix
 
         self.url = f"{parsed_args.host}/v1/chat/completions"
+        self.models_url = f"{parsed_args.host}/v1/models"
+        self.models = []
+
+    def model(self, index=0):
+        try:
+            if len(self.models) == 0:
+                self.models = self.get_models()
+            return self.models[index]
+        except urllib.error.URLError:
+            return ""
+        
+    def get_models(self):
+        request = urllib.request.Request(self.models_url, method="GET")
+        response = urllib.request.urlopen(request)
+        for line in response:
+            line = line.decode("utf-8").strip()
+            return([d['id'] for d in json.loads(line)["data"]])
 
     def do_EOF(self, user_content):
         print("")
@@ -112,7 +84,7 @@ class RamaLamaShell(cmd.Cmd):
 
         self.conversation_history.append({"role": "user", "content": user_content})
         self.request_in_process = True
-        response = req(self.conversation_history, self.url, self.parsed_args)
+        response = self._req()
         if not response:
             return True
 
@@ -121,11 +93,74 @@ class RamaLamaShell(cmd.Cmd):
         )
         self.request_in_process = False
 
-def do_kills(parsed_args):
-    if parsed_args.pid2kill:
-        os.kill(parsed_args.pid2kill, signal.SIGINT)
-        os.kill(parsed_args.pid2kill, signal.SIGTERM)
-        os.kill(parsed_args.pid2kill, signal.SIGKILL)
+    def _req(self):
+        data = {
+            "stream": True,
+            "messages": self.conversation_history,
+            "model": self.model(),
+        }
+
+        json_data = json.dumps(data).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        # Create a request
+        request = urllib.request.Request(self.url, data=json_data, headers=headers, method="POST")
+
+        # Send request
+        i = 0.01
+        response = None
+        for c in itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']):
+            try:
+                response = urllib.request.urlopen(request)
+                break
+            except Exception:
+                if sys.stdout.isatty():
+                    print(f"\r{c}", end="", flush=True)
+
+                if i > 32:
+                    break
+
+                time.sleep(i)
+                i *= 2
+
+        if response:
+            return res(response, self.parsed_args.color)
+
+        print(f"\rError: could not connect to: {self.url}", file=sys.stderr)
+        self.kills()
+
+        return None
+
+    def kills(self):
+        if self.parsed_args.pid2kill:
+            os.kill(self.parsed_args.pid2kill, signal.SIGINT)
+            os.kill(self.parsed_args.pid2kill, signal.SIGTERM)
+            os.kill(self.parsed_args.pid2kill, signal.SIGKILL)
+
+    def loop(self):
+        while True:
+            self.request_in_process = False
+            try:
+                self.cmdloop()
+            except KeyboardInterrupt:
+                print("")
+                if not self.request_in_process:
+                    print("Use Ctrl + d or /bye or exit to quit.")
+
+                continue
+
+            break
+
+    def handle_args(self):
+        if self.parsed_args.ARGS:
+            self.default(" ".join(self.parsed_args.ARGS))
+            self.kills()
+            return True
+
+        return False
+
 
 def parse_arguments(args):
     parser = argparse.ArgumentParser(description="Run ramalama client core")
@@ -156,38 +191,17 @@ def parse_arguments(args):
 
     return parser.parse_args(args)
 
-def handle_args(parsed_args, ramalama_shell):
-    if parsed_args.ARGS:
-        ramalama_shell.default(" ".join(parsed_args.ARGS))
-        do_kills(parsed_args)
-        return True
-
-    return False
-
-def run_shell_loop(ramalama_shell):
-    while True:
-        ramalama_shell.request_in_process = False
-        try:
-            ramalama_shell.cmdloop()
-        except KeyboardInterrupt:
-            print("")
-            if not ramalama_shell.request_in_process:
-                print("Use Ctrl + d or /bye or exit to quit.")
-
-            continue
-
-        break
 
 def main(args):
     sys.path.append('./')
 
     parsed_args = parse_arguments(args)
     ramalama_shell = RamaLamaShell(parsed_args)
-    if handle_args(parsed_args, ramalama_shell):
+    if ramalama_shell.handle_args():
         return 0
 
-    run_shell_loop(ramalama_shell)
-    do_kills(parsed_args)
+    ramalama_shell.loop()
+    ramalama_shell.kills()
 
 
 if __name__ == '__main__':
