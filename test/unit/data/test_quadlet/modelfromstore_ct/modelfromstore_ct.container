@@ -1,0 +1,16 @@
+[Unit]
+Description=RamaLama modelfromstore_ct AI Model Service
+After=local-fs.target
+
+[Container]
+AddDevice=-/dev/accel
+AddDevice=-/dev/dri
+AddDevice=-/dev/kfd
+Image=testimage
+Exec=
+Mount=type=bind,src=chat_template_file,target=/mnt/models/chat_template.file,ro,Z
+Mount=type=bind,src=longpathtoablobsha,target=/mnt/models/model.file,ro,Z
+
+[Install]
+WantedBy=multi-user.target default.target
+
