@@ -1,13 +1,15 @@
 [Unit]
-Description = RamaLama tinyllama AI Model Service
-After = local-fs.target
+Description=RamaLama tinyllama AI Model Service
+After=local-fs.target
 
 [Container]
-AddDevice = -/dev/kfd
-Image = testimage
-Exec = 
-Mount = type=image,source=tinyllama,destination=/mnt/models,subpath=/models,readwrite=false
+AddDevice=-/dev/accel
+AddDevice=-/dev/dri
+AddDevice=-/dev/kfd
+Image=testimage
+Exec=
+Mount=type=image,source=tinyllama,destination=/mnt/models,subpath=/models,readwrite=false
 
 [Install]
-WantedBy = multi-user.target default.target
+WantedBy=multi-user.target default.target
 
