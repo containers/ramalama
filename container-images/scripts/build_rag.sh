@@ -60,6 +60,8 @@ main() {
     # shellcheck disable=SC1091
     source /etc/os-release
 
+    local arch
+    arch="$(uname -m)"
     local gpu="${1-cpu}"
     local python
     python=$(python_version)
@@ -79,8 +81,14 @@ main() {
 
     update_python
     to_gguf
-    rag
-    docling "${gpu}"
+
+    # Temporarily disable build for s390x
+    if [[ "$arch" != "s390x" ]]; then
+        rag
+        docling "${gpu}"
+    else
+        echo "skipping rag and docling build for s390x architecture: build temporarily disabled."
+    fi
 
     if available dnf; then
         dnf -y clean all
