@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import sys
 import urllib
 from dataclasses import dataclass
 from datetime import datetime
@@ -11,7 +12,8 @@ from typing import Dict, List, Optional, Tuple
 
 import ramalama.go2jinja as go2jinja
 import ramalama.oci
-from ramalama.common import download_file, generate_sha256, verify_checksum
+from ramalama.common import download_file, generate_sha256, perror, verify_checksum
+from ramalama.endian import EndianMismatchError, GGUFEndian
 from ramalama.gguf_parser import GGUFInfoParser, GGUFModelInfo
 
 LOGGER = logging.getLogger(__name__)
@@ -38,6 +40,7 @@ class SnapshotFile:
         type: SnapshotFileType,
         should_show_progress: bool = False,
         should_verify_checksum: bool = False,
+        should_verify_endianness: bool = True,
         required: bool = True,
     ):
         self.url: str = url
@@ -47,6 +50,7 @@ class SnapshotFile:
         self.type: SnapshotFileType = type
         self.should_show_progress: bool = should_show_progress
         self.should_verify_checksum: bool = should_verify_checksum
+        self.should_verify_endianness: bool = should_verify_endianness
         self.required: bool = required
 
     def download(self, blob_file_path: str, snapshot_dir: str) -> str:
@@ -67,10 +71,19 @@ class LocalSnapshotFile(SnapshotFile):
         type: SnapshotFileType,
         should_show_progress: bool = False,
         should_verify_checksum: bool = False,
+        should_verify_endianness: bool = True,
         required: bool = True,
     ):
         super().__init__(
-            "", "", generate_sha256(content), name, type, should_show_progress, should_verify_checksum, required
+            "",
+            "",
+            generate_sha256(content),
+            name,
+            type,
+            should_show_progress,
+            should_verify_checksum,
+            should_verify_endianness,
+            required,
         )
         self.content = content
 
@@ -429,6 +442,7 @@ class ModelStore:
         os.makedirs(snapshot_directory, exist_ok=True)
 
     def _download_snapshot_files(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
+        host_endianness = GGUFEndian.LITTLE if sys.byteorder == 'little' else GGUFEndian.BIG
         ref_file = self.get_ref_file(model_tag)
 
         for file in snapshot_files:
@@ -451,6 +465,20 @@ class ModelStore:
                     file.download(dest_path, self.get_snapshot_directory(snapshot_hash))
                     if not verify_checksum(dest_path):
                         raise ValueError(f"Checksum verification failed for blob {dest_path}")
+
+            if file.should_verify_endianness and GGUFInfoParser.is_model_gguf(dest_path):
+                model_info = GGUFInfoParser.parse("model", "registry", dest_path)
+                if host_endianness != model_info.Endianness:
+                    os.remove(dest_path)
+                    perror()
+                    perror(
+                        f"Failed to pull model: "
+                        f"host endian is {host_endianness} but the model endian is {model_info.Endianness}"
+                    )
+                    perror("Failed to pull model: ramalama currently does not support transparent byteswapping")
+                    raise EndianMismatchError(
+                        f"Unexpected model endianness: wanted {host_endianness}, got {model_info.Endianness}"
+                    )
 
             os.symlink(blob_relative_path, self.get_snapshot_file_path(snapshot_hash, file.name))
 
