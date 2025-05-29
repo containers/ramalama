@@ -4,6 +4,7 @@ import glob
 import json
 import os
 import shlex
+import socket
 import subprocess
 import sys
 import urllib
@@ -38,7 +39,6 @@ GENERATE_OPTIONS = ["quadlet", "kube", "quadlet/kube"]
 
 
 class ParsedGenerateInput:
-
     def __init__(self, gen_type: str, output_dir: str):
         self.gen_type = gen_type
         self.output_dir = output_dir
@@ -228,6 +228,13 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         action="store_true",
         help="use the model store feature",
     )
+    ip_family_group = parser.add_mutually_exclusive_group()
+    ip_family_group.add_argument(
+        "--ipv4", "-4", dest="ipv4", default=argparse.SUPPRESS, action="store_true", help="use IPv4 connection only"
+    )
+    ip_family_group.add_argument(
+        "--ipv6", "-6", dest="ipv4", default=argparse.SUPPRESS, action="store_false", help="use IPv6 connection only"
+    )
 
 
 def configure_subcommands(parser):
@@ -269,6 +276,20 @@ def post_parse_setup(args):
             args.MODEL = resolved_model
     if hasattr(args, "runtime_args"):
         args.runtime_args = shlex.split(args.runtime_args)
+
+    if hasattr(args, "ipv4"):
+        setup_preferred_ip_family(args.ipv4)
+
+
+def setup_preferred_ip_family(ipv4):
+    # This function works only for the python resolver. Any subcommand might have different preference.
+    preferred_family = socket.AF_INET if ipv4 else socket.AF_INET6
+    _getaddrinfo = socket.getaddrinfo
+
+    def getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        return _getaddrinfo(host=host, port=port, family=preferred_family, type=type, proto=proto, flags=flags)
+
+    socket.getaddrinfo = getaddrinfo
 
 
 def login_parser(subparsers):

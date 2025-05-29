@@ -173,6 +173,12 @@ The default can be overridden in the ramalama.conf file.
 Use the recently introduced model store for organizing and storing models.
 It adds support for model versioning and multiple files such as chat templates. In addition, it improves performance through optimized caching and fast model access, enhanced reliability, and simplified maintenance thanks to a centralized, structured directory layout.
 
+#### **--ipv4**
+Use IPv4 only connection.
+
+#### **--ipv6**
+Use IPv6 only connection.
+
 ## COMMANDS
 
 | Command                                           | Description                                                |
