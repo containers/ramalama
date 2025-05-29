@@ -60,6 +60,23 @@ def initialize_args():
 
 
 def main(args):
+    # This logic ensures that for internal HTTP calls (to 127.0.0.1), the system's proxy settings are bypassed.
+    no_proxy_essentials = {"localhost", "127.0.0.1"}
+
+    current_no_proxy_upper = os.environ.get('NO_PROXY', '')
+    existing_parts_upper = set(part.strip() for part in current_no_proxy_upper.split(',') if part.strip())
+    final_no_proxy_parts_upper = existing_parts_upper.union(no_proxy_essentials)
+    os.environ['NO_PROXY'] = ",".join(sorted(list(final_no_proxy_parts_upper)))
+
+    current_no_proxy_lower = os.environ.get('no_proxy', '')
+    existing_parts_lower = set(part.strip() for part in current_no_proxy_lower.split(',') if part.strip())
+    final_no_proxy_parts_lower = existing_parts_lower.union(no_proxy_essentials)
+    os.environ['no_proxy'] = ",".join(sorted(list(final_no_proxy_parts_lower)))
+
+    for proxy_var in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
+        if proxy_var in os.environ:
+            del os.environ[proxy_var]
+
     sys.path.append('./')
     from ramalama.cli import serve_cli
     from ramalama.common import exec_cmd
