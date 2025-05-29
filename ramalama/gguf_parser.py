@@ -104,21 +104,28 @@ class ParseError(Exception):
 
 
 class GGUFInfoParser:
+    @staticmethod
     def is_model_gguf(model_path: str) -> bool:
         try:
             with open(model_path, "rb") as model_file:
-                magic_number = GGUFInfoParser.read_string(model_file, 4)
+                magic_number = GGUFInfoParser.read_string(model_file, GGUFEndian.LITTLE, 4)
                 return magic_number == GGUFModelInfo.MAGIC_NUMBER
         except Exception as ex:
             console.warning(f"Failed to read model '{model_path}': {ex}")
             return False
 
     @staticmethod
-    def read_string(model: io.BufferedReader, length: int = -1) -> str:
+    def read_string(
+        model: io.BufferedReader, model_endianness: GGUFEndian = GGUFEndian.LITTLE, length: int = -1
+    ) -> str:
         if length == -1:
-            type_string = GGUF_VALUE_TYPE_FORMAT[GGUFValueType.UINT64]
-            length = struct.unpack(type_string, model.read(struct.calcsize(type_string)))[0]
-        return model.read(length).decode("utf-8")
+            length = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
+
+        raw = model.read(length)
+        if len(raw) < length:
+            raise ParseError(f"Unexpected EOF: wanted {length} bytes, got {len(raw)}")
+
+        return raw.decode("utf-8")
 
     @staticmethod
     def read_number(model: io.BufferedReader, value_type: GGUFValueType, model_endianness: GGUFEndian) -> float:
@@ -151,7 +158,7 @@ class GGUFInfoParser:
         elif value_type == GGUFValueType.BOOL:
             value = GGUFInfoParser.read_bool(model, model_endianness)
         elif value_type == GGUFValueType.STRING:
-            value = GGUFInfoParser.read_string(model)
+            value = GGUFInfoParser.read_string(model, model_endianness)
         elif value_type == GGUFValueType.ARRAY:
             array_type = GGUFInfoParser.read_value_type(model, model_endianness)
             array_length = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
@@ -161,13 +168,14 @@ class GGUFInfoParser:
             return value
         raise ParseError(f"Unknown type '{value_type}'")
 
+    @staticmethod
     def parse(model_name: str, model_registry: str, model_path: str) -> GGUFModelInfo:
         # Pin model endianness to Little Endian by default.
         # Models downloaded via HuggingFace are majority Little Endian.
         model_endianness = GGUFEndian.LITTLE
 
         with open(model_path, "rb") as model:
-            magic_number = GGUFInfoParser.read_string(model, 4)
+            magic_number = GGUFInfoParser.read_string(model, model_endianness, 4)
             if magic_number != GGUFModelInfo.MAGIC_NUMBER:
                 raise ParseError(f"Invalid GGUF magic number '{magic_number}'")
 
@@ -185,13 +193,13 @@ class GGUFInfoParser:
 
             metadata = {}
             for _ in range(metadata_kv_count):
-                key = GGUFInfoParser.read_string(model)
+                key = GGUFInfoParser.read_string(model, model_endianness)
                 value_type = GGUFInfoParser.read_value_type(model, model_endianness)
                 metadata[key] = GGUFInfoParser.read_value(model, value_type, model_endianness)
 
             tensors: list[Tensor] = []
             for _ in range(tensor_count):
-                name = GGUFInfoParser.read_string(model)
+                name = GGUFInfoParser.read_string(model, model_endianness)
                 n_dimensions = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
                 dimensions: list[int] = []
                 for _ in range(n_dimensions):
