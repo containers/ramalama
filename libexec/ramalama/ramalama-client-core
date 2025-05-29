@@ -45,8 +45,9 @@ def res(response, color):
             else:
                 continue
 
-            print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
-            assistant_response += choice
+            if choice:
+                print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
+                assistant_response += choice
 
     print("")
     return assistant_response
