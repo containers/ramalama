@@ -38,6 +38,7 @@ def huggingface_token():
 def fetch_checksum_from_api(organization, file):
     """Fetch the SHA-256 checksum from the model's metadata API for a given file."""
     checksum_api_url = f"{HuggingfaceRepository.REGISTRY_URL}/{organization}/raw/main/{file}"
+    logger.debug(f"Fetching checksum from {checksum_api_url}")
     request = urllib.request.Request(url=checksum_api_url)
     token = huggingface_token()
     if token is not None:
@@ -61,6 +62,7 @@ def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
     # https://github.com/ggml-org/llama.cpp/blob/7f323a589f8684c0eb722e7309074cb5eac0c8b5/common/arg.cpp#L611
     token = huggingface_token()
     repo_manifest_url = f"{HuggingfaceRepository.REGISTRY_URL}/v2/{repo_name}/manifests/{tag}"
+    logger.debug(f"Fetching repo manifest from {repo_manifest_url}")
     request = urllib.request.Request(
         url=repo_manifest_url,
         headers={
@@ -207,6 +209,7 @@ def get_repo_info(repo_name):
     # Docs on API call:
     # https://huggingface.co/docs/hub/en/api#get-apimodelsrepoid-or-apimodelsrepoidrevisionrevision
     repo_info_url = f"https://huggingface.co/api/models/{repo_name}"
+    logger.debug(f"Fetching repo info from {repo_info_url}")
     with urllib.request.urlopen(repo_info_url) as response:
         if response.getcode() == 200:
             repo_info = response.read().decode('utf-8')
