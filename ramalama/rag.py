@@ -34,7 +34,10 @@ COPY {src} /vector.db
         # Open the file for writing.
         with open(containerfile.name, 'w') as c:
             c.write(cfile)
+            c.flush()
+
         logger.debug(f"\nContainerfile: {containerfile.name}\n{cfile}")
+
         exec_args = [
             args.engine,
             "build",

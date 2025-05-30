@@ -5,6 +5,7 @@ from typing import Callable, Tuple, Union
 from urllib.parse import urlparse
 
 from ramalama.common import rm_until_substring
+from ramalama.config import CONFIG
 from ramalama.huggingface import Huggingface
 from ramalama.model import MODEL_TYPES, SPLIT_MODEL_RE, is_split_file_model
 from ramalama.model_store import GlobalModelStore, ModelStore
@@ -148,3 +149,20 @@ class ModelFactory:
             model.split_model = self.split_model
             model.mnt_path = self.mnt_path
         return model
+
+
+def New(name, args, transport=CONFIG["transport"]):
+    return ModelFactory(name, args, transport=transport).create()
+
+
+def Serve(name, args):
+    model = New(name, args)
+    try:
+        model.serve(args)
+    except KeyError as e:
+        try:
+            args.quiet = True
+            model = ModelFactory(name, args, ignore_stderr=True).create_oci()
+            model.serve(args)
+        except Exception:
+            raise e

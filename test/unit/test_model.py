@@ -1,4 +1,5 @@
 import socket
+from argparse import Namespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -114,6 +115,7 @@ def test_extract_model_identifiers(model_input: str, expected_name: str, expecte
 def test_compute_serving_port(
     inputPort: str, expectedRandomizedResult: list, expectedRandomPortsAvl: list, expectedOutput: str, expectedErr
 ):
+    args = Namespace(port=inputPort, debug=False, api="")
     mock_socket = socket.socket
     mock_socket.bind = MagicMock(side_effect=expectedRandomPortsAvl)
     mock_compute_ports = Mock(return_value=expectedRandomizedResult)
@@ -122,8 +124,8 @@ def test_compute_serving_port(
         with patch('socket.socket', mock_socket):
             if expectedErr:
                 with pytest.raises(expectedErr):
-                    outputPort = compute_serving_port(inputPort, False)
+                    outputPort = compute_serving_port(args, False)
                     assert outputPort == expectedOutput
             else:
-                outputPort = compute_serving_port(inputPort, False)
+                outputPort = compute_serving_port(args, False)
                 assert outputPort == expectedOutput
