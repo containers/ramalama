@@ -24,6 +24,7 @@ import ramalama.rag
 from ramalama import engine
 from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, perror
 from ramalama.config import CONFIG
+from ramalama.logger import configure_logger, logger
 from ramalama.migrate import ModelStoreImport
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
@@ -269,6 +270,8 @@ def post_parse_setup(args):
             args.MODEL = resolved_model
     if hasattr(args, "runtime_args"):
         args.runtime_args = shlex.split(args.runtime_args)
+
+    configure_logger("DEBUG" if args.debug else "WARNING")
 
 
 def login_parser(subparsers):
@@ -726,8 +729,7 @@ def push_cli(args):
             m = ModelFactory(target, args).create_oci()
             m.push(source_model, args)
         except Exception as e1:
-            if args.debug:
-                print(e1)
+            logger.debug(e1)
             raise e
 
 

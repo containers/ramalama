@@ -38,7 +38,7 @@ def list_manifests(args):
             ' }}, "ID":"{{ .ID }}"},'
         ),
     ]
-    output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
     if output == "":
         return []
 
@@ -54,7 +54,7 @@ def list_manifests(args):
             "inspect",
             manifest["ID"],
         ]
-        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
 
         if output == "":
             continue
@@ -98,7 +98,7 @@ def list_models(args):
         "--format",
         formatLine,
     ]
-    output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
     if output == "":
         return []
 
@@ -111,7 +111,7 @@ def list_models(args):
         # grab the size from the inspect command
         for model in models:
             conman_args = [conman, "image", "inspect", model["id"], "--format", "{{.Size}}"]
-            output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+            output = run_cmd(conman_args).stdout.decode("utf-8").strip()
             # convert the number value from the string output
             model["size"] = int(output)
             # drop the id from the model
@@ -150,12 +150,12 @@ class OCI(Model):
             conman_args.append("--password-stdin")
         if args.REGISTRY:
             conman_args.append(args.REGISTRY.removeprefix(prefix))
-        return exec_cmd(conman_args, debug=args.debug)
+        return exec_cmd(conman_args)
 
     def logout(self, args):
         conman_args = [self.conman, "logout"]
         conman_args.append(self.model)
-        return exec_cmd(conman_args, debug=args.debug)
+        return exec_cmd(conman_args)
 
     def _target_decompose(self, model):
         # Remove the prefix and extract target details
@@ -247,7 +247,6 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         imageid = (
             run_cmd(
                 build_cmd,
-                debug=args.debug,
             )
             .stdout.decode("utf-8")
             .strip()
@@ -262,7 +261,7 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             imageid,
             target,
         ]
-        run_cmd(cmd_args, debug=args.debug)
+        run_cmd(cmd_args)
 
     def _create_manifest_without_attributes(self, target, imageid, args):
         # Create manifest list for target with imageid
@@ -273,7 +272,7 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             target,
             imageid,
         ]
-        run_cmd(cmd_args, debug=args.debug)
+        run_cmd(cmd_args)
 
     def _create_manifest(self, target, imageid, args):
         if not engine_supports_manifest_attributes(args.engine):
@@ -287,7 +286,7 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             target,
             imageid,
         ]
-        run_cmd(cmd_args, debug=args.debug)
+        run_cmd(cmd_args)
 
         # Annotate manifest list
         cmd_args = [
@@ -303,12 +302,12 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             target,
             imageid,
         ]
-        run_cmd(cmd_args, stdout=None, debug=args.debug)
+        run_cmd(cmd_args, stdout=None)
 
     def _convert(self, source_model, args):
         print(f"Converting {source_model.store.base_path} to {self.store.base_path} ...")
         try:
-            run_cmd([self.conman, "manifest", "rm", self.model], ignore_stderr=True, stdout=None, debug=args.debug)
+            run_cmd([self.conman, "manifest", "rm", self.model], ignore_stderr=True, stdout=None)
         except subprocess.CalledProcessError:
             pass
         print(f"Building {self.model} ...")
@@ -340,7 +339,7 @@ Tagging build instead"""
         if source != target:
             self._convert(source_model, args)
         try:
-            run_cmd(conman_args, debug=args.debug)
+            run_cmd(conman_args)
         except subprocess.CalledProcessError as e:
             perror(f"Failed to push OCI {target} : {e}")
             raise e
@@ -359,7 +358,7 @@ Tagging build instead"""
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
         conman_args.extend([self.model])
-        run_cmd(conman_args, debug=args.debug, ignore_stderr=self.ignore_stderr)
+        run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
         return MNT_FILE
 
     def _registry_reference(self):
@@ -397,10 +396,10 @@ Tagging build instead"""
 
         try:
             conman_args = [self.conman, "manifest", "rm", self.model]
-            run_cmd(conman_args, debug=args.debug, ignore_stderr=self.ignore_stderr)
+            run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
         except subprocess.CalledProcessError:
             conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
-            run_cmd(conman_args, debug=args.debug, ignore_stderr=self.ignore_stderr)
+            run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
 
     def exists(self, args):
         try:
@@ -415,7 +414,7 @@ Tagging build instead"""
 
         conman_args = [self.conman, "image", "inspect", self.model]
         try:
-            run_cmd(conman_args, debug=args.debug, ignore_stderr=self.ignore_stderr)
+            run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
             return self.model
         except Exception:
             return None

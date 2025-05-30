@@ -3,7 +3,6 @@
 import glob
 import hashlib
 import json
-import logging
 import os
 import platform
 import random
@@ -19,9 +18,8 @@ from typing import List
 
 import ramalama.console as console
 from ramalama.http_client import HttpClient
+from ramalama.logger import logger
 from ramalama.version import version
-
-logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 
 MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
@@ -134,9 +132,8 @@ def quoted(arr):
     return " ".join(['"' + element + '"' if ' ' in element else element for element in arr])
 
 
-def exec_cmd(args, debug=False, stdout2null=False, stderr2null=False):
-    if debug:
-        perror("exec_cmd: ", quoted(args))
+def exec_cmd(args, stdout2null=False, stderr2null=False):
+    logger.debug(f"exec_cmd: {quoted(args)}")
 
     if stdout2null:
         with open(os.devnull, 'w') as devnull:
@@ -153,7 +150,7 @@ def exec_cmd(args, debug=False, stdout2null=False, stderr2null=False):
         raise
 
 
-def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_all=False, debug=False):
+def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_all=False):
     """
     Run the given command arguments.
 
@@ -163,13 +160,11 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     stdout: standard output configuration
     ignore_stderr: if True, ignore standard error
     ignore_all: if True, ignore both standard output and standard error
-    debug: if True, print debug information
     """
-    if debug:
-        perror("run_cmd: ", quoted(args))
-        perror(f"Working directory: {cwd}")
-        perror(f"Ignore stderr: {ignore_stderr}")
-        perror(f"Ignore all: {ignore_all}")
+    logger.debug(f"run_cmd: {quoted(args)}")
+    logger.debug(f"Working directory: {cwd}")
+    logger.debug(f"Ignore stderr: {ignore_stderr}")
+    logger.debug(f"Ignore all: {ignore_all}")
 
     serr = None
     if ignore_all or ignore_stderr:
@@ -180,8 +175,7 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
         sout = subprocess.DEVNULL
 
     result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr)
-    if debug:
-        print("Command finished with return code:", result.returncode)
+    logger.debug(f"Command finished with return code: {result.returncode}")
 
     return result
 
@@ -675,16 +669,16 @@ def accel_image(config, args):
         image += "-rag"
 
     vers = minor_release()
-    if args.container and attempt_to_use_versioned(conman, image, vers, args.quiet, args.debug):
+    if args.container and attempt_to_use_versioned(conman, image, vers, args.quiet):
         return f"{image}:{vers}"
 
     return f"{image}:latest"
 
 
-def attempt_to_use_versioned(conman, image, vers, quiet, debug):
+def attempt_to_use_versioned(conman, image, vers, quiet):
     try:
         # check if versioned image exists locally
-        if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True, debug=debug):
+        if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True):
             return True
 
     except Exception:
@@ -694,7 +688,7 @@ def attempt_to_use_versioned(conman, image, vers, quiet, debug):
         # attempt to pull the versioned image
         if not quiet:
             print(f"Attempting to pull {image}:{vers} ...")
-        run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True, debug=debug)
+        run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True)
         return True
 
     except Exception:

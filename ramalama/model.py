@@ -26,6 +26,7 @@ from ramalama.console import EMOJI
 from ramalama.engine import Engine, dry_run
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
+from ramalama.logger import logger
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
 from ramalama.model_store import ModelStore
 from ramalama.quadlet import Quadlet
@@ -606,7 +607,7 @@ class Model(ModelBase):
             if args.dryrun:
                 dry_run(exec_args)
                 return
-            exec_cmd(exec_args, debug=args.debug)
+            exec_cmd(exec_args)
         except FileNotFoundError as e:
             if args.container:
                 raise NotImplementedError(
@@ -616,7 +617,7 @@ class Model(ModelBase):
 
     def serve(self, args, quiet=False):
         self.validate_args(args)
-        args.port = compute_serving_port(args.port, args.debug, quiet)
+        args.port = compute_serving_port(args.port, quiet)
         model_path = self.get_model_path(args)
         if is_split_file_model(model_path):
             mnt_file = MNT_DIR + '/' + self.mnt_path
@@ -713,13 +714,12 @@ def compute_ports() -> list:
     return [first_port] + ports
 
 
-def get_available_port_if_any(debug: bool) -> int:
+def get_available_port_if_any() -> int:
     ports = compute_ports()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         chosen_port = 0
         for target_port in ports:
-            if debug:
-                print(f"Checking if {target_port} is available")
+            logger.debug(f"Checking if {target_port} is available")
             try:
                 s.bind(('localhost', target_port))
             except OSError:
@@ -730,13 +730,13 @@ def get_available_port_if_any(debug: bool) -> int:
         return chosen_port
 
 
-def compute_serving_port(port: str, debug: bool, quiet=False) -> str:
+def compute_serving_port(port: str, quiet=False) -> str:
     # user probably specified a custom port, don't override the choice
     if port != "" and port != str(DEFAULT_PORT):
         return port
 
     # otherwise compute a random serving port in the range
-    target_port = get_available_port_if_any(debug)
+    target_port = get_available_port_if_any()
 
     if target_port == 0:
         raise IOError("no available port could be detected. Please ensure you have enough free ports.")
