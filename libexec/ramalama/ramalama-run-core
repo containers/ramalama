@@ -54,7 +54,7 @@ def initialize_args():
 
     parser = initialize_parser()
     parsed_args = parser.parse_args()
-    port = get_available_port_if_any(False)
+    port = get_available_port_if_any()
 
     return parsed_args, port
 

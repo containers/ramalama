@@ -6,6 +6,7 @@ import tempfile
 import urllib.request
 
 from ramalama.common import available, download_and_verify, exec_cmd, generate_sha256, perror, run_cmd, verify_checksum
+from ramalama.logger import logger
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFile, SnapshotFileType
 from ramalama.ollama_repo_utils import repo_pull
@@ -37,6 +38,7 @@ def huggingface_token():
 def fetch_checksum_from_api(organization, file):
     """Fetch the SHA-256 checksum from the model's metadata API for a given file."""
     checksum_api_url = f"{HuggingfaceRepository.REGISTRY_URL}/{organization}/raw/main/{file}"
+    logger.debug(f"Fetching checksum from {checksum_api_url}")
     request = urllib.request.Request(url=checksum_api_url)
     token = huggingface_token()
     if token is not None:
@@ -60,6 +62,7 @@ def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
     # https://github.com/ggml-org/llama.cpp/blob/7f323a589f8684c0eb722e7309074cb5eac0c8b5/common/arg.cpp#L611
     token = huggingface_token()
     repo_manifest_url = f"{HuggingfaceRepository.REGISTRY_URL}/v2/{repo_name}/manifests/{tag}"
+    logger.debug(f"Fetching repo manifest from {repo_manifest_url}")
     request = urllib.request.Request(
         url=repo_manifest_url,
         headers={
@@ -206,6 +209,7 @@ def get_repo_info(repo_name):
     # Docs on API call:
     # https://huggingface.co/docs/hub/en/api#get-apimodelsrepoid-or-apimodelsrepoidrevisionrevision
     repo_info_url = f"https://huggingface.co/api/models/{repo_name}"
+    logger.debug(f"Fetching repo info from {repo_info_url}")
     with urllib.request.urlopen(repo_info_url) as response:
         if response.getcode() == 200:
             repo_info = response.read().decode('utf-8')
@@ -263,8 +267,7 @@ class Huggingface(Model):
             try:
                 return self.hf_pull(args, model_path, directory_path)
             except Exception as exc:
-                if args.debug:
-                    perror(f"failed to hf_pull: {exc}")
+                logger.debug(f"failed to hf_pull: {exc}")
                 pass
         raise KeyError(f"Failed to pull model: {str(previous_exception)}")
 
@@ -358,7 +361,7 @@ class Huggingface(Model):
 
     def hf_pull(self, args, model_path, directory_path):
         conman_args = ["huggingface-cli", "download", "--local-dir", directory_path, self.model]
-        run_cmd(conman_args, debug=args.debug)
+        run_cmd(conman_args)
 
         relative_target_path = os.path.relpath(directory_path, start=os.path.dirname(model_path))
         pathlib.Path(model_path).unlink(missing_ok=True)
@@ -405,13 +408,12 @@ class Huggingface(Model):
                 "--local-dir",
                 os.path.join(args.store, "repos", "huggingface", self.directory),
             ],
-            debug=args.debug,
         )
         return proc.stdout.decode("utf-8")
 
     def exec(self, cmd_args, args):
         try:
-            exec_cmd(cmd_args, debug=args.debug)
+            exec_cmd(cmd_args)
         except FileNotFoundError as e:
             print(f"{str(e).strip()}\n{missing_huggingface}")
 
@@ -452,7 +454,7 @@ class Huggingface(Model):
 
         return snapshot_hash, files
 
-    def _pull_with_model_store(self, args, debug: bool = False):
+    def _pull_with_model_store(self, args):
         name, tag, organization = self.extract_model_identifiers()
         hash, cached_files, all = self.store.get_cached_files(tag)
         if all:
@@ -477,8 +479,7 @@ class Huggingface(Model):
                 try:
                     self.store.remove_snapshot(tag)
                 except Exception as exc:
-                    if args.debug:
-                        perror(f"ignoring failure to remove snapshot: {exc}")
+                    logger.debug(f"ignoring failure to remove snapshot: {exc}")
                     # ignore any error when removing snapshot
                     pass
                 raise e
@@ -486,14 +487,13 @@ class Huggingface(Model):
             if not self.hf_cli_available:
                 perror("URL pull failed and huggingface-cli not available")
                 raise KeyError(f"Failed to pull model: {str(e)}")
-            if args.debug:
-                perror(f"ignoring failure to get file list: {e}")
+            logger.debug(f"ignoring failure to get file list: {e}")
 
             # Create temporary directory for downloading via huggingface-cli
             with tempfile.TemporaryDirectory() as tempdir:
                 model = f"{organization}/{name}"
                 conman_args = ["huggingface-cli", "download", "--local-dir", tempdir, model]
-                run_cmd(conman_args, debug=debug)
+                run_cmd(conman_args)
 
                 snapshot_hash, files = self._collect_cli_files(tempdir)
                 self.store.new_snapshot(tag, snapshot_hash, files)

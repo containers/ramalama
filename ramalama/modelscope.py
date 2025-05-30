@@ -6,6 +6,7 @@ import urllib.request
 
 from ramalama.common import available, download_and_verify, exec_cmd, perror, run_cmd, verify_checksum
 from ramalama.huggingface import HuggingfaceCLIFile, HuggingfaceRepository
+from ramalama.logger import logger
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFileType
 from ramalama.ollama_repo_utils import repo_pull
@@ -29,6 +30,7 @@ def fetch_checksum_from_api(organization, file):
         f"{ModelScopeRepository.REGISTRY_URL}/api/v1/models/{organization}/repo/raw"
         f"?Revision=master&FilePath={file}&Needmeta=true"
     )
+    logger.debug(f"Fetching checksum from {checksum_api_url}")
     try:
         with urllib.request.urlopen(checksum_api_url) as response:
             data = json.loads(response.read().decode())
@@ -163,7 +165,7 @@ class ModelScope(Model):
 
     def ms_pull(self, args, model_path, directory_path):
         conman_args = ["modelscope", "download", "--local_dir", directory_path, self.model]
-        run_cmd(conman_args, debug=args.debug)
+        run_cmd(conman_args)
 
         relative_target_path = os.path.relpath(directory_path, start=os.path.dirname(model_path))
         pathlib.Path(model_path).unlink(missing_ok=True)
@@ -209,13 +211,12 @@ class ModelScope(Model):
                 "--local_dir",
                 os.path.join(args.store, "repos", "modelscope", self.directory),
             ],
-            debug=args.debug,
         )
         return proc.stdout.decode("utf-8")
 
     def exec(self, cmd_args, args):
         try:
-            exec_cmd(cmd_args, debug=args.debug)
+            exec_cmd(cmd_args)
         except FileNotFoundError as e:
             print(f"{str(e).strip()}\n{missing_modelscope}")
 
@@ -256,7 +257,7 @@ class ModelScope(Model):
 
         return snapshot_hash, files
 
-    def _pull_with_model_store(self, args, debug: bool = False):
+    def _pull_with_model_store(self, args):
         name, tag, organization = self.extract_model_identifiers()
         hash, cached_files, all = self.store.get_cached_files(tag)
         if all:
@@ -278,8 +279,7 @@ class ModelScope(Model):
                 try:
                     self.store.remove_snapshot(tag)
                 except Exception as exc:
-                    if args.debug:
-                        perror(f"ignoring failure to remove snapshot: {exc}")
+                    logger.debug(f"ignoring failure to remove snapshot: {exc}")
                     # ignore any error when removing snapshot
                     pass
                 raise e
@@ -292,7 +292,7 @@ class ModelScope(Model):
             with tempfile.TemporaryDirectory() as tempdir:
                 model = f"{organization}/{name}"
                 conman_args = ["modelscope", "download", "--local_dir", tempdir, model]
-                run_cmd(conman_args, debug=debug)
+                run_cmd(conman_args)
 
                 snapshot_hash, files = self._collect_cli_files(tempdir)
                 self.store.new_snapshot(tag, snapshot_hash, files)

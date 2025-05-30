@@ -89,7 +89,7 @@ class TestEngine(unittest.TestCase):
     def test_stop_container(self, mock_run_cmd):
         args = Namespace(engine="podman", debug=False, ignore=False)
         stop_container(args, "test-container")
-        mock_run_cmd.assert_called_with(["podman", "stop", "-t=0", "test-container"], ignore_stderr=False, debug=False)
+        mock_run_cmd.assert_called_with(["podman", "stop", "-t=0", "test-container"], ignore_stderr=False)
 
     def test_dry_run(self):
         with patch('sys.stdout') as mock_stdout:
