@@ -584,7 +584,8 @@ spec:
       optional: true
     - name: netrc
       optional: true
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-ramalama
   workspaces:
   - name: git-auth
     secret:
