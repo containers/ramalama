@@ -33,7 +33,6 @@ class Engine:
         self.add_tty_option()
         self.handle_podman_specifics()
         self.add_detach_option()
-        self.debug = args.debug
 
     def add_label(self, label):
         self.add(["--label", label])
@@ -161,10 +160,10 @@ class Engine:
         dry_run(self.exec_args)
 
     def run(self):
-        run_cmd(self.exec_args, debug=self.debug)
+        run_cmd(self.exec_args)
 
     def exec(self):
-        exec_cmd(self.exec_args, debug=self.debug)
+        exec_cmd(self.exec_args)
 
 
 def dry_run(args):
@@ -194,7 +193,7 @@ def images(args):
         conman_args += [f"--format={args.format}"]
 
     try:
-        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
         if output == "":
             return []
         return output.split("\n")
@@ -219,7 +218,7 @@ def containers(args):
         conman_args += [f"--format={args.format}"]
 
     try:
-        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
         if output == "":
             return []
         return output.split("\n")
@@ -235,7 +234,7 @@ def info(args):
 
     conman_args = [conman, "info", "--format", "json"]
     try:
-        output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
         if output == "":
             return []
         return json.loads(output)
@@ -260,7 +259,7 @@ def stop_container(args, name):
 
     conman_args += [name]
     try:
-        run_cmd(conman_args, ignore_stderr=ignore_stderr, debug=args.debug)
+        run_cmd(conman_args, ignore_stderr=ignore_stderr)
     except subprocess.CalledProcessError:
         if args.ignore and conman == "docker":
             return

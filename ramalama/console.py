@@ -1,5 +1,6 @@
-import logging
 import os
+
+from ramalama.logger import logger
 
 
 def is_locale_utf8():
@@ -23,16 +24,16 @@ EMOJI = os.getenv("RAMALAMA_FORCE_EMOJI", '').lower() == "true" or supports_emoj
 
 # Define emoji-aware logging messages
 def log_message(level, msg, emoji_msg):
-    return f"{emoji_msg} {msg}" if EMOJI else f"[{level}] {msg}"
+    return f"{emoji_msg} {msg}" if EMOJI else f"{msg}"
 
 
 def error(msg):
-    logging.error(log_message("ERROR", msg, "❌"))
+    logger.error(log_message("ERROR", msg, "❌"))
 
 
 def warning(msg):
-    logging.warning(log_message("WARNING", msg, "⚠️"))
+    logger.warning(log_message("WARNING", msg, "⚠️"))
 
 
 def info(msg):
-    logging.info(log_message("INFO", msg, "ℹ️"))
+    logger.info(log_message("INFO", msg, "ℹ️"))

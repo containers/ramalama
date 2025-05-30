@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from ramalama.common import accel_image, get_accel_env_vars, run_cmd, set_accel_env_vars
 from ramalama.config import CONFIG
 from ramalama.engine import Engine
+from ramalama.logger import logger
 
 
 class Rag:
@@ -33,8 +34,7 @@ COPY {src} /vector.db
         # Open the file for writing.
         with open(containerfile.name, 'w') as c:
             c.write(cfile)
-        if args.debug:
-            print(f"\nContainerfile: {containerfile.name}\n{cfile}")
+        logger.debug(f"\nContainerfile: {containerfile.name}\n{cfile}")
         exec_args = [
             args.engine,
             "build",
@@ -50,7 +50,6 @@ COPY {src} /vector.db
         imageid = (
             run_cmd(
                 exec_args,
-                debug=args.debug,
             )
             .stdout.decode("utf-8")
             .strip()
