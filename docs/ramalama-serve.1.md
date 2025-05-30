@@ -167,7 +167,7 @@ llama.cpp explains this as:
 
     The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
-        Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+	Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.
@@ -334,6 +334,103 @@ spec:
       - image:
 	  reference: quay.io/rhatdan/tiny-car:latest
 	  pullPolicy: IfNotPresent
+	name: model
+      - hostPath:
+	  path: /dev/dri
+	name: dri
+```
+
+### Generate a Llama Stack Kubernetes YAML file named MyLamaStack
+```
+$ ramalama serve --api llama-stack --name MyLamaStack --generate=kube oci://quay.io/rhatdan/granite:latest
+Generating Kubernetes YAML file: MyLamaStack.yaml
+$ cat MyLamaStack.yaml
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: MyLamaStack
+  labels:
+    app: MyLamaStack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: MyLamaStack
+  template:
+    metadata:
+      labels:
+	ai.ramalama: ""
+	app: MyLamaStack
+	ai.ramalama.model: oci://quay.io/rhatdan/granite:latest
+	ai.ramalama.engine: podman
+	ai.ramalama.runtime: llama.cpp
+	ai.ramalama.port: 8080
+	ai.ramalama.command: serve
+    spec:
+      containers:
+      - name: model-server
+	image: quay.io/ramalama/ramalama:0.8
+	command: ["/usr/libexec/ramalama/ramalama-serve-core"]
+	args: ['llama-server', '--port', '8081', '--model', '/mnt/models/model.file', '--alias', 'quay.io/rhatdan/granite:latest', '--ctx-size', 2048, '--temp', '0.8', '--jinja', '--cache-reuse', '256', '-v', '--threads', 16, '--host', '127.0.0.1']
+	securityContext:
+	  allowPrivilegeEscalation: false
+	  capabilities:
+	    drop:
+	    - CAP_CHOWN
+	    - CAP_FOWNER
+	    - CAP_FSETID
+	    - CAP_KILL
+	    - CAP_NET_BIND_SERVICE
+	    - CAP_SETFCAP
+	    - CAP_SETGID
+	    - CAP_SETPCAP
+	    - CAP_SETUID
+	    - CAP_SYS_CHROOT
+	    add:
+	    - CAP_DAC_OVERRIDE
+	  seLinuxOptions:
+	    type: spc_t
+	volumeMounts:
+	- mountPath: /mnt/models
+	  subPath: /models
+	  name: model
+	- mountPath: /dev/dri
+	  name: dri
+      - name: llama-stack
+	image: quay.io/ramalama/llama-stack:0.8
+	args:
+	- /bin/sh
+	- -c
+	- llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml
+	env:
+	- name: RAMALAMA_URL
+	  value: http://127.0.0.1:8081
+	- name: INFERENCE_MODEL
+	  value: quay.io/rhatdan/granite:latest
+	securityContext:
+	  allowPrivilegeEscalation: false
+	  capabilities:
+	    drop:
+	    - CAP_CHOWN
+	    - CAP_FOWNER
+	    - CAP_FSETID
+	    - CAP_KILL
+	    - CAP_NET_BIND_SERVICE
+	    - CAP_SETFCAP
+	    - CAP_SETGID
+	    - CAP_SETPCAP
+	    - CAP_SETUID
+	    - CAP_SYS_CHROOT
+	    add:
+	    - CAP_DAC_OVERRIDE
+	  seLinuxOptions:
+	    type: spc_t
+	ports:
+	- containerPort: 8321
+	  hostPort: 8080
+      volumes:
+      - hostPath:
+	  path: quay.io/rhatdan/granite:latest
 	name: model
       - hostPath:
 	  path: /dev/dri

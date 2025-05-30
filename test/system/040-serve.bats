@@ -10,65 +10,65 @@ verify_begin=".*run --rm"
     model=m_$(safename)
 
     if is_container; then
-        run_ramalama -q --dryrun serve ${model}
-        is "$output" "${verify_begin}.*" "dryrun correct"
-        is "$output" ".*--name ramalama_.*" "dryrun correct"
-        is "$output" ".*${model}" "verify model name"
-        is "$output" ".*--cache-reuse 256" "cache"
-        assert "$output" !~ ".*--no-webui"
+	run_ramalama -q --dryrun serve ${model}
+	is "$output" "${verify_begin}.*" "dryrun correct"
+	is "$output" ".*--name ramalama_.*" "dryrun correct"
+	is "$output" ".*${model}" "verify model name"
+	is "$output" ".*--cache-reuse 256" "cache"
+	assert "$output" !~ ".*--no-webui"
 
-        run_ramalama --dryrun serve --webui off ${model}
-        assert "$output" =~ ".*--no-webui"
+	run_ramalama --dryrun serve --webui off ${model}
+	assert "$output" =~ ".*--no-webui"
 
-        run_ramalama -q --dryrun serve --name foobar ${model}
-        is "$output" ".*--name foobar .*" "dryrun correct with --name"
-        assert "$output" !~ ".*--network" "--network is not part of the output"
-        is "$output" ".*--host 0.0.0.0" "verify host 0.0.0.0 is added when run within container"
-        is "$output" ".*${model}" "verify model name"
-        assert "$output" !~ ".*--seed" "assert seed does not show by default"
+	run_ramalama -q --dryrun serve --name foobar ${model}
+	is "$output" ".*--name foobar .*" "dryrun correct with --name"
+	assert "$output" !~ ".*--network" "--network is not part of the output"
+	is "$output" ".*--host 0.0.0.0" "verify host 0.0.0.0 is added when run within container"
+	is "$output" ".*${model}" "verify model name"
+	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
-        run_ramalama -q --dryrun serve --network bridge --host 127.1.2.3 --name foobar ${model}
-        assert "$output" =~ "--network bridge.*--host 127.1.2.3" "verify --host is modified when run within container"
-        is "$output" ".*${model}" "verify model name"
-        is "$output" ".*--temp 0.8" "verify temp is set"
+	run_ramalama -q --dryrun serve --network bridge --host 127.1.2.3 --name foobar ${model}
+	assert "$output" =~ "--network bridge.*--host 127.1.2.3" "verify --host is modified when run within container"
+	is "$output" ".*${model}" "verify model name"
+	is "$output" ".*--temp 0.8" "verify temp is set"
 
-        run_ramalama -q --dryrun serve --temp 0.1 ${model}
-        is "$output" ".*--temp 0.1" "verify temp is set"
+	run_ramalama -q --dryrun serve --temp 0.1 ${model}
+	is "$output" ".*--temp 0.1" "verify temp is set"
 
-        RAMALAMA_CONFIG=/dev/null run_ramalama -q --dryrun serve --seed 1234 ${model}
-        is "$output" ".*--seed 1234" "verify seed is set"
-        if not_docker; then
-            is "$output" ".*--pull newer" "verify pull is newer"
-        fi
-        assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
-        assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
+	RAMALAMA_CONFIG=/dev/null run_ramalama -q --dryrun serve --seed 1234 ${model}
+	is "$output" ".*--seed 1234" "verify seed is set"
+	if not_docker; then
+	    is "$output" ".*--pull newer" "verify pull is newer"
+	fi
+	assert "$output" =~ ".*--cap-drop=all" "verify --cap-add is present"
+	assert "$output" =~ ".*no-new-privileges" "verify --no-new-privs is not present"
 
-        run_ramalama -q --dryrun serve ${model}
-        is "$output" ".*--pull missing" "verify test default pull is missing"
+	run_ramalama -q --dryrun serve ${model}
+	is "$output" ".*--pull missing" "verify test default pull is missing"
 
-        run_ramalama -q --dryrun serve --pull never ${model}
-        is "$output" ".*--pull never" "verify pull is never"
+	run_ramalama -q --dryrun serve --pull never ${model}
+	is "$output" ".*--pull never" "verify pull is never"
 
-        run_ramalama 2 -q --dryrun serve --pull=bogus ${model}
-        is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"
+	run_ramalama 2 -q --dryrun serve --pull=bogus ${model}
+	is "$output" ".*error: argument --pull: invalid choice: 'bogus'" "verify pull can not be bogus"
 
-        run_ramalama -q --dryrun serve --privileged ${model}
-        is "$output" ".*--privileged" "verify --privileged is set"
-        assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
-        assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
+	run_ramalama -q --dryrun serve --privileged ${model}
+	is "$output" ".*--privileged" "verify --privileged is set"
+	assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
+	assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
     else
-        run_ramalama -q --dryrun serve ${model}
-        assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
-        is "$output" ".*--cache-reuse 256" "should use cache"
-        if is_darwin; then
-           is "$output" ".*--flash-attn" "use flash-attn on Darwin metal"
-        fi
+	run_ramalama -q --dryrun serve ${model}
+	assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
+	is "$output" ".*--cache-reuse 256" "should use cache"
+	if is_darwin; then
+	   is "$output" ".*--flash-attn" "use flash-attn on Darwin metal"
+	fi
 
-        run_ramalama -q --dryrun serve --seed abcd --host 127.0.0.1 ${model}
-        assert "$output" =~ ".*--host 127.0.0.1" "Outside container overrides host to 127.0.0.1"
-        assert "$output" =~ ".*--seed abcd" "Verify seed is set"
-        run_ramalama 1 --nocontainer serve --name foobar tiny
-        is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
+	run_ramalama -q --dryrun serve --seed abcd --host 127.0.0.1 ${model}
+	assert "$output" =~ ".*--host 127.0.0.1" "Outside container overrides host to 127.0.0.1"
+	assert "$output" =~ ".*--seed abcd" "Verify seed is set"
+	run_ramalama 1 --nocontainer serve --name foobar tiny
+	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
     fi
 
     run_ramalama -q --dryrun serve --runtime-args="--foo -bar" ${model}
@@ -321,6 +321,23 @@ verify_begin=".*run --rm"
     run cat /tmp/$name.yaml
     is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
+
+    rm /tmp/$name.yaml
+}
+
+@test "ramalama serve --api llama-stack --generate=kube:/tmp" {
+    skip_if_docker
+    skip_if_nocontainer
+    model=tiny
+    name=c_$(safename)
+    run_ramalama pull ${model}
+    run_ramalama serve --name=${name} --api llama-stack --port 1234 --generate=kube:/tmp ${model}
+    is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+
+    run cat /tmp/$name.yaml
+    is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
+    is "$output" ".*hostPort: 1234" "Should container container port"
+    is "$output" ".*llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml" "Should container llama-stack"
 
     rm /tmp/$name.yaml
 }

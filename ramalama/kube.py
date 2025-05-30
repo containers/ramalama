@@ -133,11 +133,7 @@ class Kube:
         volume_string = self._gen_volumes()
         _version = version()
 
-        file_name = f"{self.name}.yaml"
-        print(f"Generating Kubernetes YAML file: {file_name}")
-
-        file = PlainFile(file_name)
-        file.content = f"""\
+        content = f"""\
 # Save the output of this file and use kubectl create -f to import
 # it into Kubernetes.
 #
@@ -167,4 +163,13 @@ spec:
 {port_string}
 {volume_string}"""
 
-        return file
+        return genfile(self.name, content)
+
+
+def genfile(name, content) -> PlainFile:
+    file_name = f"{name}.yaml"
+    print(f"Generating Kubernetes YAML file: {file_name}")
+
+    file = PlainFile(file_name)
+    file.content = content
+    return file
