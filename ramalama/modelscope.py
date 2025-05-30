@@ -30,6 +30,7 @@ def fetch_checksum_from_api(organization, file):
         f"{ModelScopeRepository.REGISTRY_URL}/api/v1/models/{organization}/repo/raw"
         f"?Revision=master&FilePath={file}&Needmeta=true"
     )
+    logger.debug(f"Fetching checksum from {checksum_api_url}")
     try:
         with urllib.request.urlopen(checksum_api_url) as response:
             data = json.loads(response.read().decode())

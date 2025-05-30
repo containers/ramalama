@@ -6,6 +6,7 @@ import time
 import urllib.request
 
 from ramalama.file import File
+from ramalama.logger import logger
 
 
 class HttpClient:
@@ -39,6 +40,7 @@ class HttpClient:
 
     def urlopen(self, url, headers):
         headers["Range"] = f"bytes={self.file_size}-"
+        logger.debug(f"Running urlopen {url} with headers: {headers}")
         request = urllib.request.Request(url, headers=headers)
         self.response = urllib.request.urlopen(request)
 

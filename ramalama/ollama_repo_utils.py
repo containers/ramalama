@@ -3,6 +3,7 @@ import os
 import urllib.request
 
 from ramalama.common import download_file, run_cmd, verify_checksum
+from ramalama.logger import logger
 
 
 def fetch_manifest_data(registry_head, model_tag, accept):
@@ -20,6 +21,7 @@ def fetch_manifest_data(registry_head, model_tag, accept):
     url = f"{registry_head}/manifests/{model_tag}"
     headers = {"Accept": accept}
 
+    logger.debug(f"Fetching manifest data from url {url}")
     request = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(request) as response:
         manifest_data = json.load(response)
