@@ -231,6 +231,7 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         # Open the file for writing.
         with open(containerfile.name, 'w') as c:
             c.write(content)
+            c.flush()
 
         build_cmd = [
             self.conman,

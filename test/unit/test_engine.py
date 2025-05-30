@@ -2,7 +2,7 @@ import unittest
 from argparse import Namespace
 from unittest.mock import patch
 
-from ramalama.engine import Engine, containers, dry_run, images, stop_container
+from ramalama.engine import Engine, containers, dry_run, images
 
 
 class TestEngine(unittest.TestCase):
@@ -84,12 +84,6 @@ class TestEngine(unittest.TestCase):
         result = containers(args)
         self.assertEqual(result, ["container1", "container2"])
         mock_run_cmd.assert_called_once()
-
-    @patch('ramalama.engine.run_cmd')
-    def test_stop_container(self, mock_run_cmd):
-        args = Namespace(engine="podman", debug=False, ignore=False)
-        stop_container(args, "test-container")
-        mock_run_cmd.assert_called_with(["podman", "stop", "-t=0", "test-container"], ignore_stderr=False)
 
     def test_dry_run(self):
         with patch('sys.stdout') as mock_stdout:

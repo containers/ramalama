@@ -17,10 +17,11 @@ class Engine:
             "run",
             "--rm",
         ]
-        self.use_docker = os.path.basename(args.engine) == "docker"
-        self.use_podman = os.path.basename(args.engine) == "podman"
+        base = os.path.basename(args.engine)
+        self.use_docker = base == "docker"
+        self.use_podman = base == "podman"
         self.args = args
-        self.add_container_labels()
+        self.add_labels()
         self.add_device_options()
         self.add_env_option()
         self.add_network()
@@ -37,19 +38,11 @@ class Engine:
     def add_label(self, label):
         self.add(["--label", label])
 
-    def add_container_labels(self):
-        label_map = {
-            "MODEL": "ai.ramalama.model",
-            "engine": "ai.ramalama.engine",
-            "runtime": "ai.ramalama.runtime",
-            "port": "ai.ramalama.port",
-            "subcommand": "ai.ramalama.command",
-        }
-        for arg, label_prefix in label_map.items():
-            if hasattr(self.args, arg):
-                value = getattr(self.args, arg)
-                if value:
-                    self.add_label(f"{label_prefix}={value}")
+    def add_name(self, name):
+        self.add(["--name", name])
+
+    def add_labels(self):
+        add_labels(self.args, self.add_label)
 
     def add_pull_newer(self):
         if not self.args.dryrun and self.use_docker and self.args.pull == "newer":
@@ -89,6 +82,9 @@ class Engine:
                     "--security-opt=no-new-privileges",
                 ]
 
+    def cap_add(self, cap):
+        self.exec_args += ["--cap-add", cap]
+
     def add_subcommand_env(self):
         if EMOJI and hasattr(self.args, "subcommand") and self.args.subcommand == "run":
             if os.path.basename(self.args.engine) == "podman":
@@ -110,7 +106,12 @@ class Engine:
             self.exec_args += ["-d"]
 
     def add_port_option(self):
-        if hasattr(self.args, "port"):
+        if not hasattr(self.args, "port") or not self.args.port or self.args.port == "":
+            return
+
+        if self.args.port.count(":") > 0:
+            self.exec_args += ["-p", self.args.port]
+        else:
             self.exec_args += ["-p", f"{self.args.port}:{self.args.port}"]
 
     def add_device_options(self):
@@ -242,6 +243,21 @@ def info(args):
         return str(e)
 
 
+def inspect(args, name, format=None, ignore_stderr=False):
+    if not name:
+        raise ValueError("must specify a container name")
+    conman = args.engine
+    if conman == "":
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "inspect"]
+    if format:
+        conman_args += ["--format", format]
+
+    conman_args += [name]
+    return run_cmd(conman_args, ignore_stderr=ignore_stderr, debug=args.debug).stdout.decode("utf-8").strip()
+
+
 def stop_container(args, name):
     if not name:
         raise ValueError("must specify a container name")
@@ -249,15 +265,24 @@ def stop_container(args, name):
     if conman == "":
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "stop", "-t=0"]
     ignore_stderr = False
-    if args.ignore:
-        if conman == "podman":
-            conman_args += ["--ignore", str(args.ignore)]
-        else:
-            ignore_stderr = True
+    pod = ""
+    try:
+        pod = inspect(args, name, format="{{ .Pod }}", ignore_stderr=True)
+    except Exception:  # Ignore errors, the stop command will handle it.
+        pass
 
-    conman_args += [name]
+    if pod != "":
+        conman_args = [conman, "pod", "rm", "-t=0", "--ignore", "--force", pod]
+    else:
+        conman_args = [conman, "stop", "-t=0"]
+        if args.ignore:
+            if conman == "podman":
+                conman_args += ["--ignore", str(args.ignore)]
+            else:
+                ignore_stderr = True
+
+        conman_args += [name]
     try:
         run_cmd(conman_args, ignore_stderr=ignore_stderr)
     except subprocess.CalledProcessError:
@@ -265,3 +290,32 @@ def stop_container(args, name):
             return
         else:
             raise
+
+
+def container_connection(args, name, port):
+    if not name:
+        raise ValueError("must specify a container name")
+    if not port:
+        raise ValueError("must specify a port to check")
+
+    conman = args.engine
+    if conman == "":
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "port", name, port]
+    output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+    return "" if output == "" else output.split(">")[-1].strip()
+
+
+def add_labels(args, add_label):
+    label_map = {
+        "MODEL": "ai.ramalama.model",
+        "engine": "ai.ramalama.engine",
+        "runtime": "ai.ramalama.runtime",
+        "port": "ai.ramalama.port",
+        "subcommand": "ai.ramalama.command",
+    }
+    for arg, label_prefix in label_map.items():
+        if hasattr(args, arg):
+            if value := getattr(args, arg):
+                add_label(f"{label_prefix}={value}")
