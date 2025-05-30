@@ -317,7 +317,7 @@ main() {
   case "$containerfile" in
   ramalama)
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
-      common_flags+=("-DGGML_KOMPUTE=ON" "-DKOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK=ON")
+      common_flags+=("-DGGML_VULKAN=ON")
     else
       common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
     fi
