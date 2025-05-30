@@ -88,6 +88,7 @@ jobs:
            sudo apt-get install podman bats bash codespell python3-argcomplete pipx git cmake libcurl4-openssl-dev
            make install-requirements
            sudo ./container-images/scripts/build_llama_and_whisper.sh
+           sudo python -m pip install . --prefix=/usr
 
       - name: install ollama
         shell: bash
