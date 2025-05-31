@@ -3,4 +3,4 @@ discover:
     how: shell
 execute:
     how: tmt
-    script: rpm -qi python3-ramalama
+    script: rpm -qi ramalama
