@@ -1,15 +1,9 @@
 import json
 import os
-import pathlib
-import tempfile
-import urllib.request
 
-from ramalama.common import available, download_and_verify, exec_cmd, perror, run_cmd, verify_checksum
-from ramalama.huggingface import HuggingfaceCLIFile, HuggingfaceRepository
-from ramalama.logger import logger
-from ramalama.model import Model
+from ramalama.common import available, run_cmd
 from ramalama.model_store import SnapshotFileType
-from ramalama.ollama_repo_utils import repo_pull
+from ramalama.repo_model_base import BaseRepoModel, BaseRepository, RepoFile, fetch_checksum_from_api_base
 
 missing_modelscope = """
 Optional: ModelScope models require the modelscope module.
@@ -24,26 +18,26 @@ def is_modelscope_available():
     return available("modelscope")
 
 
+def extract_modelscope_checksum(data):
+    """Extract SHA-256 checksum from ModelScope API response."""
+    parsed_data = json.loads(data)
+    if sha256_checksum := parsed_data.get("Data", {}).get("MetaContent", {}).get("Sha256"):
+        return sha256_checksum
+    else:
+        raise ValueError("SHA-256 checksum not found in the API response.")
+
+
 def fetch_checksum_from_api(organization, file):
     """Fetch the SHA-256 checksum from the model's metadata API for a given file."""
     checksum_api_url = (
         f"{ModelScopeRepository.REGISTRY_URL}/api/v1/models/{organization}/repo/raw"
         f"?Revision=master&FilePath={file}&Needmeta=true"
     )
-    logger.debug(f"Fetching checksum from {checksum_api_url}")
-    try:
-        with urllib.request.urlopen(checksum_api_url) as response:
-            data = json.loads(response.read().decode())
-        # Extract the SHA-256 checksum from the JSON
-        sha256_checksum = data.get("Data", {}).get("MetaContent", {}).get("Sha256")
-        if not sha256_checksum:
-            raise ValueError("SHA-256 checksum not found in the API response.")
-        return sha256_checksum
-    except (json.JSONDecodeError, urllib.error.HTTPError, urllib.error.URLError) as e:
-        raise KeyError(f"failed to pull {checksum_api_url}: {str(e).strip()}")
+
+    return fetch_checksum_from_api_base(checksum_api_url, None, extract_modelscope_checksum)
 
 
-class ModelScopeRepository(HuggingfaceRepository):
+class ModelScopeRepository(BaseRepository):
 
     REGISTRY_URL = "https://modelscope.cn"
 
@@ -53,89 +47,42 @@ class ModelScopeRepository(HuggingfaceRepository):
         self.model_filename = self.name
 
 
-class ModelScope(Model):
+class ModelScope(BaseRepoModel):
 
     REGISTRY_URL = "https://modelscope.cn/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
     def __init__(self, model):
         super().__init__(model)
-
         self.type = "modelscope"
         self.ms_available = is_modelscope_available()
 
-    def login(self, args):
-        if not self.ms_available:
-            raise NotImplementedError(missing_modelscope)
-        conman_args = ["modelscope", "login"]
-        if args.token:
-            conman_args.extend(["--token", args.token])
-        self.exec(conman_args, args)
+    def get_cli_command(self):
+        return "modelscope"
 
-    def logout(self, args):
-        if not self.ms_available:
-            raise NotImplementedError(missing_modelscope)
-        conman_args = ["modelscope", "logout"]
-        if args.token:
-            conman_args.extend(["--token", args.token])
-        self.exec(conman_args, args)
+    def get_missing_message(self):
+        return missing_modelscope
 
-    def _attempt_url_pull(self, args, model_path, directory_path):
-        try:
-            return self.url_pull(args, model_path, directory_path)
-        except (urllib.error.HTTPError, urllib.error.URLError, KeyError, ValueError) as e:
-            return self._attempt_url_pull_ms(args, model_path, directory_path, e)
+    def get_registry_url(self):
+        return self.REGISTRY_URL
 
-    def _attempt_url_pull_ms(self, args, model_path, directory_path, previous_exception):
-        if self.ms_available:
-            try:
-                return self.ms_pull(args, model_path, directory_path)
-            except Exception:
-                pass
-        raise KeyError(f"Failed to pull model: {str(previous_exception)}")
+    def get_accept_header(self):
+        return self.ACCEPT
 
-    def pull(self, args):
-        if self.store is not None:
-            return self._pull_with_model_store(args)
+    def get_repo_type(self):
+        return "modelscope"
 
-        model_path = self.model_path(args)
-        directory_path = os.path.join(args.store, "repos", "modelscope", self.directory, self.filename)
-        os.makedirs(directory_path, exist_ok=True)
+    def fetch_checksum_from_api(self, organization, file):
+        return fetch_checksum_from_api(organization, file)
 
-        symlink_dir = os.path.dirname(model_path)
-        os.makedirs(symlink_dir, exist_ok=True)
+    def create_repository(self, name, organization, tag='latest'):
+        return ModelScopeRepository(name, organization, tag)
 
-        # First try to interpret the argument as a user/repo:tag
-        try:
-            if self.directory.count("/") == 0:
+    def get_download_url(self, directory, filename):
+        return f"https://modelscope.cn/{directory}/resolve/master/{filename}"
 
-                model_name, model_tag, _ = self.extract_model_identifiers()
-                repo_name = self.directory + "/" + model_name
-                registry_head = f"{ModelScope.REGISTRY_URL}{repo_name}"
-
-                show_progress = not args.quiet
-                return repo_pull(
-                    os.path.join(args.store, "repos", "modelscope"),
-                    ModelScope.ACCEPT,
-                    registry_head,
-                    model_name,
-                    model_tag,
-                    os.path.join(args.store, "models", "modelscope"),
-                    model_path,
-                    self.model,
-                    show_progress,
-                )
-
-        except urllib.error.HTTPError:
-            if model_tag != "latest":
-                # The user explicitly requested a tag, so raise an error
-                raise KeyError(f"{self.model} was not found in the ModelScope registry")
-            else:
-                # The user did not explicitly request a tag, so assume they want the whole repository
-                pass
-
-        # Interpreting as a tag did not work.  Attempt to download as a url.
-        return self._attempt_url_pull(args, model_path, directory_path)
+    def get_cli_download_args(self, directory_path, model):
+        return ["modelscope", "download", "--local_dir", directory_path, model]
 
     def _fetch_cache_path(self, cache_dir, namespace, repo):
         def normalize_repo_name(repo):
@@ -164,36 +111,7 @@ class ModelScope(Model):
         return False
 
     def ms_pull(self, args, model_path, directory_path):
-        conman_args = ["modelscope", "download", "--local_dir", directory_path, self.model]
-        run_cmd(conman_args)
-
-        relative_target_path = os.path.relpath(directory_path, start=os.path.dirname(model_path))
-        pathlib.Path(model_path).unlink(missing_ok=True)
-        os.symlink(relative_target_path, model_path)
-        return model_path
-
-    def _update_symlink(self, model_path, target_path):
-        relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
-        if not self.check_valid_model_path(relative_target_path, model_path):
-            pathlib.Path(model_path).unlink(missing_ok=True)
-            os.symlink(relative_target_path, model_path)
-        return model_path
-
-    def url_pull(self, args, model_path, directory_path):
-        # Fetch the SHA-256 checksum from the API
-        sha256_checksum = fetch_checksum_from_api(self.directory, self.filename)
-
-        target_path = os.path.join(directory_path, f"sha256:{sha256_checksum}")
-
-        if not os.path.exists(target_path):
-            self.in_existing_cache(args, target_path, sha256_checksum)
-
-        if os.path.exists(target_path) and verify_checksum(target_path):
-            return self._update_symlink(model_path, target_path)
-
-        url = f"https://modelscope.cn/{self.directory}/resolve/master/{self.filename}"
-        download_and_verify(url, target_path)
-        return self._update_symlink(model_path, target_path)
+        return self.cli_pull(args, model_path, directory_path)
 
     def push(self, _, args):
         if not self.ms_available:
@@ -214,15 +132,9 @@ class ModelScope(Model):
         )
         return proc.stdout.decode("utf-8")
 
-    def exec(self, cmd_args, args):
-        try:
-            exec_cmd(cmd_args)
-        except FileNotFoundError as e:
-            print(f"{str(e).strip()}\n{missing_modelscope}")
-
-    def _collect_cli_files(self, tempdir: str) -> tuple[str, list[HuggingfaceCLIFile]]:
+    def _collect_cli_files(self, tempdir: str) -> tuple[str, list[RepoFile]]:
         cache_dir = os.path.join(tempdir, ".cache", "modelscope", "download")
-        files: list[HuggingfaceCLIFile] = []
+        files: list[RepoFile] = []
         snapshot_hash = ""
         for entry in os.listdir(tempdir):
             entry_path = os.path.join(tempdir, entry)
@@ -243,7 +155,7 @@ class ModelScope(Model):
                 snapshot_hash = sha256
                 continue
 
-            hf_file = HuggingfaceCLIFile(
+            ms_file = RepoFile(
                 url=entry_path,
                 header={},
                 hash=sha256,
@@ -252,49 +164,7 @@ class ModelScope(Model):
             )
             # try to identify the model file in the pulled repo
             if entry.endswith(".safetensors") or entry.endswith(".gguf"):
-                hf_file.type = SnapshotFileType.Model
-            files.append(hf_file)
+                ms_file.type = SnapshotFileType.Model
+            files.append(ms_file)
 
         return snapshot_hash, files
-
-    def _pull_with_model_store(self, args):
-        name, tag, organization = self.extract_model_identifiers()
-        hash, cached_files, all = self.store.get_cached_files(tag)
-        if all:
-            if not args.quiet:
-                print(f"Using cached modelscope://{name}:{tag} ...")
-            return self.store.get_snapshot_file_path(hash, name)
-
-        try:
-            if not args.quiet:
-                self.print_pull_message(f"ms://{name}:{tag}")
-
-            ms_repo = ModelScopeRepository(name, organization)
-            snapshot_hash = ms_repo.model_hash
-            files = ms_repo.get_file_list(cached_files)
-            try:
-                self.store.new_snapshot(tag, snapshot_hash, files)
-            except Exception as e:
-                # Cleanup failed snapshot
-                try:
-                    self.store.remove_snapshot(tag)
-                except Exception as exc:
-                    logger.debug(f"ignoring failure to remove snapshot: {exc}")
-                    # ignore any error when removing snapshot
-                    pass
-                raise e
-        except Exception as e:
-            if not self.ms_available:
-                perror("URL pull failed and modelscope not available")
-                raise KeyError(f"Failed to pull model: {str(e)}")
-
-            # Create temporary directory for downloading via modelscope
-            with tempfile.TemporaryDirectory() as tempdir:
-                model = f"{organization}/{name}"
-                conman_args = ["modelscope", "download", "--local_dir", tempdir, model]
-                run_cmd(conman_args)
-
-                snapshot_hash, files = self._collect_cli_files(tempdir)
-                self.store.new_snapshot(tag, snapshot_hash, files)
-
-        return self.store.get_snapshot_file_path(snapshot_hash, self.store.get_ref_file(tag).model_name)
