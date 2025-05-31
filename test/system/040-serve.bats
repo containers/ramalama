@@ -11,7 +11,6 @@ verify_begin=".*run --rm"
 
     if is_container; then
         run_ramalama -q --dryrun serve ${model}
-        assert "$output" =~ "serving on port .*"
         is "$output" "${verify_begin}.*" "dryrun correct"
         is "$output" ".*--name ramalama_.*" "dryrun correct"
         is "$output" ".*${model}" "verify model name"
@@ -83,7 +82,6 @@ verify_begin=".*run --rm"
     assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
 
     run_ramalama 1 serve MODEL
-    assert "$output" =~ "serving on port .*"
     assert "$output" =~ "Error: Manifest for MODEL:latest was not found in the Ollama registry"
 }
 

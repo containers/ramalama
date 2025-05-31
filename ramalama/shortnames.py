@@ -47,4 +47,5 @@ class Shortnames:
             c.write('[shortnames]\n')
             for shortname in self.shortnames:
                 c.write('"%s"="%s"\n' % (shortname, self.shortnames.get(shortname)))
+            c.flush()
         return shortnamefile.name

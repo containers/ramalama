@@ -216,7 +216,7 @@ class GlobalModelStore:
     def path(self) -> str:
         return self._store_base_path
 
-    def list_models(self, engine: str, debug: bool, show_container: bool) -> Dict[str, List[ModelFile]]:
+    def list_models(self, engine: str, show_container: bool) -> Dict[str, List[ModelFile]]:
         models: Dict[str, List[ModelFile]] = {}
 
         for root, subdirs, _ in os.walk(self.path):
@@ -260,7 +260,6 @@ class GlobalModelStore:
                 dotdict(
                     {
                         "engine": engine,
-                        "debug": debug,
                     }
                 )
             )

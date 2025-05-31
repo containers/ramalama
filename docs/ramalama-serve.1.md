@@ -35,6 +35,10 @@ For REST API endpoint documentation, see: [https://github.com/ggml-org/llama.cpp
 
 ## OPTIONS
 
+#### **--api**=**llama-stack** | none**
+unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
+The default can be overridden in the ramalama.conf file.
+
 #### **--authfile**=*password*
 path of the authentication file for OCI registries
 
