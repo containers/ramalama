@@ -1043,6 +1043,14 @@ formatted files to be processed""",
         action="store_true",
         help="Enable embedded image text extraction from PDF (Increases RAM Usage significantly)",
     )
+    parser.add_argument(
+        "--db",
+        dest="db",
+        type=str,
+        default='qdrant',
+        choices=["json", "qdrant", "milvus"],
+        help='pull image policy',
+    )
     parser.set_defaults(func=rag_cli)
 
 

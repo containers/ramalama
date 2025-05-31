@@ -115,6 +115,8 @@ COPY {src} /vector.db
             self.engine.add(["--ocr"])
         if len(self.urls) > 0:
             self.engine.add(self.urls)
+        if args.db:
+            self.engine.add(["--db", args.db])
         if args.dryrun:
             self.engine.dryrun()
             return

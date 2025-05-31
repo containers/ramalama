@@ -23,6 +23,13 @@ positional arguments:
 
 ## OPTIONS
 
+#### **--db**=*format*
+Sets the vector database output format for the converted documents. For Milvus and Qdrant both formats use the same embedding models via fastembed and use hybrid search.
+
+- **json**: Output the converted documents to a docling JSON format. Allows for immediate ingestion for pipelines that use docling.
+- **milvus**: Outputs the converted documents to a Milvus vector database. 
+- **qdrant**: Outputs the converted documents to a Qdrant vector database. (Default)
+
 #### **--env**=
 
 Set environment variables inside of the container.
@@ -61,6 +68,10 @@ c857ebc65c641084b34e39b740fdb6a2d9d2d97be320e6aa9439ed0ab8780fe0
 
 ```
 ramalama rag --ocr README.md https://mysight.edu/document quay.io/rhatdan/myrag
+```
+
+```
+ramalama rag --db milvus README.md https://mysight.edu/document quay.io/rhatdan/myrag
 ```
 
 ## SEE ALSO
