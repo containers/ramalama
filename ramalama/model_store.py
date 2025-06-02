@@ -540,9 +540,21 @@ class ModelStore:
 
     def new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
         snapshot_hash = sanitize_filename(snapshot_hash)
-        self._prepare_new_snapshot(model_tag, snapshot_hash, snapshot_files)
-        self._download_snapshot_files(model_tag, snapshot_hash, snapshot_files)
-        self._ensure_chat_template(model_tag, snapshot_hash, snapshot_files)
+
+        try:
+            self._prepare_new_snapshot(model_tag, snapshot_hash, snapshot_files)
+            self._download_snapshot_files(model_tag, snapshot_hash, snapshot_files)
+            self._ensure_chat_template(model_tag, snapshot_hash, snapshot_files)
+        except urllib.error.HTTPError as ex:
+            perror(f"Failed to fetch required file: {ex}")
+            perror("Removing snapshot...")
+            self.remove_snapshot(model_tag)
+            raise ex
+        except Exception as ex:
+            perror(f"Failed to create new snapshot: {ex}")
+            perror("Removing snapshot...")
+            self.remove_snapshot(model_tag)
+            raise ex
 
         try:
             self.verify_snapshot(model_tag)
@@ -550,6 +562,7 @@ class ModelStore:
             perror(f"Verification of snapshot failed: {ex}")
             perror("Removing snapshot...")
             self.remove_snapshot(model_tag)
+            raise ex
 
     def update_snapshot(self, model_tag: str, snapshot_hash: str, new_snapshot_files: list[SnapshotFile]) -> bool:
         validate_snapshot_files(new_snapshot_files)
