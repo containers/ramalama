@@ -333,17 +333,8 @@ class BaseRepoModel(Model, ABC):
             repo = self.create_repository(name, organization)
             snapshot_hash = repo.model_hash
             files = repo.get_file_list(cached_files)
-            try:
-                self.store.new_snapshot(tag, snapshot_hash, files)
-            except Exception as e:
-                # Cleanup failed snapshot
-                try:
-                    self.store.remove_snapshot(tag)
-                except Exception as exc:
-                    logger.debug(f"ignoring failure to remove snapshot: {exc}")
-                    # ignore any error when removing snapshot
-                    pass
-                raise e
+            self.store.new_snapshot(tag, snapshot_hash, files)
+
         except Exception as e:
             if not available(self.get_cli_command()):
                 perror(f"URL pull failed and {self.get_cli_command()} not available")
