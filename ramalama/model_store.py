@@ -1,6 +1,5 @@
 import os
 import shutil
-import sys
 import urllib
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import ramalama.go2jinja as go2jinja
 import ramalama.oci
 from ramalama.common import download_file, generate_sha256, perror, verify_checksum
-from ramalama.endian import EndianMismatchError, GGUFEndian
+from ramalama.endian import EndianMismatchError, NotGGUFModel, get_system_endianness
 from ramalama.gguf_parser import GGUFInfoParser, GGUFModelInfo
 from ramalama.logger import logger
 
@@ -38,7 +37,6 @@ class SnapshotFile:
         type: SnapshotFileType,
         should_show_progress: bool = False,
         should_verify_checksum: bool = False,
-        should_verify_endianness: bool = True,
         required: bool = True,
     ):
         self.url: str = url
@@ -48,7 +46,6 @@ class SnapshotFile:
         self.type: SnapshotFileType = type
         self.should_show_progress: bool = should_show_progress
         self.should_verify_checksum: bool = should_verify_checksum
-        self.should_verify_endianness: bool = should_verify_endianness
         self.required: bool = required
 
     def download(self, blob_file_path: str, snapshot_dir: str) -> str:
@@ -69,7 +66,6 @@ class LocalSnapshotFile(SnapshotFile):
         type: SnapshotFileType,
         should_show_progress: bool = False,
         should_verify_checksum: bool = False,
-        should_verify_endianness: bool = True,
         required: bool = True,
     ):
         super().__init__(
@@ -80,7 +76,6 @@ class LocalSnapshotFile(SnapshotFile):
             type,
             should_show_progress,
             should_verify_checksum,
-            should_verify_endianness,
             required,
         )
         self.content = content
@@ -439,7 +434,6 @@ class ModelStore:
         os.makedirs(snapshot_directory, exist_ok=True)
 
     def _download_snapshot_files(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
-        host_endianness = GGUFEndian.LITTLE if sys.byteorder == 'little' else GGUFEndian.BIG
         ref_file = self.get_ref_file(model_tag)
 
         for file in snapshot_files:
@@ -462,20 +456,6 @@ class ModelStore:
                     file.download(dest_path, self.get_snapshot_directory(snapshot_hash))
                     if not verify_checksum(dest_path):
                         raise ValueError(f"Checksum verification failed for blob {dest_path}")
-
-            if file.should_verify_endianness and GGUFInfoParser.is_model_gguf(dest_path):
-                model_info = GGUFInfoParser.parse("model", "registry", dest_path)
-                if host_endianness != model_info.Endianness:
-                    os.remove(dest_path)
-                    perror()
-                    perror(
-                        f"Failed to pull model: "
-                        f"host endian is {host_endianness} but the model endian is {model_info.Endianness}"
-                    )
-                    perror("Failed to pull model: ramalama currently does not support transparent byteswapping")
-                    raise EndianMismatchError(
-                        f"Unexpected model endianness: wanted {host_endianness}, got {model_info.Endianness}"
-                    )
 
             os.symlink(blob_relative_path, self.get_snapshot_file_path(snapshot_hash, file.name))
 
@@ -541,11 +521,35 @@ class ModelStore:
 
         self.update_snapshot(model_tag, snapshot_hash, files)
 
+    def _verify_endianness(self, model_tag: str):
+        ref_file = self.get_ref_file(model_tag)
+        if ref_file is None:
+            return
+
+        model_hash = self.get_blob_file_hash(ref_file.hash, ref_file.model_name)
+        model_path = self.get_blob_file_path(model_hash)
+
+        model_endianness = GGUFInfoParser.get_model_endianness(model_path)
+        host_endianness = get_system_endianness()
+        if host_endianness != model_endianness:
+            raise EndianMismatchError(host_endianness, model_endianness)
+
+    def verify_snapshot(self, model_tag: str):
+        self._verify_endianness(model_tag)
+        self._store.verify_snapshot()
+
     def new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
         snapshot_hash = sanitize_filename(snapshot_hash)
         self._prepare_new_snapshot(model_tag, snapshot_hash, snapshot_files)
         self._download_snapshot_files(model_tag, snapshot_hash, snapshot_files)
         self._ensure_chat_template(model_tag, snapshot_hash, snapshot_files)
+
+        try:
+            self.verify_snapshot(model_tag)
+        except (EndianMismatchError, NotGGUFModel) as ex:
+            perror(f"Verification of snapshot failed: {ex}")
+            perror("Removing snapshot...")
+            self.remove_snapshot(model_tag)
 
     def update_snapshot(self, model_tag: str, snapshot_hash: str, new_snapshot_files: list[SnapshotFile]) -> bool:
         validate_snapshot_files(new_snapshot_files)
@@ -595,6 +599,9 @@ class ModelStore:
         snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
         shutil.rmtree(snapshot_directory, ignore_errors=False)
 
-        # Remove ref file
+        # Remove ref file, ignore if file is not found
         ref_file_path = self.get_ref_file_path(model_tag)
-        os.remove(ref_file_path)
+        try:
+            os.remove(ref_file_path)
+        except FileNotFoundError:
+            pass
