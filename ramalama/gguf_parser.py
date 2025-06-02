@@ -4,7 +4,7 @@ from enum import IntEnum
 from typing import Any, Dict
 
 import ramalama.console as console
-from ramalama.endian import GGUFEndian, NotGGUFModel
+from ramalama.endian import GGUFEndian
 from ramalama.model_inspect import GGUFModelInfo, Tensor
 
 
@@ -170,9 +170,6 @@ class GGUFInfoParser:
 
     @staticmethod
     def get_model_endianness(model_path: str) -> GGUFEndian:
-        if not GGUFInfoParser.is_model_gguf(model_path):
-            raise NotGGUFModel(model_path)
-
         # Pin model endianness to Little Endian by default.
         # Models downloaded via HuggingFace are majority Little Endian.
         model_endianness = GGUFEndian.LITTLE

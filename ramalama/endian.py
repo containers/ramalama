@@ -18,9 +18,3 @@ class EndianMismatchError(Exception):
 
     def __init__(self, host_endianness: GGUFEndian, model_endianness: GGUFEndian, *args):
         super().__init__(f"Endian mismatch of host ({host_endianness}) and model ({model_endianness})", *args)
-
-
-class NotGGUFModel(Exception):
-
-    def __init__(self, model_path: str, *args):
-        super().__init__(f"'{model_path}' is not a GGUF model", *args)
