@@ -4,7 +4,7 @@ from enum import IntEnum
 from typing import Any, Dict
 
 import ramalama.console as console
-from ramalama.endian import GGUFEndian
+from ramalama.endian import GGUFEndian, NotGGUFModel
 from ramalama.model_inspect import GGUFModelInfo, Tensor
 
 
@@ -169,7 +169,10 @@ class GGUFInfoParser:
         raise ParseError(f"Unknown type '{value_type}'")
 
     @staticmethod
-    def parse(model_name: str, model_registry: str, model_path: str) -> GGUFModelInfo:
+    def get_model_endianness(model_path: str) -> GGUFEndian:
+        if not GGUFInfoParser.is_model_gguf(model_path):
+            raise NotGGUFModel(model_path)
+
         # Pin model endianness to Little Endian by default.
         # Models downloaded via HuggingFace are majority Little Endian.
         model_endianness = GGUFEndian.LITTLE
@@ -182,9 +185,19 @@ class GGUFInfoParser:
             gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
             if gguf_version & 0xFFFF == 0x0000:
                 model_endianness = GGUFEndian.BIG
-                model.seek(4)  # Backtrack the reader by 4 bytes to re-read
-                gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
 
+        return model_endianness
+
+    @staticmethod
+    def parse(model_name: str, model_registry: str, model_path: str) -> GGUFModelInfo:
+        model_endianness = GGUFInfoParser.get_model_endianness(model_path)
+
+        with open(model_path, "rb") as model:
+            magic_number = GGUFInfoParser.read_string(model, model_endianness, 4)
+            if magic_number != GGUFModelInfo.MAGIC_NUMBER:
+                raise ParseError(f"Invalid GGUF magic number '{magic_number}'")
+
+            gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
             if gguf_version != GGUFModelInfo.VERSION:
                 raise ParseError(f"Expected GGUF version '{GGUFModelInfo.VERSION}', but got '{gguf_version}'")
 
