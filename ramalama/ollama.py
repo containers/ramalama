@@ -250,14 +250,7 @@ class Ollama(Model):
             self.print_pull_message(f"ollama://{name}:{tag}")
 
         model_hash = ollama_repo.get_model_hash(manifest)
-        try:
-            self.store.new_snapshot(tag, model_hash, files)
-        except urllib.error.HTTPError as e:
-            if "Not Found" in e.reason:
-                raise KeyError(f"{name}:{tag} was not found in the Ollama registry")
-
-            err = str(e).strip("'")
-            raise KeyError(f"failed to fetch snapshot files: {err}")
+        self.store.new_snapshot(tag, model_hash, files)
 
         # If a model has been downloaded via ollama cli, only create symlink in the snapshots directory
         if is_model_in_ollama_cache:
