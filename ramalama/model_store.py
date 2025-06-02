@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import ramalama.go2jinja as go2jinja
 import ramalama.oci
 from ramalama.common import download_file, generate_sha256, perror, verify_checksum
-from ramalama.endian import EndianMismatchError, NotGGUFModel, get_system_endianness
+from ramalama.endian import EndianMismatchError, get_system_endianness
 from ramalama.gguf_parser import GGUFInfoParser, GGUFModelInfo
 from ramalama.logger import logger
 
@@ -529,6 +529,10 @@ class ModelStore:
         model_hash = self.get_blob_file_hash(ref_file.hash, ref_file.model_name)
         model_path = self.get_blob_file_path(model_hash)
 
+        # only check endianness for gguf models
+        if not GGUFInfoParser.is_model_gguf(model_path):
+            return
+
         model_endianness = GGUFInfoParser.get_model_endianness(model_path)
         host_endianness = get_system_endianness()
         if host_endianness != model_endianness:
@@ -558,7 +562,7 @@ class ModelStore:
 
         try:
             self.verify_snapshot(model_tag)
-        except (EndianMismatchError, NotGGUFModel) as ex:
+        except EndianMismatchError as ex:
             perror(f"Verification of snapshot failed: {ex}")
             perror("Removing snapshot...")
             self.remove_snapshot(model_tag)
