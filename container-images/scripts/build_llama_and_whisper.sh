@@ -217,7 +217,7 @@ set_install_prefix() {
 }
 
 configure_common_flags() {
-  common_flags=("-DGGML_NATIVE=OFF")
+  common_flags=("-DGGML_NATIVE=OFF" "-DGGML_CMAKE_BUILD_TYPE=Release")
   case "$containerfile" in
   rocm*)
     if [ "${ID}" = "fedora" ]; then
@@ -314,12 +314,16 @@ main() {
   fi
 
   setup_build_env
-  clone_and_build_whisper_cpp
+  if [ "$uname_m" != "s390x" ]; then
+    clone_and_build_whisper_cpp
+  fi
   common_flags+=("-DLLAMA_CURL=ON" "-DGGML_RPC=ON")
   case "$containerfile" in
   ramalama)
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
       common_flags+=("-DGGML_VULKAN=ON")
+    elif [ "$uname_m" = "s390x" ]; then
+      common_flags+=("-DGGML_VXE=ON" "-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
     else
       common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
     fi
