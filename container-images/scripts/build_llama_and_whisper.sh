@@ -324,8 +324,6 @@ main() {
       common_flags+=("-DGGML_VULKAN=ON")
     elif [ "$uname_m" = "s390x" ]; then
       common_flags+=("-DGGML_VXE=ON" "-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
-    else
-      common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
     fi
     ;;
   esac
