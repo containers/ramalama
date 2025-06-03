@@ -253,15 +253,33 @@ print_usage() {
   echo "  multi-arch   Build and Push multi-arch images with podman farm"
   echo
   echo "Options:"
+  echo "  -h           Print help information"
+  echo "  -c           Do not use cached images (default behaviour)"
+  echo "  -C           Use cached images"
   echo "  -d           Dryrun, print podman commands but don't execute"
   echo "  -r           Remove container image after build"
   echo
   echo "Targets:"
   echo "  Specify the target container image to build or push"
   echo "  If no target is specified, all container images will be processed"
+  echo
   echo "Destination Registry:"
   echo "  Override the target registry path by setting the env var REGISTRY_PATH"
   echo "  default - quay.io/ramalama"
+  echo
+  echo "Examples:"
+  echo "  Build CPU only image without cache:"
+  echo "    $(basename "$0") build ramalama"
+  echo
+  echo "  Build CPU only image WITH cache:"
+  echo "    $(basename "$0") build -C ramalama"
+  echo
+  echo "  Build CUDA image without cache:"
+  echo "    $(basename "$0") build cuda"
+  echo
+  echo "  Build CUDA image WITH cache:"
+  echo "    $(basename "$0") build -C cuda"
+  echo
 }
 
 main() {
