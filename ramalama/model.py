@@ -742,7 +742,7 @@ def compute_serving_port(args, quiet=False) -> str:
     if not quiet:
         openai = f"http://localhost:{target_port}"
         if args.api == "llama-stack":
-            print(f"LlamaStack RESTAPI: {openai}")
+            print(f"Llama Stack RESTAPI: {openai}")
             openai = openai + "/v1/openai"
         print(f"OpenAI RESTAPI: {openai}")
     return str(target_port)

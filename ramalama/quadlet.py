@@ -27,17 +27,7 @@ class Quadlet:
             self.rag_name = os.path.basename(self.rag) + "-rag"
 
     def kube(self) -> UnitFile:
-        file_name = f"{self.name}.kube"
-        print(f"Generating quadlet file: {file_name}")
-
-        file = UnitFile(file_name)
-        file.add("Unit", "Description", f"RamaLama {self.model} Kubernetes YAML - AI Model Service")
-        file.add("Unit", "After", "local-fs.target")
-        file.add("Kube", "Yaml", f"{self.name}.yaml")
-        # Start by default on boot
-        file.add("Install", "WantedBy", "multi-user.target default.target")
-
-        return file
+        return kube(self.name, f"RamaLama {self.model} Kubernetes YAML - AI Model Service")
 
     def generate(self) -> list[UnitFile]:
         files = []
@@ -142,3 +132,17 @@ class Quadlet:
 
         quadlet_file.add("Container", "Mount", f"type=image,source={self.rag},destination={RAG_DIR},readwrite=false")
         return files
+
+
+def kube(name, description) -> UnitFile:
+    file_name = f"{name}.kube"
+    print(f"Generating quadlet file: {file_name}")
+
+    file = UnitFile(file_name)
+    file.add("Unit", "Description", description)
+    file.add("Unit", "After", "local-fs.target")
+    file.add("Kube", "Yaml", f"{name}.yaml")
+    # Start by default on boot
+    file.add("Install", "WantedBy", "multi-user.target default.target")
+
+    return file

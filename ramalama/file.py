@@ -50,7 +50,7 @@ class UnitFile:
         self.filename = filename
         self.sections = {}
 
-    def add(self, section: str, key: str, value: str):
+    def add(self, section: str, key: str, value: str = ""):
         if section not in self.sections:
             self.sections[section] = {}
         if key not in self.sections[section]:
@@ -63,7 +63,13 @@ class UnitFile:
             self._write(f)
 
     def _write(self, f):
+        comments = self.sections.get('comment', {})
+        for section in comments:
+            f.write(f'{section}\n')
+
         for section, section_items in self.sections.items():
+            if section == "comment":
+                continue
             f.write(f'[{section}]\n')
             for key, values in section_items.items():
                 for value in values:
