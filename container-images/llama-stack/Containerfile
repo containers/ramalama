@@ -10,7 +10,7 @@ RUN dnf -y update && \
     dnf -y clean all
 
 RUN uv venv && \
-    uv pip install ramalama-stack==1.5.0
+    uv pip install ramalama-stack>=1.5.0
 
 COPY --chmod=755 llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
 
