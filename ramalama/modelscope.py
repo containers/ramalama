@@ -2,8 +2,13 @@ import json
 import os
 
 from ramalama.common import available, run_cmd
+from ramalama.hf_style_repo_base import (
+    HFStyleRepoFile,
+    HFStyleRepoModel,
+    HFStyleRepository,
+    fetch_checksum_from_api_base,
+)
 from ramalama.model_store import SnapshotFileType
-from ramalama.repo_model_base import BaseRepoModel, BaseRepository, RepoFile, fetch_checksum_from_api_base
 
 missing_modelscope = """
 Optional: ModelScope models require the modelscope module.
@@ -37,7 +42,7 @@ def fetch_checksum_from_api(organization, file):
     return fetch_checksum_from_api_base(checksum_api_url, None, extract_modelscope_checksum)
 
 
-class ModelScopeRepository(BaseRepository):
+class ModelScopeRepository(HFStyleRepository):
 
     REGISTRY_URL = "https://modelscope.cn"
 
@@ -47,7 +52,7 @@ class ModelScopeRepository(BaseRepository):
         self.model_filename = self.name
 
 
-class ModelScope(BaseRepoModel):
+class ModelScope(HFStyleRepoModel):
 
     REGISTRY_URL = "https://modelscope.cn/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
@@ -132,9 +137,9 @@ class ModelScope(BaseRepoModel):
         )
         return proc.stdout.decode("utf-8")
 
-    def _collect_cli_files(self, tempdir: str) -> tuple[str, list[RepoFile]]:
+    def _collect_cli_files(self, tempdir: str) -> tuple[str, list[HFStyleRepoFile]]:
         cache_dir = os.path.join(tempdir, ".cache", "modelscope", "download")
-        files: list[RepoFile] = []
+        files: list[HFStyleRepoFile] = []
         snapshot_hash = ""
         for entry in os.listdir(tempdir):
             entry_path = os.path.join(tempdir, entry)
@@ -155,7 +160,7 @@ class ModelScope(BaseRepoModel):
                 snapshot_hash = sha256
                 continue
 
-            ms_file = RepoFile(
+            ms_file = HFStyleRepoFile(
                 url=entry_path,
                 header={},
                 hash=sha256,
