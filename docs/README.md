@@ -34,3 +34,22 @@ make docs
 ```
 cd docs
 ```
+
+## Run the Tests
+To run the tests,
+
+- Install [pytest](https://docs.pytest.org/en/stable/getting-started.html) 
+
+- Run tests with
+
+```
+pytest
+```
+
+or
+
+```
+pytest path/to/test_file.py
+```
+
+(which runs an individual test file)
