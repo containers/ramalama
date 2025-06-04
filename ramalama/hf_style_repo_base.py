@@ -12,7 +12,7 @@ from ramalama.model_store import SnapshotFile, SnapshotFileType
 from ramalama.ollama_repo_utils import repo_pull
 
 
-class RepoFile(SnapshotFile):
+class HFStyleRepoFile(SnapshotFile):
     def __init__(
         self, url, header, hash, name, type, should_show_progress=False, should_verify_checksum=False, required=True
     ):
@@ -57,7 +57,7 @@ def fetch_checksum_from_api_base(checksum_api_url, headers=None, extractor_func=
         raise KeyError(f"failed to pull {checksum_api_url}: {str(e).strip()}")
 
 
-class BaseRepository(ABC):
+class HFStyleRepository(ABC):
     FILE_NAME_CONFIG = "config.json"
     FILE_NAME_GENERATION_CONFIG = "generation_config.json"
     FILE_NAME_TOKENIZER_CONFIG = "tokenizer_config.json"
@@ -147,7 +147,7 @@ class BaseRepository(ABC):
         )
 
 
-class BaseRepoModel(Model, ABC):
+class HFStyleRepoModel(Model, ABC):
     def __init__(self, model):
         super().__init__(model)
 

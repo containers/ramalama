@@ -4,9 +4,14 @@ import pathlib
 import urllib.request
 
 from ramalama.common import available, perror, run_cmd
+from ramalama.hf_style_repo_base import (
+    HFStyleRepoFile,
+    HFStyleRepoModel,
+    HFStyleRepository,
+    fetch_checksum_from_api_base,
+)
 from ramalama.logger import logger
 from ramalama.model_store import SnapshotFileType
-from ramalama.repo_model_base import BaseRepoModel, BaseRepository, RepoFile, fetch_checksum_from_api_base
 
 missing_huggingface = """
 Optional: Huggingface models require the huggingface-cli module.
@@ -73,11 +78,11 @@ def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
         return json.loads(repo_manifest)
 
 
-class HuggingfaceCLIFile(RepoFile):
+class HuggingfaceCLIFile(HFStyleRepoFile):
     pass
 
 
-class HuggingfaceRepository(BaseRepository):
+class HuggingfaceRepository(HFStyleRepository):
     REGISTRY_URL = "https://huggingface.co"
 
     def fetch_metadata(self):
@@ -133,7 +138,7 @@ def handle_repo_info(repo_name, repo_info, runtime):
         )
 
 
-class Huggingface(BaseRepoModel):
+class Huggingface(HFStyleRepoModel):
     REGISTRY_URL = "https://huggingface.co/v2/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
