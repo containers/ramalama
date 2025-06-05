@@ -119,10 +119,10 @@ class RamaLamaShell(cmd.Cmd):
                 if sys.stdout.isatty():
                     print(f"\r{c}", end="", flush=True)
 
-                if i > 32:
+                if i > 64:
                     break
 
-                time.sleep(i)
+                time.sleep(min(i, 0.1))
                 i *= 2
 
         if response:
