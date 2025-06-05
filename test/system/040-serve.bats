@@ -331,6 +331,22 @@ verify_begin=".*run --rm"
     model=tiny
     name=c_$(safename)
     run_ramalama pull ${model}
+    run_ramalama serve -d --name=${name} --api llama-stack --port 1234 ${model}
+    # Health check: wait for service to be responsive on http://localhost:1234
+    for i in {1..10}; do
+        if curl -sSf http://localhost:1234/ > /dev/null; then
+            echo "Service is responsive on http://localhost:1234"
+            break
+        fi
+        sleep 1
+    done
+    if ! curl -sSf http://localhost:1234/ > /dev/null; then
+        echo "ERROR: Service did not become responsive on http://localhost:1234" >&2
+        run_ramalama stop ${name}
+        exit 1
+    fi
+    run_ramalama stop ${name}
+
     run_ramalama serve --name=${name} --api llama-stack --port 1234 --generate=kube:/tmp ${model}
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
