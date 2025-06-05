@@ -255,7 +255,7 @@ def inspect(args, name, format=None, ignore_stderr=False):
         conman_args += ["--format", format]
 
     conman_args += [name]
-    return run_cmd(conman_args, ignore_stderr=ignore_stderr, debug=args.debug).stdout.decode("utf-8").strip()
+    return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
 
 
 def stop_container(args, name):
@@ -269,8 +269,11 @@ def stop_container(args, name):
     pod = ""
     try:
         pod = inspect(args, name, format="{{ .Pod }}", ignore_stderr=True)
-    except Exception:  # Ignore errors, the stop command will handle it.
-        pass
+    except Exception:
+        try:
+            pod = inspect(args, f"{name}-pod-model-server", format="{{ .Pod }}", ignore_stderr=True)
+        except Exception:  # Ignore errors, the stop command will handle it.
+            pass
 
     if pod != "":
         conman_args = [conman, "pod", "rm", "-t=0", "--ignore", "--force", pod]
