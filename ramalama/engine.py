@@ -8,6 +8,7 @@ import sys
 import ramalama.common
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.console import EMOJI
+from ramalama.logger import logger
 
 
 class Engine:
@@ -269,10 +270,12 @@ def stop_container(args, name):
     pod = ""
     try:
         pod = inspect(args, name, format="{{ .Pod }}", ignore_stderr=True)
-    except Exception:
+    except Exception as e:
+        logger.debug(e)
         try:
             pod = inspect(args, f"{name}-pod-model-server", format="{{ .Pod }}", ignore_stderr=True)
-        except Exception:  # Ignore errors, the stop command will handle it.
+        except Exception as e:  # Ignore errors, the stop command will handle it.
+            logger.debug(e)
             pass
 
     if pod != "":
