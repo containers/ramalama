@@ -524,7 +524,7 @@ class Model(ModelBase):
                 draft_model = self.draft_model.get_model_path(args)
                 draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
 
-            exec_args += ["llama-server", "--port", args.port, "--model", exec_model_path]
+            exec_args += ["llama-server", "--port", args.port, "--model", exec_model_path, "--no-warmup"]
             if mmproj_path:
                 exec_args += ["--mmproj", mmproj_path]
             else:
