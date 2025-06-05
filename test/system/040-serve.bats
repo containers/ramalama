@@ -331,6 +331,12 @@ verify_begin=".*run --rm"
     model=tiny
     name=c_$(safename)
     run_ramalama pull ${model}
+    run_ramalama serve -d --name=${name} --api llama-stack --port 1234 ${model}
+#   FIXME: print statements on serve are not working when not using a TTY?
+#    is "$output" ".*Llama Stack RESTAPI: http://localhost:1234" "listen on llama stack RESTAPI"
+#    is "$output" ".*OpenAI RESTAPI: http://localhost:8084/v1/openai" "listen on OpenAI RESTAPI"
+    run_ramalama stop ${name}
+
     run_ramalama serve --name=${name} --api llama-stack --port 1234 --generate=kube:/tmp ${model}
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
@@ -338,7 +344,7 @@ verify_begin=".*run --rm"
     is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*hostPort: 1234" "Should container container port"
     is "$output" ".*llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml" "Should container llama-stack"
-
+    run_ramalama stop ${name}
     rm /tmp/$name.yaml
 }
 

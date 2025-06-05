@@ -153,20 +153,21 @@ spec:
             print(yaml)
             return
 
-        if self.args.generate.gen_type == "kube":
-            kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
-            return
+        if self.args.generate:
+            if self.args.generate.gen_type == "kube":
+                kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
+                return
 
-        if self.args.generate.gen_type == "quadlet/kube":
-            kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
-            k = quadlet.kube(self.name, f"RamaLama {self.model} Kubernetes YAML - llama Stack AI Model Service")
-            openai = f"http://localhost:{self.args.port}"
-            k.add("comment", f"# RamaLama service for {self.model}")
-            k.add("comment", "# Serving RESTAPIs:")
-            k.add("comment", f"#    Llama Stack: {openai}")
-            k.add("comment", f"#    OpenAI:      {openai}/v1/openai\n")
-            k.write(self.args.generate.output_dir)
-            return
+            if self.args.generate.gen_type == "quadlet/kube":
+                kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
+                k = quadlet.kube(self.name, f"RamaLama {self.model} Kubernetes YAML - llama Stack AI Model Service")
+                openai = f"http://localhost:{self.args.port}"
+                k.add("comment", f"# RamaLama service for {self.model}")
+                k.add("comment", "# Serving RESTAPIs:")
+                k.add("comment", f"#    Llama Stack: {openai}")
+                k.add("comment", f"#    OpenAI:      {openai}/v1/openai\n")
+                k.write(self.args.generate.output_dir)
+                return
 
         yaml_file = tempfile.NamedTemporaryFile(prefix='RamaLama_', delete=not self.args.debug)
         with open(yaml_file.name, 'w') as c:
