@@ -526,6 +526,13 @@ def set_accel_env_vars():
     get_accel()
 
 
+def set_gpu_type_env_vars():
+    if get_gpu_type_env_vars():
+        return
+
+    get_accel()
+
+
 def get_gpu_type_env_vars():
     gpu_vars = (
         "ASAHI_VISIBLE_DEVICES",
@@ -553,6 +560,7 @@ def get_accel_env_vars():
     for k in accel_vars:
         if k in os.environ:
             env_vars[k] = os.environ[k]
+
     return env_vars
 
 
@@ -669,7 +677,7 @@ def accel_image(config, args):
 
     conman = config['engine']
     images = config['images']
-    set_accel_env_vars()
+    set_gpu_type_env_vars()
     if gpu_type_env_vars := get_gpu_type_env_vars():
         gpu_type, _ = next(iter(gpu_type_env_vars.items()))
     else:
