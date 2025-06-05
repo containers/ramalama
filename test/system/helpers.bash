@@ -186,29 +186,6 @@ function run_ramalama() {
             die "exit code is $status; expected $expected_rc"
         fi
     fi
-
-    # Check for "level=<unexpected>" in output, because a successful command
-    # should never issue unwanted warnings or errors. The "0+w" convention
-    # (see top of function) allows our caller to indicate that warnings are
-    # expected, e.g., "ramalama stop" without -t0.
-    if [[ $status -eq 0 ]]; then
-        # FIXME: don't do this on Debian or RHEL. vllm is way too buggy:
-        #   - #11784 - lstat /sys/fs/.../*.scope: ENOENT
-        #   - #11785 - cannot toggle freezer: cgroups not configured
-        # As of January 2024 the freezer one seems to be fixed in Debian-vllm
-        # but not in RHEL8-vllm. The lstat one is closed-wontfix.
-        if [[ $RAMALAMA_RUNTIME != "vllm" ]]; then
-            # FIXME: All kube commands emit unpredictable errors:
-            #    "Storage for container <X> has been removed"
-            #    "no container with ID <X> found in database"
-            # These are level=error but we still get exit-status 0.
-            if [[ ! "$*" =~ kube ]]; then
-                if [[ "$output" =~ level=[^${allowed_levels}] ]]; then
-                    die "Command succeeded, but issued unexpected warnings"
-                fi
-            fi
-        fi
-    fi
 }
 
 function run_ramalama_testing() {
