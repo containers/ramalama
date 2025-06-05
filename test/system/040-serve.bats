@@ -338,7 +338,7 @@ verify_begin=".*run --rm"
     is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*hostPort: 1234" "Should container container port"
     is "$output" ".*llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml" "Should container llama-stack"
-
+    run_ramalama stop ${name}
     rm /tmp/$name.yaml
 }
 
