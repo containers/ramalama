@@ -38,32 +38,16 @@ help:
 	@echo "  - make clean"
 	@echo
 
-.PHONY: install-detailed-cov-requirements
 install-detailed-cov-requirements:
-	pip install \
-		pytest-cov \
-		pytest-func-cov \
-		pytest-report \
-		pytest-json \
-		pytest-html
-
+	uv pip install ".[cov-detailed]"
 
 .PHONY: install-cov-requirements
 install-cov-requirements:
-	pip install pytest-cov
+	uv pip install ".[cov]"
 
 .PHONY: install-requirements
 install-requirements:
-	pip install -U pipx
-	pipx install \
-			argcomplete~=3.0 \
-			black~=25.0 \
-			codespell~=2.0 \
-			flake8~=7.0 \
-			huggingface_hub~=0.28.0 \
-			isort~=6.0 \
-			pytest~=8.3 \
-			wheel~=0.45.0
+	uv pip install ".[dev]"
 
 .PHONY: install-completions
 install-completions: completions
@@ -125,7 +109,7 @@ ifneq (,$(wildcard /usr/bin/python3))
 	/usr/bin/python3 -m compileall -q .
 endif
 
-	! grep -ri "#\!/usr/bin/python3" .
+	! grep -ri --exclude-dir ".venv" --exclude-dir "*/.venv" "#\!/usr/bin/python3" .
 	flake8  */*.py */*/*.py libexec/* bin/*
 	shellcheck *.sh */*.sh */*/*.sh
 

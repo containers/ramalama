@@ -21,7 +21,27 @@ maintainers = [
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=7.0",
+    "pytest>=7.0",
+    "argcomplete~=3.0",
+    "black~=25.0",
+    "codespell~=2.0",
+    "flake8~=7.0",
+    "huggingface_hub~=0.28.0",
+    "isort~=6.0",
+    "pytest~=8.3",
+    "wheel~=0.45.0"
+]
+
+cov = [
+    "pytest-cov",
+]
+
+cov-detailed = [
+    "pytest-cov",
+    "pytest-func-cov",
+    "pytest-report",
+    "pytest-json",
+    "pytest-html"
 ]
 
 [project.urls]
