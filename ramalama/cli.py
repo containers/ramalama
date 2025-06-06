@@ -652,13 +652,13 @@ def convert_cli(args):
         raise ValueError("convert command cannot be run with the --nocontainer option.")
 
     target = args.TARGET
-    source_model = _get_source_model(args)
-
     tgt = shortnames.resolve(target)
     if not tgt:
         tgt = target
 
     model = ModelFactory(tgt, args).create_oci()
+
+    source_model = _get_source_model(args)
     model.convert(source_model, args)
 
 
