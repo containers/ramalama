@@ -12,11 +12,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install the latest version of uv and activate the environment
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          
       - name: Install dependencies
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y bash codespell python3-argcomplete pipx
+          sudo apt-get install -y bash codespell python3-argcomplete
           make install-requirements
 
       - name: Run format check
@@ -32,11 +38,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install the latest version of uv and activate the environment
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          
       - name: Install dependencies
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y bash codespell python3-argcomplete pipx
+          sudo apt-get install -y bash codespell python3-argcomplete
           make install-requirements
 
       - name: Run unit tests
@@ -47,11 +59,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install the latest version of uv and activate the environment
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          
       - name: install bats
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install podman bats bash codespell python3-argcomplete pipx
+           sudo apt-get install podman bats bash codespell python3-argcomplete
            make install-requirements
 
       - name: install ollama
@@ -81,11 +99,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install the latest version of uv and activate the environment
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          
       - name: install bats
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install podman bats bash codespell python3-argcomplete pipx git cmake libcurl4-openssl-dev
+           sudo apt-get install podman bats bash codespell python3-argcomplete git cmake libcurl4-openssl-dev
            make install-requirements
            sudo ./container-images/scripts/build_llama_and_whisper.sh
            sudo python -m pip install . --prefix=/usr
@@ -113,11 +137,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install the latest version of uv and activate the environment
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          
       - name: install bats
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install bats bash codespell python3-argcomplete pipx
+           sudo apt-get install bats bash codespell python3-argcomplete
            make install-requirements
 
       - name: install ollama
@@ -166,6 +196,12 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install the latest version of uv and activate the environment
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          
       - name: install golang
         shell: bash
         run: |
@@ -181,7 +217,6 @@ jobs:
         run: |
            make install-requirements
            make validate
-           pipx install .
            make bats-nocontainer
 
 # FIXME: ci script should be able to run on MAC.
