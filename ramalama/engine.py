@@ -8,6 +8,7 @@ import sys
 import ramalama.common
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.console import EMOJI
+from ramalama.logger import logger
 
 
 class Engine:
@@ -255,7 +256,7 @@ def inspect(args, name, format=None, ignore_stderr=False):
         conman_args += ["--format", format]
 
     conman_args += [name]
-    return run_cmd(conman_args, ignore_stderr=ignore_stderr, debug=args.debug).stdout.decode("utf-8").strip()
+    return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
 
 
 def stop_container(args, name):
@@ -269,8 +270,13 @@ def stop_container(args, name):
     pod = ""
     try:
         pod = inspect(args, name, format="{{ .Pod }}", ignore_stderr=True)
-    except Exception:  # Ignore errors, the stop command will handle it.
-        pass
+    except Exception as e1:
+        logger.debug(e1)
+        try:
+            pod = inspect(args, f"{name}-pod-model-server", format="{{ .Pod }}", ignore_stderr=True)
+        except Exception as e2:  # Ignore errors, the stop command will handle it.
+            logger.debug(e2)
+            pass
 
     if pod != "":
         conman_args = [conman, "pod", "rm", "-t=0", "--ignore", "--force", pod]
