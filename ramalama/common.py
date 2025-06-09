@@ -59,7 +59,7 @@ def confirm_no_gpu(name, provider) -> bool:
         print("Invalid input. Please enter 'yes' or 'no'.")
 
 
-def handle_provider(machine) -> bool:
+def handle_provider(machine) -> bool | None:
     global podman_machine_accel
     name = machine.get("Name")
     provider = machine.get("VMType")

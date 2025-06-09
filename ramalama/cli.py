@@ -297,6 +297,8 @@ def login_parser(subparsers):
 
 
 def normalize_registry(registry):
+    registry = registry or CONFIG.transport
+
     if not registry or registry == "" or registry.startswith("oci://"):
         return "oci://"
 

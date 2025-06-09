@@ -99,7 +99,7 @@ class TestGetEngine:
     def test_get_engine_with_toolboxenv(self):
         with patch("os.path.exists", side_effect=lambda x: x == "/run/.toolboxenv"):
             with patch("os.getenv", return_value=None):
-                assert get_engine() == None
+                assert get_engine() is None
     
     def test_get_engine_with_podman_available(self):
         with patch("ramalama.config.available", side_effect=lambda x: x == "podman"):
@@ -109,7 +109,7 @@ class TestGetEngine:
     def test_get_engine_with_docker_available_osx(self):
         with patch("ramalama.config.available", side_effect=lambda x: x == "docker"):
             with patch("sys.platform", "darwin"):
-                assert get_engine() == None
+                assert get_engine() is None
 
     def test_get_engine_with_docker_available_linux(self):
         with patch("ramalama.config.available", side_effect=lambda x: x == "docker"):
