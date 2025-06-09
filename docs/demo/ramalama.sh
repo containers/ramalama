@@ -71,7 +71,7 @@ run() {
     echo_color "Serve granite via RamaLama run"
     exec_color "ramalama --dryrun run granite | grep --color podman"
     echo ""
-    exec_color "ramalama --dryrun run granite | grep --color quay.io.*latest"
+    exec_color "ramalama --dryrun run granite | grep --color \"quay.io[^ ]*\""
     echo ""
     exec_color "ramalama --dryrun run granite | grep --color -- --cap-drop.*privileges"
     echo ""
@@ -88,7 +88,7 @@ run() {
 
 serve() {
     echo_color "Serve granite via RamaLama model service"
-    exec_color "ramalama serve --name granite-service -d granite"
+    exec_color "ramalama serve --port 8080 --name granite-service -d granite"
     echo ""
 
     echo_color "List RamaLama containers"
@@ -98,6 +98,23 @@ serve() {
     echo_color "list containers via Podman"
     exec_color "podman ps "
     echo ""
+
+    echo_color "Use web browser to show interaction"
+    exec_color "firefox http://localhost:8080"
+
+    echo_color "Stop the ramalama container"
+    exec_color "ramalama stop granite-service"
+    echo ""
+
+    echo_color "Serve granite via RamaLama model service"
+    exec_color "ramalama serve --port 8085 --api llama-stack --name granite-service -d granite"
+    echo ""
+
+    echo_color "Use web browser to show interaction"
+    exec_color "firefox http://localhost:8085"
+
+    echo_color "Use web browser to show interaction"
+    exec_color "firefox http://localhost:8085/v1/openai"
 
     echo_color "Stop the ramalama container"
     exec_color "ramalama stop granite-service"
@@ -160,6 +177,8 @@ version
 pull
 
 run
+
+serve
 
 kubernetes
 
