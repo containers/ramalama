@@ -8,8 +8,8 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.cli import configure_subcommands, create_argument_parser
-from ramalama.common import DEFAULT_IMAGE, accel_image, minor_release, rm_until_substring, verify_checksum
-from ramalama.config import load_and_merge_config
+from ramalama.common import accel_image, minor_release, rm_until_substring, verify_checksum
+from ramalama.config import ConfigLoader, DEFAULT_IMAGE
 
 
 @pytest.mark.parametrize(
@@ -129,9 +129,27 @@ image = "{config_override}"
             env["RAMALAMA_IMAGE"] = env_override
 
         with patch.dict("os.environ", env, clear=True):
-            config = load_and_merge_config()
+            
+            config = ConfigLoader.load()
             with patch("ramalama.cli.CONFIG", config):
                 parser = create_argument_parser("test_accel_image")
                 configure_subcommands(parser)
                 args = parser.parse_args(cmdline)
                 assert accel_image(config, args) == expected_result
+
+
+@patch("ramalama.common.run_cmd")
+@patch("ramalama.common.handle_provider")
+def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
+    mock_run_cmd.return_value.stdout = b'[{"Name": "myvm"}]'
+    mock_handle_provider.return_value = True
+
+    from ramalama.common import apple_vm
+    result = apple_vm("podman")
+
+    assert result is True
+    mock_run_cmd.assert_called_once_with(
+        ["podman", "machine", "list", "--format", "json", "--all-providers"],
+        ignore_stderr=True
+    )
+    mock_handle_provider.assert_called_once_with({"Name": "myvm"})

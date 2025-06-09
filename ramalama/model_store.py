@@ -14,7 +14,7 @@ from ramalama.common import download_file, generate_sha256, perror, verify_check
 from ramalama.endian import EndianMismatchError, get_system_endianness
 from ramalama.gguf_parser import GGUFInfoParser, GGUFModelInfo
 from ramalama.logger import logger
-
+from ramalama.arg_types import EngineArgs
 
 def sanitize_filename(filename: str) -> str:
     return filename.replace(":", "-")
@@ -251,13 +251,7 @@ class GlobalModelStore:
                     models[model_name] = collected_files
 
         if show_container:
-            oci_models = ramalama.oci.list_models(
-                dotdict(
-                    {
-                        "engine": engine,
-                    }
-                )
-            )
+            oci_models = ramalama.oci.list_models(EngineArgs(engine=engine))
             for oci_model in oci_models:
                 name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
                 # ramalama.oci.list_models provides modified as timestamp string, convert it to unix timestamp

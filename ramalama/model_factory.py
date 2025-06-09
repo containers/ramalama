@@ -13,13 +13,14 @@ from ramalama.modelscope import ModelScope
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.url import URL
+from ramalama.arg_types import StoreArgs
 
 
 class ModelFactory:
     def __init__(
         self,
         model: str,
-        args: argparse,
+        args: StoreArgs,
         transport: str = "ollama",
         ignore_stderr: bool = False,
         no_children: bool = False,
@@ -151,7 +152,7 @@ class ModelFactory:
         return model
 
 
-def New(name, args, transport=CONFIG["transport"]):
+def New(name, args, transport=CONFIG.transport):
     return ModelFactory(name, args, transport=transport).create()
 
 

@@ -9,7 +9,7 @@ import ramalama.common
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.console import EMOJI
 from ramalama.logger import logger
-
+from ramalama.arg_types import EngineArgs
 
 class Engine:
     def __init__(self, args):

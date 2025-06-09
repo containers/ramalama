@@ -1,146 +1,138 @@
 import os
+import sys
 from collections import ChainMap
 from pathlib import Path
 from typing import Any, Dict
-
-from ramalama.common import container_manager, default_image
+from dataclasses import dataclass, field
+from functools import lru_cache
 from ramalama.toml_parser import TOMLParser
+from ramalama.arg_types import ENGINE_TYPES
+from ramalama.common import available, apple_vm
 
-DEFAULT_PORT_RANGE = (8080, 8090)
-DEFAULT_PORT = DEFAULT_PORT_RANGE[0]
+DEFAULT_PORT_RANGE: tuple[int] = (8080, 8090)
+DEFAULT_PORT: int = DEFAULT_PORT_RANGE[0]
+DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
 
-def get_store():
+@lru_cache(maxsize=1)
+def get_engine() -> ENGINE_TYPES | None:
+    engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
+    if engine is not None:
+        if os.path.basename(engine) == "podman" and sys.platform == "darwin":
+            # apple_vm triggers setting global variable podman_machine_accel side effect
+            apple_vm(engine)
+        return engine
+
+    if os.path.exists("/run/.toolboxenv"):
+        return None
+
+    if available("podman") and (sys.platform != "darwin" or apple_vm("podman")):
+        return "podman"
+
+    if available("docker") and sys.platform != "darwin":
+        return "docker"
+    
+    return None
+
+
+def get_store() -> str:
     if os.geteuid() == 0:
         return "/var/lib/ramalama"
 
     return os.path.expanduser("~/.local/share/ramalama")
 
 
-def use_container():
+def use_container() -> bool:
     use_container = os.getenv("RAMALAMA_IN_CONTAINER")
     if use_container:
         return use_container.lower() == "true"
 
-    conman = container_manager()
-    return conman is not None
+    engine = get_engine()
+    return engine is not None
 
 
-def load_config() -> Dict[str, Any]:
-    """Load configuration from a list of paths, in priority order."""
-    parser = TOMLParser()
-    config_path = os.getenv("RAMALAMA_CONFIG")
-    if config_path:
-        return parser.parse_file(config_path)
-
-    config = {}
-    config_paths = [
-        "/usr/share/ramalama/ramalama.conf",
-        "/usr/local/share/ramalama/ramalama.conf",
-        "/etc/ramalama/ramalama.conf",
-    ]
-    config_home = os.getenv("XDG_CONFIG_HOME", os.path.join("~", ".config"))
-    config_paths.extend([os.path.expanduser(os.path.join(config_home, "ramalama", "ramalama.conf"))])
-
-    # Load configuration from each path
-    for path in config_paths:
-        if os.path.exists(path):
-            # Load the main config file
-            config = parser.parse_file(path)
-        if os.path.isdir(path + ".d"):
-            # Load all .conf files in ramalama.conf.d directory
-            for conf_file in sorted(Path(path + ".d").glob("*.conf")):
-                config = parser.parse_file(conf_file)
-
-    return config
-
-
-def load_config_from_env(config: Dict[str, Any], env: Dict):
-    """Load configuration from environment variables."""
-    envvars = {
-        'container': 'RAMALAMA_IN_CONTAINER',
-        'engine': 'RAMALAMA_CONTAINER_ENGINE',
-        'image': 'RAMALAMA_IMAGE',
-        'store': 'RAMALAMA_STORE',
-        'transport': 'RAMALAMA_TRANSPORT',
-    }
-    for k, v in envvars.items():
-        if value := env.get(v):
-            config[k] = value
+@dataclass
+class Config:
+    carimage: str = "registry.access.redhat.com/ubi9-micro:latest"
+    container: bool = field(default_factory=use_container)
+    ctx_size: int = 2048
+    engine: ENGINE_TYPES | None = field(default_factory=get_engine)
+    env: list[str] = field(default_factory=list)
+    host: str = "0.0.0.0"
+    image: str | None = None
+    images: dict[str, str] = field(default_factory=lambda: {
+        "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
+        "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
+        "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
+        "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
+        "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
+        "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
+    })
+    api: str = "none"
+    keep_groups: bool = False
+    ngl: int = -1
+    threads: int = -1
+    nocontainer: bool = False
+    port: str = str(DEFAULT_PORT)
+    pull: str = "newer"
+    runtime: str = "llama.cpp"
+    store: str = field(default_factory=get_store)
+    temp: str = "0.8"
+    transport: str = "ollama"
+    use_model_store: bool = True
+    ocr: bool = False
+    default_image: str = DEFAULT_IMAGE
 
 
-def load_config_defaults(config: Dict[str, Any]):
-    """Set configuration defaults if these are not yet set."""
-    config.setdefault('carimage', "registry.access.redhat.com/ubi9-micro:latest")
-    config.setdefault('container', use_container())
-    config.setdefault('ctx_size', 2048)
-    config.setdefault('engine', container_manager())
-    config.setdefault('env', [])
-    config.setdefault('host', "0.0.0.0")
-    config.setdefault('image', default_image())
-    config.setdefault(
-        'images',
-        {
-            "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
-            "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
-            "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
-            "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
-            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
-            "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
-        },
-    )
-    config.setdefault('api', 'none')
-    config.setdefault('keep_groups', False)
-    config.setdefault('ngl', -1)
-    config.setdefault('threads', -1)
-    config.setdefault('nocontainer', False)
-    config.setdefault('port', str(DEFAULT_PORT))
-    config.setdefault('pull', "newer")
-    config.setdefault('runtime', 'llama.cpp')
-    config.setdefault('store', get_store())
-    config.setdefault('temp', "0.8")
-    config.setdefault('transport', "ollama")
-    config.setdefault('use_model_store', True)
-    config.setdefault('ocr', False)
+class ConfigLoader:
+    @staticmethod
+    def load_file_config() -> dict[str, Any]:
+        parser = TOMLParser()
+        config_path = os.getenv("RAMALAMA_CONFIG")
+
+        if config_path and os.path.exists(config_path):
+            config = parser.parse_file(config_path)
+            return config.get("ramalama", {})
+
+        config = {}
+        config_paths = [
+            "/usr/share/ramalama/ramalama.conf",
+            "/usr/local/share/ramalama/ramalama.conf",
+            "/etc/ramalama/ramalama.conf",
+            os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama", "ramalama.conf")),
+        ]
+
+        for path in config_paths:
+            if os.path.exists(path):
+                config = parser.parse_file(path)
+            if os.path.isdir(path + ".d"):
+                for conf_file in sorted(Path(path + ".d").glob("*.conf")):
+                    config = parser.parse_file(conf_file)
+
+ 
+        return config.get("ramalama", {})
+
+    @staticmethod
+    def load_env_config(env: dict | None = None) -> dict[str, Any]:
+        if env is None:
+            env = os.environ
+        envvars = {
+            'container': 'RAMALAMA_IN_CONTAINER',
+            'engine': 'RAMALAMA_CONTAINER_ENGINE',
+            'image': 'RAMALAMA_IMAGE',
+            'store': 'RAMALAMA_STORE',
+            'transport': 'RAMALAMA_TRANSPORT',
+        }
+        config = {k: value for k, v in envvars.items() if (value := env.get(v)) is not None}
+        return config
+
+    @staticmethod
+    def load() -> Config:
+        file_config = ConfigLoader.load_file_config()
+        env_config = ConfigLoader.load_env_config()
+
+        # env variables take precedence over file config
+        return Config(**(file_config | env_config))
 
 
-class Config(ChainMap):
-    def __init__(self, from_env, from_file, default):
-        super().__init__(from_env, from_file, default)
-
-    @property
-    def from_env(self):
-        return self.maps[0]
-
-    @property
-    def from_file(self):
-        return self.maps[1]
-
-    @property
-    def default(self):
-        return self.maps[2]
-
-    def is_set(self, key):
-        if key in self.from_env:
-            return True
-        if key in self.from_file:
-            return True
-        return False
-
-
-def load_and_merge_config() -> Dict[str, Any]:
-    """Load configuration from files, merge with environment variables and set defaults for options not set."""
-    config = load_config()
-
-    ramalama_config = config.setdefault('ramalama', {})
-
-    env_config = {}
-    load_config_from_env(env_config, os.environ)
-
-    default_config = {}
-    load_config_defaults(default_config)
-
-    return Config(env_config, ramalama_config, default_config)
-
-
-CONFIG = load_and_merge_config()
+CONFIG = ConfigLoader.load()
