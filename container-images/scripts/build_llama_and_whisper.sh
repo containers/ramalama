@@ -70,9 +70,13 @@ dnf_install_rocm() {
   rm_non_ubi_repos
 }
 
-dnf_install_s390() {
-  # I think this was for s390, maybe ppc also
-  dnf install -y "openblas-devel"
+dnf_install_cpu() {
+  dnf install -y openblas-devel
+  # el10 and fedora do not ships pkg-config pc file for openblas
+  if  ! pkg-config --exists openblas; then
+    export BLAS_INCLUDE_DIRS=/usr/include/openblas
+    export BLAS_LIBRARY_DIRS=/usr/lib64
+  fi
 }
 
 add_stream_repo() {
@@ -151,7 +155,7 @@ dnf_install() {
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
       dnf_install_mesa # on x86_64 and aarch64 we use vulkan via mesa
     else
-      dnf_install_s390
+      dnf_install_cpu
     fi
   elif [[ "$containerfile" =~ rocm* ]]; then
     dnf_install_rocm
@@ -163,6 +167,8 @@ dnf_install() {
     dnf_install_intel_gpu
   elif [ "$containerfile" = "cann" ]; then
     dnf_install_cann
+  elif [ "$containerfile" = "cpu" ]; then
+    dnf_install_cpu
   fi
 
   dnf_install_ffmpeg
@@ -325,6 +331,9 @@ main() {
     elif [ "$uname_m" = "s390x" ]; then
       common_flags+=("-DGGML_VXE=ON" "-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
     fi
+    ;;
+  cpu)
+    common_flags+=("-DGGML_VXE=ON" "-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
     ;;
   esac
 
