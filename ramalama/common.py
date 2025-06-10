@@ -447,12 +447,39 @@ def check_ascend():
 def check_rocm_amd():
     gpu_num = 0
     gpu_bytes = 0
-    for i, fp in enumerate(sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total'))):
-        with open(fp, 'r') as file:
-            content = int(file.read())
-            if content > 1073741824 and content > gpu_bytes:
-                gpu_bytes = content
-                gpu_num = i
+
+    def parse_props(path):
+        with open(path) as file:
+            return {key: int(value) for key, _, value in (line.partition(' ') for line in file)}
+
+    def kfd_gpus():
+        for np in sorted(glob.glob('/sys/devices/virtual/kfd/kfd/topology/nodes/*')):
+            props = parse_props(np + '/properties')
+
+            # Skip CPUs
+            if props['gfx_target_version'] == 0:
+                continue
+
+            yield np, props
+
+    for i, (np, props) in enumerate(kfd_gpus()):
+        # Radeon GPUs older than gfx900 are not supported by ROCm (e.g. Polaris)
+        if props['gfx_target_version'] < 90000:
+            continue
+
+        mem_banks_count = int(props['mem_banks_count'])
+        mem_bytes = 0
+        for bank in range(mem_banks_count):
+            bank_props = parse_props(np + f'/mem_banks/{bank}/properties')
+            # See /usr/include/linux/kfd_sysfs.h for possible heap types
+            #
+            # Count public and private framebuffer memory as VRAM
+            if bank_props['heap_type'] in [1, 2]:
+                mem_bytes += int(bank_props['size_in_bytes'])
+
+        if mem_bytes > 1073741824 and mem_bytes > gpu_bytes:
+            gpu_bytes = mem_bytes
+            gpu_num = i
 
     if gpu_bytes:
         os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
