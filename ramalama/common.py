@@ -36,6 +36,8 @@ HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already 
 
 DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
+MIN_VRAM_BYTES = 1073741824 # 1GiB
+
 
 _engine = -1  # -1 means cached variable not set yet
 _nvidia = -1  # -1 means cached variable not set yet
@@ -463,7 +465,7 @@ def check_rocm_amd():
             if bank_props['heap_type'] in [1, 2]:
                 mem_bytes += int(bank_props['size_in_bytes'])
 
-        if mem_bytes > 1073741824 and mem_bytes > gpu_bytes:
+        if mem_bytes > MIN_VRAM_BYTES and mem_bytes > gpu_bytes:
             gpu_bytes = mem_bytes
             gpu_num = i
 
