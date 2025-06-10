@@ -36,7 +36,7 @@ HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already 
 
 DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
-MIN_VRAM_BYTES = 1073741824 # 1GiB
+MIN_VRAM_BYTES = 1073741824  # 1GiB
 
 
 _engine = -1  # -1 means cached variable not set yet

@@ -2,10 +2,12 @@
 
 import glob
 
+
 def parse_props(path):
     """Returns a dict corresponding to a KFD properties file"""
     with open(path) as file:
         return {key: int(value) for key, _, value in (line.partition(' ') for line in file)}
+
 
 def gpus():
     """Yields GPU nodes within KFD topology and their properties"""
