@@ -7,7 +7,7 @@ import tempfile
 class Shortnames:
     """Shortnames utility class"""
 
-    shortnames = {}
+    shortnames: dict[str, str] = {}
 
     def __init__(self):
         data_path = sysconfig.get_path("data")
@@ -34,13 +34,13 @@ class Shortnames:
         # Remove leading and trailing quotes from keys and values
         self.shortnames = {self._strip_quotes(key): self._strip_quotes(value) for key, value in self.shortnames.items()}
 
-    def _strip_quotes(self, s):
+    def _strip_quotes(self, s) -> str:
         return s.strip("'\"")
 
-    def resolve(self, model):
+    def resolve(self, model) -> str | None:
         return self.shortnames.get(model)
 
-    def create_shortname_file(self):
+    def create_shortname_file(self) -> str:
         shortnamefile = tempfile.NamedTemporaryFile(prefix='RamaLama_shortname_', delete=False)
         # Open the file for writing.
         with open(shortnamefile.name, 'w') as c:

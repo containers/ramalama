@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 license = { file = "LICENSE" }
 keywords = ["ramalama", "llama", "AI"]
 dependencies = [
-  "argcomplete"
+  "argcomplete",
 ]
 maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
@@ -29,7 +29,8 @@ dev = [
     "huggingface_hub~=0.32.4",
     "isort~=6.0",
     "pytest~=8.3",
-    "wheel~=0.45.0"
+    "wheel~=0.45.0",
+    "mypy",
 ]
 
 cov = [
@@ -89,6 +90,12 @@ log_cli = true
 log_cli_level = "DEBUG"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.13",
+    "ty>=0.0.1a8",
+]
 
 
 [tool.setuptools.packages.find]

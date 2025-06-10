@@ -1,16 +1,32 @@
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Protocol
+
 ENGINE_TYPES = Literal["podman", "docker"]
 
 
+class EngineArgType(Protocol):
+    engine: ENGINE_TYPES | None
+
+
 @dataclass
-class StoreArgs:
+class EngineArgs(EngineArgType):
+    engine: ENGINE_TYPES | None
+
+
+class ContainerArgType(Protocol):
+    container: bool | None
+
+
+class StoreArgType(Protocol):
+    engine: ENGINE_TYPES | None
+    container: bool
     store: str
     use_model_store: bool
-    engine: ENGINE_TYPES
-    container: bool
 
 
 @dataclass
-class EngineArgs:
+class StoreArgs(StoreArgType):
     engine: ENGINE_TYPES | None
+    container: bool
+    store: str
+    use_model_store: bool

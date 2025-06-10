@@ -1,6 +1,7 @@
 """ramalama common module."""
 
 from __future__ import annotations
+
 import glob
 import hashlib
 import json
@@ -15,14 +16,16 @@ import sys
 import sysconfig
 import time
 import urllib.error
-from typing import List, Literal, TYPE_CHECKING
 from functools import lru_cache
+from typing import TYPE_CHECKING, Callable, List, Literal, Protocol, cast, get_args
+
 import ramalama.console as console
 from ramalama.http_client import HttpClient
 from ramalama.logger import logger
 from ramalama.version import version
 
 if TYPE_CHECKING:
+    from ramalama.arg_types import ENGINE_TYPES, ContainerArgType
     from ramalama.config import Config
 
 MNT_DIR = "/mnt/models"
@@ -74,7 +77,7 @@ def handle_provider(machine) -> bool | None:
     return None
 
 
-def apple_vm(engine) -> bool:
+def apple_vm(engine: ENGINE_TYPES) -> bool:
     podman_machine_list = [engine, "machine", "list", "--format", "json", "--all-providers"]
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
@@ -92,7 +95,7 @@ def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def available(cmd) -> bool:
+def available(cmd: str) -> bool:
     return shutil.which(cmd) is not None
 
 
@@ -101,7 +104,7 @@ def quoted(arr) -> str:
     return " ".join(['"' + element + '"' if ' ' in element else element for element in arr])
 
 
-def exec_cmd(args, stdout2null=False, stderr2null=False):
+def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
     logger.debug(f"exec_cmd: {quoted(args)}")
 
     if stdout2null:
@@ -168,7 +171,7 @@ def generate_sha256(to_hash: str) -> str:
     return f"sha256:{h.hexdigest()}"
 
 
-def verify_checksum(filename) -> bool:
+def verify_checksum(filename: str) -> bool:
     """
     Verifies if the SHA-256 checksum of a file matches the checksum provided in
     the filename.
@@ -207,7 +210,7 @@ def verify_checksum(filename) -> bool:
     return sha256_hash.hexdigest() == expected_checksum
 
 
-def download_and_verify(url, target_path, max_retries=2):
+def download_and_verify(url: str, target_path: str, max_retries: int = 2):
     """
     Downloads a file from a given URL and verifies its checksum.
     If the checksum does not match, it retries the download.
@@ -235,7 +238,7 @@ def genname():
     return "ramalama_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
-def download_file(url, dest_path, headers=None, show_progress=True):
+def download_file(url: str, dest_path: str, headers: dict | None = None, show_progress: bool = True):
     """
     Downloads a file from a given URL to a specified destination path.
 
@@ -302,7 +305,7 @@ def download_file(url, dest_path, headers=None, show_progress=True):
         time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
 
 
-def engine_version(engine):
+def engine_version(engine: ENGINE_TYPES) -> str:
     # Create manifest list for target with imageid
     cmd_args = [engine, "version", "--format", "{{ .Client.Version }}"]
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
@@ -352,7 +355,7 @@ def check_asahi() -> Literal["asahi"] | None:
     return None
 
 
-def check_metal(args):
+def check_metal(args: ContainerArgType) -> bool:
     if args.container:
         return False
     return platform.system() == "Darwin"
@@ -451,25 +454,22 @@ def check_mthreads() -> Literal["musa"] | None:
     return None
 
 
-def get_accel() -> Literal["asahi", "cuda", "cann", "hip", "intel", "musa", "none"]:
-    if gpu_type := check_asahi():
-        return gpu_type
+AccelType = Literal["asahi", "cuda", "cann", "hip", "intel", "musa"]
 
-    if gpu_type := check_nvidia():
-        return gpu_type
 
-    if gpu_type := check_ascend():
-        return gpu_type
-
-    if gpu_type := check_rocm_amd():
-        return gpu_type
-
-    if gpu_type := check_intel():
-        return gpu_type
-
-    if gpu_type := check_mthreads():
-        return gpu_type
-
+def get_accel() -> AccelType | Literal["none"]:
+    checks: tuple[Callable[[], AccelType | None], ...] = (
+        check_asahi,
+        cast(Callable[[], Literal['cuda'] | None], check_nvidia),
+        check_ascend,
+        check_rocm_amd,
+        check_intel,
+        check_mthreads,
+    )
+    for check in checks:
+        result = check()
+        if result:
+            return result
     return "none"
 
 
@@ -498,16 +498,7 @@ GPUEnvVar = Literal[
 
 
 def get_gpu_type_env_vars() -> dict[GPUEnvVar, str]:
-    gpu_vars: tuple[GPUEnvVar, ...] = (
-        "ASAHI_VISIBLE_DEVICES",
-        "ASCEND_VISIBLE_DEVICES",
-        "CUDA_VISIBLE_DEVICES",
-        "HIP_VISIBLE_DEVICES",
-        "INTEL_VISIBLE_DEVICES",
-        "MUSA_VISIBLE_DEVICES",
-    )
-
-    return {k: os.environ[k] for k in gpu_vars if k in os.environ}
+    return {k: os.environ[k] for k in get_args(GPUEnvVar) if k in os.environ}
 
 
 AccelEnvVar = Literal[
@@ -516,18 +507,12 @@ AccelEnvVar = Literal[
     "HSA_OVERRIDE_GFX_VERSION",
 ]
 
+
 def get_accel_env_vars() -> dict[GPUEnvVar | AccelEnvVar, str]:
-    # Add other accelerator-specific vars
-    accel_vars = (
-        "CUDA_LAUNCH_BLOCKING",
-        "HSA_VISIBLE_DEVICES",
-        "HSA_OVERRIDE_GFX_VERSION",
-    )
-
-    return get_gpu_type_env_vars() | {k: os.environ[k] for k in accel_vars if k in os.environ}
+    return get_gpu_type_env_vars() | {k: os.environ[k] for k in get_args(AccelEnvVar) if k in os.environ}
 
 
-def rm_until_substring(input, substring):
+def rm_until_substring(input: str, substring: str) -> str:
     pos = input.find(substring)
     if pos == -1:
         return input
@@ -536,7 +521,7 @@ def rm_until_substring(input, substring):
     return ''.join(input[i] for i in range(pos + len(substring), len(input)))
 
 
-def minor_release():
+def minor_release() -> str:
     split = version().split(".")
     vers = ".".join(split[:2])
     if vers == "0":
@@ -544,13 +529,13 @@ def minor_release():
     return vers
 
 
-def tagged_image(image):
+def tagged_image(image: str) -> str:
     if len(image.split(":")) > 1:
         return image
     return f"{image}:{minor_release()}"
 
 
-def get_cmd_with_wrapper(cmd_arg):
+def get_cmd_with_wrapper(cmd_arg: str) -> str:
     data_path = sysconfig.get_path("data")
     for dir in ["", f"{data_path}/", "/opt/homebrew/", "/usr/local/", "/usr/"]:
         if os.path.exists(f"{dir}libexec/ramalama/{cmd_arg}"):
@@ -599,6 +584,9 @@ def select_cuda_image(config: Config) -> str:
     # Get the default CUDA image from config
     cuda_image = config.images.get("CUDA_VISIBLE_DEVICES")
 
+    if cuda_image is None:
+        raise RuntimeError("No image repository found for CUDA_VISIBLE_DEVICES in config.")
+
     # Check CUDA version and select appropriate image
     cuda_version = check_cuda_version()
 
@@ -610,11 +598,36 @@ def select_cuda_image(config: Config) -> str:
     else:
         raise RuntimeError(f"CUDA version {cuda_version} is not supported. Minimum required version is 12.4.")
 
-def accel_image(config: Config, args) -> str:
+
+class AccelImageArgsWithImage(Protocol):
+    image: str
+
+
+class AccelImageArgsVLLMRuntime(Protocol):
+    runtime: Literal["vllm"]
+
+
+class AccelImageArgsOtherRuntime(Protocol):
+    runtime: str
+    container: bool
+    quiet: bool
+
+
+class AccelImageArgsOtherRuntimeRAG(Protocol):
+    rag: bool
+    runtime: str
+    container: bool
+    quiet: bool
+
+
+AccelImageArgs = None | AccelImageArgsVLLMRuntime | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
+
+
+def accel_image(config: Config, args: AccelImageArgs) -> str:
     """
     Selects and the appropriate image based on config, arguments, environment.
     """
-    if args and getattr(args, "image", None) and len(args.image.split(":")) > 1:
+    if args and hasattr(args, "image") and len(args.image.split(":")) > 1:
         return args.image
 
     if config.image is not None:
@@ -624,7 +637,7 @@ def accel_image(config: Config, args) -> str:
     gpu_type = next(iter(get_gpu_type_env_vars()), None)
 
     # Get image based on detected GPU type
-    image = config.images.get(gpu_type, config.default_image)
+    image = config.images.get(gpu_type or "", config.default_image)  # the or "" is just to keep mypy happy
 
     # Special handling for CUDA images based on version - only if the image is the default CUDA image
     cuda_image = config.images.get("CUDA_VISIBLE_DEVICES")
@@ -647,7 +660,7 @@ def accel_image(config: Config, args) -> str:
     return f"{image}:latest"
 
 
-def attempt_to_use_versioned(conman, image, vers, quiet) -> bool:
+def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool) -> bool:
     try:
         # check if versioned image exists locally
         if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True):

@@ -1,9 +1,9 @@
-import argparse
 import copy
 import re
 from typing import Callable, Tuple, Union
 from urllib.parse import urlparse
 
+from ramalama.arg_types import StoreArgs
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
 from ramalama.huggingface import Huggingface
@@ -13,7 +13,6 @@ from ramalama.modelscope import ModelScope
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.url import URL
-from ramalama.arg_types import StoreArgs
 
 
 class ModelFactory:

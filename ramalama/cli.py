@@ -6,7 +6,7 @@ import os
 import shlex
 import subprocess
 import sys
-import urllib
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 

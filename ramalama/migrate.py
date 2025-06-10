@@ -4,11 +4,11 @@
 import os
 import shutil
 
+from ramalama.arg_types import StoreArgs
 from ramalama.common import generate_sha256
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
 from ramalama.model_store import GlobalModelStore, SnapshotFile, SnapshotFileType
-from ramalama.arg_types import StoreArgs
 
 
 class ModelStoreImport:
@@ -61,10 +61,7 @@ class ModelStoreImport:
                         engine="podman",
                         container=True,
                     )
-                    m = ModelFactory(
-                        os.path.join(model, file),
-                        args=args
-                    ).create()
+                    m = ModelFactory(os.path.join(model, file), args=args).create()
                     _, model_tag, _ = m.extract_model_identifiers()
                     _, _, all = m.store.get_cached_files(model_tag)
                     if all:

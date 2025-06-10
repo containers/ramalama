@@ -1,15 +1,15 @@
 import os
 import sys
-from collections import ChainMap
-from pathlib import Path
-from typing import Any, Dict
 from dataclasses import dataclass, field
 from functools import lru_cache
-from ramalama.toml_parser import TOMLParser
-from ramalama.arg_types import ENGINE_TYPES
-from ramalama.common import available, apple_vm
+from pathlib import Path
+from typing import Any, Mapping, cast, get_args
 
-DEFAULT_PORT_RANGE: tuple[int] = (8080, 8090)
+from ramalama.arg_types import ENGINE_TYPES
+from ramalama.common import apple_vm, available
+from ramalama.toml_parser import TOMLParser
+
+DEFAULT_PORT_RANGE: tuple[int, int] = (8080, 8090)
 DEFAULT_PORT: int = DEFAULT_PORT_RANGE[0]
 DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
@@ -17,10 +17,15 @@ DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 @lru_cache(maxsize=1)
 def get_engine() -> ENGINE_TYPES | None:
     engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
+
     if engine is not None:
-        if os.path.basename(engine) == "podman" and sys.platform == "darwin":
+        engine_basename = os.path.basename(engine)
+        if engine_basename not in get_args(ENGINE_TYPES):
+            raise ValueError(f"Invalid container engine: {engine}. Must be one of {get_args(ENGINE_TYPES)}")
+
+        if engine_basename == "podman" and sys.platform == "darwin":
             # apple_vm triggers setting global variable podman_machine_accel side effect
-            apple_vm(engine)
+            apple_vm(cast(ENGINE_TYPES, engine_basename))
         return engine
 
     if os.path.exists("/run/.toolboxenv"):
@@ -31,7 +36,7 @@ def get_engine() -> ENGINE_TYPES | None:
 
     if available("docker") and sys.platform != "darwin":
         return "docker"
-    
+
     return None
 
 
@@ -60,14 +65,16 @@ class Config:
     env: list[str] = field(default_factory=list)
     host: str = "0.0.0.0"
     image: str | None = None
-    images: dict[str, str] = field(default_factory=lambda: {
-        "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
-        "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
-        "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
-        "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
-        "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
-        "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
-    })
+    images: dict[str, str] = field(
+        default_factory=lambda: {
+            "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
+            "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
+            "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
+            "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
+            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
+            "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
+        }
+    )
     api: str = "none"
     keep_groups: bool = False
     ngl: int = -1
@@ -109,13 +116,13 @@ class ConfigLoader:
                 for conf_file in sorted(Path(path + ".d").glob("*.conf")):
                     config = parser.parse_file(conf_file)
 
- 
         return config.get("ramalama", {})
 
     @staticmethod
-    def load_env_config(env: dict | None = None) -> dict[str, Any]:
+    def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, str]:
         if env is None:
             env = os.environ
+
         envvars = {
             'container': 'RAMALAMA_IN_CONTAINER',
             'engine': 'RAMALAMA_CONTAINER_ENGINE',

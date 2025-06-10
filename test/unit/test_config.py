@@ -1,10 +1,9 @@
-import json
+import os
+from unittest.mock import patch
 
 import pytest
-import os
-from unittest.mock import patch, MagicMock
 
-from ramalama.config import Config, ConfigLoader, DEFAULT_IMAGE, DEFAULT_PORT, get_store, get_engine, use_container
+from ramalama.config import DEFAULT_PORT, Config, ConfigLoader, get_engine, get_store, use_container
 
 
 def test_defaults_are_set():
@@ -65,20 +64,26 @@ def test_env_overrides_file_and_default():
             assert cfg.threads == 16
 
 
-@pytest.mark.parametrize("uid,is_root,expected", [
-    (0, True, "/var/lib/ramalama"),
-    (1000, False, os.path.expanduser("~/.local/share/ramalama")),
-])
+@pytest.mark.parametrize(
+    "uid,is_root,expected",
+    [
+        (0, True, "/var/lib/ramalama"),
+        (1000, False, os.path.expanduser("~/.local/share/ramalama")),
+    ],
+)
 def test_get_store(uid, is_root, expected):
     with patch("os.geteuid", return_value=uid):
         assert get_store() == expected
 
 
-@pytest.mark.parametrize("env_value,expected", [
-    ("true", True),
-    ("false", False),
-    (None, None),  # fallback to get_engine()
-])
+@pytest.mark.parametrize(
+    "env_value,expected",
+    [
+        ("true", True),
+        ("false", False),
+        (None, None),  # fallback to get_engine()
+    ],
+)
 def test_use_container_env_override(env_value, expected):
     with patch.dict(os.environ, {"RAMALAMA_IN_CONTAINER": env_value} if env_value is not None else {}, clear=True):
         if expected is not None:
@@ -91,20 +96,64 @@ def clear_get_engine_cache():
 
 
 class TestGetEngine:
-    def test_get_engine_from_env_non_darwin(self):
+    @pytest.mark.parametrize(
+        "env_value,platform,expected",
+        [
+            ("podman", "linux", "podman"),
+            ("docker", "linux", "docker"),
+            ("docker", "darwin", "docker"),
+            ("podman", "darwin", "podman"),
+        ],
+    )
+    def test_get_engine_from_env(self, env_value, platform, expected):
+        env = {"RAMALAMA_CONTAINER_ENGINE": env_value} if env_value is not None else {}
+        with patch.dict(os.environ, env):
+            with patch("sys.platform", platform):
+                assert get_engine() == expected
+
+    def test_get_engine_from_env_podman_on_osx(self):
         with patch.dict(os.environ, {"RAMALAMA_CONTAINER_ENGINE": "podman"}):
-            with patch("sys.platform", "linux"):
-                assert get_engine() == "podman"
+            with patch("sys.platform", "darwin"):
+                with patch("ramalama.config.apple_vm") as mock_apple_vm:
+                    get_engine()
+                    mock_apple_vm.assert_called_once_with("podman")
+
+    def test_get_engine_from_env_docker_on_osx(self):
+        with patch.dict(os.environ, {"RAMALAMA_CONTAINER_ENGINE": "docker"}):
+            with patch("sys.platform", "darwin"):
+                with patch("ramalama.config.apple_vm") as mock_apple_vm:
+                    get_engine()
+                    mock_apple_vm.assert_not_called()
 
     def test_get_engine_with_toolboxenv(self):
-        with patch("os.path.exists", side_effect=lambda x: x == "/run/.toolboxenv"):
-            with patch("os.getenv", return_value=None):
+        with patch("os.getenv", return_value=None):
+            with patch("os.path.exists", side_effect=lambda x: x == "/run/.toolboxenv"):
                 assert get_engine() is None
-    
-    def test_get_engine_with_podman_available(self):
+
+    @pytest.mark.parametrize(
+        "platform,expected",
+        [
+            ("darwin", None),
+            ("linux", "podman"),
+        ],
+    )
+    def test_get_engine_with_podman_available(self, platform, expected):
         with patch("ramalama.config.available", side_effect=lambda x: x == "podman"):
-            with patch("sys.platform", "linux"):
-                assert get_engine() == "podman"
+            with patch("sys.platform", platform):
+                assert get_engine() == expected
+
+    def test_get_engine_with_podman_available_osx_apple_vm_has_podman(self):
+        with patch("ramalama.config.available", side_effect=lambda x: x == "podman"):
+            with patch("sys.platform", "darwin"):
+                with patch("ramalama.config.apple_vm", side_effect=lambda x: x == "podman"):
+                    assert get_engine() == "podman"
+
+    def test_get_engine_with_podman_available_on_osx(self):
+        with patch("ramalama.config.available", side_effect=lambda x: x == "podman"):
+            with patch("sys.platform", "darwin"):
+                with patch("ramalama.config.apple_vm") as mock_apple_vm:
+                    assert get_engine() == "podman"
+                    mock_apple_vm.assert_called_once_with("podman")
 
     def test_get_engine_with_docker_available_osx(self):
         with patch("ramalama.config.available", side_effect=lambda x: x == "docker"):
