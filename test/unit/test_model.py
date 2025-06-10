@@ -77,6 +77,7 @@ ms_granite_blob = "https://modelscope.cn/models/ibm-granite/granite-3b-code-base
 )
 def test_extract_model_identifiers(model_input: str, expected_name: str, expected_tag: str, expected_orga: str):
     args = ARGS()
+    args.engine = "podman"
     name, tag, orga = ModelFactory(model_input, args).create().extract_model_identifiers()
     assert name == expected_name
     assert tag == expected_tag
