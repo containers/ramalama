@@ -80,7 +80,7 @@ class ModelScope(HFStyleRepoModel):
     def fetch_checksum_from_api(self, organization, file):
         return fetch_checksum_from_api(organization, file)
 
-    def create_repository(self, name, organization, tag='latest'):
+    def create_repository(self, name, organization, tag):
         return ModelScopeRepository(name, organization, tag)
 
     def get_download_url(self, directory, filename):

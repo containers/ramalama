@@ -182,7 +182,7 @@ class HFStyleRepoModel(Model, ABC):
         pass
 
     @abstractmethod
-    def create_repository(self, name, organization, tag='latest'):
+    def create_repository(self, name, organization, tag):
         """Create repository instance"""
         pass
 
@@ -330,7 +330,7 @@ class HFStyleRepoModel(Model, ABC):
             if not args.quiet:
                 self.print_pull_message(f"{self.get_repo_type()}://{name}:{tag}")
 
-            repo = self.create_repository(name, organization)
+            repo = self.create_repository(name, organization, tag)
             snapshot_hash = repo.model_hash
             files = repo.get_file_list(cached_files)
             self.store.new_snapshot(tag, snapshot_hash, files)
