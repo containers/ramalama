@@ -16,6 +16,7 @@ import time
 import urllib.error
 from typing import List
 
+import ramalama.amdkfd as amdkfd
 import ramalama.console as console
 from ramalama.http_client import HttpClient
 from ramalama.logger import logger
@@ -447,22 +448,7 @@ def check_ascend():
 def check_rocm_amd():
     gpu_num = 0
     gpu_bytes = 0
-
-    def parse_props(path):
-        with open(path) as file:
-            return {key: int(value) for key, _, value in (line.partition(' ') for line in file)}
-
-    def kfd_gpus():
-        for np in sorted(glob.glob('/sys/devices/virtual/kfd/kfd/topology/nodes/*')):
-            props = parse_props(np + '/properties')
-
-            # Skip CPUs
-            if props['gfx_target_version'] == 0:
-                continue
-
-            yield np, props
-
-    for i, (np, props) in enumerate(kfd_gpus()):
+    for i, (np, props) in enumerate(amdkfd.gpus()):
         # Radeon GPUs older than gfx900 are not supported by ROCm (e.g. Polaris)
         if props['gfx_target_version'] < 90000:
             continue
@@ -470,7 +456,7 @@ def check_rocm_amd():
         mem_banks_count = int(props['mem_banks_count'])
         mem_bytes = 0
         for bank in range(mem_banks_count):
-            bank_props = parse_props(np + f'/mem_banks/{bank}/properties')
+            bank_props = amdkfd.parse_props(np + f'/mem_banks/{bank}/properties')
             # See /usr/include/linux/kfd_sysfs.h for possible heap types
             #
             # Count public and private framebuffer memory as VRAM
