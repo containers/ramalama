@@ -674,3 +674,7 @@ def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool) ->
 
     except Exception:
         return False
+
+
+# Base Error type. Alias of KeyError for now as it's (ab)used as the general error throughout the code
+RamaLamaError = KeyError

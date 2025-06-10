@@ -5,10 +5,13 @@ import urllib.request
 
 from ramalama.common import available, perror, run_cmd
 from ramalama.hf_style_repo_base import (
+    HFInvalidRepoMetadataError,
+    HFNotSupportedError,
     HFStyleRepoFile,
     HFStyleRepoModel,
     HFStyleRepository,
-    fetch_checksum_from_api_base,
+    HFUnknownRepoTypeError,
+    fetch_data_from_api_base,
 )
 from ramalama.logger import logger
 from ramalama.model_store import SnapshotFileType
@@ -43,7 +46,7 @@ def extract_huggingface_checksum(data):
     for line in data.splitlines():
         if line.startswith("oid sha256:"):
             return line.split(":", 1)[1].strip()
-    raise ValueError("SHA-256 checksum not found in the API response.")
+    raise HFInvalidRepoMetadataError("SHA-256 checksum not found in the API response.")
 
 
 def fetch_checksum_from_api(organization, file):
@@ -54,7 +57,26 @@ def fetch_checksum_from_api(organization, file):
     if token is not None:
         headers['Authorization'] = f"Bearer {token}"
 
-    return fetch_checksum_from_api_base(checksum_api_url, headers, extract_huggingface_checksum)
+    return fetch_data_from_api_base(checksum_api_url, headers, extract_huggingface_checksum)
+
+
+def fetch_repo_info(repo_name):
+    # Docs on API call:
+    # https://huggingface.co/docs/hub/en/api#get-apimodelsrepoid-or-apimodelsrepoidrevisionrevision
+    token = huggingface_token()
+    repo_info_url = f"https://huggingface.co/api/models/{repo_name}"
+    logger.debug(f"Fetching repo info from {repo_info_url}")
+    request = urllib.request.Request(
+        url=repo_info_url,
+        headers={
+            'Accept': 'application/json',
+        },
+    )
+    if token is not None:
+        request.add_header('Authorization', f"Bearer {token}")
+    with urllib.request.urlopen(request) as response:
+        repo_info = response.read().decode('utf-8')
+        return json.loads(repo_info)
 
 
 def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
@@ -86,20 +108,37 @@ class HuggingfaceRepository(HFStyleRepository):
     REGISTRY_URL = "https://huggingface.co"
 
     def fetch_metadata(self):
+        if '/' in self.organization:
+            repo_name = self.organization
+        else:
+            repo_name = f"{self.organization}/{self.name}"
+        repo_info = fetch_repo_info(repo_name)
         # Repo org/name. Fetch repo manifest to determine model/mmproj file
         self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/{self.name}/resolve/main"
-        self.manifest = fetch_repo_manifest(f"{self.organization}/{self.name}", self.tag)
-        try:
-            self.model_filename = self.manifest['ggufFile']['rfilename']
-            self.model_hash = self.manifest['ggufFile']['blobId']
-        except KeyError:
-            perror("Repository manifest missing ggufFile data")
-            raise
-        self.mmproj_filename = self.manifest.get('mmprojFile', {}).get('rfilename', None)
-        self.mmproj_hash = self.manifest.get('mmprojFile', {}).get('blobId', None)
-        token = huggingface_token()
-        if token is not None:
-            self.headers['Authorization'] = f"Bearer {token}"
+        if 'gguf' in repo_info:
+            self.manifest = fetch_repo_manifest(f"{self.organization}/{self.name}", self.tag)
+            try:
+                self.model_filename = self.manifest['ggufFile']['rfilename']
+                self.model_hash = self.manifest['ggufFile']['blobId']
+            except KeyError:
+                perror("Repository manifest missing ggufFile data")
+                raise HFInvalidRepoMetadataError("Repository manifest missing ggufFile data")
+            self.mmproj_filename = self.manifest.get('mmprojFile', {}).get('rfilename', None)
+            self.mmproj_hash = self.manifest.get('mmprojFile', {}).get('blobId', None)
+            token = huggingface_token()
+            if token is not None:
+                self.headers['Authorization'] = f"Bearer {token}"
+        elif 'safetensors' in repo_info:
+            for sibling in repo_info['siblings']:
+                fn = sibling['rfilename']
+                if fn.endswith('.safetensors'):
+                    if self.model_filename is None:
+                        self.model_filename = fn
+                    else:
+                        raise HFNotSupportedError(f"Only one model supported, got: {self.model_filename}, {fn}")
+            self.model_hash = self.model_hash = f"sha256:{fetch_checksum_from_api(repo_name, self.model_filename)}"
+        else:
+            raise HFUnknownRepoTypeError(f"Could not determine repo type for {repo_name}")
 
 
 class HuggingfaceRepositoryModel(HuggingfaceRepository):
@@ -111,31 +150,6 @@ class HuggingfaceRepositoryModel(HuggingfaceRepository):
         token = huggingface_token()
         if token is not None:
             self.headers['Authorization'] = f"Bearer {token}"
-
-
-def get_repo_info(repo_name):
-    # Docs on API call:
-    # https://huggingface.co/docs/hub/en/api#get-apimodelsrepoid-or-apimodelsrepoidrevisionrevision
-    repo_info_url = f"https://huggingface.co/api/models/{repo_name}"
-    logger.debug(f"Fetching repo info from {repo_info_url}")
-    with urllib.request.urlopen(repo_info_url) as response:
-        if response.getcode() == 200:
-            repo_info = response.read().decode('utf-8')
-            return json.loads(repo_info)
-        else:
-            perror("Huggingface repo information pull failed")
-            raise KeyError(f"Response error code from repo info pull: {response.getcode()}")
-    return None
-
-
-def handle_repo_info(repo_name, repo_info, runtime):
-    if "safetensors" in repo_info and runtime == "llama.cpp":
-        print(
-            "\nllama.cpp does not support running safetensor models, "
-            "please use a/convert to the GGUF format using:\n"
-            f"- https://huggingface.co/models?other=base_model:quantized:{repo_name} \n"
-            "- https://huggingface.co/spaces/ggml-org/gguf-my-repo"
-        )
 
 
 class Huggingface(HFStyleRepoModel):
@@ -174,8 +188,11 @@ class Huggingface(HFStyleRepoModel):
     def get_download_url(self, directory, filename):
         return f"https://huggingface.co/{directory}/resolve/main/{filename}"
 
-    def get_cli_download_args(self, directory_path, model):
-        return ["huggingface-cli", "download", "--local-dir", directory_path, model]
+    def get_cli_download_args(self, directory_path, model, file=None):
+        args = ["huggingface-cli", "download", "--local-dir", directory_path, model]
+        if file is not None:
+            args.append(file)
+        return args
 
     def extract_model_identifiers(self):
         model_name, model_tag, model_organization = super().extract_model_identifiers()
