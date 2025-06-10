@@ -60,11 +60,10 @@ RamaLama then pulls AI Models from model registries, starting a chatbot or REST 
 | Apple Silicon GPU (macOS)          | &check;                     |
 | Apple Silicon GPU (podman-machine) | &check;                     |
 | Nvidia GPU (cuda)                  | &check; See note below      |
-| AMD GPU (rocm)                     | &check;                     |
-| AMD GPU (vulkan)                   | &check;                     |
+| AMD GPU (rocm, vulkan)             | &check;                     |
 | Ascend NPU (Linux)                 | &check;                     |
 | Intel ARC GPUs (Linux)             | &check; See note below      |
-| Intel GPUs (vulkan / Linux)        | &check                      |
+| Intel GPUs (vulkan / Linux)        | &check;                     |
 | Moore Threads GPU (musa / Linux)   | &check; See note below      |
 
 ### Nvidia GPUs
