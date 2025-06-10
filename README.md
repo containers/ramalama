@@ -27,7 +27,7 @@ RamaLama eliminates the need to configure the host system by instead pulling a c
 
 | Accelerator             | Image                      |
 | :-----------------------| :------------------------- |
-|  CPU, Apple             | quay.io/ramalama/ramalama  |
+|  CPU, Vulkan, Apple     | quay.io/ramalama/ramalama  |
 |  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm      |
 |  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda      |
 |  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
@@ -61,8 +61,10 @@ RamaLama then pulls AI Models from model registries, starting a chatbot or REST 
 | Apple Silicon GPU (podman-machine) | &check;                     |
 | Nvidia GPU (cuda)                  | &check; See note below      |
 | AMD GPU (rocm)                     | &check;                     |
+| AMD GPU (vulkan)                   | &check;                     |
 | Ascend NPU (Linux)                 | &check;                     |
 | Intel ARC GPUs (Linux)             | &check; See note below      |
+| Intel GPUs (vulkan / Linux)        | &check                      |
 | Moore Threads GPU (musa / Linux)   | &check; See note below      |
 
 ### Nvidia GPUs
