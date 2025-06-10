@@ -47,6 +47,7 @@ install-cov-requirements:
 
 .PHONY: install-requirements
 install-requirements:
+	./install-uv.sh
 	uv pip install ".[dev]"
 
 .PHONY: install-completions

@@ -165,8 +165,11 @@ class Huggingface(HFStyleRepoModel):
     def fetch_checksum_from_api(self, organization, file):
         return fetch_checksum_from_api(organization, file)
 
-    def create_repository(self, name, organization, tag='latest'):
-        return HuggingfaceRepositoryModel(name, organization, tag)
+    def create_repository(self, name, organization, tag):
+        if '/' in organization:
+            return HuggingfaceRepositoryModel(name, organization, tag)
+        else:
+            return HuggingfaceRepository(name, organization, tag)
 
     def get_download_url(self, directory, filename):
         return f"https://huggingface.co/{directory}/resolve/main/{filename}"
