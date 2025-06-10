@@ -332,6 +332,9 @@ verify_begin=".*run --rm"
     name=c_$(safename)
     run_ramalama pull ${model}
     run_ramalama serve -d --name=${name} --api llama-stack --port 1234 ${model}
+    is "$output" ".*Llama Stack RESTAPI: http://localhost:1234" "reveal llama stack url"
+    is "$output" ".*OpenAI RESTAPI: http://localhost:1234/v1/openai" "reveal openai url"
+
 ### FIXME llama-stack image is currently broken.
     # Health check: wait for service to be responsive on http://localhost:1234
 #    for i in {1..10}; do

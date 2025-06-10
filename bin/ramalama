@@ -4,6 +4,9 @@ import sys
 
 
 def main():
+    if not sys.stdout.isatty():
+        sys.stdout.reconfigure(line_buffering=True)
+
     sys.path.insert(0, './')
     try:
         import ramalama
