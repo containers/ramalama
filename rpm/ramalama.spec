@@ -36,6 +36,9 @@ BuildRequires:    python%{python3_pkgversion}-pip
 BuildRequires:    python%{python3_pkgversion}-setuptools
 BuildRequires:    python%{python3_pkgversion}-wheel
 
+Provides: python-ramalama = 0.9.1-1
+Obsoletes: python-ramalama < 0.9.0-5
+
 %description
 %summary
 
