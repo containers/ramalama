@@ -321,6 +321,7 @@ class HFStyleRepoModel(Model, ABC):
     def _pull_with_model_store(self, args):
         name, tag, organization = self.extract_model_identifiers()
         hash, cached_files, all = self.store.get_cached_files(tag)
+        attempt_cli_fallback = '/' in organization
         if all:
             if not args.quiet:
                 print(f"Using cached {self.get_repo_type()}://{name}:{tag} ...")
@@ -336,6 +337,8 @@ class HFStyleRepoModel(Model, ABC):
             self.store.new_snapshot(tag, snapshot_hash, files)
 
         except Exception as e:
+            if not attempt_cli_fallback:
+                raise
             if not available(self.get_cli_command()):
                 perror(f"URL pull failed and {self.get_cli_command()} not available")
                 raise KeyError(f"Failed to pull model: {str(e)}")
