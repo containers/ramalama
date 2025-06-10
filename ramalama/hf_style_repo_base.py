@@ -328,7 +328,7 @@ class HFStyleRepoModel(Model, ABC):
 
         try:
             if not args.quiet:
-                self.print_pull_message(f"{self.get_repo_type()}://{name}:{tag}")
+                self.print_pull_message(f"{self.get_repo_type()}://{organization}/{name}:{tag}")
 
             repo = self.create_repository(name, organization, tag)
             snapshot_hash = repo.model_hash
