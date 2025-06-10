@@ -462,7 +462,7 @@ def check_rocm_amd():
             # See /usr/include/linux/kfd_sysfs.h for possible heap types
             #
             # Count public and private framebuffer memory as VRAM
-            if bank_props['heap_type'] in [1, 2]:
+            if bank_props['heap_type'] in [amdkfd.HEAP_TYPE_FB_PUBLIC, amdkfd.HEAP_TYPE_FB_PRIVATE]:
                 mem_bytes += int(bank_props['size_in_bytes'])
 
         if mem_bytes > MIN_VRAM_BYTES and mem_bytes > gpu_bytes:
