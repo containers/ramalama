@@ -744,5 +744,5 @@ def compute_serving_port(args, quiet=False) -> str:
         if args.api == "llama-stack":
             print(f"Llama Stack RESTAPI: {openai}")
             openai = openai + "/v1/openai"
-        print(f"OpenAI RESTAPI: {openai}")
+            print(f"OpenAI RESTAPI: {openai}")
     return str(target_port)
