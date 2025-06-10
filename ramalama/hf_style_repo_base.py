@@ -1,15 +1,46 @@
-import json
 import os
 import pathlib
 import tempfile
 import urllib.request
 from abc import ABC, abstractmethod
 
-from ramalama.common import available, download_and_verify, exec_cmd, generate_sha256, perror, run_cmd, verify_checksum
+from ramalama.common import (
+    RamaLamaError,
+    available,
+    download_and_verify,
+    exec_cmd,
+    generate_sha256,
+    run_cmd,
+    verify_checksum,
+)
 from ramalama.logger import logger
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFile, SnapshotFileType
 from ramalama.ollama_repo_utils import repo_pull
+
+
+class HFError(RamaLamaError):
+    pass
+
+
+class HFNotSupportedError(HFError):
+    pass
+
+
+class HFModelNotFoundError(HFError):
+    pass
+
+
+class HFRepoMetaError(HFError):
+    pass
+
+
+class HFUnknownRepoTypeError(HFRepoMetaError):
+    pass
+
+
+class HFInvalidRepoMetadataError(HFRepoMetaError):
+    pass
 
 
 class HFStyleRepoFile(SnapshotFile):
@@ -26,35 +57,28 @@ class HFStyleRepoFile(SnapshotFile):
         return os.path.relpath(blob_file_path, start=snapshot_dir)
 
 
-def fetch_checksum_from_api_base(checksum_api_url, headers=None, extractor_func=None):
+def fetch_data_from_api_base(api_url, headers=None, extractor_func=None):
     """
-    Base function for fetching checksums from API endpoints.
+    Base function for fetching data from API endpoints.
 
     Args:
-    checksum_api_url (str): The URL of the API endpoint to fetch the checksum from.
+    api_url (str): The URL of the API endpoint to fetch.
     headers (dict, optional): Optional headers to include in the request.
-    extractor_func (callable, optional): Optional function to extract the checksum from the response data.
+    extractor_func (callable, optional): Optional function to extract the required data from the response.
 
     Returns:
-    str: The extracted checksum or the raw response data.
-
-    Raises:
-    KeyError: If the API request fails or the checksum cannot be extracted.
+    str: The extracted data or the raw response data.
     """
-    logger.debug(f"Fetching checksum from {checksum_api_url}")
-    request = urllib.request.Request(url=checksum_api_url)
+    logger.debug(f"Fetching {api_url}")
+    request = urllib.request.Request(url=api_url)
     if headers:
         for key, value in headers.items():
             request.add_header(key, value)
 
-    try:
-        with urllib.request.urlopen(request) as response:
-            data = response.read().decode()
+    with urllib.request.urlopen(request) as response:
+        data = response.read().decode()
 
-        return extractor_func(data) if extractor_func else data.strip()
-
-    except (json.JSONDecodeError, urllib.error.HTTPError, urllib.error.URLError) as e:
-        raise KeyError(f"failed to pull {checksum_api_url}: {str(e).strip()}")
+    return extractor_func(data) if extractor_func else data.strip()
 
 
 class HFStyleRepository(ABC):
@@ -192,7 +216,7 @@ class HFStyleRepoModel(Model, ABC):
         pass
 
     @abstractmethod
-    def get_cli_download_args(self, directory_path, model):
+    def get_cli_download_args(self, directory_path, model, file=None):
         """Get CLI download arguments"""
         pass
 
@@ -225,7 +249,7 @@ class HFStyleRepoModel(Model, ABC):
             except Exception as exc:
                 logger.debug(f"failed to cli_pull: {exc}")
                 pass
-        raise KeyError(f"Failed to pull model: {str(previous_exception)}")
+        raise HFError(f"Failed to pull model: {str(previous_exception)}")
 
     def pull(self, args):
         if self.store is not None:
@@ -261,7 +285,7 @@ class HFStyleRepoModel(Model, ABC):
         except urllib.error.HTTPError:
             if model_tag != "latest":
                 # The user explicitly requested a tag, so raise an error
-                raise KeyError(f"{self.model} was not found in the {self.get_repo_type()} registry")
+                raise HFModelNotFoundError(f"{self.model} was not found in the {self.get_repo_type()} registry")
             else:
                 # The user did not explicitly request a tag, so assume they want the whole repository
                 pass
@@ -321,6 +345,7 @@ class HFStyleRepoModel(Model, ABC):
     def _pull_with_model_store(self, args):
         name, tag, organization = self.extract_model_identifiers()
         hash, cached_files, all = self.store.get_cached_files(tag)
+        skip_cli_fallback = '/' not in organization
         if all:
             if not args.quiet:
                 print(f"Using cached {self.get_repo_type()}://{name}:{tag} ...")
@@ -336,14 +361,14 @@ class HFStyleRepoModel(Model, ABC):
             self.store.new_snapshot(tag, snapshot_hash, files)
 
         except Exception as e:
-            if not available(self.get_cli_command()):
-                perror(f"URL pull failed and {self.get_cli_command()} not available")
-                raise KeyError(f"Failed to pull model: {str(e)}")
+            logger.debug("Failed to pull model")
+            if skip_cli_fallback or not available(self.get_cli_command()):
+                raise HFError(f"Failed to pull model: {str(e)}")
+            logger.debug("Retrying model pull using cli...")
 
             # Create temporary directory for downloading via CLI
             with tempfile.TemporaryDirectory() as tempdir:
-                model = f"{organization}/{name}"
-                conman_args = self.get_cli_download_args(tempdir, model)
+                conman_args = self.get_cli_download_args(tempdir, organization, name)
                 run_cmd(conman_args)
 
                 snapshot_hash, files = self._collect_cli_files(tempdir)

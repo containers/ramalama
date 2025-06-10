@@ -24,7 +24,7 @@ import ramalama.oci
 import ramalama.rag
 from ramalama import engine
 from ramalama.chat import default_prefix
-from ramalama.common import accel_image, get_accel, perror
+from ramalama.common import RamaLamaError, accel_image, get_accel, perror
 from ramalama.config import CONFIG
 from ramalama.logger import configure_logger, logger
 from ramalama.migrate import ModelStoreImport
@@ -1177,6 +1177,8 @@ def main():
         perror(f"Error: Failed to import models to new store: {ex}")
 
     def eprint(e, exit_code):
+        if args.debug:
+            logger.exception(e)
         perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)
 
@@ -1193,7 +1195,7 @@ def main():
             raise e
     except IndexError as e:
         eprint(e, errno.EINVAL)
-    except KeyError as e:
+    except RamaLamaError as e:
         eprint(e, 1)
     except NotImplementedError as e:
         eprint(e, errno.ENOTSUP)
