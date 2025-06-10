@@ -246,7 +246,7 @@ configure_common_flags() {
 
 clone_and_build_whisper_cpp() {
   local whisper_flags=("${common_flags[@]}")
-  local whisper_cpp_sha="d682e150908e10caa4c15883c633d7902d385237"
+  local whisper_cpp_sha="51c6961c7b64b406833f4b6a4a20e67142f69225"
   whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
   # See: https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#compilation-options
   if [ "$containerfile" = "musa" ]; then
@@ -264,7 +264,7 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local llama_cpp_sha="4265a87b59ebfc25f35adbf4db3b608995b0a78a"
+  local llama_cpp_sha="97340b4c9924be86704dbf155e97c8319849ee19"
   local install_prefix
   install_prefix=$(set_install_prefix)
   git clone https://github.com/ggml-org/llama.cpp
