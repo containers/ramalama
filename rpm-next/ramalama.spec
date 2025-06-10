@@ -11,7 +11,7 @@
 Name:             %{pypi_name}
 # DO NOT TOUCH the Version string!
 # The TRUE source of this specfile is:
-# https://github.com/containers/ramalama/blob/main/rpm/python-ramalama.spec
+# https://github.com/containers/ramalama/blob/main/rpm-next/ramalama.spec
 # If that's what you're reading, Version must be 0, and will be updated by Packit for
 # copr and koji builds.
 # If you're reading this on dist-git, the version is automatically filled in by Packit.

@@ -18,10 +18,10 @@ packages:
 #   ramalama-fedora:
 #     pkg_tool: fedpkg
 #     downstream_package_name: ramalama
-#     specfile_path: rpm/ramalama.spec
+#     specfile_path: rpm-next/ramalama.spec
 #   ramalama-centos:
 #     downstream_package_name: ramalama
-#     specfile_path: rpm/ramalama.spec
+#     specfile_path: rpm-next/ramalama.spec
 
 srpm_build_deps:
   - make
