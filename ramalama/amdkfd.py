@@ -2,6 +2,16 @@
 
 import glob
 
+# Heap types in memory properties
+#
+# Imported from /usr/include/linux/kfd_sysfs.h
+HEAP_TYPE_SYSTEM = 0
+HEAP_TYPE_FB_PUBLIC = 1
+HEAP_TYPE_FB_PRIVATE = 2
+HEAP_TYPE_GPU_GDS = 3
+HEAP_TYPE_GPU_LDS = 4
+HEAP_TYPE_GPU_SCRATCH = 5
+
 
 def parse_props(path):
     """Returns a dict corresponding to a KFD properties file"""
