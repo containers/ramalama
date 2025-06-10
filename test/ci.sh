@@ -31,6 +31,7 @@ version_checks() {
   version=$(get_version)
   grep "version.*$version" setup.py
   grep "version.*$version" rpm/python-ramalama.spec
+  grep "version.*$version" rpm/ramalama.spec
   grep "version.*$version" ramalama/version.py
 
   local arg_llama_cpp
