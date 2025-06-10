@@ -16,6 +16,7 @@ import time
 import urllib.error
 from typing import List
 
+import ramalama.amdkfd as amdkfd
 import ramalama.console as console
 from ramalama.http_client import HttpClient
 from ramalama.logger import logger
@@ -34,6 +35,8 @@ HTTP_NOT_FOUND = 404
 HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already downloaded)
 
 DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
+
+MIN_VRAM_BYTES = 1073741824  # 1GiB
 
 
 _engine = -1  # -1 means cached variable not set yet
@@ -447,12 +450,24 @@ def check_ascend():
 def check_rocm_amd():
     gpu_num = 0
     gpu_bytes = 0
-    for i, fp in enumerate(sorted(glob.glob('/sys/bus/pci/devices/*/mem_info_vram_total'))):
-        with open(fp, 'r') as file:
-            content = int(file.read())
-            if content > 1073741824 and content > gpu_bytes:
-                gpu_bytes = content
-                gpu_num = i
+    for i, (np, props) in enumerate(amdkfd.gpus()):
+        # Radeon GPUs older than gfx900 are not supported by ROCm (e.g. Polaris)
+        if props['gfx_target_version'] < 90000:
+            continue
+
+        mem_banks_count = int(props['mem_banks_count'])
+        mem_bytes = 0
+        for bank in range(mem_banks_count):
+            bank_props = amdkfd.parse_props(np + f'/mem_banks/{bank}/properties')
+            # See /usr/include/linux/kfd_sysfs.h for possible heap types
+            #
+            # Count public and private framebuffer memory as VRAM
+            if bank_props['heap_type'] in [1, 2]:
+                mem_bytes += int(bank_props['size_in_bytes'])
+
+        if mem_bytes > MIN_VRAM_BYTES and mem_bytes > gpu_bytes:
+            gpu_bytes = mem_bytes
+            gpu_num = i
 
     if gpu_bytes:
         os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
