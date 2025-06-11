@@ -192,7 +192,7 @@ def parse_arguments(args):
     return parser.parse_args(args)
 
 
-def main(args):
+def main_client_core(args):
     sys.path.append('./')
 
     parsed_args = parse_arguments(args)
@@ -203,6 +203,3 @@ def main(args):
     ramalama_shell.loop()
     ramalama_shell.kills()
 
-
-if __name__ == '__main__':
-    main(sys.argv[1:])

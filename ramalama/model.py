@@ -461,6 +461,7 @@ class Model(ModelBase):
             os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
 
         exec_args = [
+            "ramalama",
             self.get_ramalama_core_path(args, "ramalama-run-core"),
             "--jinja",
             "-c",
@@ -518,7 +519,7 @@ class Model(ModelBase):
                 f"{args.context}",
             ] + args.runtime_args
         else:
-            exec_args = [self.get_ramalama_core_path(args, "ramalama-serve-core")]
+            exec_args = ["ramalama", self.get_ramalama_core_path(args, "ramalama-serve-core")]
             draft_model_path = None
             if self.draft_model:
                 draft_model = self.draft_model.get_model_path(args)

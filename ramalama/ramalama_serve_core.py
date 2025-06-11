@@ -4,7 +4,7 @@ import argparse
 import sys
 
 
-def main(args):
+def main_serve_core(args):
     sys.path.append('./')
     from ramalama.common import exec_cmd
 
@@ -12,6 +12,3 @@ def main(args):
 
     return 0
 
-
-if __name__ == "__main__":
-    main(sys.argv[1:])

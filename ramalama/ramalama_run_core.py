@@ -59,7 +59,7 @@ def initialize_args():
     return parsed_args, port
 
 
-def main(args):
+def main_run_core(args):
     # This logic ensures that for internal HTTP calls (to 127.0.0.1), the system's proxy settings are bypassed.
     no_proxy_essentials = {"localhost", "127.0.0.1"}
 
@@ -100,10 +100,8 @@ def main(args):
 
 def build_args(args, new_command):
     new_args = args.copy()
-    new_args[0] = new_args[0].replace("ramalama-run-core", new_command)
-    new_args = [new_args[0]]
+    new_args[1] = new_args[1].replace("ramalama-run-core", new_command)
+    new_args = [new_args[1]]
 
     return new_args
 
-if __name__ == "__main__":
-    main(sys.argv)

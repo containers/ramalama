@@ -1132,9 +1132,22 @@ def inspect_cli(args):
     model.inspect(args)
 
 
-def main():
-    parser, args = init_cli()
+def eprint(e, exit_code):
+    perror("Error: " + str(e).strip("'\""))
+    sys.exit(exit_code)
 
+
+def main():
+    print(sys.argv)
+    if sys.argv[1].startswith("ramalama-"):
+        if sys.argv[1].endswith("-client-core"):
+            return main_client_core()
+        elif sys.argv[1].endswith("-run-core"):
+            return main_run_core()
+        elif sys.argv[1].endswith("-serve-core"):
+            return main_serve_core()
+
+    parser, args = init_cli()
     try:
         import argcomplete
 
@@ -1146,10 +1159,6 @@ def main():
         ModelStoreImport(args.store).import_all()
     except Exception as ex:
         perror(f"Error: Failed to import models to new store: {ex}")
-
-    def eprint(e, exit_code):
-        perror("Error: " + str(e).strip("'\""))
-        sys.exit(exit_code)
 
     try:
         args.func(args)
@@ -1178,3 +1187,4 @@ def main():
         eprint(e, errno.EINVAL)
     except IOError as e:
         eprint(e, errno.EIO)
+
