@@ -32,7 +32,8 @@ dev = [
     "pytest~=8.3",
     "wheel~=0.45.0",
     "mypy",
-    "tox"
+    "tox",
+    "requests"
 ]
 
 cov = [
@@ -100,7 +101,7 @@ quote-style = "preserve"
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-markers = ["e2e"]
+markers = ["e2e", "distro_integration"]
 addopts = "-m 'not e2e'"
 log_cli = true
 log_cli_level = "WARN"
