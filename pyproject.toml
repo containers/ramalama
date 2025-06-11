@@ -32,6 +32,7 @@ dev = [
     "pytest~=8.3",
     "wheel~=0.45.0",
     "mypy",
+    "tox"
 ]
 
 cov = [
@@ -98,7 +99,9 @@ preview = true
 quote-style = "preserve"
 
 [tool.pytest.ini_options]
-testpaths = ["."]
+testpaths = ["test"]
+markers = ["e2e"]
+addopts = "-m 'not e2e'"
 log_cli = true
 log_cli_level = "WARN"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
@@ -117,3 +120,32 @@ include = ["ramalama", "ramalama.*"]
 "share/zsh/site-functions" = ["completions/zsh/site-functions/*"]
 "share/fish/vendor_completions.d" = ["completions/fish/vendor_completions.d/*"]
 
+[tool.tox]
+env_list = [
+  "py3",
+]
+
+[tool.tox.env_run_base]
+package = "wheel"
+wheel_build_env = ".pkg"
+extras = ["dev", "cov"]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "--tb=short",
+    "--basetemp={envtmpdir}",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[tool.tox.env.e2e]
+commands = [
+  [
+    "pytest",
+    "-m", "e2e",
+    "--tb=short",
+    "--basetemp={envtmpdir}",
+    { replace = "posargs", extend = true },
+  ],
+]
