@@ -120,8 +120,8 @@ check-format:
 
 .PHONY: format
 format:
-	black */*.py */*/*.py libexec/* bin/*
-	isort */*.py */*/*.py libexec/* bin/*
+	black */*.py */*/*.py libexec/* bin/* test/**/*.py
+	isort */*.py */*/*.py libexec/* bin/* test/**/*.py
 
 .PHONY: codespell
 codespell:

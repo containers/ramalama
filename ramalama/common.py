@@ -25,7 +25,7 @@ from ramalama.logger import logger
 from ramalama.version import version
 
 if TYPE_CHECKING:
-    from ramalama.arg_types import ENGINE_TYPES, ContainerArgType
+    from ramalama.arg_types import SUPPORTED_ENGINES, ContainerArgType
     from ramalama.config import Config
 
 MNT_DIR = "/mnt/models"
@@ -77,7 +77,7 @@ def handle_provider(machine) -> bool | None:
     return None
 
 
-def apple_vm(engine: ENGINE_TYPES) -> bool:
+def apple_vm(engine: SUPPORTED_ENGINES) -> bool:
     podman_machine_list = [engine, "machine", "list", "--format", "json", "--all-providers"]
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
@@ -305,7 +305,7 @@ def download_file(url: str, dest_path: str, headers: dict | None = None, show_pr
         time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
 
 
-def engine_version(engine: ENGINE_TYPES) -> str:
+def engine_version(engine: SUPPORTED_ENGINES) -> str:
     # Create manifest list for target with imageid
     cmd_args = [engine, "version", "--format", "{{ .Client.Version }}"]
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
@@ -627,11 +627,13 @@ def accel_image(config: Config, args: AccelImageArgs) -> str:
     """
     Selects and the appropriate image based on config, arguments, environment.
     """
+    # User provided an image via command line argument
     if args and hasattr(args, "image") and len(args.image.split(":")) > 1:
         return args.image
 
+    # User provided an image via config
     if config.image is not None:
-        return config.image
+        return tagged_image(config.image)
 
     set_gpu_type_env_vars()
     gpu_type = next(iter(get_gpu_type_env_vars()), None)

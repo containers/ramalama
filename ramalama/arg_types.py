@@ -1,16 +1,17 @@
 from dataclasses import dataclass
+from os import PathLike
 from typing import Literal, Protocol
 
-ENGINE_TYPES = Literal["podman", "docker"]
+SUPPORTED_ENGINES = Literal["podman", "docker"] | PathLike[str]
 
 
 class EngineArgType(Protocol):
-    engine: ENGINE_TYPES | None
+    engine: SUPPORTED_ENGINES | None
 
 
 @dataclass
 class EngineArgs(EngineArgType):
-    engine: ENGINE_TYPES | None
+    engine: SUPPORTED_ENGINES | None
 
 
 class ContainerArgType(Protocol):
@@ -18,7 +19,7 @@ class ContainerArgType(Protocol):
 
 
 class StoreArgType(Protocol):
-    engine: ENGINE_TYPES | None
+    engine: SUPPORTED_ENGINES | None
     container: bool
     store: str
     use_model_store: bool
@@ -26,7 +27,7 @@ class StoreArgType(Protocol):
 
 @dataclass
 class StoreArgs(StoreArgType):
-    engine: ENGINE_TYPES | None
+    engine: SUPPORTED_ENGINES | None
     container: bool
     store: str
     use_model_store: bool

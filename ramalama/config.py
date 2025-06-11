@@ -3,9 +3,9 @@ import sys
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Mapping, cast, get_args
+from typing import Any, Mapping
 
-from ramalama.arg_types import ENGINE_TYPES
+from ramalama.arg_types import SUPPORTED_ENGINES
 from ramalama.common import apple_vm, available
 from ramalama.toml_parser import TOMLParser
 
@@ -15,17 +15,13 @@ DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
 
 
 @lru_cache(maxsize=1)
-def get_engine() -> ENGINE_TYPES | None:
+def get_engine() -> SUPPORTED_ENGINES | None:
     engine = os.getenv("RAMALAMA_CONTAINER_ENGINE")
 
     if engine is not None:
-        engine_basename = os.path.basename(engine)
-        if engine_basename not in get_args(ENGINE_TYPES):
-            raise ValueError(f"Invalid container engine: {engine}. Must be one of {get_args(ENGINE_TYPES)}")
-
-        if engine_basename == "podman" and sys.platform == "darwin":
+        if os.path.basename(engine) == "podman" and sys.platform == "darwin":
             # apple_vm triggers setting global variable podman_machine_accel side effect
-            apple_vm(cast(ENGINE_TYPES, engine_basename))
+            apple_vm(engine)
         return engine
 
     if os.path.exists("/run/.toolboxenv"):
@@ -61,9 +57,10 @@ class Config:
     carimage: str = "registry.access.redhat.com/ubi9-micro:latest"
     container: bool = field(default_factory=use_container)
     ctx_size: int = 2048
-    engine: ENGINE_TYPES | None = field(default_factory=get_engine)
+    engine: SUPPORTED_ENGINES | None = field(default_factory=get_engine)
     env: list[str] = field(default_factory=list)
     host: str = "0.0.0.0"
+    user_image: str | None = field(default=None, init=False)
     image: str | None = None
     images: dict[str, str] = field(
         default_factory=lambda: {
@@ -89,6 +86,13 @@ class Config:
     use_model_store: bool = True
     ocr: bool = False
     default_image: str = DEFAULT_IMAGE
+    # user_image: InitVar[str | None] = None
+
+    # def __post_init__(self, user_image):
+    #     if self.image is not None:
+    #         self.user_image = self.image
+    #     else:
+    #         self.image = self.user_image if self.user_image is not None else self.default_image
 
 
 class ConfigLoader:
