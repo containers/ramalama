@@ -66,13 +66,13 @@ class RamaLamaShell(cmd.Cmd):
             return self.models[index]
         except urllib.error.URLError:
             return ""
-        
+
     def get_models(self):
         request = urllib.request.Request(self.models_url, method="GET")
         response = urllib.request.urlopen(request)
         for line in response:
             line = line.decode("utf-8").strip()
-            return([d['id'] for d in json.loads(line)["data"]])
+            return [d['id'] for d in json.loads(line)["data"]]
 
     def do_EOF(self, user_content):
         print("")
@@ -88,9 +88,7 @@ class RamaLamaShell(cmd.Cmd):
         if not response:
             return True
 
-        self.conversation_history.append(
-            {"role": "assistant", "content": response}
-        )
+        self.conversation_history.append({"role": "assistant", "content": response})
         self.request_in_process = False
 
     def _req(self):
@@ -119,7 +117,7 @@ class RamaLamaShell(cmd.Cmd):
                 if sys.stdout.isatty():
                     print(f"\r{c}", end="", flush=True)
 
-                if i > 64:
+                if i > 512:
                     break
 
                 time.sleep(min(i, 0.1))
@@ -183,7 +181,9 @@ def parse_arguments(args):
         help="size of the prompt context (0 = loaded from model)",
     )
     parser.add_argument("--jinja", action="store_true", help="enable jinja")
-    parser.add_argument("--kill-server", dest="pid2kill", type=int, help="server process to kill on termination of client")
+    parser.add_argument(
+        "--kill-server", dest="pid2kill", type=int, help="server process to kill on termination of client"
+    )
     parser.add_argument("--temp", default=0.8, help="temperature of the response from the AI model")
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"

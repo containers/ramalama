@@ -48,7 +48,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y bash codespell python3-argcomplete
+          sudo apt-get install -y bash codespell python3-argcomplete pipx podman
           make install-requirements
 
       - name: Run unit tests

@@ -69,7 +69,7 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
         (Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""), URL, None),
         (Input("granite-code", False, "huggingface", ""), Huggingface, None),
         (Input("granite-code", False, "ollama", ""), Ollama, None),
-        (Input("granite-code", False, "oci", ""), OCI, None),
+        (Input("granite-code", False, "oci", ""), OCI, ValueError),
     ],
 )
 def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ollama, URL, OCI]], error):

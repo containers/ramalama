@@ -134,6 +134,9 @@ class OCI(Model):
         super().__init__(model)
 
         self.type = "OCI"
+        if not conman:
+            raise ValueError("RamaLama OCI Images requires a container engine")
+
         self.conman = conman
         self.ignore_stderr = ignore_stderr
 

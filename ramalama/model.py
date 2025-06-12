@@ -179,11 +179,12 @@ class Model(ModelBase):
     def remove(self, args):
         if self.store is not None:
             _, tag, _ = self.extract_model_identifiers()
-            try:
+            if self.store.tag_exists(tag):
                 self.store.remove_snapshot(tag)
-            except OSError as e:
-                if not args.ignore:
-                    raise KeyError(f"removing {self.model}: {e}")
+                return
+
+            if not args.ignore:
+                raise KeyError(f"Model '{self.model}' not found")
             return
 
         model_path = self.model_path(args)
@@ -744,5 +745,5 @@ def compute_serving_port(args, quiet=False) -> str:
         if args.api == "llama-stack":
             print(f"Llama Stack RESTAPI: {openai}")
             openai = openai + "/v1/openai"
-        print(f"OpenAI RESTAPI: {openai}")
+            print(f"OpenAI RESTAPI: {openai}")
     return str(target_port)
