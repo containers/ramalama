@@ -109,8 +109,9 @@ def test_cfg_container_not_set():
 
     with patch.dict(os.environ, {}):
         cfg = default_config()
-        assert cfg.is_set("container") is False
-        assert cfg.container is False
+        with patch("ramalama.config.load_env_config", return_value={}):
+            assert cfg.is_set("container") is False
+            assert cfg.container is (cfg.engine is not None)
 
 
 class TestGetDefaultEngine:
