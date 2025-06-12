@@ -10,7 +10,7 @@ import pytest
 
 from ramalama.cli import configure_subcommands, create_argument_parser
 from ramalama.common import accel_image, get_accel, minor_release, rm_until_substring, verify_checksum
-from ramalama.config import DEFAULT_IMAGE, ConfigLoader
+from ramalama.config import DEFAULT_IMAGE, default_config
 
 
 @pytest.mark.parametrize(
@@ -131,7 +131,7 @@ image = "{config_override}"
 
         with patch.dict("os.environ", env, clear=True):
 
-            config = ConfigLoader.load()
+            config = default_config()
             with patch("ramalama.cli.CONFIG", config):
                 parser = create_argument_parser("test_accel_image")
                 configure_subcommands(parser)

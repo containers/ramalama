@@ -632,7 +632,7 @@ def accel_image(config: Config, args: AccelImageArgs) -> str:
         return args.image
 
     # User provided an image via config
-    if config.image is not None:
+    if config.is_set("image"):
         return tagged_image(config.image)
 
     set_gpu_type_env_vars()

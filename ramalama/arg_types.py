@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from os import PathLike
-from typing import Literal, Protocol
+from typing import Protocol
 
-SUPPORTED_ENGINES = Literal["podman", "docker"] | PathLike[str]
+from ramalama.config import SUPPORTED_ENGINES
 
 
 class EngineArgType(Protocol):
