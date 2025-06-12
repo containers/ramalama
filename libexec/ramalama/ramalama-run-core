@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
-import atexit
 import os
 import signal
-import subprocess
 import sys
-from argparse import Namespace
 
 
 def initialize_parser():
@@ -34,11 +31,11 @@ def initialize_parser():
         "-t",
         "--threads",
         type=int,
-        help=f"number of cpu threads to use",
+        help="number of cpu threads to use",
     )
     parser.add_argument(
         "-v",
-        help=f"verbose",
+        help="verbose",
         action="store_true",
     )
     parser.add_argument("MODEL", type=str, help="Path to the model")  # positional argument
@@ -78,7 +75,6 @@ def main(args):
             del os.environ[proxy_var]
 
     sys.path.append('./')
-    from ramalama.cli import serve_cli
     from ramalama.common import exec_cmd
 
     parsed_args, port = initialize_args()
@@ -88,15 +84,39 @@ def main(args):
         signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
         # at this point we are already in a container so, --nocontainer always makes sense
         dont_print_output = (not parsed_args.debug) and (not parsed_args.v)
-        exec_cmd(["ramalama", "--nocontainer", "serve", "--threads", str(parsed_args.threads), "--temp", parsed_args.temp, "--port", str(port), parsed_args.MODEL], stdout2null=dont_print_output, stderr2null=dont_print_output)
+        exec_cmd(
+            [
+                "ramalama",
+                "--nocontainer",
+                "serve",
+                "--threads",
+                str(parsed_args.threads),
+                "--temp",
+                parsed_args.temp,
+                "--port",
+                str(port),
+                parsed_args.MODEL,
+            ],
+            stdout2null=dont_print_output,
+            stderr2null=dont_print_output,
+        )
 
         return 0
 
     client_args = build_args(args, "ramalama-client-core")
-    client_args += ['-c', parsed_args.context, '--temp', parsed_args.temp, "--kill-server", str(pid), "http://127.0.0.1:" + str(port)] + parsed_args.ARGS
+    client_args += [
+        '-c',
+        parsed_args.context,
+        '--temp',
+        parsed_args.temp,
+        "--kill-server",
+        str(pid),
+        "http://127.0.0.1:" + str(port),
+    ] + parsed_args.ARGS
     exec_cmd(client_args)
 
     return 0
+
 
 def build_args(args, new_command):
     new_args = args.copy()
@@ -104,6 +124,7 @@ def build_args(args, new_command):
     new_args = [new_args[0]]
 
     return new_args
+
 
 if __name__ == "__main__":
     main(sys.argv)

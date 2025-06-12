@@ -8,6 +8,7 @@ PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 IMAGE ?= ramalama
+PYTHON_FILES := $(shell find . -path "./.venv" -prune -o -name "*.py" -print) $(shell find . -name ".venv" -prune -o -type f -perm +111 -exec grep -l "^\#!/usr/bin/env python3" {} \; 2>/dev/null || true)
 
 default: help
 
@@ -111,18 +112,18 @@ ifneq (,$(wildcard /usr/bin/python3))
 endif
 
 	! grep -ri --exclude-dir ".venv" --exclude-dir "*/.venv" "#\!/usr/bin/python3" .
-	flake8  */*.py */*/*.py libexec/* bin/*
+	flake8 $(PYTHON_FILES)
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:
-	black --check --diff */*.py */*/*.py libexec/* bin/*
-	isort --check --diff */*.py */*/*.py libexec/* bin/*
+	black --check --diff $(PYTHON_FILES)
+	isort --check --diff $(PYTHON_FILES)
 
 .PHONY: format
 format:
-	black */*.py */*/*.py libexec/* bin/*
-	isort */*.py */*/*.py libexec/* bin/*
+	black $(PYTHON_FILES)
+	isort $(PYTHON_FILES)
 
 .PHONY: codespell
 codespell:
