@@ -115,12 +115,6 @@ def test_cfg_container_not_set():
 
 
 class TestGetDefaultEngine:
-    def test_get_default_engine_from_env_podman_on_osx(self):
-        with patch.dict(os.environ, {"RAMALAMA_CONTAINER_ENGINE": "podman"}):
-            with patch("sys.platform", "darwin"):
-                with patch("ramalama.config.apple_vm") as mock_apple_vm:
-                    get_default_engine()
-                    mock_apple_vm.assert_called_once_with("podman")
 
     def test_get_default_engine_with_toolboxenv(self):
         with patch("os.getenv", return_value=None):

@@ -39,6 +39,9 @@ def test_ollama_model_exists(ollama_model, args):
     with patch("os.path.exists", return_value=True):
         assert ollama_model.exists(args) is not None
 
+    with patch("os.path.exists", return_value=False):
+        assert ollama_model.exists(args) is None
+
 
 def test_ollama_model_path(ollama_model, args):
     with patch("os.path.exists", return_value=True):
