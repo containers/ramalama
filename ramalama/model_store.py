@@ -614,7 +614,7 @@ class ModelStore:
 
         # Remove snapshot directory
         snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
-        shutil.rmtree(snapshot_directory, ignore_errors=False)
+        shutil.rmtree(snapshot_directory, ignore_errors=True)
 
         # Remove ref file, ignore if file is not found
         ref_file_path = self.get_ref_file_path(model_tag)

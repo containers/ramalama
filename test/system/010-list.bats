@@ -52,7 +52,7 @@ size              | [0-9]\\\+
 @test "ramalama rm --ignore" {
     random_image_name=i_$(safename)
     run_ramalama 1 rm ${random_image_name}
-    is "$output" "Error: removing ${random_image_name}: \[Errno 2\] No such file or directory:.*"
+    is "$output" "Error: Model '${random_image_name}' not found.*"
     run_ramalama rm --ignore ${random_image_name}
     is "$output" ""
 }
