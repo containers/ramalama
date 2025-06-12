@@ -1,0 +1,5 @@
+FROM fedora:42
+
+COPY --chmod=755 ../scripts /usr/bin
+RUN build_llama_and_whisper.sh "sycl"
+

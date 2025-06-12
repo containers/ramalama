@@ -241,6 +241,9 @@ configure_common_flags() {
   musa)
     common_flags+=("-DGGML_MUSA=ON")
     ;;
+  sycl)
+    common_flags+=("-DGGML_SYCL=ON")
+    ;;
   esac
 }
 
