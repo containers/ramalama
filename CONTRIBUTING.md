@@ -56,7 +56,7 @@ This section describes how to make a contribution to RamaLama.
 
 ### Prepare your environment
 
-The minimum version of Python required to use RamaLama is Python 3.11
+The minimum version of Python required to use RamaLama is Python 3.10
 
 ### Fork and clone RamaLama
 
