@@ -156,7 +156,6 @@ def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
     mock_handle_provider.assert_called_once_with({"Name": "myvm"})
 
 
-# sourcery skip: no-loop-in-tests
 class TestGetAccel:
     accels = [
         ("check_rocm_amd", "hip"),
@@ -168,7 +167,7 @@ class TestGetAccel:
     ]
 
     @pytest.mark.parametrize("accel,expected", accels)
-    def test_get_accel(self, accel, expected):
+    def test_get_accel(self, accel, expected):  # sourcery skip: no-loop-in-tests
         with ExitStack() as stack:
             for other_accel, _ in self.accels:
                 return_value = expected if other_accel == accel else None
@@ -176,7 +175,7 @@ class TestGetAccel:
             returned_accel = get_accel()
             assert returned_accel == expected
 
-    def test_default_get_accel(self):
+    def test_default_get_accel(self):  # sourcery skip: no-loop-in-tests
         with ExitStack() as stack:
             for other_accel, _ in self.accels:
                 stack.enter_context(patch(f"ramalama.common.{other_accel}", return_value=None))

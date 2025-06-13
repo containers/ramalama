@@ -1,7 +1,7 @@
-from collections import ChainMap
-from dataclasses import MISSING, fields, is_dataclass
-from typing import Any
+from dataclasses import MISSING, fields
 from functools import reduce
+from typing import Any
+
 
 def extract_defaults(cls) -> dict[str, Any]:
     result = {}
@@ -14,6 +14,8 @@ def extract_defaults(cls) -> dict[str, Any]:
 
 
 class LayeredMixin:
+    """Mixin class to handle layered configurations from multiple sources."""
+
     def __init__(self, *layers: dict[str, Any]):
         self._fields = {f.name for f in fields(self.__class__)}
         self._layers = [{k: layer[k] for k in layer.keys() & self._fields} for layer in layers]

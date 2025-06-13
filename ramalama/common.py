@@ -530,9 +530,7 @@ def rm_until_substring(input: str, substring: str) -> str:
     pos = input.find(substring)
     if pos == -1:
         return input
-
-    # Create a new string starting after the found substring
-    return ''.join(input[i] for i in range(pos + len(substring), len(input)))
+    return input[pos + len(substring) :]
 
 
 def minor_release() -> str:
@@ -551,9 +549,9 @@ def tagged_image(image: str) -> str:
 
 def get_cmd_with_wrapper(cmd_arg: str) -> str:
     data_path = sysconfig.get_path("data")
-    for dir in ["", f"{data_path}/", "/opt/homebrew/", "/usr/local/", "/usr/"]:
-        if os.path.exists(f"{dir}libexec/ramalama/{cmd_arg}"):
-            return f"{dir}libexec/ramalama/{cmd_arg}"
+    for directory in ["", f"{data_path}/", "/opt/homebrew/", "/usr/local/", "/usr/"]:
+        if os.path.exists(f"{directory}libexec/ramalama/{cmd_arg}"):
+            return f"{directory}libexec/ramalama/{cmd_arg}"
 
     return ""
 

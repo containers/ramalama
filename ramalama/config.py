@@ -75,6 +75,7 @@ class Config(LayeredMixin, BaseConfig):
     """
     Config class that combines multiple configuration layers to create a complete BaseConfig.
     Exposes the same attributes as BaseConfig, but allows for dynamic loading of configuration layers.
+    Mixins should be inherited first.
     """
 
     pass
