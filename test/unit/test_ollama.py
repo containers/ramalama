@@ -50,7 +50,7 @@ def test_ollama_model_path(ollama_model, args):
 
 def test_ollama_model_pull(ollama_model, args):
     args.quiet = True
-    with patch.object(ollama_model, "_pull_with_modelstore", return_value=True):
+    with patch("os.path.exists", return_value=False):
         with patch("ramalama.ollama.repo_pull", return_value="/tmp") as mock_pull:
             ollama_model.pull(args)
             mock_pull.assert_called_once()
