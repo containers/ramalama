@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 license = { file = "LICENSE" }
 keywords = ["ramalama", "llama", "AI"]
 dependencies = [
-  "argcomplete"
+  "argcomplete",
 ]
 maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
@@ -29,7 +29,8 @@ dev = [
     "huggingface_hub~=0.33.0",
     "isort~=6.0",
     "pytest~=8.3",
-    "wheel~=0.45.0"
+    "wheel~=0.45.0",
+    "mypy",
 ]
 
 cov = [

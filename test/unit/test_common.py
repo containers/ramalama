@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+from contextlib import ExitStack
 from pathlib import Path
 from sys import platform
 from unittest.mock import patch
@@ -8,8 +9,8 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.cli import configure_subcommands, create_argument_parser
-from ramalama.common import DEFAULT_IMAGE, accel_image, minor_release, rm_until_substring, verify_checksum
-from ramalama.config import load_and_merge_config
+from ramalama.common import accel_image, get_accel, minor_release, rm_until_substring, verify_checksum
+from ramalama.config import DEFAULT_IMAGE, default_config
 
 
 @pytest.mark.parametrize(
@@ -129,9 +130,54 @@ image = "{config_override}"
             env["RAMALAMA_IMAGE"] = env_override
 
         with patch.dict("os.environ", env, clear=True):
-            config = load_and_merge_config()
+
+            config = default_config()
             with patch("ramalama.cli.CONFIG", config):
                 parser = create_argument_parser("test_accel_image")
                 configure_subcommands(parser)
                 args = parser.parse_args(cmdline)
                 assert accel_image(config, args) == expected_result
+
+
+@patch("ramalama.common.run_cmd")
+@patch("ramalama.common.handle_provider")
+def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
+    mock_run_cmd.return_value.stdout = b'[{"Name": "myvm"}]'
+    mock_handle_provider.return_value = True
+
+    from ramalama.common import apple_vm
+
+    result = apple_vm("podman")
+
+    assert result is True
+    mock_run_cmd.assert_called_once_with(
+        ["podman", "machine", "list", "--format", "json", "--all-providers"], ignore_stderr=True
+    )
+    mock_handle_provider.assert_called_once_with({"Name": "myvm"})
+
+
+class TestGetAccel:
+    accels = [
+        ("check_rocm_amd", "hip"),
+        ("check_nvidia", "cuda"),
+        ("check_mthreads", "musa"),
+        ("check_intel", "intel"),
+        ("check_ascend", "cann"),
+        ("check_asahi", "asahi"),
+    ]
+
+    @pytest.mark.parametrize("accel,expected", accels)
+    def test_get_accel(self, accel, expected):  # sourcery skip: no-loop-in-tests
+        with ExitStack() as stack:
+            for other_accel, _ in self.accels:
+                return_value = expected if other_accel == accel else None
+                stack.enter_context(patch(f"ramalama.common.{other_accel}", return_value=return_value))
+            returned_accel = get_accel()
+            assert returned_accel == expected
+
+    def test_default_get_accel(self):  # sourcery skip: no-loop-in-tests
+        with ExitStack() as stack:
+            for other_accel, _ in self.accels:
+                stack.enter_context(patch(f"ramalama.common.{other_accel}", return_value=None))
+            returned_accel = get_accel()
+            assert returned_accel == "none"

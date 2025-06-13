@@ -5,6 +5,7 @@ import tempfile
 from datetime import datetime
 
 import ramalama.annotations as annotations
+from ramalama.arg_types import EngineArgType
 from ramalama.common import MNT_FILE, engine_version, exec_cmd, perror, run_cmd
 from ramalama.model import Model
 
@@ -23,7 +24,7 @@ def engine_supports_manifest_attributes(engine):
     return True
 
 
-def list_manifests(args):
+def list_manifests(args: EngineArgType):
     if args.engine == "docker":
         return []
 
@@ -77,7 +78,7 @@ def list_manifests(args):
     return models
 
 
-def list_models(args):
+def list_models(args: EngineArgType):
     conman = args.engine
     if conman is None:
         return []

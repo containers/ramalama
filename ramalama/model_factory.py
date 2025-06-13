@@ -1,9 +1,9 @@
-import argparse
 import copy
 import re
 from typing import Callable, Tuple, Union
 from urllib.parse import urlparse
 
+from ramalama.arg_types import StoreArgs
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
 from ramalama.huggingface import Huggingface
@@ -19,7 +19,7 @@ class ModelFactory:
     def __init__(
         self,
         model: str,
-        args: argparse,
+        args: StoreArgs,
         transport: str = "ollama",
         ignore_stderr: bool = False,
         no_children: bool = False,
@@ -151,7 +151,9 @@ class ModelFactory:
         return model
 
 
-def New(name, args, transport=CONFIG["transport"]):
+def New(name, args, transport: str = None) -> ModelFactory:
+    if transport is None:
+        transport = CONFIG.transport
     return ModelFactory(name, args, transport=transport).create()
 
 

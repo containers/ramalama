@@ -48,7 +48,7 @@ class PlainFile:
 class UnitFile:
     def __init__(self, filename: str):
         self.filename = filename
-        self.sections = {}
+        self.sections: dict[str, dict[str, list[str]]] = {}
 
     def add(self, section: str, key: str, value: str = ""):
         if section not in self.sections:

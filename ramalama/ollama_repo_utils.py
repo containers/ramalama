@@ -125,7 +125,6 @@ def repo_pull(
         model_tag: Tag of the model
         models: Models directory
         model_path: Target path for the model
-        model: Model identifier string
         show_progress: Whether to show download progress
         media_type: Media type of the layer to pull
         in_existing_cache_fn: Function to check if blob exists in cache

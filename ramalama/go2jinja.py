@@ -190,7 +190,7 @@ def detect_node_type(stmt: str) -> Optional[NodeType]:
 def parse_go_template(content: str) -> list[Node]:
     root_nodes: list[Node] = []
 
-    prev_expr_node: Node = None
+    prev_expr_node: Node | None = None
     current_scope_nodes: list[Node] = []
     start_pos = content.find(GO_SYMBOL_OPEN_BRACKETS)
     end_pos = 0
@@ -233,12 +233,14 @@ def parse_go_template(content: str) -> list[Node]:
 
         stmt = content[start_pos:end_pos]
         node_type = detect_node_type(stmt)
+        if node_type is None:
+            raise ValueError(f"Unknown node type for content: {stmt}")
 
         expr_node = Node(
             start_pos,
             end_pos,
             content[start_pos:end_pos],
-            node_type,
+            type=node_type,
             prev=prev_expr_node,
             next=None,
             parent=None,
@@ -427,8 +429,8 @@ def go_to_jinja(content: str) -> str:
     if not is_go_template(content):
         return ""
 
-    loop_vars = []
-    loop_index_vars = []
+    loop_vars: list[str] = []
+    loop_index_vars: list[str] = []
 
     def transform_go_var_to_jinja(var: str, check_loop_vars: bool = True) -> str:
         var = var.replace(".", "").lower()
@@ -463,7 +465,7 @@ def go_to_jinja(content: str) -> str:
             if not pipeline.isspace():
                 pipeline = pipeline.lstrip().rstrip()
 
-            longest_match: FunctionType = None
+            longest_match: FunctionType | None = None
             for ft in FUNCTION_MAPPING.keys():
                 if pipeline.startswith(ft.value):
                     if longest_match is None or len(ft.value) > len(longest_match.value):

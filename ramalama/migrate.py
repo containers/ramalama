@@ -4,18 +4,11 @@
 import os
 import shutil
 
+from ramalama.arg_types import StoreArgs
 from ramalama.common import generate_sha256
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory
 from ramalama.model_store import GlobalModelStore, SnapshotFile, SnapshotFileType
-
-
-class dotdict(dict):
-    """dot.notation access to dictionary attributes"""
-
-    __getattr__ = dict.get
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
 
 
 class ModelStoreImport:
@@ -62,17 +55,13 @@ class ModelStoreImport:
                     model = ""
 
                 for file in files:
-                    m = ModelFactory(
-                        os.path.join(model, file),
-                        args=dotdict(
-                            {
-                                "store": self.store_path,
-                                "use_model_store": True,
-                                "engine": "podman",
-                                "container": True,
-                            }
-                        ),
-                    ).create()
+                    args = StoreArgs(
+                        store=self.store_path,
+                        use_model_store=True,
+                        engine="podman",
+                        container=True,
+                    )
+                    m = ModelFactory(os.path.join(model, file), args=args).create()
                     _, model_tag, _ = m.extract_model_identifiers()
                     _, _, all = m.store.get_cached_files(model_tag)
                     if all:

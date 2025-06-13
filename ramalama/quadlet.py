@@ -87,7 +87,7 @@ class Quadlet:
             quadlet_file.add("Container", "ContainerName", f"{self.args.name}")
 
     def _gen_model_volume(self, quadlet_file: UnitFile):
-        files = []
+        files: list[UnitFile] = []
 
         if os.path.exists(self.model):
             quadlet_file.add("Container", "Mount", f"type=bind,src={self.model},target={MNT_FILE},ro,Z")
@@ -115,7 +115,7 @@ class Quadlet:
             quadlet_file.add("Container", "PublishPort", f"{self.args.port}:{self.args.port}")
 
     def _gen_rag_volume(self, quadlet_file: UnitFile):
-        files = []
+        files: list[UnitFile] = []
 
         if not hasattr(self.args, "rag") or not self.rag:
             return files

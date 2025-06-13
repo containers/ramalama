@@ -128,7 +128,7 @@ class GGUFInfoParser:
         return raw.decode("utf-8")
 
     @staticmethod
-    def read_number(model: io.BufferedReader, value_type: GGUFValueType, model_endianness: GGUFEndian) -> float:
+    def read_number(model: io.BufferedReader, value_type: GGUFValueType, model_endianness: GGUFEndian) -> float | int:
         if value_type not in GGUF_NUMBER_FORMATS:
             raise ParseError(f"Value type '{value_type}' not in format dict")
 
