@@ -209,9 +209,11 @@ class Model(ModelBase):
             args.image = args.image.split(":")[0]
         args.image = accel_image(CONFIG, args)
         self.engine = Engine(args)
+        if args.subcommand == "run" and not (hasattr(args, "ARGS") and args.ARGS) and sys.stdin.isatty():
+            self.engine.add(["-i"])
+
         self.engine.add(
             [
-                "-i",
                 "--label",
                 "ai.ramalama",
                 "--name",

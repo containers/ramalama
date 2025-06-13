@@ -23,6 +23,18 @@ EOF
 	is "$output" ".*${MODEL}" "verify model name"
 	is "$output" ".*-c 2048" "verify model name"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
+	if is_tty; then
+	    is "$output" ".*-t -i " "run with terminal and interactive"
+	else
+	    assert "$output" !~ ".*-t -i" "assert -t -i not present without tty"
+	fi
+	run_ramalama -q --dryrun run ${MODEL} "what's up doc?"
+	is "$output" "${verify_begin}.*"
+	assert "$output" !~ ".*-t -i" "run without terminal"
+
+	run_ramalama -q --dryrun run ${MODEL} <<< "Test"
+	is "$output" "${verify_begin}.*"
+	assert "$output" !~ ".*-t -i" "run without terminal"
 
 	run_ramalama -q --dryrun run --env a=b --env test=success --name foobar ${MODEL}
 	is "$output" ".*--env a=b --env test=success" "dryrun correct with --env"

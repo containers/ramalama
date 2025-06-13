@@ -31,6 +31,8 @@ verify_begin=".*run --rm"
 	assert "$output" =~ "--network bridge.*--host 127.1.2.3" "verify --host is modified when run within container"
 	is "$output" ".*${model}" "verify model name"
 	is "$output" ".*--temp 0.8" "verify temp is set"
+	assert "$output" !~ ".*-t " "assert -t not present"
+	assert "$output" !~ ".*-i " "assert -t not present"
 
 	run_ramalama -q --dryrun serve --temp 0.1 ${model}
 	is "$output" ".*--temp 0.1" "verify temp is set"

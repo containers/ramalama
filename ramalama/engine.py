@@ -86,8 +86,18 @@ class Engine:
     def cap_add(self, cap):
         self.exec_args += ["--cap-add", cap]
 
+    def use_tty(self):
+        if not sys.stdin.isatty():
+            return False
+        if not (hasattr(self.args, "ARGS") and self.args.ARGS):
+            return False
+        if not (hasattr(self.args, "subcommand") and self.args.subcommand == "run"):
+            return False
+
+        return True
+
     def add_subcommand_env(self):
-        if EMOJI and hasattr(self.args, "subcommand") and self.args.subcommand == "run":
+        if EMOJI and self.use_tty():
             if os.path.basename(self.args.engine) == "podman":
                 self.exec_args += ["--env", "LLAMA_PROMPT_PREFIX=🦭 > "]
             if self.use_docker:
@@ -99,7 +109,7 @@ class Engine:
                 self.exec_args += ["--env", env]
 
     def add_tty_option(self):
-        if sys.stdout.isatty() or sys.stdin.isatty():
+        if self.use_tty():
             self.exec_args += ["-t"]
 
     def add_detach_option(self):
