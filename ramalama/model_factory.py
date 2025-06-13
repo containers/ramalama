@@ -151,7 +151,9 @@ class ModelFactory:
         return model
 
 
-def New(name, args, transport=CONFIG.transport):
+def New(name, args, transport: str = None) -> ModelFactory:
+    if transport is None:
+        transport = CONFIG.transport
     return ModelFactory(name, args, transport=transport).create()
 
 

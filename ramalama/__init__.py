@@ -12,10 +12,8 @@ assert sys.version_info >= (3, 11), "Python 3.11 or greater is required."
 
 def initialize_environment():
     # CONFIG.engine is pulled both from the environment and file configs
-    if CONFIG.is_set("engine"):
-        if os.path.basename(CONFIG.engine) == "podman" and sys.platform == "darwin":
-            # apple_vm triggers setting global variable podman_machine_accel side effect
-            apple_vm(CONFIG.engine)
+    if CONFIG.engine is not None and CONFIG.is_set("engine") and os.path.basename(CONFIG.engine) == "podman" and sys.platform == "darwin":
+        apple_vm(CONFIG.engine)
 
 
 initialize_environment()

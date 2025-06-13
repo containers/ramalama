@@ -241,7 +241,7 @@ def genname():
     return "ramalama_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
-def download_file(url: str, dest_path: str, headers: dict | None = None, show_progress: bool = True):
+def download_file(url: str, dest_path: str, headers: dict[str, str] | None = None, show_progress: bool = True):
     """
     Downloads a file from a given URL to a specified destination path.
 
@@ -536,8 +536,8 @@ def rm_until_substring(input: str, substring: str) -> str:
 
 
 def minor_release() -> str:
-    split = version().split(".")
-    vers = ".".join(split[:2])
+    version_split = version().split(".")
+    vers = ".".join(version_split[:2])
     if vers == "0":
         vers = "latest"
     return vers
