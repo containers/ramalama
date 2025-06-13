@@ -13,7 +13,6 @@ from ramalama.common import (
     MNT_FILE,
     MNT_FILE_DRAFT,
     MNT_MMPROJ_FILE,
-    accel_image,
     check_metal,
     check_nvidia,
     exec_cmd,
@@ -21,7 +20,7 @@ from ramalama.common import (
     get_cmd_with_wrapper,
     set_accel_env_vars,
 )
-from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
+from ramalama.config import DEFAULT_PORT, DEFAULT_PORT_RANGE
 from ramalama.console import EMOJI
 from ramalama.engine import Engine, dry_run
 from ramalama.gguf_parser import GGUFInfoParser
@@ -203,11 +202,6 @@ class Model(ModelBase):
         return genname()
 
     def base(self, args, name):
-        # force accel_image to use -rag version. Drop TAG if it exists
-        # so that accel_image will add -rag to the image specification.
-        if hasattr(args, "rag") and args.rag:
-            args.image = args.image.split(":")[0]
-        args.image = accel_image(CONFIG, args)
         self.engine = Engine(args)
         if args.subcommand == "run" and not (hasattr(args, "ARGS") and args.ARGS) and sys.stdin.isatty():
             self.engine.add(["-i"])
@@ -293,10 +287,9 @@ class Model(ModelBase):
 
         self.setup_container(args)
         self.setup_mounts(model_path, args)
-        self.handle_rag_mode(args, cmd_args)
 
         # Make sure Image precedes cmd_args
-        self.engine.add([accel_image(CONFIG, args)] + cmd_args)
+        self.engine.add([args.image] + cmd_args)
 
         if args.dryrun:
             self.engine.dryrun()
@@ -338,12 +331,6 @@ class Model(ModelBase):
                 if ref_file.mmproj_name != "":
                     mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
                     self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
-
-    def handle_rag_mode(self, args, cmd_args):
-        # force accel_image to use -rag version. Drop TAG if it exists
-        # so that accel_image will add -rag to the image specification.
-        if hasattr(args, "rag") and args.rag:
-            args.image = args.image.split(":")[0]
 
     def bench(self, args):
         model_path = self.get_model_path(args)
@@ -586,7 +573,7 @@ class Model(ModelBase):
         return exec_args
 
     def generate_container_config(self, model_path, chat_template_path, args, exec_args):
-        self.image = accel_image(CONFIG, args)
+        self.image = args.image
 
         if not args.generate:
             return False
