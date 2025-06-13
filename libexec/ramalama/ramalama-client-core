@@ -91,23 +91,25 @@ class RamaLamaShell(cmd.Cmd):
         self.conversation_history.append({"role": "assistant", "content": response})
         self.request_in_process = False
 
-    def _req(self):
+    def _make_request_data(self):
         data = {
             "stream": True,
             "messages": self.conversation_history,
             "model": self.model(),
         }
-
         json_data = json.dumps(data).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
         }
-
-        # Create a request
         request = urllib.request.Request(self.url, data=json_data, headers=headers, method="POST")
 
-        # Send request
+        return request
+
+    def _req(self):
+        request = self._make_request_data()
+
         i = 0.01
+        total_time_slept = 0
         response = None
         for c in itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']):
             try:
@@ -117,11 +119,13 @@ class RamaLamaShell(cmd.Cmd):
                 if sys.stdout.isatty():
                     print(f"\r{c}", end="", flush=True)
 
-                if i > 512:
+                if total_time_slept > 16:
                     break
 
-                time.sleep(min(i, 0.1))
-                i *= 2
+                total_time_slept += i
+                time.sleep(i)
+
+                i = min(i * 2, 0.1)
 
         if response:
             return res(response, self.parsed_args.color)
