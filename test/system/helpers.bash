@@ -248,6 +248,10 @@ function is_darwin() {
     [ "$(uname)" == "Darwin" ]
 }
 
+function is_tty() {
+    tty -s
+}
+
 function skip_if_darwin() {
     if [[ "$(uname)" == "Darwin" ]]; then
 	skip "Not supported on darwin"
