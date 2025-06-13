@@ -466,27 +466,38 @@ def get_size(path):
     return os.path.getsize(path)
 
 
+def _list_models_from_store(args):
+    models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
+    ret = []
+    local_timezone = datetime.now().astimezone().tzinfo
+
+    for model, files in models.items():
+        if str(model).startswith("huggingface://"):
+            model = str(model).replace("huggingface://", "hf://", 1)
+            model = str(model).removesuffix(":latest")
+
+        size_sum = 0
+        last_modified = 0.0
+        for file in files:
+            size_sum += file.size
+            last_modified = max(file.modified, last_modified)
+
+        ret.append(
+            {
+                "name": model,
+                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+                "size": size_sum,
+            }
+        )
+
+    return ret
+
+
 def _list_models(args):
     mycwd = os.getcwd()
     if args.use_model_store:
-        models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
-        ret = []
-        local_timezone = datetime.now().astimezone().tzinfo
+        return _list_models_from_store(args)
 
-        for model, files in models.items():
-            size_sum = 0
-            last_modified = 0.0
-            for file in files:
-                size_sum += file.size
-                last_modified = max(file.modified, last_modified)
-            ret.append(
-                {
-                    "name": model,
-                    "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-                    "size": size_sum,
-                }
-            )
-        return ret
     os.chdir(f"{args.store}/models/")
     models = []
 
