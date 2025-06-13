@@ -190,8 +190,8 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
     )
     parser.add_argument(
         "--image",
-        default=accel_image(CONFIG, None),
-        help="OCI container image to run with the specified AI model",
+        default=None,
+        help=f"OCI container image to run with the specified AI model. The default (no-rag) image is {repr(accel_image(CONFIG, None))}.",
         action=OverrideDefaultAction,
         completer=local_images,
     )
@@ -264,6 +264,13 @@ def parse_arguments(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
+
+    if args.func is rag_cli:
+        args.rag = "rag"
+
+    if args.image is None:
+        args.image = accel_image(CONFIG, args)
+
     if hasattr(args, "MODEL") and args.subcommand != "rm":
         resolved_model = shortnames.resolve(args.MODEL)
         if resolved_model:
