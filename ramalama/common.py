@@ -482,6 +482,8 @@ def check_intel():
     intel_gpus = (
         b"0xe20b",
         b"0xe20c",
+        b"0x56a0",
+        b"0x56a1",
         b"0x7d51",
         b"0x7dd5",
         b"0x7d55",
