@@ -482,8 +482,7 @@ def get_accel() -> AccelType | Literal["none"]:
         check_mthreads,
     )
     for check in checks:
-        result = check()
-        if result:
+        if result := check():
             return result
     return "none"
 

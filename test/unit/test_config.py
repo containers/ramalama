@@ -6,7 +6,7 @@ import pytest
 from ramalama.config import DEFAULT_PORT, default_config, get_default_engine, get_default_store
 
 
-def test_defaults_are_set():
+def test_correct_config_defaults():
     cfg = default_config()
 
     assert cfg.carimage == "registry.access.redhat.com/ubi9-micro:latest"
@@ -31,8 +31,31 @@ def test_defaults_are_set():
     assert cfg.use_model_store is True
     assert cfg.ocr is False
 
-    for field in cfg._base_fields:
-        assert cfg.is_set(field) is False, f"Field {field} should not be set for defaults"
+
+def test_config_defaults_not_set():
+    cfg = default_config()
+
+    assert cfg.is_set("carimage") is False
+    assert cfg.is_set("container") is False  # depends on env/system
+    assert cfg.is_set("ctx_size") is False
+    assert cfg.is_set("engine") is False
+    assert cfg.is_set("env") is False
+    assert cfg.is_set("host") is False
+    assert cfg.is_set("image") is False
+    assert cfg.is_set("images") is False
+    assert cfg.is_set("api") is False
+    assert cfg.is_set("keep_groups") is False
+    assert cfg.is_set("ngl") is False
+    assert cfg.is_set("threads") is False
+    assert cfg.is_set("nocontainer") is False
+    assert cfg.is_set("port") is False
+    assert cfg.is_set("pull") is False
+    assert cfg.is_set("runtime") is False
+    assert cfg.is_set("store") is False
+    assert cfg.is_set("temp") is False
+    assert cfg.is_set("transport") is False
+    assert cfg.is_set("use_model_store") is False
+    assert cfg.is_set("ocr") is False
 
 
 def test_file_config_overrides_defaults():
@@ -49,8 +72,9 @@ def test_file_config_overrides_defaults():
             assert cfg.threads == 8
             assert cfg.container is False
 
-            for field in mock_file_config.keys():
-                assert cfg.is_set(field) is True, f"Field {field} should be set from file config"
+            assert cfg.is_set("image") is True
+            assert cfg.is_set("threads") is True
+            assert cfg.is_set("container") is True
 
 
 def test_env_overrides_file_and_default():
@@ -69,8 +93,8 @@ def test_env_overrides_file_and_default():
             assert cfg.image == "env/image:override"
             assert cfg.threads == 16
 
-            for field in mock_env_config.keys():
-                assert cfg.is_set(field) is True, f"Field {field} should be set from env config"
+            assert cfg.is_set("image") is True
+            assert cfg.is_set("threads") is True
 
 
 @pytest.mark.parametrize(

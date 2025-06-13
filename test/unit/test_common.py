@@ -156,6 +156,7 @@ def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
     mock_handle_provider.assert_called_once_with({"Name": "myvm"})
 
 
+# sourcery skip: no-loop-in-tests
 class TestGetAccel:
     accels = [
         ("check_rocm_amd", "hip"),

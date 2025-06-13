@@ -71,7 +71,7 @@ class BaseConfig:
         self.image = self.image if self.image is not None else self.default_image
 
 
-class Config(LayeredMixin[BaseConfig], BaseConfig):
+class Config(LayeredMixin, BaseConfig):
     """
     Config class that combines multiple configuration layers to create a complete BaseConfig.
     Exposes the same attributes as BaseConfig, but allows for dynamic loading of configuration layers.
@@ -128,7 +128,7 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
 
 def default_config(env: Mapping[str, str] | None = None) -> Config:
     """Returns a default Config object with all layers initialized."""
-    return Config(layers=[load_env_config(env), load_file_config()])
+    return Config(load_env_config(env), load_file_config())
 
 
 CONFIG = default_config()
