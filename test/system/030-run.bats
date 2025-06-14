@@ -132,4 +132,10 @@ EOF
     run_ramalama 124 --debug run --keepalive 1s tiny
 }
 
+@test "ramalama run --image bogus" {
+    skip_if_nocontainer
+    run_ramalama 125 --image bogus run --pull=never tiny
+    is "$output" "Error: bogus: image not known"
+}
+
 # vim: filetype=sh

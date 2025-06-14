@@ -205,9 +205,10 @@ class Model(ModelBase):
     def base(self, args, name):
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
+        if not args.image:
+            args.image = accel_image(CONFIG, args)
         if hasattr(args, "rag") and args.rag:
             args.image = args.image.split(":")[0]
-        args.image = accel_image(CONFIG, args)
         self.engine = Engine(args)
         if args.subcommand == "run" and not (hasattr(args, "ARGS") and args.ARGS) and sys.stdin.isatty():
             self.engine.add(["-i"])
