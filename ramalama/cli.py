@@ -437,7 +437,10 @@ def info_parser(subparsers):
 
 
 def list_parser(subparsers):
-    parser = subparsers.add_parser("list", aliases=["ls"], help="list all downloaded AI Models")
+    parser = subparsers.add_parser(
+        "list", aliases=["ls"], help="list all downloaded AI Models (excluding partially downloaded ones)"
+    )
+    parser.add_argument("--all", dest="all", action="store_true", help="include partially downloaded AI Models")
     parser.add_argument("--json", dest="json", action="store_true", help="print using json")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
     parser.set_defaults(func=list_cli)
@@ -468,10 +471,15 @@ def get_size(path):
 
 def _list_models_from_store(args):
     models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
+
     ret = []
     local_timezone = datetime.now().astimezone().tzinfo
 
     for model, files in models.items():
+        is_partially_downloaded = any([file.is_partial for file in files])
+        if not args.all and is_partially_downloaded:
+            continue
+
         if str(model).startswith("huggingface://"):
             model = str(model).replace("huggingface://", "hf://", 1)
             model = str(model).removesuffix(":latest")
@@ -484,7 +492,7 @@ def _list_models_from_store(args):
 
         ret.append(
             {
-                "name": model,
+                "name": f"{model} (partial)" if is_partially_downloaded else model,
                 "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
                 "size": size_sum,
             }
