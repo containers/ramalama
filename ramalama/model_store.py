@@ -237,11 +237,9 @@ class GlobalModelStore:
                             )
                             if not os.path.exists(blobs_partial_file_path):
                                 continue
-                            snapshot_file_path = blobs_partial_file_path
 
-                            # append indication for partial downloaded model
-                            if not model_name.endswith("(partial)"):
-                                is_partially_downloaded = True
+                            snapshot_file_path = blobs_partial_file_path
+                            is_partially_downloaded = True
 
                         last_modified = os.path.getmtime(snapshot_file_path)
                         file_size = os.path.getsize(snapshot_file_path)

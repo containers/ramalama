@@ -13,6 +13,9 @@ List all the AI Models in local storage
 
 ## OPTIONS
 
+#### **--all**
+include partially downloaded Models
+
 #### **--help**, **-h**
 show this help message and exit
 
@@ -30,7 +33,7 @@ $ ramalama list
 NAME                                                                MODIFIED     SIZE
 ollama://smollm:135m                                                16 hours ago 5.5M
 huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf 14 hours ago 460M
-ollama://granite-code:3b                                            5 days ago   1.9G
+ollama://granite-code:3b (partial)                                  5 days ago   1.9G
 ollama://granite-code:latest                                        1 day ago    1.9G
 ollama://moondream:latest                                           6 days ago   791M
 ```
