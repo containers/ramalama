@@ -22,6 +22,7 @@ except Exception:
 import ramalama.oci
 import ramalama.rag
 from ramalama import engine
+from ramalama.chat import RamaLamaShell, default_prefix
 from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, perror
 from ramalama.config import CONFIG
 from ramalama.logger import configure_logger, logger
@@ -237,6 +238,7 @@ def configure_subcommands(parser):
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
     bench_parser(subparsers)
+    chat_parser(subparsers)
     client_parser(subparsers)
     containers_parser(subparsers)
     convert_parser(subparsers)
@@ -905,6 +907,23 @@ def default_threads():
     return CONFIG.threads
 
 
+def chat_parser(subparsers):
+    parser = subparsers.add_parser("chat", help="OpenAI chat with the specified RESTAPI URL")
+    parser.add_argument(
+        '--color',
+        '--colour',
+        default="auto",
+        choices=['never', 'always', 'auto'],
+        help='possible values are "never", "always" and "auto".',
+    )
+    parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
+    parser.add_argument("--url", type=str, default="http://127.0.0.1:8080", help="the host to send requests to")
+    parser.add_argument(
+        "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
+    )
+    parser.set_defaults(func=chat_cli)
+
+
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     runtime_options(parser, "run")
@@ -917,6 +936,14 @@ def run_parser(subparsers):
     )
     parser._actions.sort(key=lambda x: x.option_strings)
     parser.set_defaults(func=run_cli)
+
+
+def chat_cli(args):
+    shell = RamaLamaShell(args)
+    if shell.handle_args():
+        return
+    shell.loop()
+    shell.kills()
 
 
 def run_cli(args):

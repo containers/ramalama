@@ -36,14 +36,14 @@ For REST API endpoint documentation, see: [https://github.com/ggml-org/llama.cpp
 ## OPTIONS
 
 #### **--api**=**llama-stack** | none**
-unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
+Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
 The default can be overridden in the ramalama.conf file.
 
 #### **--authfile**=*password*
-path of the authentication file for OCI registries
+Path of the authentication file for OCI registries
 
 #### **--ctx-size**, **-c**
-size of the prompt context (default: 2048, 0 = loaded from model)
+Size of the prompt context (default: 2048, 0 = loaded from model)
 
 #### **--detach**, **-d**
 Run the container in the background and print the new container ID.

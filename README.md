@@ -1041,6 +1041,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 | ------------------------------------------------------ | ---------------------------------------------------------- |
 | [ramalama(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama.1.md)                      | primary RamaLama man page                                  |
 | [ramalama-bench(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-bench.1.md)| benchmark specified AI Model                                         |
+| [ramalama-chat(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-chat.1.md)| chat with specified OpenAI RESTAPI                         |
 | [ramalama-containers(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-containers.1.md)| list all RamaLama containers                               |
 | [ramalama-convert(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-convert.1.md)      | convert AI Model from local storage to OCI Image           |
 | [ramalama-info(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-info.1.md)            | display RamaLama configuration information                 |
