@@ -670,7 +670,7 @@ def resolve_image_from_args_and_env(config, args):
     Resolves the base image based on arguments, environment variables, and config.
     Returns the resolved image string, or None if not found.
     """
-    if args and getattr(args, "image", None) and len(args.image.split(":")) > 1:
+    if args and getattr(args, "image", None):
         return args.image
 
     image = os.getenv("RAMALAMA_IMAGE")

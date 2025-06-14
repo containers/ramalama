@@ -364,4 +364,10 @@ verify_begin=".*run --rm"
     rm /tmp/$name.yaml
 }
 
+@test "ramalama serve --image bogus" {
+    skip_if_nocontainer
+    run_ramalama 125 --image bogus serve --pull=never tiny
+    is "$output" "Error: bogus: image not known"
+}
+
 # vim: filetype=sh

@@ -926,6 +926,7 @@ def run_cli(args):
         model.serve(args, quiet=True) if args.rag else model.run(args)
 
     except KeyError as e:
+        logger.debug(e)
         try:
             args.quiet = True
             model = ModelFactory(args.MODEL, args, ignore_stderr=True).create_oci()
