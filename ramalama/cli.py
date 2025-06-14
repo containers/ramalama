@@ -476,13 +476,13 @@ def _list_models_from_store(args):
     local_timezone = datetime.now().astimezone().tzinfo
 
     for model, files in models.items():
-        is_partially_downloaded = any([file.is_partial for file in files])
+        is_partially_downloaded = any(file.is_partial for file in files)
         if not args.all and is_partially_downloaded:
             continue
 
-        if str(model).startswith("huggingface://"):
-            model = str(model).replace("huggingface://", "hf://", 1)
-            model = str(model).removesuffix(":latest")
+        if model.startswith("huggingface://"):
+            model = model.replace("huggingface://", "hf://", 1)
+            model = model.removesuffix(":latest")
 
         size_sum = 0
         last_modified = 0.0
