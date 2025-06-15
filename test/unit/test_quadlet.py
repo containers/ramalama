@@ -5,6 +5,7 @@ from typing import Optional
 
 import pytest
 
+from ramalama.config import CONFIG
 from ramalama.quadlet import Quadlet
 
 
@@ -14,6 +15,7 @@ class Args:
         self.rag = rag
         self.env = env
         self.port = port
+        self.image = None
         if MODEL is not None:
             self.MODEL = MODEL
 
@@ -26,15 +28,14 @@ class Input:
         model_file_exists: bool = False,
         chat_template: str = "",
         chat_template_file_exists: bool = False,
-        image: str = "",
         args: Args = Args(),
+        image: str = CONFIG.image,
         exec_args: list = [],
     ):
         self.model = model
         self.model_file_exists = model_file_exists
         self.chat_template = chat_template
         self.chat_template_file_exists = chat_template_file_exists
-        self.image = image
         self.args = args
         self.exec_args = exec_args
 
@@ -49,15 +50,12 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
         (Input(model="tinyllama", image="testimage"), DATA_PATH / "basic"),
         (Input(model="tinyllama", image="testimage", args=Args(port="2020")), DATA_PATH / "portmapping"),
         (
-            Input(
-                model="longpathtoablobsha", image="testimage", args=Args(MODEL="modelfromstore"), model_file_exists=True
-            ),
+            Input(model="longpathtoablobsha", args=Args(MODEL="modelfromstore"), model_file_exists=True),
             DATA_PATH / "modelfromstore",
         ),
         (
             Input(
                 model="longpathtoablobsha",
-                image="testimage",
                 args=Args(MODEL="modelfromstore_ct"),
                 model_file_exists=True,
                 chat_template="chat_template_file",
@@ -80,7 +78,7 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
 
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
 
-    for file in Quadlet(input.model, input.chat_template, input.image, input.args, input.exec_args).generate():
+    for file in Quadlet(input.model, input.chat_template, input.args, input.exec_args).generate():
         assert file.filename in expected_files
 
         with io.StringIO() as sio:

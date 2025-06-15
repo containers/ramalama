@@ -191,7 +191,7 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
     )
     parser.add_argument(
         "--image",
-        default=accel_image(CONFIG, None),
+        default=accel_image(CONFIG),
         help="OCI container image to run with the specified AI model",
         action=OverrideDefaultAction,
         completer=local_images,
@@ -960,6 +960,7 @@ def run_cli(args):
         model.serve(args, quiet=True) if args.rag else model.run(args)
 
     except KeyError as e:
+        logger.debug(e)
         try:
             args.quiet = True
             model = ModelFactory(args.MODEL, args, ignore_stderr=True).create_oci()

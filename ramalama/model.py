@@ -119,6 +119,7 @@ class Model(ModelBase):
         self._model_type = type(self).__name__.lower()
 
         self.store: ModelStore = None
+        self.default_image = accel_image(CONFIG)
 
     def extract_model_identifiers(self):
         model_name = self.model
@@ -210,9 +211,8 @@ class Model(ModelBase):
     def base(self, args, name):
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
-        if hasattr(args, "rag") and args.rag:
-            args.image = args.image.split(":")[0]
-        args.image = accel_image(CONFIG, args)
+        if args.image == self.default_image:
+            self.handle_rag_mode(args)
         self.engine = Engine(args)
         if args.subcommand == "run" and not (hasattr(args, "ARGS") and args.ARGS) and sys.stdin.isatty():
             self.engine.add(["-i"])
@@ -295,13 +295,11 @@ class Model(ModelBase):
     def exec_model_in_container(self, model_path, cmd_args, args):
         if not args.container:
             return False
-
         self.setup_container(args)
         self.setup_mounts(model_path, args)
-        self.handle_rag_mode(args, cmd_args)
 
         # Make sure Image precedes cmd_args
-        self.engine.add([accel_image(CONFIG, args)] + cmd_args)
+        self.engine.add([args.image] + cmd_args)
 
         if args.dryrun:
             self.engine.dryrun()
@@ -344,11 +342,12 @@ class Model(ModelBase):
                     mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
                     self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
 
-    def handle_rag_mode(self, args, cmd_args):
-        # force accel_image to use -rag version. Drop TAG if it exists
-        # so that accel_image will add -rag to the image specification.
+    def handle_rag_mode(self, args):
         if hasattr(args, "rag") and args.rag:
-            args.image = args.image.split(":")[0]
+            imagespec = args.image.split(":")
+            args.image = f"{imagespec[0]}-rag"
+            if len(imagespec) > 1:
+                args.image = f"{args.image}:{imagespec[1]}"
 
     def bench(self, args):
         model_path = self.get_model_path(args)
@@ -594,8 +593,6 @@ class Model(ModelBase):
         return exec_args
 
     def generate_container_config(self, model_path, chat_template_path, args, exec_args):
-        self.image = accel_image(CONFIG, args)
-
         if not args.generate:
             return False
 
@@ -671,19 +668,19 @@ class Model(ModelBase):
         self.execute_command(model_path, exec_args, args)
 
     def quadlet(self, model, chat_template, args, exec_args, output_dir):
-        quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
+        quadlet = Quadlet(model, chat_template, args, exec_args)
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
 
     def quadlet_kube(self, model, chat_template, args, exec_args, output_dir):
-        kube = Kube(model, chat_template, self.image, args, exec_args)
+        kube = Kube(model, chat_template, args, exec_args)
         kube.generate().write(output_dir)
 
-        quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
+        quadlet = Quadlet(model, chat_template, args, exec_args)
         quadlet.kube().write(output_dir)
 
     def kube(self, model, chat_template, args, exec_args, output_dir):
-        kube = Kube(model, chat_template, self.image, args, exec_args)
+        kube = Kube(model, chat_template, args, exec_args)
         kube.generate().write(output_dir)
 
     def check_valid_model_path(self, relative_target_path, model_path):

@@ -135,8 +135,7 @@ image = "{config_override}"
             with patch("ramalama.cli.CONFIG", config):
                 parser = create_argument_parser("test_accel_image")
                 configure_subcommands(parser)
-                args = parser.parse_args(cmdline)
-                assert accel_image(config, args) == expected_result
+                assert accel_image(config) == expected_result
 
 
 @patch("ramalama.common.run_cmd")
