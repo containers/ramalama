@@ -21,11 +21,6 @@ pip install huggingface_hub
 """
 
 
-def is_huggingface_cli_available():
-    """Check if huggingface-cli is available on the system."""
-    return available("huggingface-cli")
-
-
 def huggingface_token():
     """Return cached Hugging Face token if it exists otherwise None"""
     token_path = os.path.expanduser(os.path.join("~", ".cache", "huggingface", "token"))
@@ -145,10 +140,6 @@ class Huggingface(HFStyleRepoModel):
     def __init__(self, model):
         super().__init__(model)
         self.type = "huggingface"
-        self.hf_cli_available = is_huggingface_cli_available()
-
-    def get_cli_command(self):
-        return "huggingface-cli"
 
     def get_missing_message(self):
         return missing_huggingface
@@ -174,9 +165,6 @@ class Huggingface(HFStyleRepoModel):
     def get_download_url(self, directory, filename):
         return f"https://huggingface.co/{directory}/resolve/main/{filename}"
 
-    def get_cli_download_args(self, directory_path, model):
-        return ["huggingface-cli", "download", "--local-dir", directory_path, model]
-
     def extract_model_identifiers(self):
         model_name, model_tag, model_organization = super().extract_model_identifiers()
         if '/' not in model_organization:
@@ -195,55 +183,8 @@ class Huggingface(HFStyleRepoModel):
         snapshot_path = os.path.join(cache_path, 'snapshots', snapshot)
         return snapshot_path, cache_path
 
-    def in_existing_cache(self, args, target_path, sha256_checksum):
-        if not self.hf_cli_available:
-            return False
-
-        default_hf_caches = [os.path.join(os.environ['HOME'], '.cache/huggingface/hub')]
-        namespace, repo = os.path.split(str(self.directory))
-
-        for cache_dir in default_hf_caches:
-            snapshot_path, cache_path = self._fetch_snapshot_path(cache_dir, namespace, repo)
-            if not snapshot_path or not os.path.exists(snapshot_path):
-                continue
-
-            file_path = os.path.join(snapshot_path, self.filename)
-            if not os.path.exists(file_path):
-                continue
-
-            blob_path = pathlib.Path(file_path).resolve()
-            if not os.path.exists(blob_path):
-                continue
-
-            blob_file = os.path.relpath(blob_path, start=os.path.join(cache_path, 'blobs'))
-            if str(blob_file) != str(sha256_checksum):
-                continue
-
-            os.symlink(blob_path, target_path)
-            return True
-        return False
-
     def hf_pull(self, args, model_path, directory_path):
         return self.cli_pull(args, model_path, directory_path)
-
-    def push(self, _, args):
-        if not self.hf_cli_available:
-            raise NotImplementedError(missing_huggingface)
-        proc = run_cmd(
-            [
-                "huggingface-cli",
-                "upload",
-                "--repo-type",
-                "model",
-                self.directory,
-                self.filename,
-                "--cache-dir",
-                os.path.join(args.store, "repos", "huggingface", ".cache"),
-                "--local-dir",
-                os.path.join(args.store, "repos", "huggingface", self.directory),
-            ],
-        )
-        return proc.stdout.decode("utf-8")
 
     def _collect_cli_files(self, tempdir: str) -> tuple[str, list[HuggingfaceCLIFile]]:
         cache_dir = os.path.join(tempdir, ".cache", "huggingface", "download")
