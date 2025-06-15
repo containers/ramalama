@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.cli import configure_subcommands, create_argument_parser
-from ramalama.common import accel_image, get_accel, minor_release, rm_until_substring, verify_checksum
+from ramalama.common import accel_image, get_accel, rm_until_substring, verify_checksum
 from ramalama.config import DEFAULT_IMAGE, default_config
 
 
@@ -93,22 +93,19 @@ DEFAULT_IMAGES = {
 
 
 @pytest.mark.parametrize(
-    "accel_env,arg_override,env_override,config_override,expected_result",
+    "accel_env,env_override,config_override,expected_result",
     [
-        (None, f"{DEFAULT_IMAGE}:latest", None, None, f"{DEFAULT_IMAGE}:latest"),
-        (None, None, f"{DEFAULT_IMAGE}:latest", None, f"{DEFAULT_IMAGE}:latest"),
-        (None, None, None, f"{DEFAULT_IMAGE}:latest", f"{DEFAULT_IMAGE}:latest"),
-        ("HIP_VISIBLE_DEVICES", None, None, None, f"quay.io/ramalama/rocm:{minor_release()}"),
-        ("HIP_VISIBLE_DEVICES", f"{DEFAULT_IMAGE}:latest", None, None, f"{DEFAULT_IMAGE}:latest"),
-        ("HIP_VISIBLE_DEVICES", None, f"{DEFAULT_IMAGE}:latest", None, f"{DEFAULT_IMAGE}:latest"),
-        ("HIP_VISIBLE_DEVICES", None, None, f"{DEFAULT_IMAGE}:latest", f"{DEFAULT_IMAGE}:latest"),
+        (None, None, None, f"{DEFAULT_IMAGE}:latest"),
+        (None, f"{DEFAULT_IMAGE}:latest", None, f"{DEFAULT_IMAGE}:latest"),
+        (None, None, f"{DEFAULT_IMAGE}:latest", f"{DEFAULT_IMAGE}:latest"),
+        ("HIP_VISIBLE_DEVICES", None, None, "quay.io/ramalama/rocm:latest"),
+        ("HIP_VISIBLE_DEVICES", f"{DEFAULT_IMAGE}:latest", None, f"{DEFAULT_IMAGE}:latest"),
+        ("HIP_VISIBLE_DEVICES", None, f"{DEFAULT_IMAGE}:latest", f"{DEFAULT_IMAGE}:latest"),
     ],
 )
-def test_accel_image(accel_env: str, arg_override: str, env_override: str, config_override: str, expected_result: str):
+def test_accel_image(accel_env: str, env_override, config_override: str, expected_result: str):
     with tempfile.NamedTemporaryFile('w', delete_on_close=False) as f:
         cmdline = []
-        if arg_override:
-            cmdline.extend(["--image", arg_override])
         cmdline.extend(["run", "granite"])
 
         env = {}
@@ -135,8 +132,7 @@ image = "{config_override}"
             with patch("ramalama.cli.CONFIG", config):
                 parser = create_argument_parser("test_accel_image")
                 configure_subcommands(parser)
-                args = parser.parse_args(cmdline)
-                assert accel_image(config, args) == expected_result
+                assert accel_image(config) == expected_result
 
 
 @patch("ramalama.common.run_cmd")

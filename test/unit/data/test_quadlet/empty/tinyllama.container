@@ -6,7 +6,7 @@ After=local-fs.target
 AddDevice=-/dev/accel
 AddDevice=-/dev/dri
 AddDevice=-/dev/kfd
-Image=
+Image=testimage
 Exec=
 Mount=type=image,source=tinyllama,destination=/mnt/models,subpath=/models,readwrite=false
 

@@ -51,6 +51,17 @@ jobs:
           sudo apt-get install -y bash codespell python3-argcomplete pipx podman
           make install-requirements
 
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           # Enable universe repository which contains podman
+           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           # Update package lists
+           sudo apt-get update
+           sudo apt-get purge firefox
+           # Install specific podman version
+           sudo apt-get upgrade
+
       - name: Run unit tests
         run: |
           make unit-tests
@@ -92,6 +103,8 @@ jobs:
 
       - name: run bats
         run: |
+	   mkdir /mnt/tmp
+	   export TMPDIR=/mnt/tmp
            make validate
            make bats
 
@@ -131,6 +144,8 @@ jobs:
 
       - name: bats-nocontainer
         run: |
+	   mkdir /mnt/tmp
+	   export TMPDIR=/mnt/tmp
            make bats-nocontainer
 
   docker:
@@ -215,6 +230,8 @@ jobs:
       - name: Run a one-line script
         shell: bash
         run: |
+	   mkdir /mnt/tmp
+	   export TMPDIR=/mnt/tmp
            make install-requirements
            make validate
            make bats-nocontainer

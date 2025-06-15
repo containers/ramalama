@@ -166,7 +166,7 @@ ci:
 
 .PHONY: unit-tests
 unit-tests:
-	PYTHONPATH=. pytest test/unit/
+	PYTHONPATH=. pytest test/unit/ -vv
 
 .PHONY: cov-run
 cov-run: install-cov-requirements

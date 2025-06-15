@@ -32,6 +32,7 @@ load helpers
 
 @test "ramalama rag" {
     skip_if_nocontainer
+    skip_if_docker
     run_ramalama 22 -q rag bogus quay.io/ramalama/myrag:1.2
     is "$output" "Error: bogus does not exist" "Expected failure"
 
