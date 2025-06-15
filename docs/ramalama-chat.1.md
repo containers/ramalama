@@ -1,7 +1,7 @@
 % ramalama-chat 1
 
 ## NAME
-ramalama\-chat - OpenAI chat with the specified RESTAPI URL
+ramalama\-chat - OpenAI chat with the specified REST API URL
 
 ## SYNOPSIS
 **ramalama chat** [*options*] [arg...]
@@ -11,7 +11,7 @@ positional arguments:
                         returned without entering the chatbot
 
 ## DESCRIPTION
-Specify one or more AI Models to be removed from local storage
+Chat with an OpenAI Rest API
 
 ## OPTIONS
 
@@ -30,11 +30,14 @@ The host to send requests to (default: http://127.0.0.1:8080)
 
 ## EXAMPLES
 
+Communicate with the default local OpenAI REST API. (http://127.0.0.1:8080)
+With Podman containers.
 ```
 $ ramalama chat
 🦭 >
 
-$ ramalama chat http://localhost:1234
+Communicate with an alternative OpenAI REST API URL. With Docker containers.
+$ ramalama chat --url http://localhost:1234
 🐋 >
 ```
 

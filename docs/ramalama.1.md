@@ -178,7 +178,7 @@ It adds support for model versioning and multiple files such as chat templates. 
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
 | [ramalama-bench(1)](ramalama-bench.1.md)          | benchmark specified AI Model                               |
-| [ramalama-chat(1)](ramalama-chat.1.md)            |  OpenAI chat with the specified RESTAPI URL                |
+| [ramalama-chat(1)](ramalama-chat.1.md)            |  OpenAI chat with the specified REST API URL                |
 | [ramalama-client(1)](ramalama-client.1.md)        | interact with the AI Model server (experimental)           |
 | [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
 | [ramalama-convert(1)](ramalama-convert.1.md)      | convert AI Models from local storage to OCI Image          |
