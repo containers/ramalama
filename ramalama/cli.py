@@ -6,7 +6,7 @@ import os
 import shlex
 import subprocess
 import sys
-import urllib
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -147,7 +147,7 @@ with software on the local system.
 """
 
 
-def create_argument_parser(description):
+def create_argument_parser(description: str):
     """Create and configure the argument parser for the CLI."""
     parser = ArgumentParserWithDefaults(
         prog="ramalama",
@@ -164,7 +164,7 @@ def configure_arguments(parser):
     parser.add_argument(
         "--container",
         dest="container",
-        default=CONFIG["container"],
+        default=CONFIG.container,
         action="store_true",
         help="""run RamaLama in the default container.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
@@ -184,7 +184,7 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     parser.add_argument(
         "--engine",
         dest="engine",
-        default=CONFIG["engine"],
+        default=CONFIG.engine,
         help="""run RamaLama using the specified container engine.
 The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
     )
@@ -198,7 +198,7 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
     parser.add_argument(
         "--keep-groups",
         dest="podman_keep_groups",
-        default=CONFIG["keep_groups"],
+        default=CONFIG.keep_groups,
         action="store_true",
         help="""pass `--group-add keep-groups` to podman, if using podman.
 Needed to access gpu on some systems, but has security implications.""",
@@ -206,7 +206,7 @@ Needed to access gpu on some systems, but has security implications.""",
     parser.add_argument(
         "--nocontainer",
         dest="container",
-        default=CONFIG["nocontainer"],
+        default=CONFIG.nocontainer,
         action="store_false",
         help="""do not run RamaLama in the default container.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
@@ -214,19 +214,19 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     verbosity_group.add_argument("--quiet", "-q", dest="quiet", action="store_true", help="reduce output.")
     parser.add_argument(
         "--runtime",
-        default=CONFIG["runtime"],
+        default=CONFIG.runtime,
         choices=["llama.cpp", "vllm"],
         help="specify the runtime to use; valid options are 'llama.cpp' and 'vllm'",
     )
     parser.add_argument(
         "--store",
-        default=CONFIG["store"],
+        default=CONFIG.store,
         help="store AI Models in the specified directory",
     )
     parser.add_argument(
         "--use-model-store",
         dest="use_model_store",
-        default=CONFIG["use_model_store"],
+        default=CONFIG.use_model_store,
         action="store_true",
         help="use the model store feature",
     )
@@ -297,8 +297,7 @@ def login_parser(subparsers):
 
 
 def normalize_registry(registry):
-    # Determine the registry to use. Check the value of `RAMALAMA_TRANSPORT` env var if no `registry` argument is set.
-    registry = registry or os.getenv("RAMALAMA_TRANSPORT") or CONFIG['transport']
+    registry = registry or CONFIG.transport
 
     if not registry or registry == "" or registry.startswith("oci://"):
         return "oci://"
@@ -629,7 +628,7 @@ def convert_parser(subparsers):
     )
     parser.add_argument(
         "--carimage",
-        default=CONFIG['carimage'],
+        default=CONFIG.carimage,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -690,7 +689,7 @@ def push_parser(subparsers):
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument(
         "--carimage",
-        default=CONFIG['carimage'],
+        default=CONFIG.carimage,
         help=argparse.SUPPRESS,
     )
     add_network_argument(parser)
@@ -755,7 +754,7 @@ def runtime_options(parser, command):
     if command in ["run", "serve"]:
         parser.add_argument(
             "--api",
-            default=CONFIG["api"],
+            default=CONFIG.api,
             choices=["llama-stack", "none"],
             help="unified API layer for for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.",
         )
@@ -765,7 +764,7 @@ def runtime_options(parser, command):
             "-c",
             "--ctx-size",
             dest="context",
-            default=CONFIG['ctx_size'],
+            default=CONFIG.ctx_size,
             help="size of the prompt context (0 = loaded from model)",
             completer=suppressCompleter,
         )
@@ -781,7 +780,7 @@ def runtime_options(parser, command):
         dest="env",
         action='append',
         type=str,
-        default=CONFIG["env"],
+        default=CONFIG.env,
         help="environment variables to add to the running container",
         completer=local_env,
     )
@@ -794,7 +793,7 @@ def runtime_options(parser, command):
         )
         parser.add_argument(
             "--host",
-            default=CONFIG['host'],
+            default=CONFIG.host,
             help="IP address to listen",
             completer=suppressCompleter,
         )
@@ -821,7 +820,7 @@ def runtime_options(parser, command):
         "--ngl",
         dest="ngl",
         type=int,
-        default=CONFIG["ngl"],
+        default=CONFIG.ngl,
         help="number of layers to offload to the gpu, if available",
         completer=suppressCompleter,
     )
@@ -835,7 +834,7 @@ def runtime_options(parser, command):
             "-p",
             "--port",
             type=parse_port_option,
-            default=CONFIG['port'],
+            default=CONFIG.port,
             help="port for AI Model server to listen on",
             completer=suppressCompleter,
         )
@@ -846,7 +845,7 @@ def runtime_options(parser, command):
         "--pull",
         dest="pull",
         type=str,
-        default=CONFIG['pull'],
+        default=CONFIG.pull,
         choices=["always", "missing", "never", "newer"],
         help='pull image policy',
     )
@@ -866,7 +865,7 @@ def runtime_options(parser, command):
     parser.add_argument("--seed", help="override random seed", completer=suppressCompleter)
     parser.add_argument(
         "--temp",
-        default=CONFIG['temp'],
+        default=CONFIG.temp,
         help="temperature of the response from the AI model",
         completer=suppressCompleter,
     )
@@ -896,14 +895,14 @@ def runtime_options(parser, command):
 
 
 def default_threads():
-    if CONFIG["threads"] < 0:
+    if CONFIG.threads < 0:
         nproc = os.cpu_count()
         if nproc and nproc > 4:
             return int(nproc / 2)
 
         return 4
 
-    return CONFIG["threads"]
+    return CONFIG.threads
 
 
 def run_parser(subparsers):
@@ -924,8 +923,8 @@ def run_cli(args):
     if args.rag:
         _get_rag(args)
         # Passing default args for serve (added network bridge for internet access)
-        args.port = CONFIG['port']
-        args.host = CONFIG['host']
+        args.port = CONFIG.port
+        args.host = CONFIG.host
         args.network = 'bridge'
         args.generate = ParsedGenerateInput("", "")
 
@@ -1034,7 +1033,7 @@ def rag_parser(subparsers):
         dest="env",
         action='append',
         type=str,
-        default=CONFIG["env"],
+        default=CONFIG.env,
         help="environment variables to add to the running RAG container",
         completer=local_env,
     )
@@ -1043,7 +1042,7 @@ def rag_parser(subparsers):
         "--pull",
         dest="pull",
         type=str,
-        default=CONFIG['pull'],
+        default=CONFIG.pull,
         choices=["always", "missing", "never", "newer"],
         help='pull image policy',
     )
@@ -1058,7 +1057,7 @@ formatted files to be processed""",
     parser.add_argument(
         "--ocr",
         dest="ocr",
-        default=CONFIG["ocr"],
+        default=CONFIG.ocr,
         action="store_true",
         help="Enable embedded image text extraction from PDF (Increases RAM Usage significantly)",
     )

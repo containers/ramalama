@@ -1,6 +1,6 @@
 import os
 import shutil
-import urllib
+import urllib.error
 from dataclasses import dataclass
 from datetime import datetime
 from enum import IntEnum
@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 import ramalama.go2jinja as go2jinja
 import ramalama.oci
+from ramalama.arg_types import EngineArgs
 from ramalama.common import download_file, generate_sha256, perror, verify_checksum
 from ramalama.endian import EndianMismatchError, get_system_endianness
 from ramalama.gguf_parser import GGUFInfoParser, GGUFModelInfo
@@ -192,14 +193,6 @@ DIRECTORY_NAME_REFS = "refs"
 DIRECTORY_NAME_SNAPSHOTS = "snapshots"
 
 
-class dotdict(dict):
-    """dot.notation access to dictionary attributes"""
-
-    __getattr__ = dict.get
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-
-
 class GlobalModelStore:
     def __init__(
         self,
@@ -249,13 +242,7 @@ class GlobalModelStore:
                     models[model_name] = collected_files
 
         if show_container:
-            oci_models = ramalama.oci.list_models(
-                dotdict(
-                    {
-                        "engine": engine,
-                    }
-                )
-            )
+            oci_models = ramalama.oci.list_models(EngineArgs(engine=engine))
             for oci_model in oci_models:
                 name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
                 # ramalama.oci.list_models provides modified as timestamp string, convert it to unix timestamp
@@ -461,7 +448,7 @@ class ModelStore:
         ref_file.write_to_file()
 
     def _ensure_chat_template(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
-        model_file: SnapshotFile = None
+        model_file: SnapshotFile | None = None
         for file in snapshot_files:
             # Give preference to a chat template that has been specified in the file list
             if file.type == SnapshotFileType.ChatTemplate:

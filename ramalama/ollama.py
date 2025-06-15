@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.error
 import urllib.request
 from typing import Optional
 
@@ -202,7 +203,6 @@ class Ollama(Model):
                 model_tag,
                 models,
                 model_path,
-                self.model,
                 show_progress,
                 "application/vnd.ollama.image.model",
                 in_existing_cache,
