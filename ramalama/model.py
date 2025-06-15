@@ -50,6 +50,11 @@ with the default RamaLama
 $(error)s"""
 
 
+def should_colorize():
+    t = os.getenv("TERM")
+    return t and t != "dumb" and sys.stdout.isatty()
+
+
 def is_split_file_model(model_path):
     """returns true if ends with -%05d-of-%05d.gguf"""
     return bool(re.match(SPLIT_MODEL_RE, model_path))
@@ -532,6 +537,9 @@ class Model(ModelBase):
                 exec_args += ["--mmproj", mmproj_path]
             else:
                 exec_args += ["--jinja"]
+
+            if should_colorize():
+                exec_args += ["--log-colors"]
 
             exec_args += [
                 "--alias",
