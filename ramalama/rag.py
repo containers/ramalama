@@ -4,8 +4,7 @@ import subprocess
 import tempfile
 from urllib.parse import urlparse
 
-from ramalama.common import accel_image, get_accel_env_vars, run_cmd, set_accel_env_vars
-from ramalama.config import CONFIG
+from ramalama.common import get_accel_env_vars, run_cmd, set_accel_env_vars
 from ramalama.engine import Engine
 from ramalama.logger import logger
 
@@ -74,12 +73,6 @@ COPY {src} /vector.db
     def generate(self, args):
         args.nocapdrop = True
         self.engine = Engine(args)
-        # force accel_image to use -rag version. Drop TAG if it exists
-        # so that accel_image will add -rag to the image specification.
-        args.rag = "rag"
-        args.image = args.image.split(":")[0]
-        args.image = accel_image(CONFIG, args)
-
         if not args.container:
             raise KeyError("rag command requires a container. Can not be run with --nocontainer option.")
         if not args.engine or args.engine == "":
