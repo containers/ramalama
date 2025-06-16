@@ -40,16 +40,16 @@ help:
 	@echo
 
 install-detailed-cov-requirements:
-	uv pip install ".[cov-detailed]"
+	pip install ".[cov-detailed]"
 
 .PHONY: install-cov-requirements
 install-cov-requirements:
-	uv pip install ".[cov]"
+	pip install ".[cov]"
 
 .PHONY: install-requirements
 install-requirements:
 	./install-uv.sh
-	uv pip install ".[dev]"
+	pip install ".[dev]"
 
 .PHONY: install-completions
 install-completions: completions

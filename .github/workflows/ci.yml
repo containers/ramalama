@@ -103,7 +103,6 @@ jobs:
 
       - name: run bats
         run: |
-           export TMPDIR=$(mktemp -d)
            make validate
            make bats
 
@@ -143,7 +142,6 @@ jobs:
 
       - name: bats-nocontainer
         run: |
-           export TMPDIR=$(mktemp -d)
            make bats-nocontainer
 
   docker:
@@ -228,7 +226,6 @@ jobs:
       - name: Run a one-line script
         shell: bash
         run: |
-           export TMPDIR=$(mktemp -d)
            make install-requirements
            make validate
            make bats-nocontainer
