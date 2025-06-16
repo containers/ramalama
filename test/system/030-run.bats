@@ -132,4 +132,28 @@ EOF
     run_ramalama 124 --debug run --keepalive 1s tiny
 }
 
+@test "ramalama run --image bogus" {
+    skip_if_nocontainer
+    skip_if_darwin
+    skip_if_docker
+    run_ramalama 125 --image bogus run --pull=never tiny
+    is "$output" "Error: bogus: image not known"
+    run_ramalama 125 --image bogus1 run --rag quay.io/ramalama/testrag --pull=never tiny
+    is "$output" ".*Error: bogus1: image not known"
+}
+
+@test "ramalama run with rag" {
+    skip_if_nocontainer
+    skip_if_darwin
+    skip_if_docker
+    run_ramalama 125 --dryrun run --rag quay.io/ramalama/rag --pull=never tiny
+    is "$output" "Error: quay.io/ramalama/rag: image not known.*"
+
+    run_ramalama --dryrun run --rag quay.io/ramalama/testrag --pull=never tiny
+    is "$output" ".*quay.io/ramalama/.*-rag:"
+
+    run_ramalama --dryrun --image quay.io/ramalama/ramalama:1.0 run --rag quay.io/ramalama/testrag --pull=never tiny
+    is "$output" ".*quay.io/ramalama/ramalama:1.0"
+}
+
 # vim: filetype=sh

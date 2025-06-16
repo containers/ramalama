@@ -364,4 +364,30 @@ verify_begin=".*run --rm"
     rm /tmp/$name.yaml
 }
 
+@test "ramalama serve --image bogus" {
+    skip_if_nocontainer
+    skip_if_darwin
+    skip_if_docker
+    run_ramalama 125 --image bogus serve --pull=never tiny
+    is "$output" "Error: bogus: image not known"
+
+    run_ramalama 125 --image bogus1 serve --rag quay.io/ramalama/testrag --pull=never tiny
+    is "$output" ".*Error: bogus1: image not known"
+}
+
+@test "ramalama serve with rag" {
+    skip_if_nocontainer
+    skip_if_darwin
+    skip_if_docker
+    run_ramalama ? stop ${name}
+    run_ramalama ? --dryrun serve --rag quay.io/ramalama/rag --pull=never tiny
+    is "$output" ".*No such image: quay.io/ramalama/rag"
+
+    run_ramalama --dryrun serve --rag quay.io/ramalama/testrag --pull=never tiny
+    is "$output" ".*quay.io/ramalama/.*-rag:"
+
+    run_ramalama --dryrun --image quay.io/ramalama/ramalama:1.0 serve --rag quay.io/ramalama/testrag --pull=never tiny
+    is "$output" ".*quay.io/ramalama/ramalama:1.0"
+}
+
 # vim: filetype=sh

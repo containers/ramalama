@@ -637,14 +637,10 @@ class AccelImageArgsOtherRuntimeRAG(Protocol):
 AccelImageArgs = None | AccelImageArgsVLLMRuntime | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
 
 
-def accel_image(config: Config, args: AccelImageArgs) -> str:
+def accel_image(config: Config) -> str:
     """
     Selects and the appropriate image based on config, arguments, environment.
     """
-    # User provided an image via command line argument
-    if args and hasattr(args, "image") and len(args.image.split(":")) > 1:
-        return args.image
-
     # User provided an image via config
     if config.is_set("image"):
         return tagged_image(config.image)
@@ -660,17 +656,11 @@ def accel_image(config: Config, args: AccelImageArgs) -> str:
     if image == cuda_image:
         image = select_cuda_image(config)
 
-    if not args:
-        return tagged_image(image)
-
-    if args.runtime == "vllm":
+    if config.runtime == "vllm":
         return "registry.redhat.io/rhelai1/ramalama-vllm"
 
-    if hasattr(args, "rag") and args.rag:
-        image += "-rag"
-
     vers = minor_release()
-    if args.container and attempt_to_use_versioned(config.engine, image, vers, args.quiet):
+    if attempt_to_use_versioned(config.engine, image, vers, True):
         return f"{image}:{vers}"
 
     return f"{image}:latest"

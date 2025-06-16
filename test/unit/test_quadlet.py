@@ -14,6 +14,7 @@ class Args:
         self.rag = rag
         self.env = env
         self.port = port
+        self.image = "testimage"
         if MODEL is not None:
             self.MODEL = MODEL
 
@@ -80,7 +81,7 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
 
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
 
-    for file in Quadlet(input.model, input.chat_template, input.image, input.args, input.exec_args).generate():
+    for file in Quadlet(input.model, input.chat_template, input.args, input.exec_args).generate():
         assert file.filename in expected_files
 
         with io.StringIO() as sio:
