@@ -278,8 +278,7 @@ clone_and_build_llama_cpp() {
 }
 
 install_ramalama() {
-  # link podman-remote to podman for use by RamaLama
-  ln -sf /usr/bin/podman-remote /usr/bin/podman
+  # Magic directory is created during container_build.sh
   if [ -e "/run/ramalama" ]; then
     $PYTHON -m pip install /run/ramalama --prefix="$1"
   else
