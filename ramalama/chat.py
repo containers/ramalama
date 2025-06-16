@@ -12,11 +12,7 @@ import urllib.request
 
 from ramalama.config import CONFIG
 from ramalama.console import EMOJI
-
-
-def should_colorize():
-    t = os.getenv("TERM")
-    return t and t != "dumb" and sys.stdout.isatty()
+from ramalama.model import should_colorize
 
 
 def res(response, color):
