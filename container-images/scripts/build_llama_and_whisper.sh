@@ -246,7 +246,8 @@ configure_common_flags() {
 
 clone_and_build_whisper_cpp() {
   local whisper_flags=("${common_flags[@]}")
-  local whisper_cpp_sha="51c6961c7b64b406833f4b6a4a20e67142f69225"
+  # last time we tried to upgrade the whisper sha, rocm build broke
+  local whisper_cpp_sha="d682e150908e10caa4c15883c633d7902d385237"
   whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
   # See: https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#compilation-options
   if [ "$containerfile" = "musa" ]; then
