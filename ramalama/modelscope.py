@@ -12,9 +12,9 @@ from ramalama.model_store import SnapshotFileType
 
 missing_modelscope = """
 Optional: ModelScope models require the modelscope module.
-These modules can be installed via PyPi tools like pip, pip3, pipx, or via
+This module can be installed via PyPi tools like uv, pip, pip3, pipx, or via
 distribution package managers like dnf or apt. Example:
-pip install modelscope
+uv pip install modelscope
 """
 
 
@@ -120,7 +120,7 @@ class ModelScope(HFStyleRepoModel):
 
     def push(self, _, args):
         if not self.ms_available:
-            raise NotImplementedError(missing_modelscope)
+            raise NotImplementedError(self.get_missing_message())
         proc = run_cmd(
             [
                 "modelscope",
