@@ -1,0 +1,6 @@
+FROM quay.io/fedora/fedora:42
+
+ENV LD_LIBRARY_PATH=/usr/local/lib/python3.12/site-packages/cusparselt/lib
+
+COPY --chmod=755 ../scripts /usr/bin
+RUN build_vllm.sh "cuda"
