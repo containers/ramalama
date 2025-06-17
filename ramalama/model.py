@@ -4,7 +4,9 @@ import random
 import re
 import socket
 import sys
+import time
 
+import ramalama.chat as chat
 from ramalama.common import (
     MNT_CHAT_TEMPLATE_FILE,
     MNT_DIR,
@@ -20,7 +22,7 @@ from ramalama.common import (
     set_accel_env_vars,
 )
 from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
-from ramalama.console import EMOJI
+from ramalama.console import should_colorize
 from ramalama.engine import Engine, dry_run
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
@@ -28,6 +30,7 @@ from ramalama.logger import logger
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
 from ramalama.model_store import ModelStore
 from ramalama.quadlet import Quadlet
+from ramalama.rag import rag_image
 from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama"]
@@ -46,11 +49,6 @@ RamaLama requires the server application be installed in the container images.
 Either install a package containing the "%(cmd)s" command in the container or run
 with the default RamaLama
 $(error)s"""
-
-
-def should_colorize():
-    t = os.getenv("TERM")
-    return t and t != "dumb" and sys.stdout.isatty()
 
 
 def is_split_file_model(model_path):
@@ -209,8 +207,8 @@ class Model(ModelBase):
     def base(self, args, name):
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
-        if args.image == self.default_image:
-            self.handle_rag_mode(args)
+        if args.image == self.default_image and (hasattr(args, "rag") and args.rag):
+            args.image = rag_image(args.image)
         self.engine = Engine(args)
         if args.subcommand == "run" and not (hasattr(args, "ARGS") and args.ARGS) and sys.stdin.isatty():
             self.engine.add(["-i"])
@@ -288,8 +286,7 @@ class Model(ModelBase):
         if args.dryrun:
             self.engine.dryrun()
             return True
-
-        self.engine.exec()
+        self.engine.exec(stdout2null=args.noout)
         return True
 
     def setup_mounts(self, model_path, args):
@@ -326,13 +323,6 @@ class Model(ModelBase):
                     mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
                     self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
 
-    def handle_rag_mode(self, args):
-        if hasattr(args, "rag") and args.rag:
-            imagespec = args.image.split(":")
-            args.image = f"{imagespec[0]}-rag"
-            if len(imagespec) > 1:
-                args.image = f"{args.image}:{imagespec[1]}"
-
     def bench(self, args):
         model_path = self.get_model_path(args)
         exec_args = self.build_exec_args_bench(args, model_path)
@@ -340,13 +330,41 @@ class Model(ModelBase):
         self.execute_command(model_path, exec_args, args)
 
     def run(self, args):
+        # The Run command will first launch a daemonized service
+        # and run chat to communicate with it.
         self.validate_args(args)
-        prompt = self.build_prompt(args)
-        model_path = self.get_model_path(args)
-        exec_args = self.build_exec_args_run(args, model_path, prompt)
-        if args.keepalive:
-            exec_args = ["timeout", args.keepalive] + exec_args
-        self.execute_command(model_path, exec_args, args)
+        args.port = compute_serving_port(args, quiet=args.debug)
+        if args.container:
+            args.name = self.get_container_name(args)
+
+        args.noout = not args.debug
+
+        pid = os.fork()
+        if pid == 0:
+            args.host = CONFIG.host
+            args.generate = ""
+            args.detach = True
+            self.serve(args, True)
+            return 0
+        else:
+            args.url = f"http://127.0.0.1:{args.port}"
+            args.pid2kill = ""
+            if args.container:
+                _, status = os.waitpid(pid, 0)
+                if status != 0:
+                    raise ValueError(f"Failed to serve model {self.model_name}, for ramalama run command")
+                args.ignore = args.dryrun
+                for i in range(0, 6):
+                    try:
+                        chat.chat(args)
+                        break
+                    except Exception as e:
+                        if i > 5:
+                            raise e
+                        time.sleep(1)
+            else:
+                args.pid2kill = pid
+                chat.chat(args)
 
     def perplexity(self, args):
         self.validate_args(args)
@@ -366,17 +384,6 @@ class Model(ModelBase):
         exec_args += ["-m", exec_model_path]
 
         return exec_args
-
-    def build_prompt(self, args):
-        prompt = ""
-        if args.ARGS:
-            prompt = " ".join(args.ARGS)
-
-        if not sys.stdin.isatty():
-            inp = sys.stdin.read()
-            prompt = inp + "\n\n" + prompt
-
-        return prompt
 
     def model_path(self, args):
         if self.store is not None:
@@ -443,46 +450,6 @@ class Model(ModelBase):
             return get_cmd_with_wrapper(exec_cmd)
 
         return f"/usr/libexec/ramalama/{exec_cmd}"
-
-    def build_exec_args_run(self, args, model_path, prompt):
-        exec_model_path = model_path if not args.container else MNT_FILE
-
-        # override prompt if not set to the local call
-        if EMOJI and "LLAMA_PROMPT_PREFIX" not in os.environ:
-            os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
-
-        exec_args = [
-            self.get_ramalama_core_path(args, "ramalama-run-core"),
-            "--jinja",
-            "-c",
-            f"{args.context}",
-            "--temp",
-            f"{args.temp}",
-        ] + args.runtime_args
-
-        if args.seed:
-            exec_args += ["--seed", args.seed]
-
-        if args.debug:
-            exec_args += ["-v"]  # Change to --debug sometime
-
-        set_accel_env_vars()
-        gpu_args = self.gpu_args(args=args, runner=True)
-        if gpu_args is not None:
-            exec_args.extend(gpu_args)
-
-        # TODO: see https://github.com/containers/ramalama/issues/1202
-        # if self.store is not None:
-        #     _, tag, _ = self.extract_model_identifiers()
-        #     ref_file = self.store.get_ref_file(tag)
-        #     if ref_file.chat_template_name != "":
-        #         exec_args.extend(["--chat-template-file", MNT_CHAT_TEMPLATE_FILE])
-
-        exec_args.append(exec_model_path)
-        if len(prompt) > 0:
-            exec_args.append(prompt)
-
-        return exec_args
 
     def validate_args(self, args):
         if args.container:
@@ -598,7 +565,7 @@ class Model(ModelBase):
             if args.dryrun:
                 dry_run(exec_args)
                 return
-            exec_cmd(exec_args)
+            exec_cmd(exec_args, stdout2null=args.noout)
         except FileNotFoundError as e:
             if args.container:
                 raise NotImplementedError(
@@ -723,7 +690,7 @@ def get_available_port_if_any() -> int:
 
 def compute_serving_port(args, quiet=False) -> str:
     # user probably specified a custom port, don't override the choice
-    if args.port not in ["", str(DEFAULT_PORT)]:
+    if hasattr(args, "port") and args.port not in ["", str(DEFAULT_PORT)]:
         target_port = args.port
     else:
         # otherwise compute a random serving port in the range

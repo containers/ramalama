@@ -33,6 +33,10 @@ The default can be overridden in the ramalama.conf file.
 #### **--authfile**=*password*
 path of the authentication file for OCI registries
 
+#### **--color**
+Indicate whether or not to use color in the chat.
+Possible values are "never", "always" and "auto". (default: auto)
+
 #### **--ctx-size**, **-c**
 size of the prompt context (default: 2048, 0 = loaded from model)
 
@@ -55,7 +59,7 @@ specified without a value, the container engine checks the host environment
 for a value and set the variable only if it is set on the host.
 
 #### **--help**, **-h**
-show this help message and exit
+Show this help message and exit
 
 #### **--keepalive**
 duration to keep a model loaded (e.g. 5m)
@@ -78,6 +82,9 @@ use. Using this option RamaLama will override these defaults.
 
 On Nvidia based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
+
+#### **--prefix**
+Prefix for the user prompt (default: 🦭 > )
 
 #### **--privileged**
 By default, RamaLama containers are unprivileged (=false) and cannot, for

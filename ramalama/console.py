@@ -1,4 +1,5 @@
 import os
+import sys
 
 from ramalama.logger import logger
 
@@ -15,6 +16,11 @@ def supports_emoji():
         return False
 
     return is_locale_utf8()
+
+
+def should_colorize():
+    t = os.getenv("TERM")
+    return t and t != "dumb" and sys.stdout.isatty()
 
 
 # Allow users to override emoji support via an environment variable

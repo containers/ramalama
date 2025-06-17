@@ -47,6 +47,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
+          df -h
           sudo apt-get update
           sudo apt-get install -y bash codespell python3-argcomplete pipx podman
           make install-requirements
@@ -79,6 +80,12 @@ jobs:
       - name: install bats
         shell: bash
         run: |
+           df -h
+           # /mnt has ~ 65 GB free disk space. / is too small.
+           sudo mkdir -m a=rwx -p /mnt/tmp /mnt/runner
+           sudo mkdir -m o=rwx -p /home/runner/.local
+           sudo chown runner:runner /mnt/runner /home/runner/.local
+           sudo mount --bind /mnt/runner /home/runner/.local
            sudo apt-get update
            sudo apt-get install podman bats bash codespell python3-argcomplete
            make install-requirements
@@ -103,8 +110,6 @@ jobs:
 
       - name: run bats
         run: |
-           # /mnt has ~ 65 GB free disk space. / is too small.
-           sudo mkdir -m a=rwx -p /mnt/tmp
            TEMPDIR=/mnt/tmp
            make validate
            make bats
@@ -122,6 +127,7 @@ jobs:
       - name: install bats
         shell: bash
         run: |
+           df -h
            sudo apt-get update
            sudo apt-get install podman bats bash codespell python3-argcomplete git cmake libcurl4-openssl-dev
            make install-requirements

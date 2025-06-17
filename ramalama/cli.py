@@ -19,11 +19,12 @@ except Exception:
     suppressCompleter = None
 
 
+import ramalama.chat as chat
 import ramalama.oci
 import ramalama.rag
 from ramalama import engine
-from ramalama.chat import RamaLamaShell, default_prefix
-from ramalama.common import accel_image, exec_cmd, get_accel, get_cmd_with_wrapper, perror
+from ramalama.chat import default_prefix
+from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import CONFIG
 from ramalama.logger import configure_logger, logger
 from ramalama.migrate import ModelStoreImport
@@ -231,6 +232,10 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         action="store_true",
         help="use the model store feature",
     )
+    parser.add_argument(
+        "--noout",
+        help=argparse.SUPPRESS,
+    )
 
 
 def configure_subcommands(parser):
@@ -239,7 +244,6 @@ def configure_subcommands(parser):
     subparsers.required = False
     bench_parser(subparsers)
     chat_parser(subparsers)
-    client_parser(subparsers)
     containers_parser(subparsers)
     convert_parser(subparsers)
     help_parser(subparsers)
@@ -815,11 +819,7 @@ def runtime_options(parser, command):
         help="name of container in which the Model will be run",
         completer=suppressCompleter,
     )
-    if command == "serve":
-        add_network_argument(parser, dflt=None)
-    else:
-        add_network_argument(parser)
-
+    add_network_argument(parser, dflt=None)
     parser.add_argument(
         "--ngl",
         dest="ngl",
@@ -923,12 +923,20 @@ def chat_parser(subparsers):
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
     )
-    parser.set_defaults(func=chat_cli)
+    parser.set_defaults(func=chat.chat)
 
 
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     runtime_options(parser, "run")
+    parser.add_argument(
+        '--color',
+        '--colour',
+        default="auto",
+        choices=['never', 'always', 'auto'],
+        help='possible values are "never", "always" and "auto".',
+    )
+    parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.add_argument(
         "ARGS",
@@ -938,14 +946,6 @@ def run_parser(subparsers):
     )
     parser._actions.sort(key=lambda x: x.option_strings)
     parser.set_defaults(func=run_cli)
-
-
-def chat_cli(args):
-    shell = RamaLamaShell(args)
-    if shell.handle_args():
-        return
-    shell.loop()
-    shell.kills()
 
 
 def run_cli(args):
@@ -1040,19 +1040,6 @@ def version_parser(subparsers):
     parser.set_defaults(func=print_version)
 
 
-def client_parser(subparsers):
-    """Add parser for client command"""
-    parser = subparsers.add_parser("client", help="interact with an OpenAI endpoint")
-    parser.add_argument("HOST", help="host to connect to", completer=suppressCompleter)  # positional argument
-    parser.add_argument(
-        "ARGS",
-        nargs="*",
-        help="overrides the default prompt, and the output is returned without entering the chatbot",
-        completer=suppressCompleter,
-    )
-    parser.set_defaults(func=client_cli)
-
-
 def rag_parser(subparsers):
     parser = subparsers.add_parser(
         "rag",
@@ -1145,13 +1132,6 @@ def rm_cli(args):
     models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
 
     return _rm_model([model for model in models.keys()], args)
-
-
-def client_cli(args):
-    """Handle client command execution"""
-    client_args = ["ramalama-client-core", "-c", "2048", "--temp", "0.8", args.HOST] + args.ARGS
-    client_args[0] = get_cmd_with_wrapper(client_args[0])
-    exec_cmd(client_args)
 
 
 def perplexity_parser(subparsers):
