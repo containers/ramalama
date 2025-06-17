@@ -1,12 +1,10 @@
 import os
 import pathlib
-import platform
 import random
 import re
 import socket
 import sys
 
-import ramalama
 from ramalama.common import (
     MNT_CHAT_TEMPLATE_FILE,
     MNT_DIR,
@@ -260,33 +258,19 @@ class Model(ModelBase):
 
     def gpu_args(self, args, runner=False):
         gpu_args = []
-        machine = platform.machine()
-        if (
-            os.getenv("HIP_VISIBLE_DEVICES")
-            or os.getenv("ASAHI_VISIBLE_DEVICES")
-            or os.getenv("CUDA_VISIBLE_DEVICES")
-            or os.getenv("INTEL_VISIBLE_DEVICES")
-            or os.getenv("ASCEND_VISIBLE_DEVICES")
-            or os.getenv("MUSA_VISIBLE_DEVICES")
-            or (
-                # linux and macOS report aarch64 (linux), arm64 (macOS)
-                ramalama.common.podman_machine_accel
-                or (machine == "aarch64" and os.path.exists("/dev/dri"))
-            )
-        ):
-            if args.ngl < 0:
-                args.ngl = 999
+        if args.ngl < 0:
+            args.ngl = 999
 
-            if runner:
-                gpu_args += ["--ngl"]  # double dash
-            else:
-                gpu_args += ["-ngl"]  # single dash
+        if runner:
+            gpu_args += ["--ngl"]  # double dash
+        else:
+            gpu_args += ["-ngl"]  # single dash
 
-            gpu_args += [f'{args.ngl}']
+        gpu_args += [f'{args.ngl}']
 
-            if self.draft_model:
-                # Use the same arg as ngl to reduce configuration space
-                gpu_args += ["-ngld", f'{args.ngl}']
+        if self.draft_model:
+            # Use the same arg as ngl to reduce configuration space
+            gpu_args += ["-ngld", f'{args.ngl}']
 
         gpu_args += ["--threads", f"{args.threads}"]
 
