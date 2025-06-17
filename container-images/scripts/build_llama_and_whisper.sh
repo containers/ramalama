@@ -60,6 +60,7 @@ dnf_install_cann() {
 dnf_install_rocm() {
   if [ "$containerfile" = "rocm" ]; then
     if [ "${ID}" = "fedora" ]; then
+      dnf update -y
       dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
     else
       add_stream_repo "AppStream"
