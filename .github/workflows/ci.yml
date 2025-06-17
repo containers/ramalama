@@ -104,7 +104,7 @@ jobs:
       - name: run bats
         run: |
            # /mnt has ~ 65 GB free disk space. / is too small.
-           mkdir -p /mnt/tmp
+           sudo mkdir -m a=rwx -p /mnt/tmp
            TEMPDIR=/mnt/tmp
            make validate
            make bats
