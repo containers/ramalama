@@ -1,0 +1,4 @@
+FROM quay.io/fedora/fedora:42
+
+COPY --chmod=755 ../scripts /usr/bin
+RUN build_vllm.sh "cpu"
