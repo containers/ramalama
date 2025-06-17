@@ -103,7 +103,7 @@ jobs:
 
       - name: run bats
         run: |
-	   # /mnt has ~ 65 GB free disk space. / is too small.
+           # /mnt has ~ 65 GB free disk space. / is too small.
            mkdir -p /mnt/tmp
            TEMPDIR=/mnt/tmp
            make validate
