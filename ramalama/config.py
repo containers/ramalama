@@ -46,6 +46,7 @@ class BaseConfig:
             "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
             "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
             "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
+            "GGML_VK_VISIBLE_DEVICES": "quay.io/ramalama/ramalama",
             "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
             "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
             "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",

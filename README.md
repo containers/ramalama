@@ -25,15 +25,15 @@ RamaLama eliminates the need to configure the host system by instead pulling a c
 
 ## Accelerated images
 
-| Accelerator             | Image                      |
-| :-----------------------| :------------------------- |
-|  CPU, Vulkan, Apple     | quay.io/ramalama/ramalama  |
-|  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm      |
-|  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda      |
-|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
-|  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu |
-|  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
-|  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
+| Accelerator                       | Image                      |
+| :---------------------------------| :------------------------- |
+|  GGML_VK_VISIBLE_DEVICES (or CPU) | quay.io/ramalama/ramalama  |
+|  HIP_VISIBLE_DEVICES              | quay.io/ramalama/rocm      |
+|  CUDA_VISIBLE_DEVICES             | quay.io/ramalama/cuda      |
+|  ASAHI_VISIBLE_DEVICES            | quay.io/ramalama/asahi     |
+|  INTEL_VISIBLE_DEVICES            | quay.io/ramalama/intel-gpu |
+|  ASCEND_VISIBLE_DEVICES           | quay.io/ramalama/cann      |
+|  MUSA_VISIBLE_DEVICES             | quay.io/ramalama/musa      |
 
 ### GPU support inspection
 On first run, RamaLama inspects your system for GPU support, falling back to CPU if none are present. RamaLama uses container engines like Podman or Docker to pull the appropriate OCI image with all necessary software to run an AI Model for your system setup.
