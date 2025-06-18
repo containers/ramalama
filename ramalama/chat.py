@@ -47,17 +47,18 @@ def default_prefix():
         return os.environ["LLAMA_PROMPT_PREFIX"]
 
     if not EMOJI:
-        return ""
+        return "> "
 
     engine = CONFIG.engine
 
-    if os.path.basename(engine) == "podman":
-        return "🦭 > "
+    if engine:
+        if os.path.basename(engine) == "podman":
+            return "🦭 > "
 
-    if os.path.basename(engine) == "docker":
-        return "🐋 > "
+        if os.path.basename(engine) == "docker":
+            return "🐋 > "
 
-    return "> "
+    return "🦙 > "
 
 
 class RamaLamaShell(cmd.Cmd):
