@@ -100,6 +100,11 @@ RamaLama is available via PyPi at [https://pypi.org/project/ramalama](https://py
 pip install ramalama
 ```
 
+### Install via Homebrew
+```
+brew install ramalama
+```
+
 ### Install script (Linux and macOS)
 Install RamaLama by running:
 ```
