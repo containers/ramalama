@@ -9,6 +9,7 @@ DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 IMAGE ?= ramalama
 PYTHON_FILES := $(shell find . -path "./.venv" -prune -o -name "*.py" -print) $(shell find . -name ".venv" -prune -o -type f -perm +111 -exec grep -l "^\#!/usr/bin/env python3" {} \; 2>/dev/null || true)
+PYTEST_COMMON_CMD ?= PYTHONPATH=. pytest test/unit/ -vv
 
 default: help
 
@@ -166,7 +167,11 @@ ci:
 
 .PHONY: unit-tests
 unit-tests:
-	PYTHONPATH=. pytest test/unit/ -vv
+	$(PYTEST_COMMON_CMD)
+
+.PHONY: unit-tests-verbose
+unit-tests-verbose:
+	$(PYTEST_COMMON_CMD) --full-trace --capture=tee-sys
 
 .PHONY: unit-tests-verbose
 unit-tests-verbose:
