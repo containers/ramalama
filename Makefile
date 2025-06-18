@@ -168,6 +168,10 @@ ci:
 unit-tests:
 	PYTHONPATH=. pytest test/unit/ -vv
 
+.PHONY: unit-tests-verbose
+unit-tests-verbose:
+	PYTHONPATH=. pytest test/unit/ -vv --full-trace --capture=tee-sys
+
 .PHONY: cov-run
 cov-run: install-cov-requirements
 	PYTHONPATH=. coverage run -m pytest test/unit/
