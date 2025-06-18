@@ -103,7 +103,13 @@ DEFAULT_IMAGES = {
         ("HIP_VISIBLE_DEVICES", None, f"{DEFAULT_IMAGE}:latest", f"{DEFAULT_IMAGE}:latest"),
     ],
 )
-def test_accel_image(accel_env: str, env_override, config_override: str, expected_result: str):
+@patch("ramalama.common.attempt_to_use_versioned")
+def test_accel_image(mock_attempt_versioned, accel_env: str, env_override, config_override: str, expected_result: str):
+    # We force the check for a versioned image to fail. This allows the test
+    # to correctly verify the fallback logic to ':latest', making the test
+    # independent of the actual images present on the host machine.
+    mock_attempt_versioned.return_value = False
+
     with tempfile.NamedTemporaryFile('w', delete_on_close=False) as f:
         cmdline = []
         cmdline.extend(["run", "granite"])
@@ -114,7 +120,7 @@ def test_accel_image(accel_env: str, env_override, config_override: str, expecte
                 f"""\
 [ramalama]
 image = "{config_override}"
-            """
+                """
             )
             f.flush()
             env["RAMALAMA_CONFIG"] = f.name
