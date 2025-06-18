@@ -31,10 +31,8 @@ spec:
     value:
     - linux/x86_64
     - linux/arm64
-  - name: path-context
-    value: container-images
   - name: dockerfile
-    value: ramalama/Containerfile
+    value: container-images/ramalama/Containerfile
   pipelineSpec:
     description: |
       This pipeline is ideal for building multi-arch container images from a Containerfile while maintaining trust after pipeline customization.

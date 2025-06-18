@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-RAMALAMA_DIR=${PWD}
-
 available() {
   command -v "$1" >/dev/null
 }
@@ -29,21 +27,13 @@ add_build_platform() {
 
 
   conman_build+=("--platform" "$platform")
-  case $conman_bin in
-    podman)
-      conman_build+=("--volume=${RAMALAMA_DIR}:/run/ramalama")
-      conman_build+=("--security-opt=label=disable")
-      ;;
-    docker)
-      ;;
-  esac
   if [ -n "$version" ]; then
       conman_build+=("--build-arg" "VERSION=$version")
       conman_build+=("-t" "$REGISTRY_PATH/${target}-${version}")
   else
       conman_build+=("-t" "$REGISTRY_PATH/${target}")
   fi
-  conman_build+=("-f" "${target}/Containerfile" ".")
+  conman_build+=("-f" "container-images/${target}/Containerfile" ".")
 }
 
 rm_container_image() {
@@ -93,7 +83,6 @@ add_rag() {
 ARG REGISTRY_PATH=quay.io/ramalama
 FROM ${REGISTRY_PATH}/$2
 
-COPY --chmod=755 ../scripts/ /usr/bin/
 USER root
 RUN /usr/bin/build_rag.sh ${GPU}
 ENTRYPOINT []
@@ -111,13 +100,11 @@ add_entrypoints() {
 build() {
   local target=${1}
   local version=${3:-}
-  cd "container-images/"
   local conman_build=("${conman[@]}")
   local conman_show_size=("${conman[@]}" "images" "--filter" "reference=$REGISTRY_PATH/${target}")
   if [ "$dryrun" == "-d" ]; then
       add_build_platform
       echo "${conman_build[@]}"
-      cd - > /dev/null
       return 0
   fi
 
@@ -149,8 +136,6 @@ build() {
       return 1
       ;;
   esac
-
-  cd - > /dev/null
 }
 
 determine_platform() {

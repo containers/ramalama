@@ -12,7 +12,7 @@ RUN dnf -y update && \
 RUN uv venv && \
     uv pip install ramalama-stack==0.2.1
 
-COPY --chmod=755 llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
+COPY --chmod=755 container-images/llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
 

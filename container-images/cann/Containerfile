@@ -3,13 +3,13 @@ ARG ASCEND_VERSION=cann:8.0.0-910b-openeuler22.03-py3.10
 
 FROM quay.io/ascend/${ASCEND_VERSION} AS builder
 ARG GOLANG_VERSION
-COPY --chmod=755 ../scripts /usr/bin
-RUN build_llama_and_whisper.sh "cann"
+COPY . /src/ramalama
+WORKDIR /src/ramalama
+RUN container-images/scripts/build_llama_and_whisper.sh cann
 
 FROM quay.io/ascend/${ASCEND_VERSION}
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr
-COPY --chmod=755 ../scripts /usr/bin
 ENTRYPOINT [ \
     "/bin/bash", \
     "-c", \

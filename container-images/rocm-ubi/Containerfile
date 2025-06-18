@@ -1,9 +1,11 @@
 FROM registry.access.redhat.com/ubi9/ubi:9.6-1749542372
 
-COPY rocm-ubi/amdgpu.repo /etc/yum.repos.d/
-COPY rocm-ubi/rocm.repo /etc/yum.repos.d/
-COPY --chmod=755 ../scripts /usr/bin
+COPY container-images/rocm-ubi/amdgpu.repo /etc/yum.repos.d/
+COPY container-images/rocm-ubi/rocm.repo /etc/yum.repos.d/
 
 ARG AMDGPU_TARGETS=
 ENV AMDGPU_TARGETS=${AMDGPU_TARGETS}
-RUN build_llama_and_whisper.sh "rocm"
+COPY . /src/ramalama
+WORKDIR /src/ramalama
+RUN container-images/scripts/build_llama_and_whisper.sh rocm
+WORKDIR /

@@ -1,8 +1,8 @@
 FROM quay.io/fedora/fedora:42
 
-COPY --chmod=755 ../scripts/build-cli.sh /usr/bin
-
-RUN build-cli.sh
+COPY . /src/ramalama
+WORKDIR /src/ramalama
+RUN container-images/scripts/build-cli.sh /usr/bin
+WORKDIR /
 
 ENTRYPOINT [ "ramalama" ]
-

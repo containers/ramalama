@@ -1,14 +1,14 @@
 FROM quay.io/fedora/fedora:42 as builder
 
-COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
-COPY --chmod=755 ../scripts /usr/bin
-RUN build_llama_and_whisper.sh "intel-gpu"
+COPY container-images/intel-gpu/oneAPI.repo /etc/yum.repos.d/
+COPY . /src/ramalama
+WORKDIR /src/ramalama
+RUN container-images/scripts/build_llama_and_whisper.sh intel-gpu
 
 FROM quay.io/fedora/fedora:42
 
 COPY --from=builder /tmp/install/ /usr/
-COPY intel-gpu/oneAPI.repo /etc/yum.repos.d/
-COPY --chmod=755 ../scripts /usr/bin
+COPY container-images/intel-gpu/oneAPI.repo /etc/yum.repos.d/
 
 RUN dnf install -y procps-ng python3 python3-pip python3-devel \
       intel-level-zero oneapi-level-zero intel-compute-runtime libcurl lspci \
@@ -25,7 +25,7 @@ RUN useradd llama-user -u 10000 -d /home/llama-user -s /bin/bash && \
 
 USER 10000
 
-COPY --chmod=755 intel-gpu/entrypoint.sh /usr/bin
+COPY --chmod=755 container-images/intel-gpu/entrypoint.sh /usr/bin
 
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 

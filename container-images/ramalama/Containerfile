@@ -1,5 +1,6 @@
 FROM registry.access.redhat.com/ubi9/ubi:9.6-1749542372@sha256:861e833044a903f689ecfa404424494a7e387ab39cf7949c54843285d13a9774
 
-COPY --chmod=755 ../scripts /usr/bin
-
-RUN build_llama_and_whisper.sh "ramalama"
+COPY . /src/ramalama
+WORKDIR /src/ramalama
+RUN container-images/scripts/build_llama_and_whisper.sh ramalama
+WORKDIR /

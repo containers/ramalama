@@ -3,15 +3,15 @@ ARG UBUNTU_VERSION=22.04
 # Base image with MUSA for compilation
 FROM docker.io/mthreads/musa:${VERSION}-mudnn-devel-ubuntu${UBUNTU_VERSION} AS builder
 
-COPY --chmod=755 ../scripts /usr/bin
-RUN build_llama_and_whisper.sh "musa"
+COPY . /src/ramalama
+WORKDIR /src/ramalama
+RUN container-images/scripts/build_llama_and_whisper.sh musa
 
 # Final runtime image
 FROM docker.io/mthreads/musa:${VERSION}-mudnn-runtime-ubuntu${UBUNTU_VERSION}
 
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr
-COPY --chmod=755 ../scripts /usr/bin
 # pip install . --prefix=/tmp/install will install the wheel in /tmp/install/local/...
 RUN mv /usr/local/libexec/ramalama /usr/libexec/ramalama/
 

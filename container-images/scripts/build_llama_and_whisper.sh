@@ -280,17 +280,18 @@ clone_and_build_llama_cpp() {
 }
 
 install_ramalama() {
-  # Magic directory is created during container_build.sh
-  if [ -e "/run/ramalama" ]; then
-    $PYTHON -m pip install /run/ramalama --prefix="$1"
-  else
-    git clone https://github.com/containers/ramalama
-    cd ramalama
-    git submodule update --init --recursive
-    $PYTHON -m pip install . --prefix="$1"
-    cd ..
-    rm -rf ramalama
-  fi
+  $PYTHON -m pip install . --prefix="$1"
+}
+
+install_entrypoints() {
+  install -d "$install_prefix"/bin
+  install -m 755 \
+    container-images/scripts/llama-server.sh \
+    container-images/scripts/whisper-server.sh \
+    container-images/scripts/build_rag.sh \
+    container-images/scripts/doc2rag \
+    container-images/scripts/rag_framework \
+    "$install_prefix"/bin
 }
 
 main() {
@@ -313,6 +314,7 @@ main() {
   if [ -n "$containerfile" ]; then
     install_ramalama "${install_prefix}"
   fi
+  install_entrypoints
 
   setup_build_env
   if [ "$uname_m" != "s390x" ]; then
