@@ -141,7 +141,7 @@ load setup_suite
       run_ramalama pull $file_url
       run_ramalama list
       # remove the additional slash character
-      expected_url=$(sed "s/file\:\//file\:/" <<< $file_url):latest
+      expected_url=$(sed "s/file\:\//file\:/" <<< $file_url)
       is "$output" ".*$expected_url" "URL exists"
       run_ramalama rm $file_url
       run_ramalama list
@@ -163,7 +163,7 @@ load setup_suite
       touch $model
       url=file://${model}
       # remove the additional slash character
-      expected_url=$(sed "s/file\:\//file\:/" <<< $url):latest
+      expected_url=$(sed "s/file\:\//file\:/" <<< $url)
 
       run_ramalama pull $url
       run_ramalama list

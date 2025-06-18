@@ -483,6 +483,8 @@ def _list_models_from_store(args):
 
         if model.startswith("huggingface://"):
             model = model.replace("huggingface://", "hf://", 1)
+
+        if not model.startswith("ollama://") and not model.startswith("oci://"):
             model = model.removesuffix(":latest")
 
         size_sum = 0
