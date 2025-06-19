@@ -18,14 +18,14 @@ class TestFileUploadChatIntegration:
 
             mock_args = MagicMock()
             mock_args.input = tmp_file.name
-            mock_args.ARGS = "Please analyze this content:"
+            mock_args.ARGS = ["Please analyze this content:"]
             mock_args.dryrun = True
 
             with patch('ramalama.chat.dry_run') as mock_dry_run:
                 with patch('builtins.print') as mock_print:
                     chat(mock_args)
 
-                    call_args = mock_dry_run.call_args[0][0]
+                    call_args = ' '.join(mock_dry_run.call_args[0][0])
 
                     assert "Please analyze this content:" in call_args
                     assert "This is test content for chat input" in call_args
@@ -46,7 +46,7 @@ class TestFileUploadChatIntegration:
 
             mock_args = MagicMock()
             mock_args.input = tmp_dir
-            mock_args.ARGS = "Please analyze these files:"
+            mock_args.ARGS = ["Please analyze these files:"]
             mock_args.dryrun = True
 
             with patch('ramalama.chat.dry_run') as mock_dry_run:
@@ -55,7 +55,7 @@ class TestFileUploadChatIntegration:
                 with patch('builtins.print'):
                     chat(mock_args)
 
-                    call_args = mock_dry_run.call_args[0][0]
+                    call_args = ' '.join(mock_dry_run.call_args[0][0])
 
                     assert "Please analyze these files:" in call_args
                     assert "Text file content" in call_args
@@ -73,7 +73,7 @@ class TestFileUploadChatIntegration:
 
             mock_args = MagicMock()
             mock_args.input = tmp_dir
-            mock_args.ARGS = "Please analyze:"
+            mock_args.ARGS = ["Please analyze:"]
             mock_args.dryrun = True
 
             with patch('ramalama.chat.dry_run') as mock_dry_run:
@@ -83,7 +83,7 @@ class TestFileUploadChatIntegration:
                     chat(mock_args)
 
                     mock_dry_run.assert_called_once()
-                    call_args = mock_dry_run.call_args[0][0]
+                    call_args = ''.join(mock_dry_run.call_args[0][0])
 
                     assert call_args == "Please analyze:"
 
@@ -91,7 +91,7 @@ class TestFileUploadChatIntegration:
         """Test chat functionality with non-existent file input."""
         mock_args = MagicMock()
         mock_args.input = "/nonexistent/file.txt"
-        mock_args.ARGS = "Please analyze:"
+        mock_args.ARGS = ["Please analyze:"]
         mock_args.dryrun = True
 
         with pytest.raises(ValueError, match="does not exist"):
@@ -105,7 +105,7 @@ class TestFileUploadChatIntegration:
 
             mock_args = MagicMock()
             mock_args.input = tmp_file.name
-            mock_args.ARGS = "Please analyze:"
+            mock_args.ARGS = ["Please analyze:"]
             mock_args.dryrun = True
 
             with patch('ramalama.chat.dry_run') as mock_dry_run:
@@ -114,7 +114,7 @@ class TestFileUploadChatIntegration:
                 with patch('builtins.print'):
                     chat(mock_args)
 
-                    call_args = mock_dry_run.call_args[0][0]
+                    call_args = ' '.join(mock_dry_run.call_args[0][0])
 
                     assert "Please analyze:" in call_args
                     assert f"<!--start_document {tmp_file.name}-->" in call_args
@@ -129,7 +129,7 @@ class TestFileUploadChatIntegration:
 
             mock_args = MagicMock()
             mock_args.input = tmp_file.name
-            mock_args.ARGS = "Please analyze:"
+            mock_args.ARGS = ["Please analyze:"]
             mock_args.dryrun = True
 
             with patch('ramalama.chat.dry_run') as mock_dry_run:
@@ -139,7 +139,7 @@ class TestFileUploadChatIntegration:
                     chat(mock_args)
 
                     mock_dry_run.assert_called_once()
-                    call_args = mock_dry_run.call_args[0][0]
+                    call_args = ' '.join(mock_dry_run.call_args[0][0])
 
                     assert "Please analyze:" in call_args
                     assert unicode_content in call_args
@@ -162,7 +162,7 @@ class TestFileUploadChatIntegration:
 
             mock_args = MagicMock()
             mock_args.input = tmp_dir
-            mock_args.ARGS = "Please analyze these files:"
+            mock_args.ARGS = ["Please analyze these files:"]
             mock_args.dryrun = True
 
             with patch('ramalama.chat.dry_run') as mock_dry_run:
@@ -172,7 +172,7 @@ class TestFileUploadChatIntegration:
                     chat(mock_args)
 
                     mock_dry_run.assert_called_once()
-                    call_args = mock_dry_run.call_args[0][0]
+                    call_args = ''.join(mock_dry_run.call_args[0][0])
 
                     assert "Please analyze these files:" in call_args
                     assert "English content" in call_args
@@ -187,7 +187,7 @@ class TestFileUploadChatIntegration:
         """Test chat functionality when no input file is specified."""
         mock_args = MagicMock()
         mock_args.input = None
-        mock_args.ARGS = "Please analyze:"
+        mock_args.ARGS = ["Please analyze:"]
         mock_args.dryrun = True
 
         with patch('ramalama.chat.dry_run') as mock_dry_run:
@@ -197,7 +197,7 @@ class TestFileUploadChatIntegration:
                 chat(mock_args)
 
                 mock_dry_run.assert_called_once()
-                call_args = mock_dry_run.call_args[0][0]
+                call_args = ''.join(mock_dry_run.call_args[0][0])
 
                 assert call_args == "Please analyze:"
 
