@@ -194,10 +194,10 @@ def alarm_handler(signum, frame):
 
 def chat(args):
     if inputs := getattr(args, "input", None):
-        if args.ARGS is not None:
+        if isinstance(args.ARGS, list):
             args.ARGS.append(FileUpLoader(inputs).load())
         else:
-            args.ARGS = FileUpLoader(inputs).load()
+            args.ARGS = [FileUpLoader(inputs).load()]
 
     if args.dryrun:
         prompt = dry_run(args.ARGS)
