@@ -45,6 +45,10 @@ cov-detailed = [
     "pytest-html"
 ]
 
+pdf = [
+    "pymupdf4llm"
+]
+
 [project.urls]
 Homepage = "https://github.com/containers/ramalama"
 Documentation = "https://github.com/containers/ramalama/tree/main/docs"

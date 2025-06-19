@@ -1,4 +1,3 @@
-import itertools
 import os
 from string import Template
 from typing import Type

@@ -1,13 +1,10 @@
 import os
-import sys
 import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Import the chat module to test integration
 from ramalama.chat import chat
-from ramalama.file_upload.file_loader import FileUpLoader
 
 
 class TestFileUploadChatIntegration:
@@ -55,7 +52,7 @@ class TestFileUploadChatIntegration:
             with patch('ramalama.chat.dry_run') as mock_dry_run:
                 mock_dry_run.return_value = "mocked_dry_run_output"
 
-                with patch('builtins.print') as mock_print:
+                with patch('builtins.print'):
                     chat(mock_args)
 
                     call_args = mock_dry_run.call_args[0][0]
@@ -82,7 +79,7 @@ class TestFileUploadChatIntegration:
             with patch('ramalama.chat.dry_run') as mock_dry_run:
                 mock_dry_run.return_value = "mocked_dry_run_output"
 
-                with patch('builtins.print') as mock_print:
+                with patch('builtins.print'):
                     chat(mock_args)
 
                     mock_dry_run.assert_called_once()
@@ -114,7 +111,7 @@ class TestFileUploadChatIntegration:
             with patch('ramalama.chat.dry_run') as mock_dry_run:
                 mock_dry_run.return_value = "mocked_dry_run_output"
 
-                with patch('builtins.print') as mock_print:
+                with patch('builtins.print'):
                     chat(mock_args)
 
                     call_args = mock_dry_run.call_args[0][0]
@@ -138,7 +135,7 @@ class TestFileUploadChatIntegration:
             with patch('ramalama.chat.dry_run') as mock_dry_run:
                 mock_dry_run.return_value = "mocked_dry_run_output"
 
-                with patch('builtins.print') as mock_print:
+                with patch('builtins.print'):
                     chat(mock_args)
 
                     mock_dry_run.assert_called_once()
@@ -171,7 +168,7 @@ class TestFileUploadChatIntegration:
             with patch('ramalama.chat.dry_run') as mock_dry_run:
                 mock_dry_run.return_value = "mocked_dry_run_output"
 
-                with patch('builtins.print') as mock_print:
+                with patch('builtins.print'):
                     chat(mock_args)
 
                     mock_dry_run.assert_called_once()
@@ -196,7 +193,7 @@ class TestFileUploadChatIntegration:
         with patch('ramalama.chat.dry_run') as mock_dry_run:
             mock_dry_run.return_value = "mocked_dry_run_output"
 
-            with patch('builtins.print') as mock_print:
+            with patch('builtins.print'):
                 chat(mock_args)
 
                 mock_dry_run.assert_called_once()
@@ -218,7 +215,7 @@ class TestFileUploadChatIntegration:
             with patch('ramalama.chat.dry_run') as mock_dry_run:
                 mock_dry_run.return_value = "mocked_dry_run_output"
 
-                with patch('builtins.print') as mock_print:
+                with patch('builtins.print'):
                     chat(mock_args)
 
                     mock_dry_run.assert_called_once()
