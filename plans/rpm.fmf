@@ -1,0 +1,8 @@
+discover:
+    how: shell
+    tests:
+        - name: /info
+          test: rpm -qi python3-ramalama
+
+execute:
+    how: tmt

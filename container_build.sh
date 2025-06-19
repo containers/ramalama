@@ -221,7 +221,7 @@ process_all_targets() {
 
   # build ramalama container image first, as other images inherit from it
   build "ramalama" "$command"
-  for i in container-images/*; do
+  for i in ./container-images/*; do
     i=$(basename "$i")
     # skip these directories
     if [[ "$i" =~ ^(scripts|ramalama)$ ]]; then
