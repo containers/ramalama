@@ -96,6 +96,7 @@ class HFStyleRepository(ABC):
         self.model_hash = None
         self.mmproj_filename = None
         self.mmproj_hash = None
+        self.additional_files: list[SnapshotFile] = []
         self.fetch_metadata()
 
     @abstractmethod
@@ -104,7 +105,7 @@ class HFStyleRepository(ABC):
 
     def get_file_list(self, cached_files: list[str]) -> list[SnapshotFile]:
         files = []
-        if self.model_filename not in cached_files:
+        if self.model_filename and self.model_filename not in cached_files:
             files.append(self.model_file())
         if self.mmproj_filename and self.mmproj_filename not in cached_files:
             files.append(self.mmproj_file())
@@ -114,6 +115,9 @@ class HFStyleRepository(ABC):
             files.append(self.generation_config_file())
         if self.FILE_NAME_TOKENIZER_CONFIG not in cached_files:
             files.append(self.tokenizer_config_file())
+        for f in self.additional_files:
+            if f.name not in cached_files:
+                files.append(f)
 
         return files
 

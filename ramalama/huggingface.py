@@ -3,10 +3,9 @@ import os
 import pathlib
 import urllib.request
 
-from ramalama.common import available, perror, run_cmd
+from ramalama.common import available, generate_sha256, perror, run_cmd
 from ramalama.hf_style_repo_base import (
     HFInvalidRepoMetadataError,
-    HFNotSupportedError,
     HFStyleRepoFile,
     HFStyleRepoModel,
     HFStyleRepository,
@@ -14,7 +13,7 @@ from ramalama.hf_style_repo_base import (
     fetch_data_from_api_base,
 )
 from ramalama.logger import logger
-from ramalama.model_store import SnapshotFileType
+from ramalama.model_store import SnapshotFile, SnapshotFileType
 
 missing_huggingface = """
 Optional: Huggingface models require the huggingface-cli module.
@@ -131,12 +130,31 @@ class HuggingfaceRepository(HFStyleRepository):
         elif 'safetensors' in repo_info:
             for sibling in repo_info['siblings']:
                 fn = sibling['rfilename']
-                if fn.endswith('.safetensors'):
-                    if self.model_filename is None:
-                        self.model_filename = fn
+                if fn not in (
+                    self.FILE_NAME_CONFIG,
+                    self.FILE_NAME_GENERATION_CONFIG,
+                    self.FILE_NAME_TOKENIZER_CONFIG,
+                ):
+                    snapshot_file = SnapshotFile(
+                        url=f"{self.blob_url}/{fn}",
+                        header=self.headers,
+                        hash=generate_sha256(fn),
+                        type=SnapshotFileType.Other,
+                        name=fn,
+                        required=True,
+                    )
+                    try:
+                        hash = f"sha256:{fetch_checksum_from_api(repo_name, fn)}"
+                    except HFInvalidRepoMetadataError:
+                        pass
                     else:
-                        raise HFNotSupportedError(f"Only one model supported, got: {self.model_filename}, {fn}")
-            self.model_hash = self.model_hash = f"sha256:{fetch_checksum_from_api(repo_name, self.model_filename)}"
+                        if fn.endswith('.safetensors') and self.model_hash is None:
+                            # Need a hash for the snapshot, use hash of first listed model file
+                            self.model_hash = hash
+                        snapshot_file.hash = hash
+                        snapshot_file.should_show_progress = True
+                        snapshot_file.should_verify_checksum = True
+                self.additional_files.append(snapshot_file)
         else:
             raise HFUnknownRepoTypeError(f"Could not determine repo type for {repo_name}")
 
