@@ -1,0 +1,23 @@
+# Sample TOML configuration file
+name = "test_config"
+version = "1.0.0"
+description = "Sample TOML data for testing file upload functionality"
+
+[metadata]
+author = "Test User"
+created = "2024-01-01"
+tags = ["test", "sample", "toml"]
+
+[config]
+enabled = true
+max_file_size = 1048576
+supported_formats = [".txt", ".md", ".json", ".yaml", ".yml", ".csv", ".toml", ".pdf"]
+
+[features]
+text_processing = true
+file_upload = true
+chat_integration = true
+toml_support = true
+
+[nested.structure]
+with_deep_nesting = true 

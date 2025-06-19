@@ -1,0 +1,9 @@
+This is a sample text file for testing the file upload functionality.
+
+It contains multiple lines of text to test how the system handles:
+- Plain text content
+- Multiple lines
+- Special characters like: !@#$%^&*()
+- Numbers: 1234567890
+
+This file should be processed by the TXTFileUpload class. 

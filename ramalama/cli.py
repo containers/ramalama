@@ -938,6 +938,7 @@ def run_parser(subparsers):
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
     parser.add_argument("MODEL", completer=local_models)  # positional argument
+    parser.add_argument("--input", type=str, help="input file or directory to pass into the model")
     parser.add_argument(
         "ARGS",
         nargs="*",

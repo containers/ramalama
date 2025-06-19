@@ -1,0 +1,20 @@
+{
+  "name": "test_data",
+  "version": "1.0.0",
+  "description": "Sample JSON data for testing file upload functionality",
+  "features": [
+    "text_processing",
+    "file_upload",
+    "chat_integration"
+  ],
+  "metadata": {
+    "author": "Test User",
+    "created": "2024-01-01",
+    "tags": ["test", "sample", "json"]
+  },
+  "config": {
+    "enabled": true,
+    "max_file_size": 1048576,
+    "supported_formats": [".txt", ".md", ".json", ".yaml", ".yml", ".csv", ".toml", ".pdf"]
+  }
+} 
