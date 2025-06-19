@@ -9,10 +9,11 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import timedelta
 
 from ramalama.config import CONFIG
-from ramalama.console import EMOJI
-from ramalama.model import should_colorize
+from ramalama.console import EMOJI, should_colorize
+from ramalama.engine import dry_run, stop_container
 
 
 def res(response, color):
@@ -93,7 +94,6 @@ class RamaLamaShell(cmd.Cmd):
             self.default(" ".join(self.args.ARGS))
             self.kills()
             return True
-
         return False
 
     def do_EOF(self, user_content):
@@ -162,6 +162,8 @@ class RamaLamaShell(cmd.Cmd):
             os.kill(self.args.pid2kill, signal.SIGINT)
             os.kill(self.args.pid2kill, signal.SIGTERM)
             os.kill(self.args.pid2kill, signal.SIGKILL)
+        elif self.args.name:
+            stop_container(self.args, self.args.name)
 
     def loop(self):
         while True:
@@ -176,3 +178,61 @@ class RamaLamaShell(cmd.Cmd):
                 continue
 
             break
+
+
+class TimeoutException(Exception):
+    pass
+
+
+def alarm_handler(signum, frame):
+    """
+    Signal handler for SIGALRM. Raises TimeoutException when invoked.
+    """
+    raise TimeoutException()
+
+
+def chat(args):
+    if args.dryrun:
+        prompt = dry_run(args.ARGS)
+        print(f"\nramalama chat --color {args.color} --prefix  \"{args.prefix}\" --url {args.url} {prompt}")
+        return
+    if hasattr(args, "keepalive") and args.keepalive:
+        signal.signal(signal.SIGALRM, alarm_handler)
+        signal.alarm(convert_to_seconds(args.keepalive))
+
+    try:
+        shell = RamaLamaShell(args)
+        if shell.handle_args():
+            return
+        shell.loop()
+    except TimeoutException:
+        # Handle the timeout, e.g., print a message and exit gracefully
+        print("")
+        pass
+    finally:
+        # Reset the alarm to 0 to cancel any pending alarms
+        signal.alarm(0)
+    shell.kills()
+
+
+UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+
+
+def convert_to_seconds(s):
+    if isinstance(s, int):
+        # We are dealing with a raw number
+        return s
+
+    try:
+        seconds = int(s)
+        # We are dealing with an integer string
+        return seconds
+    except ValueError:
+        # We are dealing with some other string or type
+        pass
+
+    # Expecting a string ending in [m|h|d|s|w]
+    count = int(s[:-1])
+    unit = UNITS[s[-1]]
+    td = timedelta(**{unit: count})
+    return td.seconds + 60 * 60 * 24 * td.days

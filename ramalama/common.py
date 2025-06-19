@@ -109,7 +109,6 @@ def quoted(arr) -> str:
 
 def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
     logger.debug(f"exec_cmd: {quoted(args)}")
-
     if stdout2null:
         with open(os.devnull, 'w') as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
