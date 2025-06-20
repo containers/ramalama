@@ -252,6 +252,11 @@ verify_begin=".*run --rm"
 	   rm $name.image
 	fi
 
+    run_ramalama rm oci://${ociimage}
+    done
+    stop_registry
+    skip "vLLM can't serve GGUFs, needs tiny safetensor"
+
 	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://${ociimage}
 	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
@@ -267,10 +272,7 @@ verify_begin=".*run --rm"
 	is "$output" ".*reference: ${ociimage}" "AI image should be created"
 	is "$output" ".*pullPolicy: IfNotPresent" "pullPolicy should exist"
 
-	run_ramalama rm oci://${ociimage}
-	rm $name.yaml
-    done
-    stop_registry
+    rm $name.yaml
 }
 
 

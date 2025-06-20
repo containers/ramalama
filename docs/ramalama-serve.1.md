@@ -43,7 +43,7 @@ The default can be overridden in the ramalama.conf file.
 Path of the authentication file for OCI registries
 
 #### **--ctx-size**, **-c**
-Size of the prompt context (default: 2048, 0 = loaded from model)
+size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 2048, 0 = loaded from model)
 
 #### **--detach**, **-d**
 Run the container in the background and print the new container ID.

@@ -290,7 +290,26 @@ class Model(ModelBase):
         return True
 
     def setup_mounts(self, model_path, args):
-        if model_path and os.path.exists(model_path):
+        if args.runtime == "vllm":
+            model_base = ""
+            if self.store and hasattr(self, 'model_tag'):
+                ref_file = self.store.get_ref_file(self.model_tag)
+                if ref_file and hasattr(ref_file, 'hash'):
+                    model_base = self.store.model_base_directory
+            if not model_base and (model_path and os.path.exists(model_path)):
+                if os.path.isfile(model_path):
+                    model_base = os.path.dirname(model_path)
+                elif os.path.isdir(model_path):
+                    model_base = model_path
+            if model_base:
+                self.engine.add([f"--mount=type=bind,src={model_base},destination={MNT_DIR},ro"])
+            else:
+                raise ValueError(
+                    f'Could not determine a valid host directory to mount for model {self.model}'
+                    + 'Ensure the model path is correct or the model store is properly configured.'
+                )
+
+        elif model_path and os.path.exists(model_path):
             if hasattr(self, 'split_model'):
                 self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_DIR}/{self.mnt_path},ro"])
 
@@ -531,9 +550,38 @@ class Model(ModelBase):
     def handle_runtime(self, args, exec_args, exec_model_path):
         set_accel_env_vars()
         if args.runtime == "vllm":
-            exec_model_path = os.path.dirname(exec_model_path)
-            # Left out "vllm", "serve" the image entrypoint already starts it
-            exec_args = ["--port", args.port, "--model", MNT_FILE, "--max_model_len", "2048"]
+            container_model_path = ""
+            ref_file = None
+            if self.store:
+                ref_file = self.store.get_ref_file(self.model_tag)
+
+            if ref_file and ref_file.hash:
+                snapshot_dir_name = ref_file.hash
+                container_model_path = os.path.join(MNT_DIR, "snapshots", snapshot_dir_name)
+            else:
+                current_model_host_path = self.get_model_path(args)
+                if os.path.isdir(current_model_host_path):
+                    container_model_path = MNT_DIR
+                else:
+                    container_model_path = os.path.join(MNT_DIR, os.path.basename(current_model_host_path))
+
+            vllm_max_model_len = 2048
+            if args.context:
+                vllm_max_model_len = args.context
+
+            exec_args = [
+                "--port",
+                str(args.port),
+                "--model",
+                str(container_model_path),
+                "--max_model_len",
+                str(vllm_max_model_len),
+                "--served-model-name",
+                self.model_name,
+            ]
+
+            if hasattr(args, 'runtime_args') and args.runtime_args:
+                exec_args.extend(args.runtime_args)
         else:
             gpu_args = self.gpu_args(args=args)
             if gpu_args is not None:
