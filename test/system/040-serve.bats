@@ -255,7 +255,7 @@ verify_begin=".*run --rm"
     run_ramalama rm oci://${ociimage}
     done
     stop_registry
-    skip "vLLM cant serve GGUFs, needs tiny safetensor"
+    skip "vLLM can't serve GGUFs, needs tiny safetensor"
 
 	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://${ociimage}
 	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"

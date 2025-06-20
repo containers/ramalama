@@ -42,7 +42,7 @@ The default can be overridden in the ramalama.conf file.
 #### **--authfile**=*password*
 Path of the authentication file for OCI registries
 
-#### **--ctx-size**, **-c** **--max-model-len**
+#### **--ctx-size**, **-c**, **--max-model-len**
 size of the prompt context, applies to llama.cpp and vllm regardless of alias (default: 2048, 0 = loaded from model)
 
 #### **--detach**, **-d**

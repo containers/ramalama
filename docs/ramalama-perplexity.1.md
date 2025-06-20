@@ -29,7 +29,7 @@ URL support means if a model is on a web site or even on your local system, you 
 #### **--authfile**=*password*
 path of the authentication file for OCI registries
 
-#### **--ctx-size**, **-c** **--max-model-len**
+#### **--ctx-size**, **-c**, **--max-model-len**
 size of the prompt context, applies to llama.cpp and vllm regardless of alias (default: 2048, 0 = loaded from model)
 
 #### **--device**

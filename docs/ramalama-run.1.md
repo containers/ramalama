@@ -37,7 +37,7 @@ path of the authentication file for OCI registries
 Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)
 
-#### **--ctx-size**, **-c** **--max-model-len**
+#### **--ctx-size**, **-c**, **--max-model-len**
 size of the prompt context, applies to llama.cpp and vllm regardless of alias (default: 2048, 0 = loaded from model)
 
 #### **--device**
