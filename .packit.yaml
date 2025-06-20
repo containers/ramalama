@@ -26,8 +26,7 @@ jobs:
     packages: [ramalama-fedora]
     enable_net: true
     targets: &fedora_copr_targets
-      - fedora-development
-      - fedora-latest-stable
+      - fedora-all
     osh_diff_scan_after_copr_build: false
 
   # Copr builds for CentOS Stream
@@ -52,12 +51,27 @@ jobs:
     trigger: pull_request
     packages: [ramalama-fedora]
     targets: *fedora_copr_targets
+    tmt_plan: "/plans/rpm"
+    identifier: "rpm-fedora"
+
+  - job: tests
+    trigger: pull_request
+    skip_build: true
+    packages: [ramalama-fedora]
+    targets:
+      # FIXME: Validate test breaks on Fedora 41
+      - fedora-development
+      - fedora-latest-stable
+    tmt_plan: "/plans/no-rpm"
+    identifier: "no-rpm-fedora"
 
   # Tests for CentOS Stream
   - job: tests
     trigger: pull_request
     packages: [ramalama-centos]
     targets: *centos_copr_targets
+    tmt_plan: "/plans/rpm"
+    identifier: "rpm-centos"
 
   - job: propose_downstream
     trigger: release

@@ -171,7 +171,11 @@ EOF
 @test "ramalama verify default store" {
     store=e_$(safename)
     run_ramalama --help
-    is "$output" ".*default: ${HOME}/.local/share/ramalama"  "Verify default store"
+    if is_rootless; then
+        is "$output" ".*default: ${HOME}/.local/share/ramalama"  "Verify default store"
+    else
+        is "$output" ".*default: /var/lib/ramalama"  "Verify default store"
+    fi
 
     conf=$RAMALAMA_TMPDIR/ramalama.conf
     cat >$conf <<EOF

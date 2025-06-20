@@ -1,0 +1,42 @@
+enabled: true
+adjust:
+    # FIXME: these tests should ideally run on all envs including dist-git and
+    # bodhi, but we can leave that for later.
+    enabled: false
+    when: initiator != packit
+
+require:
+    - bats
+    - black
+    - codespell
+    - flake8
+    - isort
+    - jq
+    - make
+    - perl-Clone
+    - perl-FindBin
+    - pipx
+    - podman-docker
+    - pytest
+    - python3-argcomplete
+    - python3-huggingface-hub
+    - shellcheck
+
+/gpu_info:
+    summary: Display GPU info
+    test: lshw -C display
+    require:
+        - lshw
+
+/validate:
+    summary: Run validate test
+    test: make -C $TMT_TREE validate
+
+/unit:
+    summary: Run unit tests
+    test: make -C $TMT_TREE unit-tests
+
+/bats-nocontainer:
+    summary: Run system tests on host
+    test: bash ./bats-tests.sh nocontainer
+    duration: 30m
