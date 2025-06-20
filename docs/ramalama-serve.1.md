@@ -87,6 +87,9 @@ show this help message and exit
 #### **--host**="0.0.0.0"
 IP address for llama.cpp to listen on.
 
+#### **--max-model-len**
+Maximum model length for vLLM (default: 2048)
+
 #### **--model-draft**
 
 

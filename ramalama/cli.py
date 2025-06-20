@@ -857,6 +857,13 @@ def runtime_options(parser, command):
         parser.add_argument(
             "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
         )
+        parser.add_argument(
+            "--max-model-len",
+            dest="vllm_max_model_len",
+            type=int,
+            help="Maximum model length for vLLM",
+            completer=suppressCompleter,
+        )
     if command in ["perplexity", "run", "serve"]:
         parser.add_argument(
             "--runtime-args",

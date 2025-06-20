@@ -64,6 +64,9 @@ Show this help message and exit
 #### **--keepalive**
 duration to keep a model loaded (e.g. 5m)
 
+#### **--max-model-len**
+Maximum model length for vLLM (default: 2048)
+
 #### **--name**, **-n**
 name of the container to run the Model in
 
