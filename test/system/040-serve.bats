@@ -178,25 +178,27 @@ verify_begin=".*run --rm"
 }
 
 @test "ramalama serve --generate=quadlet" {
-    model=tiny
+    model="smollm"
+    model_quant="$model:135m"
+    quadlet="$model.container"
     name=c_$(safename)
-    run_ramalama pull ${model}
-    run_ramalama -q serve --port 1234 --generate=quadlet ${model}
-    is "$output" "Generating quadlet file: tinyllama.container" "generate tinllama.container"
+    run_ramalama pull $model_quant
+    run_ramalama -q serve --port 1234 --generate=quadlet $model
+    is "$output" "Generating quadlet file: $quadlet" "generate $quadlet"
 
-    run cat tinyllama.container
+    run cat $quadlet
     is "$output" ".*PublishPort=1234:1234" "PublishPort should match"
     is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
-    is "$output" ".*Mount=type=bind,.*tinyllama" "Mount line should be correct"
+    is "$output" ".*Mount=type=bind,.*$model" "Mount line should be correct"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet ${model}
-    is "$output" "Generating quadlet file: tinyllama.container" "generate tinllama.container"
+    HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet $model
+    is "$output" "Generating quadlet file: $quadlet" "generate $quadlet"
 
-    run cat tinyllama.container
+    run cat $quadlet
     is "$output" ".*Environment=HIP_VISIBLE_DEVICES=99" "Should contain env property"
 
-    rm tinyllama.container
-    run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus tiny
+    rm $quadlet
+    run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus $model
     is "$output" ".*error: argument --generate: invalid choice: .*bogus.* (choose from.*quadlet.*kube.*quadlet/kube.*)" "Should fail"
 }
 
@@ -275,17 +277,18 @@ verify_begin=".*run --rm"
 
 
 @test "ramalama serve --generate=kube" {
-    model=tiny
+    model="smollm"
+    model_quant="$model:135m"
     name=c_$(safename)
-    run_ramalama pull ${model}
-    run_ramalama serve --name=${name} --port 1234 --generate=kube ${model}
+    run_ramalama pull $model_quant
+    run_ramalama serve --name=${name} --port 1234 --generate=kube $model_quant
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
     is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=kube ${model}
+    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=kube $model_quant
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
@@ -293,7 +296,7 @@ verify_begin=".*run --rm"
     is "$output" ".*name: HIP_VISIBLE_DEVICES" "Should contain env name"
     is "$output" ".*value: 99" "Should contain env value"
 
-    run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube ${model}
+    run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube $model_quant
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
     is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
 
@@ -301,7 +304,7 @@ verify_begin=".*run --rm"
     is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube ${model}
+    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube $model_quant
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
