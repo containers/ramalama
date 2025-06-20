@@ -37,8 +37,8 @@ path of the authentication file for OCI registries
 Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)
 
-#### **--ctx-size**, **-c**
-size of the prompt context (default: 2048, 0 = loaded from model)
+#### **--ctx-size**, **-c** **--max-model-len**
+size of the prompt context, applies to llama.cpp and vllm regardless of alias (default: 2048, 0 = loaded from model)
 
 #### **--device**
 Add a host device to the container. Optional permissions parameter  can
@@ -63,9 +63,6 @@ Show this help message and exit
 
 #### **--keepalive**
 duration to keep a model loaded (e.g. 5m)
-
-#### **--max-model-len**
-Maximum model length for vLLM (default: 2048)
 
 #### **--name**, **-n**
 name of the container to run the Model in

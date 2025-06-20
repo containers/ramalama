@@ -296,13 +296,11 @@ class Model(ModelBase):
                 ref_file = self.store.get_ref_file(self.model_tag)
                 if ref_file and hasattr(ref_file, 'hash'):
                     model_base = self.store.model_base_directory
-            if not model_base:
-                # Might be needed for file:// paths directly used with vLLM.
-                if model_path and os.path.exists(model_path):
-                    if os.path.isfile(model_path):
-                        model_base = os.path.dirname(model_path)
-                    elif os.path.isdir(model_path):
-                        model_base = model_path
+            if not model_base and (model_path and os.path.exists(model_path)):
+                if os.path.isfile(model_path):
+                    model_base = os.path.dirname(model_path)
+                elif os.path.isdir(model_path):
+                    model_base = model_path
             if model_base:
                 self.engine.add([f"--mount=type=bind,src={model_base},destination={MNT_DIR},ro"])
             else:
@@ -568,8 +566,8 @@ class Model(ModelBase):
                     container_model_path = os.path.join(MNT_DIR, os.path.basename(current_model_host_path))
 
             vllm_max_model_len = 2048
-            if args.vllm_max_model_len:
-                vllm_max_model_len = args.vllm_max_model_len
+            if args.context:
+                vllm_max_model_len = args.context
 
             exec_args = [
                 "--port",
