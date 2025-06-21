@@ -103,7 +103,4 @@ include = ["ramalama"]
 "share/bash-completion/completions" = ["completions/bash-completion/completions/*"]
 "share/zsh/vendor-completions" = ["completions/zsh/vendor-completions/*"]
 "share/fish/vendor_completions.d" = ["completions/fish/vendor_completions.d/*"]
-"libexec/ramalama" = [
-  "libexec/ramalama/ramalama-serve-core",
-]
 

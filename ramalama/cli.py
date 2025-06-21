@@ -779,6 +779,7 @@ def runtime_options(parser, command):
         parser.add_argument(
             "--max-model-len",
             dest="context",
+            default=CONFIG.ctx_size,
             help=argparse.SUPPRESS,
             completer=suppressCompleter,
         )
