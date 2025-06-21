@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:42
+FROM quay.io/fedora/fedora:43
 
 # hack that should be removed when the following bug is addressed
 # https://github.com/containers/ramalama-stack/issues/53
