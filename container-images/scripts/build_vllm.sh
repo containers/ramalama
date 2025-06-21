@@ -1,15 +1,13 @@
 #!/bin/bash
 
-PYTHON_VERSION=3.12
-
 clone_and_build_triton() {
   local triton_sha="e5be006"
-  pip${PYTHON_VERSION} install ninja cmake wheel pybind11
+  "pip${PYTHON_VERSION}" install ninja cmake wheel pybind11
   git clone https://github.com/OpenAI/triton.git
   cd triton
   git checkout $triton_sha
   cd python
-  pip${PYTHON_VERSION} install .
+  "pip${PYTHON_VERSION}" install .
   cd ../..
 }
 
@@ -84,51 +82,61 @@ EOF
   popd
 }
 
+gcc_15_fixup() {
+  if gcc --version | grep ' 15'; then
+     if [[ "$VLLM_TARGET_DEVICE" == cuda ]]; then
+        # max 14 supported with nvcc
+        ln -s  /usr/bin/cpp-14  /usr/local/bin/cpp
+        ln -s  /usr/bin/g++-14  /usr/local/bin/g++
+        ln -s  /usr/bin/g++-14  /usr/local/bin/c++
+        ln -s  /usr/bin/gcc-14  /usr/local/bin/gcc
+        patch_cuda
+     fi
+     if [[ "$VLLM_TARGET_DEVICE" == rocm ]]; then
+        patch_hip
+     fi
+  fi
+}
+
 clone_and_build_vllm() {
   local vllm_sha="aed8468642740c9a8486d6dde334d9a4e80a687f"
-  python${PYTHON_VERSION} -m ensurepip
+  "python${PYTHON_VERSION}" -m ensurepip
   if [[ "$VLLM_TARGET_DEVICE" = rocm ]]; then
      clone_and_build_triton
   fi
   git clone https://github.com/vllm-project/vllm
   cd vllm
   git reset --hard "$vllm_sha"
+  gcc_15_fixup
   if [[ "$VLLM_TARGET_DEVICE" == cuda ]]; then
-     # max 14 supported with nvcc
-     ln -s  /usr/bin/cpp-14  /usr/local/bin/cpp
-     ln -s  /usr/bin/g++-14  /usr/local/bin/g++
-     ln -s  /usr/bin/g++-14  /usr/local/bin/c++
-     ln -s  /usr/bin/gcc-14  /usr/local/bin/gcc
      # workaround, test dep at build time ?
-     pip3.12 install nvidia-cusparselt-cu12==0.6.3
+     "pip${PYTHON_VERSION}" install nvidia-cusparselt-cu12==0.6.3
      # libcusparseLt.so.0
-     export LD_LIBRARY_PATH=/usr/local/lib/python3.12/site-packages/cusparselt/lib
-     patch_cuda
+     export LD_LIBRARY_PATH=/usr/local/lib/python${PYTHON_VERSION}/site-packages/cusparselt/lib
      set_nvcc_threads
   fi
   if [[ "$VLLM_TARGET_DEVICE" = rocm ]]; then
-    patch_hip
-    pip${PYTHON_VERSION} install --upgrade numba \
+    "pip${PYTHON_VERSION}" install --upgrade numba \
        scipy \
        "huggingface-hub[cli,hf_transfer]" \
        setuptools_scm
-    pip${PYTHON_VERSION} install "numpy<2"
+    "pip${PYTHON_VERSION}" install "numpy<2"
     # pip version did not worked
-    cp -r /usr/lib/python3.13/site-packages/amdsmi /usr/local/lib/python${PYTHON_VERSION}/site-packages/amdsmi
+    cp -r /usr/lib/python3.13/site-packages/amdsmi "/usr/local/lib/python${PYTHON_VERSION}/site-packages/amdsmi"
     # This issue only seen in this env (not on the fedora host)
     # /usr/lib64/rocm/llvm/bin/clang++ --offload-arch=gfx1100 -o test.hip.o  -c test2.hip -v
     ln -s /usr/lib64/rocm/llvm/lib/clang/18/amdgcn /usr/lib64/rocm/llvm/lib/clang/18/lib/amdgcn
   fi
-  pip${PYTHON_VERSION} install -r "requirements/$VLLM_TARGET_DEVICE.txt"
+  "pip${PYTHON_VERSION}" install -r "requirements/$VLLM_TARGET_DEVICE.txt"
 
   # marlin generation
   if [[ "$VLLM_TARGET_DEVICE" = cuda ]]; then
-     cp -r  /usr/local/lib64/python3.12/site-packages/markupsafe /usr/lib64/python3.12
-     cp -r  /usr/local/lib/python3.12/site-packages/jinja2 /usr/lib64/python3.12
+      cp -r  "/usr/local/lib64/python${PYTHON_VERSION}/site-packages/markupsafe" "/usr/lib64/python${PYTHON_VERSION}"
+      cp -r  "/usr/local/lib/python${PYTHON_VERSION}/site-packages/jinja2" "/usr/lib64/python${PYTHON_VERSION}"
   fi
 
   # had issue with -e
-  pip${PYTHON_VERSION} install .
+  "pip${PYTHON_VERSION}" install .
   cd ..
 }
 
@@ -151,6 +159,58 @@ set_nvcc_threads() {
  echo "NVCC_THREADS=${NVCC_THREADS}"
 }
 
+get_python_ver_y(){
+   python3 --version 2>&1 | grep -oP 'Python \d+\.\K\d+'
+}
+
+set_python_version(){
+   local y_ver
+   y_ver=$(get_python_ver_y)
+   if [[ $y_ver -ge 12 ]];then
+      PYTHON_VERSION=3.12
+   else
+      PYTHON_VERSION=3.$y_ver
+   fi
+}
+
+add_stream_repo() {
+  local url="https://mirror.stream.centos.org/9-stream/$1/$UNAME_M/os/"
+  dnf config-manager --add-repo "$url"
+  url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
+  local file="/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official"
+  if [ ! -e $file ]; then
+    curl --retry 8 --retry-all-errors -o $file "$url"
+    rpm --import $file
+  fi
+}
+
+is_rhel_based() { # doesn't include openEuler
+  [[ "${ID}" == "rhel" || "${ID}" == "redhat" || "${ID}" == "centos" ]]
+}
+
+dnf_install_epel() {
+  local rpm_exclude_list="selinux-policy,container-selinux"
+  local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+  dnf reinstall -y "$url" || dnf install -y "$url" --exclude "${rpm_exclude_list}"
+  crb enable # this is in epel-release, can only install epel-release via url
+}
+
+rm_centos_repos() {
+  local dir="/etc/yum.repos.d"
+  rm -rf $dir/mirror.stream.centos.org_9-stream_*
+}
+
+dnf_install_repos() {
+  if is_rhel_based && [[ $ID != fedora ]]; then
+    dnf_install_epel
+    add_stream_repo "AppStream"
+    add_stream_repo "BaseOS"
+    add_stream_repo "CRB"
+  fi
+  yum install -y numactl-devel
+  rm_centos_repos
+}
+
 main() {
   # shellcheck disable=SC1091
   source /etc/os-release
@@ -161,7 +221,13 @@ main() {
   if [[ ${UNAME_M} == aarch64 ]]; then
      export VLLM_CPU_DISABLE_AVX512=true
   fi
-  RPM_PKGS=(git gcc-c++ "python${PYTHON_VERSION}-devel" cargo openssl-devel uv numactl-devel sentencepiece-devel patch)
+  dnf_install_repos
+  set_python_version
+
+  RPM_PKGS=(git gcc-c++ "python${PYTHON_VERSION}-devel" cargo openssl-devel numactl-devel patch)
+  if [ "${ID}" = "fedora" ]; then
+      RPM_PKGS+=(sentencepiece-devel)
+  fi
 
   case "$VLLM_TARGET_DEVICE" in
   cpu)
@@ -173,12 +239,17 @@ main() {
      if [[ $UNAME_M = x86_64 ]]; then
 	     nv_arch=x86_64
      fi
-     curl -o /etc/yum.repos.d/cuda-fedora41.repo \
-       --max-time 10 \
-       --retry 5 \
-       --retry-delay 0 \
-       --retry-max-time 40 \
-       https://developer.download.nvidia.com/compute/cuda/repos/fedora41/$nv_arch/cuda-fedora41.repo
+     RPM_PKGS+=(procps-ng cudnn9)
+     if [[ $ID == fedora ]]; then
+         curl -o /etc/yum.repos.d/cuda-fedora41.repo \
+           --max-time 10 \
+           --retry 5 \
+           --retry-delay 0 \
+           --retry-max-time 40 \
+           https://developer.download.nvidia.com/compute/cuda/repos/fedora41/$nv_arch/cuda-fedora41.repo
+	 # in case of ubi use cuda from image
+	 RPM_PKGS+=(gcc14-c++ cuda-12-8 libcusparse-devel-12-8 libcusparse-12-8 libnccl-devel)
+     fi
      # aarch64 fedora nvidia repo incomplete
      # for cudadnn (Deprecated use ?) required ATM an x86_64 as well
       curl -o /etc/yum.repos.d/cuda-rhel_9.repo \
@@ -187,7 +258,6 @@ main() {
        --retry-delay 0 \
        --retry-max-time 40 \
        https://developer.download.nvidia.com/compute/cuda/repos/rhel9/$nv_arch/cuda-rhel9.repo
-     RPM_PKGS+=(cuda-12-8 libcusparse-devel-12-8 libcusparse-12-8 cudnn9 gcc14-c++ libnccl-devel procps-ng)
      export CUDACXX=/usr/local/cuda-12.8/bin/nvcc
     ;;
   rocm)

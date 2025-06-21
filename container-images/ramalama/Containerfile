@@ -3,4 +3,5 @@ FROM registry.access.redhat.com/ubi9/ubi:9.6-1749542372@sha256:861e833044a903f68
 COPY . /src/ramalama
 WORKDIR /src/ramalama
 RUN container-images/scripts/build_llama_and_whisper.sh ramalama
+RUN container-images/scripts/build_vllm.sh "cpu"
 WORKDIR /
