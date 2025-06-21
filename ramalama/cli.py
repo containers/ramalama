@@ -771,10 +771,15 @@ def runtime_options(parser, command):
         parser.add_argument(
             "-c",
             "--ctx-size",
-            "--max-model-len",
             dest="context",
             default=CONFIG.ctx_size,
             help="size of the prompt context (0 = loaded from model)",
+            completer=suppressCompleter,
+        )
+        parser.add_argument(
+            "--max-model-len",
+            dest="context",
+            help=argparse.SUPPRESS,
             completer=suppressCompleter,
         )
     if command == "serve":
