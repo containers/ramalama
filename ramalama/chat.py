@@ -71,23 +71,6 @@ class RamaLamaShell(cmd.Cmd):
         self.prompt = args.prefix
 
         self.url = f"{args.url}/v1/chat/completions"
-        self.models_url = f"{args.url}/v1/models"
-        self.models = []
-
-    def model(self, index=0):
-        try:
-            if len(self.models) == 0:
-                self.models = self.get_models()
-            return self.models[index]
-        except urllib.error.URLError:
-            return ""
-
-    def get_models(self):
-        request = urllib.request.Request(self.models_url, method="GET")
-        response = urllib.request.urlopen(request)
-        for line in response:
-            line = line.decode("utf-8").strip()
-            return [d['id'] for d in json.loads(line)["data"]]
 
     def handle_args(self):
         if self.args.ARGS:
@@ -117,7 +100,7 @@ class RamaLamaShell(cmd.Cmd):
         data = {
             "stream": True,
             "messages": self.conversation_history,
-            "model": self.model(),
+            "model": self.args.MODEL,
         }
         json_data = json.dumps(data).encode("utf-8")
         headers = {
