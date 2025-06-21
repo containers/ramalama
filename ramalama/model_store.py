@@ -50,12 +50,15 @@ class SnapshotFile:
         self.required: bool = required
 
     def download(self, blob_file_path: str, snapshot_dir: str) -> str:
-        download_file(
-            url=self.url,
-            headers=self.header,
-            dest_path=blob_file_path,
-            show_progress=self.should_show_progress,
-        )
+        if not os.path.exists(blob_file_path):
+            download_file(
+                url=self.url,
+                headers=self.header,
+                dest_path=blob_file_path,
+                show_progress=self.should_show_progress,
+            )
+        else:
+            logger.debug(f"Using cached blob {blob_file_path}")
         return os.path.relpath(blob_file_path, start=snapshot_dir)
 
 
@@ -101,11 +104,13 @@ def validate_snapshot_files(snapshot_files: list[SnapshotFile]):
             mmproj_files.append(file)
 
     if len(model_files) > 1:
-        raise ValueError(f"Only one model supported, got {len(model_files)}: {model_files}")
+        raise ValueError(f"Only one model supported, got {len(model_files)}: {[x.name for x in model_files]}")
     if len(chat_template_files) > 1:
-        raise ValueError(f"Only one chat template supported, got {len(chat_template_files)}: {chat_template_files}")
+        raise ValueError(
+            f"Only one chat template supported, got {len(chat_template_files)}: {[x.name for x in chat_template_files]}"
+        )
     if len(mmproj_files) > 1:
-        raise ValueError(f"Only one mmproj supported, got {len(mmproj_files)}: {mmproj_files}")
+        raise ValueError(f"Only one mmproj supported, got {len(mmproj_files)}: {[x.name for x in mmproj_files]}")
 
 
 class RefFile:
@@ -442,7 +447,9 @@ class ModelStore:
                     if not verify_checksum(dest_path):
                         raise ValueError(f"Checksum verification failed for blob {dest_path}")
 
-            os.symlink(blob_relative_path, self.get_snapshot_file_path(snapshot_hash, file.name))
+            link_path = self.get_snapshot_file_path(snapshot_hash, file.name)
+            if not os.path.exists(link_path):
+                os.symlink(blob_relative_path, link_path)
 
         # save updated ref file
         ref_file.write_to_file()
@@ -588,18 +595,46 @@ class ModelStore:
         except Exception as ex:
             logger.error(f"Failed to remove blob file '{blob_path}': {ex}")
 
+    def _get_blob_refcount(self, file):
+        refcount = 0
+        for ref_file_name in os.listdir(self.refs_directory):
+            ref_file: RefFile = RefFile.from_path(os.path.join(self.refs_directory, ref_file_name))
+            for referenced_file in ref_file.filenames:
+                if referenced_file == file:
+                    refcount += 1
+        return refcount
+
+    def _get_snapshot_refcount(self, hash):
+        refcount = 0
+        for ref_file_name in os.listdir(self.refs_directory):
+            ref_file: RefFile = RefFile.from_path(os.path.join(self.refs_directory, ref_file_name))
+            if ref_file.hash == hash:
+                refcount += 1
+        return refcount
+
     def remove_snapshot(self, model_tag: str):
         ref_file = self.get_ref_file(model_tag)
 
+        if ref_file is None:
+            return
+
         # Remove all blobs first
-        if ref_file is not None:
-            for file in ref_file.filenames:
+        for file in ref_file.filenames:
+            blob_refcount = self._get_blob_refcount(file)
+            if blob_refcount <= 1:
                 self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file))
                 self._remove_blob_file(self.get_partial_blob_file_path(ref_file.hash))
+            else:
+                logger.debug(f"Not removing blob {file} refcount={blob_refcount}")
 
         # Remove snapshot directory
-        snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
-        shutil.rmtree(snapshot_directory, ignore_errors=True)
+        snapshot_refcount = self._get_snapshot_refcount(ref_file.hash)
+        if snapshot_refcount <= 1:
+            snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
+            shutil.rmtree(snapshot_directory, ignore_errors=True)
+            logger.debug(f"Snapshot removed {ref_file.hash}")
+        else:
+            logger.debug(f"Not removing snapshot {ref_file.hash} refcount={snapshot_refcount}")
 
         # Remove ref file, ignore if file is not found
         ref_file_path = self.get_ref_file_path(model_tag)

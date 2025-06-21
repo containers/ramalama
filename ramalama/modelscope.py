@@ -3,10 +3,12 @@ import os
 
 from ramalama.common import available, run_cmd
 from ramalama.hf_style_repo_base import (
+    HFInvalidRepoMetadataError,
+    HFNotSupportedError,
     HFStyleRepoFile,
     HFStyleRepoModel,
     HFStyleRepository,
-    fetch_checksum_from_api_base,
+    fetch_data_from_api_base,
 )
 from ramalama.model_store import SnapshotFileType
 
@@ -25,11 +27,14 @@ def is_modelscope_available():
 
 def extract_modelscope_checksum(data):
     """Extract SHA-256 checksum from ModelScope API response."""
-    parsed_data = json.loads(data)
+    try:
+        parsed_data = json.loads(data)
+    except json.JSONDecodeError:
+        raise HFInvalidRepoMetadataError("Failed to decode json")
     if sha256_checksum := parsed_data.get("Data", {}).get("MetaContent", {}).get("Sha256"):
         return sha256_checksum
     else:
-        raise ValueError("SHA-256 checksum not found in the API response.")
+        raise HFInvalidRepoMetadataError("SHA-256 checksum not found in the API response.")
 
 
 def fetch_checksum_from_api(organization, file):
@@ -38,8 +43,7 @@ def fetch_checksum_from_api(organization, file):
         f"{ModelScopeRepository.REGISTRY_URL}/api/v1/models/{organization}/repo/raw"
         f"?Revision=master&FilePath={file}&Needmeta=true"
     )
-
-    return fetch_checksum_from_api_base(checksum_api_url, None, extract_modelscope_checksum)
+    return fetch_data_from_api_base(checksum_api_url, None, extract_modelscope_checksum)
 
 
 class ModelScopeRepository(HFStyleRepository):
@@ -47,6 +51,8 @@ class ModelScopeRepository(HFStyleRepository):
     REGISTRY_URL = "https://modelscope.cn"
 
     def fetch_metadata(self):
+        if '/' not in self.organization:
+            raise HFNotSupportedError("Must specify a model file")
         self.blob_url = f"{ModelScopeRepository.REGISTRY_URL}/{self.organization}/resolve/master"
         self.model_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
         self.model_filename = self.name
@@ -86,8 +92,11 @@ class ModelScope(HFStyleRepoModel):
     def get_download_url(self, directory, filename):
         return f"https://modelscope.cn/{directory}/resolve/master/{filename}"
 
-    def get_cli_download_args(self, directory_path, model):
-        return ["modelscope", "download", "--local_dir", directory_path, model]
+    def get_cli_download_args(self, directory_path, model, file=None):
+        args = ["modelscope", "download", "--local_dir", directory_path, model]
+        if file is not None:
+            args.append(file)
+        return args
 
     def _fetch_cache_path(self, cache_dir, namespace, repo):
         def normalize_repo_name(repo):
