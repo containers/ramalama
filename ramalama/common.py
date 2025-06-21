@@ -13,7 +13,6 @@ import shutil
 import string
 import subprocess
 import sys
-import sysconfig
 import time
 import urllib.error
 from functools import lru_cache
@@ -547,15 +546,6 @@ def tagged_image(image: str) -> str:
     if len(image.split(":")) > 1:
         return image
     return f"{image}:{minor_release()}"
-
-
-def get_cmd_with_wrapper(cmd_arg: str) -> str:
-    data_path = sysconfig.get_path("data")
-    for directory in ["", f"{data_path}/", "/opt/homebrew/", "/usr/local/", "/usr/"]:
-        if os.path.exists(f"{directory}libexec/ramalama/{cmd_arg}"):
-            return f"{directory}libexec/ramalama/{cmd_arg}"
-
-    return ""
 
 
 def check_cuda_version() -> tuple[int, int]:
