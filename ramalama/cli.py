@@ -921,6 +921,7 @@ def chat_parser(subparsers):
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
     parser.add_argument("--url", type=str, default="http://127.0.0.1:8080", help="the host to send requests to")
+    parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
     )
