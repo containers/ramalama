@@ -89,7 +89,6 @@ IP address for llama.cpp to listen on.
 
 #### **--model-draft**
 
-
 A draft model is a smaller, faster model that helps accelerate the decoding
 process of larger, more complex models, like Large Language Models (LLMs). It
 works by generating candidate sequences of tokens that the larger model then
