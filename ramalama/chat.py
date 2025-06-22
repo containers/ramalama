@@ -70,7 +70,7 @@ class RamaLamaShell(cmd.Cmd):
         self.request_in_process = False
         self.prompt = args.prefix
 
-        self.url = f"{args.url}/v1/chat/completions"
+        self.url = f"{args.url}/chat/completions"
 
     def handle_args(self):
         if self.args.ARGS:
@@ -106,6 +106,13 @@ class RamaLamaShell(cmd.Cmd):
         headers = {
             "Content-Type": "application/json",
         }
+
+        if self.args.api_key:
+            if len(self.args.api_key) < 20:
+                print("Warning: Provided API key is invalid.")
+
+            headers["Authorization"] = f"Bearer {self.args.api_key}"
+
         request = urllib.request.Request(self.url, data=json_data, headers=headers, method="POST")
 
         return request

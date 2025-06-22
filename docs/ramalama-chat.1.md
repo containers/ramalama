@@ -15,6 +15,10 @@ Chat with an OpenAI Rest API
 
 ## OPTIONS
 
+#### **--api-key**
+OpenAI-compatible API key.
+Can also be set via the API_KEY environment variable.
+
 #### **--color**
 Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)
