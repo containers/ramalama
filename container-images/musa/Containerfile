@@ -13,7 +13,6 @@ FROM docker.io/mthreads/musa:${VERSION}-mudnn-runtime-ubuntu${UBUNTU_VERSION}
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr
 # pip install . --prefix=/tmp/install will install the wheel in /tmp/install/local/...
-RUN mv /usr/local/libexec/ramalama /usr/libexec/ramalama/
 
 RUN apt-get update && apt-get install -y python-is-python3 && apt-get clean && \
     rm -rf /var/lib/apt/lists/*

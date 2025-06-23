@@ -61,8 +61,8 @@ class Stack:
           path: /dev/dri
         name: dri"""
 
-        llama_cmd = [
-            'llama-server',
+        llama_cmd = 'llama-server'
+        llama_args = [
             '--port',
             self.model_port,
             '--model',
@@ -124,8 +124,8 @@ spec:
       containers:
       - name: model-server
         image: {self.args.image}
-        command: ["/usr/libexec/ramalama/ramalama-serve-core"]
-        args: {llama_cmd}\
+        command: ["{llama_cmd}"]
+        args: {llama_args}\
         {security}
         volumeMounts:{volume_mounts}
       - name: llama-stack

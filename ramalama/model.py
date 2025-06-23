@@ -18,7 +18,6 @@ from ramalama.common import (
     check_nvidia,
     exec_cmd,
     genname,
-    get_cmd_with_wrapper,
     set_accel_env_vars,
 )
 from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
@@ -464,12 +463,6 @@ class Model(ModelBase):
 
         return exec_args
 
-    def get_ramalama_core_path(self, args, exec_cmd):
-        if not args.container:
-            return get_cmd_with_wrapper(exec_cmd)
-
-        return f"/usr/libexec/ramalama/{exec_cmd}"
-
     def validate_args(self, args):
         if args.container:
             return
@@ -484,63 +477,73 @@ class Model(ModelBase):
                     return
             raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
+    def vllm_serve(self, args, exec_model_path):
+        exec_args = [
+            "--model",
+            exec_model_path,
+            "--port",
+            args.port,
+            "--max-sequence-length",
+            f"{args.context}",
+        ]
+        exec_args += args.runtime_args
+        return exec_args
+
+    def llama_serve(self, args, exec_model_path, chat_template_path, mmproj_path):
+        exec_args = ["llama-server"]
+        draft_model_path = None
+        if self.draft_model:
+            draft_model = self.draft_model.get_model_path(args)
+            draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
+
+        exec_args += ["--port", args.port, "--model", exec_model_path, "--no-warmup"]
+        if mmproj_path:
+            exec_args += ["--mmproj", mmproj_path]
+        else:
+            exec_args += ["--jinja"]
+
+        if should_colorize():
+            exec_args += ["--log-colors"]
+
+        exec_args += [
+            "--alias",
+            self.model,
+            "--ctx-size",
+            f"{args.context}",
+            "--temp",
+            f"{args.temp}",
+            "--cache-reuse",
+            "256",
+        ]
+        exec_args += args.runtime_args
+
+        if draft_model_path:
+            exec_args += ['--model_draft', draft_model_path]
+
+        # Placeholder for clustering, it might be kept for override
+        rpc_nodes = os.getenv("RAMALAMA_LLAMACPP_RPC_NODES")
+        if rpc_nodes:
+            exec_args += ["--rpc", rpc_nodes]
+
+        # TODO: see https://github.com/containers/ramalama/issues/1202
+        # if chat_template_path != "":
+        #     exec_args += ["--chat-template-file", chat_template_path]
+
+        if args.debug:
+            exec_args += ["-v"]
+
+        if hasattr(args, "webui") and args.webui == "off":
+            exec_args.extend(["--no-webui"])
+
+        if check_nvidia() or check_metal(args):
+            exec_args.extend(["--flash-attn"])
+        return exec_args
+
     def build_exec_args_serve(self, args, exec_model_path, chat_template_path="", mmproj_path=""):
         if args.runtime == "vllm":
-            exec_args = [
-                "--model",
-                exec_model_path,
-                "--port",
-                args.port,
-                "--max-sequence-length",
-                f"{args.context}",
-            ] + args.runtime_args
+            exec_args = self.vllm_serve(args, exec_model_path)
         else:
-            exec_args = [self.get_ramalama_core_path(args, "ramalama-serve-core")]
-            draft_model_path = None
-            if self.draft_model:
-                draft_model = self.draft_model.get_model_path(args)
-                draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
-
-            exec_args += ["llama-server", "--port", args.port, "--model", exec_model_path, "--no-warmup"]
-            if mmproj_path:
-                exec_args += ["--mmproj", mmproj_path]
-            else:
-                exec_args += ["--jinja"]
-
-            if should_colorize():
-                exec_args += ["--log-colors"]
-
-            exec_args += [
-                "--alias",
-                self.model,
-                "--ctx-size",
-                f"{args.context}",
-                "--temp",
-                f"{args.temp}",
-                "--cache-reuse",
-                "256",
-            ] + args.runtime_args
-
-            if draft_model_path:
-                exec_args += ['--model_draft', draft_model_path]
-
-            # Placeholder for clustering, it might be kept for override
-            rpc_nodes = os.getenv("RAMALAMA_LLAMACPP_RPC_NODES")
-            if rpc_nodes:
-                exec_args += ["--rpc", rpc_nodes]
-
-            # TODO: see https://github.com/containers/ramalama/issues/1202
-            # if chat_template_path != "":
-            #     exec_args += ["--chat-template-file", chat_template_path]
-
-            if args.debug:
-                exec_args += ["-v"]
-
-            if hasattr(args, "webui") and args.webui == "off":
-                exec_args.extend(["--no-webui"])
-
-            if check_nvidia() or check_metal(args):
-                exec_args.extend(["--flash-attn"])
+            exec_args = self.llama_serve(args, exec_model_path, chat_template_path, mmproj_path)
 
         if args.seed:
             exec_args += ["--seed", args.seed]
