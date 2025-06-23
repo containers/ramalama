@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 
 available() {
   command -v "$1" >/dev/null
@@ -112,8 +113,8 @@ dnf_install_ffmpeg() {
 
 dnf_install() {
   local rpm_list=("podman-remote" "python3" "python3-pip" "python3-argcomplete" \
-                  "python3-dnf-plugin-versionlock" "python3-devel" "gcc-c++" "cmake" "vim" \
-                  "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk")
+                  "python3-dnf-plugin-versionlock" "python3-devel" "python3.11" "python3.11-pip" \
+                  "gcc-c++" "cmake" "vim" "procps-ng" "git" "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools" \
                      "spirv-tools" "glslc" "glslang")
   if [ "${containerfile}" = "ramalama" ] || [[ "${containerfile}" =~ rocm* ]] || \
@@ -253,7 +254,7 @@ clone_and_build_ramalama() {
   git clone https://github.com/containers/ramalama
   cd ramalama
   git submodule update --init --recursive
-  python3 -m pip install . --prefix="$1"
+  python3.11 -m pip install . --prefix="$1"
   cd ..
   rm -rf ramalama
 }
