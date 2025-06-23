@@ -138,6 +138,9 @@ clone_and_build_vllm() {
   # had issue with -e
   "pip${PYTHON_VERSION}" install .
   cd ..
+  if [[ "$VLLM_TARGET_DEVICE" = cpu ]]; then
+      execstack -c "/usr/local/lib64/python${PYTHON_VERSION}/site-packages/intel_extension_for_pytorch/lib/libintel-ext-pt-cpu.so"
+  fi
 }
 
 set_nvcc_threads() {
@@ -174,10 +177,10 @@ set_python_version(){
 }
 
 add_stream_repo() {
-  local url="https://mirror.stream.centos.org/9-stream/$1/$UNAME_M/os/"
+  local url="https://mirror.stream.centos.org/$MAJOR_VERSION-stream/$1/$UNAME_M/os/"
   dnf config-manager --add-repo "$url"
-  url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
-  local file="/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official"
+  url="https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official-SHA256"
+  local file="/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official-SHA256"
   if [ ! -e $file ]; then
     curl --retry 8 --retry-all-errors -o $file "$url"
     rpm --import $file
@@ -197,7 +200,7 @@ dnf_install_epel() {
 
 rm_centos_repos() {
   local dir="/etc/yum.repos.d"
-  rm -rf $dir/mirror.stream.centos.org_9-stream_*
+  rm -rf $dir/mirror.stream.centos.org_*-stream_*
 }
 
 dnf_install_repos() {
@@ -214,6 +217,8 @@ dnf_install_repos() {
 main() {
   # shellcheck disable=SC1091
   source /etc/os-release
+  MAJOR_VERSION=${VERSION_ID%.*}
+
 
   set -ex -o pipefail
   export VLLM_TARGET_DEVICE=${1-"cpu"}
@@ -232,6 +237,7 @@ main() {
   case "$VLLM_TARGET_DEVICE" in
   cpu)
     export PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cpu"
+    RPM_PKGS+=(execstack)
     ;;
   cuda)
      export PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cu128"
