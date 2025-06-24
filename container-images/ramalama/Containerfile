@@ -1,6 +1,11 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.6-1749542372@sha256:861e833044a903f689ecfa404424494a7e387ab39cf7949c54843285d13a9774
+FROM quay.io/rh-aiservices-bu/vllm-cpu-openai-ubi9:0.3
+
+USER 0
 
 COPY . /src/ramalama
 WORKDIR /src/ramalama
 RUN container-images/scripts/build_llama_and_whisper.sh ramalama
 WORKDIR /
+
+ENTRYPOINT []
+
