@@ -3,7 +3,6 @@ FROM quay.io/fedora/fedora:42
 COPY . /src/ramalama
 WORKDIR /src/ramalama
 RUN container-images/scripts/build_llama_and_whisper.sh rocm
-RUN container-images/scripts/build_vllm.sh "rocm"
 WORKDIR /
 
 ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
