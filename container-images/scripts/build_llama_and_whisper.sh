@@ -77,7 +77,8 @@ dnf_install_s390() {
 }
 
 add_stream_repo() {
-  local url="https://mirror.stream.centos.org/$MAJOR_VERSION-stream/$1/$uname_m/os/"
+  local major_version=${VERSION_ID%.*}
+  local url="https://mirror.stream.centos.org/${major_version}-stream/$1/$uname_m/os/"
   dnf config-manager --add-repo "$url"
   url="https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official-SHA256"
   local file="/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official-SHA256"
@@ -108,7 +109,8 @@ dnf_install_mesa() {
 
 dnf_install_epel() {
   local rpm_exclude_list="selinux-policy,container-selinux"
-  local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-$MAJOR_VERSION.noarch.rpm"
+  local major_version=${VERSION_ID%.*}
+  local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-${major_version}.noarch.rpm"
   dnf reinstall -y "$url" || dnf install -y "$url" --exclude "${rpm_exclude_list}"
   crb enable # this is in epel-release, can only install epel-release via url
 }
@@ -133,6 +135,7 @@ dnf_install_ffmpeg() {
 
 dnf_install() {
   local rpm_exclude_list="selinux-policy,container-selinux"
+  local major_version=${VERSION_ID%.*}
   local rpm_list=("${PYTHON}" "${PYTHON}-pip"
     "python3-argcomplete" "python3-dnf-plugin-versionlock"
     "${PYTHON}-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
@@ -141,10 +144,10 @@ dnf_install() {
     "spirv-tools" "glslc" "glslang")
   if is_rhel_based; then
     dnf_install_epel # All the UBI-based ones
-    if [[ $MAJOR_VERSION == 9 ]]; then
+    if [[ $major_version == 9 ]]; then
         dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
     else
-        dnf --enablerepo="ubi-$MAJOR_VERSION-for-x86_64-appstream-rpms" install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
+        dnf --enablerepo="ubi-${major_version}-for-x86_64-appstream-rpms" install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
     fi
   else
     dnf install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
@@ -301,7 +304,6 @@ install_entrypoints() {
 main() {
   # shellcheck disable=SC1091
   source /etc/os-release
-  MAJOR_VERSION=${VERSION_ID%.*}
 
   set -ex -o pipefail
   export PYTHON

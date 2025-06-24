@@ -138,7 +138,7 @@ clone_and_build_vllm() {
   # had issue with -e
   "pip${PYTHON_VERSION}" install .
   cd ..
-  if [[ "$VLLM_TARGET_DEVICE" = cpu ]]; then
+  if [[ "$VLLM_TARGET_DEVICE" = cpu && $ID == fedora ]] ; then
       execstack -c "/usr/local/lib64/python${PYTHON_VERSION}/site-packages/intel_extension_for_pytorch/lib/libintel-ext-pt-cpu.so"
   fi
 }
@@ -177,7 +177,8 @@ set_python_version(){
 }
 
 add_stream_repo() {
-  local url="https://mirror.stream.centos.org/$MAJOR_VERSION-stream/$1/$UNAME_M/os/"
+  major_version=${VERSION_ID%.*}
+  local url="https://mirror.stream.centos.org/${major_version}-stream/$1/$UNAME_M/os/"
   dnf config-manager --add-repo "$url"
   url="https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official-SHA256"
   local file="/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official-SHA256"
@@ -217,8 +218,6 @@ dnf_install_repos() {
 main() {
   # shellcheck disable=SC1091
   source /etc/os-release
-  MAJOR_VERSION=${VERSION_ID%.*}
-
 
   set -ex -o pipefail
   export VLLM_TARGET_DEVICE=${1-"cpu"}
@@ -237,7 +236,9 @@ main() {
   case "$VLLM_TARGET_DEVICE" in
   cpu)
     export PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cpu"
-    RPM_PKGS+=(execstack)
+    if [[ $ID == fedora ]]; then
+       RPM_PKGS+=(execstack)
+    fi
     ;;
   cuda)
      export PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cu128"
