@@ -39,24 +39,26 @@ class Stack:
 
     def generate(self):
         add_labels(self.args, self.add_label)
-        volume_mounts = """
-        - mountPath: /mnt/models/model.file
-          name: model
-        - mountPath: /dev/dri
-          name: dri"""
-
         if self.model_type == "OCI":
             volume_mounts = """
         - mountPath: /mnt/models
           subPath: /models
-          name: model
+          name: model"""
+        else:
+            volume_mounts = """
+        - mountPath: /mnt/models/model.file
+          name: model"""
+        if self.args.dri == "on":
+            volume_mounts += """
         - mountPath: /dev/dri
           name: dri"""
 
         volumes = f"""
       - hostPath:
           path: {self.model_path}
-        name: model
+        name: model"""
+        if self.args.dri == "on":
+            volumes += """
       - hostPath:
           path: /dev/dri
         name: dri"""

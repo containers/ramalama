@@ -903,6 +903,13 @@ def runtime_options(parser, command):
             default="on",
             help="enable or disable the web UI (default: on)",
         )
+        parser.add_argument(
+            "--dri",
+            dest="dri",
+            choices=["on", "off"],
+            default="on",
+            help="mount /dev/dri into the container when running llama-stack (default: on)",
+        )
 
 
 def default_threads():
