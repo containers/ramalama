@@ -1,0 +1,24 @@
+FROM quay.io/fedora/fedora:42
+
+ENV HOME=/tmp \
+    XDG_RUNTIME_DIR=/tmp \
+    STORAGE_DRIVER=vfs
+WORKDIR /src
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+
+RUN dnf -y install make bats jq iproute podman openssl httpd-tools \
+    ollama python3-huggingface-hub \
+    # for building llama-bench
+    git-core cmake gcc-c++ curl-devel && \
+    dnf -y clean all
+RUN rpm --restore shadow-utils
+RUN git clone --depth=1 https://github.com/ggml-org/llama.cpp && \
+    pushd llama.cpp && \
+    cmake -B build -DGGML_NATIVE=OFF -DGGML_RPC=ON -DGGML_CCACHE=OFF -DGGML_CMAKE_BUILD_TYPE=Release -DLLAMA_CURL=ON -DCMAKE_INSTALL_PREFIX=/usr && \
+    cmake --build build --config Release --parallel $(nproc) && \
+    cmake --install build && \
+    popd && rm -rf llama.cpp
+
+COPY container-images/bats/entrypoint.sh /usr/bin
+COPY container-images/bats/containers.conf /etc/containers
+RUN chmod a+rw /etc/subuid /etc/subgid
