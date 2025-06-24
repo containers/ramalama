@@ -919,6 +919,12 @@ def default_threads():
 def chat_parser(subparsers):
     parser = subparsers.add_parser("chat", help="OpenAI chat with the specified RESTAPI URL")
     parser.add_argument(
+        "--api-key",
+        type=str,
+        default=os.getenv("API_KEY"),
+        help="OpenAI-compatible API key. Can also be set via the API_KEY environment variable.",
+    )
+    parser.add_argument(
         '--color',
         '--colour',
         default="auto",
@@ -926,7 +932,7 @@ def chat_parser(subparsers):
         help='possible values are "never", "always" and "auto".',
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
-    parser.add_argument("--url", type=str, default="http://127.0.0.1:8080", help="the host to send requests to")
+    parser.add_argument("--url", type=str, default="http://127.0.0.1:8080/v1", help="the url to send requests to")
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
