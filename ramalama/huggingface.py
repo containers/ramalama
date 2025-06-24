@@ -115,48 +115,49 @@ class HuggingfaceRepository(HFStyleRepository):
         # Repo org/name. Fetch repo manifest to determine model/mmproj file
         self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/{self.name}/resolve/main"
         if 'gguf' in repo_info:
-            self.manifest = fetch_repo_manifest(f"{self.organization}/{self.name}", self.tag)
-            try:
-                self.model_filename = self.manifest['ggufFile']['rfilename']
-                self.model_hash = self.manifest['ggufFile']['blobId']
-            except KeyError:
-                perror("Repository manifest missing ggufFile data")
-                raise HFInvalidRepoMetadataError("Repository manifest missing ggufFile data")
-            self.mmproj_filename = self.manifest.get('mmprojFile', {}).get('rfilename', None)
-            self.mmproj_hash = self.manifest.get('mmprojFile', {}).get('blobId', None)
-            token = huggingface_token()
-            if token is not None:
-                self.headers['Authorization'] = f"Bearer {token}"
+            self._fetch_gguf_metadata()
         elif 'safetensors' in repo_info:
-            for sibling in repo_info['siblings']:
-                fn = sibling['rfilename']
-                if fn not in (
-                    self.FILE_NAME_CONFIG,
-                    self.FILE_NAME_GENERATION_CONFIG,
-                    self.FILE_NAME_TOKENIZER_CONFIG,
-                ):
-                    snapshot_file = SnapshotFile(
-                        url=f"{self.blob_url}/{fn}",
-                        header=self.headers,
-                        hash=generate_sha256(fn),
-                        type=SnapshotFileType.Other,
-                        name=fn,
-                        required=True,
-                    )
-                    try:
-                        hash = f"sha256:{fetch_checksum_from_api(repo_name, fn)}"
-                    except HFInvalidRepoMetadataError:
-                        pass
-                    else:
-                        if fn.endswith('.safetensors') and self.model_hash is None:
-                            # Need a hash for the snapshot, use hash of first listed model file
-                            self.model_hash = hash
-                        snapshot_file.hash = hash
-                        snapshot_file.should_show_progress = True
-                        snapshot_file.should_verify_checksum = True
-                self.additional_files.append(snapshot_file)
+            file_list = [x['rfilename'] for x in repo_info['siblings']]
+            self._fetch_safetensors_metadata(repo_name, file_list)
         else:
             raise HFUnknownRepoTypeError(f"Could not determine repo type for {repo_name}")
+
+    def _fetch_gguf_metadata(self):
+        self.manifest = fetch_repo_manifest(f"{self.organization}/{self.name}", self.tag)
+        try:
+            self.model_filename = self.manifest['ggufFile']['rfilename']
+            self.model_hash = self.manifest['ggufFile']['blobId']
+        except KeyError as e:
+            perror("Repository manifest missing ggufFile data")
+            raise HFInvalidRepoMetadataError("Repository manifest missing ggufFile data") from e
+        self.mmproj_filename = self.manifest.get('mmprojFile', {}).get('rfilename', None)
+        self.mmproj_hash = self.manifest.get('mmprojFile', {}).get('blobId', None)
+        token = huggingface_token()
+        if token is not None:
+            self.headers['Authorization'] = f"Bearer {token}"
+
+    def _fetch_safetensors_metadata(self, repo_name, repo_file_list):
+        for fn in repo_file_list:
+            snapshot_file = SnapshotFile(
+                url=f"{self.blob_url}/{fn}",
+                header=self.headers,
+                hash=generate_sha256(fn),
+                type=SnapshotFileType.Other,
+                name=fn,
+                required=True,
+            )
+            try:
+                checksum = f"sha256:{fetch_checksum_from_api(repo_name, fn)}"
+            except HFInvalidRepoMetadataError:
+                pass
+            else:
+                if fn.endswith('.safetensors') and self.model_hash is None:
+                    # Need a hash for the snapshot, use hash of first listed model file
+                    self.model_hash = checksum
+                snapshot_file.hash = checksum
+                snapshot_file.should_show_progress = True
+                snapshot_file.should_verify_checksum = True
+            self.additional_files.append(snapshot_file)
 
 
 class HuggingfaceRepositoryModel(HuggingfaceRepository):

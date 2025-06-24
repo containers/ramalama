@@ -29,8 +29,8 @@ def extract_modelscope_checksum(data):
     """Extract SHA-256 checksum from ModelScope API response."""
     try:
         parsed_data = json.loads(data)
-    except json.JSONDecodeError:
-        raise HFInvalidRepoMetadataError("Failed to decode json")
+    except json.JSONDecodeError as e:
+        raise HFInvalidRepoMetadataError("Failed to decode json") from e
     if sha256_checksum := parsed_data.get("Data", {}).get("MetaContent", {}).get("Sha256"):
         return sha256_checksum
     else:

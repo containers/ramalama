@@ -115,9 +115,7 @@ class HFStyleRepository(ABC):
             files.append(self.generation_config_file())
         if self.FILE_NAME_TOKENIZER_CONFIG not in cached_files:
             files.append(self.tokenizer_config_file())
-        for f in self.additional_files:
-            if f.name not in cached_files:
-                files.append(f)
+        files.extend(f for f in self.additional_files if f.name not in cached_files + [f.name for f in files])
 
         return files
 
@@ -367,7 +365,7 @@ class HFStyleRepoModel(Model, ABC):
         except Exception as e:
             logger.debug("Failed to pull model")
             if skip_cli_fallback or not available(self.get_cli_command()):
-                raise HFError(f"Failed to pull model: {str(e)}")
+                raise HFError(f"Failed to pull model: {str(e)}") from e
             logger.debug("Retrying model pull using cli...")
 
             # Create temporary directory for downloading via CLI

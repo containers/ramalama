@@ -1,6 +1,7 @@
 import os
 import shutil
 import urllib.error
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from enum import IntEnum
@@ -58,7 +59,7 @@ class SnapshotFile:
                 show_progress=self.should_show_progress,
             )
         else:
-            logger.debug(f"Using cached blob {blob_file_path}")
+            logger.debug(f"Using cached blob for {self.name} ({os.path.basename(blob_file_path)})")
         return os.path.relpath(blob_file_path, start=snapshot_dir)
 
 
@@ -595,22 +596,15 @@ class ModelStore:
         except Exception as ex:
             logger.error(f"Failed to remove blob file '{blob_path}': {ex}")
 
-    def _get_blob_refcount(self, file):
-        refcount = 0
-        for ref_file_name in os.listdir(self.refs_directory):
-            ref_file: RefFile = RefFile.from_path(os.path.join(self.refs_directory, ref_file_name))
-            for referenced_file in ref_file.filenames:
-                if referenced_file == file:
-                    refcount += 1
-        return refcount
+    def _get_refcounts(self, snapshot_hash: str) -> tuple[int, Counter[str]]:
+        ref_paths = Path(self.refs_directory).iterdir()
+        refs = [RefFile.from_path(str(p)) for p in ref_paths]
 
-    def _get_snapshot_refcount(self, hash):
-        refcount = 0
-        for ref_file_name in os.listdir(self.refs_directory):
-            ref_file: RefFile = RefFile.from_path(os.path.join(self.refs_directory, ref_file_name))
-            if ref_file.hash == hash:
-                refcount += 1
-        return refcount
+        blob_refcounts = Counter(filename for ref in refs for filename in ref.filenames)
+
+        snap_refcount = sum(ref.hash == snapshot_hash for ref in refs)
+
+        return snap_refcount, blob_refcounts
 
     def remove_snapshot(self, model_tag: str):
         ref_file = self.get_ref_file(model_tag)
@@ -618,9 +612,11 @@ class ModelStore:
         if ref_file is None:
             return
 
+        snapshot_refcount, blob_refcounts = self._get_refcounts(ref_file.hash)
+
         # Remove all blobs first
         for file in ref_file.filenames:
-            blob_refcount = self._get_blob_refcount(file)
+            blob_refcount = blob_refcounts.get(file, 0)
             if blob_refcount <= 1:
                 self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file))
                 self._remove_blob_file(self.get_partial_blob_file_path(ref_file.hash))
@@ -628,7 +624,6 @@ class ModelStore:
                 logger.debug(f"Not removing blob {file} refcount={blob_refcount}")
 
         # Remove snapshot directory
-        snapshot_refcount = self._get_snapshot_refcount(ref_file.hash)
         if snapshot_refcount <= 1:
             snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
             shutil.rmtree(snapshot_directory, ignore_errors=True)
