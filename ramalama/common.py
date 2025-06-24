@@ -627,7 +627,7 @@ class AccelImageArgsOtherRuntimeRAG(Protocol):
 AccelImageArgs = None | AccelImageArgsVLLMRuntime | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
 
 
-def accel_image(config: Config) -> str:
+def accel_image(config: Config, nopull=False) -> str:
     """
     Selects and the appropriate image based on config, arguments, environment.
     """
@@ -650,7 +650,7 @@ def accel_image(config: Config) -> str:
         return "registry.redhat.io/rhelai1/ramalama-vllm"
 
     vers = minor_release()
-    if attempt_to_use_versioned(config.engine, image, vers, True):
+    if nopull or attempt_to_use_versioned(config.engine, image, vers, True):
         return f"{image}:{vers}"
 
     return f"{image}:latest"
