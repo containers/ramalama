@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.6-1749542372
+FROM registry.access.redhat.com/ubi9/ubi:9.6-1750786174
 
 COPY container-images/rocm-ubi/amdgpu.repo /etc/yum.repos.d/
 COPY container-images/rocm-ubi/rocm.repo /etc/yum.repos.d/
