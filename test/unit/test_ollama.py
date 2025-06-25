@@ -18,7 +18,7 @@ def ollama_repository():
 
 @pytest.fixture
 def args():
-    return StoreArgs(store="/var/lib/ramalama", use_model_store=True, engine="podman", container=True)
+    return StoreArgs(store="/var/lib/ramalama", engine="podman", container=True)
 
 
 def test_ollama_model_initialization(ollama_model):

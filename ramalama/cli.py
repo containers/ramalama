@@ -226,13 +226,6 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         help="store AI Models in the specified directory",
     )
     parser.add_argument(
-        "--use-model-store",
-        dest="use_model_store",
-        default=CONFIG.use_model_store,
-        action="store_true",
-        help="use the model store feature",
-    )
-    parser.add_argument(
         "--noout",
         help=argparse.SUPPRESS,
     )
@@ -509,33 +502,7 @@ def _list_models_from_store(args):
 
 
 def _list_models(args):
-    mycwd = os.getcwd()
-    if args.use_model_store:
-        return _list_models_from_store(args)
-
-    os.chdir(f"{args.store}/models/")
-    models = []
-
-    # Collect model data
-    for path in list_files_by_modification(args):
-        if path.is_symlink():
-            if str(path).startswith("file/"):
-                name = str(path).replace("/", ":///", 1)
-            else:
-                name = str(path).replace("/", "://", 1)
-            file_epoch = path.lstat().st_mtime
-            # convert to iso format
-            modified = datetime.fromtimestamp(file_epoch, tz=timezone.utc).isoformat()
-            size = get_size(path)
-
-            # Store data for later use
-            models.append({"name": name, "modified": modified, "size": size})
-
-    if args.container:
-        models.extend(ramalama.oci.list_models(args))
-
-    os.chdir(mycwd)
-    return models
+    return _list_models_from_store(args)
 
 
 def info_cli(args):

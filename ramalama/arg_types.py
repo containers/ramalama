@@ -21,7 +21,6 @@ class StoreArgType(Protocol):
     engine: SUPPORTED_ENGINES | None
     container: bool
     store: str
-    use_model_store: bool
 
 
 @dataclass
@@ -29,4 +28,3 @@ class StoreArgs(StoreArgType):
     engine: SUPPORTED_ENGINES | None
     container: bool
     store: str
-    use_model_store: bool

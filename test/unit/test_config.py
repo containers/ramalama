@@ -28,7 +28,6 @@ def test_correct_config_defaults():
     assert cfg.store == get_default_store()
     assert cfg.temp == "0.8"
     assert cfg.transport == "ollama"
-    assert cfg.use_model_store is True
     assert cfg.ocr is False
 
 
@@ -54,7 +53,6 @@ def test_config_defaults_not_set():
     assert cfg.is_set("store") is False
     assert cfg.is_set("temp") is False
     assert cfg.is_set("transport") is False
-    assert cfg.is_set("use_model_store") is False
     assert cfg.is_set("ocr") is False
 
 

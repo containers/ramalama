@@ -26,7 +26,6 @@ class ModelFactory:
     ):
         self.model = model
         self.store_path = args.store
-        self.use_model_store = args.use_model_store
         self.transport = transport
         self.engine = args.engine
         self.ignore_stderr = ignore_stderr
@@ -109,9 +108,8 @@ class ModelFactory:
                 raise ValueError(f"{self.model} invalid: Only OCI Model types supported")
 
     def set_optional_model_store(self, model: Union[Huggingface, ModelScope, Ollama, OCI, URL]):
-        if self.use_model_store:
-            name, _, orga = model.extract_model_identifiers()
-            model.store = ModelStore(GlobalModelStore(self.store_path), name, model.model_type, orga)
+        name, _, orga = model.extract_model_identifiers()
+        model.store = ModelStore(GlobalModelStore(self.store_path), name, model.model_type, orga)
 
     def create_huggingface(self) -> Huggingface:
         model = Huggingface(self.pruned_model)
