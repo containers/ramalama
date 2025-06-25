@@ -27,7 +27,6 @@ from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import CONFIG
 from ramalama.logger import configure_logger, logger
-from ramalama.migrate import ModelStoreImport
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory, New
 from ramalama.model_store import GlobalModelStore
@@ -1150,11 +1149,6 @@ def main():
         argcomplete.autocomplete(parser)
     except Exception:
         pass
-
-    try:
-        ModelStoreImport(args.store).import_all()
-    except Exception as ex:
-        perror(f"Error: Failed to import models to new store: {ex}")
 
     def eprint(e, exit_code):
         perror("Error: " + str(e).strip("'\""))
