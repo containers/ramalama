@@ -167,24 +167,16 @@ bats-image:
 	podman inspect $(BATS_IMAGE) &> /dev/null || \
 		podman build -t $(BATS_IMAGE) -f container-images/bats/Containerfile .
 
-.PHONY: bats-in-container
-bats-in-container: bats-image
+bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
+
+%-in-container: bats-image
 	podman run -it --rm \
 		--userns=keep-id:size=200000 \
-		--security-opt unmask=/proc/* \
 		--security-opt label=disable \
 		--security-opt=mask=/sys/bus/pci/drivers/i915 \
-		--device /dev/net/tun \
+		$(extra-opts) \
 		-v $(CURDIR):/src \
-		$(BATS_IMAGE) make bats
-
-.PHONY: bats-nocontainer-in-container
-bats-nocontainer-in-container: bats-image
-	podman run -it --rm \
-		--userns=keep-id:size=200000 \
-		--security-opt=mask=/sys/bus/pci/drivers/i915 \
-		-v $(CURDIR):/src \
-		$(BATS_IMAGE) make bats-nocontainer
+		$(BATS_IMAGE) make $*
 
 .PHONY: ci
 ci:

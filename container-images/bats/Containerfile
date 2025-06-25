@@ -8,6 +8,10 @@ ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
 RUN dnf -y install make bats jq iproute podman openssl httpd-tools \
     ollama python3-huggingface-hub \
+    # for validate and unit-tests
+    black codespell shellcheck \
+    python3-flake8 python3-isort python3-pip python3-pytest \
+    perl-Clone perl-FindBin \
     # for building llama-bench
     git-core cmake gcc-c++ curl-devel && \
     dnf -y clean all
