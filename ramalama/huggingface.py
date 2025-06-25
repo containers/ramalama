@@ -171,9 +171,6 @@ class Huggingface(HFStyleRepoModel):
         else:
             return HuggingfaceRepository(name, organization, tag)
 
-    def get_download_url(self, directory, filename):
-        return f"https://huggingface.co/{directory}/resolve/main/{filename}"
-
     def get_cli_download_args(self, directory_path, model):
         return ["huggingface-cli", "download", "--local-dir", directory_path, model]
 
@@ -222,9 +219,6 @@ class Huggingface(HFStyleRepoModel):
             os.symlink(blob_path, target_path)
             return True
         return False
-
-    def hf_pull(self, args, model_path, directory_path):
-        return self.cli_pull(args, model_path, directory_path)
 
     def push(self, _, args):
         if not self.hf_cli_available:
