@@ -178,24 +178,14 @@ class Model(ModelBase):
                             print(f"Deleted: {file_path}")
 
     def remove(self, args):
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            if self.store.tag_exists(tag):
-                self.store.remove_snapshot(tag)
-                return
-
-            if not args.ignore:
-                raise KeyError(f"Model '{self.model}' not found")
+        _, tag, _ = self.extract_model_identifiers()
+        if self.store.tag_exists(tag):
+            self.store.remove_snapshot(tag)
             return
 
-        model_path = self.model_path(args)
-        try:
-            os.remove(model_path)
-            print(f"Untagged: {self.model}")
-        except OSError as e:
-            if not args.ignore:
-                raise KeyError(f"removing {self.model}: {e}")
-        self.garbage_collection(args)
+        if not args.ignore:
+            raise KeyError(f"Model '{self.model}' not found")
+        return
 
     def get_container_name(self, args):
         if hasattr(args, "name") and args.name:
@@ -327,19 +317,16 @@ class Model(ModelBase):
             self.engine.add([f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro"])
 
         # If a chat template is available, mount it as well
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            ref_file = self.store.get_ref_file(tag)
-            if ref_file is not None:
-                if ref_file.chat_template_name != "":
-                    chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                    self.engine.add(
-                        [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
-                    )
+        _, tag, _ = self.extract_model_identifiers()
+        ref_file = self.store.get_ref_file(tag)
+        if ref_file is not None:
+            if ref_file.chat_template_name != "":
+                chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
 
-                if ref_file.mmproj_name != "":
-                    mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                    self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
+            if ref_file.mmproj_name != "":
+                mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
 
     def bench(self, args):
         model_path = self.get_model_path(args)
@@ -404,16 +391,11 @@ class Model(ModelBase):
         return exec_args
 
     def model_path(self, args):
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            if self.store.tag_exists(tag):
-                ref_file = self.store.get_ref_file(tag)
-                return str(
-                    pathlib.Path(self.store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
-                )
-            return ""
-
-        return os.path.join(args.store, "models", self.type, self.directory, self.filename)
+        _, tag, _ = self.extract_model_identifiers()
+        if self.store.tag_exists(tag):
+            ref_file = self.store.get_ref_file(tag)
+            return str(pathlib.Path(self.store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve())
+        return ""
 
     def exists(self, args):
         model_path = self.model_path(args)
@@ -636,23 +618,23 @@ class Model(ModelBase):
         exec_model_path = mnt_file if args.container or args.generate else model_path
         chat_template_path = ""
         mmproj_path = ""
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            ref_file = self.store.get_ref_file(tag)
-            if ref_file is not None:
-                if ref_file.chat_template_name != "":
-                    chat_template_path = (
-                        MNT_CHAT_TEMPLATE_FILE
-                        if args.container or args.generate
-                        else self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                    )
 
-                if ref_file.mmproj_name != "":
-                    mmproj_path = (
-                        MNT_MMPROJ_FILE
-                        if args.container or args.generate
-                        else self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                    )
+        _, tag, _ = self.extract_model_identifiers()
+        ref_file = self.store.get_ref_file(tag)
+        if ref_file is not None:
+            if ref_file.chat_template_name != "":
+                chat_template_path = (
+                    MNT_CHAT_TEMPLATE_FILE
+                    if args.container or args.generate
+                    else self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                )
+
+            if ref_file.mmproj_name != "":
+                mmproj_path = (
+                    MNT_MMPROJ_FILE
+                    if args.container or args.generate
+                    else self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                )
 
         exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path, mmproj_path)
         exec_args = self.handle_runtime(args, exec_args, exec_model_path)
