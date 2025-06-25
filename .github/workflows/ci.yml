@@ -34,13 +34,52 @@ jobs:
         run: |
           make lint
 
+  build-image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the latest version of uv and activate the environment
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          df -h
+          sudo apt-get update
+          sudo apt-get install -y bash codespell python3-argcomplete pipx podman
+          make install-requirements
+
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           # /mnt has ~ 65 GB free disk space. / is too small.
+           sudo mkdir -m a=rwx -p /mnt/tmp /mnt/runner
+           sudo mkdir -m o=rwx -p /home/runner/.local
+           sudo chown runner:runner /mnt/runner /home/runner/.local
+           sudo mount --bind /mnt/runner /home/runner/.local
+           # Enable universe repository which contains podman
+           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           # Update package lists
+           sudo apt-get update
+           sudo apt-get purge firefox
+           # Install specific podman version
+           sudo apt-get upgrade
+
+      - name: Build a container for CPU inferencing
+        shell: bash
+        run: |
+          ./container_build.sh build -s ramalama
+
   unit-test:
     name: Unit Tests
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
         with:
@@ -107,9 +146,6 @@ jobs:
            sudo apt-get purge firefox
            # Install specific podman version
            sudo apt-get upgrade
-
-      - name: Build a container for CPU inferencing
-        run: ./container_build.sh build ramalama
 
       - name: run bats
         run: |
@@ -208,9 +244,6 @@ jobs:
            cat /etc/docker/daemon.json
            sudo systemctl restart docker.service
            df -h
-
-      - name: Build a container for CPU inferencing
-        run: ./container_build.sh build ramalama
 
       - name: bats-docker
         run: |
