@@ -162,7 +162,7 @@ class ModelScope(HFStyleRepoModel):
                 name=entry,
             )
             # try to identify the model file in the pulled repo
-            if entry.endswith(".safetensors") or entry.endswith(".gguf"):
+            if entry.endswith(".gguf"):
                 ms_file.type = SnapshotFileType.Model
             files.append(ms_file)
 
