@@ -107,7 +107,7 @@ class RamaLamaShell(cmd.Cmd):
             "Content-Type": "application/json",
         }
 
-        if self.args.api_key:
+        if hasattr(self.args, "api_key") and self.args.api_key:
             if len(self.args.api_key) < 20:
                 print("Warning: Provided API key is invalid.")
 
