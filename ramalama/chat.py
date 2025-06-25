@@ -74,10 +74,19 @@ class RamaLamaShell(cmd.Cmd):
         self.url = f"{args.url}/chat/completions"
 
     def handle_args(self):
-        if self.args.ARGS:
-            self.default(" ".join(self.args.ARGS))
+        prompt = " ".join(self.args.ARGS) if self.args.ARGS else None
+        if not sys.stdin.isatty():
+            stdin = sys.stdin.read()
+            if prompt:
+                prompt += f"\n\n{stdin}"
+            else:
+                prompt = stdin
+
+        if prompt:
+            self.default(prompt)
             self.kills()
             return True
+
         return False
 
     def do_EOF(self, user_content):
