@@ -26,26 +26,12 @@ def test_ollama_model_initialization(ollama_model):
     assert ollama_model.type == "Ollama"
 
 
-def test_ollama_model_local_path(ollama_model, args):
-    model_path, models, model_base, model_name, model_tag = ollama_model._local(args)
-    assert model_path == "/var/lib/ramalama/models/ollama/llama2:7b"
-    assert models == "/var/lib/ramalama/models/ollama"
-    assert model_base == "llama2"
-    assert model_name == "library/llama2"
-    assert model_tag == "7b"
-
-
 def test_ollama_model_exists(ollama_model, args):
     with patch("os.path.exists", return_value=True):
         assert ollama_model.exists(args) is not None
 
     with patch("os.path.exists", return_value=False):
         assert ollama_model.exists(args) is None
-
-
-def test_ollama_model_path(ollama_model, args):
-    with patch("os.path.exists", return_value=True):
-        assert ollama_model.path(args) == "/var/lib/ramalama/models/ollama/llama2:7b"
 
 
 def test_ollama_model_pull(ollama_model, args):
