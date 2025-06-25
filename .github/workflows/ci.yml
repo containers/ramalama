@@ -10,6 +10,7 @@ jobs:
   lint:
     name: Lint Code
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       
@@ -36,6 +37,7 @@ jobs:
   unit-test:
     name: Unit Tests
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       
@@ -69,6 +71,7 @@ jobs:
 
   bats:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       
@@ -116,6 +119,7 @@ jobs:
 
   bats-nocontainer:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       
@@ -155,6 +159,7 @@ jobs:
 
   docker:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       
@@ -214,6 +219,7 @@ jobs:
 
   macos:
     runs-on: macos-14
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       
