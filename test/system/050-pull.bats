@@ -16,7 +16,7 @@ load setup_suite
     run_ramalama rm tiny
     run_ramalama pull https://ollama.com/library/smollm:135m
     run_ramalama list
-    is "$output" ".*ollama://smollm/smollm:135m" "image was actually pulled locally"
+    is "$output" ".*https://ollama.com/library/smollm:135m" "image was actually pulled locally"
 
     RAMALAMA_TRANSPORT=ollama run_ramalama pull smollm:360m
     run_ramalama pull ollama://smollm:360m
@@ -43,14 +43,14 @@ load setup_suite
     ollama pull smollm:135m
     run_ramalama pull https://ollama.com/library/smollm:135m
     run_ramalama list
-    is "$output" ".*ollama://smollm/smollm:135m" "image was actually pulled locally from ollama cache"
+    is "$output" ".*https://ollama.com/library/smollm:135m" "image was actually pulled locally from ollama cache"
 
     ollama pull smollm:360m
     RAMALAMA_TRANSPORT=ollama run_ramalama pull smollm:360m
     run_ramalama pull ollama://smollm:360m
     run_ramalama list
     is "$output" ".*ollama://smollm/smollm:360m" "image was actually pulled locally from ollama cache"
-    run_ramalama rm ollama://smollm:135m ollama://smollm:360m
+    run_ramalama rm https://ollama.com/library/smollm:135m ollama://smollm:360m
     ollama rm smollm:135m smollm:360m
 
     random_image_name=i_$(safename)
@@ -141,12 +141,10 @@ load setup_suite
       file_url=file://${model}
       run_ramalama pull $file_url
       run_ramalama list
-      # remove the additional slash character
-      expected_url=$(sed "s/file\:\//file\:/" <<< $file_url)
-      is "$output" ".*$expected_url" "URL exists"
+      is "$output" ".*$file_url" "URL exists"
       run_ramalama rm $file_url
       run_ramalama list
-      assert "$output" !~ ".*$expected_url" "URL no longer exists"
+      assert "$output" !~ ".*file_url" "URL no longer exists"
 
       https_url=https://github.com/containers/ramalama/blob/main/README.md
       run_ramalama pull $https_url
@@ -163,21 +161,18 @@ load setup_suite
       model=$RAMALAMA_TMPDIR/mymodel.gguf
       touch $model
       url=file://${model}
-      # remove the additional slash character
-      expected_url=$(sed "s/file\:\//file\:/" <<< $url)
-
       run_ramalama pull $url
       run_ramalama list
-      is "$output" ".*$expected_url" "URL exists"
+      is "$output" ".*$url" "URL exists"
       
       # test if original model file is removed, nothing blows up
       rm ${model}
       run_ramalama list
-      is "$output" ".*$expected_url" "URL exists"
+      is "$output" ".*$url" "URL exists"
 
       run_ramalama rm $url
       run_ramalama list
-      assert "$output" !~ ".*$expected_url" "URL no longer exists"
+      assert "$output" !~ ".*$url" "URL no longer exists"
 }
 
 @test "ramalama use registry" {

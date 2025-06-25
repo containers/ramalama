@@ -1118,7 +1118,17 @@ def rm_cli(args):
 
     models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
 
-    return _rm_model([model for model in models.keys()], args)
+    failed_models = []
+    for model in models.keys():
+        try:
+            _rm_model([model], args)
+        except Exception as e:
+            failed_models.append((model, str(e)))
+    if failed_models:
+        for model, error in failed_models:
+            perror(f"Failed to remove model '{model}': {error}")
+        failed_names = ', '.join([model for model, _ in failed_models])
+        raise Exception(f"Failed to remove the following models: {failed_names}")
 
 
 def perplexity_parser(subparsers):
