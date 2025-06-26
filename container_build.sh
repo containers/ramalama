@@ -119,9 +119,11 @@ build() {
 	  ramalama-cli | llama-stack | openvino | bats)
 	  ;;
 	  *)
-	      add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}" "${version}"
-	      add_rag "${conman[@]}" "${target}" "${version}"
-	      rm_container_image
+	      if [ "${build_all}" -eq 1 ]; then
+		  add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}" "${version}"
+		  add_rag "${conman[@]}" "${target}" "${version}"
+		  rm_container_image
+	      fi
       esac
       ;;
     push)
@@ -182,6 +184,10 @@ parse_arguments() {
       -r)
         rm_after_build="true"
         nocache=""
+        shift
+        ;;
+      -s) # Only build initial image
+        build_all=0
         shift
         ;;
       -v)
@@ -277,6 +283,7 @@ main() {
   local target=""
   local command=""
   local dryrun=""
+  local build_all=1
   local rm_after_build="false"
   local ci="false"
   local version=""
