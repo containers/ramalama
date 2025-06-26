@@ -363,9 +363,9 @@ verify_begin=".*run --rm"
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat /tmp/$name.yaml
-    is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
+    is "$output" ".*llama-server" "Should command"
     is "$output" ".*hostPort: 1234" "Should container container port"
-    is "$output" ".*llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml" "Should container llama-stack"
+    is "$output" ".*quay.io/ramalama/llama-stack" "Should container llama-stack"
     rm /tmp/$name.yaml
 }
 

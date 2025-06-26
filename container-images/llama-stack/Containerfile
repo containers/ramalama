@@ -16,4 +16,4 @@ COPY --chmod=755 container-images/llama-stack/entrypoint.sh /usr/bin/entrypoint.
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
 
-CMD llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml
+CMD [ "llama",  "stack",  "run", "--image-type", "venv", "/etc/ramalama/ramalama-run.yaml" ]
