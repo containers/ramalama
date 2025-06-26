@@ -77,6 +77,7 @@ load setup_suite
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
     run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
+    skip_if_no_hf-cli
     run_ramalama pull hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0
     run_ramalama list
     is "$output" ".*TinyLlama/TinyLlama-1.1B-Chat-v1.0" "image was actually pulled locally"

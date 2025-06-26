@@ -262,7 +262,7 @@ def parse_arguments(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
-    if hasattr(args, "MODEL") and args.subcommand != "rm":
+    if getattr(args, "MODEL", None) and args.subcommand != "rm":
         resolved_model = shortnames.resolve(args.MODEL)
         if resolved_model:
             args.UNRESOLVED_MODEL = args.MODEL

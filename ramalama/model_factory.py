@@ -36,7 +36,7 @@ class ModelFactory:
 
         self.pruned_model = self.prune_model_input()
         self.draft_model = None
-        if hasattr(args, 'model_draft') and args.model_draft:
+        if getattr(args, 'model_draft', None):
             dm_args = copy.deepcopy(args)
             dm_args.model_draft = None
             self.draft_model = ModelFactory(args.model_draft, dm_args, ignore_stderr=True).create()
@@ -133,7 +133,7 @@ class ModelFactory:
     def create_url(self) -> URL:
         model = URL(self.pruned_model, self.store_path, urlparse(self.model).scheme)
         model.draft_model = self.draft_model
-        if hasattr(self, 'split_model'):
+        if getattr(self, 'split_model', None):
             model.split_model = self.split_model
             model.mnt_path = self.mnt_path
         return model

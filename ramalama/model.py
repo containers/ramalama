@@ -197,7 +197,7 @@ class Model(ModelBase):
         return
 
     def get_container_name(self, args):
-        if hasattr(args, "name") and args.name:
+        if getattr(args, "name", None):
             return args.name
 
         return genname()
@@ -205,10 +205,10 @@ class Model(ModelBase):
     def base(self, args, name):
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
-        if args.image == self.default_image and (hasattr(args, "rag") and args.rag):
+        if args.image == self.default_image and getattr(args, "rag", None):
             args.image = rag_image(args.image)
         self.engine = Engine(args)
-        if args.subcommand == "run" and not (hasattr(args, "ARGS") and args.ARGS) and sys.stdin.isatty():
+        if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
             self.engine.add(["-i"])
 
         self.engine.add(
@@ -236,7 +236,7 @@ class Model(ModelBase):
         return conman_args
 
     def add_rag(self, exec_args, args):
-        if not hasattr(args, "rag") or not args.rag:
+        if not getattr(args, "rag", None):
             return exec_args
 
         if os.path.exists(args.rag):
@@ -290,8 +290,8 @@ class Model(ModelBase):
     def setup_mounts(self, model_path, args):
         if args.runtime == "vllm":
             model_base = ""
-            if self.model_store and hasattr(self, 'model_tag'):
-                ref_file = self.model_store.get_ref_file(self.model_tag)
+            if self.model_store and getattr(self, 'model_tag', None):
+                ref_file = self.store.get_ref_file(self.model_tag)
                 if ref_file and hasattr(ref_file, 'hash'):
                     model_base = self.model_store.model_base_directory
             if not model_base and (model_path and os.path.exists(model_path)):
@@ -457,18 +457,22 @@ class Model(ModelBase):
         return exec_args
 
     def validate_args(self, args):
+        # If --container was specified return valid
         if args.container:
             return
         if args.privileged:
             raise KeyError(
                 "--nocontainer and --privileged options conflict. The --privileged option requires a container."
             )
-        if hasattr(args, "name") and args.name:
-            if hasattr(args, "generate"):
-                # Do not fail on serve if user specified --generate
-                if args.generate:
-                    return
-            raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
+        # If --name was not specified return valid
+        if not getattr(args, "name", None):
+            return
+        # If --generate was specified return valid
+        if getattr(args, "generate", False):
+            # Do not fail on serve if user specified --generate
+            return
+
+        raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
     def vllm_serve(self, args, exec_model_path):
         exec_args = [
@@ -525,7 +529,7 @@ class Model(ModelBase):
         if args.debug:
             exec_args += ["-v"]
 
-        if hasattr(args, "webui") and args.webui == "off":
+        if getattr(args, "webui", "") == "off":
             exec_args.extend(["--no-webui"])
 
         if check_nvidia() or check_metal(args):
@@ -576,7 +580,7 @@ class Model(ModelBase):
                 self.model_name,
             ]
 
-            if hasattr(args, 'runtime_args') and args.runtime_args:
+            if getattr(args, 'runtime_args', None):
                 exec_args.extend(args.runtime_args)
         else:
             gpu_args = self.gpu_args(args=args)
@@ -653,7 +657,7 @@ class Model(ModelBase):
             return
 
         # Add rag chatbot
-        if hasattr(args, "rag") and args.rag:
+        if getattr(args, "rag", None):
             exec_args = [
                 "bash",
                 "-c",
@@ -734,7 +738,7 @@ def get_available_port_if_any() -> int:
 
 def compute_serving_port(args, quiet=False) -> str:
     # user probably specified a custom port, don't override the choice
-    if hasattr(args, "port") and args.port not in ["", str(DEFAULT_PORT)]:
+    if getattr(args, "port", "") not in ["", str(DEFAULT_PORT)]:
         target_port = args.port
     else:
         # otherwise compute a random serving port in the range

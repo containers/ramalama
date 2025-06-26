@@ -178,7 +178,7 @@ class OCI(Model):
         # Generate the containerfile content
         # Keep this in sync with docs/ramalama-oci.5.md !
         is_car = args.type == "car"
-        has_gguf = hasattr(args, 'gguf') and args.gguf is not None
+        has_gguf = getattr(args, 'gguf', None) is not None
         content = ""
 
         model_name = source_model.model_name
