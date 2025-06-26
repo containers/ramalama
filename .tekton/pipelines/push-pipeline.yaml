@@ -76,6 +76,18 @@ spec:
       set of values is determined by the configuration of the multi-platform-controller.
     name: build-platforms
     type: array
+  - default: ""
+    description: The image to use for running tests.
+    name: test-image
+  - default: []
+    description: List of environment variables (NAME=VALUE) to be set in the test environment.
+    name: test-envs
+    type: array
+  - default:
+    - echo "No tests defined"
+    description: List of test commands to run after the image is built.
+    name: test-commands
+    type: array
   results:
   - description: ""
     name: IMAGE_URL
@@ -241,6 +253,42 @@ spec:
       operator: in
       values:
       - "true"
+  - name: wait-for-test-image
+    params:
+    - name: ref
+      value: $(params.test-image)
+    runAfter:
+    - build-image-index
+    taskRef:
+      name: wait-for-image
+    when:
+    - input: $(params.test-image)
+      operator: notin
+      values:
+      - ""
+  - name: run-tests
+    matrix:
+      params:
+      - name: cmd
+        value:
+        - $(params.test-commands)
+    params:
+    - name: image
+      value: $(params.test-image)@$(tasks.wait-for-test-image.results.digest)
+    - name: source-artifact
+      value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+    - name: envs
+      value:
+      - $(params.test-envs[*])
+    runAfter:
+    - wait-for-test-image
+    taskRef:
+      name: test-cmd
+    when:
+    - input: $(params.test-image)
+      operator: notin
+      values:
+      - ""
   - name: build-source-image
     params:
     - name: BINARY_IMAGE
