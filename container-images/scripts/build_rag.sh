@@ -27,7 +27,7 @@ $2"
 
 update_python() {
     if available dnf; then
-        dnf update -y --allowerasing
+        dnf update -y --allowerasing --exclude=mesa*
         dnf install -y "${python}" "${python}-pip" "${python}-devel" "${pkgs[@]}"
         if [[ "${python}" == "python3.11" ]]; then
             ln -sf /usr/bin/python3.11 /usr/bin/python3
@@ -39,19 +39,25 @@ update_python() {
     fi
 }
 
+venv(){
+    uv venv --python=/usr/bin/python3.11
+    source .venv/bin/activate
+}
+
+
 docling() {
-    ${python} -m pip install --prefix=/usr docling docling-core accelerate --extra-index-url https://download.pytorch.org/whl/"$1"
+    uv pip install docling docling-core accelerate --extra-index-url https://download.pytorch.org/whl/"$1"
     # Preloads models (assumes its installed from container_build.sh)
     doc2rag load
 }
 
 rag() {
-    ${python} -m pip install --prefix=/usr wheel qdrant_client fastembed openai fastapi uvicorn
+    uv pip install wheel qdrant_client fastembed openai fastapi uvicorn
     rag_framework load
 }
 
 to_gguf() {
-    ${python} -m pip install --prefix=/usr "numpy~=1.26.4" "sentencepiece~=0.2.0" "transformers>=4.45.1,<5.0.0" git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py "protobuf>=4.21.0,<5.0.0"
+    uv pip install "numpy~=1.26.4" "sentencepiece~=0.2.0" "transformers>=4.45.1,<5.0.0" git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py "protobuf>=4.21.0,<5.0.0"
 }
 
 main() {
@@ -80,6 +86,7 @@ main() {
     fi
 
     update_python
+    venv
     to_gguf
 
     # Temporarily disable build for s390x

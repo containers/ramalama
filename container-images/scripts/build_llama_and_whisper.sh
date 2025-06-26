@@ -290,6 +290,7 @@ install_entrypoints() {
     container-images/scripts/whisper-server.sh \
     container-images/scripts/build_rag.sh \
     container-images/scripts/doc2rag \
+    container-images/scripts/rag_entrypoint.sh \
     container-images/scripts/rag_framework \
     "$install_prefix"/bin
 }

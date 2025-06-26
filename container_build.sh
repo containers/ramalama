@@ -84,8 +84,10 @@ ARG REGISTRY_PATH=quay.io/ramalama
 FROM ${REGISTRY_PATH}/$2
 
 USER root
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
 RUN /usr/bin/build_rag.sh ${GPU}
-ENTRYPOINT []
+ENTRYPOINT ["/usr/bin/rag_entrypoint.sh"]
 EOF
     echo "$1 build ${nocache} -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
     eval "$1 build ${nocache} -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
