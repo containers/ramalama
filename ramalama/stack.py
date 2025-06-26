@@ -20,7 +20,7 @@ class Stack:
 
     def __init__(self, args):
         self.args = args
-        self.name = args.name if hasattr(args, "name") and args.name else genname()
+        self.name = getattr(args, "name", None) or genname()
         if os.path.basename(args.engine) != "podman":
             raise ValueError("llama-stack requires use of the Podman container engine")
         self.host = "127.0.0.1"

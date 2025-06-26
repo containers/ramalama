@@ -207,6 +207,10 @@ jobs:
            sudo mv /tmp/daemon.json /etc/docker/daemon.json
            cat /etc/docker/daemon.json
            sudo systemctl restart docker.service
+           sudo mkdir -m a=rwx -p /mnt/tmp /mnt/runner
+           sudo mkdir -m o=rwx -p /home/runner/.local
+           sudo chown runner:runner /mnt/runner /home/runner/.local
+           sudo mount --bind /mnt/runner /home/runner/.local
            df -h
 
       - name: Build a container for CPU inferencing

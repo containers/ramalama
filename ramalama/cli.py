@@ -27,7 +27,6 @@ from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import CONFIG
 from ramalama.logger import configure_logger, logger
-from ramalama.migrate import ModelStoreImport
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory, New
 from ramalama.model_store import GlobalModelStore
@@ -226,13 +225,6 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         help="store AI Models in the specified directory",
     )
     parser.add_argument(
-        "--use-model-store",
-        dest="use_model_store",
-        default=CONFIG.use_model_store,
-        action="store_true",
-        help="use the model store feature",
-    )
-    parser.add_argument(
         "--noout",
         help=argparse.SUPPRESS,
     )
@@ -270,7 +262,7 @@ def parse_arguments(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
-    if hasattr(args, "MODEL") and args.subcommand != "rm":
+    if getattr(args, "MODEL", None) and args.subcommand != "rm":
         resolved_model = shortnames.resolve(args.MODEL)
         if resolved_model:
             args.UNRESOLVED_MODEL = args.MODEL
@@ -509,33 +501,7 @@ def _list_models_from_store(args):
 
 
 def _list_models(args):
-    mycwd = os.getcwd()
-    if args.use_model_store:
-        return _list_models_from_store(args)
-
-    os.chdir(f"{args.store}/models/")
-    models = []
-
-    # Collect model data
-    for path in list_files_by_modification(args):
-        if path.is_symlink():
-            if str(path).startswith("file/"):
-                name = str(path).replace("/", ":///", 1)
-            else:
-                name = str(path).replace("/", "://", 1)
-            file_epoch = path.lstat().st_mtime
-            # convert to iso format
-            modified = datetime.fromtimestamp(file_epoch, tz=timezone.utc).isoformat()
-            size = get_size(path)
-
-            # Store data for later use
-            models.append({"name": name, "modified": modified, "size": size})
-
-    if args.container:
-        models.extend(ramalama.oci.list_models(args))
-
-    os.chdir(mycwd)
-    return models
+    return _list_models_from_store(args)
 
 
 def info_cli(args):
@@ -1183,11 +1149,6 @@ def main():
         argcomplete.autocomplete(parser)
     except Exception:
         pass
-
-    try:
-        ModelStoreImport(args.store).import_all()
-    except Exception as ex:
-        perror(f"Error: Failed to import models to new store: {ex}")
 
     def eprint(e, exit_code):
         perror("Error: " + str(e).strip("'\""))

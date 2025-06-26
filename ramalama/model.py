@@ -27,7 +27,7 @@ from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.logger import logger
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
-from ramalama.model_store import ModelStore
+from ramalama.model_store import GlobalModelStore, ModelStore
 from ramalama.quadlet import Quadlet
 from ramalama.rag import rag_image
 from ramalama.version import version
@@ -99,7 +99,7 @@ class Model(ModelBase):
     model = ""
     type = "Model"
 
-    def __init__(self, model):
+    def __init__(self, model, model_store_path):
         self.model = model
 
         split = self.model.rsplit("/", 1)
@@ -113,7 +113,9 @@ class Model(ModelBase):
         self._model_name, self._model_tag, self._model_organization = self.extract_model_identifiers()
         self._model_type = type(self).__name__.lower()
 
-        self.store: ModelStore = None
+        self._model_store_path: str = model_store_path
+        self._model_store: ModelStore = None
+
         self.default_image = accel_image(CONFIG)
 
     def extract_model_identifiers(self):
@@ -148,6 +150,13 @@ class Model(ModelBase):
     def model_type(self) -> str:
         return self._model_type
 
+    @property
+    def model_store(self) -> ModelStore:
+        if self._model_store is None:
+            name, _, orga = self.extract_model_identifiers()
+            self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
+        return self._model_store
+
     def is_symlink_to(self, file_path, target_path):
         if os.path.islink(file_path):
             symlink_target = os.readlink(file_path)
@@ -178,27 +187,17 @@ class Model(ModelBase):
                             print(f"Deleted: {file_path}")
 
     def remove(self, args):
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            if self.store.tag_exists(tag):
-                self.store.remove_snapshot(tag)
-                return
-
-            if not args.ignore:
-                raise KeyError(f"Model '{self.model}' not found")
+        _, tag, _ = self.extract_model_identifiers()
+        if self.model_store.tag_exists(tag):
+            self.model_store.remove_snapshot(tag)
             return
 
-        model_path = self.model_path(args)
-        try:
-            os.remove(model_path)
-            print(f"Untagged: {self.model}")
-        except OSError as e:
-            if not args.ignore:
-                raise KeyError(f"removing {self.model}: {e}")
-        self.garbage_collection(args)
+        if not args.ignore:
+            raise KeyError(f"Model '{self.model}' not found")
+        return
 
     def get_container_name(self, args):
-        if hasattr(args, "name") and args.name:
+        if getattr(args, "name", None):
             return args.name
 
         return genname()
@@ -206,10 +205,10 @@ class Model(ModelBase):
     def base(self, args, name):
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
-        if args.image == self.default_image and (hasattr(args, "rag") and args.rag):
+        if args.image == self.default_image and getattr(args, "rag", None):
             args.image = rag_image(args.image)
         self.engine = Engine(args)
-        if args.subcommand == "run" and not (hasattr(args, "ARGS") and args.ARGS) and sys.stdin.isatty():
+        if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
             self.engine.add(["-i"])
 
         self.engine.add(
@@ -237,7 +236,7 @@ class Model(ModelBase):
         return conman_args
 
     def add_rag(self, exec_args, args):
-        if not hasattr(args, "rag") or not args.rag:
+        if not getattr(args, "rag", None):
             return exec_args
 
         if os.path.exists(args.rag):
@@ -291,10 +290,10 @@ class Model(ModelBase):
     def setup_mounts(self, model_path, args):
         if args.runtime == "vllm":
             model_base = ""
-            if self.store and hasattr(self, 'model_tag'):
+            if self.model_store and getattr(self, 'model_tag', None):
                 ref_file = self.store.get_ref_file(self.model_tag)
                 if ref_file and hasattr(ref_file, 'hash'):
-                    model_base = self.store.model_base_directory
+                    model_base = self.model_store.model_base_directory
             if not model_base and (model_path and os.path.exists(model_path)):
                 if os.path.isfile(model_path):
                     model_base = os.path.dirname(model_path)
@@ -327,19 +326,16 @@ class Model(ModelBase):
             self.engine.add([f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro"])
 
         # If a chat template is available, mount it as well
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            ref_file = self.store.get_ref_file(tag)
-            if ref_file is not None:
-                if ref_file.chat_template_name != "":
-                    chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                    self.engine.add(
-                        [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
-                    )
+        _, tag, _ = self.extract_model_identifiers()
+        ref_file = self.model_store.get_ref_file(tag)
+        if ref_file is not None:
+            if ref_file.chat_template_name != "":
+                chat_template_path = self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
 
-                if ref_file.mmproj_name != "":
-                    mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                    self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
+            if ref_file.mmproj_name != "":
+                mmproj_path = self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
 
     def bench(self, args):
         model_path = self.get_model_path(args)
@@ -404,16 +400,13 @@ class Model(ModelBase):
         return exec_args
 
     def model_path(self, args):
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            if self.store.tag_exists(tag):
-                ref_file = self.store.get_ref_file(tag)
-                return str(
-                    pathlib.Path(self.store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
-                )
-            return ""
-
-        return os.path.join(args.store, "models", self.type, self.directory, self.filename)
+        _, tag, _ = self.extract_model_identifiers()
+        if self.model_store.tag_exists(tag):
+            ref_file = self.model_store.get_ref_file(tag)
+            return str(
+                pathlib.Path(self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
+            )
+        return ""
 
     def exists(self, args):
         model_path = self.model_path(args)
@@ -464,18 +457,22 @@ class Model(ModelBase):
         return exec_args
 
     def validate_args(self, args):
+        # If --container was specified return valid
         if args.container:
             return
         if args.privileged:
             raise KeyError(
                 "--nocontainer and --privileged options conflict. The --privileged option requires a container."
             )
-        if hasattr(args, "name") and args.name:
-            if hasattr(args, "generate"):
-                # Do not fail on serve if user specified --generate
-                if args.generate:
-                    return
-            raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
+        # If --name was not specified return valid
+        if not getattr(args, "name", None):
+            return
+        # If --generate was specified return valid
+        if getattr(args, "generate", False):
+            # Do not fail on serve if user specified --generate
+            return
+
+        raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
     def vllm_serve(self, args, exec_model_path):
         exec_args = [
@@ -532,7 +529,7 @@ class Model(ModelBase):
         if args.debug:
             exec_args += ["-v"]
 
-        if hasattr(args, "webui") and args.webui == "off":
+        if getattr(args, "webui", "") == "off":
             exec_args.extend(["--no-webui"])
 
         if check_nvidia() or check_metal(args):
@@ -555,8 +552,8 @@ class Model(ModelBase):
         if args.runtime == "vllm":
             container_model_path = ""
             ref_file = None
-            if self.store:
-                ref_file = self.store.get_ref_file(self.model_tag)
+            if self.model_store:
+                ref_file = self.model_store.get_ref_file(self.model_tag)
 
             if ref_file and ref_file.hash:
                 snapshot_dir_name = ref_file.hash
@@ -583,7 +580,7 @@ class Model(ModelBase):
                 self.model_name,
             ]
 
-            if hasattr(args, 'runtime_args') and args.runtime_args:
+            if getattr(args, 'runtime_args', None):
                 exec_args.extend(args.runtime_args)
         else:
             gpu_args = self.gpu_args(args=args)
@@ -636,23 +633,23 @@ class Model(ModelBase):
         exec_model_path = mnt_file if args.container or args.generate else model_path
         chat_template_path = ""
         mmproj_path = ""
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            ref_file = self.store.get_ref_file(tag)
-            if ref_file is not None:
-                if ref_file.chat_template_name != "":
-                    chat_template_path = (
-                        MNT_CHAT_TEMPLATE_FILE
-                        if args.container or args.generate
-                        else self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                    )
 
-                if ref_file.mmproj_name != "":
-                    mmproj_path = (
-                        MNT_MMPROJ_FILE
-                        if args.container or args.generate
-                        else self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                    )
+        _, tag, _ = self.extract_model_identifiers()
+        ref_file = self.model_store.get_ref_file(tag)
+        if ref_file is not None:
+            if ref_file.chat_template_name != "":
+                chat_template_path = (
+                    MNT_CHAT_TEMPLATE_FILE
+                    if args.container or args.generate
+                    else self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                )
+
+            if ref_file.mmproj_name != "":
+                mmproj_path = (
+                    MNT_MMPROJ_FILE
+                    if args.container or args.generate
+                    else self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                )
 
         exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path, mmproj_path)
         exec_args = self.handle_runtime(args, exec_args, exec_model_path)
@@ -660,7 +657,7 @@ class Model(ModelBase):
             return
 
         # Add rag chatbot
-        if hasattr(args, "rag") and args.rag:
+        if getattr(args, "rag", None):
             exec_args = [
                 "bash",
                 "-c",
@@ -741,7 +738,7 @@ def get_available_port_if_any() -> int:
 
 def compute_serving_port(args, quiet=False) -> str:
     # user probably specified a custom port, don't override the choice
-    if hasattr(args, "port") and args.port not in ["", str(DEFAULT_PORT)]:
+    if getattr(args, "port", "") not in ["", str(DEFAULT_PORT)]:
         target_port = args.port
     else:
         # otherwise compute a random serving port in the range

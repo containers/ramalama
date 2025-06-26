@@ -7,11 +7,9 @@ from ramalama.version import version
 
 class Kube:
     def __init__(self, model, chat_template, args, exec_args):
-        self.ai_image = model
-        if hasattr(args, "MODEL"):
-            self.ai_image = args.MODEL
+        self.ai_image = getattr(args, "MODEL", model)
         self.ai_image = self.ai_image.removeprefix("oci://")
-        if hasattr(args, "name") and args.name:
+        if getattr(args, "name", None):
             self.name = args.name
         else:
             self.name = genname()
