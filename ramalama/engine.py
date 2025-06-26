@@ -57,11 +57,11 @@ class Engine:
             self.exec_args += ["--pull", self.args.pull]
 
     def add_network(self):
-        if hasattr(self.args, "network") and self.args.network:
+        if getattr(self.args, "network", None):
             self.exec_args += ["--network", self.args.network]
 
     def add_oci_runtime(self):
-        if hasattr(self.args, "oci_runtime") and self.args.oci_runtime:
+        if getattr(self.args, "oci_runtime", None):
             self.exec_args += ["--runtime", self.args.oci_runtime]
             return
         if check_nvidia() == "cuda":
@@ -71,13 +71,13 @@ class Engine:
                 self.exec_args += ["--runtime", "/usr/bin/nvidia-container-runtime"]
 
     def add_privileged_options(self):
-        if hasattr(self.args, "privileged") and self.args.privileged:
+        if getattr(self.args, "privileged", False):
             self.exec_args += ["--privileged"]
         else:
             self.exec_args += [
                 "--security-opt=label=disable",
             ]
-            if not hasattr(self.args, "nocapdrop"):
+            if not getattr(self.args, "nocapdrop", False):
                 self.exec_args += [
                     "--cap-drop=all",
                     "--security-opt=no-new-privileges",
@@ -86,28 +86,34 @@ class Engine:
     def cap_add(self, cap):
         self.exec_args += ["--cap-add", cap]
 
+    def use_tty(self):
+        if not sys.stdin.isatty():
+            return False
+        if getattr(self.args, "ARGS", None):
+            return False
+        return getattr(self.args, "subcommand", "") != "run"
+
     def add_subcommand_env(self):
-        if EMOJI and hasattr(self.args, "subcommand") and self.args.subcommand == "run":
+        if EMOJI and self.use_tty():
             if os.path.basename(self.args.engine) == "podman":
                 self.exec_args += ["--env", "LLAMA_PROMPT_PREFIX=🦭 > "]
             if self.use_docker:
                 self.exec_args += ["--env", "LLAMA_PROMPT_PREFIX=🐋 > "]
 
     def add_env_option(self):
-        if hasattr(self.args, "env"):
-            for env in self.args.env:
-                self.exec_args += ["--env", env]
+        for env in getattr(self.args, "env", []):
+            self.exec_args += ["--env", env]
 
     def add_tty_option(self):
-        if sys.stdout.isatty() or sys.stdin.isatty():
+        if self.use_tty():
             self.exec_args += ["-t"]
 
     def add_detach_option(self):
-        if hasattr(self.args, "detach") and self.args.detach is True:
+        if getattr(self.args, "detach", False):
             self.exec_args += ["-d"]
 
     def add_port_option(self):
-        if not hasattr(self.args, "port") or not self.args.port or self.args.port == "":
+        if getattr(self.args, "port", "") == "":
             return
 
         if self.args.port.count(":") > 0:
@@ -116,7 +122,7 @@ class Engine:
             self.exec_args += ["-p", f"{self.args.port}:{self.args.port}"]
 
     def add_device_options(self):
-        if hasattr(self.args, "device") and self.args.device:
+        if getattr(self.args, "device", None):
             for device_arg in self.args.device:
                 self.exec_args += ["--device", device_arg]
 
@@ -141,7 +147,7 @@ class Engine:
             self.exec_args += ["-e", f"{k}={v}"]
 
     def add_rag(self):
-        if not hasattr(self.args, "rag") or not self.args.rag:
+        if not getattr(self.args, "rag", None):
             return
 
         if os.path.exists(self.args.rag):
@@ -152,7 +158,7 @@ class Engine:
             self.exec_args.append(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
 
     def handle_podman_specifics(self):
-        if hasattr(self.args, "podman_keep_groups") and self.args.podman_keep_groups:
+        if getattr(self.args, "podman_keep_groups", None):
             self.exec_args += ["--group-add", "keep-groups"]
 
     def add(self, newargs):
@@ -164,8 +170,8 @@ class Engine:
     def run(self):
         run_cmd(self.exec_args)
 
-    def exec(self):
-        exec_cmd(self.exec_args)
+    def exec(self, stdout2null: bool = False, stderr2null: bool = False):
+        exec_cmd(self.exec_args, stdout2null, stderr2null)
 
 
 def dry_run(args):
@@ -185,10 +191,10 @@ def images(args):
         raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "images"]
-    if hasattr(args, "noheading") and args.noheading:
+    if getattr(args, "noheading", False):
         conman_args += ["--noheading"]
 
-    if hasattr(args, "notrunc") and args.notrunc:
+    if getattr(args, "notrunc", False):
         conman_args += ["--no-trunc"]
 
     if args.format:
@@ -210,10 +216,10 @@ def containers(args):
         raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "ps", "-a", "--filter", "label=ai.ramalama"]
-    if hasattr(args, "noheading") and args.noheading:
+    if getattr(args, "noheading", False):
         conman_args += ["--noheading"]
 
-    if hasattr(args, "notrunc") and args.notrunc:
+    if getattr(args, "notrunc", False):
         conman_args += ["--no-trunc"]
 
     if args.format:
@@ -322,6 +328,5 @@ def add_labels(args, add_label):
         "subcommand": "ai.ramalama.command",
     }
     for arg, label_prefix in label_map.items():
-        if hasattr(args, arg):
-            if value := getattr(args, arg):
-                add_label(f"{label_prefix}={value}")
+        if value := getattr(args, arg, None):
+            add_label(f"{label_prefix}={value}")

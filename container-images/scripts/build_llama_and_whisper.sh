@@ -60,6 +60,7 @@ dnf_install_cann() {
 dnf_install_rocm() {
   if [ "$containerfile" = "rocm" ]; then
     if [ "${ID}" = "fedora" ]; then
+      dnf update -y
       dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
     else
       add_stream_repo "AppStream"
@@ -88,7 +89,7 @@ add_stream_repo() {
 
 rm_non_ubi_repos() {
   local dir="/etc/yum.repos.d"
-  rm -rf $dir/mirror.stream.centos.org_9-stream_* $dir/epel* $dir/_copr:*
+  rm -rf $dir/mirror.stream.centos.org_9-stream_* $dir/epel*
 }
 
 is_rhel_based() { # doesn't include openEuler
@@ -96,12 +97,14 @@ is_rhel_based() { # doesn't include openEuler
 }
 
 dnf_install_mesa() {
-  if is_rhel_based; then
-    dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
-    add_stream_repo "AppStream"
+  if [ "${ID}" = "fedora" ]; then
+    dnf copr enable -y slp/mesa-libkrun-vulkan
+    dnf install -y mesa-vulkan-drivers-25.0.7-100.fc42 "${vulkan_rpms[@]}"
+    dnf versionlock add mesa-vulkan-drivers-25.0.7-100.fc42
+  else
+    dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
   fi
 
-  dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
   rm_non_ubi_repos
 }
 
@@ -246,7 +249,8 @@ configure_common_flags() {
 
 clone_and_build_whisper_cpp() {
   local whisper_flags=("${common_flags[@]}")
-  local whisper_cpp_sha="51c6961c7b64b406833f4b6a4a20e67142f69225"
+  # last time we tried to upgrade the whisper sha, rocm build broke
+  local whisper_cpp_sha="d682e150908e10caa4c15883c633d7902d385237"
   whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
   # See: https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#compilation-options
   if [ "$containerfile" = "musa" ]; then
@@ -278,18 +282,18 @@ clone_and_build_llama_cpp() {
 }
 
 install_ramalama() {
-  # link podman-remote to podman for use by RamaLama
-  ln -sf /usr/bin/podman-remote /usr/bin/podman
-  if [ -e "/run/ramalama" ]; then
-    $PYTHON -m pip install /run/ramalama --prefix="$1"
-  else
-    git clone https://github.com/containers/ramalama
-    cd ramalama
-    git submodule update --init --recursive
-    $PYTHON -m pip install . --prefix="$1"
-    cd ..
-    rm -rf ramalama
-  fi
+  $PYTHON -m pip install . --prefix="$1"
+}
+
+install_entrypoints() {
+  install -d "$install_prefix"/bin
+  install -m 755 \
+    container-images/scripts/llama-server.sh \
+    container-images/scripts/whisper-server.sh \
+    container-images/scripts/build_rag.sh \
+    container-images/scripts/doc2rag \
+    container-images/scripts/rag_framework \
+    "$install_prefix"/bin
 }
 
 main() {
@@ -312,6 +316,7 @@ main() {
   if [ -n "$containerfile" ]; then
     install_ramalama "${install_prefix}"
   fi
+  install_entrypoints
 
   setup_build_env
   if [ "$uname_m" != "s390x" ]; then

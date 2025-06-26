@@ -8,6 +8,9 @@ PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 IMAGE ?= ramalama
+PYTHON_FILES := $(shell find . -path "./.venv" -prune -o -name "*.py" -print) $(shell find . -name ".venv" -prune -o -type f -perm +111 -exec grep -l "^\#!/usr/bin/env python3" {} \; 2>/dev/null || true)
+PYTEST_COMMON_CMD ?= PYTHONPATH=. pytest test/unit/ -vv
+BATS_IMAGE ?= localhost/bats:latest
 
 default: help
 
@@ -39,16 +42,16 @@ help:
 	@echo
 
 install-detailed-cov-requirements:
-	uv pip install ".[cov-detailed]"
+	pip install ".[cov-detailed]"
 
 .PHONY: install-cov-requirements
 install-cov-requirements:
-	uv pip install ".[cov]"
+	pip install ".[cov]"
 
 .PHONY: install-requirements
 install-requirements:
 	./install-uv.sh
-	uv pip install ".[dev]"
+	pip install ".[dev]"
 
 .PHONY: install-completions
 install-completions: completions
@@ -111,18 +114,18 @@ ifneq (,$(wildcard /usr/bin/python3))
 endif
 
 	! grep -ri --exclude-dir ".venv" --exclude-dir "*/.venv" "#\!/usr/bin/python3" .
-	flake8  */*.py */*/*.py libexec/* bin/*
+	flake8 $(PYTHON_FILES)
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:
-	black --check --diff */*.py */*/*.py libexec/* bin/*
-	isort --check --diff */*.py */*/*.py libexec/* bin/*
+	black --check --diff $(PYTHON_FILES)
+	isort --check --diff $(PYTHON_FILES)
 
 .PHONY: format
 format:
-	black */*.py */*/*.py libexec/* bin/*
-	isort */*.py */*/*.py libexec/* bin/*
+	black $(PYTHON_FILES)
+	isort $(PYTHON_FILES)
 
 .PHONY: codespell
 codespell:
@@ -159,13 +162,33 @@ bats-nocontainer:
 bats-docker:
 	_RAMALAMA_TEST_OPTS=--engine=docker RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
 
+.PHONY: bats-image
+bats-image:
+	podman inspect $(BATS_IMAGE) &> /dev/null || \
+		podman build -t $(BATS_IMAGE) -f container-images/bats/Containerfile .
+
+bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
+
+%-in-container: bats-image
+	podman run -it --rm \
+		--userns=keep-id:size=200000 \
+		--security-opt label=disable \
+		--security-opt=mask=/sys/bus/pci/drivers/i915 \
+		$(extra-opts) \
+		-v $(CURDIR):/src \
+		$(BATS_IMAGE) make $*
+
 .PHONY: ci
 ci:
 	test/ci.sh
 
 .PHONY: unit-tests
 unit-tests:
-	PYTHONPATH=. pytest test/unit/
+	$(PYTEST_COMMON_CMD)
+
+.PHONY: unit-tests-verbose
+unit-tests-verbose:
+	$(PYTEST_COMMON_CMD) --full-trace --capture=tee-sys
 
 .PHONY: cov-run
 cov-run: install-cov-requirements

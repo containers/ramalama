@@ -5,6 +5,7 @@ import tempfile
 from datetime import datetime
 
 import ramalama.annotations as annotations
+from ramalama.arg_types import EngineArgType
 from ramalama.common import MNT_FILE, engine_version, exec_cmd, perror, run_cmd
 from ramalama.model import Model
 
@@ -23,7 +24,7 @@ def engine_supports_manifest_attributes(engine):
     return True
 
 
-def list_manifests(args):
+def list_manifests(args: EngineArgType):
     if args.engine == "docker":
         return []
 
@@ -77,7 +78,7 @@ def list_manifests(args):
     return models
 
 
-def list_models(args):
+def list_models(args: EngineArgType):
     conman = args.engine
     if conman is None:
         return []
@@ -129,8 +130,8 @@ def list_models(args):
 
 
 class OCI(Model):
-    def __init__(self, model, conman, ignore_stderr=False):
-        super().__init__(model)
+    def __init__(self, model, model_store_path, conman, ignore_stderr=False):
+        super().__init__(model, model_store_path)
 
         self.type = "OCI"
         if not conman:
@@ -175,12 +176,13 @@ class OCI(Model):
 
     def _generate_containerfile(self, source_model, args):
         # Generate the containerfile content
+        # Keep this in sync with docs/ramalama-oci.5.md !
         is_car = args.type == "car"
-        has_gguf = hasattr(args, 'gguf') and args.gguf is not None
+        has_gguf = getattr(args, 'gguf', None) is not None
         content = ""
 
         model_name = source_model.model_name
-        ref_file = source_model.store.get_ref_file(source_model.model_tag)
+        ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
 
         if is_car:
             content += f"FROM {args.carimage}\n"
@@ -192,7 +194,7 @@ class OCI(Model):
                 f"RUN mkdir -p /models/{model_name}; cd /models; ln -s {model_name}-{args.gguf}.gguf model.file\n"
             )
             for file in ref_file.filenames:
-                blob_file_path = source_model.store.get_blob_file_hash(ref_file.hash, file)
+                blob_file_path = source_model.model_store.get_blob_file_hash(ref_file.hash, file)
                 content += f"COPY {blob_file_path} /models/{model_name}/{file}\n"
             content += f"""
 RUN convert_hf_to_gguf.py --outfile /{model_name}-f16.gguf /models/{model_name}
@@ -213,11 +215,11 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
                 )
             else:
                 for file in ref_file.filenames:
-                    blob_file_path = source_model.store.get_blob_file_hash(ref_file.hash, file)
+                    blob_file_path = source_model.model_store.get_blob_file_hash(ref_file.hash, file)
                     content += f"COPY {blob_file_path} /models/{model_name}/{file}\n"
         elif not has_gguf:
             for file in ref_file.filenames:
-                blob_file_path = source_model.store.get_blob_file_hash(ref_file.hash, file)
+                blob_file_path = source_model.model_store.get_blob_file_hash(ref_file.hash, file)
                 content += f"COPY {blob_file_path} /models/{model_name}/{file}\n"
 
         content += f"LABEL {ociimage_car if is_car else ociimage_raw}\n"
@@ -225,7 +227,7 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         return content
 
     def build(self, source_model, args):
-        contextdir = source_model.store.blobs_directory
+        contextdir = source_model.model_store.blobs_directory
 
         content = self._generate_containerfile(source_model, args)
 
@@ -309,7 +311,7 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         run_cmd(cmd_args, stdout=None)
 
     def _convert(self, source_model, args):
-        print(f"Converting {source_model.store.base_path} to {self.store.base_path} ...")
+        print(f"Converting {source_model.model_store.base_path} to {self.model_store.base_path} ...")
         try:
             run_cmd([self.conman, "manifest", "rm", self.model], ignore_stderr=True, stdout=None)
         except subprocess.CalledProcessError:

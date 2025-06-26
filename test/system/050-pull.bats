@@ -77,6 +77,7 @@ load setup_suite
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
     run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
+    skip_if_no_hf-cli
     run_ramalama pull hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0
     run_ramalama list
     is "$output" ".*TinyLlama/TinyLlama-1.1B-Chat-v1.0" "image was actually pulled locally"
@@ -141,7 +142,7 @@ load setup_suite
       run_ramalama pull $file_url
       run_ramalama list
       # remove the additional slash character
-      expected_url=$(sed "s/file\:\//file\:/" <<< $file_url):latest
+      expected_url=$(sed "s/file\:\//file\:/" <<< $file_url)
       is "$output" ".*$expected_url" "URL exists"
       run_ramalama rm $file_url
       run_ramalama list
@@ -163,7 +164,7 @@ load setup_suite
       touch $model
       url=file://${model}
       # remove the additional slash character
-      expected_url=$(sed "s/file\:\//file\:/" <<< $url):latest
+      expected_url=$(sed "s/file\:\//file\:/" <<< $url)
 
       run_ramalama pull $url
       run_ramalama list

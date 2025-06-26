@@ -31,6 +31,8 @@ verify_begin=".*run --rm"
 	assert "$output" =~ "--network bridge.*--host 127.1.2.3" "verify --host is modified when run within container"
 	is "$output" ".*${model}" "verify model name"
 	is "$output" ".*--temp 0.8" "verify temp is set"
+	assert "$output" !~ ".*-t " "assert -t not present"
+	assert "$output" !~ ".*-i " "assert -t not present"
 
 	run_ramalama -q --dryrun serve --temp 0.1 ${model}
 	is "$output" ".*--temp 0.1" "verify temp is set"
@@ -176,25 +178,27 @@ verify_begin=".*run --rm"
 }
 
 @test "ramalama serve --generate=quadlet" {
-    model=tiny
+    model="smollm"
+    model_quant="$model:135m"
+    quadlet="$model.container"
     name=c_$(safename)
-    run_ramalama pull ${model}
-    run_ramalama -q serve --port 1234 --generate=quadlet ${model}
-    is "$output" "Generating quadlet file: tinyllama.container" "generate tinllama.container"
+    run_ramalama pull $model_quant
+    run_ramalama -q serve --port 1234 --generate=quadlet $model
+    is "$output" "Generating quadlet file: $quadlet" "generate $quadlet"
 
-    run cat tinyllama.container
+    run cat $quadlet
     is "$output" ".*PublishPort=1234:1234" "PublishPort should match"
     is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
-    is "$output" ".*Mount=type=bind,.*tinyllama" "Mount line should be correct"
+    is "$output" ".*Mount=type=bind,.*$model" "Mount line should be correct"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet ${model}
-    is "$output" "Generating quadlet file: tinyllama.container" "generate tinllama.container"
+    HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet $model
+    is "$output" "Generating quadlet file: $quadlet" "generate $quadlet"
 
-    run cat tinyllama.container
+    run cat $quadlet
     is "$output" ".*Environment=HIP_VISIBLE_DEVICES=99" "Should contain env property"
 
-    rm tinyllama.container
-    run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus tiny
+    rm $quadlet
+    run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus $model
     is "$output" ".*error: argument --generate: invalid choice: .*bogus.* (choose from.*quadlet.*kube.*quadlet/kube.*)" "Should fail"
 }
 
@@ -248,6 +252,11 @@ verify_begin=".*run --rm"
 	   rm $name.image
 	fi
 
+    run_ramalama rm oci://${ociimage}
+    done
+    stop_registry
+    skip "vLLM can't serve GGUFs, needs tiny safetensor"
+
 	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://${ociimage}
 	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
@@ -263,25 +272,23 @@ verify_begin=".*run --rm"
 	is "$output" ".*reference: ${ociimage}" "AI image should be created"
 	is "$output" ".*pullPolicy: IfNotPresent" "pullPolicy should exist"
 
-	run_ramalama rm oci://${ociimage}
-	rm $name.yaml
-    done
-    stop_registry
+    rm $name.yaml
 }
 
 
 @test "ramalama serve --generate=kube" {
-    model=tiny
+    model="smollm"
+    model_quant="$model:135m"
     name=c_$(safename)
-    run_ramalama pull ${model}
-    run_ramalama serve --name=${name} --port 1234 --generate=kube ${model}
+    run_ramalama pull $model_quant
+    run_ramalama serve --name=${name} --port 1234 --generate=kube $model_quant
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
     is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=kube ${model}
+    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=kube $model_quant
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
@@ -289,7 +296,7 @@ verify_begin=".*run --rm"
     is "$output" ".*name: HIP_VISIBLE_DEVICES" "Should contain env name"
     is "$output" ".*value: 99" "Should contain env value"
 
-    run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube ${model}
+    run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube $model_quant
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
     is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
 
@@ -297,7 +304,7 @@ verify_begin=".*run --rm"
     is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube ${model}
+    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube $model_quant
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
@@ -331,7 +338,7 @@ verify_begin=".*run --rm"
     model=tiny
     name=c_$(safename)
     run_ramalama pull ${model}
-    run_ramalama serve -d --name=${name} --api llama-stack --port 1234 ${model}
+    run_ramalama serve -d --name=${name} --api llama-stack --dri off --port 1234 ${model}
     is "$output" ".*Llama Stack RESTAPI: http://localhost:1234" "reveal llama stack url"
     is "$output" ".*OpenAI RESTAPI: http://localhost:1234/v1/openai" "reveal openai url"
 
@@ -360,6 +367,32 @@ verify_begin=".*run --rm"
     is "$output" ".*hostPort: 1234" "Should container container port"
     is "$output" ".*llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml" "Should container llama-stack"
     rm /tmp/$name.yaml
+}
+
+@test "ramalama serve --image bogus" {
+    skip_if_nocontainer
+    skip_if_darwin
+    skip_if_docker
+    run_ramalama 125 --image bogus serve --pull=never tiny
+    is "$output" "Error: bogus: image not known"
+
+    run_ramalama 125 --image bogus1 serve --rag quay.io/ramalama/testrag --pull=never tiny
+    is "$output" ".*Error: bogus1: image not known"
+}
+
+@test "ramalama serve with rag" {
+    skip_if_nocontainer
+    skip_if_darwin
+    skip_if_docker
+    run_ramalama ? stop ${name}
+    run_ramalama ? --dryrun serve --rag quay.io/ramalama/rag --pull=never tiny
+    is "$output" ".*Error: quay.io/ramalama/rag: image not known"
+
+    run_ramalama --dryrun serve --rag quay.io/ramalama/testrag --pull=never tiny
+    is "$output" ".*quay.io/ramalama/.*-rag:"
+
+    run_ramalama --dryrun --image quay.io/ramalama/ramalama:1.0 serve --rag quay.io/ramalama/testrag --pull=never tiny
+    is "$output" ".*quay.io/ramalama/ramalama:1.0"
 }
 
 # vim: filetype=sh

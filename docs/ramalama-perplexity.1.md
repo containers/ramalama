@@ -30,7 +30,7 @@ URL support means if a model is on a web site or even on your local system, you 
 path of the authentication file for OCI registries
 
 #### **--ctx-size**, **-c**
-size of the prompt context (default: 2048, 0 = loaded from model)
+size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 2048, 0 = loaded from model)
 
 #### **--device**
 Add a host device to the container. Optional permissions parameter can

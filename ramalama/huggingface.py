@@ -15,9 +15,9 @@ from ramalama.model_store import SnapshotFileType
 
 missing_huggingface = """
 Optional: Huggingface models require the huggingface-cli module.
-These modules can be installed via PyPi tools like pip, pip3, pipx, or via
+This module can be installed via PyPi tools like uv, pip, pip3, pipx, or via
 distribution package managers like dnf or apt. Example:
-pip install huggingface_hub
+uv pip install huggingface_hub
 """
 
 
@@ -142,8 +142,9 @@ class Huggingface(HFStyleRepoModel):
     REGISTRY_URL = "https://huggingface.co/v2/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
-    def __init__(self, model):
-        super().__init__(model)
+    def __init__(self, model, model_store_path):
+        super().__init__(model, model_store_path)
+
         self.type = "huggingface"
         self.hf_cli_available = is_huggingface_cli_available()
 
@@ -170,9 +171,6 @@ class Huggingface(HFStyleRepoModel):
             return HuggingfaceRepositoryModel(name, organization, tag)
         else:
             return HuggingfaceRepository(name, organization, tag)
-
-    def get_download_url(self, directory, filename):
-        return f"https://huggingface.co/{directory}/resolve/main/{filename}"
 
     def get_cli_download_args(self, directory_path, model):
         return ["huggingface-cli", "download", "--local-dir", directory_path, model]
@@ -223,12 +221,9 @@ class Huggingface(HFStyleRepoModel):
             return True
         return False
 
-    def hf_pull(self, args, model_path, directory_path):
-        return self.cli_pull(args, model_path, directory_path)
-
     def push(self, _, args):
         if not self.hf_cli_available:
-            raise NotImplementedError(missing_huggingface)
+            raise NotImplementedError(self.get_missing_message())
         proc = run_cmd(
             [
                 "huggingface-cli",
@@ -276,7 +271,7 @@ class Huggingface(HFStyleRepoModel):
                 name=entry,
             )
             # try to identify the model file in the pulled repo
-            if entry.endswith(".safetensors") or entry.endswith(".gguf"):
+            if entry.endswith(".gguf"):
                 hf_file.type = SnapshotFileType.Model
             files.append(hf_file)
 

@@ -12,9 +12,9 @@ from ramalama.model_store import SnapshotFileType
 
 missing_modelscope = """
 Optional: ModelScope models require the modelscope module.
-These modules can be installed via PyPi tools like pip, pip3, pipx, or via
+This module can be installed via PyPi tools like uv, pip, pip3, pipx, or via
 distribution package managers like dnf or apt. Example:
-pip install modelscope
+uv pip install modelscope
 """
 
 
@@ -57,8 +57,9 @@ class ModelScope(HFStyleRepoModel):
     REGISTRY_URL = "https://modelscope.cn/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
-    def __init__(self, model):
-        super().__init__(model)
+    def __init__(self, model, model_store_path):
+        super().__init__(model, model_store_path)
+
         self.type = "modelscope"
         self.ms_available = is_modelscope_available()
 
@@ -82,9 +83,6 @@ class ModelScope(HFStyleRepoModel):
 
     def create_repository(self, name, organization, tag):
         return ModelScopeRepository(name, organization, tag)
-
-    def get_download_url(self, directory, filename):
-        return f"https://modelscope.cn/{directory}/resolve/master/{filename}"
 
     def get_cli_download_args(self, directory_path, model):
         return ["modelscope", "download", "--local_dir", directory_path, model]
@@ -115,12 +113,9 @@ class ModelScope(HFStyleRepoModel):
             return True
         return False
 
-    def ms_pull(self, args, model_path, directory_path):
-        return self.cli_pull(args, model_path, directory_path)
-
     def push(self, _, args):
         if not self.ms_available:
-            raise NotImplementedError(missing_modelscope)
+            raise NotImplementedError(self.get_missing_message())
         proc = run_cmd(
             [
                 "modelscope",
@@ -168,7 +163,7 @@ class ModelScope(HFStyleRepoModel):
                 name=entry,
             )
             # try to identify the model file in the pulled repo
-            if entry.endswith(".safetensors") or entry.endswith(".gguf"):
+            if entry.endswith(".gguf"):
                 ms_file.type = SnapshotFileType.Model
             files.append(ms_file)
 

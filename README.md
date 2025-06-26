@@ -25,15 +25,15 @@ RamaLama eliminates the need to configure the host system by instead pulling a c
 
 ## Accelerated images
 
-| Accelerator             | Image                      |
-| :-----------------------| :------------------------- |
-|  CPU, Apple             | quay.io/ramalama/ramalama  |
-|  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm      |
-|  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda      |
-|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
-|  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu |
-|  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
-|  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
+| Accelerator                       | Image                      |
+| :---------------------------------| :------------------------- |
+|  GGML_VK_VISIBLE_DEVICES (or CPU) | quay.io/ramalama/ramalama  |
+|  HIP_VISIBLE_DEVICES              | quay.io/ramalama/rocm      |
+|  CUDA_VISIBLE_DEVICES             | quay.io/ramalama/cuda      |
+|  ASAHI_VISIBLE_DEVICES            | quay.io/ramalama/asahi     |
+|  INTEL_VISIBLE_DEVICES            | quay.io/ramalama/intel-gpu |
+|  ASCEND_VISIBLE_DEVICES           | quay.io/ramalama/cann      |
+|  MUSA_VISIBLE_DEVICES             | quay.io/ramalama/musa      |
 
 ### GPU support inspection
 On first run, RamaLama inspects your system for GPU support, falling back to CPU if none are present. RamaLama uses container engines like Podman or Docker to pull the appropriate OCI image with all necessary software to run an AI Model for your system setup.
@@ -60,9 +60,10 @@ RamaLama then pulls AI Models from model registries, starting a chatbot or REST 
 | Apple Silicon GPU (macOS)          | &check;                     |
 | Apple Silicon GPU (podman-machine) | &check;                     |
 | Nvidia GPU (cuda)                  | &check; See note below      |
-| AMD GPU (rocm)                     | &check;                     |
+| AMD GPU (rocm, vulkan)             | &check;                     |
 | Ascend NPU (Linux)                 | &check;                     |
 | Intel ARC GPUs (Linux)             | &check; See note below      |
+| Intel GPUs (vulkan / Linux)        | &check;                     |
 | Moore Threads GPU (musa / Linux)   | &check; See note below      |
 
 ### Nvidia GPUs
@@ -97,6 +98,11 @@ sudo dnf install python3-ramalama
 RamaLama is available via PyPi at [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
 ```
 pip install ramalama
+```
+
+### Install via Homebrew
+```
+brew install ramalama
 ```
 
 ### Install script (Linux and macOS)
@@ -1041,6 +1047,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 | ------------------------------------------------------ | ---------------------------------------------------------- |
 | [ramalama(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama.1.md)                      | primary RamaLama man page                                  |
 | [ramalama-bench(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-bench.1.md)| benchmark specified AI Model                                         |
+| [ramalama-chat(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-chat.1.md)| chat with specified OpenAI REST API                        |
 | [ramalama-containers(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-containers.1.md)| list all RamaLama containers                               |
 | [ramalama-convert(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-convert.1.md)      | convert AI Model from local storage to OCI Image           |
 | [ramalama-info(1)](https://github.com/containers/ramalama/blob/main/docs/ramalama-info.1.md)            | display RamaLama configuration information                 |

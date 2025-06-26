@@ -1,12 +1,12 @@
 import os
 import pathlib
-import platform
 import random
 import re
 import socket
 import sys
+import time
 
-import ramalama
+import ramalama.chat as chat
 from ramalama.common import (
     MNT_CHAT_TEMPLATE_FILE,
     MNT_DIR,
@@ -18,18 +18,18 @@ from ramalama.common import (
     check_nvidia,
     exec_cmd,
     genname,
-    get_cmd_with_wrapper,
     set_accel_env_vars,
 )
 from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
-from ramalama.console import EMOJI
+from ramalama.console import should_colorize
 from ramalama.engine import Engine, dry_run
 from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.logger import logger
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
-from ramalama.model_store import ModelStore
+from ramalama.model_store import GlobalModelStore, ModelStore
 from ramalama.quadlet import Quadlet
+from ramalama.rag import rag_image
 from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama"]
@@ -99,7 +99,7 @@ class Model(ModelBase):
     model = ""
     type = "Model"
 
-    def __init__(self, model):
+    def __init__(self, model, model_store_path):
         self.model = model
 
         split = self.model.rsplit("/", 1)
@@ -113,7 +113,10 @@ class Model(ModelBase):
         self._model_name, self._model_tag, self._model_organization = self.extract_model_identifiers()
         self._model_type = type(self).__name__.lower()
 
-        self.store: ModelStore = None
+        self._model_store_path: str = model_store_path
+        self._model_store: ModelStore = None
+
+        self.default_image = accel_image(CONFIG)
 
     def extract_model_identifiers(self):
         model_name = self.model
@@ -147,6 +150,13 @@ class Model(ModelBase):
     def model_type(self) -> str:
         return self._model_type
 
+    @property
+    def model_store(self) -> ModelStore:
+        if self._model_store is None:
+            name, _, orga = self.extract_model_identifiers()
+            self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
+        return self._model_store
+
     def is_symlink_to(self, file_path, target_path):
         if os.path.islink(file_path):
             symlink_target = os.readlink(file_path)
@@ -177,26 +187,17 @@ class Model(ModelBase):
                             print(f"Deleted: {file_path}")
 
     def remove(self, args):
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            try:
-                self.store.remove_snapshot(tag)
-            except OSError as e:
-                if not args.ignore:
-                    raise KeyError(f"removing {self.model}: {e}")
+        _, tag, _ = self.extract_model_identifiers()
+        if self.model_store.tag_exists(tag):
+            self.model_store.remove_snapshot(tag)
             return
 
-        model_path = self.model_path(args)
-        try:
-            os.remove(model_path)
-            print(f"Untagged: {self.model}")
-        except OSError as e:
-            if not args.ignore:
-                raise KeyError(f"removing {self.model}: {e}")
-        self.garbage_collection(args)
+        if not args.ignore:
+            raise KeyError(f"Model '{self.model}' not found")
+        return
 
     def get_container_name(self, args):
-        if hasattr(args, "name") and args.name:
+        if getattr(args, "name", None):
             return args.name
 
         return genname()
@@ -204,13 +205,14 @@ class Model(ModelBase):
     def base(self, args, name):
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
-        if hasattr(args, "rag") and args.rag:
-            args.image = args.image.split(":")[0]
-        args.image = accel_image(CONFIG, args)
+        if args.image == self.default_image and getattr(args, "rag", None):
+            args.image = rag_image(args.image)
         self.engine = Engine(args)
+        if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
+            self.engine.add(["-i"])
+
         self.engine.add(
             [
-                "-i",
                 "--label",
                 "ai.ramalama",
                 "--name",
@@ -234,7 +236,7 @@ class Model(ModelBase):
         return conman_args
 
     def add_rag(self, exec_args, args):
-        if not hasattr(args, "rag") or not args.rag:
+        if not getattr(args, "rag", None):
             return exec_args
 
         if os.path.exists(args.rag):
@@ -252,33 +254,19 @@ class Model(ModelBase):
 
     def gpu_args(self, args, runner=False):
         gpu_args = []
-        machine = platform.machine()
-        if (
-            os.getenv("HIP_VISIBLE_DEVICES")
-            or os.getenv("ASAHI_VISIBLE_DEVICES")
-            or os.getenv("CUDA_VISIBLE_DEVICES")
-            or os.getenv("INTEL_VISIBLE_DEVICES")
-            or os.getenv("ASCEND_VISIBLE_DEVICES")
-            or os.getenv("MUSA_VISIBLE_DEVICES")
-            or (
-                # linux and macOS report aarch64 (linux), arm64 (macOS)
-                ramalama.common.podman_machine_accel
-                or (machine == "aarch64" and os.path.exists("/dev/dri"))
-            )
-        ):
-            if args.ngl < 0:
-                args.ngl = 999
+        if args.ngl < 0:
+            args.ngl = 999
 
-            if runner:
-                gpu_args += ["--ngl"]  # double dash
-            else:
-                gpu_args += ["-ngl"]  # single dash
+        if runner:
+            gpu_args += ["--ngl"]  # double dash
+        else:
+            gpu_args += ["-ngl"]  # single dash
 
-            gpu_args += [f'{args.ngl}']
+        gpu_args += [f'{args.ngl}']
 
-            if self.draft_model:
-                # Use the same arg as ngl to reduce configuration space
-                gpu_args += ["-ngld", f'{args.ngl}']
+        if self.draft_model:
+            # Use the same arg as ngl to reduce configuration space
+            gpu_args += ["-ngld", f'{args.ngl}']
 
         gpu_args += ["--threads", f"{args.threads}"]
 
@@ -287,23 +275,39 @@ class Model(ModelBase):
     def exec_model_in_container(self, model_path, cmd_args, args):
         if not args.container:
             return False
-
         self.setup_container(args)
         self.setup_mounts(model_path, args)
-        self.handle_rag_mode(args, cmd_args)
 
         # Make sure Image precedes cmd_args
-        self.engine.add([accel_image(CONFIG, args)] + cmd_args)
+        self.engine.add([args.image] + cmd_args)
 
         if args.dryrun:
             self.engine.dryrun()
             return True
-
-        self.engine.exec()
+        self.engine.exec(stdout2null=args.noout)
         return True
 
     def setup_mounts(self, model_path, args):
-        if model_path and os.path.exists(model_path):
+        if args.runtime == "vllm":
+            model_base = ""
+            if self.model_store and getattr(self, 'model_tag', None):
+                ref_file = self.store.get_ref_file(self.model_tag)
+                if ref_file and hasattr(ref_file, 'hash'):
+                    model_base = self.model_store.model_base_directory
+            if not model_base and (model_path and os.path.exists(model_path)):
+                if os.path.isfile(model_path):
+                    model_base = os.path.dirname(model_path)
+                elif os.path.isdir(model_path):
+                    model_base = model_path
+            if model_base:
+                self.engine.add([f"--mount=type=bind,src={model_base},destination={MNT_DIR},ro"])
+            else:
+                raise ValueError(
+                    f'Could not determine a valid host directory to mount for model {self.model}'
+                    + 'Ensure the model path is correct or the model store is properly configured.'
+                )
+
+        elif model_path and os.path.exists(model_path):
             if hasattr(self, 'split_model'):
                 self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_DIR}/{self.mnt_path},ro"])
 
@@ -322,25 +326,16 @@ class Model(ModelBase):
             self.engine.add([f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro"])
 
         # If a chat template is available, mount it as well
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            ref_file = self.store.get_ref_file(tag)
-            if ref_file is not None:
-                if ref_file.chat_template_name != "":
-                    chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                    self.engine.add(
-                        [f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"]
-                    )
+        _, tag, _ = self.extract_model_identifiers()
+        ref_file = self.model_store.get_ref_file(tag)
+        if ref_file is not None:
+            if ref_file.chat_template_name != "":
+                chat_template_path = self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
 
-                if ref_file.mmproj_name != "":
-                    mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                    self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
-
-    def handle_rag_mode(self, args, cmd_args):
-        # force accel_image to use -rag version. Drop TAG if it exists
-        # so that accel_image will add -rag to the image specification.
-        if hasattr(args, "rag") and args.rag:
-            args.image = args.image.split(":")[0]
+            if ref_file.mmproj_name != "":
+                mmproj_path = self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
 
     def bench(self, args):
         model_path = self.get_model_path(args)
@@ -349,13 +344,41 @@ class Model(ModelBase):
         self.execute_command(model_path, exec_args, args)
 
     def run(self, args):
+        # The Run command will first launch a daemonized service
+        # and run chat to communicate with it.
         self.validate_args(args)
-        prompt = self.build_prompt(args)
-        model_path = self.get_model_path(args)
-        exec_args = self.build_exec_args_run(args, model_path, prompt)
-        if args.keepalive:
-            exec_args = ["timeout", args.keepalive] + exec_args
-        self.execute_command(model_path, exec_args, args)
+        args.port = compute_serving_port(args, quiet=args.debug)
+        if args.container:
+            args.name = self.get_container_name(args)
+
+        args.noout = not args.debug
+
+        pid = os.fork()
+        if pid == 0:
+            args.host = CONFIG.host
+            args.generate = ""
+            args.detach = True
+            self.serve(args, True)
+            return 0
+        else:
+            args.url = f"http://127.0.0.1:{args.port}"
+            args.pid2kill = ""
+            if args.container:
+                _, status = os.waitpid(pid, 0)
+                if status != 0:
+                    raise ValueError(f"Failed to serve model {self.model_name}, for ramalama run command")
+                args.ignore = args.dryrun
+                for i in range(0, 6):
+                    try:
+                        chat.chat(args)
+                        break
+                    except Exception as e:
+                        if i > 5:
+                            raise e
+                        time.sleep(1)
+            else:
+                args.pid2kill = pid
+                chat.chat(args)
 
     def perplexity(self, args):
         self.validate_args(args)
@@ -376,28 +399,14 @@ class Model(ModelBase):
 
         return exec_args
 
-    def build_prompt(self, args):
-        prompt = ""
-        if args.ARGS:
-            prompt = " ".join(args.ARGS)
-
-        if not sys.stdin.isatty():
-            inp = sys.stdin.read()
-            prompt = inp + "\n\n" + prompt
-
-        return prompt
-
     def model_path(self, args):
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            if self.store.tag_exists(tag):
-                ref_file = self.store.get_ref_file(tag)
-                return str(
-                    pathlib.Path(self.store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
-                )
-            return ""
-
-        return os.path.join(args.store, "models", self.type, self.directory, self.filename)
+        _, tag, _ = self.extract_model_identifiers()
+        if self.model_store.tag_exists(tag):
+            ref_file = self.model_store.get_ref_file(tag)
+            return str(
+                pathlib.Path(self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
+            )
+        return ""
 
     def exists(self, args):
         model_path = self.model_path(args)
@@ -447,120 +456,91 @@ class Model(ModelBase):
 
         return exec_args
 
-    def get_ramalama_core_path(self, args, exec_cmd):
-        if not args.container:
-            return get_cmd_with_wrapper(exec_cmd)
-
-        return f"/usr/libexec/ramalama/{exec_cmd}"
-
-    def build_exec_args_run(self, args, model_path, prompt):
-        exec_model_path = model_path if not args.container else MNT_FILE
-
-        # override prompt if not set to the local call
-        if EMOJI and "LLAMA_PROMPT_PREFIX" not in os.environ:
-            os.environ["LLAMA_PROMPT_PREFIX"] = "🦙 > "
-
-        exec_args = [
-            self.get_ramalama_core_path(args, "ramalama-run-core"),
-            "--jinja",
-            "-c",
-            f"{args.context}",
-            "--temp",
-            f"{args.temp}",
-        ] + args.runtime_args
-
-        if args.seed:
-            exec_args += ["--seed", args.seed]
-
-        if args.debug:
-            exec_args += ["-v"]  # Change to --debug sometime
-
-        set_accel_env_vars()
-        gpu_args = self.gpu_args(args=args, runner=True)
-        if gpu_args is not None:
-            exec_args.extend(gpu_args)
-
-        # TODO: see https://github.com/containers/ramalama/issues/1202
-        # if self.store is not None:
-        #     _, tag, _ = self.extract_model_identifiers()
-        #     ref_file = self.store.get_ref_file(tag)
-        #     if ref_file.chat_template_name != "":
-        #         exec_args.extend(["--chat-template-file", MNT_CHAT_TEMPLATE_FILE])
-
-        exec_args.append(exec_model_path)
-        if len(prompt) > 0:
-            exec_args.append(prompt)
-
-        return exec_args
-
     def validate_args(self, args):
+        # If --container was specified return valid
         if args.container:
             return
         if args.privileged:
             raise KeyError(
                 "--nocontainer and --privileged options conflict. The --privileged option requires a container."
             )
-        if hasattr(args, "name") and args.name:
-            if hasattr(args, "generate"):
-                # Do not fail on serve if user specified --generate
-                if args.generate:
-                    return
-            raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
+        # If --name was not specified return valid
+        if not getattr(args, "name", None):
+            return
+        # If --generate was specified return valid
+        if getattr(args, "generate", False):
+            # Do not fail on serve if user specified --generate
+            return
+
+        raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
+
+    def vllm_serve(self, args, exec_model_path):
+        exec_args = [
+            "--model",
+            exec_model_path,
+            "--port",
+            args.port,
+            "--max-sequence-length",
+            f"{args.context}",
+        ]
+        exec_args += args.runtime_args
+        return exec_args
+
+    def llama_serve(self, args, exec_model_path, chat_template_path, mmproj_path):
+        exec_args = ["llama-server"]
+        draft_model_path = None
+        if self.draft_model:
+            draft_model = self.draft_model.get_model_path(args)
+            draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
+
+        exec_args += ["--port", args.port, "--model", exec_model_path, "--no-warmup"]
+        if mmproj_path:
+            exec_args += ["--mmproj", mmproj_path]
+        else:
+            exec_args += ["--jinja"]
+
+        if should_colorize():
+            exec_args += ["--log-colors"]
+
+        exec_args += [
+            "--alias",
+            self.model,
+            "--ctx-size",
+            f"{args.context}",
+            "--temp",
+            f"{args.temp}",
+            "--cache-reuse",
+            "256",
+        ]
+        exec_args += args.runtime_args
+
+        if draft_model_path:
+            exec_args += ['--model_draft', draft_model_path]
+
+        # Placeholder for clustering, it might be kept for override
+        rpc_nodes = os.getenv("RAMALAMA_LLAMACPP_RPC_NODES")
+        if rpc_nodes:
+            exec_args += ["--rpc", rpc_nodes]
+
+        # TODO: see https://github.com/containers/ramalama/issues/1202
+        # if chat_template_path != "":
+        #     exec_args += ["--chat-template-file", chat_template_path]
+
+        if args.debug:
+            exec_args += ["-v"]
+
+        if getattr(args, "webui", "") == "off":
+            exec_args.extend(["--no-webui"])
+
+        if check_nvidia() or check_metal(args):
+            exec_args.extend(["--flash-attn"])
+        return exec_args
 
     def build_exec_args_serve(self, args, exec_model_path, chat_template_path="", mmproj_path=""):
         if args.runtime == "vllm":
-            exec_args = [
-                "--model",
-                exec_model_path,
-                "--port",
-                args.port,
-                "--max-sequence-length",
-                f"{args.context}",
-            ] + args.runtime_args
+            exec_args = self.vllm_serve(args, exec_model_path)
         else:
-            exec_args = [self.get_ramalama_core_path(args, "ramalama-serve-core")]
-            draft_model_path = None
-            if self.draft_model:
-                draft_model = self.draft_model.get_model_path(args)
-                draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
-
-            exec_args += ["llama-server", "--port", args.port, "--model", exec_model_path, "--no-warmup"]
-            if mmproj_path:
-                exec_args += ["--mmproj", mmproj_path]
-            else:
-                exec_args += ["--jinja"]
-
-            exec_args += [
-                "--alias",
-                self.model,
-                "--ctx-size",
-                f"{args.context}",
-                "--temp",
-                f"{args.temp}",
-                "--cache-reuse",
-                "256",
-            ] + args.runtime_args
-
-            if draft_model_path:
-                exec_args += ['--model_draft', draft_model_path]
-
-            # Placeholder for clustering, it might be kept for override
-            rpc_nodes = os.getenv("RAMALAMA_LLAMACPP_RPC_NODES")
-            if rpc_nodes:
-                exec_args += ["--rpc", rpc_nodes]
-
-            # TODO: see https://github.com/containers/ramalama/issues/1202
-            # if chat_template_path != "":
-            #     exec_args += ["--chat-template-file", chat_template_path]
-
-            if args.debug:
-                exec_args += ["-v"]
-
-            if hasattr(args, "webui") and args.webui == "off":
-                exec_args.extend(["--no-webui"])
-
-            if check_nvidia() or check_metal(args):
-                exec_args.extend(["--flash-attn"])
+            exec_args = self.llama_serve(args, exec_model_path, chat_template_path, mmproj_path)
 
         if args.seed:
             exec_args += ["--seed", args.seed]
@@ -570,9 +550,38 @@ class Model(ModelBase):
     def handle_runtime(self, args, exec_args, exec_model_path):
         set_accel_env_vars()
         if args.runtime == "vllm":
-            exec_model_path = os.path.dirname(exec_model_path)
-            # Left out "vllm", "serve" the image entrypoint already starts it
-            exec_args = ["--port", args.port, "--model", MNT_FILE, "--max_model_len", "2048"]
+            container_model_path = ""
+            ref_file = None
+            if self.model_store:
+                ref_file = self.model_store.get_ref_file(self.model_tag)
+
+            if ref_file and ref_file.hash:
+                snapshot_dir_name = ref_file.hash
+                container_model_path = os.path.join(MNT_DIR, "snapshots", snapshot_dir_name)
+            else:
+                current_model_host_path = self.get_model_path(args)
+                if os.path.isdir(current_model_host_path):
+                    container_model_path = MNT_DIR
+                else:
+                    container_model_path = os.path.join(MNT_DIR, os.path.basename(current_model_host_path))
+
+            vllm_max_model_len = 2048
+            if args.context:
+                vllm_max_model_len = args.context
+
+            exec_args = [
+                "--port",
+                str(args.port),
+                "--model",
+                str(container_model_path),
+                "--max_model_len",
+                str(vllm_max_model_len),
+                "--served-model-name",
+                self.model_name,
+            ]
+
+            if getattr(args, 'runtime_args', None):
+                exec_args.extend(args.runtime_args)
         else:
             gpu_args = self.gpu_args(args=args)
             if gpu_args is not None:
@@ -583,8 +592,6 @@ class Model(ModelBase):
         return exec_args
 
     def generate_container_config(self, model_path, chat_template_path, args, exec_args):
-        self.image = accel_image(CONFIG, args)
-
         if not args.generate:
             return False
 
@@ -606,7 +613,7 @@ class Model(ModelBase):
             if args.dryrun:
                 dry_run(exec_args)
                 return
-            exec_cmd(exec_args)
+            exec_cmd(exec_args, stdout2null=args.noout)
         except FileNotFoundError as e:
             if args.container:
                 raise NotImplementedError(
@@ -626,23 +633,23 @@ class Model(ModelBase):
         exec_model_path = mnt_file if args.container or args.generate else model_path
         chat_template_path = ""
         mmproj_path = ""
-        if self.store is not None:
-            _, tag, _ = self.extract_model_identifiers()
-            ref_file = self.store.get_ref_file(tag)
-            if ref_file is not None:
-                if ref_file.chat_template_name != "":
-                    chat_template_path = (
-                        MNT_CHAT_TEMPLATE_FILE
-                        if args.container or args.generate
-                        else self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                    )
 
-                if ref_file.mmproj_name != "":
-                    mmproj_path = (
-                        MNT_MMPROJ_FILE
-                        if args.container or args.generate
-                        else self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                    )
+        _, tag, _ = self.extract_model_identifiers()
+        ref_file = self.model_store.get_ref_file(tag)
+        if ref_file is not None:
+            if ref_file.chat_template_name != "":
+                chat_template_path = (
+                    MNT_CHAT_TEMPLATE_FILE
+                    if args.container or args.generate
+                    else self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                )
+
+            if ref_file.mmproj_name != "":
+                mmproj_path = (
+                    MNT_MMPROJ_FILE
+                    if args.container or args.generate
+                    else self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                )
 
         exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path, mmproj_path)
         exec_args = self.handle_runtime(args, exec_args, exec_model_path)
@@ -650,7 +657,7 @@ class Model(ModelBase):
             return
 
         # Add rag chatbot
-        if hasattr(args, "rag") and args.rag:
+        if getattr(args, "rag", None):
             exec_args = [
                 "bash",
                 "-c",
@@ -660,19 +667,19 @@ class Model(ModelBase):
         self.execute_command(model_path, exec_args, args)
 
     def quadlet(self, model, chat_template, args, exec_args, output_dir):
-        quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
+        quadlet = Quadlet(model, chat_template, args, exec_args)
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
 
     def quadlet_kube(self, model, chat_template, args, exec_args, output_dir):
-        kube = Kube(model, chat_template, self.image, args, exec_args)
+        kube = Kube(model, chat_template, args, exec_args)
         kube.generate().write(output_dir)
 
-        quadlet = Quadlet(model, chat_template, self.image, args, exec_args)
+        quadlet = Quadlet(model, chat_template, args, exec_args)
         quadlet.kube().write(output_dir)
 
     def kube(self, model, chat_template, args, exec_args, output_dir):
-        kube = Kube(model, chat_template, self.image, args, exec_args)
+        kube = Kube(model, chat_template, args, exec_args)
         kube.generate().write(output_dir)
 
     def check_valid_model_path(self, relative_target_path, model_path):
@@ -731,7 +738,7 @@ def get_available_port_if_any() -> int:
 
 def compute_serving_port(args, quiet=False) -> str:
     # user probably specified a custom port, don't override the choice
-    if args.port not in ["", str(DEFAULT_PORT)]:
+    if getattr(args, "port", "") not in ["", str(DEFAULT_PORT)]:
         target_port = args.port
     else:
         # otherwise compute a random serving port in the range

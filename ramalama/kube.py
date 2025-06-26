@@ -6,12 +6,10 @@ from ramalama.version import version
 
 
 class Kube:
-    def __init__(self, model, chat_template, image, args, exec_args):
-        self.ai_image = model
-        if hasattr(args, "MODEL"):
-            self.ai_image = args.MODEL
+    def __init__(self, model, chat_template, args, exec_args):
+        self.ai_image = getattr(args, "MODEL", model)
         self.ai_image = self.ai_image.removeprefix("oci://")
-        if hasattr(args, "name") and args.name:
+        if getattr(args, "name", None):
             self.name = args.name
         else:
             self.name = genname()
@@ -19,7 +17,7 @@ class Kube:
         self.model = model.removeprefix("oci://")
         self.args = args
         self.exec_args = exec_args
-        self.image = image
+        self.image = args.image
         self.chat_template = chat_template
 
     def _gen_volumes(self):

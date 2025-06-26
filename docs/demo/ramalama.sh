@@ -4,7 +4,7 @@
 # This script will demonstrate a lot of the features of RamaLama, concentrating
 # on the security features.
 
-set -eou pipefail
+#set -eou pipefail
 IFS=$'\n\t'
 
 # Setting up some colors for helping read the demo output.
@@ -170,6 +170,22 @@ quadlet() {
     clear
 }
 
+multi-modal() {
+    echo_color "Serve smolvlm via RamaLama model service"
+    exec_color "ramalama serve --port 8080  --pull=never  --name multi-modal -d smolvlm"
+    echo ""
+
+    echo_color "Use web browser to show interaction"
+    exec_color "google-chrome docs/demo/camera-demo.html"
+
+    echo_color "Stop the ramalama container"
+    exec_color "ramalama stop multi-modal	"
+    echo ""
+
+    read -r -p "--> clear"
+    clear
+}
+
 setup
 
 version
@@ -183,6 +199,8 @@ serve
 kubernetes
 
 quadlet
+
+multi-modal
 
 echo_color "End of Demo"
 echo "Thank you!"

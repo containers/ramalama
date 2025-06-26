@@ -27,7 +27,7 @@ $2"
 
 update_python() {
     if available dnf; then
-        dnf update -y --allowerasing
+        dnf update -y --allowerasing --nobest
         dnf install -y "${python}" "${python}-pip" "${python}-devel" "${pkgs[@]}"
         if [[ "${python}" == "python3.11" ]]; then
             ln -sf /usr/bin/python3.11 /usr/bin/python3

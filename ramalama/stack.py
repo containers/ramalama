@@ -20,7 +20,7 @@ class Stack:
 
     def __init__(self, args):
         self.args = args
-        self.name = args.name if hasattr(args, "name") and args.name else genname()
+        self.name = getattr(args, "name", None) or genname()
         if os.path.basename(args.engine) != "podman":
             raise ValueError("llama-stack requires use of the Podman container engine")
         self.host = "127.0.0.1"
@@ -39,30 +39,32 @@ class Stack:
 
     def generate(self):
         add_labels(self.args, self.add_label)
-        volume_mounts = """
-        - mountPath: /mnt/models/model.file
-          name: model
-        - mountPath: /dev/dri
-          name: dri"""
-
         if self.model_type == "OCI":
             volume_mounts = """
         - mountPath: /mnt/models
           subPath: /models
-          name: model
+          name: model"""
+        else:
+            volume_mounts = """
+        - mountPath: /mnt/models/model.file
+          name: model"""
+        if self.args.dri == "on":
+            volume_mounts += """
         - mountPath: /dev/dri
           name: dri"""
 
         volumes = f"""
       - hostPath:
           path: {self.model_path}
-        name: model
+        name: model"""
+        if self.args.dri == "on":
+            volumes += """
       - hostPath:
           path: /dev/dri
         name: dri"""
 
-        llama_cmd = [
-            'llama-server',
+        llama_cmd = 'llama-server'
+        llama_args = [
             '--port',
             self.model_port,
             '--model',
@@ -124,8 +126,8 @@ spec:
       containers:
       - name: model-server
         image: {self.args.image}
-        command: ["/usr/libexec/ramalama/ramalama-serve-core"]
-        args: {llama_cmd}\
+        command: ["{llama_cmd}"]
+        args: {llama_args}\
         {security}
         volumeMounts:{volume_mounts}
       - name: llama-stack

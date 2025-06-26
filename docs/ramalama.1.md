@@ -169,16 +169,12 @@ The default can be overridden in the ramalama.conf file.
 store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
 The default can be overridden in the ramalama.conf file.
 
-#### **--use-model-store**
-Use the recently introduced model store for organizing and storing models.
-It adds support for model versioning and multiple files such as chat templates. In addition, it improves performance through optimized caching and fast model access, enhanced reliability, and simplified maintenance thanks to a centralized, structured directory layout.
-
 ## COMMANDS
 
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
 | [ramalama-bench(1)](ramalama-bench.1.md)          | benchmark specified AI Model                               |
-| [ramalama-client(1)](ramalama-client.1.md)        | interact with the AI Model server (experimental)           |
+| [ramalama-chat(1)](ramalama-chat.1.md)            |  OpenAI chat with the specified REST API URL                |
 | [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
 | [ramalama-convert(1)](ramalama-convert.1.md)      | convert AI Models from local storage to OCI Image          |
 | [ramalama-info(1)](ramalama-info.1.md)            | display RamaLama configuration information                 |

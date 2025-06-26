@@ -5,10 +5,8 @@ from ramalama.file import UnitFile
 
 
 class Quadlet:
-    def __init__(self, model, chat_template, image, args, exec_args):
-        self.ai_image = model
-        if hasattr(args, "MODEL"):
-            self.ai_image = args.MODEL
+    def __init__(self, model, chat_template, args, exec_args):
+        self.ai_image = getattr(args, "MODEL", model)
         self.ai_image = self.ai_image.removeprefix("oci://")
         if args.name:
             self.name = args.name
@@ -18,7 +16,7 @@ class Quadlet:
         self.model = model.removeprefix("oci://")
         self.args = args
         self.exec_args = exec_args
-        self.image = image
+        self.image = args.image
         self.chat_template = chat_template
         self.rag = ""
         self.rag_name = ""
@@ -83,11 +81,11 @@ class Quadlet:
         return image_file
 
     def _gen_name(self, quadlet_file: UnitFile):
-        if hasattr(self.args, "name") and self.args.name:
+        if getattr(self.args, "name", None):
             quadlet_file.add("Container", "ContainerName", f"{self.args.name}")
 
     def _gen_model_volume(self, quadlet_file: UnitFile):
-        files = []
+        files: list[UnitFile] = []
 
         if os.path.exists(self.model):
             quadlet_file.add("Container", "Mount", f"type=bind,src={self.model},target={MNT_FILE},ro,Z")
@@ -111,13 +109,13 @@ class Quadlet:
         return files
 
     def _gen_port(self, quadlet_file: UnitFile):
-        if hasattr(self.args, "port") and self.args.port != "":
+        if getattr(self.args, "port", "") != "":
             quadlet_file.add("Container", "PublishPort", f"{self.args.port}:{self.args.port}")
 
     def _gen_rag_volume(self, quadlet_file: UnitFile):
-        files = []
+        files: list[UnitFile] = []
 
-        if not hasattr(self.args, "rag") or not self.rag:
+        if not getattr(self.args, "rag", None):
             return files
 
         rag_volume_file_name = f"{self.rag_name}.volume"

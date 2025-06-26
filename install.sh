@@ -84,12 +84,6 @@ check_platform() {
 
       sudo="sudo"
     fi
-
-    if available dnf; then
-      dnf_install_podman
-    elif available apt; then
-      apt_update_install
-    fi
   else
     echo "This script is intended to run on Linux and macOS only"
 
@@ -131,6 +125,10 @@ print_success_info() {
   echo "===================================================================="
 }
 
+is_python3_at_least_310() {
+  python3 -c 'import sys; exit(0 if sys.version_info >= (3, 10) else 1)'
+}
+
 main() {
   set -e -o pipefail
 
@@ -143,8 +141,13 @@ main() {
   local sudo=""
   check_platform
   if ! $local_install && [ -z "$BRANCH" ]; then
-    if available dnf && dnf_install "python3-ramalama"; then
-      return 0
+    if available dnf; then
+      dnf_install_podman
+      if is_python3_at_least_310 && dnf_install "python3-ramalama"; then
+        return 0
+      fi
+    elif available apt; then
+      apt_update_install
     fi
 
     if available brew && brew install ramalama; then
@@ -152,7 +155,9 @@ main() {
     fi
   fi
 
-  curl -fsSL https://raw.githubusercontent.com/containers/ramalama/s/install-uv.sh | bash
+  local host="raw.githubusercontent.com"
+  local install_uv_url="https://$host/containers/ramalama/s/install-uv.sh"
+  curl -fsSL "$install_uv_url" | bash
   echo
   uv tool install --force --python python3.12 ramalama
   print_success_info

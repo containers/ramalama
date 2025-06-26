@@ -14,19 +14,16 @@ from ramalama.url import URL
 @dataclass
 class Input:
     Model: str
-    UseModelStore: bool
     Transport: str
     Engine: str
 
 
 class ARGS:
     store = "/tmp/store"
-    use_model_store = True
     engine = ""
     container = True
 
-    def __init__(self, store=False, engine=""):
-        self.use_model_store = store
+    def __init__(self, engine=""):
         self.engine = engine
 
 
@@ -36,20 +33,19 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
 @pytest.mark.parametrize(
     "input,expected,error",
     [
-        (Input("", False, "", ""), None, KeyError),
-        (Input("huggingface://granite-code", False, "", ""), Huggingface, None),
-        (Input("hf://granite-code", False, "", ""), Huggingface, None),
-        (Input("hf.co/granite-code", False, "", ""), Huggingface, None),
-        (Input("modelscope://granite-code", False, "", ""), ModelScope, None),
-        (Input("ms://granite-code", False, "", ""), ModelScope, None),
-        (Input("ollama://granite-code", False, "", ""), Ollama, None),
-        (Input("ollama.com/library/granite-code", False, "", ""), Ollama, None),
-        (Input("oci://granite-code", False, "", "podman"), OCI, None),
-        (Input("docker://granite-code", False, "", "podman"), OCI, None),
+        (Input("", "", ""), None, KeyError),
+        (Input("huggingface://granite-code", "", ""), Huggingface, None),
+        (Input("hf://granite-code", "", ""), Huggingface, None),
+        (Input("hf.co/granite-code", "", ""), Huggingface, None),
+        (Input("modelscope://granite-code", "", ""), ModelScope, None),
+        (Input("ms://granite-code", "", ""), ModelScope, None),
+        (Input("ollama://granite-code", "", ""), Ollama, None),
+        (Input("ollama.com/library/granite-code", "", ""), Ollama, None),
+        (Input("oci://granite-code", "", "podman"), OCI, None),
+        (Input("docker://granite-code", "", "podman"), OCI, None),
         (
             Input(
                 f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
-                False,
                 "",
                 "",
             ),
@@ -59,21 +55,20 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
         (
             Input(
                 f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
-                False,
                 "",
                 "",
             ),
             URL,
             None,
         ),
-        (Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""), URL, None),
-        (Input("granite-code", False, "huggingface", ""), Huggingface, None),
-        (Input("granite-code", False, "ollama", ""), Ollama, None),
-        (Input("granite-code", False, "oci", ""), OCI, ValueError),
+        (Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", "", ""), URL, None),
+        (Input("granite-code", "huggingface", ""), Huggingface, None),
+        (Input("granite-code", "ollama", ""), Ollama, None),
+        (Input("granite-code", "oci", ""), OCI, ValueError),
     ],
 )
 def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ollama, URL, OCI]], error):
-    args = ARGS(input.UseModelStore, input.Engine)
+    args = ARGS(input.Engine)
 
     if error is not None:
         with pytest.raises(error):
@@ -86,23 +81,23 @@ def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ol
 @pytest.mark.parametrize(
     "input,error",
     [
-        (Input("", False, "", ""), KeyError),
-        (Input("oci://granite-code", False, "", "podman"), None),
-        (Input("docker://granite-code", False, "", "podman"), None),
-        (Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""), ValueError),
-        (Input("huggingface://granite-code", False, "", ""), ValueError),
-        (Input("hf://granite-code", False, "", ""), ValueError),
-        (Input("hf.co/granite-code", False, "", ""), None),
-        (Input("modelscope://granite-code", False, "", ""), ValueError),
-        (Input("ms://granite-code", False, "", ""), ValueError),
-        (Input("ollama://granite-code", False, "", ""), ValueError),
-        (Input("ollama.com/library/granite-code", False, "", ""), None),
-        (Input("granite-code", False, "ollama", ""), None),
-        (Input("granite-code", False, "", ""), KeyError),
+        (Input("", "", ""), KeyError),
+        (Input("oci://granite-code", "", "podman"), None),
+        (Input("docker://granite-code", "", "podman"), None),
+        (Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", "", ""), ValueError),
+        (Input("huggingface://granite-code", "", ""), ValueError),
+        (Input("hf://granite-code", "", ""), ValueError),
+        (Input("hf.co/granite-code", "", ""), None),
+        (Input("modelscope://granite-code", "", ""), ValueError),
+        (Input("ms://granite-code", "", ""), ValueError),
+        (Input("ollama://granite-code", "", ""), ValueError),
+        (Input("ollama.com/library/granite-code", "", ""), None),
+        (Input("granite-code", "ollama", ""), None),
+        (Input("granite-code", "", ""), KeyError),
     ],
 )
 def test_validate_oci_model_input(input: Input, error):
-    args = ARGS(input.UseModelStore, input.Engine)
+    args = ARGS(input.Engine)
 
     if error is not None:
         with pytest.raises(error):
@@ -115,31 +110,30 @@ def test_validate_oci_model_input(input: Input, error):
 @pytest.mark.parametrize(
     "input,expected",
     [
-        (Input("huggingface://granite-code", False, "", ""), "granite-code"),
+        (Input("huggingface://granite-code", "", ""), "granite-code"),
         (
-            Input("huggingface://ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", False, "", ""),
+            Input("huggingface://ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", "", ""),
             "ibm-granite/granite-3b-code-base-2k-GGUF/granite-code",
         ),
-        (Input("hf://granite-code", False, "", ""), "granite-code"),
-        (Input("hf.co/granite-code", False, "", ""), "granite-code"),
-        (Input("modelscope://granite-code", False, "", ""), "granite-code"),
+        (Input("hf://granite-code", "", ""), "granite-code"),
+        (Input("hf.co/granite-code", "", ""), "granite-code"),
+        (Input("modelscope://granite-code", "", ""), "granite-code"),
         (
-            Input("modelscope://ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", False, "", ""),
+            Input("modelscope://ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", "", ""),
             "ibm-granite/granite-3b-code-base-2k-GGUF/granite-code",
         ),
-        (Input("ms://granite-code", False, "", ""), "granite-code"),
-        (Input("ollama://granite-code", False, "", ""), "granite-code"),
-        (Input("ollama.com/library/granite-code", False, "", ""), "granite-code"),
+        (Input("ms://granite-code", "", ""), "granite-code"),
+        (Input("ollama://granite-code", "", ""), "granite-code"),
+        (Input("ollama.com/library/granite-code", "", ""), "granite-code"),
         (
-            Input("ollama.com/library/ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", False, "", ""),
+            Input("ollama.com/library/ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", "", ""),
             "ibm-granite/granite-3b-code-base-2k-GGUF/granite-code",
         ),
-        (Input("oci://granite-code", False, "", "podman"), "granite-code"),
-        (Input("docker://granite-code", False, "", "podman"), "granite-code"),
+        (Input("oci://granite-code", "", "podman"), "granite-code"),
+        (Input("docker://granite-code", "", "podman"), "granite-code"),
         (
             Input(
                 f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
-                False,
                 "",
                 "",
             ),
@@ -148,42 +142,21 @@ def test_validate_oci_model_input(input: Input, error):
         (
             Input(
                 f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
-                False,
                 "",
                 "",
             ),
             "huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob/main/granite-3b-code-base.Q4_K_M.gguf",
         ),
         (
-            Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", False, "", ""),
+            Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", "", ""),
             "/tmp/models/granite-3b-code-base.Q4_K_M.gguf",
         ),
-        (Input("granite-code", False, "huggingface", ""), "granite-code"),
-        (Input("granite-code", False, "ollama", ""), "granite-code"),
-        (Input("granite-code", False, "oci", ""), "granite-code"),
+        (Input("granite-code", "huggingface", ""), "granite-code"),
+        (Input("granite-code", "ollama", ""), "granite-code"),
+        (Input("granite-code", "oci", ""), "granite-code"),
     ],
 )
 def test_prune_model_input(input: Input, expected: str):
-    args = ARGS(input.UseModelStore, input.Engine)
+    args = ARGS(input.Engine)
     pruned_model_input = ModelFactory(input.Model, args, input.Transport).prune_model_input()
     assert pruned_model_input == expected
-
-
-@pytest.mark.parametrize(
-    "model_input,expected_type",
-    [
-        ("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", "file"),
-        (f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf", "https"),
-        (
-            "http://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob/main/granite-3b-code-base.Q4_K_M.gguf",
-            "http",
-        ),
-        ("hf://granite-code", "huggingface"),
-        ("ollama://granite-code", "ollama"),
-        ("oci://granite-code", "oci"),
-    ],
-)
-def test_set_optional_model_store(model_input: str, expected_type: str):
-    model = ModelFactory(model_input, args=ARGS(True, "podman")).create()
-    assert expected_type == model.model_type
-    assert expected_type == model.store.model_type

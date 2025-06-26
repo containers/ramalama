@@ -1,0 +1,36 @@
+discover:
+    how: fmf
+
+execute:
+    how: tmt
+
+prepare:
+    how: feature
+    epel: enabled
+
+provision:
+    how: artemis
+    hardware:
+        gpu:
+            device-name: GK210 (Tesla K80)
+            vendor-name: NVIDIA
+        disk:
+            - size: ">= 512 GiB"
+        memory: ">= 16 GB"
+
+/gpu_info:
+    summary: Display GPU info
+    discover+:
+        test: /test/tmt/no-rpm/gpu_info
+
+/validate:
+    discover+:
+        test: /test/tmt/no-rpm/validate
+
+/unit:
+    discover+:
+        test: /test/tmt/no-rpm/unit
+
+/bats-nocontainer:
+    discover+:
+        test: /test/tmt/no-rpm/bats-nocontainer

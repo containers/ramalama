@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ramalama"
-version = "0.9.1"
+version = "0.9.3"
 description = "RamaLama is a command line tool for working with AI LLM models."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 keywords = ["ramalama", "llama", "AI"]
 dependencies = [
-  "argcomplete"
+  "argcomplete",
 ]
 maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
@@ -26,10 +26,11 @@ dev = [
     "black~=25.0",
     "codespell~=2.0",
     "flake8~=7.0",
-    "huggingface_hub~=0.32.4",
+    "huggingface_hub~=0.33.0",
     "isort~=6.0",
     "pytest~=8.3",
-    "wheel~=0.45.0"
+    "wheel~=0.45.0",
+    "mypy",
 ]
 
 cov = [
@@ -60,7 +61,7 @@ include-package-data = true
 line-length = 120
 skip-string-normalization = true
 preview = true
-target-version = ["py36"]
+target-version = ["py310", "py311", "py312", "py313"]
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -102,9 +103,4 @@ include = ["ramalama"]
 "share/bash-completion/completions" = ["completions/bash-completion/completions/*"]
 "share/zsh/vendor-completions" = ["completions/zsh/vendor-completions/*"]
 "share/fish/vendor_completions.d" = ["completions/fish/vendor_completions.d/*"]
-"libexec/ramalama" = [
-  "libexec/ramalama/ramalama-client-core",
-  "libexec/ramalama/ramalama-run-core",
-  "libexec/ramalama/ramalama-serve-core",
-]
 
