@@ -63,7 +63,6 @@ class BaseConfig:
     store: str = field(default_factory=get_default_store)
     temp: str = "0.8"
     transport: str = "ollama"
-    use_model_store: bool = True
     ocr: bool = False
     default_image: str = DEFAULT_IMAGE
 

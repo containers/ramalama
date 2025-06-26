@@ -3,22 +3,18 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.arg_types import StoreArgs
+from ramalama.model_store import LocalSnapshotFile, SnapshotFile, SnapshotFileType
 from ramalama.ollama import Ollama, OllamaRepository
 
 
 @pytest.fixture
-def ollama_model():
-    return Ollama("llama2:7b")
-
-
-@pytest.fixture
-def ollama_repository():
-    return OllamaRepository("ollama", "http://localhost:11434", "http://localhost:11434/blobs")
+def ollama_model(args: StoreArgs):
+    return Ollama("llama2:7b", args.store)
 
 
 @pytest.fixture
 def args():
-    return StoreArgs(store="/var/lib/ramalama", use_model_store=True, engine="podman", container=True)
+    return StoreArgs(store="/tmp/ramalama/store", engine="podman", container=True)
 
 
 def test_ollama_model_initialization(ollama_model):
@@ -26,31 +22,26 @@ def test_ollama_model_initialization(ollama_model):
     assert ollama_model.type == "Ollama"
 
 
-def test_ollama_model_local_path(ollama_model, args):
-    model_path, models, model_base, model_name, model_tag = ollama_model._local(args)
-    assert model_path == "/var/lib/ramalama/models/ollama/llama2:7b"
-    assert models == "/var/lib/ramalama/models/ollama"
-    assert model_base == "llama2"
-    assert model_name == "library/llama2"
-    assert model_tag == "7b"
+class OllamaRepositoryMock(OllamaRepository):
 
+    def __init__(self, name):
+        super().__init__(name)
 
-def test_ollama_model_exists(ollama_model, args):
-    with patch("os.path.exists", return_value=True):
-        assert ollama_model.exists(args) is not None
+    def fetch_manifest(self, tag: str):
+        return {
+            "layers": [
+                {
+                    "mediaType": "application/vnd.ollama.image.model",
+                    "digest": "sha256-bf0ecbdb9b814248d086c9b69cf26182d9d4138f2ad3d0637c4555fc8cbf68e5",
+                }
+            ]
+        }
 
-    with patch("os.path.exists", return_value=False):
-        assert ollama_model.exists(args) is None
-
-
-def test_ollama_model_path(ollama_model, args):
-    with patch("os.path.exists", return_value=True):
-        assert ollama_model.path(args) == "/var/lib/ramalama/models/ollama/llama2:7b"
+    def get_file_list(self, tag, cached_files, is_model_in_ollama_cache, manifest=None) -> list[SnapshotFile]:
+        return [LocalSnapshotFile("dummy content", "dummy", SnapshotFileType.Other)]
 
 
 def test_ollama_model_pull(ollama_model, args):
     args.quiet = True
-    with patch("os.path.exists", return_value=False):
-        with patch("ramalama.ollama.repo_pull", return_value="/tmp") as mock_pull:
-            ollama_model.pull(args)
-            mock_pull.assert_called_once()
+    with patch("ramalama.ollama.OllamaRepository", return_value=OllamaRepositoryMock("dummy-model")):
+        ollama_model.pull(args)

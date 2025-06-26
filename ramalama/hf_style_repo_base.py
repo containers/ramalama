@@ -1,15 +1,13 @@
 import json
 import os
-import pathlib
 import tempfile
 import urllib.request
 from abc import ABC, abstractmethod
 
-from ramalama.common import available, download_and_verify, exec_cmd, generate_sha256, perror, run_cmd, verify_checksum
+from ramalama.common import available, exec_cmd, generate_sha256, perror, run_cmd
 from ramalama.logger import logger
 from ramalama.model import Model
 from ramalama.model_store import SnapshotFile, SnapshotFileType
-from ramalama.ollama_repo_utils import repo_pull
 
 
 class HFStyleRepoFile(SnapshotFile):
@@ -148,8 +146,8 @@ class HFStyleRepository(ABC):
 
 
 class HFStyleRepoModel(Model, ABC):
-    def __init__(self, model):
-        super().__init__(model)
+    def __init__(self, model, model_store_path):
+        super().__init__(model, model_store_path)
 
     @abstractmethod
     def get_cli_command(self):
@@ -187,13 +185,18 @@ class HFStyleRepoModel(Model, ABC):
         pass
 
     @abstractmethod
-    def get_download_url(self, directory, filename):
-        """Get download URL for file"""
+    def get_cli_download_args(self, directory_path, model):
+        """Get CLI download arguments"""
         pass
 
     @abstractmethod
-    def get_cli_download_args(self, directory_path, model):
-        """Get CLI download arguments"""
+    def in_existing_cache(self, args, target_path, sha256_checksum):
+        """Check if file exists in existing cache"""
+        pass
+
+    @abstractmethod
+    def _collect_cli_files(self, tempdir: str):
+        """Collect files from CLI download"""
         pass
 
     def login(self, args):
@@ -212,119 +215,13 @@ class HFStyleRepoModel(Model, ABC):
             conman_args.extend(["--token", args.token])
         self.exec(conman_args, args)
 
-    def _attempt_url_pull(self, args, model_path, directory_path):
-        try:
-            return self.url_pull(args, model_path, directory_path)
-        except (urllib.error.HTTPError, urllib.error.URLError, KeyError, ValueError) as e:
-            return self._attempt_url_pull_cli(args, model_path, directory_path, e)
-
-    def _attempt_url_pull_cli(self, args, model_path, directory_path, previous_exception):
-        if available(self.get_cli_command()):
-            try:
-                return self.cli_pull(args, model_path, directory_path)
-            except Exception as exc:
-                logger.debug(f"failed to cli_pull: {exc}")
-                pass
-        raise KeyError(f"Failed to pull model: {str(previous_exception)}")
-
     def pull(self, args):
-        if self.store is not None:
-            return self._pull_with_model_store(args)
-
-        model_path = self.model_path(args)
-        directory_path = os.path.join(args.store, "repos", self.get_repo_type(), self.directory, self.filename)
-        os.makedirs(directory_path, exist_ok=True)
-
-        symlink_dir = os.path.dirname(model_path)
-        os.makedirs(symlink_dir, exist_ok=True)
-
-        # First try to interpret the argument as a user/repo:tag
-        try:
-            if self.directory.count("/") == 0:
-                model_name, model_tag, _ = self.extract_model_identifiers()
-                repo_name = f"{self.directory}/{model_name}"
-                registry_head = f"{self.get_registry_url()}{repo_name}"
-
-                show_progress = not args.quiet
-                return repo_pull(
-                    os.path.join(args.store, "repos", self.get_repo_type()),
-                    self.get_accept_header(),
-                    registry_head,
-                    model_name,
-                    model_tag,
-                    os.path.join(args.store, "models", self.get_repo_type()),
-                    model_path,
-                    self.model,
-                    show_progress,
-                )
-
-        except urllib.error.HTTPError:
-            if model_tag != "latest":
-                # The user explicitly requested a tag, so raise an error
-                raise KeyError(f"{self.model} was not found in the {self.get_repo_type()} registry")
-            else:
-                # The user did not explicitly request a tag, so assume they want the whole repository
-                pass
-
-        # Interpreting as a tag did not work.  Attempt to download as a url.
-        return self._attempt_url_pull(args, model_path, directory_path)
-
-    def cli_pull(self, args, model_path, directory_path):
-        conman_args = self.get_cli_download_args(directory_path, self.model)
-        run_cmd(conman_args)
-
-        relative_target_path = os.path.relpath(directory_path, start=os.path.dirname(model_path))
-        pathlib.Path(model_path).unlink(missing_ok=True)
-        os.symlink(relative_target_path, model_path)
-        return model_path
-
-    def _update_symlink(self, model_path, target_path):
-        relative_target_path = os.path.relpath(target_path, start=os.path.dirname(model_path))
-        if not self.check_valid_model_path(relative_target_path, model_path):
-            pathlib.Path(model_path).unlink(missing_ok=True)
-            os.symlink(relative_target_path, model_path)
-        return model_path
-
-    def url_pull(self, args, model_path, directory_path):
-        # Fetch the SHA-256 checksum from the API
-        sha256_checksum = self.fetch_checksum_from_api(self.directory, self.filename)
-
-        target_path = os.path.join(directory_path, f"sha256:{sha256_checksum}")
-
-        if not os.path.exists(target_path):
-            self.in_existing_cache(args, target_path, sha256_checksum)
-
-        if os.path.exists(target_path) and verify_checksum(target_path):
-            return self._update_symlink(model_path, target_path)
-
-        # Download the model file to the target path
-        url = self.get_download_url(self.directory, self.filename)
-        download_and_verify(url, target_path)
-        return self._update_symlink(model_path, target_path)
-
-    def exec(self, cmd_args, args):
-        try:
-            exec_cmd(cmd_args)
-        except FileNotFoundError as e:
-            print(f"{str(e).strip()}\n{self.get_missing_message()}")
-
-    @abstractmethod
-    def in_existing_cache(self, args, target_path, sha256_checksum):
-        """Check if file exists in existing cache"""
-        pass
-
-    @abstractmethod
-    def _collect_cli_files(self, tempdir: str):
-        """Collect files from CLI download"""
-        pass
-
-    def _pull_with_model_store(self, args):
         name, tag, organization = self.extract_model_identifiers()
-        hash, cached_files, all = self.store.get_cached_files(tag)
+        hash, cached_files, all = self.model_store.get_cached_files(tag)
         if all:
             if not args.quiet:
                 print(f"Using cached {self.get_repo_type()}://{name}:{tag} ...")
-            return self.store.get_snapshot_file_path(hash, name)
+            return self.model_store.get_snapshot_file_path(hash, name)
 
         try:
             if not args.quiet:
@@ -333,7 +230,7 @@ class HFStyleRepoModel(Model, ABC):
             repo = self.create_repository(name, organization, tag)
             snapshot_hash = repo.model_hash
             files = repo.get_file_list(cached_files)
-            self.store.new_snapshot(tag, snapshot_hash, files)
+            self.model_store.new_snapshot(tag, snapshot_hash, files)
 
         except Exception as e:
             if not available(self.get_cli_command()):
@@ -347,6 +244,12 @@ class HFStyleRepoModel(Model, ABC):
                 run_cmd(conman_args)
 
                 snapshot_hash, files = self._collect_cli_files(tempdir)
-                self.store.new_snapshot(tag, snapshot_hash, files)
+                self.model_store.new_snapshot(tag, snapshot_hash, files)
 
-        return self.store.get_snapshot_file_path(snapshot_hash, self.store.get_ref_file(tag).model_name)
+        return self.model_store.get_snapshot_file_path(snapshot_hash, self.model_store.get_ref_file(tag).model_name)
+
+    def exec(self, cmd_args, args):
+        try:
+            exec_cmd(cmd_args)
+        except FileNotFoundError as e:
+            print(f"{str(e).strip()}\n{self.get_missing_message()}")
