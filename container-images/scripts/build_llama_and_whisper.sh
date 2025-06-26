@@ -89,7 +89,7 @@ add_stream_repo() {
 
 rm_non_ubi_repos() {
   local dir="/etc/yum.repos.d"
-  rm -rf $dir/mirror.stream.centos.org_9-stream_* $dir/epel* $dir/_copr:*
+  rm -rf $dir/mirror.stream.centos.org_9-stream_* $dir/epel*
 }
 
 is_rhel_based() { # doesn't include openEuler
@@ -97,12 +97,14 @@ is_rhel_based() { # doesn't include openEuler
 }
 
 dnf_install_mesa() {
-  if is_rhel_based; then
-    dnf copr enable -y slp/mesa-krunkit "epel-9-$uname_m"
-    add_stream_repo "AppStream"
+  if [ "${ID}" = "fedora" ]; then
+    dnf copr enable -y slp/mesa-libkrun-vulkan
+    dnf install -y mesa-vulkan-drivers-25.0.7-100.fc42 "${vulkan_rpms[@]}"
+    dnf versionlock add mesa-vulkan-drivers-25.0.7-100.fc42
+  else
+    dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
   fi
 
-  dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
   rm_non_ubi_repos
 }
 
