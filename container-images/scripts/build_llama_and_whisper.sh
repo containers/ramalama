@@ -77,10 +77,11 @@ dnf_install_s390() {
 }
 
 add_stream_repo() {
-  local url="https://mirror.stream.centos.org/9-stream/$1/$uname_m/os/"
+  local major_version=${VERSION_ID%.*}
+  local url="https://mirror.stream.centos.org/${major_version}-stream/$1/$uname_m/os/"
   dnf config-manager --add-repo "$url"
-  url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
-  local file="/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official"
+  url="https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official-SHA256"
+  local file="/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official-SHA256"
   if [ ! -e $file ]; then
     curl --retry 8 --retry-all-errors -o $file "$url"
     rpm --import $file
@@ -89,7 +90,7 @@ add_stream_repo() {
 
 rm_non_ubi_repos() {
   local dir="/etc/yum.repos.d"
-  rm -rf $dir/mirror.stream.centos.org_9-stream_* $dir/epel* $dir/_copr:*
+  rm -rf $dir/mirror.stream.centos.org_*-stream_* $dir/epel* $dir/_copr:*
 }
 
 is_rhel_based() { # doesn't include openEuler
@@ -108,7 +109,8 @@ dnf_install_mesa() {
 
 dnf_install_epel() {
   local rpm_exclude_list="selinux-policy,container-selinux"
-  local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+  local major_version=${VERSION_ID%.*}
+  local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-${major_version}.noarch.rpm"
   dnf reinstall -y "$url" || dnf install -y "$url" --exclude "${rpm_exclude_list}"
   crb enable # this is in epel-release, can only install epel-release via url
 }
@@ -133,6 +135,7 @@ dnf_install_ffmpeg() {
 
 dnf_install() {
   local rpm_exclude_list="selinux-policy,container-selinux"
+  local major_version=${VERSION_ID%.*}
   local rpm_list=("${PYTHON}" "${PYTHON}-pip"
     "python3-argcomplete" "python3-dnf-plugin-versionlock"
     "${PYTHON}-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
@@ -141,7 +144,11 @@ dnf_install() {
     "spirv-tools" "glslc" "glslang")
   if is_rhel_based; then
     dnf_install_epel # All the UBI-based ones
-    dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
+    if [[ $major_version == 9 ]]; then
+        dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
+    else
+        dnf --enablerepo="ubi-${major_version}-for-x86_64-appstream-rpms" install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
+    fi
   else
     dnf install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
   fi
