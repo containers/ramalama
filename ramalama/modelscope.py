@@ -57,8 +57,9 @@ class ModelScope(HFStyleRepoModel):
     REGISTRY_URL = "https://modelscope.cn/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
-    def __init__(self, model):
-        super().__init__(model)
+    def __init__(self, model, model_store_path):
+        super().__init__(model, model_store_path)
+
         self.type = "modelscope"
         self.ms_available = is_modelscope_available()
 

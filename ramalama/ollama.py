@@ -45,7 +45,7 @@ class OllamaRepository:
         self.blob_url = f"{self.registry_head}/blobs"
         self.headers = {"Accept": OllamaRepository.ACCEPT}
 
-    def fetch_manifest(self, tag):
+    def fetch_manifest(self, tag: str):
         try:
             return fetch_manifest_data(self.registry_head, tag, OllamaRepository.ACCEPT)
         except urllib.error.HTTPError as e:
@@ -137,20 +137,20 @@ class OllamaRepository:
 
 
 class Ollama(Model):
-    def __init__(self, model):
-        super().__init__(model)
+    def __init__(self, model, model_store_path):
+        super().__init__(model, model_store_path)
 
         self.type = "Ollama"
 
     def pull(self, args):
         name, tag, _ = self.extract_model_identifiers()
-        hash, cached_files, all = self.store.get_cached_files(tag)
+        hash, cached_files, all = self.model_store.get_cached_files(tag)
         if all:
             if not args.quiet:
                 print(f"Using cached ollama://{name}:{tag} ...")
-            return self.store.get_snapshot_file_path(hash, name)
+            return self.model_store.get_snapshot_file_path(hash, name)
 
-        ollama_repo = OllamaRepository(self.store.model_name)
+        ollama_repo = OllamaRepository(self.model_store.model_name)
         manifest = ollama_repo.fetch_manifest(tag)
         ollama_cache_path = in_existing_cache(self.model_name, tag)
         is_model_in_ollama_cache = ollama_cache_path is not None
@@ -160,13 +160,13 @@ class Ollama(Model):
             self.print_pull_message(f"ollama://{name}:{tag}")
 
         model_hash = ollama_repo.get_model_hash(manifest)
-        self.store.new_snapshot(tag, model_hash, files)
+        self.model_store.new_snapshot(tag, model_hash, files)
 
         # If a model has been downloaded via ollama cli, only create symlink in the snapshots directory
         if is_model_in_ollama_cache:
             if not args.quiet:
                 print(f"Using cached ollama://{name}{tag} ...")
-            snapshot_model_path = self.store.get_snapshot_file_path(model_hash, self.store.model_name)
+            snapshot_model_path = self.model_store.get_snapshot_file_path(model_hash, self.model_store.model_name)
             os.symlink(ollama_cache_path, snapshot_model_path)
 
-        return self.store.get_snapshot_file_path(model_hash, self.store.model_name)
+        return self.model_store.get_snapshot_file_path(model_hash, self.model_store.model_name)

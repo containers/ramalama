@@ -39,8 +39,8 @@ class LocalModelFile(SnapshotFile):
 
 
 class URL(Model):
-    def __init__(self, model, scheme):
-        super().__init__(model)
+    def __init__(self, model, model_store_path, scheme):
+        super().__init__(model, model_store_path)
 
         # Use the URL scheme as model type so we can distinguish
         # between the various types such as http, https and file
@@ -76,9 +76,9 @@ class URL(Model):
 
     def pull(self, args):
         name, tag, _ = self.extract_model_identifiers()
-        model_file_hash, _, all_files = self.store.get_cached_files(tag)
+        model_file_hash, _, all_files = self.model_store.get_cached_files(tag)
         if all_files:
-            return self.store.get_snapshot_file_path(model_file_hash, name)
+            return self.model_store.get_snapshot_file_path(model_file_hash, name)
 
         files: list[SnapshotFile] = []
         snapshot_hash = generate_sha256(name)
@@ -105,6 +105,6 @@ class URL(Model):
                 )
             )
 
-        self.store.new_snapshot(tag, snapshot_hash, files)
+        self.model_store.new_snapshot(tag, snapshot_hash, files)
 
-        return self.store.get_snapshot_file_path(snapshot_hash, name)
+        return self.model_store.get_snapshot_file_path(snapshot_hash, name)

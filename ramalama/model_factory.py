@@ -8,7 +8,6 @@ from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
 from ramalama.huggingface import Huggingface
 from ramalama.model import MODEL_TYPES, SPLIT_MODEL_RE, is_split_file_model
-from ramalama.model_store import GlobalModelStore, ModelStore
 from ramalama.modelscope import ModelScope
 from ramalama.oci import OCI
 from ramalama.ollama import Ollama
@@ -107,25 +106,18 @@ class ModelFactory:
             if self.model.startswith(t + "://"):
                 raise ValueError(f"{self.model} invalid: Only OCI Model types supported")
 
-    def set_optional_model_store(self, model: Union[Huggingface, ModelScope, Ollama, OCI, URL]):
-        name, _, orga = model.extract_model_identifiers()
-        model.store = ModelStore(GlobalModelStore(self.store_path), name, model.model_type, orga)
-
     def create_huggingface(self) -> Huggingface:
-        model = Huggingface(self.pruned_model)
-        self.set_optional_model_store(model)
+        model = Huggingface(self.pruned_model, self.store_path)
         model.draft_model = self.draft_model
         return model
 
     def create_modelscope(self) -> ModelScope:
-        model = ModelScope(self.pruned_model)
-        self.set_optional_model_store(model)
+        model = ModelScope(self.pruned_model, self.store_path)
         model.draft_model = self.draft_model
         return model
 
     def create_ollama(self) -> Ollama:
-        model = Ollama(self.pruned_model)
-        self.set_optional_model_store(model)
+        model = Ollama(self.pruned_model, self.store_path)
         model.draft_model = self.draft_model
         return model
 
@@ -134,14 +126,12 @@ class ModelFactory:
             raise ValueError("OCI containers cannot be used with the --nocontainer option.")
 
         self.validate_oci_model_input()
-        model = OCI(self.pruned_model, self.engine, self.ignore_stderr)
-        self.set_optional_model_store(model)
+        model = OCI(self.pruned_model, self.store_path, self.engine, self.ignore_stderr)
         model.draft_model = self.draft_model
         return model
 
     def create_url(self) -> URL:
-        model = URL(self.pruned_model, urlparse(self.model).scheme)
-        self.set_optional_model_store(model)
+        model = URL(self.pruned_model, self.store_path, urlparse(self.model).scheme)
         model.draft_model = self.draft_model
         if hasattr(self, 'split_model'):
             model.split_model = self.split_model

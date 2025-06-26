@@ -27,7 +27,7 @@ from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.logger import logger
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
-from ramalama.model_store import ModelStore
+from ramalama.model_store import GlobalModelStore, ModelStore
 from ramalama.quadlet import Quadlet
 from ramalama.rag import rag_image
 from ramalama.version import version
@@ -99,7 +99,7 @@ class Model(ModelBase):
     model = ""
     type = "Model"
 
-    def __init__(self, model):
+    def __init__(self, model, model_store_path):
         self.model = model
 
         split = self.model.rsplit("/", 1)
@@ -113,7 +113,9 @@ class Model(ModelBase):
         self._model_name, self._model_tag, self._model_organization = self.extract_model_identifiers()
         self._model_type = type(self).__name__.lower()
 
-        self.store: ModelStore = None
+        self._model_store_path: str = model_store_path
+        self._model_store: ModelStore = None
+
         self.default_image = accel_image(CONFIG)
 
     def extract_model_identifiers(self):
@@ -148,6 +150,13 @@ class Model(ModelBase):
     def model_type(self) -> str:
         return self._model_type
 
+    @property
+    def model_store(self) -> ModelStore:
+        if self._model_store is None:
+            name, _, orga = self.extract_model_identifiers()
+            self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
+        return self._model_store
+
     def is_symlink_to(self, file_path, target_path):
         if os.path.islink(file_path):
             symlink_target = os.readlink(file_path)
@@ -179,8 +188,8 @@ class Model(ModelBase):
 
     def remove(self, args):
         _, tag, _ = self.extract_model_identifiers()
-        if self.store.tag_exists(tag):
-            self.store.remove_snapshot(tag)
+        if self.model_store.tag_exists(tag):
+            self.model_store.remove_snapshot(tag)
             return
 
         if not args.ignore:
@@ -281,10 +290,10 @@ class Model(ModelBase):
     def setup_mounts(self, model_path, args):
         if args.runtime == "vllm":
             model_base = ""
-            if self.store and hasattr(self, 'model_tag'):
-                ref_file = self.store.get_ref_file(self.model_tag)
+            if self.model_store and hasattr(self, 'model_tag'):
+                ref_file = self.model_store.get_ref_file(self.model_tag)
                 if ref_file and hasattr(ref_file, 'hash'):
-                    model_base = self.store.model_base_directory
+                    model_base = self.model_store.model_base_directory
             if not model_base and (model_path and os.path.exists(model_path)):
                 if os.path.isfile(model_path):
                     model_base = os.path.dirname(model_path)
@@ -318,14 +327,14 @@ class Model(ModelBase):
 
         # If a chat template is available, mount it as well
         _, tag, _ = self.extract_model_identifiers()
-        ref_file = self.store.get_ref_file(tag)
+        ref_file = self.model_store.get_ref_file(tag)
         if ref_file is not None:
             if ref_file.chat_template_name != "":
-                chat_template_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                chat_template_path = self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
                 self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
 
             if ref_file.mmproj_name != "":
-                mmproj_path = self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                mmproj_path = self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
                 self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
 
     def bench(self, args):
@@ -392,9 +401,11 @@ class Model(ModelBase):
 
     def model_path(self, args):
         _, tag, _ = self.extract_model_identifiers()
-        if self.store.tag_exists(tag):
-            ref_file = self.store.get_ref_file(tag)
-            return str(pathlib.Path(self.store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve())
+        if self.model_store.tag_exists(tag):
+            ref_file = self.model_store.get_ref_file(tag)
+            return str(
+                pathlib.Path(self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
+            )
         return ""
 
     def exists(self, args):
@@ -537,8 +548,8 @@ class Model(ModelBase):
         if args.runtime == "vllm":
             container_model_path = ""
             ref_file = None
-            if self.store:
-                ref_file = self.store.get_ref_file(self.model_tag)
+            if self.model_store:
+                ref_file = self.model_store.get_ref_file(self.model_tag)
 
             if ref_file and ref_file.hash:
                 snapshot_dir_name = ref_file.hash
@@ -620,20 +631,20 @@ class Model(ModelBase):
         mmproj_path = ""
 
         _, tag, _ = self.extract_model_identifiers()
-        ref_file = self.store.get_ref_file(tag)
+        ref_file = self.model_store.get_ref_file(tag)
         if ref_file is not None:
             if ref_file.chat_template_name != "":
                 chat_template_path = (
                     MNT_CHAT_TEMPLATE_FILE
                     if args.container or args.generate
-                    else self.store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
+                    else self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
                 )
 
             if ref_file.mmproj_name != "":
                 mmproj_path = (
                     MNT_MMPROJ_FILE
                     if args.container or args.generate
-                    else self.store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
+                    else self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
                 )
 
         exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path, mmproj_path)

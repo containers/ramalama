@@ -142,8 +142,9 @@ class Huggingface(HFStyleRepoModel):
     REGISTRY_URL = "https://huggingface.co/v2/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
-    def __init__(self, model):
-        super().__init__(model)
+    def __init__(self, model, model_store_path):
+        super().__init__(model, model_store_path)
+
         self.type = "huggingface"
         self.hf_cli_available = is_huggingface_cli_available()
 

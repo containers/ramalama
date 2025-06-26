@@ -146,8 +146,8 @@ class HFStyleRepository(ABC):
 
 
 class HFStyleRepoModel(Model, ABC):
-    def __init__(self, model):
-        super().__init__(model)
+    def __init__(self, model, model_store_path):
+        super().__init__(model, model_store_path)
 
     @abstractmethod
     def get_cli_command(self):
@@ -217,11 +217,11 @@ class HFStyleRepoModel(Model, ABC):
 
     def pull(self, args):
         name, tag, organization = self.extract_model_identifiers()
-        hash, cached_files, all = self.store.get_cached_files(tag)
+        hash, cached_files, all = self.model_store.get_cached_files(tag)
         if all:
             if not args.quiet:
                 print(f"Using cached {self.get_repo_type()}://{name}:{tag} ...")
-            return self.store.get_snapshot_file_path(hash, name)
+            return self.model_store.get_snapshot_file_path(hash, name)
 
         try:
             if not args.quiet:
@@ -230,7 +230,7 @@ class HFStyleRepoModel(Model, ABC):
             repo = self.create_repository(name, organization, tag)
             snapshot_hash = repo.model_hash
             files = repo.get_file_list(cached_files)
-            self.store.new_snapshot(tag, snapshot_hash, files)
+            self.model_store.new_snapshot(tag, snapshot_hash, files)
 
         except Exception as e:
             if not available(self.get_cli_command()):
@@ -244,9 +244,9 @@ class HFStyleRepoModel(Model, ABC):
                 run_cmd(conman_args)
 
                 snapshot_hash, files = self._collect_cli_files(tempdir)
-                self.store.new_snapshot(tag, snapshot_hash, files)
+                self.model_store.new_snapshot(tag, snapshot_hash, files)
 
-        return self.store.get_snapshot_file_path(snapshot_hash, self.store.get_ref_file(tag).model_name)
+        return self.model_store.get_snapshot_file_path(snapshot_hash, self.model_store.get_ref_file(tag).model_name)
 
     def exec(self, cmd_args, args):
         try:
