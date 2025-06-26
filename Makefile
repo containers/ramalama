@@ -10,6 +10,7 @@ PATH := $(PATH):$(HOME)/.local/bin
 IMAGE ?= ramalama
 PYTHON_FILES := $(shell find . -path "./.venv" -prune -o -name "*.py" -print) $(shell find . -name ".venv" -prune -o -type f -perm +111 -exec grep -l "^\#!/usr/bin/env python3" {} \; 2>/dev/null || true)
 PYTEST_COMMON_CMD ?= PYTHONPATH=. pytest test/unit/ -vv
+BATS_IMAGE ?= localhost/bats:latest
 
 default: help
 
@@ -160,6 +161,22 @@ bats-nocontainer:
 .PHONY: bats-docker
 bats-docker:
 	_RAMALAMA_TEST_OPTS=--engine=docker RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
+
+.PHONY: bats-image
+bats-image:
+	podman inspect $(BATS_IMAGE) &> /dev/null || \
+		podman build -t $(BATS_IMAGE) -f container-images/bats/Containerfile .
+
+bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
+
+%-in-container: bats-image
+	podman run -it --rm \
+		--userns=keep-id:size=200000 \
+		--security-opt label=disable \
+		--security-opt=mask=/sys/bus/pci/drivers/i915 \
+		$(extra-opts) \
+		-v $(CURDIR):/src \
+		$(BATS_IMAGE) make $*
 
 .PHONY: ci
 ci:

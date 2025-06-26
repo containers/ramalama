@@ -60,6 +60,9 @@ Example: --device=/dev/dri/renderD128:/dev/xvdc:rwm
 
 The device specification is passed directly to the underlying container engine. See documentation of the supported container engine for more information.
 
+#### **--dri**=*on* | *off*
+Enable or disable mounting `/dev/dri` into the container when running with `--api=llama-stack` (enabled by default). Use to prevent access to the host device when not required, or avoid errors in environments where `/dev/dri` is not available.
+
 #### **--env**=
 
 Set environment variables inside of the container.
