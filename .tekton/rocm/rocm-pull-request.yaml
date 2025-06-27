@@ -33,6 +33,8 @@ spec:
     value: container-images/rocm/Containerfile
   pipelineRef:
     name: pull-request-pipeline
+  timeouts:
+    pipeline: 6h
   workspaces:
   - name: git-auth
     secret:

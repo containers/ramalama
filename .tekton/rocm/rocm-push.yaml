@@ -30,6 +30,8 @@ spec:
     value: container-images/rocm/Containerfile
   pipelineRef:
     name: push-pipeline
+  timeouts:
+    pipeline: 6h
   workspaces:
   - name: git-auth
     secret:
