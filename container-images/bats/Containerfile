@@ -1,8 +1,7 @@
 FROM quay.io/fedora/fedora:42
 
 ENV HOME=/tmp \
-    XDG_RUNTIME_DIR=/tmp \
-    STORAGE_DRIVER=vfs
+    XDG_RUNTIME_DIR=/tmp
 WORKDIR /src
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
