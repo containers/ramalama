@@ -83,7 +83,8 @@ spec:
     description: List of environment variables (NAME=VALUE) to be set in the test environment.
     name: test-envs
     type: array
-  - default: []
+  - default:
+    - echo "No tests defined"
     description: List of test commands to run after the image is built.
     name: test-commands
     type: array
