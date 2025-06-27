@@ -4,8 +4,10 @@ import tempfile
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
 from ramalama.common import (
+    check_nvidia,
     exec_cmd,
     genname,
+    get_accel_env_vars,
     tagged_image,
 )
 from ramalama.engine import add_labels
@@ -23,7 +25,7 @@ class Stack:
         self.name = getattr(args, "name", None) or genname()
         if os.path.basename(args.engine) != "podman":
             raise ValueError("llama-stack requires use of the Podman container engine")
-        self.host = "127.0.0.1"
+        self.host = "0.0.0.0"
         model = ModelFactory(args.MODEL, args)
         self.model = model.prune_model_input()
         model = New(args.MODEL, args)
@@ -37,8 +39,15 @@ class Stack:
         cleanlabel = label.replace("=", ": ", 1)
         self.labels = f"{self.labels}\n        {cleanlabel}"
 
-    def generate(self):
-        add_labels(self.args, self.add_label)
+    def _gen_resources(self):
+        if check_nvidia() == "cuda":
+            return """
+        resources:
+          limits:
+             nvidia.com/gpu: 1"""
+        return ""
+
+    def _gen_volume_mounts(self):
         if self.model_type == "OCI":
             volume_mounts = """
         - mountPath: /mnt/models
@@ -48,11 +57,15 @@ class Stack:
             volume_mounts = """
         - mountPath: /mnt/models/model.file
           name: model"""
+
         if self.args.dri == "on":
             volume_mounts += """
         - mountPath: /dev/dri
           name: dri"""
 
+        return volume_mounts
+
+    def _gen_volumes(self):
         volumes = f"""
       - hostPath:
           path: {self.model_path}
@@ -62,30 +75,25 @@ class Stack:
       - hostPath:
           path: /dev/dri
         name: dri"""
+        return volumes
 
-        llama_cmd = 'llama-server'
-        llama_args = [
-            '--port',
-            self.model_port,
-            '--model',
-            '/mnt/models/model.file',
-            '--alias',
-            self.model,
-            '--ctx-size',
-            self.args.context,
-            '--temp',
-            self.args.temp,
-            '--jinja',
-            '--cache-reuse',
-            '256',
-            '-v',
-            '--threads',
-            self.args.threads,
-            '--host',
-            self.host,
-        ]
+    def _gen_server_env(self):
+        server_env = ""
+        if hasattr(self.args, "env"):
+            for env in self.args.env:
+                server_env += f"\n{env}"
 
-        security = """
+        for k, v in get_accel_env_vars().items():
+            # Special case for Cuda
+            if k == "MUSA_VISIBLE_DEVICES":
+                server_env += "\nMTHREADS_VISIBLE_DEVICES=all"
+                continue
+            server_env += f"""\n        - name: {k}
+          value: {v}"""
+        return server_env
+
+    def _gen_security_context(self):
+        return """
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -105,6 +113,39 @@ class Stack:
           seLinuxOptions:
             type: spc_t"""
 
+    def _gen_llama_args(self):
+        return "\n        - ".join(
+            [
+                'llama-server',
+                '--port',
+                str(self.model_port),
+                '--model',
+                '/mnt/models/model.file',
+                '--alias',
+                self.model,
+                '--ctx-size',
+                str(self.args.context),
+                '--temp',
+                self.args.temp,
+                '--jinja',
+                '--cache-reuse',
+                '256',
+                '-v',
+                '--threads',
+                str(self.args.threads),
+                '--host',
+                self.host,
+            ]
+        )
+
+    def generate(self):
+        add_labels(self.args, self.add_label)
+        llama_args = self._gen_llama_args()
+        resources = self._gen_resources()
+        security = self._gen_security_context()
+        server_env = self._gen_server_env()
+        volume_mounts = self._gen_volume_mounts()
+        volumes = self._gen_volumes()
         self.stack_yaml = f"""
 apiVersion: v1
 kind: Deployment
@@ -126,16 +167,21 @@ spec:
       containers:
       - name: model-server
         image: {self.args.image}
-        command: ["{llama_cmd}"]
-        args: {llama_args}\
+        command:
+        - {llama_args}\
         {security}
+        env:{server_env}\
+        {resources}
         volumeMounts:{volume_mounts}
       - name: llama-stack
         image: {self.stack_image}
         args:
-        - /bin/sh
-        - -c
-        - llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml
+        - llama
+        - stack
+        - run
+        - --image-type
+        - venv
+        - /etc/ramalama/ramalama-run.yaml
         env:
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}

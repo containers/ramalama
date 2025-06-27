@@ -159,11 +159,11 @@ class RamaLamaShell(cmd.Cmd):
         return None
 
     def kills(self):
-        if getattr(self.args, "pid2kill", None):
+        if getattr(self.args, "pid2kill", False):
             os.kill(self.args.pid2kill, signal.SIGINT)
             os.kill(self.args.pid2kill, signal.SIGTERM)
             os.kill(self.args.pid2kill, signal.SIGKILL)
-        elif self.args.name:
+        elif getattr(self.args, "name", None):
             stop_container(self.args, self.args.name)
 
     def loop(self):
