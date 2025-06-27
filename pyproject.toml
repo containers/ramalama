@@ -101,6 +101,6 @@ include = ["ramalama"]
 "share/man/man5" = ["docs/*.5"]
 "share/man/man7" = ["docs/*.7"]
 "share/bash-completion/completions" = ["completions/bash-completion/completions/*"]
-"share/zsh/vendor-completions" = ["completions/zsh/vendor-completions/*"]
+"share/zsh/site-functions" = ["completions/zsh/site-functions/*"]
 "share/fish/vendor_completions.d" = ["completions/fish/vendor_completions.d/*"]
 
