@@ -81,6 +81,8 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
 
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
 
+    monkeypatch.setattr(Quadlet, "_gen_env", lambda self, quadlet_file: None)
+
     for file in Quadlet(input.model, input.chat_template, input.args, input.exec_args).generate():
         assert file.filename in expected_files
 
