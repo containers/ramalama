@@ -32,8 +32,27 @@ spec:
     - linux/arm64
   - name: dockerfile
     value: container-images/ramalama/Containerfile
+  - name: test-image
+    value: quay.io/redhat-user-workloads/ramalama-tenant/bats:on-pr-{{revision}}
+  - name: test-envs
+    value:
+    - RAMALAMA_IMAGE=quay.io/redhat-user-workloads/ramalama-tenant/ramalama:on-pr-{{revision}}
+  - name: test-commands
+    value:
+    - id && cat /proc/self/uid_map && podman info
+    - make validate
+    - make test-run
+    - make bats
+    - make bats-nocontainer
+    - make unit-tests
+    - make cov-tests
   pipelineRef:
     name: pull-request-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: run-tests
+    serviceAccountName: default
+  timeouts:
+    pipeline: 6h
   workspaces:
   - name: git-auth
     secret:
