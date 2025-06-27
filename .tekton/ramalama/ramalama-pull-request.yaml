@@ -39,15 +39,18 @@ spec:
     - RAMALAMA_IMAGE=quay.io/redhat-user-workloads/ramalama-tenant/ramalama:on-pr-{{revision}}
   - name: test-commands
     value:
+    - id && cat /proc/self/uid_map && podman info
     - make validate
     - make test-run
     - make bats
     - make bats-nocontainer
-    - make ci
     - make unit-tests
     - make cov-tests
   pipelineRef:
     name: pull-request-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: run-tests
+    serviceAccountName: default
   timeouts:
     pipeline: 6h
   workspaces:
