@@ -228,7 +228,7 @@ def engine_version(engine: SUPPORTED_ENGINES) -> str:
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
 
 
-def load_cdi_config(spec_dirs: List[str]) -> dict:
+def load_cdi_config(spec_dirs: List[str]) -> dict | None:
     """Load the first YAML or JSON CDI configuration file found in the given directories."""
     for spec_dir in spec_dirs:
         for root, _, files in os.walk(spec_dir):
@@ -240,7 +240,7 @@ def load_cdi_config(spec_dirs: List[str]) -> dict:
                         with open(file_path, "r") as stream:
                             config = yaml.safe_load(stream)
                             return config
-                    except Exception:
+                    except (yaml.YAMLError, OSError):
                         continue
                 elif ext == ".json":
                     try:
@@ -254,12 +254,12 @@ def load_cdi_config(spec_dirs: List[str]) -> dict:
     return None
 
 
-def find_in_cdi(devices: List[str]) -> (List[str], List[str]):
+def find_in_cdi(devices: List[str]) -> tuple[List[str], List[str]]:
     # Attempt to find CDI configuration for each device in devices and
     # return lists of configured and unconfigured devices.
     cdi = load_cdi_config(['/etc/cdi', '/var/run/cdi'])
-    cdi_devices = cdi["devices"] if cdi else []
-    cdi_device_names = [cdi_device["name"] for cdi_device in cdi_devices]
+    cdi_devices = cdi.get("devices", []) if cdi else []
+    cdi_device_names = [name for cdi_device in cdi_devices if (name := cdi_device.get("name"))]
 
     logger.debug(f"cdi_device_names: {','.join(cdi_device_names)}")
 
@@ -301,7 +301,7 @@ def check_metal(args: ContainerArgType) -> bool:
 
 
 @lru_cache(maxsize=1)
-def check_nvidia() -> Literal["cuda"] | None:
+def check_nvidia() -> Literal["cuda", "all"] | None:
     try:
         command = ['nvidia-smi', '--query-gpu=index,uuid', '--format=csv,noheader']
         result = run_cmd(command, encoding="utf-8")
@@ -311,9 +311,10 @@ def check_nvidia() -> Literal["cuda"] | None:
         return "all"
 
     smi_lines = result.stdout.splitlines()
-    indices, uuids = zip(*[[item.strip() for item in line.split(',')] for line in smi_lines if line])
+    parsed_lines = [[item.strip() for item in line.split(',')] for line in smi_lines if line]
+    indices, uuids = zip(*parsed_lines) if parsed_lines else (tuple(), tuple())
     # Get the list of devices specified by CUDA_VISIBLE_DEVICES, if any
-    cuda_visible_devices = os.environ["CUDA_VISIBLE_DEVICES"] if "CUDA_VISIBLE_DEVICES" in os.environ else "all"
+    cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "all")
     visible_devices = list(cuda_visible_devices.split(',') if cuda_visible_devices else uuids)
 
     logger.debug(f"visible devices {','.join(visible_devices)}")
