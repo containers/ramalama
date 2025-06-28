@@ -7,7 +7,6 @@ import sys
 # Live reference for checking global vars
 import ramalama.common
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
-from ramalama.console import EMOJI
 from ramalama.logger import logger
 
 
@@ -31,7 +30,6 @@ class Engine:
         self.add_privileged_options()
         self.add_pull_newer()
         self.add_rag()
-        self.add_subcommand_env()
         self.add_tty_option()
         self.handle_podman_specifics()
         self.add_detach_option()
@@ -91,14 +89,7 @@ class Engine:
             return False
         if getattr(self.args, "ARGS", None):
             return False
-        return getattr(self.args, "subcommand", "") != "run"
-
-    def add_subcommand_env(self):
-        if EMOJI and self.use_tty():
-            if os.path.basename(self.args.engine) == "podman":
-                self.exec_args += ["--env", "LLAMA_PROMPT_PREFIX=🦭 > "]
-            if self.use_docker:
-                self.exec_args += ["--env", "LLAMA_PROMPT_PREFIX=🐋 > "]
+        return getattr(self.args, "subcommand", "") == "run"
 
     def add_env_option(self):
         for env in getattr(self.args, "env", []):
@@ -116,10 +107,12 @@ class Engine:
         if getattr(self.args, "port", "") == "":
             return
 
+        host = getattr(self.args, "host", "0.0.0.0")
+        host = f"{host}:" if host != "0.0.0.0" else ""
         if self.args.port.count(":") > 0:
-            self.exec_args += ["-p", self.args.port]
+            self.exec_args += ["-p", f"{host}{self.args.port}"]
         else:
-            self.exec_args += ["-p", f"{self.args.port}:{self.args.port}"]
+            self.exec_args += ["-p", f"{host}{self.args.port}:{self.args.port}"]
 
     def add_device_options(self):
         if getattr(self.args, "device", None):

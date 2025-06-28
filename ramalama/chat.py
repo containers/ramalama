@@ -45,9 +45,6 @@ def res(response, color):
 
 
 def default_prefix():
-    if "LLAMA_PROMPT_PREFIX" in os.environ:
-        return os.environ["LLAMA_PROMPT_PREFIX"]
-
     if not EMOJI:
         return "> "
 

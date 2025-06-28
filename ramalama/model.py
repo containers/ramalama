@@ -587,7 +587,8 @@ class Model(ModelBase):
             if gpu_args is not None:
                 exec_args.extend(gpu_args)
 
-            exec_args.extend(["--host", args.host])
+            if not args.container:
+                exec_args.extend(["--host", args.host])
 
         return exec_args
 
