@@ -29,8 +29,12 @@ Show this help message and exit
 #### **--prefix**
 Prefix for the user prompt (default: 🦭 > )
 
+#### **--rag**=path
+A file or directory of files to be loaded and provided as local context in the chat history.
+
 #### **--url**=URL
 The host to send requests to (default: http://127.0.0.1:8080)
+
 
 ## EXAMPLES
 

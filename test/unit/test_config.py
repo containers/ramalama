@@ -153,7 +153,8 @@ class TestGetDefaultEngine:
     def test_get_default_engine_with_podman_available(self, platform, expected):
         with patch("ramalama.config.available", side_effect=lambda x: x == "podman"):
             with patch("sys.platform", platform):
-                assert get_default_engine() == expected
+                with patch("ramalama.config.apple_vm", return_value=False):
+                    assert get_default_engine() == expected
 
     def test_get_default_engine_with_podman_available_osx_apple_vm_has_podman(self):
         with patch("ramalama.config.available", side_effect=lambda x: x == "podman"):
