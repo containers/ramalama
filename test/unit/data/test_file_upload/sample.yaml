@@ -1,0 +1,37 @@
+# Sample YAML configuration file
+name: test_config
+version: 1.0.0
+description: Sample YAML data for testing file upload functionality
+
+features:
+  - text_processing
+  - file_upload
+  - chat_integration
+  - yaml_support
+
+metadata:
+  author: Test User
+  created: 2024-01-01
+  tags:
+    - test
+    - sample
+    - yaml
+
+config:
+  enabled: true
+  max_file_size: 1048576
+  supported_formats:
+    - .txt
+    - .md
+    - .json
+    - .yaml
+    - .yml
+    - .csv
+    - .toml
+    - .pdf
+
+nested:
+  structure:
+    with:
+      deep:
+        nesting: true 

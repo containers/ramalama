@@ -14,6 +14,7 @@ from datetime import timedelta
 from ramalama.config import CONFIG
 from ramalama.console import EMOJI, should_colorize
 from ramalama.engine import dry_run, stop_container
+from ramalama.file_upload.file_loader import FileUpLoader
 from ramalama.logger import logger
 
 
@@ -72,6 +73,16 @@ class RamaLamaShell(cmd.Cmd):
         self.prompt = args.prefix
 
         self.url = f"{args.url}/chat/completions"
+        self.prep_rag_message()
+
+    def prep_rag_message(self):
+        if (context := getattr(self.args, "rag", None)) is None:
+            return
+
+        if not (message_content := FileUpLoader(context).load()):
+            return
+
+        self.conversation_history.append({"role": "system", "content": message_content})
 
     def handle_args(self):
         prompt = " ".join(self.args.ARGS) if self.args.ARGS else None

@@ -905,6 +905,7 @@ def chat_parser(subparsers):
         help='possible values are "never", "always" and "auto".',
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
+    parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
     parser.add_argument("--url", type=str, default="http://127.0.0.1:8080/v1", help="the url to send requests to")
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.add_argument(
@@ -925,6 +926,7 @@ def run_parser(subparsers):
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
     parser.add_argument("MODEL", completer=local_models)  # positional argument
+
     parser.add_argument(
         "ARGS",
         nargs="*",
