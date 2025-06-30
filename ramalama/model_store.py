@@ -621,12 +621,13 @@ class ModelStore:
             blob_refcount = blob_refcounts.get(file, 0)
             if blob_refcount <= 1:
                 self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file))
-                self._remove_blob_file(self.get_partial_blob_file_path(ref_file.hash))
             else:
                 logger.debug(f"Not removing blob {file} refcount={blob_refcount}")
 
         # Remove snapshot directory
         if snapshot_refcount <= 1:
+            # FIXME: this only cleans up .partial files where the blob hash equals the snapshot hash
+            self._remove_blob_file(self.get_partial_blob_file_path(ref_file.hash))
             snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
             shutil.rmtree(snapshot_directory, ignore_errors=True)
             logger.debug(f"Snapshot removed {ref_file.hash}")
