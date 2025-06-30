@@ -2,18 +2,18 @@ FROM quay.io/fedora/fedora:42
 
 # hack that should be removed when the following bug is addressed
 # https://github.com/containers/ramalama-stack/issues/53
-RUN curl --create-dirs --output ~/.llama/providers.d/remote/inference/ramalama.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v0.2.2/src/ramalama_stack/providers.d/remote/inference/ramalama.yaml && \
-    curl --create-dirs --output /etc/ramalama/ramalama-run.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v0.2.2/src/ramalama_stack/ramalama-run.yaml
+RUN curl --create-dirs --output ~/.llama/providers.d/remote/inference/ramalama.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v0.2.3/src/ramalama_stack/providers.d/remote/inference/ramalama.yaml && \
+    curl --create-dirs --output /etc/ramalama/ramalama-run.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v0.2.3/src/ramalama_stack/ramalama-run.yaml
 
 RUN dnf -y update && \
     dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config sentencepiece-devel && \
     dnf -y clean all
 
 RUN uv venv && \
-    uv pip install ramalama-stack==0.2.2
+    uv pip install ramalama-stack==0.2.3
 
 COPY --chmod=755 container-images/llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
 
-CMD llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml
+CMD [ "llama",  "stack",  "run", "--image-type", "venv", "/etc/ramalama/ramalama-run.yaml" ]

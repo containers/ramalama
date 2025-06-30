@@ -1,7 +1,7 @@
 %global pypi_name ramalama
 %global forgeurl  https://github.com/containers/%{pypi_name}
 # see ramalama/version.py
-%global version0  0.9.3
+%global version0  0.10.0
 %forgemeta
 
 %global summary   RamaLama is a command line tool for working with AI LLM models
@@ -85,7 +85,7 @@ will run the AI Models within a container based on the OCI image.
 %{_bindir}/%{pypi_name}
 %{bash_completions_dir}/%{pypi_name}
 %{_datadir}/fish/vendor_completions.d/ramalama.fish
-%{_datadir}/zsh/vendor-completions/_ramalama
+%{zsh_completions_dir}/_ramalama
 %dir %{_datadir}/%{pypi_name}
 %{_datadir}/%{pypi_name}/shortnames.conf
 %{_datadir}/%{pypi_name}/ramalama.conf

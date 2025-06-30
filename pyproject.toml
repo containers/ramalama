@@ -4,11 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ramalama"
-version = "0.9.3"
+version = "0.10.0"
 description = "RamaLama is a command line tool for working with AI LLM models."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { file = "LICENSE" }
 keywords = ["ramalama", "llama", "AI"]
 dependencies = [
   "argcomplete",
@@ -18,6 +17,8 @@ maintainers = [
    { name="Eric Curtin", email = "ecurtin@redhat.com" },
 ]
 
+[project.license]
+text = "MIT"
 
 [project.optional-dependencies]
 dev = [
@@ -56,6 +57,7 @@ ramalama = "ramalama.cli:main"
 
 [tool.setuptools]
 include-package-data = true
+license-files = ["LICENSE"]
 
 [tool.black]
 line-length = 120
@@ -93,7 +95,7 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 
 
 [tool.setuptools.packages.find]
-include = ["ramalama"]
+include = ["ramalama", "ramalama.*"]
 
 [tool.setuptools.data-files]
 "share/ramalama" = ["shortnames/shortnames.conf"]
@@ -101,6 +103,6 @@ include = ["ramalama"]
 "share/man/man5" = ["docs/*.5"]
 "share/man/man7" = ["docs/*.7"]
 "share/bash-completion/completions" = ["completions/bash-completion/completions/*"]
-"share/zsh/vendor-completions" = ["completions/zsh/vendor-completions/*"]
+"share/zsh/site-functions" = ["completions/zsh/site-functions/*"]
 "share/fish/vendor_completions.d" = ["completions/fish/vendor_completions.d/*"]
 

@@ -63,17 +63,21 @@ class ModelFactory:
     def detect_model_model_type(
         self,
     ) -> Tuple[type[Union[Huggingface, Ollama, OCI, URL]], Callable[[], Union[Huggingface, Ollama, OCI, URL]]]:
-        if self.model.startswith("huggingface://") or self.model.startswith("hf://") or self.model.startswith("hf.co/"):
-            return Huggingface, self.create_huggingface
-        if self.model.startswith("modelscope://") or self.model.startswith("ms://"):
-            return ModelScope, self.create_modelscope
-        if self.model.startswith("ollama://") or "ollama.com/library/" in self.model:
-            return Ollama, self.create_ollama
-        if self.model.startswith("oci://") or self.model.startswith("docker://"):
-            return OCI, self.create_oci
-        if self.model.startswith("http://") or self.model.startswith("https://") or self.model.startswith("file://"):
-            return URL, self.create_url
-
+        for prefix in ["huggingface://", "hf://", "hf.co/"]:
+            if self.model.startswith(prefix):
+                return Huggingface, self.create_huggingface
+        for prefix in ["modelscope://", "ms://"]:
+            if self.model.startswith(prefix):
+                return ModelScope, self.create_modelscope
+        for prefix in ["ollama://", "ollama.com/library/"]:
+            if self.model.startswith(prefix):
+                return Ollama, self.create_ollama
+        for prefix in ["oci://", "docker://"]:
+            if self.model.startswith(prefix):
+                return OCI, self.create_oci
+        for prefix in ["http://", "https://", "file://"]:
+            if self.model.startswith(prefix):
+                return URL, self.create_url
         if self.transport == "huggingface":
             return Huggingface, self.create_huggingface
         if self.transport == "modelscope":

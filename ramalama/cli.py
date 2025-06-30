@@ -191,7 +191,7 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
     )
     parser.add_argument(
         "--image",
-        default=accel_image(CONFIG, nopull=True),
+        default=accel_image(CONFIG, pull=False),
         help="OCI container image to run with the specified AI model",
         action=OverrideDefaultAction,
         completer=local_images,
@@ -905,6 +905,7 @@ def chat_parser(subparsers):
         help='possible values are "never", "always" and "auto".',
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
+    parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
     parser.add_argument("--url", type=str, default="http://127.0.0.1:8080/v1", help="the url to send requests to")
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.add_argument(
@@ -925,6 +926,7 @@ def run_parser(subparsers):
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
     parser.add_argument("MODEL", completer=local_models)  # positional argument
+
     parser.add_argument(
         "ARGS",
         nargs="*",
@@ -1118,7 +1120,17 @@ def rm_cli(args):
 
     models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
 
-    return _rm_model([model for model in models.keys()], args)
+    failed_models = []
+    for model in models.keys():
+        try:
+            _rm_model([model], args)
+        except Exception as e:
+            failed_models.append((model, str(e)))
+    if failed_models:
+        for model, error in failed_models:
+            perror(f"Failed to remove model '{model}': {error}")
+        failed_names = ', '.join([model for model, _ in failed_models])
+        raise Exception(f"Failed to remove the following models: {failed_names}")
 
 
 def perplexity_parser(subparsers):

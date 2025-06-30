@@ -61,9 +61,9 @@ install-completions: completions
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/fish/vendor_completions.d
 	install ${SELINUXOPT} -m 644 completions/fish/vendor_completions.d/ramalama.fish \
 		$(DESTDIR)${SHAREDIR}/fish/vendor_completions.d/ramalama.fish
-	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/zsh/site
-	install ${SELINUXOPT} -m 644 completions/zsh/vendor-completions/_ramalama \
-		$(DESTDIR)${SHAREDIR}/zsh/vendor-completions/_ramalama
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)${SHAREDIR}/zsh/site-functions
+	install ${SELINUXOPT} -m 644 completions/zsh/site-functions/_ramalama \
+		$(DESTDIR)${SHAREDIR}/zsh/site-functions/_ramalama
 
 .PHONY: install-shortnames
 install-shortnames:
@@ -79,8 +79,8 @@ completions:
 	mkdir -p completions/fish/vendor_completions.d
 	register-python-argcomplete --shell fish ramalama > completions/fish/vendor_completions.d/ramalama.fish
 
-	mkdir -p completions/zsh/vendor-completions
-	-register-python-argcomplete --shell zsh ramalama > completions/zsh/vendor-completions/_ramalama
+	mkdir -p completions/zsh/site-functions
+	-register-python-argcomplete --shell zsh ramalama > completions/zsh/site-functions/_ramalama
 
 .PHONY: install
 install: docs completions

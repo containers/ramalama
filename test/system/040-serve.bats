@@ -23,12 +23,13 @@ verify_begin=".*run --rm"
 	run_ramalama -q --dryrun serve --name foobar ${model}
 	is "$output" ".*--name foobar .*" "dryrun correct with --name"
 	assert "$output" !~ ".*--network" "--network is not part of the output"
-	is "$output" ".*--host 0.0.0.0" "verify host 0.0.0.0 is added when run within container"
+	assert "$output" !~ ".*--host 0.0.0.0" "verify host 0.0.0.0 is not added when run within container"
 	is "$output" ".*${model}" "verify model name"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
-	run_ramalama -q --dryrun serve --network bridge --host 127.1.2.3 --name foobar ${model}
-	assert "$output" =~ "--network bridge.*--host 127.1.2.3" "verify --host is modified when run within container"
+	run_ramalama -q --dryrun serve --port 1234 --network bridge --host 127.1.2.3 --name foobar ${model}
+	assert "$output" !~ ".*--host 127.1.2.3" "verify --host is not modified when run within container"
+	assert "$output" =~ ".*-p 127.1.2.3:1234:1234" "verify -p is modified when run within container"
 	is "$output" ".*${model}" "verify model name"
 	is "$output" ".*--temp 0.8" "verify temp is set"
 	assert "$output" !~ ".*-t " "assert -t not present"
@@ -59,6 +60,7 @@ verify_begin=".*run --rm"
 	assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
 	assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
     else
+	# Running without a container
 	run_ramalama -q --dryrun serve ${model}
 	assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
 	is "$output" ".*--cache-reuse 256" "should use cache"
@@ -363,9 +365,9 @@ verify_begin=".*run --rm"
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat /tmp/$name.yaml
-    is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
+    is "$output" ".*llama-server" "Should command"
     is "$output" ".*hostPort: 1234" "Should container container port"
-    is "$output" ".*llama stack run --image-type venv /etc/ramalama/ramalama-run.yaml" "Should container llama-stack"
+    is "$output" ".*quay.io/ramalama/llama-stack" "Should container llama-stack"
     rm /tmp/$name.yaml
 }
 

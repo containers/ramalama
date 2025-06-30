@@ -14,6 +14,7 @@ from datetime import timedelta
 from ramalama.config import CONFIG
 from ramalama.console import EMOJI, should_colorize
 from ramalama.engine import dry_run, stop_container
+from ramalama.file_upload.file_loader import FileUpLoader
 from ramalama.logger import logger
 
 
@@ -45,9 +46,6 @@ def res(response, color):
 
 
 def default_prefix():
-    if "LLAMA_PROMPT_PREFIX" in os.environ:
-        return os.environ["LLAMA_PROMPT_PREFIX"]
-
     if not EMOJI:
         return "> "
 
@@ -72,6 +70,16 @@ class RamaLamaShell(cmd.Cmd):
         self.prompt = args.prefix
 
         self.url = f"{args.url}/chat/completions"
+        self.prep_rag_message()
+
+    def prep_rag_message(self):
+        if (context := getattr(self.args, "rag", None)) is None:
+            return
+
+        if not (message_content := FileUpLoader(context).load()):
+            return
+
+        self.conversation_history.append({"role": "system", "content": message_content})
 
     def handle_args(self):
         prompt = " ".join(self.args.ARGS) if self.args.ARGS else None
@@ -159,11 +167,11 @@ class RamaLamaShell(cmd.Cmd):
         return None
 
     def kills(self):
-        if getattr(self.args, "pid2kill", None):
+        if getattr(self.args, "pid2kill", False):
             os.kill(self.args.pid2kill, signal.SIGINT)
             os.kill(self.args.pid2kill, signal.SIGTERM)
             os.kill(self.args.pid2kill, signal.SIGKILL)
-        elif self.args.name:
+        elif getattr(self.args, "name", None):
             stop_container(self.args, self.args.name)
 
     def loop(self):
