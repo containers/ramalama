@@ -448,7 +448,10 @@ class ModelStore:
                         raise ValueError(f"Checksum verification failed for blob {dest_path}")
 
             link_path = self.get_snapshot_file_path(snapshot_hash, file.name)
-            if not os.path.exists(link_path):
+            try:
+                os.symlink(blob_relative_path, link_path)
+            except FileExistsError:
+                os.unlink(link_path)
                 os.symlink(blob_relative_path, link_path)
 
         # save updated ref file
