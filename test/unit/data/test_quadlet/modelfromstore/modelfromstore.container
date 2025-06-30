@@ -7,7 +7,12 @@ AddDevice=-/dev/accel
 AddDevice=-/dev/dri
 AddDevice=-/dev/kfd
 Image=testimage
+RunInit=true
+Environment=HOME=/tmp
 Exec=
+SecurityLabelDisable=true
+DropCapability=all
+NoNewPrivileges=true
 Mount=type=bind,src=longpathtoablobsha,target=/mnt/models/model.file,ro,Z
 
 [Install]
