@@ -627,7 +627,7 @@ class AccelImageArgsOtherRuntimeRAG(Protocol):
 AccelImageArgs = None | AccelImageArgsVLLMRuntime | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
 
 
-def accel_image(config: Config, pull=True) -> str:
+def accel_image(config: Config) -> str:
     """
     Selects and the appropriate image based on config, arguments, environment.
     """
@@ -650,13 +650,15 @@ def accel_image(config: Config, pull=True) -> str:
         return "registry.redhat.io/rhelai1/ramalama-vllm"
 
     vers = minor_release()
-    if not pull or attempt_to_use_versioned(config.engine, image, vers, True):
+
+    should_pull = config.pull in ["always", "missing"]
+    if attempt_to_use_versioned(config.engine, image, vers, True, should_pull):
         return f"{image}:{vers}"
 
     return f"{image}:latest"
 
 
-def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool) -> bool:
+def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, should_pull: bool) -> bool:
     try:
         # check if versioned image exists locally
         if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True):
@@ -664,6 +666,9 @@ def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool) ->
 
     except Exception:
         pass
+
+    if not should_pull:
+        return False
 
     try:
         # attempt to pull the versioned image

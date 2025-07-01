@@ -191,7 +191,7 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
     )
     parser.add_argument(
         "--image",
-        default=accel_image(CONFIG, pull=False),
+        default=accel_image(CONFIG),
         help="OCI container image to run with the specified AI model",
         action=OverrideDefaultAction,
         completer=local_images,
