@@ -1,4 +1,5 @@
 import os
+import shlex
 
 from ramalama.common import MNT_CHAT_TEMPLATE_FILE, MNT_DIR, MNT_FILE, RAG_DIR, get_accel_env_vars
 from ramalama.file import UnitFile
@@ -40,8 +41,19 @@ class Quadlet:
         quadlet_file.add("Container", "AddDevice", "-/dev/dri")
         quadlet_file.add("Container", "AddDevice", "-/dev/kfd")
         quadlet_file.add("Container", "Image", f"{self.image}")
-        exec_cmd = " ".join(self.exec_args)
+        quadlet_file.add("Container", "RunInit", "true")
+        quadlet_file.add("Container", "Environment", "HOME=/tmp")
+
+        exec_cmd = shlex.join(self.exec_args)
         quadlet_file.add("Container", "Exec", f"{exec_cmd}")
+
+        if getattr(self.args, "privileged", False):
+            quadlet_file.add("Container", "PodmanArgs", "--privileged")
+        else:
+            quadlet_file.add("Container", "SecurityLabelDisable", "true")
+            if not getattr(self.args, "nocapdrop", False):
+                quadlet_file.add("Container", "DropCapability", "all")
+                quadlet_file.add("Container", "NoNewPrivileges", "true")
 
         self._gen_chat_template_volume(quadlet_file)
         self._gen_env(quadlet_file)
