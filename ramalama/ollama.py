@@ -5,7 +5,7 @@ from typing import Optional
 
 from ramalama.common import available
 from ramalama.model import Model
-from ramalama.model_store import SnapshotFile, SnapshotFileType
+from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
 from ramalama.ollama_repo_utils import fetch_manifest_data
 
 

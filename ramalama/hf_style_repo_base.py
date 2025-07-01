@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from ramalama.common import available, exec_cmd, generate_sha256, perror, run_cmd
 from ramalama.logger import logger
 from ramalama.model import Model
-from ramalama.model_store import SnapshotFile, SnapshotFileType
+from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
 
 
 class HFStyleRepoFile(SnapshotFile):

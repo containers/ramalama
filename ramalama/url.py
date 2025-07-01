@@ -4,7 +4,7 @@ import shutil
 from ramalama.common import generate_sha256
 from ramalama.huggingface import HuggingfaceRepository
 from ramalama.model import Model
-from ramalama.model_store import SnapshotFile, SnapshotFileType
+from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
 from ramalama.modelscope import ModelScopeRepository
 
 

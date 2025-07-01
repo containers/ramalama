@@ -29,7 +29,7 @@ from ramalama.config import CONFIG
 from ramalama.logger import configure_logger, logger
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory, New
-from ramalama.model_store import GlobalModelStore
+from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack
 from ramalama.version import print_version, version
