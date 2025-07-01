@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "$(id -u):10000:100000" > /etc/subuid
-echo "$(id -g):10000:100000" > /etc/subgid
+echo "$(id -un):10000:2000" > /etc/subuid
+echo "$(id -un):10000:2000" > /etc/subgid
 
 if [ $# -gt 0 ]; then
     exec "$@"

@@ -31,6 +31,8 @@ spec:
     value: container-images/bats/Containerfile
   pipelineRef:
     name: push-pipeline
+  timeouts:
+    pipeline: 6h
   workspaces:
   - name: git-auth
     secret:
