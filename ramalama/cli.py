@@ -148,6 +148,10 @@ with software on the local system.
 """
 
 
+def abspath(astring) -> str:
+    return os.path.abspath(astring)
+
+
 def create_argument_parser(description: str):
     """Create and configure the argument parser for the CLI."""
     parser = ArgumentParserWithDefaults(
@@ -222,6 +226,7 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     parser.add_argument(
         "--store",
         default=CONFIG.store,
+        type=abspath,
         help="store AI Models in the specified directory",
     )
     parser.add_argument(

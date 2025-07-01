@@ -46,7 +46,7 @@ Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)
 Engine.Name | $engine
 Image   | $image
 Runtime | $runtime
-Store   | $store
+Store   | $(pwd)/$store
 "
 
     defer-assertion-failures
@@ -57,6 +57,14 @@ Store   | $store
 	is "$actual" "$expect" "jq .$field"
     done < <(parse_table "$tests")
 
+}
+
+@test "ramalama info --store" {
+      randdir=$(random_string 20)
+      store=$(pwd)/${randdir}
+      run_ramalama --store ./${randdir} info
+      actual=$(echo "$output" | jq -r ".Store")
+      is "$actual" "$store" "Verify relative paths translated to absolute path"
 }
 
 # vim: filetype=sh
