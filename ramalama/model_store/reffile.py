@@ -16,6 +16,7 @@ class RefFile:
     def path(self) -> str:
         return self._path
 
+    @staticmethod
     def from_path(path: str) -> "RefFile":
         ref_file = RefFile()
         ref_file._path = path
