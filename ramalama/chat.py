@@ -64,6 +64,20 @@ def default_prefix():
     return "🦙 > "
 
 
+def add_api_key(args, headers=None):
+    # static analyzers suggest for dict, this is a safer way of setting
+    # a default value, rather than using the parameter directly
+    headers = headers or {}
+    if getattr(args, "api_key", None):
+        api_key_min = 20
+        if len(args.api_key) < api_key_min:
+            print("Warning: Provided API key is invalid.")
+
+        headers["Authorization"] = f"Bearer {args.api_key}"
+
+    return headers
+
+
 class RamaLamaShell(cmd.Cmd):
     def __init__(self, args):
         super().__init__()
@@ -121,19 +135,17 @@ class RamaLamaShell(cmd.Cmd):
         data = {
             "stream": True,
             "messages": self.conversation_history,
-            "model": self.args.MODEL,
         }
+
+        if getattr(self.args, "model", False):
+            data["model"] = self.args.model
+
         json_data = json.dumps(data).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
         }
 
-        if getattr(self.args, "api_key", None):
-            if len(self.args.api_key) < 20:
-                print("Warning: Provided API key is invalid.")
-
-            headers["Authorization"] = f"Bearer {self.args.api_key}"
-
+        headers = add_api_key(self.args, headers)
         logger.debug("Request: URL=%s, Data=%s, Headers=%s", self.url, json_data, headers)
         request = urllib.request.Request(self.url, data=json_data, headers=headers, method="POST")
 
@@ -212,11 +224,24 @@ def chat(args):
         signal.signal(signal.SIGALRM, alarm_handler)
         signal.alarm(convert_to_seconds(args.keepalive))
 
+    list_models = getattr(args, "list", False)
+    if list_models:
+        url = f"{args.url}/models"
+        headers = add_api_key(args)
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req) as response:
+            data = json.loads(response.read())
+            ids = [model["id"] for model in data.get("data", [])]
+            for id in ids:
+                print(id)
+
     try:
         shell = RamaLamaShell(args)
         if shell.handle_args():
             return
-        shell.loop()
+
+        if not list_models:
+            shell.loop()
     except TimeoutException as e:
         logger.debug(f"Timeout Exception: {e}")
         # Handle the timeout, e.g., print a message and exit gracefully
