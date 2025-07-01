@@ -202,7 +202,7 @@ class GlobalModelStore:
         self,
         base_path: Path,
     ):
-        self._store_base_path = os.path.join(base_path, "store")
+        self._store_base_path = os.path.abspath(os.path.join(base_path, "store"))
 
     @property
     def path(self) -> str:
