@@ -27,7 +27,8 @@ from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.logger import logger
 from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
-from ramalama.model_store import GlobalModelStore, ModelStore
+from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.model_store.store import ModelStore
 from ramalama.quadlet import Quadlet
 from ramalama.rag import rag_image
 from ramalama.version import version

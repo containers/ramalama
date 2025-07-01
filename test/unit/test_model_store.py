@@ -1,6 +1,6 @@
 import pytest
 
-from ramalama.model_store import SnapshotFile, SnapshotFileType, validate_snapshot_files
+from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType, validate_snapshot_files
 
 chat_template = SnapshotFile(name="chat-template", hash="", header={}, type=SnapshotFileType.ChatTemplate, url="")
 model_file = SnapshotFile(name="model", hash="", header={}, type=SnapshotFileType.Model, url="")

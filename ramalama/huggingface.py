@@ -11,7 +11,7 @@ from ramalama.hf_style_repo_base import (
     fetch_checksum_from_api_base,
 )
 from ramalama.logger import logger
-from ramalama.model_store import SnapshotFileType
+from ramalama.model_store.snapshot_file import SnapshotFileType
 
 missing_huggingface = """
 Optional: Huggingface models require the huggingface-cli module.

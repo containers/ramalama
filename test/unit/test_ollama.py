@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.arg_types import StoreArgs
-from ramalama.model_store import LocalSnapshotFile, SnapshotFile, SnapshotFileType
+from ramalama.model_store.snapshot_file import LocalSnapshotFile, SnapshotFile, SnapshotFileType
 from ramalama.ollama import Ollama, OllamaRepository
 
 
