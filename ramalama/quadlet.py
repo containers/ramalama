@@ -1,4 +1,5 @@
 import os
+import shlex
 
 from ramalama.common import MNT_CHAT_TEMPLATE_FILE, MNT_DIR, MNT_FILE, RAG_DIR, get_accel_env_vars
 from ramalama.file import UnitFile
@@ -43,7 +44,7 @@ class Quadlet:
         quadlet_file.add("Container", "RunInit", "true")
         quadlet_file.add("Container", "Environment", "HOME=/tmp")
 
-        exec_cmd = " ".join(self.exec_args)
+        exec_cmd = shlex.join(self.exec_args)
         quadlet_file.add("Container", "Exec", f"{exec_cmd}")
 
         if getattr(self.args, "privileged", False):
