@@ -275,7 +275,7 @@ class Model(ModelBase):
         if args.runtime == "vllm":
             model_base = ""
             if self.model_store and getattr(self, 'model_tag', None):
-                ref_file = self.store.get_ref_file(self.model_tag)
+                ref_file = self.model_store.get_ref_file(self.model_tag)
                 if ref_file and hasattr(ref_file, 'hash'):
                     model_base = self.model_store.model_base_directory
             if not model_base and (model_path and os.path.exists(model_path)):
