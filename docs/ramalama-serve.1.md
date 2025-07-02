@@ -29,9 +29,12 @@ Modify individual model transports by specifying the `huggingface://`, `oci://`,
 URL support means if a model is on a web site or even on your local system, you can run it directly.
 
 ## REST API ENDPOINTS
-Under the hood, `ramalama-serve` uses the `LLaMA.cpp` HTTP server by default.
+Under the hood, `ramalama-serve` uses the `llama.cpp` HTTP server by default. When using `--runtime=vllm`, it uses the vLLM server. When using `--runtime=mlx`, it uses the MLX LM server.
 
-For REST API endpoint documentation, see: [https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints)
+For REST API endpoint documentation, see:
+- llama.cpp: [https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints)
+- vLLM: [https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
+- MLX LM: [https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md)
 
 ## OPTIONS
 
@@ -461,6 +464,27 @@ WantedBy=multi-user.target default.target
 ## NVIDIA CUDA Support
 
 See **[ramalama-cuda(7)](ramalama-cuda.7.md)** for setting up the host Linux system for CUDA support.
+
+## MLX Support
+
+The MLX runtime is designed for Apple Silicon Macs and provides optimized performance on these systems. MLX support has the following requirements:
+
+- **Operating System**: macOS only
+- **Hardware**: Apple Silicon (M1, M2, M3, or later)
+- **Container Mode**: MLX requires `--nocontainer` as it cannot run inside containers
+- **Dependencies**: Requires `mlx-lm` package to be installed on the host system
+
+To install MLX dependencies, use either `uv` or `pip`:
+```bash
+uv pip install mlx-lm
+# or pip:
+pip install mlx-lm
+```
+
+Example usage:
+```bash
+ramalama --runtime=mlx serve hf://mlx-community/Unsloth-Phi-4-4bit
+```
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman(1)**, **podman-ps(1)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**

@@ -216,8 +216,8 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     parser.add_argument(
         "--runtime",
         default=CONFIG.runtime,
-        choices=["llama.cpp", "vllm"],
-        help="specify the runtime to use; valid options are 'llama.cpp' and 'vllm'",
+        choices=["llama.cpp", "vllm", "mlx"],
+        help="specify the runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx'",
     )
     parser.add_argument(
         "--store",
@@ -269,6 +269,12 @@ def post_parse_setup(args):
             args.MODEL = resolved_model
     if hasattr(args, "runtime_args"):
         args.runtime_args = shlex.split(args.runtime_args)
+
+    # MLX runtime automatically requires --nocontainer
+    if getattr(args, "runtime", None) == "mlx":
+        if getattr(args, "container", None) is True:
+            logger.info("MLX runtime automatically uses --nocontainer mode")
+        args.container = False
 
     configure_logger("DEBUG" if args.debug else "WARNING")
 

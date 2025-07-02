@@ -82,7 +82,6 @@ class RamaLamaShell(cmd.Cmd):
         self.args = args
         self.request_in_process = False
         self.prompt = args.prefix
-
         self.url = f"{args.url}/chat/completions"
         self.prep_rag_message()
 
@@ -132,11 +131,10 @@ class RamaLamaShell(cmd.Cmd):
         data = {
             "stream": True,
             "messages": self.conversation_history,
+            "model": self.args.MODEL,
         }
-
-        if getattr(self.args, "model", False):
+        if not (hasattr(self.args, 'runtime') and self.args.runtime == "mlx"):
             data["model"] = self.args.model
-
         json_data = json.dumps(data).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
@@ -154,6 +152,10 @@ class RamaLamaShell(cmd.Cmd):
         i = 0.01
         total_time_slept = 0
         response = None
+
+        # Adjust timeout based on whether we're in initial connection phase
+        max_timeout = 30 if getattr(self.args, "initial_connection", False) else 16
+
         for c in itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']):
             try:
                 response = urllib.request.urlopen(request)
@@ -162,7 +164,7 @@ class RamaLamaShell(cmd.Cmd):
                 if sys.stdout.isatty():
                     print(f"\r{c}", end="", flush=True)
 
-                if total_time_slept > 16:
+                if total_time_slept > max_timeout:
                     break
 
                 total_time_slept += i
@@ -173,12 +175,20 @@ class RamaLamaShell(cmd.Cmd):
         if response:
             return res(response, self.args.color)
 
-        print(f"\rError: could not connect to: {self.url}", file=sys.stderr)
-        self.kills()
+        # Only show error and kill if not in initial connection phase
+        if not getattr(self.args, "initial_connection", False):
+            print(f"\rError: could not connect to: {self.url}", file=sys.stderr)
+            self.kills()
+        else:
+            logger.debug(f"Could not connect to: {self.url}")
 
         return None
 
     def kills(self):
+        # Don't kill the server if we're still in the initial connection phase
+        if getattr(self.args, "initial_connection", False):
+            return
+
         if getattr(self.args, "pid2kill", False):
             os.kill(self.args.pid2kill, signal.SIGINT)
             os.kill(self.args.pid2kill, signal.SIGTERM)

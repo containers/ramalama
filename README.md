@@ -57,7 +57,7 @@ RamaLama then pulls AI Models from model registries, starting a chatbot or REST 
 | :--------------------------------- | :-------------------------: |
 | CPU                                | &check;                     |
 | Apple Silicon GPU (Linux / Asahi)  | &check;                     |
-| Apple Silicon GPU (macOS)          | &check;                     |
+| Apple Silicon GPU (macOS)          | &check; llama.cpp or MLX    |
 | Apple Silicon GPU (podman-machine) | &check;                     |
 | Nvidia GPU (cuda)                  | &check; See note below      |
 | AMD GPU (rocm, vulkan)             | &check;                     |
@@ -86,6 +86,22 @@ See the [Intel hardware table](https://dgpu-docs.intel.com/devices/hardware-tabl
 
 ### Moore Threads GPUs
 On systems with Moore Threads GPUs, see [ramalama-musa](docs/ramalama-musa.7.md) documentation for the correct host system configuration.
+
+### MLX Runtime (macOS only)
+The MLX runtime provides optimized inference for Apple Silicon Macs. MLX requires:
+- macOS operating system
+- Apple Silicon hardware (M1, M2, M3, or later)
+- Usage with `--nocontainer` option (containers are not supported)
+- The `mlx-lm` Python package installed on the host system
+
+To install and run Phi-4 on MLX, use either `uv` or `pip`:
+```bash
+uv pip install mlx-lm
+# or pip:
+pip install mlx-lm
+
+ramalama --runtime=mlx serve hf://mlx-community/Unsloth-Phi-4-4bit
+```
 
 ## Install
 ### Install on Fedora
@@ -1125,6 +1141,7 @@ This project wouldn't be possible without the help of other projects like:
 - [llama.cpp](https://github.com/ggml-org/llama.cpp)
 - [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
 - [vllm](https://github.com/vllm-project/vllm)
+- [mlx-lm](https://github.com/ml-explore/mlx-examples)
 - [podman](https://github.com/containers/podman)
 - [huggingface](https://github.com/huggingface)
 
