@@ -48,14 +48,10 @@ add_entrypoint() {
         tag=$tag-$4
     fi
     tag=$tag-$3
-     containerfile=$(mktemp)
-    cat > "${containerfile}" <<EOF
-FROM $2
-ENTRYPOINT [ "/usr/bin/$3.sh" ]
-EOF
-echo "$1 build ${nocache} -t $tag -f ${containerfile} ."
-eval "$1 build ${nocache} -t $tag -f ${containerfile} ."
-rm "${containerfile}"
+    containerfile="container-images/common/Containerfile.entrypoint"
+    build_args=("--build-arg" "PARENT=$2" "--build-arg" "ENTRYPOINT=/usr/bin/${3}.sh")
+    echo "$1 build ${nocache} ${build_args[*]} -t $tag -f ${containerfile} ."
+    eval "$1 build ${nocache} ${build_args[*]} -t $tag -f ${containerfile} ."
 }
 
 add_rag() {
@@ -63,7 +59,8 @@ add_rag() {
     if [ -n "$3" ]; then
         tag=$tag-$3
     fi
-    containerfile=$(mktemp)
+    tag=$tag-rag
+    containerfile="container-images/common/Containerfile.rag"
     GPU=cpu
     case $2 in
 	cuda)
@@ -79,17 +76,9 @@ add_rag() {
 	    GPU=cpu
 	    ;;
     esac
-    cat > "${containerfile}" <<EOF
-ARG REGISTRY_PATH=quay.io/ramalama
-FROM ${REGISTRY_PATH}/$2
-
-USER root
-RUN /usr/bin/build_rag.sh ${GPU}
-ENTRYPOINT []
-EOF
-    echo "$1 build ${nocache} -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
-    eval "$1 build ${nocache} -t ${REGISTRY_PATH}/$tag-rag -f ${containerfile} ."
-    rm "${containerfile}"
+    build_args=("--build-arg" "PARENT=$2" "--build-arg" "GPU=$GPU")
+    echo "$1 build ${nocache} ${build_args[*]} -t $tag -f ${containerfile} ."
+    eval "$1 build ${nocache} ${build_args[*]} -t $tag -f ${containerfile} ."
 }
 
 add_entrypoints() {
@@ -121,7 +110,7 @@ build() {
 	  *)
 	      if [ "${build_all}" -eq 1 ]; then
 		  add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}" "${version}"
-		  add_rag "${conman[@]}" "${target}" "${version}"
+		  add_rag "${conman[@]}" "${REGISTRY_PATH}"/"${target}" "${version}"
 		  rm_container_image
 	      fi
       esac
@@ -215,7 +204,7 @@ process_all_targets() {
   for i in ./container-images/*; do
     i=$(basename "$i")
     # skip these directories
-    if [[ "$i" =~ ^(scripts|ramalama)$ ]]; then
+    if [[ "$i" =~ ^(scripts|ramalama|common)$ ]]; then
       continue
     fi
 
