@@ -175,35 +175,6 @@ class Model(ModelBase):
             self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
         return self._model_store
 
-    def is_symlink_to(self, file_path, target_path):
-        if os.path.islink(file_path):
-            symlink_target = os.readlink(file_path)
-            abs_symlink_target = os.path.abspath(os.path.join(os.path.dirname(file_path), symlink_target))
-            abs_target_path = os.path.abspath(target_path)
-            return abs_symlink_target == abs_target_path
-
-        return False
-
-    def garbage_collection(self, args):
-        for repo in MODEL_TYPES:
-            repo_dir = f"{args.store}/repos/{repo}"
-            model_dir = f"{args.store}/models/{repo}"
-            for root, dirs, files in os.walk(repo_dir):
-                file_has_a_symlink = False
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    if file.startswith("sha256:") or file.endswith(".gguf"):
-                        file_path = os.path.join(root, file)
-                        for model_root, model_dirs, model_files in os.walk(model_dir):
-                            for model_file in model_files:
-                                if self.is_symlink_to(os.path.join(root, model_root, model_file), file_path):
-                                    file_has_a_symlink = True
-
-                        if not file_has_a_symlink:
-                            os.remove(file_path)
-                            file_path = os.path.basename(file_path)
-                            perror(f"Deleted: {file_path}")
-
     def remove(self, args):
         _, tag, _ = self.extract_model_identifiers()
         if not self.model_store.remove_snapshot(tag) and not args.ignore:
@@ -527,7 +498,7 @@ class Model(ModelBase):
 
         return exec_args
 
-    def model_path(self, args):
+    def model_path(self, _):
         _, tag, _ = self.extract_model_identifiers()
         ref_file = self.model_store.get_ref_file(tag)
         if ref_file is not None:
