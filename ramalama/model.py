@@ -802,9 +802,6 @@ class Model(ModelBase):
         kube = Kube(model, chat_template, args, exec_args)
         kube.generate().write(output_dir)
 
-    def check_valid_model_path(self, relative_target_path, model_path):
-        return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
-
     def inspect(self, args):
         model_name = self.filename
         model_path = self.get_model_path(args)
