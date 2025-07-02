@@ -206,13 +206,8 @@ class Model(ModelBase):
 
     def remove(self, args):
         _, tag, _ = self.extract_model_identifiers()
-        if self.model_store.tag_exists(tag):
-            self.model_store.remove_snapshot(tag)
-            return
-
-        if not args.ignore:
+        if not self.model_store.remove_snapshot(tag) and not args.ignore:
             raise KeyError(f"Model '{self.model}' not found")
-        return
 
     def get_container_name(self, args):
         if getattr(args, "name", None):
@@ -534,8 +529,8 @@ class Model(ModelBase):
 
     def model_path(self, args):
         _, tag, _ = self.extract_model_identifiers()
-        if self.model_store.tag_exists(tag):
-            ref_file = self.model_store.get_ref_file(tag)
+        ref_file = self.model_store.get_ref_file(tag)
+        if ref_file is not None:
             return str(
                 pathlib.Path(self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
             )

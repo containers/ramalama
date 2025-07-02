@@ -43,7 +43,8 @@ class GlobalModelStore:
                     model_path_without_source = f"{os.sep}".join(parts[1:])
 
                     separator = ":///" if model_source == "file" else "://"  # Use ':///' for file URLs, '://' otherwise
-                    model_name = f"{model_source}{separator}{model_path_without_source}:{ref_file_name}"
+                    tag = ref_file_name.replace(".json", "")
+                    model_name = f"{model_source}{separator}{model_path_without_source}:{tag}"
 
                     collected_files = []
                     for snapshot_file in ref_file.filenames:

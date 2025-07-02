@@ -7,13 +7,13 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import ramalama.model_store.go2jinja as go2jinja
-from ramalama.common import perror, verify_checksum
+from ramalama.common import generate_sha256, perror, verify_checksum
 from ramalama.endian import EndianMismatchError, get_system_endianness
 from ramalama.logger import logger
 from ramalama.model_inspect.gguf_parser import GGUFInfoParser, GGUFModelInfo
 from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
 from ramalama.model_store.global_store import GlobalModelStore
-from ramalama.model_store.reffile import RefFile
+from ramalama.model_store.reffile import RefFile, RefJSONFile, StoreFile, StoreFileType
 from ramalama.model_store.snapshot_file import (
     LocalSnapshotFile,
     SnapshotFile,
@@ -24,6 +24,47 @@ from ramalama.model_store.snapshot_file import (
 
 def sanitize_filename(filename: str) -> str:
     return filename.replace(":", "-")
+
+
+def map_to_store_file_type(snapshot_type: SnapshotFileType) -> StoreFileType:
+    ftype = StoreFileType.OTHER
+    if snapshot_type == SnapshotFileType.Model:
+        ftype = StoreFileType.GGUF_MODEL
+    if snapshot_type == SnapshotFileType.ChatTemplate:
+        ftype = StoreFileType.CHAT_TEMPLATE
+    if snapshot_type == SnapshotFileType.Mmproj:
+        ftype = StoreFileType.MMPROJ
+
+    return ftype
+
+
+def map_ref_file(ref_file: RefFile, snapshot_directory: str) -> RefJSONFile:
+    ref = RefJSONFile(
+        hash=ref_file.hash,
+        path=f"{ref_file.path}.json",
+        files=[],
+    )
+
+    def determine_type(filename: str) -> StoreFileType:
+        if filename == ref_file.model_name:
+            return StoreFileType.GGUF_MODEL
+        if filename == ref_file.chat_template_name:
+            return StoreFileType.CHAT_TEMPLATE
+        if filename == ref_file.mmproj_name:
+            return StoreFileType.MMPROJ
+        return StoreFileType.OTHER
+
+    def determine_blob_hash(filename: str) -> str:
+        blob_path = Path(os.path.join(snapshot_directory, sanitize_filename(ref_file.hash), filename)).resolve()
+        if not os.path.exists(blob_path):
+            return generate_sha256(filename)
+        return blob_path.stem
+
+    for file in ref_file.filenames:
+        ftype = determine_type(file)
+        ref.files.append(StoreFile(determine_blob_hash(file), file, ftype))
+
+    return ref
 
 
 class ModelStore:
@@ -71,33 +112,44 @@ class ModelStore:
     def snapshots_directory(self) -> str:
         return os.path.join(self.model_base_directory, DIRECTORY_NAME_SNAPSHOTS)
 
-    def tag_exists(self, model_tag: str) -> bool:
-        return os.path.exists(self.get_ref_file_path(model_tag))
-
     def file_exists(self, file_path: str) -> bool:
         return os.path.exists(file_path)
 
     def get_ref_file_path(self, model_tag: str) -> str:
-        return os.path.join(self.refs_directory, model_tag)
+        return os.path.join(self.refs_directory, f"{model_tag}.json")
 
-    def get_ref_file(self, model_tag: str) -> Optional[RefFile]:
-        if not self.tag_exists(self.get_ref_file_path(model_tag)):
-            return None
+    def get_ref_file(self, model_tag: str) -> Optional[RefJSONFile]:
+        # Check if a ref file in old format is present by removing the file extension
+        old_ref_file_path = self.get_ref_file_path(model_tag).replace(".json", "")
+        if os.path.exists(old_ref_file_path):
+            ref = map_ref_file(RefFile.from_path(old_ref_file_path), self.snapshots_directory)
+            ref.write_to_file()
+            try:
+                os.remove(old_ref_file_path)
+            except Exception as ex:
+                logger.debug(f"Failed to remove old ref file '{old_ref_file_path}'\n: {ex}")
 
-        return RefFile.from_path(self.get_ref_file_path(model_tag))
+            return ref
 
-    def update_ref_file(
-        self, model_tag: str, snapshot_hash: str = "", snapshot_files: list[SnapshotFile] = []
-    ) -> Optional[RefFile]:
         ref_file_path = self.get_ref_file_path(model_tag)
         if not os.path.exists(ref_file_path):
             return None
 
-        ref_file: RefFile = RefFile.from_path(self.get_ref_file_path(model_tag))
+        return RefJSONFile.from_path(ref_file_path)
+
+    def update_ref_file(
+        self, model_tag: str, snapshot_hash: str = "", snapshot_files: list[SnapshotFile] = []
+    ) -> Optional[RefJSONFile]:
+        ref_file: RefJSONFile = self.get_ref_file(model_tag)
+        if ref_file is None:
+            return None
+
         if snapshot_hash != "":
             ref_file.hash = snapshot_hash
         if snapshot_files != []:
-            ref_file.filenames = [file.name for file in snapshot_files]
+            ref_file.files = []
+        for file in snapshot_files:
+            ref_file.files.append(StoreFile(file.hash, file.name, map_to_store_file_type(file.type)))
 
         ref_file.write_to_file()
 
@@ -145,35 +197,27 @@ class ModelStore:
     def get_cached_files(self, model_tag: str) -> Tuple[str, list[str], bool]:
         cached_files = []
 
-        ref_file_path = self.get_ref_file_path(model_tag)
-        if not self.file_exists(ref_file_path):
+        ref_file: RefJSONFile = self.get_ref_file(model_tag)
+        if ref_file is None:
             return ("", cached_files, False)
 
-        ref_file: RefFile = RefFile.from_path(ref_file_path)
-        for file in ref_file.filenames:
-            path = self.get_snapshot_file_path(ref_file.hash, file)
+        for file in ref_file.files:
+            path = self.get_blob_file_path(file.hash)
             if os.path.exists(path):
-                cached_files.append(file)
+                cached_files.append(file.name)
 
-        return (ref_file.hash, cached_files, len(cached_files) == len(ref_file.filenames))
+        return (ref_file.hash, cached_files, len(cached_files) == len(ref_file.files))
 
     def _prepare_new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
         validate_snapshot_files(snapshot_files)
         self.ensure_directory_setup()
 
-        ref_file_path = self.get_ref_file_path(model_tag)
-        if not self.file_exists(ref_file_path):
-            ref_file = RefFile()
-            ref_file._path = ref_file_path
-            ref_file.hash = snapshot_hash
-            ref_file.filenames = [file.name for file in snapshot_files]
+        ref_file = self.get_ref_file(model_tag)
+        if ref_file is None:
+            ref_file = RefJSONFile(snapshot_hash, self.get_ref_file_path(model_tag), [])
             for file in snapshot_files:
-                if file.type == SnapshotFileType.Model:
-                    ref_file.model_name = file.name
-                if file.type == SnapshotFileType.ChatTemplate:
-                    ref_file.chat_template_name = file.name
-                if file.type == SnapshotFileType.Mmproj:
-                    ref_file.mmproj_name = file.name
+                ref_file.files.append(StoreFile(file.hash, file.name, map_to_store_file_type(file.type)))
+
             ref_file.write_to_file()
 
         snapshot_directory = self.get_snapshot_directory(snapshot_hash)
@@ -192,7 +236,7 @@ class ModelStore:
                     raise ex
                 # remove file from ref file list to prevent a retry to download it
                 if ex.code == HTTPStatus.NOT_FOUND:
-                    ref_file.remove_file(file.name)
+                    ref_file.remove_file(file.hash)
                 continue
 
             if file.should_verify_checksum:
@@ -277,17 +321,17 @@ class ModelStore:
         if ref_file is None:
             return
 
-        model_hash = self.get_blob_file_hash(ref_file.hash, ref_file.model_name)
-        model_path = self.get_blob_file_path(model_hash)
+        for model_file in ref_file.model_files:
+            model_path = self.get_blob_file_path(model_file.hash)
 
-        # only check endianness for gguf models
-        if not GGUFInfoParser.is_model_gguf(model_path):
-            return
+            # only check endianness for gguf models
+            if not GGUFInfoParser.is_model_gguf(model_path):
+                return
 
-        model_endianness = GGUFInfoParser.get_model_endianness(model_path)
-        host_endianness = get_system_endianness()
-        if host_endianness != model_endianness:
-            raise EndianMismatchError(host_endianness, model_endianness)
+            model_endianness = GGUFInfoParser.get_model_endianness(model_path)
+            host_endianness = get_system_endianness()
+            if host_endianness != model_endianness:
+                raise EndianMismatchError(host_endianness, model_endianness)
 
     def verify_snapshot(self, model_tag: str):
         self._verify_endianness(model_tag)
@@ -329,16 +373,10 @@ class ModelStore:
         if ref_file is None:
             return False
 
-        ref_file.filenames = ref_file.filenames + [file.name for file in new_snapshot_files]
-        # update model and chat template name
-        for file in new_snapshot_files:
-            if file.type == SnapshotFileType.Model:
-                ref_file.model_name = file.name
-            if file.type == SnapshotFileType.ChatTemplate:
-                ref_file.chat_template_name = file.name
-            if file.type == SnapshotFileType.Mmproj:
-                ref_file.mmproj_name = file.name
-
+        # update ref file
+        ref_file.files = ref_file.files + [
+            StoreFile(file.hash, file.name, map_to_store_file_type(file.type)) for file in new_snapshot_files
+        ]
         ref_file.write_to_file()
 
         self._download_snapshot_files(model_tag, snapshot_hash, new_snapshot_files)
@@ -354,28 +392,34 @@ class ModelStore:
             logger.error(f"Failed to remove blob file '{blob_path}': {ex}")
 
     def _get_refcounts(self, snapshot_hash: str) -> tuple[int, Counter[str]]:
-        ref_paths = Path(self.refs_directory).iterdir()
-        refs = [RefFile.from_path(str(p)) for p in ref_paths]
+        # get all ref file names and remove the last suffix, i.e. .json, if it exists
+        # so that only the model tag remains
+        model_tags = [
+            Path(entry).stem
+            for entry in os.listdir(self.refs_directory)
+            if os.path.isfile(os.path.join(self.refs_directory, entry))
+        ]
+        refs = [self.get_ref_file(tag) for tag in model_tags]
 
-        blob_refcounts = Counter(filename for ref in refs for filename in ref.filenames)
+        blob_refcounts = Counter(file.name for ref in refs for file in ref.files)
 
         snap_refcount = sum(ref.hash == snapshot_hash for ref in refs)
 
         return snap_refcount, blob_refcounts
 
-    def remove_snapshot(self, model_tag: str):
+    def remove_snapshot(self, model_tag: str) -> bool:
         ref_file = self.get_ref_file(model_tag)
 
         if ref_file is None:
-            return
+            return False
 
         snapshot_refcount, blob_refcounts = self._get_refcounts(ref_file.hash)
 
         # Remove all blobs first
-        for file in ref_file.filenames:
-            blob_refcount = blob_refcounts.get(file, 0)
+        for file in ref_file.files:
+            blob_refcount = blob_refcounts.get(file.name, 0)
             if blob_refcount <= 1:
-                self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file))
+                self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file.name))
             else:
                 logger.debug(f"Not removing blob {file} refcount={blob_refcount}")
 
@@ -395,3 +439,5 @@ class ModelStore:
             os.remove(ref_file_path)
         except FileNotFoundError:
             pass
+
+        return True

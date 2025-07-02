@@ -161,11 +161,11 @@ def generate_sha256(to_hash: str) -> str:
     to_hash (str): The string to generate the sha256 hash for.
 
     Returns:
-    str: Hex digest of the input appended to the prefix sha256:
+    str: Hex digest of the input appended to the prefix sha256-
     """
     h = hashlib.new("sha256")
     h.update(to_hash.encode("utf-8"))
-    return f"sha256:{h.hexdigest()}"
+    return f"sha256-{h.hexdigest()}"
 
 
 def verify_checksum(filename: str) -> bool:
