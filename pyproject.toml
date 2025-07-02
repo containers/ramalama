@@ -89,7 +89,7 @@ max-line-length = 120
 [tool.pytest.ini_options]
 testpaths = ["."]
 log_cli = true
-log_cli_level = "DEBUG"
+log_cli_level = "WARN"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 
