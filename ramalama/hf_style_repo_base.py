@@ -217,11 +217,11 @@ class HFStyleRepoModel(Model, ABC):
 
     def pull(self, args):
         name, tag, organization = self.extract_model_identifiers()
-        hash, cached_files, all = self.model_store.get_cached_files(tag)
+        _, cached_files, all = self.model_store.get_cached_files(tag)
         if all:
             if not args.quiet:
                 perror(f"Using cached {self.get_repo_type()}://{name}:{tag} ...")
-            return self.model_store.get_snapshot_file_path(hash, name)
+            return
 
         try:
             if not args.quiet:
@@ -245,8 +245,6 @@ class HFStyleRepoModel(Model, ABC):
 
                 snapshot_hash, files = self._collect_cli_files(tempdir)
                 self.model_store.new_snapshot(tag, snapshot_hash, files)
-
-        return self.model_store.get_snapshot_file_path(snapshot_hash, self.model_store.get_ref_file(tag).model_name)
 
     def exec(self, cmd_args, args):
         try:

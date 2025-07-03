@@ -1,4 +1,5 @@
 import os
+from typing import Optional, Tuple
 
 from ramalama.common import MNT_DIR, RAG_DIR, genname, get_accel_env_vars
 from ramalama.file import PlainFile
@@ -6,19 +7,30 @@ from ramalama.version import version
 
 
 class Kube:
-    def __init__(self, model, chat_template, args, exec_args):
-        self.ai_image = getattr(args, "MODEL", model)
-        self.ai_image = self.ai_image.removeprefix("oci://")
+    def __init__(
+        self,
+        model_name: str,
+        model_paths: Tuple[str, str],
+        chat_template_paths: Optional[Tuple[str, str]],
+        args,
+        exec_args,
+    ):
+        self.src_model_path, self.dest_model_path = model_paths
+        self.src_chat_template_path, self.dest_chat_template_path = (
+            chat_template_paths if chat_template_paths is not None else ("", "")
+        )
+
+        self.src_model_path = self.src_model_path.removeprefix("oci://")
+
+        self.ai_image = model_name
         if getattr(args, "name", None):
             self.name = args.name
         else:
             self.name = genname()
 
-        self.model = model.removeprefix("oci://")
         self.args = args
         self.exec_args = exec_args
         self.image = args.image
-        self.chat_template = chat_template
 
     def _gen_volumes(self):
         mounts = f"""\
@@ -30,7 +42,7 @@ class Kube:
         volumes = """
       volumes:"""
 
-        if os.path.exists(self.model):
+        if os.path.exists(self.src_model_path):
             volumes += self._gen_path_volume()
         else:
             volumes += self._gen_oci_volume()
@@ -40,7 +52,7 @@ class Kube:
             mounts += m
             volumes += v
 
-        if os.path.exists(self.chat_template):
+        if os.path.exists(self.src_chat_template_path):
             volumes += self._gen_chat_template_volume()
 
         m, v = self._gen_devices()
@@ -65,7 +77,7 @@ class Kube:
     def _gen_path_volume(self):
         return f"""
       - hostPath:
-          path: {self.model}
+          path: {self.src_model_path}
         name: model"""
 
     def _gen_oci_volume(self):
@@ -91,7 +103,7 @@ class Kube:
     def _gen_chat_template_volume(self):
         return f"""
       - hostPath:
-          path: {self.chat_template}
+          path: {self.src_chat_template_path}
         name: chat_template"""
 
     def __gen_ports(self):

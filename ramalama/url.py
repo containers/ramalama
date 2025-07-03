@@ -74,11 +74,11 @@ class URL(Model):
 
         return model_name, model_tag, model_organization
 
-    def pull(self, args):
+    def pull(self, _):
         name, tag, _ = self.extract_model_identifiers()
-        model_file_hash, _, all_files = self.model_store.get_cached_files(tag)
+        _, _, all_files = self.model_store.get_cached_files(tag)
         if all_files:
-            return self.model_store.get_snapshot_file_path(model_file_hash, name)
+            return
 
         files: list[SnapshotFile] = []
         snapshot_hash = generate_sha256(name)
@@ -106,5 +106,3 @@ class URL(Model):
             )
 
         self.model_store.new_snapshot(tag, snapshot_hash, files)
-
-        return self.model_store.get_snapshot_file_path(snapshot_hash, name)

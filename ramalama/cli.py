@@ -1,6 +1,5 @@
 import argparse
 import errno
-import glob
 import json
 import os
 import shlex
