@@ -904,10 +904,16 @@ def chat_parser(subparsers):
         choices=['never', 'always', 'auto'],
         help='possible values are "never", "always" and "auto".',
     )
+    parser.add_argument(
+        "--list",
+        "--ls",
+        action="store_true",
+        help="list the available models at an endpoint",
+    )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
     parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
     parser.add_argument("--url", type=str, default="http://127.0.0.1:8080/v1", help="the url to send requests to")
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
+    parser.add_argument("--model", "-m", type=str, completer=local_models, help="model for inferencing")
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
     )
@@ -1173,17 +1179,17 @@ def main():
         perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)
 
+    if not args.subcommand:
+        parser.print_usage()
+        perror("ramalama: requires a subcommand")
+        return 0
+
     try:
         args.func(args)
     except urllib.error.HTTPError as e:
         eprint(f"pulling {e.geturl()} failed: {e}", errno.EINVAL)
     except HelpException:
         parser.print_help()
-    except AttributeError as e:
-        parser.print_usage()
-        perror("ramalama: requires a subcommand")
-        if getattr(args, "debug", False):
-            raise e
     except IndexError as e:
         eprint(e, errno.EINVAL)
     except KeyError as e:

@@ -123,6 +123,9 @@ verify_begin=".*run --rm"
     run_ramalama ps
     is "$output" ".*${container1}" "list correct for container1"
 
+    run_ramalama chat --ls
+    is "$output" "ollama://smollm:135m" "list of models available correct"
+
     run_ramalama containers --noheading
     is "$output" ".*${container1}" "list correct for container1"
     run_ramalama stop ${container1}

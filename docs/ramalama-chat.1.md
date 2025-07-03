@@ -26,6 +26,12 @@ Possible values are "never", "always" and "auto". (default: auto)
 #### **--help**, **-h**
 Show this help message and exit
 
+#### **--list**
+List the available models at an endpoint
+
+#### **--model**=MODEL
+Model for inferencing (may not be required for endpoints that only serve one model)
+
 #### **--prefix**
 Prefix for the user prompt (default: 🦭 > )
 
