@@ -1,6 +1,6 @@
 import os
 import tempfile
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -147,6 +147,18 @@ class TestImageFileManager:
         assert len(result) == 1
         assert result[0] == "data:image/jpeg;base64,test"
 
+    def test_image_file_manager_load_empty_file_list(self):
+        """Test loading with empty file list."""
+        manager = ImageFileManager()
+        result = manager.load([])
+
+        assert result == []
+
+    def test_image_file_manager_get_loaders(self):
+        """Test that get_loaders returns correct loaders."""
+        loaders = ImageFileManager.get_loaders()
+        assert BasicImageFileLoader in loaders
+
     def test_image_file_manager_load_multiple_images(self):
         """Test loading multiple image files."""
         with patch.object(
@@ -159,17 +171,13 @@ class TestImageFileManager:
         assert result[0] == "data:image/jpeg;base64,test1"
         assert result[1] == "data:image/png;base64,test2"
 
-    def test_image_file_manager_load_empty_file_list(self):
-        """Test loading with empty file list."""
-        manager = ImageFileManager()
-        result = manager.load([])
-
-        assert result == []
-
-    def test_image_file_manager_get_loaders(self):
-        """Test that get_loaders returns correct loaders."""
-        loaders = ImageFileManager.get_loaders()
-        assert BasicImageFileLoader in loaders
+    def test_image_file_manager_load_unsupported_extension(self):
+        """Test that unsupported file extensions are handled properly."""
+        # Patch the loader so it would raise an error if called with an unsupported extension
+        with patch.object(BasicImageFileLoader, 'load'):
+            manager = ImageFileManager()
+            with pytest.raises(ValueError, match="Unsupported file type: .txt"):
+                manager.load(["test.txt", "test.jpg"])
 
 
 class TestOpanAIChatAPIMessageBuilder:

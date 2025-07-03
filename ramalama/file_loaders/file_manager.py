@@ -1,7 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from string import Template
-from typing import Dict, List, Type
+from typing import Type
 from warnings import warn
 
 from ramalama.file_loaders.file_types import base, image, txt
@@ -17,7 +17,10 @@ class BaseFileManager(ABC):
         self.loaders = {ext.lower(): loader() for loader in self.get_loaders() for ext in loader.file_extensions()}
 
     def _get_loader(self, file: str) -> base.BaseFileLoader:
-        return self.loaders[os.path.splitext(file)[1].lower()]
+        loader = self.loaders.get(os.path.splitext(file)[1].lower(), None)
+        if loader is None:
+            raise ValueError(f"Unsupported file type: {os.path.splitext(file)[1]}")
+        return loader
 
     @abstractmethod
     def load(self):
@@ -25,7 +28,7 @@ class BaseFileManager(ABC):
 
     @classmethod
     @abstractmethod
-    def get_loaders(cls) -> List[Type[base.BaseFileLoader]]:
+    def get_loaders(cls) -> list[Type[base.BaseFileLoader]]:
         pass
 
 
@@ -35,7 +38,7 @@ class TextFileManager(BaseFileManager):
         super().__init__()
 
     @classmethod
-    def get_loaders(cls) -> List[Type[base.BaseFileLoader]]:
+    def get_loaders(cls) -> list[Type[base.BaseFileLoader]]:
         return [txt.TXTFileLoader]
 
     def load(self, files: list[str]) -> str:
@@ -53,7 +56,7 @@ class TextFileManager(BaseFileManager):
 
 class ImageFileManager(BaseFileManager):
     @classmethod
-    def get_loaders(cls) -> List[Type[base.BaseFileLoader]]:
+    def get_loaders(cls) -> list[Type[base.BaseFileLoader]]:
         return [image.BasicImageFileLoader]
 
     def load(self, files: list[str]) -> list[str]:
