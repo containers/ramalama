@@ -8,7 +8,8 @@ PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 IMAGE ?= ramalama
-PYTHON_FILES := $(shell find . -path "./.venv" -prune -o -name "*.py" -print) $(shell find . -name ".venv" -prune -o -type f -perm +111 -exec grep -l "^\#!/usr/bin/env python3" {} \; 2>/dev/null || true)
+PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" --exclude-dir={.venv,venv} $(PROJECT_DIR) || true)
 PYTEST_COMMON_CMD ?= PYTHONPATH=. pytest test/unit/ -vv
 BATS_IMAGE ?= localhost/bats:latest
 
@@ -114,22 +115,22 @@ ifneq (,$(wildcard /usr/bin/python3))
 endif
 
 	! grep -ri --exclude-dir ".venv" --exclude-dir "*/.venv" "#\!/usr/bin/python3" .
-	flake8 $(PYTHON_FILES)
+	flake8 $(PROJECT_DIR) $(PYTHON_SCRIPTS)
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:
-	black --check --diff $(PYTHON_FILES)
-	isort --check --diff $(PYTHON_FILES)
+	black --check --diff $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	isort --check --diff $(PROJECT_DIR) $(PYTHON_SCRIPTS)
 
 .PHONY: format
 format:
-	black $(PYTHON_FILES)
-	isort $(PYTHON_FILES)
+	black $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	isort $(PROJECT_DIR) $(PYTHON_SCRIPTS)
 
 .PHONY: codespell
 codespell:
-	codespell --dictionary=-  --ignore-words-list "cann" -w --skip="*/venv*"
+	codespell -w $(PROJECT_DIR) $(PYTHON_SCRIPTS)
 
 .PHONY: test-run
 test-run:

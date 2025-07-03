@@ -64,27 +64,18 @@ line-length = 120
 skip-string-normalization = true
 preview = true
 target-version = ["py310", "py311", "py312", "py313"]
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.tox
-  | \.venv
-  | \.history
-  | build
-  | dist
-  | docs
-  | hack
-  | venv
-)/
-'''
+extend-exclude = "(.history|build|dist|docs|hack)"
 
 [tool.isort]
 profile = "black"
 line_length = 120
+skip = [".venv", "venv"]
 
-[tool.flake8]
-max-line-length = 120
+[tool.codespell]
+skip = ["build","ramalama.egg-info", "logos", ".git", "venv", ".venv"]
+dictionary = ".codespelldict"
+ignore-words-list = ["cann", "clos", "creat", "ro", "hastable", "shouldnot", "mountns", "passt" ,"assertin"]
+check-hidden = true
 
 [tool.pytest.ini_options]
 testpaths = ["."]

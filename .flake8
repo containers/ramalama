@@ -2,3 +2,4 @@
 max-line-length = 120
 # E203,E221,E231 conflict with black formatting
 extend-ignore = E203,E221,E231,E702,F824
+extend-exclude = .venv,venv
