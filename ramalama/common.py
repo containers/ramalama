@@ -42,6 +42,14 @@ HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already 
 
 MIN_VRAM_BYTES = 1073741824  # 1GiB
 
+SPLIT_MODEL_PATH_RE = r'(.*)/([^/]*)-00001-of-(\d{5})\.gguf'
+
+
+def is_split_file_model(model_path):
+    """returns true if ends with -%05d-of-%05d.gguf"""
+    return bool(re.match(SPLIT_MODEL_PATH_RE, model_path))
+
+
 podman_machine_accel = False
 
 

@@ -52,7 +52,7 @@ class Stack:
           name: model"""
         else:
             volume_mounts = f"""
-        - mountPath: {self.model._get_model_path(True, True)}
+        - mountPath: {self.model._get_entry_model_path(True, True, False)}
           name: model"""
 
         if self.args.dri == "on":
@@ -65,7 +65,7 @@ class Stack:
     def _gen_volumes(self):
         volumes = f"""
       - hostPath:
-          path: {self.model._get_model_path(False, False)}
+          path: {self.model._get_entry_model_path(False, False, False)}
         name: model"""
         if self.args.dri == "on":
             volumes += """
@@ -117,7 +117,7 @@ class Stack:
                 '--port',
                 str(self.model_port),
                 '--model',
-                self.model._get_model_path(True, True),
+                self.model._get_entry_model_path(True, True, False),
                 '--alias',
                 self.model.model_name,
                 '--ctx-size',
