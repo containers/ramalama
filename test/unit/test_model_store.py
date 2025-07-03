@@ -13,7 +13,7 @@ other_file = SnapshotFile(name="other", hash="", header={}, type=SnapshotFileTyp
         ([], False),
         ([chat_template, model_file, other_file], False),
         ([chat_template, model_file, chat_template, other_file], True),
-        ([chat_template, model_file, other_file, model_file], True),
+        ([chat_template, model_file, other_file, model_file], False),
         ([chat_template, model_file, chat_template, model_file, other_file], True),
     ],
 )
