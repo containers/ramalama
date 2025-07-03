@@ -598,11 +598,7 @@ def pull_parser(subparsers):
 
 def pull_cli(args):
     model = New(args.MODEL, args)
-    matching_files = glob.glob(f"{args.store}/models/*/{model}")
-    if matching_files:
-        return matching_files[0]
-
-    return model.pull(args)
+    model.pull(args)
 
 
 def convert_parser(subparsers):
