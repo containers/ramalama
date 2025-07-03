@@ -77,6 +77,9 @@ spec:
     name: build-platforms
     type: array
   - default: ""
+    description: The parent image of the image being built.
+    name: parent-image
+  - default: ""
     description: The image to use for running tests.
     name: test-image
   - default: []
@@ -174,6 +177,17 @@ spec:
       workspace: git-auth
     - name: netrc
       workspace: netrc
+  - name: wait-for-parent-image
+    params:
+    - name: ref
+      value: $(params.parent-image)
+    taskRef:
+      name: wait-for-image
+    when:
+    - input: $(params.parent-image)
+      operator: notin
+      values:
+      - ""
   - matrix:
       params:
       - name: PLATFORM
@@ -209,6 +223,7 @@ spec:
     - name: IMAGE_APPEND_PLATFORM
       value: "true"
     runAfter:
+    - wait-for-parent-image
     - prefetch-dependencies
     taskRef:
       params:

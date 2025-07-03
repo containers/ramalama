@@ -20,12 +20,13 @@ spec:
       value: $(results.digest.path)
     script: |
       #!/bin/bash -e
+      echo "Fetching digest of $REF"
       while true; do
         DIGEST="$(skopeo inspect -n -f {{.Digest}} "docker://$REF" || :)"
         if [ "${#DIGEST}" -gt 0 ]; then
           echo -n "$DIGEST" | tee "$RESULTS_DIGEST_PATH"
           exit
         fi
-        echo "$(date -uIseconds): $REF is not available, waiting..."
+        echo "$(date -uIseconds): digest unavailable, waiting..."
         sleep 60
       done
