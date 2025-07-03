@@ -1,7 +1,8 @@
 import os
+import re
 import shutil
 
-from ramalama.common import generate_sha256
+from ramalama.common import SPLIT_MODEL_PATH_RE, generate_sha256, is_split_file_model
 from ramalama.huggingface import HuggingfaceRepository
 from ramalama.model import Model
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
@@ -92,10 +93,36 @@ class URL(Model):
                     required=True,
                 )
             )
-        else:
+            self.model_store.new_snapshot(tag, snapshot_hash, files)
+            return
+
+        if not is_split_file_model(self.model):
             files.append(
                 SnapshotFile(
                     url=f"{self.type}://{self.model}",
+                    header={},
+                    hash=snapshot_hash,
+                    type=SnapshotFileType.Model,
+                    name=name,
+                    should_show_progress=True,
+                    required=True,
+                )
+            )
+            self.model_store.new_snapshot(tag, snapshot_hash, files)
+            return
+
+        # model is split, lets fetch all files based on the name pattern
+        match = re.match(SPLIT_MODEL_PATH_RE, self.model)
+        path_part = match[1]
+        filename_base = match[2]
+        total_parts = int(match[3])
+
+        for i in range(total_parts - 1):
+            i_off = i + 2
+            url = f"{self.type}://{path_part}/{filename_base}-{i_off:05d}-of-{total_parts:05d}.gguf"
+            files.append(
+                SnapshotFile(
+                    url=url,
                     header={},
                     hash=snapshot_hash,
                     type=SnapshotFileType.Model,

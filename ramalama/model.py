@@ -16,6 +16,7 @@ from ramalama.common import (
     check_nvidia,
     exec_cmd,
     genname,
+    is_split_file_model,
     perror,
     set_accel_env_vars,
 )
@@ -36,7 +37,6 @@ from ramalama.rag import rag_image
 from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama"]
-SPLIT_MODEL_RE = r'(.*)/([^/]*)-00001-of-(\d{5})\.gguf'
 
 
 file_not_found = """\
@@ -176,26 +176,40 @@ class Model(ModelBase):
             self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
         return self._model_store
 
-    def _get_model_path(self, use_container: bool, should_generate: bool) -> str:
+    def _get_entry_model_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> str:
         """
         Returns the path to the model blob on the host if use_container and should_generate are both False.
         Or returns the path to the mounted file inside a container.
         """
+        if dry_run:
+            return "/path/to/model"
+
         ref_file = self.model_store.get_ref_file(self.model_tag)
         if ref_file is None or not ref_file.model_files:
             raise NoRefFileFound(self.model)
 
         # Use the first model file
-        model_file = ref_file.model_files[0]
+        if is_split_file_model(self.model_name):
+            # Find model file with index 1 for split models
+            index_models = [file for file in ref_file.model_files if "-00001-of-" in file.name]
+            if len(index_models) != 1:
+                raise Exception(f"Found multiple index 1 gguf models: {index_models}")
+            model_file = index_models[0]
+        else:
+            model_file = ref_file.model_files[0]
+
         if use_container or should_generate:
             return os.path.join(MNT_DIR, model_file.name)
         return self.model_store.get_blob_file_path(model_file.hash)
 
-    def _get_mmproj_path(self, use_container: bool, should_generate: bool) -> Optional[str]:
+    def _get_mmproj_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[str]:
         """
         Returns the path to the mmproj blob on the host if use_container and should_generate are both False.
         Or returns the path to the mounted file inside a container.
         """
+        if dry_run:
+            return ""
+
         ref_file = self.model_store.get_ref_file(self.model_tag)
         if ref_file is None:
             raise NoRefFileFound(self.model)
@@ -209,11 +223,14 @@ class Model(ModelBase):
             return os.path.join(MNT_DIR, mmproj_file.name)
         return self.model_store.get_blob_file_path(mmproj_file.hash)
 
-    def _get_chat_template_path(self, use_container: bool, should_generate: bool) -> Optional[str]:
+    def _get_chat_template_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[str]:
         """
         Returns the path to the chat template blob on the host if use_container and should_generate are both False.
         Or returns the path to the mounted file inside a container.
         """
+        if dry_run:
+            return ""
+
         ref_file = self.model_store.get_ref_file(self.model_tag)
         if ref_file is None:
             raise NoRefFileFound(self.model)
@@ -325,6 +342,9 @@ class Model(ModelBase):
         return True
 
     def setup_mounts(self, args):
+        if args.dryrun:
+            return
+
         ref_file = self.model_store.get_ref_file(self.model_tag)
         if ref_file is None:
             raise NoRefFileFound(self.model)
@@ -509,7 +529,7 @@ class Model(ModelBase):
         if gpu_args is not None:
             exec_args.extend(gpu_args)
 
-        exec_args += ["-m", self._get_model_path(args.container, args.generate)]
+        exec_args += ["-m", self._get_entry_model_path(args.container, False, args.dryrun)]
 
         return exec_args
 
@@ -537,7 +557,7 @@ class Model(ModelBase):
         if gpu_args is not None:
             exec_args.extend(gpu_args)
 
-        exec_args += ["-m", self._get_model_path(args.container, args.generate)]
+        exec_args += ["-m", self._get_entry_model_path(args.container, False, args.dryrun)]
 
         return exec_args
 
@@ -568,7 +588,7 @@ class Model(ModelBase):
     def vllm_serve(self, args):
         exec_args = [
             "--model",
-            self._get_model_path(args.container, args.generate),
+            self._get_entry_model_path(args.container, args.generate, args.dryrun),
             "--port",
             args.port,
             "--max-sequence-length",
@@ -588,17 +608,17 @@ class Model(ModelBase):
             "--port",
             args.port,
             "--model",
-            self._get_model_path(args.container, args.generate),
+            self._get_entry_model_path(args.container, args.generate, args.dryrun),
             "--no-warmup",
         ]
-        mmproj_path = self._get_mmproj_path(args.container, args.generate)
+        mmproj_path = self._get_mmproj_path(args.container, args.generate, args.dryrun)
         if mmproj_path is not None:
             exec_args += ["--mmproj", mmproj_path]
         else:
             exec_args += ["--jinja"]
 
             # TODO: see https://github.com/containers/ramalama/issues/1202
-            # chat_template_path = self._get_chat_template_path(args.container, args.generate)
+            # chat_template_path = self._get_chat_template_path(args.container, args.generate, args.dryrun)
             # if chat_template_path is not None:
             #     exec_args += ["--chat-template-file", chat_template_path]
 
@@ -689,10 +709,10 @@ class Model(ModelBase):
     def generate_container_config(self, args, exec_args):
 
         # Get the blob paths (src) and mounted paths (dest)
-        model_src_path = self._get_model_path(False, False)
-        chat_template_src_path = self._get_chat_template_path(False, False)
-        model_dest_path = self._get_model_path(True, True)
-        chat_template_dest_path = self._get_chat_template_path(True, True)
+        model_src_path = self._get_entry_model_path(False, False, args.dryrun)
+        chat_template_src_path = self._get_chat_template_path(False, False, args.dryrun)
+        model_dest_path = self._get_entry_model_path(True, True, args.dryrun)
+        chat_template_dest_path = self._get_chat_template_path(True, True, args.dryrun)
 
         if args.generate.gen_type == "quadlet":
             self.quadlet(
@@ -742,6 +762,7 @@ class Model(ModelBase):
 
         exec_args = self.build_exec_args_serve(args)
         exec_args = self.handle_runtime(args, exec_args)
+
         if args.generate:
             self.generate_container_config(args, exec_args)
             return
@@ -777,7 +798,7 @@ class Model(ModelBase):
 
         model_name = self.filename
         model_registry = self.type.lower()
-        model_path = self._get_model_path(False, False)
+        model_path = self._get_entry_model_path(False, False, args.dryrun)
 
         if GGUFInfoParser.is_model_gguf(model_path):
             gguf_info: GGUFModelInfo = GGUFInfoParser.parse(model_name, model_registry, model_path)
