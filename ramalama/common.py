@@ -64,14 +64,17 @@ def confirm_no_gpu(name, provider) -> bool:
         print("Invalid input. Please enter 'yes' or 'no'.")
 
 
-def handle_provider(machine) -> bool | None:
+def handle_provider(machine, config: Config | None = None) -> bool | None:
     global podman_machine_accel
     name = machine.get("Name")
     provider = machine.get("VMType")
     running = machine.get("Running")
     if running:
         if provider == "applehv":
-            return confirm_no_gpu(name, provider)
+            if config is not None and config.user.no_missing_gpu_prompt:
+                return True
+            else:
+                return confirm_no_gpu(name, provider)
         if "krun" in provider:
             podman_machine_accel = True
             return True
@@ -79,13 +82,13 @@ def handle_provider(machine) -> bool | None:
     return None
 
 
-def apple_vm(engine: SUPPORTED_ENGINES) -> bool:
+def apple_vm(engine: SUPPORTED_ENGINES, config: Config | None = None) -> bool:
     podman_machine_list = [engine, "machine", "list", "--format", "json", "--all-providers"]
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
         machines = json.loads(machines_json)
         for machine in machines:
-            result = handle_provider(machine)
+            result = handle_provider(machine, config)
             if result is not None:
                 return result
     except subprocess.CalledProcessError:
@@ -308,7 +311,7 @@ def download_file(url: str, dest_path: str, headers: dict[str, str] | None = Non
 
 def engine_version(engine: SUPPORTED_ENGINES) -> str:
     # Create manifest list for target with imageid
-    cmd_args = [engine, "version", "--format", "{{ .Client.Version }}"]
+    cmd_args = [str(engine), "version", "--format", "{{ .Client.Version }}"]
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
 
 
@@ -524,7 +527,9 @@ AccelEnvVar = Literal[
 
 
 def get_accel_env_vars() -> dict[GPUEnvVar | AccelEnvVar, str]:
-    return get_gpu_type_env_vars() | {k: os.environ[k] for k in get_args(AccelEnvVar) if k in os.environ}
+    gpu_env_vars: dict[GPUEnvVar, str] = get_gpu_type_env_vars()
+    accel_env_vars: dict[AccelEnvVar, str] = {k: os.environ[k] for k in get_args(AccelEnvVar) if k in os.environ}
+    return gpu_env_vars | accel_env_vars
 
 
 def rm_until_substring(input: str, substring: str) -> str:

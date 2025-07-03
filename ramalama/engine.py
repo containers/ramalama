@@ -48,7 +48,7 @@ class Engine:
             try:
                 if not self.args.quiet:
                     print(f"Checking for newer image {self.args.image}")
-                run_cmd([self.args.engine, "pull", "-q", self.args.image], ignore_all=True)
+                run_cmd([str(self.args.engine), "pull", "-q", self.args.image], ignore_all=True)
             except Exception:  # Ignore errors, the run command will handle it.
                 pass
         else:
@@ -179,7 +179,7 @@ def dry_run(args):
 
 
 def images(args):
-    conman = args.engine
+    conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
@@ -204,7 +204,7 @@ def images(args):
 
 
 def containers(args):
-    conman = args.engine
+    conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
@@ -229,8 +229,8 @@ def containers(args):
 
 
 def info(args):
-    conman = args.engine
-    if conman == "":
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "info", "--format", "json"]
@@ -246,8 +246,8 @@ def info(args):
 def inspect(args, name, format=None, ignore_stderr=False):
     if not name:
         raise ValueError("must specify a container name")
-    conman = args.engine
-    if conman == "":
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "inspect"]
@@ -261,8 +261,8 @@ def inspect(args, name, format=None, ignore_stderr=False):
 def stop_container(args, name):
     if not name:
         raise ValueError("must specify a container name")
-    conman = args.engine
-    if conman == "":
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
     ignore_stderr = False
@@ -303,12 +303,12 @@ def container_connection(args, name, port):
     if not port:
         raise ValueError("must specify a port to check")
 
-    conman = args.engine
-    if conman == "":
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "port", name, port]
-    output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
     return "" if output == "" else output.split(">")[-1].strip()
 
 
