@@ -514,7 +514,7 @@ class TestConfigIntegration:
             assert cfg.image == "test/image:latest"
 
     def test_config_empty_layers(self):
-        """Test behavior with empty configuration layers."""
+        """Test behaviour with empty configuration layers."""
         with patch("ramalama.config.load_file_config", return_value={}):
             cfg = default_config({})
 
