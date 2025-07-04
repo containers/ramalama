@@ -373,10 +373,15 @@ class ModelStore:
         if ref_file is None:
             return False
 
-        # update ref file
-        ref_file.files = ref_file.files + [
-            StoreFile(file.hash, file.name, map_to_store_file_type(file.type)) for file in new_snapshot_files
-        ]
+        # update ref file with deduplication by file hash
+        existing_file_hashes = {f.hash for f in ref_file.files}
+        for new_snapshot_file in new_snapshot_files:
+            if new_snapshot_file.hash not in existing_file_hashes:
+                ref_file.files.append(
+                    StoreFile(
+                        new_snapshot_file.hash, new_snapshot_file.name, map_to_store_file_type(new_snapshot_file.type)
+                    )
+                )
         ref_file.write_to_file()
 
         self._download_snapshot_files(model_tag, snapshot_hash, new_snapshot_files)
