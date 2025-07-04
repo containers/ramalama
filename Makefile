@@ -1,4 +1,3 @@
-MAKEFLAGS += -j2
 OS := $(shell uname;)
 SELINUXOPT ?= $(shell test -x /usr/sbin/selinuxenabled && selinuxenabled && echo -Z)
 PREFIX ?= /usr/local
@@ -9,9 +8,9 @@ DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 IMAGE ?= ramalama
 PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" --exclude-dir={.venv,venv} $(PROJECT_DIR) || true)
+PYTHON_SCRIPTS := $(shell grep -lEr '^\#!\s*/usr/bin/(env +)?python(3)?(\s|$$)' $(PROJECT_DIR) | grep -Ev "\.py$$" | grep -Ev "(.venv|venv|.tox)" 2> /dev/null || true)
 PYTEST_COMMON_CMD ?= PYTHONPATH=. pytest test/unit/ -vv
-BATS_IMAGE ?= localhost/bats:latest
+E2E_TESTS_IMAGE ?= localhost/ramalama-e2e:latest
 
 default: help
 
@@ -41,13 +40,6 @@ help:
 	@echo
 	@echo "  - make clean"
 	@echo
-
-install-detailed-cov-requirements:
-	pip install ".[cov-detailed]"
-
-.PHONY: install-cov-requirements
-install-cov-requirements:
-	pip install ".[cov]"
 
 .PHONY: install-requirements
 install-requirements:
@@ -134,8 +126,8 @@ codespell:
 
 .PHONY: test-run
 test-run:
-	_RAMALAMA_TEST=local RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/030-run.bats
-	_RAMALAMA_OPTIONS=--nocontainer _RAMALAMA_TEST=local bats -T test/system/030-run.bats
+	tox -e e2e -- test/e2e/test_run.py
+	tox -e e2e -- --no-container test/e2e/test_run.py
 
 .PHONY: validate
 validate: codespell lint check-format
@@ -151,67 +143,52 @@ pypi:   clean
 	python3 -m build --wheel
 	python3 -m twine upload dist/*
 
-.PHONY: bats
-bats:
-	RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
+.PHONY: e2e-tests-image
+e2e-tests-image:
+	podman inspect $(E2E_TESTS_IMAGE) &> /dev/null || \
+		podman build -t $(E2E_TESTS_IMAGE) -f container-images/e2e/Containerfile .
 
-.PHONY: bats-nocontainer
-bats-nocontainer:
-	_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
+e2e-tests-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
 
-.PHONY: bats-docker
-bats-docker:
-	_RAMALAMA_TEST_OPTS=--engine=docker RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
-
-.PHONY: bats-image
-bats-image:
-	podman inspect $(BATS_IMAGE) &> /dev/null || \
-		podman build -t $(BATS_IMAGE) -f container-images/bats/Containerfile .
-
-bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
-
-%-in-container: bats-image
+%-in-container: e2e-tests-image
 	podman run -it --rm \
 		--userns=keep-id:size=200000 \
 		--security-opt label=disable \
 		--security-opt=mask=/sys/bus/pci/drivers/i915 \
 		$(extra-opts) \
 		-v $(CURDIR):/src \
-		$(BATS_IMAGE) make $*
-
-.PHONY: ci
-ci:
-	test/ci.sh
+		$(E2E_TESTS_IMAGE) make $*
 
 .PHONY: unit-tests
 unit-tests:
-	$(PYTEST_COMMON_CMD)
+	tox -q
 
 .PHONY: unit-tests-verbose
 unit-tests-verbose:
-	$(PYTEST_COMMON_CMD) --full-trace --capture=tee-sys
+	tox -q -- --full-trace --capture=tee-sys
 
-.PHONY: cov-run
-cov-run: install-cov-requirements
-	PYTHONPATH=. coverage run -m pytest test/unit/
+.PHONY: e2e-tests
+e2e-tests:
+	tox -q -e e2e
 
-.PHONY: cov-tests
-cov-tests: cov-run
-	PYTHONPATH=. coverage report
+.PHONY: e2e-tests-nocontainer
+e2e-tests-nocontainer:
+	tox -q -e e2e -- --no-container
 
-.PHONY: detailed-cov-tests
-detailed-cov-tests: install-detailed-cov-requirements cov-run
-	PYTHONPATH=. coverage report -m
-	PYTHONPATH=. coverage html
-	PYTHONPATH=. coverage json
-	PYTHONPATH=. coverage lcov
-	PYTHONPATH=. coverage xml
-
+.PHONY: e2e-tests-docker
+e2e-tests-docker:
+	tox -q -e e2e -- --container-engine=docker
 
 .PHONY: end-to-end-tests
-end-to-end-tests: validate bats bats-nocontainer ci
-	make clean
-	hack/tree_status.sh
+end-to-end-tests: validate e2e-tests e2e-tests-nocontainer
+
+.PHONY: ci-end-to-end-tests
+ci-end-to-end-tests: validate e2e-tests e2e-tests-nocontainer
+	test/ci.sh
+
+.PHONY: coverage
+coverage:
+	tox -q -e coverage
 
 .PHONY: test
 test: tests

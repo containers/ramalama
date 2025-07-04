@@ -13,18 +13,19 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
-          
+
       - name: Install dependencies
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y bash codespell python3-argcomplete
-          make install-requirements
+          uv tool install tox --with tox-uv
+          uv pip install ".[dev]"
 
       - name: Run format check
         run: |
@@ -51,7 +52,8 @@ jobs:
           df -h
           sudo apt-get update
           sudo apt-get install -y bash codespell python3-argcomplete pipx podman
-          make install-requirements
+          uv tool install tox --with tox-uv
+          uv pip install ".[dev]"
 
       - name: Upgrade to podman 5
         run: |
@@ -74,7 +76,7 @@ jobs:
         run: |
           ./container_build.sh build -s ramalama
 
-  unit-test:
+  unit-tests:
     name: Unit Tests
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -84,14 +86,14 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
-          
+
       - name: Install dependencies
         shell: bash
         run: |
           df -h
           sudo apt-get update
           sudo apt-get install -y bash codespell python3-argcomplete pipx podman
-          make install-requirements
+          uv tool install tox --with tox-uv
 
       - name: Upgrade to podman 5
         run: |
@@ -108,29 +110,26 @@ jobs:
         run: |
           make unit-tests
 
-  bats:
+  e2e-tests:
+    name: E2E Tests
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
-          
-      - name: install bats
+
+      - name: install requirements
         shell: bash
         run: |
            df -h
-           # /mnt has ~ 65 GB free disk space. / is too small.
-           sudo mkdir -m a=rwx -p /mnt/tmp /mnt/runner
-           sudo mkdir -m o=rwx -p /home/runner/.local
-           sudo chown runner:runner /mnt/runner /home/runner/.local
-           sudo mount --bind /mnt/runner /home/runner/.local
            sudo apt-get update
-           sudo apt-get install podman bats bash codespell python3-argcomplete
-           make install-requirements
+           sudo apt-get install podman bash codespell python3-argcomplete
+           uv tool install tox --with tox-uv
+           uv pip install ".[dev]"
 
       - name: install ollama
         shell: bash
@@ -147,32 +146,36 @@ jobs:
            # Install specific podman version
            sudo apt-get upgrade
 
-      - name: run bats
+      - name: run e2e-tests
         run: |
            TEMPDIR=/mnt/tmp
            make validate
-           make bats
+           make e2e-tests
 
-  bats-nocontainer:
+  e2e-tests-nocontainer:
+    name: E2E Tests (--no-container)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
-          
-      - name: install bats
+
+      - name: install requirements
         shell: bash
         run: |
            df -h
            sudo apt-get update
-           sudo apt-get install podman bats bash codespell python3-argcomplete git cmake libcurl4-openssl-dev
-           make install-requirements
-           sudo ./container-images/scripts/build_llama_and_whisper.sh
-           sudo python -m pip install . --prefix=/usr
+           sudo apt-get install podman bash codespell python3-argcomplete git cmake libcurl4-openssl-dev
+           uv tool install tox --with tox-uv
+           uv pip install ".[dev]"
+
+      - name: Build and Install Llama and Whisper
+        shell: bash
+        run: sudo ./container-images/scripts/build_llama_and_whisper.sh
 
       - name: install ollama
         shell: bash
@@ -189,27 +192,30 @@ jobs:
            # Install specific podman version
            sudo apt-get upgrade
 
-      - name: bats-nocontainer
+      - name: e2e-tests-nocontainer
         run: |
-           make bats-nocontainer
+           make e2e-tests-nocontainer
 
-  docker:
+  e2e-tests-docker:
+    name: E2E Tests (docker)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
-          
-      - name: install bats
+
+      - name: install requirements
         shell: bash
         run: |
+           df -h
            sudo apt-get update
-           sudo apt-get install bats bash codespell python3-argcomplete
-           make install-requirements
+           sudo apt-get install podman bash codespell python3-argcomplete
+           uv tool install tox --with tox-uv
+           uv pip install ".[dev]"
 
       - name: install ollama
         shell: bash
@@ -249,17 +255,18 @@ jobs:
            sudo mount --bind /mnt/runner /home/runner/.local
            df -h
 
-      - name: bats-docker
+      - name: e2e-tests-docker
         run: |
            docker info
-           make bats-docker
+           make e2e-tests-docker
 
   macos:
+    name: E2E Tests (macos)
     runs-on: macos-14
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
         with:
@@ -269,12 +276,13 @@ jobs:
         shell: bash
         run: |
           uv pip install mlx-lm
-          
-      - name: install golang
+
+      - name: install requirements
         shell: bash
         run: |
-           brew install go bats bash jq llama.cpp shellcheck
-           make install-requirements
+           brew install go bash jq llama.cpp shellcheck podman
+           uv tool install tox --with tox-uv
+           uv pip install ".[dev]"
 
       - name: install ollama
         shell: bash
@@ -283,9 +291,8 @@ jobs:
       - name: Run a one-line script
         shell: bash
         run: |
-           make install-requirements
            make validate
-           make bats-nocontainer
+           make e2e-tests-nocontainer
 
 # FIXME: ci script should be able to run on MAC.
 #      - name: Run ci
