@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 keywords = ["ramalama", "llama", "AI"]
 dependencies = [
   "argcomplete",
+  "pyYAML",
 ]
 maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
