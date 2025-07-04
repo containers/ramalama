@@ -71,23 +71,24 @@ extend-exclude = "(.history|build|dist|docs|hack)"
 [tool.isort]
 profile = "black"
 line_length = 120
-skip = [".venv", "venv"]
+skip = [".venv", "venv", ".tox"]
 
 [tool.codespell]
-skip = ["build","ramalama.egg-info", "logos", ".git", "venv", ".venv"]
+skip = ["build","ramalama.egg-info", "logos", ".git", "venv", ".venv", ".tox"]
 dictionary = ".codespelldict"
 ignore-words-list = ["cann", "clos", "creat", "ro", "hastable", "shouldnot", "mountns", "passt" ,"assertin"]
 check-hidden = true
 
+[tool.coverage]
+html.directory = "coverage/html"
+xml.output = "coverage/coverage.html"
+json.output = "coverage/coverage.json"
+lcov.output = "coverage/coverage.lcov"
+
 [tool.pytest.ini_options]
 testpaths = ["test"]
 markers = ["e2e", "distro_integration"]
-addopts = "-m 'not e2e'"
-log_cli = true
-log_cli_level = "WARN"
-log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
-log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-
+addopts = "-m 'not e2e' --color=yes"
 
 [tool.setuptools.packages.find]
 include = ["ramalama", "ramalama.*"]
@@ -102,18 +103,17 @@ include = ["ramalama", "ramalama.*"]
 "share/fish/vendor_completions.d" = ["completions/fish/vendor_completions.d/*"]
 
 [tool.tox]
-env_list = [
-  "py3",
-]
 
 [tool.tox.env_run_base]
-package = "wheel"
-wheel_build_env = ".pkg"
 extras = ["dev", "cov"]
+pass_env = [
+  "GITHUB_ACTIONS",
+]
 commands = [
   [
     "pytest",
-    "--cov",
+    "--cov={toxinidir}/ramalama",
+    "-vvv",
     "--tb=short",
     "--basetemp={envtmpdir}",
     { replace = "posargs", extend = true },
@@ -125,6 +125,24 @@ commands = [
   [
     "pytest",
     "-m", "e2e",
+    "-vvv",
+    "--basetemp={envtmpdir}",
+    "--tb=short",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[tool.tox.env.coverage]
+extras = ["dev", "cov", "cov-detailed"]
+commands = [
+  [
+    "pytest",
+    "--cov={toxinidir}/ramalama",
+    "--cov-report=xml",
+    "--cov-report=html",
+    "--cov-report=json",
+    "--cov-report=lcov",
+    "--cov-report=term",
     "--tb=short",
     "--basetemp={envtmpdir}",
     { replace = "posargs", extend = true },

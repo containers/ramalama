@@ -17,5 +17,6 @@ __pycache__/
 .aider*
 .coverage
 coverage.*
+coverage/
 htmlcov/
 .idea/

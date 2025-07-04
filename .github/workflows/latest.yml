@@ -56,11 +56,11 @@ jobs:
 
       - name: Install end-to-end test requirements
         run: |
-          sudo apt-get install bats
           make install-requirements
 
       - name: Run end-to-end tests
-        run: make end-to-end-tests
+        run: |
+          make ci-end-to-end-tests
 
   macos:
     runs-on: macos-14
@@ -71,12 +71,13 @@ jobs:
       - name: Install end-to-end test requirements
         shell: bash
         run: |
-          brew install go shellcheck bats
+          brew install go shellcheck
           make install-requirements
 
       - name: Run end-to-end tests
         shell: bash
-        run: make end-to-end-tests
+        run: |
+          make ci-end-to-end-tests
 
   build:
     runs-on: ubuntu-24.04
