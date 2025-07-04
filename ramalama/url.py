@@ -1,7 +1,8 @@
 import os
+import re
 import shutil
 
-from ramalama.common import generate_sha256
+from ramalama.common import SPLIT_MODEL_PATH_RE, generate_sha256, is_split_file_model
 from ramalama.huggingface import HuggingfaceRepository
 from ramalama.model import Model
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
@@ -74,11 +75,11 @@ class URL(Model):
 
         return model_name, model_tag, model_organization
 
-    def pull(self, args):
+    def pull(self, _):
         name, tag, _ = self.extract_model_identifiers()
-        model_file_hash, _, all_files = self.model_store.get_cached_files(tag)
+        _, _, all_files = self.model_store.get_cached_files(tag)
         if all_files:
-            return self.model_store.get_snapshot_file_path(model_file_hash, name)
+            return
 
         files: list[SnapshotFile] = []
         snapshot_hash = generate_sha256(name)
@@ -92,7 +93,10 @@ class URL(Model):
                     required=True,
                 )
             )
-        else:
+            self.model_store.new_snapshot(tag, snapshot_hash, files)
+            return
+
+        if not is_split_file_model(self.model):
             files.append(
                 SnapshotFile(
                     url=f"{self.type}://{self.model}",
@@ -104,7 +108,28 @@ class URL(Model):
                     required=True,
                 )
             )
+            self.model_store.new_snapshot(tag, snapshot_hash, files)
+            return
+
+        # model is split, lets fetch all files based on the name pattern
+        match = re.match(SPLIT_MODEL_PATH_RE, self.model)
+        path_part = match[1]
+        filename_base = match[2]
+        total_parts = int(match[3])
+
+        for i in range(total_parts - 1):
+            i_off = i + 2
+            url = f"{self.type}://{path_part}/{filename_base}-{i_off:05d}-of-{total_parts:05d}.gguf"
+            files.append(
+                SnapshotFile(
+                    url=url,
+                    header={},
+                    hash=snapshot_hash,
+                    type=SnapshotFileType.Model,
+                    name=name,
+                    should_show_progress=True,
+                    required=True,
+                )
+            )
 
         self.model_store.new_snapshot(tag, snapshot_hash, files)
-
-        return self.model_store.get_snapshot_file_path(snapshot_hash, name)

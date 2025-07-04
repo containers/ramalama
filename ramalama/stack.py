@@ -12,7 +12,7 @@ from ramalama.common import (
 )
 from ramalama.engine import add_labels
 from ramalama.model import compute_serving_port
-from ramalama.model_factory import ModelFactory, New
+from ramalama.model_factory import New
 
 
 class Stack:
@@ -26,11 +26,8 @@ class Stack:
         if os.path.basename(args.engine) != "podman":
             raise ValueError("llama-stack requires use of the Podman container engine")
         self.host = "0.0.0.0"
-        model = ModelFactory(args.MODEL, args)
-        self.model = model.prune_model_input()
-        model = New(args.MODEL, args)
-        self.model_type = model.type
-        self.model_path = model.get_model_path(args)
+        self.model = New(args.MODEL, args)
+        self.model_type = self.model.type
         self.model_port = str(int(self.args.port) + 1)
         self.stack_image = tagged_image("quay.io/ramalama/llama-stack")
         self.labels = ""
@@ -54,8 +51,8 @@ class Stack:
           subPath: /models
           name: model"""
         else:
-            volume_mounts = """
-        - mountPath: /mnt/models/model.file
+            volume_mounts = f"""
+        - mountPath: {self.model._get_entry_model_path(True, True, False)}
           name: model"""
 
         if self.args.dri == "on":
@@ -68,7 +65,7 @@ class Stack:
     def _gen_volumes(self):
         volumes = f"""
       - hostPath:
-          path: {self.model_path}
+          path: {self.model._get_entry_model_path(False, False, False)}
         name: model"""
         if self.args.dri == "on":
             volumes += """
@@ -120,9 +117,9 @@ class Stack:
                 '--port',
                 str(self.model_port),
                 '--model',
-                '/mnt/models/model.file',
+                self.model._get_entry_model_path(True, True, False),
                 '--alias',
-                self.model,
+                self.model.model_name,
                 '--ctx-size',
                 str(self.args.context),
                 '--temp',
