@@ -77,6 +77,26 @@ dictionary = ".codespelldict"
 ignore-words-list = ["cann", "clos", "creat", "ro", "hastable", "shouldnot", "mountns", "passt" ,"assertin"]
 check-hidden = true
 
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+include = ["\\.pyi?$"]
+exclude = [
+  "/\\.git",
+  "/\\.tox",
+  "/\\.venv",
+  "/\\.history",
+  "/build",
+  "/dist",
+  "/docs",
+  "/hack",
+  "/venv"
+]
+
+[tool.ruff.format]
+preview = true
+quote-style = "preserve"
+
 [tool.pytest.ini_options]
 testpaths = ["."]
 log_cli = true
