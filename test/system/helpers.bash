@@ -258,6 +258,16 @@ function skip_if_darwin() {
     fi
 }
 
+function is_apple_silicon() {
+    # Check if we're on macOS and have Apple Silicon (arm64)
+    if is_darwin; then
+        arch=$(uname -m)
+        [[ "$arch" == "arm64" ]]
+    else
+        return 1
+    fi
+}
+
 function skip_if_no_hf-cli(){
     if ! command -v huggingface-cli 2>&1 >/dev/null
     then

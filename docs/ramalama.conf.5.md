@@ -132,8 +132,8 @@ Specify default port for services to listen on
 
 **runtime**="llama.cpp"
 
-Specify the AI runtime to use; valid options are 'llama.cpp' and 'vllm' (default: llama.cpp)
-Options: llama.cpp, vllm
+Specify the AI runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx' (default: llama.cpp)
+Options: llama.cpp, vllm, mlx
 
 **store**="$HOME/.local/share/ramalama"
 

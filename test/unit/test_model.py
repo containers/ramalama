@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from ramalama.model import compute_serving_port
+from ramalama.model import Model, compute_serving_port
 from ramalama.model_factory import ModelFactory
 
 
@@ -129,3 +129,195 @@ def test_compute_serving_port(
             else:
                 outputPort = compute_serving_port(args, False)
                 assert outputPort == expectedOutput
+
+
+class TestMLXRuntime:
+    """Test MLX runtime functionality"""
+
+    def test_mlx_serve_args(self):
+        """Test that MLX serve generates correct arguments"""
+        args = Namespace(port="8080", host="127.0.0.1", context=2048, temp="0.8", runtime_args=["--verbose"])
+
+        model = Model("test-model", "/tmp/store")
+
+        exec_args = model.mlx_serve(args, "/path/to/model")
+
+        expected_args = [
+            "python",
+            "-m",
+            "mlx_lm",
+            "server",
+            "--model",
+            "/path/to/model",
+            "--temp",
+            "0.8",
+            "--max-tokens",
+            "2048",
+            "--verbose",
+            "--port",
+            "8080",
+            "--host",
+            "127.0.0.1",
+        ]
+
+        assert exec_args == expected_args
+
+    @patch('ramalama.model.platform.system')
+    @patch('ramalama.model.platform.machine')
+    def test_mlx_validation_container_no_error(self, mock_machine, mock_system):
+        """Test that MLX runtime validation passes when mocking macOS with Apple Silicon"""
+        mock_system.return_value = "Darwin"
+        mock_machine.return_value = "arm64"
+
+        args = Namespace(runtime="mlx", container=True)
+
+        model = Model("test-model", "/tmp/store")
+
+        # Should not raise an error since we're mocking macOS with Apple Silicon
+        model.validate_args(args)
+
+    @patch('ramalama.model.platform.system')
+    @patch('ramalama.model.platform.machine')
+    def test_mlx_validation_non_macos_error(self, mock_machine, mock_system):
+        """Test that MLX runtime fails on non-macOS systems"""
+        mock_system.return_value = "Linux"
+        mock_machine.return_value = "x86_64"
+
+        args = Namespace(runtime="mlx", container=False, privileged=False)
+
+        model = Model("test-model", "/tmp/store")
+
+        with pytest.raises(ValueError, match="MLX runtime is only supported on macOS"):
+            model.validate_args(args)
+
+    @patch('ramalama.model.platform.system')
+    @patch('ramalama.model.platform.machine')
+    def test_mlx_validation_success(self, mock_machine, mock_system):
+        """Test that MLX runtime passes validation on macOS with --nocontainer"""
+        mock_system.return_value = "Darwin"
+        mock_machine.return_value = "arm64"
+
+        args = Namespace(runtime="mlx", container=False, privileged=False)
+
+        model = Model("test-model", "/tmp/store")
+
+        # Should not raise any exception
+        model.validate_args(args)
+
+    @patch('ramalama.model.platform.system')
+    @patch('ramalama.model.platform.machine')
+    @patch('ramalama.model.compute_serving_port')
+    @patch('ramalama.model.os.fork')
+    @patch('ramalama.chat.chat')
+    @patch('socket.socket')
+    def test_mlx_run_uses_server_client_model(
+        self, mock_socket_class, mock_chat, mock_fork, mock_compute_port, mock_machine, mock_system
+    ):
+        """Test that MLX runtime uses server-client model in run method"""
+        mock_system.return_value = "Darwin"
+        mock_machine.return_value = "arm64"
+        mock_compute_port.return_value = "8080"
+        mock_fork.return_value = 123  # Parent process
+
+        # Mock socket to simulate successful connection (server ready)
+        mock_socket = MagicMock()
+        mock_socket.connect_ex.return_value = 0  # Successful connection
+        mock_socket.__enter__.return_value = mock_socket
+        mock_socket.__exit__.return_value = False
+        mock_socket_class.return_value = mock_socket
+
+        # Add all required arguments for the run method
+        args = Namespace(
+            runtime="mlx",
+            container=False,
+            privileged=False,
+            debug=False,
+            MODEL="test-model",
+            ARGS=None,  # No prompt arguments
+            pull="missing",  # Required for get_model_path
+            dryrun=False,
+        )
+
+        model = Model("test-model", "/tmp/store")
+
+        # Mock the get_model_path method to avoid file system checks
+        with patch.object(model, 'get_model_path', return_value="/path/to/model"):
+            with patch.object(model, 'get_container_name', return_value="test-container"):
+                with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
+                    model.run(args)
+
+        # Verify that compute_serving_port was called
+        mock_compute_port.assert_called_once()
+
+        # Verify that fork was called (indicating server-client model)
+        mock_fork.assert_called_once()
+
+        # Verify that chat.chat was called (parent process)
+        mock_chat.assert_called_once()
+
+        # Verify args were set up correctly for server-client model
+        # MLX runtime should include /v1 in the URL
+        assert args.url == "http://127.0.0.1:8080/v1"
+        assert args.pid2kill == 123
+
+    @patch('ramalama.model.platform.system')
+    @patch('ramalama.model.platform.machine')
+    def test_mlx_build_exec_args_includes_server_subcommand(self, mock_machine, mock_system):
+        """Test that MLX build_exec_args correctly handles server subcommand"""
+        mock_system.return_value = "Darwin"
+        mock_machine.return_value = "arm64"
+
+        args = Namespace(temp="0.7", seed=42, context=1024, runtime_args=["--verbose"])
+
+        model = Model("test-model", "/tmp/store")
+
+        # Test that server subcommand is supported
+        exec_args = model._build_mlx_exec_args("server", "/path/to/model", args, ["--port", "8080"])
+
+        expected_args = [
+            "python",
+            "-m",
+            "mlx_lm",
+            "server",
+            "--model",
+            "/path/to/model",
+            "--temp",
+            "0.7",
+            "--seed",
+            "42",
+            "--max-tokens",
+            "1024",
+            "--verbose",
+            "--port",
+            "8080",
+        ]
+
+        assert exec_args == expected_args
+
+    @patch('ramalama.model.platform.system')
+    @patch('ramalama.model.platform.machine')
+    def test_mlx_benchmarking_not_supported(self, mock_machine, mock_system):
+        """Test that MLX runtime raises NotImplementedError for benchmarking"""
+        mock_system.return_value = "Darwin"
+        mock_machine.return_value = "arm64"
+
+        args = Namespace(runtime="mlx", container=False, MODEL="test-model")
+
+        model = Model("test-model", "/tmp/store")
+
+        with pytest.raises(NotImplementedError, match="Benchmarking is not supported by the MLX runtime"):
+            model.build_exec_args_bench(args, "/path/to/model")
+
+    @patch('ramalama.model.platform.system')
+    @patch('ramalama.model.platform.machine')
+    def test_mlx_perplexity_not_supported(self, mock_machine, mock_system):
+        """Test that MLX runtime raises NotImplementedError for perplexity"""
+        mock_system.return_value = "Darwin"
+        mock_machine.return_value = "arm64"
+
+        args = Namespace(runtime="mlx", container=False, MODEL="test-model")
+
+        model = Model("test-model", "/tmp/store")
+
+        with pytest.raises(NotImplementedError, match="Perplexity calculation is not supported by the MLX runtime"):
+            model.build_exec_args_perplexity(args, "/path/to/model")

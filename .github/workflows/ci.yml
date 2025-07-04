@@ -264,6 +264,11 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
+
+      - name: install mlx-lm
+        shell: bash
+        run: |
+          uv pip install mlx-lm
           
       - name: install golang
         shell: bash

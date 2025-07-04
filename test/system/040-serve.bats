@@ -23,7 +23,9 @@ verify_begin=".*run --rm"
 	run_ramalama -q --dryrun serve --name foobar ${model}
 	is "$output" ".*--name foobar .*" "dryrun correct with --name"
 	assert "$output" !~ ".*--network" "--network is not part of the output"
-	assert "$output" !~ ".*--host 0.0.0.0" "verify host 0.0.0.0 is not added when run within container"
+	# Extract container args (everything before the image name) and verify --host is not there
+	container_args=$(echo "$output" | sed 's/quay\.io\/ramalama\/ramalama.*//')
+	assert "$container_args" !~ ".*--host" "verify --host is not added to container arguments"
 	is "$output" ".*${model}" "verify model name"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 

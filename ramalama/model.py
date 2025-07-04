@@ -1,10 +1,13 @@
 import os
 import pathlib
+import platform
 import random
 import re
+import shlex
 import socket
 import sys
 import time
+from typing import Optional
 
 import ramalama.chat as chat
 from ramalama.common import (
@@ -115,7 +118,7 @@ class Model(ModelBase):
         self._model_type = type(self).__name__.lower()
 
         self._model_store_path: str = model_store_path
-        self._model_store: ModelStore = None
+        self._model_store: Optional[ModelStore] = None
 
         self.default_image = accel_image(CONFIG)
 
@@ -348,6 +351,7 @@ class Model(ModelBase):
         # The Run command will first launch a daemonized service
         # and run chat to communicate with it.
         self.validate_args(args)
+
         args.port = compute_serving_port(args, quiet=args.debug)
         if args.container:
             args.name = self.get_container_name(args)
@@ -356,30 +360,146 @@ class Model(ModelBase):
 
         pid = os.fork()
         if pid == 0:
-            args.host = CONFIG.host
-            args.generate = ""
-            args.detach = True
-            self.serve(args, True)
+            # Child process - start the server
+            self._start_server(args)
             return 0
         else:
-            args.url = f"http://127.0.0.1:{args.port}"
-            args.pid2kill = ""
-            if args.container:
-                _, status = os.waitpid(pid, 0)
-                if status != 0:
-                    raise ValueError(f"Failed to serve model {self.model_name}, for ramalama run command")
-                args.ignore = args.dryrun
-                for i in range(0, 6):
-                    try:
-                        chat.chat(args)
-                        break
-                    except Exception as e:
-                        if i > 5:
-                            raise e
-                        time.sleep(1)
-            else:
-                args.pid2kill = pid
+            # Parent process - connect to server and start chat
+            return self._connect_and_chat(args, pid)
+
+    def _start_server(self, args):
+        """Start the server in the child process."""
+        args.host = CONFIG.host
+        args.generate = ""
+        args.detach = True
+        self.serve(args, True)
+
+    def _connect_and_chat(self, args, server_pid):
+        """Connect to the server and start chat in the parent process."""
+        args.url = f"http://127.0.0.1:{args.port}"
+        if getattr(args, "runtime", None) == "mlx":
+            args.url += "/v1"
+            args.prefix = "🍏 > "
+        args.pid2kill = ""
+
+        if args.container:
+            return self._handle_container_chat(args, server_pid)
+        else:
+            args.pid2kill = server_pid
+            if getattr(args, "runtime", None) == "mlx":
+                return self._handle_mlx_chat(args)
+            chat.chat(args)
+            return 0
+
+    def _handle_container_chat(self, args, server_pid):
+        """Handle chat for container-based execution."""
+        _, status = os.waitpid(server_pid, 0)
+        if status != 0:
+            raise ValueError(f"Failed to serve model {self.model_name}, for ramalama run command")
+
+        args.ignore = getattr(args, "dryrun", False)
+        for i in range(6):
+            try:
                 chat.chat(args)
+                break
+            except Exception as e:
+                if i >= 5:
+                    raise e
+                time.sleep(1)
+        return 0
+
+    def _handle_mlx_chat(self, args):
+        """Handle chat for MLX runtime with connection retries."""
+        args.ignore = getattr(args, "dryrun", False)
+        args.initial_connection = True
+        max_retries = 10
+
+        for i in range(max_retries):
+            try:
+                if self._is_server_ready(args.port):
+                    args.initial_connection = False
+                    time.sleep(1)  # Give server time to stabilize
+                    chat.chat(args)
+                    break
+                else:
+                    if args.debug:
+                        print(f"MLX server not ready, waiting... (attempt {i+1}/{max_retries})", file=sys.stderr)
+                    time.sleep(3)
+                    continue
+
+            except Exception as e:
+                if i >= max_retries - 1:
+                    print(f"Error: Failed to connect to MLX server after {max_retries} attempts: {e}", file=sys.stderr)
+                    self._cleanup_server_process(args.pid2kill)
+                    raise e
+                if args.debug:
+                    print(f"Connection attempt failed, retrying... (attempt {i+1}/{max_retries}): {e}", file=sys.stderr)
+                time.sleep(3)
+
+        args.initial_connection = False
+        return 0
+
+    def _is_server_ready(self, port):
+        """Check if the server is ready to accept connections."""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(2)
+                result = s.connect_ex(('127.0.0.1', int(port)))
+                return result == 0
+        except (socket.error, ValueError):
+            return False
+
+    def _cleanup_server_process(self, pid):
+        """Clean up the server process."""
+        if not pid:
+            return
+
+        import signal
+
+        try:
+            os.kill(pid, signal.SIGTERM)
+            time.sleep(1)  # Give it time to terminate gracefully
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+    def _build_mlx_exec_args(self, subcommand: str, model_path: str, args, extra: list[str] | None = None) -> list[str]:
+        """Return the command-line *exec_args* for ``mlx_lm`` *subcommand*.
+        Parameters
+        ----------
+        subcommand:
+            Should just be ``"server"``
+        model_path:
+            Filesystem path (host or container-mapped).
+        args:
+            Parsed CLI *args* namespace.
+        extra:
+            Optional list of extra arguments to append verbatim.
+        """
+        exec_args = [
+            "python",
+            "-m",
+            "mlx_lm",
+            subcommand,
+            "--model",
+            shlex.quote(model_path),
+        ]
+
+        if getattr(args, "temp", None):
+            exec_args += ["--temp", str(args.temp)]
+
+        if getattr(args, "seed", None):
+            exec_args += ["--seed", str(args.seed)]
+
+        if getattr(args, "context", None):
+            exec_args += ["--max-tokens", str(args.context)]
+
+        exec_args += getattr(args, "runtime_args", [])
+
+        if extra:
+            exec_args += extra
+
+        return exec_args
 
     def perplexity(self, args):
         self.validate_args(args)
@@ -389,13 +509,16 @@ class Model(ModelBase):
 
     def build_exec_args_perplexity(self, args, model_path):
         exec_model_path = MNT_FILE if args.container else model_path
-        exec_args = ["llama-perplexity"]
 
+        if getattr(args, "runtime", None) == "mlx":
+            raise NotImplementedError("Perplexity calculation is not supported by the MLX runtime.")
+
+        # Default llama.cpp perplexity calculation
+        exec_args = ["llama-perplexity"]
         set_accel_env_vars()
         gpu_args = self.gpu_args(args=args)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
-
         exec_args += ["-m", exec_model_path]
 
         return exec_args
@@ -446,18 +569,27 @@ class Model(ModelBase):
 
     def build_exec_args_bench(self, args, model_path):
         exec_model_path = MNT_FILE if args.container else model_path
-        exec_args = ["llama-bench"]
 
+        if getattr(args, "runtime", None) == "mlx":
+            raise NotImplementedError("Benchmarking is not supported by the MLX runtime.")
+
+        # Default llama.cpp benchmarking
+        exec_args = ["llama-bench"]
         set_accel_env_vars()
         gpu_args = self.gpu_args(args=args)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
-
         exec_args += ["-m", exec_model_path]
 
         return exec_args
 
     def validate_args(self, args):
+        # MLX validation
+        if getattr(args, "runtime", None) == "mlx":
+            is_apple_silicon = platform.system() == "Darwin" and platform.machine() == "arm64"
+            if not is_apple_silicon:
+                raise ValueError("MLX runtime is only supported on macOS with Apple Silicon.")
+
         # If --container was specified return valid
         if args.container:
             return
@@ -537,9 +669,15 @@ class Model(ModelBase):
             exec_args.extend(["--flash-attn"])
         return exec_args
 
+    def mlx_serve(self, args, exec_model_path):
+        extra = ["--port", str(args.port), "--host", args.host]
+        return self._build_mlx_exec_args("server", exec_model_path, args, extra)
+
     def build_exec_args_serve(self, args, exec_model_path, chat_template_path="", mmproj_path=""):
         if args.runtime == "vllm":
             exec_args = self.vllm_serve(args, exec_model_path)
+        elif args.runtime == "mlx":
+            exec_args = self.mlx_serve(args, exec_model_path)
         else:
             exec_args = self.llama_serve(args, exec_model_path, chat_template_path, mmproj_path)
 
@@ -583,12 +721,17 @@ class Model(ModelBase):
 
             if getattr(args, 'runtime_args', None):
                 exec_args.extend(args.runtime_args)
+        elif args.runtime == "mlx":
+            # MLX uses the exec_args from mlx_serve
+            pass
         else:
             gpu_args = self.gpu_args(args=args)
             if gpu_args is not None:
                 exec_args.extend(gpu_args)
 
-            if not args.container:
+            if args.container:
+                exec_args.extend(["--host", "0.0.0.0"])
+            else:
                 exec_args.extend(["--host", args.host])
 
         return exec_args
