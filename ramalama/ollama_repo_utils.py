@@ -2,7 +2,8 @@ import json
 import os
 import urllib.request
 
-from ramalama.common import download_file, run_cmd, verify_checksum
+from ramalama.common import perror, run_cmd, verify_checksum
+from ramalama.http_client import download_file
 from ramalama.logger import logger
 
 
