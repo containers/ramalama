@@ -2,7 +2,8 @@ import os
 from enum import IntEnum
 from typing import Dict
 
-from ramalama.common import download_file, generate_sha256
+from ramalama.common import generate_sha256
+from ramalama.http_client import download_file
 from ramalama.logger import logger
 
 

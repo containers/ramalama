@@ -21,6 +21,7 @@ from ramalama.common import (
     check_nvidia,
     exec_cmd,
     genname,
+    perror,
     set_accel_env_vars,
 )
 from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
@@ -188,7 +189,7 @@ class Model(ModelBase):
                         if not file_has_a_symlink:
                             os.remove(file_path)
                             file_path = os.path.basename(file_path)
-                            print(f"Deleted: {file_path}")
+                            perror(f"Deleted: {file_path}")
 
     def remove(self, args):
         _, tag, _ = self.extract_model_identifiers()
@@ -422,18 +423,16 @@ class Model(ModelBase):
                     chat.chat(args)
                     break
                 else:
-                    if args.debug:
-                        print(f"MLX server not ready, waiting... (attempt {i+1}/{max_retries})", file=sys.stderr)
+                    logger.debug(f"MLX server not ready, waiting... (attempt {i+1}/{max_retries})")
                     time.sleep(3)
                     continue
 
             except Exception as e:
                 if i >= max_retries - 1:
-                    print(f"Error: Failed to connect to MLX server after {max_retries} attempts: {e}", file=sys.stderr)
+                    perror(f"Error: Failed to connect to MLX server after {max_retries} attempts: {e}")
                     self._cleanup_server_process(args.pid2kill)
                     raise e
-                if args.debug:
-                    print(f"Connection attempt failed, retrying... (attempt {i+1}/{max_retries}): {e}", file=sys.stderr)
+                logger.debug(f"Connection attempt failed, retrying... (attempt {i+1}/{max_retries}): {e}")
                 time.sleep(3)
 
         args.initial_connection = False
@@ -843,8 +842,9 @@ class Model(ModelBase):
         print(ModelInfoBase(model_name, model_registry, model_path).serialize(json=args.json))
 
     def print_pull_message(self, model_name):
-        print(f"Downloading {model_name} ...")
-        print(f"Trying to pull {model_name} ...")
+        # Write messages to stderr
+        perror(f"Downloading {model_name} ...")
+        perror(f"Trying to pull {model_name} ...")
 
 
 def distinfo_volume():
@@ -894,7 +894,7 @@ def compute_serving_port(args, quiet=False) -> str:
     if not quiet:
         openai = f"http://localhost:{target_port}"
         if args.api == "llama-stack":
-            print(f"Llama Stack RESTAPI: {openai}")
+            perror(f"Llama Stack RESTAPI: {openai}")
             openai = openai + "/v1/openai"
-            print(f"OpenAI RESTAPI: {openai}")
+            perror(f"OpenAI RESTAPI: {openai}")
     return str(target_port)

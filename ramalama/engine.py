@@ -47,7 +47,7 @@ class Engine:
         if not self.args.dryrun and self.use_docker and self.args.pull == "newer":
             try:
                 if not self.args.quiet:
-                    print(f"Checking for newer image {self.args.image}")
+                    perror(f"Checking for newer image {self.args.image}")
                 run_cmd([str(self.args.engine), "pull", "-q", self.args.image], ignore_all=True)
             except Exception:  # Ignore errors, the run command will handle it.
                 pass

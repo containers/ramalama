@@ -13,14 +13,10 @@ import shutil
 import string
 import subprocess
 import sys
-import time
-import urllib.error
 from functools import lru_cache
 from typing import TYPE_CHECKING, Callable, List, Literal, Protocol, cast, get_args
 
 import ramalama.amdkfd as amdkfd
-import ramalama.console as console
-from ramalama.http_client import HttpClient
 from ramalama.logger import logger
 from ramalama.version import version
 
@@ -36,9 +32,6 @@ MNT_CHAT_TEMPLATE_FILE = f"{MNT_DIR}/chat_template.file"
 
 RAG_DIR = "/rag"
 RAG_CONTENT = f"{MNT_DIR}/vector.db"
-
-HTTP_NOT_FOUND = 404
-HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already downloaded)
 
 MIN_VRAM_BYTES = 1073741824  # 1GiB
 
@@ -214,99 +207,8 @@ def verify_checksum(filename: str) -> bool:
     return sha256_hash.hexdigest() == expected_checksum
 
 
-def download_and_verify(url: str, target_path: str, max_retries: int = 2):
-    """
-    Downloads a file from a given URL and verifies its checksum.
-    If the checksum does not match, it retries the download.
-    Args:
-        url (str): The URL to download from.
-        target_path (str): The path to save the downloaded file.
-        max_retries (int): Maximum number of retries for download.
-    Raises:
-        ValueError: If checksum verification fails after multiple attempts.
-    """
-
-    for attempt in range(max_retries):
-        download_file(url, target_path, headers={}, show_progress=True)
-        if verify_checksum(target_path):
-            break
-        console.warning(
-            f"Checksum mismatch for {target_path}, retrying download ... (Attempt {attempt + 1}/{max_retries})"
-        )
-        os.remove(target_path)
-    else:
-        raise ValueError(f"Checksum verification failed for {target_path} after multiple attempts")
-
-
 def genname():
     return "ramalama_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
-
-
-def download_file(url: str, dest_path: str, headers: dict[str, str] | None = None, show_progress: bool = True):
-    """
-    Downloads a file from a given URL to a specified destination path.
-
-    Args:
-        url (str): The URL to download from.
-        dest_path (str): The path to save the downloaded file.
-        headers (dict): Optional headers to include in the request.
-        show_progress (bool): Whether to show a progress bar during download.
-
-    Raises:
-        RuntimeError: If the download fails after multiple attempts.
-    """
-    headers = headers or {}
-
-    # If not running in a TTY, disable progress to prevent CI pollution
-    if not sys.stdout.isatty():
-        show_progress = False
-
-    http_client = HttpClient()
-    max_retries = 5  # Stop after 5 failures
-    retries = 0
-
-    while retries < max_retries:
-        try:
-            # Initialize HTTP client for the request
-            http_client.init(url=url, headers=headers, output_file=dest_path, show_progress=show_progress)
-            return  # Exit function if successful
-
-        except urllib.error.HTTPError as e:
-            if e.code in [HTTP_RANGE_NOT_SATISFIABLE, HTTP_NOT_FOUND]:
-                raise e
-            retries += 1
-
-        except urllib.error.URLError as e:
-            console.error(f"Network Error: {e.reason}")
-            retries += 1
-
-        except TimeoutError:
-            retries += 1
-            console.warning(f"TimeoutError: The server took too long to respond. Retrying {retries}/{max_retries} ...")
-
-        except RuntimeError as e:  # Catch network-related errors from HttpClient
-            retries += 1
-            console.warning(f"{e}. Retrying {retries}/{max_retries} ...")
-
-        except IOError as e:
-            retries += 1
-            console.warning(f"I/O Error: {e}. Retrying {retries}/{max_retries} ...")
-
-        except Exception as e:
-            console.error(f"Unexpected error: {str(e)}")
-            raise e
-
-        if retries >= max_retries:
-            error_message = (
-                "\nDownload failed after multiple attempts.\n"
-                "Possible causes:\n"
-                "- Internet connection issue\n"
-                "- Server is down or unresponsive\n"
-                "- Firewall or proxy blocking the request\n"
-            )
-            raise ConnectionError(error_message)
-
-        time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
 
 
 def engine_version(engine: SUPPORTED_ENGINES) -> str:
@@ -678,7 +580,7 @@ def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, sh
     try:
         # attempt to pull the versioned image
         if not quiet:
-            print(f"Attempting to pull {image}:{vers} ...")
+            perror(f"Attempting to pull {image}:{vers} ...")
         run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True)
         return True
 

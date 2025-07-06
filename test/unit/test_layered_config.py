@@ -594,7 +594,7 @@ class TestLayeredMixin:
         assert config.is_set("settings") is False
 
     def test_layered_mixin_empty_layers(self):
-        """Test behavior with empty layers."""
+        """Test behaviour with empty layers."""
         layer1 = {}
         layer2 = {"name": "layer2"}
         layer3 = {}
