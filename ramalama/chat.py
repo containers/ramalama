@@ -11,6 +11,7 @@ import urllib.error
 import urllib.request
 from datetime import timedelta
 
+from ramalama.common import perror
 from ramalama.config import CONFIG
 from ramalama.console import EMOJI, should_colorize
 from ramalama.engine import dry_run, stop_container
@@ -68,7 +69,7 @@ def add_api_key(args, headers=None):
     if getattr(args, "api_key", None):
         api_key_min = 20
         if len(args.api_key) < api_key_min:
-            print("Warning: Provided API key is invalid.")
+            perror("Warning: Provided API key is invalid.")
 
         headers["Authorization"] = f"Bearer {args.api_key}"
 
@@ -161,7 +162,7 @@ class RamaLamaShell(cmd.Cmd):
                 break
             except Exception:
                 if sys.stdout.isatty():
-                    print(f"\r{c}", end="", flush=True)
+                    perror(f"\r{c}", end="", flush=True)
 
                 if total_time_slept > max_timeout:
                     break
@@ -176,7 +177,7 @@ class RamaLamaShell(cmd.Cmd):
 
         # Only show error and kill if not in initial connection phase
         if not getattr(self.args, "initial_connection", False):
-            print(f"\rError: could not connect to: {self.url}", file=sys.stderr)
+            perror(f"\rError: could not connect to: {self.url}")
             self.kills()
         else:
             logger.debug(f"Could not connect to: {self.url}")
@@ -251,7 +252,7 @@ def chat(args):
     except TimeoutException as e:
         logger.debug(f"Timeout Exception: {e}")
         # Handle the timeout, e.g., print a message and exit gracefully
-        print("")
+        perror("")
         pass
     finally:
         # Reset the alarm to 0 to cancel any pending alarms

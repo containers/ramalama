@@ -311,12 +311,12 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         run_cmd(cmd_args, stdout=None)
 
     def _convert(self, source_model, args):
-        print(f"Converting {source_model.model_store.base_path} to {self.model_store.base_path} ...")
+        perror(f"Converting {source_model.model_store.base_path} to {self.model_store.base_path} ...")
         try:
             run_cmd([self.conman, "manifest", "rm", self.model], ignore_stderr=True, stdout=None)
         except subprocess.CalledProcessError:
             pass
-        print(f"Building {self.model} ...")
+        perror(f"Building {self.model} ...")
         imageid = self.build(source_model, args)
         try:
             self._create_manifest(self.model, imageid, args)
@@ -335,7 +335,7 @@ Tagging build instead"""
         target = self.model
         source = source_model.model
 
-        print(f"Pushing {self.model} ...")
+        perror(f"Pushing {self.model} ...")
         conman_args = [self.conman, "push"]
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
@@ -351,14 +351,15 @@ Tagging build instead"""
             raise e
 
     def pull(self, args):
-        if not args.quiet:
-            print(f"Downloading {self.model} ...")
         if not args.engine:
             raise NotImplementedError("OCI images require a container engine like Podman or Docker")
 
         conman_args = [args.engine, "pull"]
         if args.quiet:
             conman_args.extend(['--quiet'])
+        else:
+            # Write message to stderr
+            perror(f"Downloading {self.model} ...")
         if str(args.tlsverify).lower() == "false":
             conman_args.extend([f"--tls-verify={args.tlsverify}"])
         if args.authfile:

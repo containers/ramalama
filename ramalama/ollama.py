@@ -3,7 +3,7 @@ import os
 import urllib.error
 from typing import Optional
 
-from ramalama.common import available
+from ramalama.common import available, perror
 from ramalama.model import Model
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
 from ramalama.ollama_repo_utils import fetch_manifest_data
@@ -147,7 +147,7 @@ class Ollama(Model):
         hash, cached_files, all = self.model_store.get_cached_files(tag)
         if all:
             if not args.quiet:
-                print(f"Using cached ollama://{name}:{tag} ...")
+                perror(f"Using cached ollama://{name}:{tag} ...")
             return self.model_store.get_snapshot_file_path(hash, name)
 
         ollama_repo = OllamaRepository(self.model_store.model_name)
@@ -165,7 +165,7 @@ class Ollama(Model):
         # If a model has been downloaded via ollama cli, only create symlink in the snapshots directory
         if is_model_in_ollama_cache:
             if not args.quiet:
-                print(f"Using cached ollama://{name}{tag} ...")
+                perror(f"Using cached ollama://{name}{tag} ...")
             snapshot_model_path = self.model_store.get_snapshot_file_path(model_hash, self.model_store.model_name)
             os.symlink(ollama_cache_path, snapshot_model_path)
 

@@ -382,7 +382,7 @@ def list_files_by_modification(args):
         if os.path.exists(path):
             models.append(path)
         else:
-            print(f"Broken symlink found in: {args.store}/models/{path} \nAttempting removal")
+            perror(f"Broken symlink found in: {args.store}/models/{path} \nAttempting removal")
             New(str(path).replace("/", "://", 1), args).remove(args)
 
     return sorted(models, key=lambda p: os.path.getmtime(p), reverse=True)

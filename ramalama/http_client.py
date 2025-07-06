@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import sys
 import time
 import urllib.request
 
@@ -178,6 +179,10 @@ def download_file(url: str, dest_path: str, headers: dict[str, str] | None = Non
             # Initialize HTTP client for the request
             http_client.init(url=url, headers=headers, output_file=dest_path, show_progress=show_progress)
             return  # Exit function if successful
+
+        except KeyboardInterrupt:
+            perror("\nDownload interrupted by user. Exiting cleanly.")
+            raise
 
         except urllib.error.HTTPError as e:
             if e.code in [HTTP_RANGE_NOT_SATISFIABLE, HTTP_NOT_FOUND]:

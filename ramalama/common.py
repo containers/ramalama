@@ -580,7 +580,7 @@ def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, sh
     try:
         # attempt to pull the versioned image
         if not quiet:
-            print(f"Attempting to pull {image}:{vers} ...")
+            perror(f"Attempting to pull {image}:{vers} ...")
         run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True)
         return True
 

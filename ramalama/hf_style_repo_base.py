@@ -220,7 +220,7 @@ class HFStyleRepoModel(Model, ABC):
         hash, cached_files, all = self.model_store.get_cached_files(tag)
         if all:
             if not args.quiet:
-                print(f"Using cached {self.get_repo_type()}://{name}:{tag} ...")
+                perror(f"Using cached {self.get_repo_type()}://{name}:{tag} ...")
             return self.model_store.get_snapshot_file_path(hash, name)
 
         try:
@@ -252,4 +252,4 @@ class HFStyleRepoModel(Model, ABC):
         try:
             exec_cmd(cmd_args)
         except FileNotFoundError as e:
-            print(f"{str(e).strip()}\n{self.get_missing_message()}")
+            perror(f"{str(e).strip()}\n{self.get_missing_message()}")

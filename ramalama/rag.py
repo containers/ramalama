@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 from urllib.parse import urlparse
 
-from ramalama.common import get_accel_env_vars, run_cmd, set_accel_env_vars
+from ramalama.common import get_accel_env_vars, perror, run_cmd, set_accel_env_vars
 from ramalama.engine import Engine
 from ramalama.logger import logger
 
@@ -21,10 +21,10 @@ class Rag:
         set_accel_env_vars()
 
     def build(self, source, target, args):
-        print(f"\nBuilding {target} ...")
+        perror(f"\nBuilding {target} ...")
         contextdir = os.path.dirname(source)
         src = os.path.basename(source)
-        print(f"adding {src} ...")
+        perror(f"adding {src} ...")
         cfile = f"""\
 FROM scratch
 COPY {src} /vector.db
