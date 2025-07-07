@@ -132,9 +132,9 @@ EOF
     skip_if_nocontainer
     skip_if_darwin
     skip_if_docker
-    run_ramalama 22 --image bogus run --pull=never tiny
+    run_ramalama 22 run --image bogus --pull=never tiny
     is "$output" ".*Error: bogus: image not known"
-    run_ramalama 125 --image bogus1 run --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*Error: bogus1: image not known"
 }
 
@@ -148,7 +148,7 @@ EOF
     run_ramalama --dryrun run --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*quay.io/ramalama/.*-rag:"
 
-    run_ramalama --dryrun --image quay.io/ramalama/ramalama:1.0 run --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama --dryrun run --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*quay.io/ramalama/ramalama:1.0"
 }
 

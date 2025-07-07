@@ -187,7 +187,7 @@ class OCI(Model):
         if is_car:
             content += f"FROM {args.carimage}\n"
         else:
-            content += f"FROM {args.image} as builder\n"
+            content += f"FROM {args.carimage} as builder\n"
 
         if has_gguf:
             content += (
@@ -230,7 +230,8 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         contextdir = source_model.model_store.blobs_directory
 
         content = self._generate_containerfile(source_model, args)
-
+        if args.debug:
+            perror(f"Containerfile: \n{content}")
         containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=False)
 
         # Open the file for writing.

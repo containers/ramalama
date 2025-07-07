@@ -109,12 +109,12 @@ function check_help() {
 
 @test "ramalama verify default image" {
 
-    run_ramalama --help
+    run_ramalama run --help
     is "$output" ".*image IMAGE.*OCI container image to run with the specified AI model"  "Verify default image"
-    is "$output" ".*default: quay.io/ramalama/ramalama"  "Verify default image"
+    is "$output" ".*default: quay.io/ramalama/.*"  "Verify default image"
 
     image=m_$(safename)
-    RAMALAMA_IMAGE=${image} run_ramalama --help
+    RAMALAMA_IMAGE=${image} run_ramalama run --help
     is "$output" ".*default: ${image}"  "Verify default image from environment"
 
     conf=$RAMALAMA_TMPDIR/ramalama.conf
@@ -123,11 +123,11 @@ function check_help() {
 image="$image"
 EOF
 
-    RAMALAMA_CONFIG=${conf} run_ramalama --help
+    RAMALAMA_CONFIG=${conf} run_ramalama bench --help
     is "$output" ".*default: ${image}"  "Verify default image from ramalama.conf"
 
     image1=m_$(safename)
-    RAMALAMA_IMAGE=${image1} RAMALAMA_CONFIG=${conf} run_ramalama --help
+    RAMALAMA_IMAGE=${image1} RAMALAMA_CONFIG=${conf} run_ramalama serve --help
     is "$output" ".*default: ${image1}"  "Verify default image from environment over ramalama.conf"
 }
 

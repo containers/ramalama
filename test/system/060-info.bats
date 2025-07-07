@@ -22,7 +22,7 @@ load helpers
 
     # FIXME Engine  (podman|docker|'')
     tests="
-Image   | "quay.io/ramalama/ramalama.*"
+Image   | "quay.io/ramalama/.*"
 Runtime | "llama.cpp"
 Version | "${version}"
 Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)
@@ -36,12 +36,12 @@ Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)
 	is "$actual" "$expect" "jq .$field"
 	    done < <(parse_table "$tests")
 
-    image=i_$(safename)
+    image=i_$(safename):1.0
     runtime=vllm
     engine=e_$(safename)
     store=s_$(safename)
 
-    run_ramalama --store $store --runtime $runtime --engine $engine --image $image info
+    RAMALAMA_IMAGE=$image run_ramalama --store $store --runtime $runtime --engine $engine info
     tests="
 Engine.Name | $engine
 Image   | $image
