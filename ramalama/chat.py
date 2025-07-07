@@ -15,7 +15,7 @@ from ramalama.common import perror
 from ramalama.config import CONFIG
 from ramalama.console import EMOJI, should_colorize
 from ramalama.engine import dry_run, stop_container
-from ramalama.file_upload.file_loader import FileUpLoader
+from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
 
 
@@ -90,10 +90,9 @@ class RamaLamaShell(cmd.Cmd):
         if (context := getattr(self.args, "rag", None)) is None:
             return
 
-        if not (message_content := FileUpLoader(context).load()):
-            return
-
-        self.conversation_history.append({"role": "system", "content": message_content})
+        builder = OpanAIChatAPIMessageBuilder()
+        messages = builder.load(context)
+        self.conversation_history.extend(messages)
 
     def handle_args(self):
         prompt = " ".join(self.args.ARGS) if self.args.ARGS else None
