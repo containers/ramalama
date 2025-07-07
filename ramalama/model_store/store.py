@@ -9,8 +9,8 @@ from typing import Optional, Tuple
 import ramalama.model_store.go2jinja as go2jinja
 from ramalama.common import perror, verify_checksum
 from ramalama.endian import EndianMismatchError, get_system_endianness
-from ramalama.gguf_parser import GGUFInfoParser, GGUFModelInfo
 from ramalama.logger import logger
+from ramalama.model_inspect.gguf_parser import GGUFInfoParser, GGUFModelInfo
 from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.reffile import RefFile

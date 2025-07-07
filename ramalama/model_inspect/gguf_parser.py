@@ -3,9 +3,9 @@ import struct
 from enum import IntEnum
 from typing import Any, Dict
 
-import ramalama.console as console
 from ramalama.endian import GGUFEndian
-from ramalama.model_inspect import GGUFModelInfo, Tensor
+from ramalama.model_inspect.error import ParseError
+from ramalama.model_inspect.gguf_info import GGUFModelInfo, Tensor
 
 
 # Based on ggml_type in
@@ -99,10 +99,6 @@ GGUF_NUMBER_FORMATS: list[GGUFValueType] = [
 ]
 
 
-class ParseError(Exception):
-    pass
-
-
 class GGUFInfoParser:
     @staticmethod
     def is_model_gguf(model_path: str) -> bool:
@@ -110,8 +106,7 @@ class GGUFInfoParser:
             with open(model_path, "rb") as model_file:
                 magic_number = GGUFInfoParser.read_string(model_file, GGUFEndian.LITTLE, 4)
                 return magic_number == GGUFModelInfo.MAGIC_NUMBER
-        except Exception as ex:
-            console.warning(f"Failed to read model '{model_path}': {ex}")
+        except Exception:
             return False
 
     @staticmethod

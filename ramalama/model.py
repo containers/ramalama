@@ -27,10 +27,13 @@ from ramalama.common import (
 from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
 from ramalama.console import should_colorize
 from ramalama.engine import Engine, dry_run
-from ramalama.gguf_parser import GGUFInfoParser
 from ramalama.kube import Kube
 from ramalama.logger import logger
-from ramalama.model_inspect import GGUFModelInfo, ModelInfoBase
+from ramalama.model_inspect.base_info import ModelInfoBase
+from ramalama.model_inspect.gguf_info import GGUFModelInfo
+from ramalama.model_inspect.gguf_parser import GGUFInfoParser
+from ramalama.model_inspect.safetensor_info import SafetensorModelInfo
+from ramalama.model_inspect.safetensor_parser import SafetensorInfoParser
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.store import ModelStore
 from ramalama.quadlet import Quadlet
@@ -837,6 +840,10 @@ class Model(ModelBase):
         if GGUFInfoParser.is_model_gguf(model_path):
             gguf_info: GGUFModelInfo = GGUFInfoParser.parse(model_name, model_registry, model_path)
             print(gguf_info.serialize(json=args.json, all=args.all))
+            return
+        if SafetensorInfoParser.is_model_safetensor(model_name):
+            safetensor_info: SafetensorModelInfo = SafetensorInfoParser.parse(model_name, model_registry, model_path)
+            print(safetensor_info.serialize(json=args.json, all=args.all))
             return
 
         print(ModelInfoBase(model_name, model_registry, model_path).serialize(json=args.json))
