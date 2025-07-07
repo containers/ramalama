@@ -306,7 +306,6 @@ class ModelStore:
             self.remove_snapshot(model_tag)
             raise ex
         except Exception as ex:
-            perror(f"Failed to create new snapshot: {ex}")
             perror("Removing snapshot...")
             self.remove_snapshot(model_tag)
             raise ex

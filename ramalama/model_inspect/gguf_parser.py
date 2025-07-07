@@ -4,6 +4,7 @@ from enum import IntEnum
 from typing import Any, Dict
 
 from ramalama.endian import GGUFEndian
+from ramalama.logger import logger
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_inspect.gguf_info import GGUFModelInfo, Tensor
 
@@ -106,7 +107,8 @@ class GGUFInfoParser:
             with open(model_path, "rb") as model_file:
                 magic_number = GGUFInfoParser.read_string(model_file, GGUFEndian.LITTLE, 4)
                 return magic_number == GGUFModelInfo.MAGIC_NUMBER
-        except Exception:
+        except Exception as ex:
+            logger.debug(f"Failed to read GGUF model '{model_path}': {ex}")
             return False
 
     @staticmethod

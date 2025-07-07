@@ -29,6 +29,7 @@ from ramalama.config import CONFIG
 from ramalama.logger import configure_logger, logger
 from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory, New
+from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack
@@ -602,7 +603,7 @@ def pull_cli(args):
     if matching_files:
         return matching_files[0]
 
-    return model.pull(args)
+    model.pull(args)
 
 
 def convert_parser(subparsers):
@@ -1217,3 +1218,5 @@ def main():
         eprint(e, errno.EINVAL)
     except IOError as e:
         eprint(e, errno.EIO)
+    except ParseError as e:
+        eprint(f"Failed to parse model: {e}", errno.EINVAL)
