@@ -67,4 +67,17 @@ Store   | $(pwd)/$store
       is "$actual" "$store" "Verify relative paths translated to absolute path"
 }
 
+@test "ramalama info selinux state" {
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+selinux=True
+EOF
+
+    run_ramalama info
+    is "$output" ".*\"Selinux\": false"  "Verify selinux defaults to disabled"
+    RAMALAMA_CONFIG=${conf} run_ramalama info
+    is "$output" ".*\"Selinux\": true"  "Verify selinux setting from ramalama.conf"
+}
+
 # vim: filetype=sh

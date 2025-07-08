@@ -93,5 +93,10 @@ will run the AI Models within a container based on the OCI image.
 %{_mandir}/man5/ramalama*.5*
 %{_mandir}/man7/ramalama*.7*
 
+%post
+if [ $1 -eq 1 ]; then
+   %{_sbindir}/setsebool -P -N container_use_xserver_devices=1
+fi
+
 %changelog
 %autochangelog

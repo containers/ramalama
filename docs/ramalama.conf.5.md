@@ -135,6 +135,10 @@ Specify default port for services to listen on
 Specify the AI runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx' (default: llama.cpp)
 Options: llama.cpp, vllm, mlx
 
+**selinux**=false
+
+SELinux container separation enforcement
+
 **store**="$HOME/.local/share/ramalama"
 
 Store AI Models in the specified directory
