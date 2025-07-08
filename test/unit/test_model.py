@@ -143,10 +143,7 @@ class TestMLXRuntime:
         exec_args = model.mlx_serve(args, "/path/to/model")
 
         expected_args = [
-            "python",
-            "-m",
-            "mlx_lm",
-            "server",
+            "mlx_lm.server",
             "--model",
             "/path/to/model",
             "--temp",
@@ -275,10 +272,7 @@ class TestMLXRuntime:
         exec_args = model._build_mlx_exec_args("server", "/path/to/model", args, ["--port", "8080"])
 
         expected_args = [
-            "python",
-            "-m",
-            "mlx_lm",
-            "server",
+            "mlx_lm.server",
             "--model",
             "/path/to/model",
             "--temp",

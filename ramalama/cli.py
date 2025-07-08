@@ -26,7 +26,7 @@ from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import CONFIG
 from ramalama.logger import configure_logger, logger
-from ramalama.model import MODEL_TYPES
+from ramalama.model import MODEL_TYPES, trim_model_name
 from ramalama.model_factory import ModelFactory, New
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
@@ -474,12 +474,7 @@ def _list_models_from_store(args):
         if not args.all and is_partially_downloaded:
             continue
 
-        if model.startswith("huggingface://"):
-            model = model.replace("huggingface://", "hf://", 1)
-
-        if not model.startswith("ollama://") and not model.startswith("oci://"):
-            model = model.removesuffix(":latest")
-
+        model = trim_model_name(model)
         size_sum = 0
         last_modified = 0.0
         for file in files:
