@@ -9,7 +9,7 @@ DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 IMAGE ?= ramalama
 PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" --exclude-dir={.venv,venv} $(PROJECT_DIR) || true)
+PYTHON_SCRIPTS := $(shell grep -lEr "^#!\s*/usr/bin/(env +)?python(3)?(\s|$$)" --exclude-dir={.venv,venv} $(PROJECT_DIR) || true)
 PYTEST_COMMON_CMD ?= PYTHONPATH=. pytest test/unit/ -vv
 BATS_IMAGE ?= localhost/bats:latest
 
