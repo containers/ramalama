@@ -58,7 +58,7 @@ function skip_if_no_mlx() {
     run_ramalama --runtime=mlx --dryrun run ${MODEL}
     is "$status" "0" "MLX run should work"
     # Should use python -m mlx_lm server for the server process
-    is "$output" ".*python.*-m.*mlx_lm server.*" "should use MLX server command"
+    is "$output" ".*mlx_lm.server.*" "should use MLX server command"
     is "$output" ".*--port.*" "should include port specification"
 }
 
@@ -69,7 +69,7 @@ function skip_if_no_mlx() {
     prompt="Hello, how are you?"
     run_ramalama --runtime=mlx --dryrun run ${MODEL} "$prompt"
     is "$status" "0" "MLX run with prompt should work"
-    is "$output" ".*python.*-m.*mlx_lm server.*" "should use MLX server command"
+    is "$output" ".*mlx_lm.server.*" "should use MLX server command"
     is "$output" ".*--port.*" "should include port specification"
 }
 
@@ -98,7 +98,7 @@ function skip_if_no_mlx() {
     run_ramalama --runtime=mlx --dryrun serve ${MODEL}
     is "$status" "0" "MLX serve should work"
     # Should use python -m mlx_lm.server
-    is "$output" ".*python.*-m.*mlx_lm server.*" "should use MLX server command"
+    is "$output" ".*mlx_lm.server.*" "should use MLX server command"
     is "$output" ".*--port.*8080.*" "should include default port"
 }
 
@@ -145,7 +145,7 @@ function skip_if_no_mlx() {
     model="ollama://smollm:135m"
     run_ramalama --runtime=mlx --dryrun run "$model"
     is "$status" "0" "MLX should work with ollama model format"
-    is "$output" ".*python.*-m.*mlx_lm server.*" "should use MLX server command"
+    is "$output" ".*mlx_lm.server.*" "should use MLX server command"
 }
 
 @test "ramalama --runtime=mlx works with huggingface model format" {
@@ -155,7 +155,7 @@ function skip_if_no_mlx() {
     model="huggingface://microsoft/DialoGPT-small"
     run_ramalama --runtime=mlx --dryrun run "$model"
     is "$status" "0" "MLX should work with huggingface model format"
-    is "$output" ".*python.*-m.*mlx_lm server.*" "should use MLX server command"
+    is "$output" ".*mlx_lm.server.*" "should use MLX server command"
 }
 
 @test "ramalama --runtime=mlx rejects --name option" {

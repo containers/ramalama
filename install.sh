@@ -129,6 +129,13 @@ is_python3_at_least_310() {
   python3 -c 'import sys; exit(0 if sys.version_info >= (3, 10) else 1)'
 }
 
+install_uv() {
+  local host="raw.githubusercontent.com"
+  local install_uv_url="https://$host/containers/ramalama/s/install-uv.sh"
+  curl -fsSL "$install_uv_url" | bash
+  echo
+}
+
 main() {
   set -e -o pipefail
 
@@ -151,14 +158,13 @@ main() {
     fi
 
     if available brew && brew install ramalama; then
+      install_uv
+      uv tool install mlx-lm
       return 0
     fi
   fi
 
-  local host="raw.githubusercontent.com"
-  local install_uv_url="https://$host/containers/ramalama/s/install-uv.sh"
-  curl -fsSL "$install_uv_url" | bash
-  echo
+  install_uv
   uv tool install --force --python python3.12 ramalama
   print_success_info
 }

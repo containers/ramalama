@@ -63,6 +63,16 @@ def is_split_file_model(model_path):
     return bool(re.match(SPLIT_MODEL_RE, model_path))
 
 
+def trim_model_name(model):
+    if model.startswith("huggingface://"):
+        model = model.replace("huggingface://", "hf://", 1)
+
+    if not model.startswith("ollama://") and not model.startswith("oci://"):
+        model = model.removesuffix(":latest")
+
+    return model
+
+
 class ModelBase:
     def __not_implemented_error(self, param):
         return NotImplementedError(f"ramalama {param} for '{type(self).__name__}' not implemented")
@@ -479,10 +489,7 @@ class Model(ModelBase):
             Optional list of extra arguments to append verbatim.
         """
         exec_args = [
-            "python",
-            "-m",
-            "mlx_lm",
-            subcommand,
+            "mlx_lm.server",
             "--model",
             shlex.quote(model_path),
         ]
@@ -849,6 +856,7 @@ class Model(ModelBase):
         print(ModelInfoBase(model_name, model_registry, model_path).serialize(json=args.json))
 
     def print_pull_message(self, model_name):
+        model_name = trim_model_name(model_name)
         # Write messages to stderr
         perror(f"Downloading {model_name} ...")
         perror(f"Trying to pull {model_name} ...")
