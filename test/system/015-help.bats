@@ -101,7 +101,7 @@ function check_help() {
     # Test for regression of #7273 (spurious "--remote" help on output)
     for helpopt in help --help -h; do
         run_ramalama $helpopt
-        is "${lines[0]}" "usage: ramalama [-h] [--container] [--debug] [--dryrun] [--engine ENGINE]" \
+        is "${lines[0]}" "usage: ramalama [-h] [--debug] [--dryrun] [--engine ENGINE] [--nocontainer]" \
            "ramalama $helpopt: first line of output"
     done
 
@@ -195,10 +195,10 @@ EOF
     skip_if_nocontainer
 
     run_ramalama --help
-    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: True)"  "Verify default container"
+    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: False)"  "Verify default container"
 
     RAMALAMA_IN_CONTAINER=false run_ramalama --help
-    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: False)"  "Verify default container with environment"
+    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: True)"  "Verify default container with environment"
 
     conf=$RAMALAMA_TMPDIR/ramalama.conf
     cat >$conf <<EOF
@@ -207,7 +207,7 @@ container=false
 EOF
 
     RAMALAMA_CONFIG=${conf} run_ramalama --help
-    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: False)"  "Verify default container override in ramalama.conf"
+    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: True)"  "Verify default container override in ramalama.conf"
 }
 
 @test "ramalama verify transport" {

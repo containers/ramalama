@@ -171,8 +171,7 @@ def configure_arguments(parser):
         dest="container",
         default=CONFIG.container,
         action="store_true",
-        help="""run RamaLama in the default container.
-The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
+        help=argparse.SUPPRESS,
     )
     verbosity_group.add_argument(
         "--debug",
@@ -196,7 +195,7 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
     parser.add_argument(
         "--nocontainer",
         dest="container",
-        default=CONFIG.nocontainer,
+        default=not CONFIG.container,
         action="store_false",
         help="""do not run RamaLama in the default container.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",

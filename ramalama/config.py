@@ -84,7 +84,6 @@ class BaseConfig:
     keep_groups: bool = False
     ngl: int = -1
     threads: int = -1
-    nocontainer: bool = False
     port: str = str(DEFAULT_PORT)
     pull: str = "newer"
     runtime: str = "llama.cpp"
@@ -179,7 +178,7 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     if 'images' in config:
         config['images'] = json.loads(config['images'])
 
-    for key in ['ocr', 'nocontainer', 'keep_groups', 'container']:
+    for key in ['ocr', 'keep_groups', 'container']:
         if key in config:
             config[key] = coerce_to_bool(config[key])
 

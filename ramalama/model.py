@@ -568,7 +568,7 @@ class Model(ModelBase):
             if not is_apple_silicon:
                 raise ValueError("MLX runtime is only supported on macOS with Apple Silicon.")
 
-        # If --container was specified return valid
+        # If --nocontainer=False was specified return valid
         if args.container:
             return
         if args.privileged:

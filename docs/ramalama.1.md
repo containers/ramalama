@@ -108,10 +108,6 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 ## GLOBAL OPTIONS
 
-#### **--container**
-run RamaLama in the default container. Default is `true` unless overridden in the ramalama.conf file.
-The environment variable "RAMALAMA_IN_CONTAINER=false" can also change the default.
-
 #### **--debug**
 print debug messages
 
@@ -126,10 +122,10 @@ The default can be overridden in the ramalama.conf file or via the RAMALAMA_CONT
 show this help message and exit
 
 #### **--nocontainer**
-Do not run RamaLama in the default container (default: False)
+Do not run RamaLama workloads in containers (default: False)
 The default can be overridden in the ramalama.conf file.
 
-Note: OCI images cannot be used with the --nocontainer option. This option disables the following features: GPU acceleration, containerized environment isolation, and dynamic resource allocation. For a complete list of affected features, please see the RamaLama documentation at [link-to-feature-list].
+Note: OCI images cannot be used with the --nocontainer option. This option disables the following features: Automatic GPU acceleration, containerized environment isolation, and dynamic resource allocation. For a complete list of affected features, please see the RamaLama documentation at [link-to-feature-list].
 
 #### **--quiet**
 Decrease output verbosity.

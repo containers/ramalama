@@ -21,7 +21,6 @@ def test_correct_config_defaults():
     assert cfg.keep_groups is False
     assert cfg.ngl == -1
     assert cfg.threads == -1
-    assert cfg.nocontainer is False
     assert cfg.port == str(DEFAULT_PORT)
     assert cfg.pull == "newer"
     assert cfg.runtime == "llama.cpp"
@@ -46,7 +45,6 @@ def test_config_defaults_not_set():
     assert cfg.is_set("keep_groups") is False
     assert cfg.is_set("ngl") is False
     assert cfg.is_set("threads") is False
-    assert cfg.is_set("nocontainer") is False
     assert cfg.is_set("port") is False
     assert cfg.is_set("pull") is False
     assert cfg.is_set("runtime") is False
@@ -531,7 +529,6 @@ class TestConfigIntegration:
             "RAMALAMA_NGL": "2",
             "RAMALAMA_CONTAINER": "true",
             "RAMALAMA_KEEP_GROUPS": "true",
-            "RAMALAMA_NOCONTAINER": "false",
             "RAMALAMA_OCR": "true",
             "RAMALAMA_USER__NO_MISSING_GPU_PROMPT": "true",
         }
@@ -544,7 +541,6 @@ class TestConfigIntegration:
             assert cfg.ngl == 2
             assert cfg.container is True
             assert cfg.keep_groups is True
-            assert cfg.nocontainer is False
             assert cfg.ocr is True
             assert cfg.user.no_missing_gpu_prompt is True
 
