@@ -40,7 +40,6 @@ spec:
   - name: test-commands
     value:
     - make validate
-    - make bats-nocontainer
     - make unit-tests
     - make cov-tests
   pipelineRef:

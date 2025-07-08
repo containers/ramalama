@@ -1,0 +1,55 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: init-snapshot
+spec:
+  description: Extract information from the SNAPSHOT and make it available as Tekton results
+  params:
+  - name: SNAPSHOT
+    description: >-
+      Information about the components included in the current snapshot under test.
+  results:
+  - name: event-type
+    description: The type of event that triggered the pipeline
+  - name: bats-image
+    description: URI of the bats image included in the snapshot
+  - name: ramalama-image
+    description: URI of the ramalama image included in the snapshot
+  - name: TEST_OUTPUT
+    description: Test result in json format
+  steps:
+  - name: process
+    image: registry.access.redhat.com/ubi10/ubi:latest
+    env:
+    - name: SNAPSHOT
+      value: $(params.SNAPSHOT)
+    - name: EVENT_TYPE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['pac.test.appstudio.openshift.io/event-type']
+    - name: RESULTS_EVENT_TYPE_PATH
+      value: $(results.event-type.path)
+    - name: RESULTS_BATS_IMAGE_PATH
+      value: $(results.bats-image.path)
+    - name: RESULTS_RAMALAMA_IMAGE_PATH
+      value: $(results.ramalama-image.path)
+    - name: RESULTS_TEST_OUTPUT_PATH
+      value: $(results.TEST_OUTPUT.path)
+    script: |
+      #!/bin/bash -ex
+      dnf -y install jq
+      echo -n "$EVENT_TYPE" | tee "$RESULTS_EVENT_TYPE_PATH"
+      echo
+      component_image() {
+        TAGSEP=":"
+        if [ "$EVENT_TYPE" == "pull_request" ]; then
+          TAGSEP+="on-pr-"
+        fi
+        jq -j --arg name "$1" --arg tagsep "$TAGSEP" '.components[] | select(.name == $name) | [(.containerImage | split("@")[0]), .source.git.revision] | join($tagsep)' <<< "$SNAPSHOT"
+      }
+      component_image bats | tee "$RESULTS_BATS_IMAGE_PATH"
+      echo
+      component_image ramalama | tee "$RESULTS_RAMALAMA_IMAGE_PATH"
+      echo
+      jq -jnc '{result: "SUCCESS", timestamp: now | todateiso8601, failures: 0, successes: 1, warnings: 0}' | tee "$RESULTS_TEST_OUTPUT_PATH"
+      echo
