@@ -1,6 +1,5 @@
 import argparse
 import errno
-import glob
 import json
 import os
 import shlex
@@ -579,10 +578,6 @@ def pull_parser(subparsers):
 
 def pull_cli(args):
     model = New(args.MODEL, args)
-    matching_files = glob.glob(f"{args.store}/models/*/{model}")
-    if matching_files:
-        return matching_files[0]
-
     model.pull(args)
 
 
@@ -688,7 +683,7 @@ def _get_source_model(args):
     smodel = New(src, args)
     if smodel.type == "OCI":
         raise ValueError(f"converting from an OCI based image {src} is not supported")
-    if not smodel.exists(args):
+    if not smodel.exists():
         smodel.pull(args)
     return smodel
 
@@ -958,7 +953,7 @@ def run_cli(args):
         args.port = CONFIG.port
         args.host = CONFIG.host
         args.network = 'bridge'
-        args.generate = ParsedGenerateInput("", "")
+        args.generate = None
 
     try:
         model = New(args.MODEL, args)
@@ -985,7 +980,7 @@ def _get_rag(args):
     if os.path.exists(args.rag):
         return
     model = New(args.rag, args=args, transport="oci")
-    if not model.exists(args):
+    if not model.exists():
         model.pull(args)
 
 

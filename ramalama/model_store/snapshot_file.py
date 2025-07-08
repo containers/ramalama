@@ -78,19 +78,14 @@ class LocalSnapshotFile(SnapshotFile):
 
 
 def validate_snapshot_files(snapshot_files: list[SnapshotFile]):
-    model_files = []
     chat_template_files = []
     mmproj_files = []
     for file in snapshot_files:
-        if file.type == SnapshotFileType.Model:
-            model_files.append(file)
         if file.type == SnapshotFileType.ChatTemplate:
             chat_template_files.append(file)
         if file.type == SnapshotFileType.Mmproj:
             mmproj_files.append(file)
 
-    if len(model_files) > 1:
-        raise ValueError(f"Only one model supported, got {len(model_files)}: {model_files}")
     if len(chat_template_files) > 1:
         raise ValueError(f"Only one chat template supported, got {len(chat_template_files)}: {chat_template_files}")
     if len(mmproj_files) > 1:

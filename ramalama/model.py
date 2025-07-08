@@ -1,8 +1,6 @@
 import os
-import pathlib
 import platform
 import random
-import re
 import shlex
 import socket
 import sys
@@ -11,16 +9,14 @@ from typing import Optional
 
 import ramalama.chat as chat
 from ramalama.common import (
-    MNT_CHAT_TEMPLATE_FILE,
     MNT_DIR,
-    MNT_FILE,
     MNT_FILE_DRAFT,
-    MNT_MMPROJ_FILE,
     accel_image,
     check_metal,
     check_nvidia,
     exec_cmd,
     genname,
+    is_split_file_model,
     perror,
     set_accel_env_vars,
 )
@@ -41,7 +37,6 @@ from ramalama.rag import rag_image
 from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama"]
-SPLIT_MODEL_RE = r'(.*)/([^/]*)-00001-of-(\d{5})\.gguf'
 
 
 file_not_found = """\
@@ -58,9 +53,15 @@ with the default RamaLama
 $(error)s"""
 
 
-def is_split_file_model(model_path):
-    """returns true if ends with -%05d-of-%05d.gguf"""
-    return bool(re.match(SPLIT_MODEL_RE, model_path))
+class NoRefFileFound(Exception):
+
+    def __init__(self, model: str, *args):
+        super().__init__(*args)
+
+        self.model = model
+
+    def __str__(self):
+        return f"No ref file or models found for '{self.model}'. Please pull model."
 
 
 def trim_model_name(model):
@@ -104,7 +105,7 @@ class ModelBase:
     def serve(self, args):
         raise self.__not_implemented_error("serve")
 
-    def exists(self, args):
+    def exists(self) -> bool:
         raise self.__not_implemented_error("exists")
 
     def inspect(self, args):
@@ -175,44 +176,78 @@ class Model(ModelBase):
             self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
         return self._model_store
 
-    def is_symlink_to(self, file_path, target_path):
-        if os.path.islink(file_path):
-            symlink_target = os.readlink(file_path)
-            abs_symlink_target = os.path.abspath(os.path.join(os.path.dirname(file_path), symlink_target))
-            abs_target_path = os.path.abspath(target_path)
-            return abs_symlink_target == abs_target_path
+    def _get_entry_model_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> str:
+        """
+        Returns the path to the model blob on the host if use_container and should_generate are both False.
+        Or returns the path to the mounted file inside a container.
+        """
+        if dry_run:
+            return "/path/to/model"
 
-        return False
+        ref_file = self.model_store.get_ref_file(self.model_tag)
+        if ref_file is None or not ref_file.model_files:
+            raise NoRefFileFound(self.model)
 
-    def garbage_collection(self, args):
-        for repo in MODEL_TYPES:
-            repo_dir = f"{args.store}/repos/{repo}"
-            model_dir = f"{args.store}/models/{repo}"
-            for root, dirs, files in os.walk(repo_dir):
-                file_has_a_symlink = False
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    if file.startswith("sha256:") or file.endswith(".gguf"):
-                        file_path = os.path.join(root, file)
-                        for model_root, model_dirs, model_files in os.walk(model_dir):
-                            for model_file in model_files:
-                                if self.is_symlink_to(os.path.join(root, model_root, model_file), file_path):
-                                    file_has_a_symlink = True
+        # Use the first model file
+        if is_split_file_model(self.model_name):
+            # Find model file with index 1 for split models
+            index_models = [file for file in ref_file.model_files if "-00001-of-" in file.name]
+            if len(index_models) != 1:
+                raise Exception(f"Found multiple index 1 gguf models: {index_models}")
+            model_file = index_models[0]
+        else:
+            model_file = ref_file.model_files[0]
 
-                        if not file_has_a_symlink:
-                            os.remove(file_path)
-                            file_path = os.path.basename(file_path)
-                            perror(f"Deleted: {file_path}")
+        if use_container or should_generate:
+            return os.path.join(MNT_DIR, model_file.name)
+        return self.model_store.get_blob_file_path(model_file.hash)
+
+    def _get_mmproj_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[str]:
+        """
+        Returns the path to the mmproj blob on the host if use_container and should_generate are both False.
+        Or returns the path to the mounted file inside a container.
+        """
+        if dry_run:
+            return ""
+
+        ref_file = self.model_store.get_ref_file(self.model_tag)
+        if ref_file is None:
+            raise NoRefFileFound(self.model)
+
+        if not ref_file.mmproj_files:
+            return None
+
+        # Use the first mmproj file
+        mmproj_file = ref_file.mmproj_files[0]
+        if use_container or should_generate:
+            return os.path.join(MNT_DIR, mmproj_file.name)
+        return self.model_store.get_blob_file_path(mmproj_file.hash)
+
+    def _get_chat_template_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[str]:
+        """
+        Returns the path to the chat template blob on the host if use_container and should_generate are both False.
+        Or returns the path to the mounted file inside a container.
+        """
+        if dry_run:
+            return ""
+
+        ref_file = self.model_store.get_ref_file(self.model_tag)
+        if ref_file is None:
+            raise NoRefFileFound(self.model)
+
+        if not ref_file.chat_templates:
+            return None
+
+        # Use the first chat template file
+        chat_template_file = ref_file.chat_templates[0]
+        if use_container or should_generate:
+            return os.path.join(MNT_DIR, chat_template_file.name)
+        return self.model_store.get_blob_file_path(chat_template_file.hash)
 
     def remove(self, args):
         _, tag, _ = self.extract_model_identifiers()
-        if self.model_store.tag_exists(tag):
-            self.model_store.remove_snapshot(tag)
-            return
-
-        if not args.ignore:
+        if not self.model_store.remove_snapshot(tag) and not args.ignore:
             raise KeyError(f"Model '{self.model}' not found")
-        return
 
     def get_container_name(self, args):
         if getattr(args, "name", None):
@@ -290,11 +325,12 @@ class Model(ModelBase):
 
         return gpu_args
 
-    def exec_model_in_container(self, model_path, cmd_args, args):
+    def exec_model_in_container(self, cmd_args, args):
         if not args.container:
             return False
+
         self.setup_container(args)
-        self.setup_mounts(model_path, args)
+        self.setup_mounts(args)
 
         # Make sure Image precedes cmd_args
         self.engine.add([args.image] + cmd_args)
@@ -305,61 +341,29 @@ class Model(ModelBase):
         self.engine.exec(stdout2null=args.noout)
         return True
 
-    def setup_mounts(self, model_path, args):
-        if args.runtime == "vllm":
-            model_base = ""
-            if self.model_store and getattr(self, 'model_tag', None):
-                ref_file = self.store.get_ref_file(self.model_tag)
-                if ref_file and hasattr(ref_file, 'hash'):
-                    model_base = self.model_store.model_base_directory
-            if not model_base and (model_path and os.path.exists(model_path)):
-                if os.path.isfile(model_path):
-                    model_base = os.path.dirname(model_path)
-                elif os.path.isdir(model_path):
-                    model_base = model_path
-            if model_base:
-                self.engine.add([f"--mount=type=bind,src={model_base},destination={MNT_DIR},ro"])
-            else:
-                raise ValueError(
-                    f'Could not determine a valid host directory to mount for model {self.model}'
-                    + 'Ensure the model path is correct or the model store is properly configured.'
-                )
+    def setup_mounts(self, args):
+        if args.dryrun:
+            return
 
-        elif model_path and os.path.exists(model_path):
-            if hasattr(self, 'split_model'):
-                self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_DIR}/{self.mnt_path},ro"])
+        ref_file = self.model_store.get_ref_file(self.model_tag)
+        if ref_file is None:
+            raise NoRefFileFound(self.model)
 
-                for k, v in self.split_model.items():
-                    part_path = v.model_path(args)
-                    src_file = f"{part_path}"
-                    dst_file = f"{MNT_DIR}/{k}"
-                    self.engine.add([f"--mount=type=bind,src={src_file},destination={dst_file},ro"])
-            else:
-                self.engine.add([f"--mount=type=bind,src={model_path},destination={MNT_FILE},ro"])
-        else:
-            self.engine.add([f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models"])
+        # mount all files into container with file name instead of hash
+        for file in ref_file.files:
+            blob_path = self.model_store.get_blob_file_path(file.hash)
+            mount_path = os.path.join(MNT_DIR, file.name)
+            self.engine.add([f"--mount=type=bind,src={blob_path},destination={mount_path},ro"])
 
         if self.draft_model:
-            draft_model = self.draft_model.get_model_path(args)
+            draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
             self.engine.add([f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro"])
 
-        # If a chat template is available, mount it as well
-        _, tag, _ = self.extract_model_identifiers()
-        ref_file = self.model_store.get_ref_file(tag)
-        if ref_file is not None:
-            if ref_file.chat_template_name != "":
-                chat_template_path = self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                self.engine.add([f"--mount=type=bind,src={chat_template_path},destination={MNT_CHAT_TEMPLATE_FILE},ro"])
-
-            if ref_file.mmproj_name != "":
-                mmproj_path = self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                self.engine.add([f"--mount=type=bind,src={mmproj_path},destination={MNT_MMPROJ_FILE},ro"])
-
     def bench(self, args):
-        model_path = self.get_model_path(args)
-        exec_args = self.build_exec_args_bench(args, model_path)
+        self.ensure_model_exists(args)
+        exec_args = self.build_exec_args_bench(args)
         self.validate_args(args)
-        self.execute_command(model_path, exec_args, args)
+        self.execute_command(exec_args, args)
 
     def run(self, args):
         # The Run command will first launch a daemonized service
@@ -475,14 +479,12 @@ class Model(ModelBase):
         except ProcessLookupError:
             pass
 
-    def _build_mlx_exec_args(self, subcommand: str, model_path: str, args, extra: list[str] | None = None) -> list[str]:
+    def _build_mlx_exec_args(self, subcommand: str, args, extra: Optional[list[str]] = None) -> list[str]:
         """Return the command-line *exec_args* for ``mlx_lm`` *subcommand*.
         Parameters
         ----------
         subcommand:
             Should just be ``"server"``
-        model_path:
-            Filesystem path (host or container-mapped).
         args:
             Parsed CLI *args* namespace.
         extra:
@@ -491,7 +493,7 @@ class Model(ModelBase):
         exec_args = [
             "mlx_lm.server",
             "--model",
-            shlex.quote(model_path),
+            shlex.quote(self._get_entry_model_path(args.container, args.generate, args.dryrun)),
         ]
 
         if getattr(args, "temp", None):
@@ -512,13 +514,11 @@ class Model(ModelBase):
 
     def perplexity(self, args):
         self.validate_args(args)
-        model_path = self.get_model_path(args)
-        exec_args = self.build_exec_args_perplexity(args, model_path)
-        self.execute_command(model_path, exec_args, args)
+        self.ensure_model_exists(args)
+        exec_args = self.build_exec_args_perplexity(args)
+        self.execute_command(exec_args, args)
 
-    def build_exec_args_perplexity(self, args, model_path):
-        exec_model_path = MNT_FILE if args.container else model_path
-
+    def build_exec_args_perplexity(self, args):
         if getattr(args, "runtime", None) == "mlx":
             raise NotImplementedError("Perplexity calculation is not supported by the MLX runtime.")
 
@@ -528,57 +528,25 @@ class Model(ModelBase):
         gpu_args = self.gpu_args(args=args)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
-        exec_args += ["-m", exec_model_path]
+
+        exec_args += ["-m", self._get_entry_model_path(args.container, False, args.dryrun)]
 
         return exec_args
 
-    def model_path(self, args):
-        _, tag, _ = self.extract_model_identifiers()
-        if self.model_store.tag_exists(tag):
-            ref_file = self.model_store.get_ref_file(tag)
-            return str(
-                pathlib.Path(self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.model_name)).resolve()
-            )
-        return ""
+    def exists(self) -> bool:
+        _, _, all = self.model_store.get_cached_files(self.model_tag)
+        return all
 
-    def exists(self, args):
-        model_path = self.model_path(args)
-        if not os.path.exists(model_path):
-            return None
-
-        return model_path
-
-    def get_model_path(self, args):
-        if os.path.exists(args.MODEL):
-            return args.MODEL
-
-        model_path = self.exists(args)
-        if model_path:
-            return model_path
-
-        if args.dryrun:
-            return "/path/to/model"
+    def ensure_model_exists(self, args):
+        if args.dryrun or self.exists():
+            return
 
         if args.pull == "never":
             raise ValueError(f"{args.MODEL} does not exists")
 
-        model_path = self.pull(args)
+        self.pull(args)
 
-        return model_path
-
-    def get_model_registry(self, args):
-        model_path = self.get_model_path(args)
-        if not model_path or args.dryrun:
-            return ""
-
-        parts = model_path.replace(args.store, "").split(os.sep)
-        if len(parts) < 3:
-            return ""
-        return parts[2]
-
-    def build_exec_args_bench(self, args, model_path):
-        exec_model_path = MNT_FILE if args.container else model_path
-
+    def build_exec_args_bench(self, args):
         if getattr(args, "runtime", None) == "mlx":
             raise NotImplementedError("Benchmarking is not supported by the MLX runtime.")
 
@@ -588,7 +556,8 @@ class Model(ModelBase):
         gpu_args = self.gpu_args(args=args)
         if gpu_args is not None:
             exec_args.extend(gpu_args)
-        exec_args += ["-m", exec_model_path]
+
+        exec_args += ["-m", self._get_entry_model_path(args.container, False, args.dryrun)]
 
         return exec_args
 
@@ -616,10 +585,10 @@ class Model(ModelBase):
 
         raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
-    def vllm_serve(self, args, exec_model_path):
+    def vllm_serve(self, args):
         exec_args = [
             "--model",
-            exec_model_path,
+            self._get_entry_model_path(args.container, args.generate, args.dryrun),
             "--port",
             args.port,
             "--max-sequence-length",
@@ -628,18 +597,30 @@ class Model(ModelBase):
         exec_args += args.runtime_args
         return exec_args
 
-    def llama_serve(self, args, exec_model_path, chat_template_path, mmproj_path):
+    def llama_serve(self, args):
         exec_args = ["llama-server"]
         draft_model_path = None
         if self.draft_model:
-            draft_model = self.draft_model.get_model_path(args)
+            draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
             draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
 
-        exec_args += ["--port", args.port, "--model", exec_model_path, "--no-warmup"]
-        if mmproj_path:
+        exec_args += [
+            "--port",
+            args.port,
+            "--model",
+            self._get_entry_model_path(args.container, args.generate, args.dryrun),
+            "--no-warmup",
+        ]
+        mmproj_path = self._get_mmproj_path(args.container, args.generate, args.dryrun)
+        if mmproj_path is not None:
             exec_args += ["--mmproj", mmproj_path]
         else:
             exec_args += ["--jinja"]
+
+            # TODO: see https://github.com/containers/ramalama/issues/1202
+            # chat_template_path = self._get_chat_template_path(args.container, args.generate, args.dryrun)
+            # if chat_template_path is not None:
+            #     exec_args += ["--chat-template-file", chat_template_path]
 
         if should_colorize():
             exec_args += ["--log-colors"]
@@ -664,10 +645,6 @@ class Model(ModelBase):
         if rpc_nodes:
             exec_args += ["--rpc", rpc_nodes]
 
-        # TODO: see https://github.com/containers/ramalama/issues/1202
-        # if chat_template_path != "":
-        #     exec_args += ["--chat-template-file", chat_template_path]
-
         if args.debug:
             exec_args += ["-v"]
 
@@ -678,55 +655,39 @@ class Model(ModelBase):
             exec_args.extend(["--flash-attn"])
         return exec_args
 
-    def mlx_serve(self, args, exec_model_path):
+    def mlx_serve(self, args):
         extra = ["--port", str(args.port), "--host", args.host]
-        return self._build_mlx_exec_args("server", exec_model_path, args, extra)
+        return self._build_mlx_exec_args("server", args, extra)
 
-    def build_exec_args_serve(self, args, exec_model_path, chat_template_path="", mmproj_path=""):
+    def build_exec_args_serve(self, args):
         if args.runtime == "vllm":
-            exec_args = self.vllm_serve(args, exec_model_path)
+            exec_args = self.vllm_serve(args)
         elif args.runtime == "mlx":
-            exec_args = self.mlx_serve(args, exec_model_path)
+            exec_args = self.mlx_serve(args)
         else:
-            exec_args = self.llama_serve(args, exec_model_path, chat_template_path, mmproj_path)
+            exec_args = self.llama_serve(args)
 
         if args.seed:
             exec_args += ["--seed", args.seed]
 
         return exec_args
 
-    def handle_runtime(self, args, exec_args, exec_model_path):
+    def handle_runtime(self, args, exec_args):
         set_accel_env_vars()
+
         if args.runtime == "vllm":
-            container_model_path = ""
-            ref_file = None
-            if self.model_store:
-                ref_file = self.model_store.get_ref_file(self.model_tag)
-
-            if ref_file and ref_file.hash:
-                snapshot_dir_name = ref_file.hash
-                container_model_path = os.path.join(MNT_DIR, "snapshots", snapshot_dir_name)
-            else:
-                current_model_host_path = self.get_model_path(args)
-                if os.path.isdir(current_model_host_path):
-                    container_model_path = MNT_DIR
-                else:
-                    container_model_path = os.path.join(MNT_DIR, os.path.basename(current_model_host_path))
-
             vllm_max_model_len = 2048
             if args.context:
                 vllm_max_model_len = args.context
 
-            exec_args = [
-                "--port",
-                str(args.port),
-                "--model",
-                str(container_model_path),
-                "--max_model_len",
-                str(vllm_max_model_len),
-                "--served-model-name",
-                self.model_name,
-            ]
+            exec_args.extend(
+                [
+                    "--max_model_len",
+                    str(vllm_max_model_len),
+                    "--served-model-name",
+                    self.model_name,
+                ]
+            )
 
             if getattr(args, 'runtime_args', None):
                 exec_args.extend(args.runtime_args)
@@ -745,24 +706,42 @@ class Model(ModelBase):
 
         return exec_args
 
-    def generate_container_config(self, model_path, chat_template_path, args, exec_args):
-        if not args.generate:
-            return False
+    def generate_container_config(self, args, exec_args):
+
+        # Get the blob paths (src) and mounted paths (dest)
+        model_src_path = self._get_entry_model_path(False, False, args.dryrun)
+        chat_template_src_path = self._get_chat_template_path(False, False, args.dryrun)
+        model_dest_path = self._get_entry_model_path(True, True, args.dryrun)
+        chat_template_dest_path = self._get_chat_template_path(True, True, args.dryrun)
 
         if args.generate.gen_type == "quadlet":
-            self.quadlet(model_path, chat_template_path, args, exec_args, args.generate.output_dir)
+            self.quadlet(
+                (model_src_path, model_dest_path),
+                (chat_template_src_path, chat_template_dest_path),
+                args,
+                exec_args,
+                args.generate.output_dir,
+            )
         elif args.generate.gen_type == "kube":
-            self.kube(model_path, chat_template_path, args, exec_args, args.generate.output_dir)
+            self.kube(
+                (model_src_path, model_dest_path),
+                (chat_template_src_path, chat_template_dest_path),
+                args,
+                exec_args,
+                args.generate.output_dir,
+            )
         elif args.generate.gen_type == "quadlet/kube":
-            self.quadlet_kube(model_path, chat_template_path, args, exec_args, args.generate.output_dir)
-        else:
-            return False
+            self.quadlet_kube(
+                (model_src_path, model_dest_path),
+                (chat_template_src_path, chat_template_dest_path),
+                args,
+                exec_args,
+                args.generate.output_dir,
+            )
 
-        return True
-
-    def execute_command(self, model_path, exec_args, args):
+    def execute_command(self, exec_args, args):
         try:
-            if self.exec_model_in_container(model_path, exec_args, args):
+            if self.exec_model_in_container(exec_args, args):
                 return
             if args.dryrun:
                 dry_run(exec_args)
@@ -777,37 +756,15 @@ class Model(ModelBase):
 
     def serve(self, args, quiet=False):
         self.validate_args(args)
-        model_path = self.get_model_path(args)
-        if is_split_file_model(model_path):
-            mnt_file = MNT_DIR + '/' + self.mnt_path
-        else:
-            mnt_file = MNT_FILE
+        self.ensure_model_exists(args)
 
         args.port = compute_serving_port(args, quiet=quiet or args.generate)
-        exec_model_path = mnt_file if args.container or args.generate else model_path
-        chat_template_path = ""
-        mmproj_path = ""
 
-        _, tag, _ = self.extract_model_identifiers()
-        ref_file = self.model_store.get_ref_file(tag)
-        if ref_file is not None:
-            if ref_file.chat_template_name != "":
-                chat_template_path = (
-                    MNT_CHAT_TEMPLATE_FILE
-                    if args.container or args.generate
-                    else self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.chat_template_name)
-                )
+        exec_args = self.build_exec_args_serve(args)
+        exec_args = self.handle_runtime(args, exec_args)
 
-            if ref_file.mmproj_name != "":
-                mmproj_path = (
-                    MNT_MMPROJ_FILE
-                    if args.container or args.generate
-                    else self.model_store.get_snapshot_file_path(ref_file.hash, ref_file.mmproj_name)
-                )
-
-        exec_args = self.build_exec_args_serve(args, exec_model_path, chat_template_path, mmproj_path)
-        exec_args = self.handle_runtime(args, exec_args, exec_model_path)
-        if self.generate_container_config(model_path, chat_template_path, args, exec_args):
+        if args.generate:
+            self.generate_container_config(args, exec_args)
             return
 
         # Add rag chatbot
@@ -818,31 +775,30 @@ class Model(ModelBase):
                 f"nohup {' '.join(exec_args)} &> /tmp/llama-server.log & rag_framework run /rag/vector.db",
             ]
 
-        self.execute_command(model_path, exec_args, args)
+        self.execute_command(exec_args, args)
 
-    def quadlet(self, model, chat_template, args, exec_args, output_dir):
-        quadlet = Quadlet(model, chat_template, args, exec_args)
+    def quadlet(self, model_paths, chat_template_paths, args, exec_args, output_dir):
+        quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, args, exec_args)
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
 
-    def quadlet_kube(self, model, chat_template, args, exec_args, output_dir):
-        kube = Kube(model, chat_template, args, exec_args)
+    def quadlet_kube(self, model_paths, chat_template_paths, args, exec_args, output_dir):
+        kube = Kube(self.model_name, model_paths, chat_template_paths, args, exec_args)
         kube.generate().write(output_dir)
 
-        quadlet = Quadlet(model, chat_template, args, exec_args)
+        quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, args, exec_args)
         quadlet.kube().write(output_dir)
 
-    def kube(self, model, chat_template, args, exec_args, output_dir):
-        kube = Kube(model, chat_template, args, exec_args)
+    def kube(self, model_paths, chat_template_paths, args, exec_args, output_dir):
+        kube = Kube(self.model_name, model_paths, chat_template_paths, args, exec_args)
         kube.generate().write(output_dir)
 
-    def check_valid_model_path(self, relative_target_path, model_path):
-        return os.path.exists(model_path) and os.readlink(model_path) == relative_target_path
-
     def inspect(self, args):
+        self.ensure_model_exists(args)
+
         model_name = self.filename
-        model_path = self.get_model_path(args)
-        model_registry = self.get_model_registry(args)
+        model_registry = self.type.lower()
+        model_path = self._get_entry_model_path(False, False, args.dryrun)
 
         if GGUFInfoParser.is_model_gguf(model_path):
             gguf_info: GGUFModelInfo = GGUFInfoParser.parse(model_name, model_registry, model_path)

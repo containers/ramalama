@@ -35,6 +35,14 @@ RAG_CONTENT = f"{MNT_DIR}/vector.db"
 
 MIN_VRAM_BYTES = 1073741824  # 1GiB
 
+SPLIT_MODEL_PATH_RE = r'(.*)/([^/]*)-00001-of-(\d{5})\.gguf'
+
+
+def is_split_file_model(model_path):
+    """returns true if ends with -%05d-of-%05d.gguf"""
+    return bool(re.match(SPLIT_MODEL_PATH_RE, model_path))
+
+
 podman_machine_accel = False
 
 
@@ -161,11 +169,11 @@ def generate_sha256(to_hash: str) -> str:
     to_hash (str): The string to generate the sha256 hash for.
 
     Returns:
-    str: Hex digest of the input appended to the prefix sha256:
+    str: Hex digest of the input appended to the prefix sha256-
     """
     h = hashlib.new("sha256")
     h.update(to_hash.encode("utf-8"))
-    return f"sha256:{h.hexdigest()}"
+    return f"sha256-{h.hexdigest()}"
 
 
 def verify_checksum(filename: str) -> bool:

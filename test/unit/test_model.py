@@ -136,11 +136,20 @@ class TestMLXRuntime:
 
     def test_mlx_serve_args(self):
         """Test that MLX serve generates correct arguments"""
-        args = Namespace(port="8080", host="127.0.0.1", context=2048, temp="0.8", runtime_args=["--verbose"])
+        args = Namespace(
+            port="8080",
+            host="127.0.0.1",
+            context=2048,
+            temp="0.8",
+            runtime_args=["--verbose"],
+            container=False,
+            generate=False,
+            dryrun=True,
+        )
 
         model = Model("test-model", "/tmp/store")
 
-        exec_args = model.mlx_serve(args, "/path/to/model")
+        exec_args = model.mlx_serve(args)
 
         expected_args = [
             "mlx_lm.server",
@@ -232,16 +241,14 @@ class TestMLXRuntime:
             MODEL="test-model",
             ARGS=None,  # No prompt arguments
             pull="missing",  # Required for get_model_path
-            dryrun=False,
+            dryrun=True,  # use dryrun to avoid file system checks
         )
 
         model = Model("test-model", "/tmp/store")
 
-        # Mock the get_model_path method to avoid file system checks
-        with patch.object(model, 'get_model_path', return_value="/path/to/model"):
-            with patch.object(model, 'get_container_name', return_value="test-container"):
-                with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
-                    model.run(args)
+        with patch.object(model, 'get_container_name', return_value="test-container"):
+            with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
+                model.run(args)
 
         # Verify that compute_serving_port was called
         mock_compute_port.assert_called_once()
@@ -264,12 +271,14 @@ class TestMLXRuntime:
         mock_system.return_value = "Darwin"
         mock_machine.return_value = "arm64"
 
-        args = Namespace(temp="0.7", seed=42, context=1024, runtime_args=["--verbose"])
+        args = Namespace(
+            temp="0.7", seed=42, context=1024, runtime_args=["--verbose"], container=False, generate=False, dryrun=True
+        )
 
         model = Model("test-model", "/tmp/store")
 
         # Test that server subcommand is supported
-        exec_args = model._build_mlx_exec_args("server", "/path/to/model", args, ["--port", "8080"])
+        exec_args = model._build_mlx_exec_args("server", args, ["--port", "8080"])
 
         expected_args = [
             "mlx_lm.server",
@@ -295,12 +304,12 @@ class TestMLXRuntime:
         mock_system.return_value = "Darwin"
         mock_machine.return_value = "arm64"
 
-        args = Namespace(runtime="mlx", container=False, MODEL="test-model")
+        args = Namespace(runtime="mlx", MODEL="test-model", container=False, generate=False, dryrun=True)
 
         model = Model("test-model", "/tmp/store")
 
         with pytest.raises(NotImplementedError, match="Benchmarking is not supported by the MLX runtime"):
-            model.build_exec_args_bench(args, "/path/to/model")
+            model.build_exec_args_bench(args)
 
     @patch('ramalama.model.platform.system')
     @patch('ramalama.model.platform.machine')
@@ -309,9 +318,9 @@ class TestMLXRuntime:
         mock_system.return_value = "Darwin"
         mock_machine.return_value = "arm64"
 
-        args = Namespace(runtime="mlx", container=False, MODEL="test-model")
+        args = Namespace(runtime="mlx", MODEL="test-model", container=False, generate=False, dryrun=True)
 
         model = Model("test-model", "/tmp/store")
 
         with pytest.raises(NotImplementedError, match="Perplexity calculation is not supported by the MLX runtime"):
-            model.build_exec_args_perplexity(args, "/path/to/model")
+            model.build_exec_args_perplexity(args)
