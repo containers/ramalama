@@ -42,6 +42,8 @@ For REST API endpoint documentation, see:
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
 The default can be overridden in the ramalama.conf file.
 
+To use a specific version of `ramalama-stack`, set a container env variable such as `--env RAMALAMA_STACK_VERSION=0.2.4`.(default: latest)
+
 #### **--authfile**=*password*
 Path of the authentication file for OCI registries
 
