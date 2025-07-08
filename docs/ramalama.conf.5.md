@@ -65,7 +65,7 @@ The ramalama table contains settings to configure and manage the OCI runtime.
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.
 Options: llama-stack, none
 
-**carimage**="registry.access.redhat.com/ubi9-micro:latest"
+**carimage**="registry.access.redhat.com/ubi10-micro:latest"
 
 OCI model car image
 

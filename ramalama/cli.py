@@ -21,7 +21,6 @@ except Exception:
 
 import ramalama.chat as chat
 import ramalama.oci
-import ramalama.rag
 from ramalama import engine
 from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
@@ -31,6 +30,7 @@ from ramalama.model import MODEL_TYPES
 from ramalama.model_factory import ModelFactory, New
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.rag import rag_image
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack
 from ramalama.version import print_version, version
@@ -193,21 +193,6 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         default=CONFIG.engine,
         help="""run RamaLama using the specified container engine.
 The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
-    )
-    parser.add_argument(
-        "--image",
-        default=accel_image(CONFIG),
-        help="OCI container image to run with the specified AI model",
-        action=OverrideDefaultAction,
-        completer=local_images,
-    )
-    parser.add_argument(
-        "--keep-groups",
-        dest="podman_keep_groups",
-        default=CONFIG.keep_groups,
-        action="store_true",
-        help="""pass `--group-add keep-groups` to podman, if using podman.
-Needed to access gpu on some systems, but has security implications.""",
     )
     parser.add_argument(
         "--nocontainer",
@@ -521,7 +506,7 @@ def info_cli(args):
         "Engine": {
             "Name": args.engine,
         },
-        "Image": args.image,
+        "Image": accel_image(CONFIG),
         "Runtime": args.runtime,
         "Store": args.store,
         "UseContainer": args.container,
@@ -663,6 +648,7 @@ def convert_cli(args):
     model = ModelFactory(tgt, args).create_oci()
 
     source_model = _get_source_model(args)
+    args.carimage = rag_image(accel_image(CONFIG))
     model.convert(source_model, args)
 
 
@@ -790,6 +776,21 @@ def runtime_options(parser, command):
             help="IP address to listen",
             completer=suppressCompleter,
         )
+    parser.add_argument(
+        "--image",
+        default=accel_image(CONFIG),
+        help="OCI container image to run with the specified AI model",
+        action=OverrideDefaultAction,
+        completer=local_images,
+    )
+    parser.add_argument(
+        "--keep-groups",
+        dest="podman_keep_groups",
+        default=CONFIG.keep_groups,
+        action="store_true",
+        help="""pass `--group-add keep-groups` to podman.
+If GPU device on host is accessible to via group access, this option leaks the user groups into the container.""",
+    )
     if command == "run":
         parser.add_argument(
             "--keepalive", type=str, help="duration to keep a model loaded (e.g. 5m)", completer=suppressCompleter
@@ -1060,6 +1061,21 @@ def rag_parser(subparsers):
         default=CONFIG.env,
         help="environment variables to add to the running RAG container",
         completer=local_env,
+    )
+    parser.add_argument(
+        "--image",
+        default=accel_image(CONFIG),
+        help="OCI container image to run with the specified AI model",
+        action=OverrideDefaultAction,
+        completer=local_images,
+    )
+    parser.add_argument(
+        "--keep-groups",
+        dest="podman_keep_groups",
+        default=CONFIG.keep_groups,
+        action="store_true",
+        help="""pass `--group-add keep-groups` to podman.
+If GPU device on host is accessible to via group access, this option leaks the user groups into the container.""",
     )
     add_network_argument(parser, dflt=None)
     parser.add_argument(

@@ -9,7 +9,7 @@ from ramalama.config import DEFAULT_PORT, default_config, get_default_engine, ge
 def test_correct_config_defaults():
     cfg = default_config()
 
-    assert cfg.carimage == "registry.access.redhat.com/ubi9-micro:latest"
+    assert cfg.carimage == "registry.access.redhat.com/ubi10-micro:latest"
     assert cfg.container in [True, False]  # depends on env/system
     assert cfg.ctx_size == 2048
     assert cfg.engine in ["podman", "docker", None]

@@ -76,7 +76,7 @@ load helpers
     skip_if_nocontainer
     skip_if_docker
     run_ramalama pull hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0
-    run_ramalama --image quay.io/ramalama/ramalama-rag convert --gguf Q4_0 hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 oci://quay.io/ramalama/tiny-q4-0
+    run_ramalama convert --gguf Q4_0 hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 oci://quay.io/ramalama/tiny-q4-0
     run_ramalama list
     is "$output" ".*ramalama/tiny-q4-0:latest"
 #    FIXME:  This test will work on all podman 5.3 and greater clients.

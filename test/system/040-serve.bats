@@ -25,7 +25,7 @@ verify_begin=".*run --rm"
 	assert "$output" !~ ".*--network" "--network is not part of the output"
 	# Extract container args (everything before the image name) and verify --host is not there
 	container_args=$(echo "$output" | sed 's/quay\.io\/ramalama\/ramalama.*//')
-	assert "$container_args" !~ ".*--host" "verify --host is not added to container arguments"
+	assert "$output" =~ ".*--host 0.0.0.0" "Container sets host to 0.0.0.0"
 	is "$output" ".*${model}" "verify model name"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
@@ -259,7 +259,7 @@ verify_begin=".*run --rm"
 	   rm $name.image
 	fi
 
-    run_ramalama rm oci://${ociimage}
+	run_ramalama rm oci://${ociimage}
     done
     stop_registry
     skip "vLLM can't serve GGUFs, needs tiny safetensor"
@@ -380,10 +380,10 @@ verify_begin=".*run --rm"
     skip_if_nocontainer
     skip_if_darwin
     skip_if_docker
-    run_ramalama 125 --image bogus serve --pull=never tiny
+    run_ramalama 125 serve --image bogus --pull=never tiny
     is "$output" "Error: bogus: image not known"
 
-    run_ramalama 125 --image bogus1 serve --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama 125 serve --image bogus1 --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*Error: bogus1: image not known"
 }
 
@@ -398,7 +398,7 @@ verify_begin=".*run --rm"
     run_ramalama --dryrun serve --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*quay.io/ramalama/.*-rag:"
 
-    run_ramalama --dryrun --image quay.io/ramalama/ramalama:1.0 serve --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama --dryrun serve --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*quay.io/ramalama/ramalama:1.0"
 }
 

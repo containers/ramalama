@@ -35,6 +35,33 @@ for a value and set the variable only if it is set on the host.
 #### **--help**, **-h**
 Print usage message
 
+#### **--image**=IMAGE
+OCI container image to run with specified AI model. RamaLama defaults to using
+images based on the accelerator it discovers. For example:
+`quay.io/ramalama/ramalama-rag`. See the table below for all default images.
+The default image tag is based on the minor version of the RamaLama package.
+Version 0.10.0 of RamaLama pulls an image with a `:0.10` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+
+The default can be overridden in the ramalama.conf file or via the
+RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
+RamaLama to use the `quay.io/ramalama/aiimage:1.2` image.
+
+Accelerated images:
+
+| Accelerator             | Image                          |
+| ------------------------| ------------------------------ |
+|  CPU, Apple             | quay.io/ramalama/ramalama-rag  |
+|  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm-rag      |
+|  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda-rag      |
+|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi-rag     |
+|  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu-rag |
+|  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann-rag      |
+|  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa-rag      |
+
+#### **--keep-groups**
+pass --group-add keep-groups to podman (default: False)
+If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
+
 #### **--network**=*none*
 sets the configuration for network namespaces when handling RUN instructions
 

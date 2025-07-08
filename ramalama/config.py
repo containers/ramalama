@@ -64,7 +64,7 @@ class RamalamaSettings:
 class BaseConfig:
     container: bool = None  # type: ignore
     image: str = None  # type: ignore
-    carimage: str = "registry.access.redhat.com/ubi9-micro:latest"
+    carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
     ctx_size: int = 2048
     engine: SUPPORTED_ENGINES | None = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
