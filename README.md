@@ -22,6 +22,25 @@ RamaLama eliminates the need to configure the host system by instead pulling a c
 - Interact with models via REST API or as a chatbot.
 <br>
 
+## Install
+### Install on Fedora
+RamaLama is available in [Fedora 40](https://fedoraproject.org/) and later. To install it, run:
+```
+sudo dnf install python3-ramalama
+```
+
+### Install via PyPi
+RamaLama is available via PyPi at [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
+```
+pip install ramalama
+```
+
+### Install script (Linux and macOS)
+Install RamaLama by running:
+```
+curl -fsSL https://ramalama.ai/install.sh | bash
+```
+
 ## Accelerated images
 
 | Accelerator                       | Image                      |
@@ -102,24 +121,6 @@ pip install mlx-lm
 ramalama --runtime=mlx serve hf://mlx-community/Unsloth-Phi-4-4bit
 ```
 
-## Install
-### Install on Fedora
-RamaLama is available in [Fedora 40](https://fedoraproject.org/) and later. To install it, run:
-```
-sudo dnf install python3-ramalama
-```
-
-### Install via PyPi
-RamaLama is available via PyPi at [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
-```
-pip install ramalama
-```
-
-### Install script (Linux and macOS)
-Install RamaLama by running:
-```
-curl -fsSL https://ramalama.ai/install.sh | bash
-```
 
 #### Default Container Engine
 When both Podman and Docker are installed, RamaLama defaults to Podman. The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behaviour. When neither are installed, RamaLama will attempt to run the model with software on the local system.
