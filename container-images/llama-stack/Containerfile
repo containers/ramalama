@@ -1,6 +1,6 @@
 FROM quay.io/fedora/fedora:42
 
-ARG RAMALAMA_STACK_VERSION=0.2.4
+ARG RAMALAMA_STACK_VERSION=0.2.5
 
 # hack that should be removed when the following bug is addressed
 # https://github.com/containers/ramalama-stack/issues/53
