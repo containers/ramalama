@@ -72,9 +72,10 @@ class Engine:
         if getattr(self.args, "privileged", False):
             self.exec_args += ["--privileged"]
         else:
-            self.exec_args += [
-                "--security-opt=label=disable",
-            ]
+            if not getattr(self.args, "selinux", False):
+                self.exec_args += [
+                    "--security-opt=label=disable",
+                ]
             if not getattr(self.args, "nocapdrop", False):
                 self.exec_args += [
                     "--cap-drop=all",
@@ -146,9 +147,9 @@ class Engine:
         if os.path.exists(self.args.rag):
             rag = os.path.realpath(self.args.rag)
             # Added temp read write because vector database requires write access even if nothing is written
-            self.exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db,rw=true")
+            self.exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db,rw=true{self.relabel()}")
         else:
-            self.exec_args.append(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
+            self.exec_args.append(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true{self.relabel()}")
 
     def handle_podman_specifics(self):
         if getattr(self.args, "podman_keep_groups", None):
@@ -165,6 +166,11 @@ class Engine:
 
     def exec(self, stdout2null: bool = False, stderr2null: bool = False):
         exec_cmd(self.exec_args, stdout2null, stderr2null)
+
+    def relabel(self):
+        if getattr(self.args, "selinux", False) and self.use_podman:
+            return ",z"
+        return ""
 
 
 def dry_run(args):

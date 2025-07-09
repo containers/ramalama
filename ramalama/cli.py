@@ -23,7 +23,7 @@ import ramalama.oci
 from ramalama import engine
 from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
-from ramalama.config import CONFIG
+from ramalama.config import CONFIG, coerce_to_bool
 from ramalama.logger import configure_logger, logger
 from ramalama.model import MODEL_TYPES, trim_model_name
 from ramalama.model_factory import ModelFactory, New
@@ -78,6 +78,11 @@ class OverrideDefaultAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
         setattr(namespace, self.dest + '_override', True)
+
+
+class CoerceToBool(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, coerce_to_bool(values))
 
 
 class HelpException(Exception):
@@ -501,6 +506,7 @@ def info_cli(args):
         },
         "Image": accel_image(CONFIG),
         "Runtime": args.runtime,
+        "Selinux": CONFIG.selinux,
         "Store": args.store,
         "UseContainer": args.container,
         "Version": version(),
@@ -786,7 +792,6 @@ If GPU device on host is accessible to via group access, this option leaks the u
         )
     if command == "serve":
         parser.add_argument("--model-draft", help="Draft model", completer=local_models)
-
     parser.add_argument(
         "-n",
         "--name",
@@ -842,6 +847,12 @@ If GPU device on host is accessible to via group access, this option leaks the u
             completer=suppressCompleter,
         )
     parser.add_argument("--seed", help="override random seed", completer=suppressCompleter)
+    parser.add_argument(
+        "--selinux",
+        default=CONFIG.selinux,
+        action=CoerceToBool,
+        help="Enable SELinux container separation",
+    )
     parser.add_argument(
         "--temp",
         default=CONFIG.temp,
@@ -1076,6 +1087,12 @@ If GPU device on host is accessible to via group access, this option leaks the u
         help='pull image policy',
     )
     parser.add_argument(
+        "--selinux",
+        default=CONFIG.selinux,
+        action=CoerceToBool,
+        help="Enable SELinux container separation",
+    )
+    parser.add_argument(
         "PATH",
         nargs="*",
         help="""\
@@ -1183,25 +1200,25 @@ def inspect_cli(args):
 
 
 def main():
-    parser, args = init_cli()
-
-    try:
-        import argcomplete
-
-        argcomplete.autocomplete(parser)
-    except Exception:
-        pass
 
     def eprint(e, exit_code):
         perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)
 
-    if not args.subcommand:
-        parser.print_usage()
-        perror("ramalama: requires a subcommand")
-        return 0
-
     try:
+        parser, args = init_cli()
+        try:
+            import argcomplete
+
+            argcomplete.autocomplete(parser)
+        except Exception:
+            pass
+
+        if not args.subcommand:
+            parser.print_usage()
+            perror("ramalama: requires a subcommand")
+            return 0
+
         args.func(args)
     except urllib.error.HTTPError as e:
         eprint(f"pulling {e.geturl()} failed: {e}", errno.EINVAL)

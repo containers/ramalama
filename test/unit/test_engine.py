@@ -8,7 +8,13 @@ from ramalama.engine import Engine, containers, dry_run, images
 class TestEngine(unittest.TestCase):
     def setUp(self):
         self.base_args = Namespace(
-            engine="podman", debug=False, dryrun=False, pull="never", image="test-image:latest", quiet=True
+            engine="podman",
+            debug=False,
+            dryrun=False,
+            pull="never",
+            image="test-image:latest",
+            quiet=True,
+            selinux=False,
         )
 
     def test_init_basic(self):
@@ -62,6 +68,12 @@ class TestEngine(unittest.TestCase):
         privileged_args = Namespace(**vars(self.base_args), privileged=True)
         privileged_engine = Engine(privileged_args)
         self.assertIn("--privileged", privileged_engine.exec_args)
+
+    def test_add_selinux(self):
+        self.base_args.selinux = True
+        # Test non-privileged (default)
+        engine = Engine(self.base_args)
+        self.assertNotIn("--security-opt=label=disable", engine.exec_args)
 
     def test_add_port_option(self):
         args = Namespace(**vars(self.base_args), port="8080")

@@ -76,6 +76,9 @@ Pull image policy. The default is **missing**.
 - **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
 - **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
+#### **--selinux**=*true*
+Enable SELinux container separation
+
 ## EXAMPLES
 
 ```

@@ -148,6 +148,9 @@ Add *args* to the runtime (llama.cpp or vllm) invocation.
 #### **--seed**=
 Specify seed rather than using random seed model interaction
 
+#### **--selinux**=*true*
+Enable SELinux container separation
+
 #### **--temp**="0.8"
 Temperature of the response from the AI Model
 llama.cpp explains this as:

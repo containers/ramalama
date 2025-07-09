@@ -61,6 +61,13 @@ verify_begin=".*run --rm"
 	is "$output" ".*--privileged" "verify --privileged is set"
 	assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
 	assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
+
+	run_ramalama -q --dryrun serve --selinux=True ${model}
+	assert "$output" != ".*--security-opt=label=disable" "verify --selinux enables container separation"
+	run_ramalama -q --dryrun serve --selinux=False ${model}
+	assert "$output" =~ ".*--security-opt=label=disable" "verify --selinux=False disbles container separation"
+	run_ramalama 22 -q --dryrun serve --selinux=100 ${model}
+	is "$output" "Error: Cannot coerce '100' to bool" "Should error on bad value"
     else
 	# Running without a container
 	run_ramalama -q --dryrun serve ${model}
@@ -84,7 +91,7 @@ verify_begin=".*run --rm"
     run_ramalama -q --dryrun serve --runtime-args="--foo='a b c'" ${model}
     assert "$output" =~ ".*--foo=a b c" "argument passed to runtime with spaces"
 
-    run_ramalama 1 -q --dryrun serve --runtime-args="--foo='a b c" ${model}
+    run_ramalama 22 -q --dryrun serve --runtime-args="--foo='a b c" ${model}
     assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
 
     run_ramalama 1 serve MODEL

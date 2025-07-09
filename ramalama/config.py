@@ -38,9 +38,9 @@ def coerce_to_bool(value: Any) -> bool:
         return value
     elif isinstance(value, str):
         val = value.strip().lower()
-        if val in {"true", "1", "yes", "y"}:
+        if val in {"on", "true", "1", "yes", "y"}:
             return True
-        elif val in {"false", "0", "no", "n"}:
+        elif val in {"off", "false", "0", "no", "n"}:
             return False
     raise ValueError(f"Cannot coerce {value!r} to bool")
 
@@ -93,6 +93,7 @@ class BaseConfig:
     ocr: bool = False
     default_image: str = DEFAULT_IMAGE
     user: UserConfig = field(default_factory=UserConfig)
+    selinux: bool = False
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
 
     def __post_init__(self):

@@ -275,32 +275,6 @@ class Model(ModelBase):
             ]
         )
 
-    def add_oci_runtime(self, conman_args, args):
-        if args.oci_runtime:
-            conman_args += ["--runtime", args.oci_runtime]
-            return conman_args
-        if check_nvidia() == "cuda":
-            if os.path.basename(args.engine) == "docker":
-                conman_args += ["--runtime", "nvidia"]
-                return conman_args
-            if os.access("/usr/bin/nvidia-container-runtime", os.X_OK):
-                conman_args += ["--runtime", "/usr/bin/nvidia-container-runtime"]
-
-        return conman_args
-
-    def add_rag(self, exec_args, args):
-        if not getattr(args, "rag", None):
-            return exec_args
-
-        if os.path.exists(args.rag):
-            rag = os.path.realpath(args.rag)
-            # Added temp read write because vector database requires write access even if nothing is written
-            exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db,rw=true")
-        else:
-            exec_args.append(f"--mount=type=image,source={args.rag},destination=/rag,rw=true")
-
-        return exec_args
-
     def setup_container(self, args):
         name = self.get_container_name(args)
         self.base(args, name)
@@ -353,11 +327,13 @@ class Model(ModelBase):
         for file in ref_file.files:
             blob_path = self.model_store.get_blob_file_path(file.hash)
             mount_path = os.path.join(MNT_DIR, file.name)
-            self.engine.add([f"--mount=type=bind,src={blob_path},destination={mount_path},ro"])
+            self.engine.add([f"--mount=type=bind,src={blob_path},destination={mount_path},ro{self.engine.relabel()}"])
 
         if self.draft_model:
             draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
-            self.engine.add([f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro"])
+            self.engine.add(
+                [f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro{self.engine.relabel()}"]
+            )
 
     def bench(self, args):
         self.ensure_model_exists(args)
