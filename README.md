@@ -2,12 +2,11 @@
 <img src="https://github.com/user-attachments/assets/1a338ecf-dc84-4495-8c70-16882955da47" width=50%>
 </p>
 
-[RamaLama](https://ramalama.ai) is an open-source tool that simplifies the local use and serving of AI models for inference from any source through the familiar approach of containers.
+[RamaLama](https://ramalama.ai) strives to make working with AI simple, straightforward, and familiar by using OCI containers.
 <br>
 <br>
 
 ## Description
-RamaLama strives to make working with AI simple, straightforward, and familiar by using OCI containers.
 
 RamaLama is an open-source tool that simplifies the local use and serving of AI models for inference from any source through the familiar approach of containers. Using a container engine like Podman, engineers can use container-centric development patterns and benefits to extend to AI use cases.
 
