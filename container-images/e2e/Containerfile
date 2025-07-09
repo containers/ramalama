@@ -6,12 +6,12 @@ ENV HOME=/tmp \
 WORKDIR /src
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
-RUN dnf -y install make bats jq iproute podman openssl httpd-tools \
+RUN dnf -y install make jq iproute podman openssl httpd-tools \
     python3-huggingface-hub \
     $([ $(uname -m) == "x86_64" ] && echo ollama) \
     # for validate and unit-tests
     black codespell shellcheck \
-    python3-flake8 python3-isort python3-pip python3-pytest \
+    python3-flake8 python3-isort python3-pip python3-pytest python3-tox \
     perl-Clone perl-FindBin \
     # for building llama-bench
     git-core cmake gcc-c++ curl-devel && \
@@ -24,6 +24,6 @@ RUN git clone --depth=1 https://github.com/ggml-org/llama.cpp && \
     cmake --install build && \
     popd && rm -rf llama.cpp
 
-COPY container-images/bats/entrypoint.sh /usr/bin
-COPY container-images/bats/containers.conf /etc/containers
+COPY container-images/e2e/entrypoint.sh /usr/bin
+COPY container-images/e2e/containers.conf /etc/containers
 RUN chmod a+rw /etc/subuid /etc/subgid

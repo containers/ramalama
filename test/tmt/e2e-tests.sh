@@ -24,5 +24,5 @@ set +e
 tty
 set -e
 
-make bats-"$1"
+make e2e-tests-"$1"
 popd
