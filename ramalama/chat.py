@@ -132,8 +132,9 @@ class RamaLamaShell(cmd.Cmd):
             "stream": True,
             "messages": self.conversation_history,
         }
-        if not (hasattr(self.args, 'runtime') and self.args.runtime == "mlx"):
-            data["model"] = self.args.MODEL
+        if getattr(self.args, "model", False):
+            data["model"] = self.args.model
+
         json_data = json.dumps(data).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
