@@ -28,8 +28,8 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-c4xlarge/amd64
-    - linux-c4xlarge/arm64
+    - linux-d160-m2xlarge/amd64
+    - linux-d160-m2xlarge/arm64
   - name: dockerfile
     value: container-images/common/Containerfile.rag
   - name: parent-image
