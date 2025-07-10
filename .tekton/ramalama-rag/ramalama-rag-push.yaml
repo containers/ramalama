@@ -25,7 +25,8 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama-rag:{{revision}}
   - name: build-platforms
     value:
-    - linux/x86_64
+    - linux-d160-m2xlarge/amd64
+    - linux-d160-m2xlarge/arm64
   - name: dockerfile
     value: container-images/common/Containerfile.rag
   - name: parent-image

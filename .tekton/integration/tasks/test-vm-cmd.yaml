@@ -1,0 +1,132 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: test-vm-cmd
+spec:
+  description: Run a command in a test VM
+  params:
+  - name: PLATFORM
+    description: The platform of the VM to provision
+  - name: image
+    description: The image to use when setting up the test environment
+  - name: git-url
+    description: The URL of the source code repository
+  - name: git-revision
+    description: The revision of the source code to test
+  - name: cmd
+    description: The command to run
+  - name: envs
+    description: List of environment variables (NAME=VALUE) to be set in the test environment
+    type: array
+    default: []
+  results:
+  - name: TEST_OUTPUT
+    description: Test result in json format
+  volumes:
+  - name: workdir
+    emptyDir: {}
+  - name: ssh
+    secret:
+      secretName: multi-platform-ssh-$(context.taskRun.name)
+  steps:
+  - name: run-in-vm
+    image: registry.access.redhat.com/ubi10/ubi:latest
+    volumeMounts:
+    - mountPath: /var/workdir
+      name: workdir
+    - mountPath: /ssh
+      name: ssh
+    workingDir: /var/workdir
+    env:
+    - name: GIT_URL
+      value: $(params.git-url)
+    - name: GIT_REVISION
+      value: $(params.git-revision)
+    - name: TEST_IMAGE
+      value: $(params.image)
+    - name: TEST_CMD
+      value: $(params.cmd)
+    - name: RESULTS_TEST_OUTPUT_PATH
+      value: $(results.TEST_OUTPUT.path)
+    args:
+    - $(params.envs[*])
+    script: |
+      #!/bin/bash -ex
+      log() {
+        echo "[$(date -uIns)]" $*
+      }
+
+      log Install packages
+      dnf -y install openssh-clients rsync git-core jq
+
+      log Clone source
+      git clone -n "$GIT_URL" source
+      pushd source
+      git checkout "$GIT_REVISION"
+      popd
+
+      log Prepare connection
+
+      if [ -e "/ssh/error" ]; then
+        log Error provisioning VM
+        cat /ssh/error
+        exit 1
+      fi
+      export SSH_HOST=$(cat /ssh/host)
+
+      mkdir -p ~/.ssh
+      if [ "$SSH_HOST" == "localhost" ] ; then
+        IS_LOCALHOST=true
+        log Localhost detected, running build in cluster
+      elif [ -s "/ssh/otp" ]; then
+        log Fetching OTP token
+        curl --cacert /ssh/otp-ca -d @/ssh/otp $(cat /ssh/otp-server) > ~/.ssh/id_rsa
+        echo >> ~/.ssh/id_rsa
+        chmod 0400 ~/.ssh/id_rsa
+      elif [ -s "/ssh/id_rsa" ]; then
+        log Copying ssh key
+        cp /ssh/id_rsa ~/.ssh
+        chmod 0400 ~/.ssh/id_rsa
+      else
+        log No authentication mechanism found
+        exit 1
+      fi
+
+      mkdir -p scripts
+
+      PODMAN_ENV=()
+      while [ $# -ne 0 ]; do
+        PODMAN_ENV+=("-e" "$1")
+        shift
+      done
+
+      cat > scripts/test.sh <<SCRIPTEOF
+      #!/bin/bash -ex
+      podman run \
+      --userns=keep-id \
+      --security-opt label=disable \
+      --security-opt unmask=/proc/* \
+      --device /dev/net/tun \
+      -v \$PWD/source:/src \
+      ${PODMAN_ENV[*]} \
+      $TEST_IMAGE $TEST_CMD
+      SCRIPTEOF
+      chmod +x scripts/test.sh
+
+      if ! [[ $IS_LOCALHOST ]]; then
+        log VM exec
+        export BUILD_DIR=$(cat /ssh/user-dir)
+        export SSH_ARGS="-o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10"
+        # ssh once before rsync to retrieve the host key
+        ssh $SSH_ARGS "$SSH_HOST" "uname -a"
+        rsync -ra scripts source "$SSH_HOST:$BUILD_DIR"
+        ssh $SSH_ARGS "$SSH_HOST" "$BUILD_DIR/scripts/test.sh"
+        log End VM exec
+      else
+        log Local exec
+        scripts/test.sh
+        log End local exec
+      fi
+
+      jq -jnc '{result: "SUCCESS", timestamp: now | todateiso8601, failures: 0, successes: 1, warnings: 0}' | tee "$RESULTS_TEST_OUTPUT_PATH"
+      echo

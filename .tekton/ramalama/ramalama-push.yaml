@@ -25,8 +25,8 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama:{{revision}}
   - name: build-platforms
     value:
-    - linux/x86_64
-    - linux/arm64
+    - linux-c4xlarge/amd64
+    - linux-c4xlarge/arm64
   - name: dockerfile
     value: container-images/ramalama/Containerfile
   - name: test-image
@@ -37,7 +37,6 @@ spec:
   - name: test-commands
     value:
     - make validate
-    - make bats-nocontainer
     - make unit-tests
     - make cov-tests
   pipelineRef:
