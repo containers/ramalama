@@ -25,8 +25,8 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama-whisper-server:{{revision}}
   - name: build-platforms
     value:
-    - linux-c4xlarge/amd64
-    - linux-c4xlarge/arm64
+    - linux-m2xlarge/amd64
+    - linux-m2xlarge/arm64
   - name: dockerfile
     value: container-images/common/Containerfile.entrypoint
   - name: parent-image
