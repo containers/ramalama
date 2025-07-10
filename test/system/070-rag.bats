@@ -8,18 +8,20 @@ load helpers
     skip_if_nocontainer
     HTTPS_FILE=https://github.com/containers/ramalama/blob/main/README.md
     run_ramalama --dryrun rag $HTTPS_FILE quay.io/ramalama/myrag:1.2
-    is "$output" ".*doc2rag /output /docs/ $HTTPS_FILE" "Expected to see https command"
+    is "$output" ".*doc2rag --format qdrant /output /docs $HTTPS_FILE " "Expected to see https command"
     assert "$output" !~ ".*--network none" "Expected to not use network"
+    run_ramalama --dryrun rag --format json $HTTPS_FILE quay.io/ramalama/myrag:1.2
+    is "$output" ".*doc2rag --format json /output /docs $HTTPS_FILE " "Expected to --format json option"
 
     FILE=README.md
     run_ramalama --dryrun rag $FILE quay.io/ramalama/myrag:1.2
     is "$output" ".*-v ${PWD}/$FILE:/docs/$PWD/$FILE" "Expected to see file volume mounted in"
-    is "$output" ".*doc2rag /output /docs/" "Expected to doc2rag command"
+    is "$output" ".*doc2rag --format qdrant /output /docs " "Expected to doc2rag command"
     is "$output" ".*--pull missing" "only pull if missing"
 
     # Run with OCR
-    run_ramalama --dryrun rag --ocr $FILE quay.io/ramalama/myrag:1.2
-    is "$output" ".*doc2rag /output /docs/ --ocr" "Expected to see ocr flag"
+    run_ramalama --dryrun rag --format markdown --ocr $FILE quay.io/ramalama/myrag:1.2
+    is "$output" ".*doc2rag --format markdown /output /docs --ocr" "Expected to see ocr flag"
 
     FILE_URL=file://${PWD}/README.md
     run_ramalama --dryrun rag $FILE_URL quay.io/ramalama/myrag:1.2
@@ -33,6 +35,7 @@ load helpers
 @test "ramalama rag" {
     skip_if_nocontainer
     skip_if_docker
+    skip "FIXME, need updated images with latest doc2rag to turn back on"
     run_ramalama 22 -q rag bogus quay.io/ramalama/myrag:1.2
     is "$output" "Error: bogus does not exist" "Expected failure"
 

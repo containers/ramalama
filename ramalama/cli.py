@@ -1063,6 +1063,12 @@ def rag_parser(subparsers):
         completer=local_env,
     )
     parser.add_argument(
+        "--format",
+        default=CONFIG.rag_format,
+        help="Output format for RAG Data",
+        choices=["qdrant", "json", "markdown"],
+    )
+    parser.add_argument(
         "--image",
         default=accel_image(CONFIG),
         help="OCI container image to run with the specified AI model",
