@@ -285,8 +285,6 @@ spec:
     params:
     - name: image
       value: $(params.test-image)@$(tasks.wait-for-test-image.results.digest)
-    - name: source-artifact
-      value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
     - name: envs
       value:
       - $(params.test-envs[*])

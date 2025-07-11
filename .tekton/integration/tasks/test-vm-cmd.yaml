@@ -9,10 +9,6 @@ spec:
     description: The platform of the VM to provision
   - name: image
     description: The image to use when setting up the test environment
-  - name: git-url
-    description: The URL of the source code repository
-  - name: git-revision
-    description: The revision of the source code to test
   - name: cmd
     description: The command to run
   - name: envs
@@ -38,10 +34,6 @@ spec:
       name: ssh
     workingDir: /var/workdir
     env:
-    - name: GIT_URL
-      value: $(params.git-url)
-    - name: GIT_REVISION
-      value: $(params.git-revision)
     - name: TEST_IMAGE
       value: $(params.image)
     - name: TEST_CMD
@@ -57,13 +49,7 @@ spec:
       }
 
       log Install packages
-      dnf -y install openssh-clients rsync git-core jq
-
-      log Clone source
-      git clone -n "$GIT_URL" source
-      pushd source
-      git checkout "$GIT_REVISION"
-      popd
+      dnf -y install openssh-clients rsync jq
 
       log Prepare connection
 
@@ -107,7 +93,7 @@ spec:
       --security-opt label=disable \
       --security-opt unmask=/proc/* \
       --device /dev/net/tun \
-      -v \$PWD/source:/src \
+      --device /dev/fuse \
       ${PODMAN_ENV[*]} \
       $TEST_IMAGE $TEST_CMD
       SCRIPTEOF
@@ -119,7 +105,7 @@ spec:
         export SSH_ARGS="-o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10"
         # ssh once before rsync to retrieve the host key
         ssh $SSH_ARGS "$SSH_HOST" "uname -a"
-        rsync -ra scripts source "$SSH_HOST:$BUILD_DIR"
+        rsync -ra scripts "$SSH_HOST:$BUILD_DIR"
         ssh $SSH_ARGS "$SSH_HOST" "$BUILD_DIR/scripts/test.sh"
         log End VM exec
       else

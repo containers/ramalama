@@ -52,10 +52,6 @@ spec:
     params:
     - name: image
       value: $(tasks.init.results.bats-image)
-    - name: git-url
-      value: $(params.git-url)
-    - name: git-revision
-      value: $(params.git-revision)
     - name: envs
       value:
       - RAMALAMA_IMAGE=$(tasks.init.results.ramalama-image)
