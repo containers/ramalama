@@ -6,7 +6,8 @@ import pytest
 from ramalama.config import DEFAULT_PORT, default_config, get_default_engine, get_default_store, load_env_config
 
 
-def test_correct_config_defaults():
+def test_correct_config_defaults(monkeypatch):
+    monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
     cfg = default_config()
 
     assert cfg.carimage == "registry.access.redhat.com/ubi10-micro:latest"
@@ -30,7 +31,8 @@ def test_correct_config_defaults():
     assert cfg.ocr is False
 
 
-def test_config_defaults_not_set():
+def test_config_defaults_not_set(monkeypatch):
+    monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
     cfg = default_config()
 
     assert cfg.is_set("carimage") is False
