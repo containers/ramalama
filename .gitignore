@@ -19,3 +19,5 @@ __pycache__/
 coverage.*
 htmlcov/
 .idea/
+.hypothesis/
+uv.lock
