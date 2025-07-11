@@ -86,6 +86,7 @@ class BaseConfig:
     threads: int = -1
     port: str = str(DEFAULT_PORT)
     pull: str = "newer"
+    rag_format: Literal["qdrant", "json", "markdown"] = "qdrant"
     runtime: str = "llama.cpp"
     store: str = field(default_factory=get_default_store)
     temp: str = "0.8"

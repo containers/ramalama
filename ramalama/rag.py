@@ -8,6 +8,8 @@ from ramalama.common import get_accel_env_vars, perror, run_cmd, set_accel_env_v
 from ramalama.engine import Engine
 from ramalama.logger import logger
 
+INPUT_DIR = "/docs"
+
 
 class Rag:
     model = ""
@@ -64,7 +66,7 @@ COPY {src} /vector.db
         if parsed.scheme in ["file", ""] and parsed.netloc == "":
             if os.path.exists(parsed.path):
                 fpath = os.path.realpath(parsed.path)
-                self.engine.add(["-v", f"{fpath}:/docs/{fpath}:ro,z"])
+                self.engine.add(["-v", f"{fpath}:{INPUT_DIR}/{fpath}:ro,z"])
             else:
                 raise ValueError(f"{path} does not exist")
             return
@@ -85,9 +87,18 @@ COPY {src} /vector.db
         for path in args.PATH:
             self._handle_paths(path)
 
-        ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_')
-        dbdir = os.path.join(ragdb.name, "vectordb")
-        os.mkdir(dbdir)
+        # If user specifies path, then don't use it
+
+        target_is_oci = self.target.startswith("oci://") or (
+            not self.target.startswith("file://") and self.target[0] not in {".", "/"}
+        )
+        if target_is_oci:
+            ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_')
+            dbdir = os.path.join(ragdb.name, "vectordb")
+        else:
+            dbdir = self.target
+
+        os.makedirs(dbdir, exist_ok=True)
         self.engine.add(["-v", f"{dbdir}:/output:z"])
         for k, v in get_accel_env_vars().items():
             # Special case for Cuda
@@ -103,7 +114,7 @@ COPY {src} /vector.db
             self.engine.add(["-e", f"{k}={v}"])
 
         self.engine.add([rag_image(args.image)])
-        self.engine.add(["doc2rag", "/output", "/docs/"])
+        self.engine.add(["doc2rag", "--format", args.format, "/output", INPUT_DIR])
         if args.ocr:
             self.engine.add(["--ocr"])
         if len(self.urls) > 0:
@@ -113,11 +124,13 @@ COPY {src} /vector.db
             return
         try:
             self.engine.run()
-            print(self.build(dbdir, self.target, args))
+            if target_is_oci:
+                print(self.build(dbdir, self.target, args))
         except subprocess.CalledProcessError as e:
             raise e
         finally:
-            shutil.rmtree(ragdb.name, ignore_errors=True)
+            if target_is_oci:
+                shutil.rmtree(ragdb.name, ignore_errors=True)
 
 
 def rag_image(image) -> str:
