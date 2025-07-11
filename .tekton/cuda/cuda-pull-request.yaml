@@ -29,6 +29,7 @@ spec:
   - name: build-platforms
     value:
     - linux-c4xlarge/amd64
+    - linux-c4xlarge/arm64
   - name: dockerfile
     value: container-images/cuda/Containerfile
   pipelineRef:
