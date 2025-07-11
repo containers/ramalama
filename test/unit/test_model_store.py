@@ -1,6 +1,6 @@
 import pytest
 
-from ramalama.model_store import SnapshotFile, SnapshotFileType, validate_snapshot_files
+from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType, validate_snapshot_files
 
 chat_template = SnapshotFile(name="chat-template", hash="", header={}, type=SnapshotFileType.ChatTemplate, url="")
 model_file = SnapshotFile(name="model", hash="", header={}, type=SnapshotFileType.Model, url="")
@@ -13,7 +13,7 @@ other_file = SnapshotFile(name="other", hash="", header={}, type=SnapshotFileTyp
         ([], False),
         ([chat_template, model_file, other_file], False),
         ([chat_template, model_file, chat_template, other_file], True),
-        ([chat_template, model_file, other_file, model_file], True),
+        ([chat_template, model_file, other_file, model_file], False),
         ([chat_template, model_file, chat_template, model_file, other_file], True),
     ],
 )

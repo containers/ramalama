@@ -64,7 +64,9 @@ I have been tampered with
         ("sha256:16cd1aa2bd52b0e87ff143e8a8a7bb6fcb0163c624396ca58e7f75ec99ef081f", tampered_input, None, False),
     ],
 )
-def test_verify_checksum(input_file_name: str, content: str, expected_error: Exception, expected_result: bool):
+def test_verify_checksum(
+    input_file_name: str, content: str, expected_error: type[Exception] | None, expected_result: bool
+):
     # skip this test case on Windows since colon is not a valid file symbol
     if ":" in input_file_name and platform == "win32":
         return
@@ -138,21 +140,22 @@ image = "{config_override}"
                 assert accel_image(config) == expected_result
 
 
+@patch("ramalama.config.CONFIG")
 @patch("ramalama.common.run_cmd")
 @patch("ramalama.common.handle_provider")
-def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
+def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd, mock_config):
     mock_run_cmd.return_value.stdout = b'[{"Name": "myvm"}]'
     mock_handle_provider.return_value = True
-
+    mock_config.user.no_missing_gpu_prompt = True
     from ramalama.common import apple_vm
 
-    result = apple_vm("podman")
+    result = apple_vm("podman", mock_config)
 
     assert result is True
     mock_run_cmd.assert_called_once_with(
         ["podman", "machine", "list", "--format", "json", "--all-providers"], ignore_stderr=True
     )
-    mock_handle_provider.assert_called_once_with({"Name": "myvm"})
+    mock_handle_provider.assert_called_once_with({"Name": "myvm"}, mock_config)
 
 
 class TestGetAccel:

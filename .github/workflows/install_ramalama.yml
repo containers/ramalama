@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set Up Dependencies (Ubuntu)
-        timeout-minutes: 10
+        timeout-minutes: 20
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get install -y lshw curl

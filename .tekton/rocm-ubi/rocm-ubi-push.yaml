@@ -25,11 +25,13 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/rocm-ubi:{{revision}}
   - name: build-platforms
     value:
-    - linux/x86_64
+    - linux-fast/amd64
   - name: dockerfile
     value: container-images/rocm-ubi/Containerfile
   pipelineRef:
     name: push-pipeline
+  timeouts:
+    pipeline: 6h
   workspaces:
   - name: git-auth
     secret:

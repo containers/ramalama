@@ -65,7 +65,7 @@ The ramalama table contains settings to configure and manage the OCI runtime.
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.
 Options: llama-stack, none
 
-**carimage**="registry.access.redhat.com/ubi9-micro:latest"
+**carimage**="registry.access.redhat.com/ubi10-micro:latest"
 
 OCI model car image
 
@@ -132,8 +132,12 @@ Specify default port for services to listen on
 
 **runtime**="llama.cpp"
 
-Specify the AI runtime to use; valid options are 'llama.cpp' and 'vllm' (default: llama.cpp)
-Options: llama.cpp, vllm
+Specify the AI runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx' (default: llama.cpp)
+Options: llama.cpp, vllm, mlx
+
+**selinux**=false
+
+SELinux container separation enforcement
 
 **store**="$HOME/.local/share/ramalama"
 

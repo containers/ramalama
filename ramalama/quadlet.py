@@ -1,23 +1,35 @@
 import os
+import shlex
+from typing import Optional, Tuple
 
-from ramalama.common import MNT_CHAT_TEMPLATE_FILE, MNT_DIR, MNT_FILE, RAG_DIR, get_accel_env_vars
+from ramalama.common import MNT_DIR, RAG_DIR, get_accel_env_vars
 from ramalama.file import UnitFile
 
 
 class Quadlet:
-    def __init__(self, model, chat_template, args, exec_args):
-        self.ai_image = getattr(args, "MODEL", model)
-        self.ai_image = self.ai_image.removeprefix("oci://")
-        if args.name:
+    def __init__(
+        self,
+        model_name: str,
+        model_paths: Tuple[str, str],
+        chat_template_paths: Optional[Tuple[str, str]],
+        args,
+        exec_args,
+    ):
+        self.src_model_path, self.dest_model_path = model_paths
+        self.src_chat_template_path, self.dest_chat_template_path = (
+            chat_template_paths if chat_template_paths is not None else ("", "")
+        )
+
+        self.ai_image = model_name
+        self.src_model_path = self.src_model_path.removeprefix("oci://")
+        if getattr(args, "name", None):
             self.name = args.name
         else:
-            self.name = os.path.basename(self.ai_image)
+            self.name = model_name
 
-        self.model = model.removeprefix("oci://")
         self.args = args
         self.exec_args = exec_args
         self.image = args.image
-        self.chat_template = chat_template
         self.rag = ""
         self.rag_name = ""
         if args.rag:
@@ -25,7 +37,7 @@ class Quadlet:
             self.rag_name = os.path.basename(self.rag) + "-rag"
 
     def kube(self) -> UnitFile:
-        return kube(self.name, f"RamaLama {self.model} Kubernetes YAML - AI Model Service")
+        return kube(self.name, f"RamaLama {self.name} Kubernetes YAML - AI Model Service")
 
     def generate(self) -> list[UnitFile]:
         files = []
@@ -40,8 +52,19 @@ class Quadlet:
         quadlet_file.add("Container", "AddDevice", "-/dev/dri")
         quadlet_file.add("Container", "AddDevice", "-/dev/kfd")
         quadlet_file.add("Container", "Image", f"{self.image}")
-        exec_cmd = " ".join(self.exec_args)
+        quadlet_file.add("Container", "RunInit", "true")
+        quadlet_file.add("Container", "Environment", "HOME=/tmp")
+
+        exec_cmd = shlex.join(self.exec_args)
         quadlet_file.add("Container", "Exec", f"{exec_cmd}")
+
+        if getattr(self.args, "privileged", False):
+            quadlet_file.add("Container", "PodmanArgs", "--privileged")
+        else:
+            quadlet_file.add("Container", "SecurityLabelDisable", "true")
+            if not getattr(self.args, "nocapdrop", False):
+                quadlet_file.add("Container", "DropCapability", "all")
+                quadlet_file.add("Container", "NoNewPrivileges", "true")
 
         self._gen_chat_template_volume(quadlet_file)
         self._gen_env(quadlet_file)
@@ -60,9 +83,11 @@ class Quadlet:
         return files
 
     def _gen_chat_template_volume(self, quadlet_file: UnitFile):
-        if os.path.exists(self.chat_template):
+        if os.path.exists(self.src_chat_template_path):
             quadlet_file.add(
-                "Container", "Mount", f"type=bind,src={self.chat_template},target={MNT_CHAT_TEMPLATE_FILE},ro,Z"
+                "Container",
+                "Mount",
+                f"type=bind,src={self.src_chat_template_path},target={self.dest_chat_template_path},ro,Z",
             )
 
     def _gen_env(self, quadlet_file: UnitFile):
@@ -87,8 +112,10 @@ class Quadlet:
     def _gen_model_volume(self, quadlet_file: UnitFile):
         files: list[UnitFile] = []
 
-        if os.path.exists(self.model):
-            quadlet_file.add("Container", "Mount", f"type=bind,src={self.model},target={MNT_FILE},ro,Z")
+        if os.path.exists(self.src_model_path):
+            quadlet_file.add(
+                "Container", "Mount", f"type=bind,src={self.src_model_path},target={self.dest_model_path},ro,Z"
+            )
             return files
 
         volume_file_name = f"{self.name}.volume"

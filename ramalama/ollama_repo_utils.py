@@ -2,7 +2,8 @@ import json
 import os
 import urllib.request
 
-from ramalama.common import download_file, run_cmd, verify_checksum
+from ramalama.common import perror, run_cmd, verify_checksum
+from ramalama.http_client import download_file
 from ramalama.logger import logger
 
 
@@ -92,7 +93,7 @@ def pull_blob(
         download_file(url, layer_blob_path, headers=headers, show_progress=show_progress)
         # Verify checksum after downloading the blob
         if not verify_checksum(layer_blob_path):
-            print(f"Checksum mismatch for blob {layer_blob_path}, retrying download ...")
+            perror(f"Checksum mismatch for blob {layer_blob_path}, retrying download ...")
             os.remove(layer_blob_path)
             download_file(url, layer_blob_path, headers=headers, show_progress=True)
             if not verify_checksum(layer_blob_path):

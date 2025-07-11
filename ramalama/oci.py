@@ -6,7 +6,7 @@ from datetime import datetime
 
 import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
-from ramalama.common import MNT_FILE, engine_version, exec_cmd, perror, run_cmd
+from ramalama.common import engine_version, exec_cmd, perror, run_cmd
 from ramalama.model import Model
 
 prefix = "oci://"
@@ -187,15 +187,15 @@ class OCI(Model):
         if is_car:
             content += f"FROM {args.carimage}\n"
         else:
-            content += f"FROM {args.image} as builder\n"
+            content += f"FROM {args.carimage} as builder\n"
 
         if has_gguf:
             content += (
                 f"RUN mkdir -p /models/{model_name}; cd /models; ln -s {model_name}-{args.gguf}.gguf model.file\n"
             )
-            for file in ref_file.filenames:
-                blob_file_path = source_model.model_store.get_blob_file_hash(ref_file.hash, file)
-                content += f"COPY {blob_file_path} /models/{model_name}/{file}\n"
+            for file in ref_file.files:
+                blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+                content += f"COPY {blob_file_path} /models/{model_name}/{file.name}\n"
             content += f"""
 RUN convert_hf_to_gguf.py --outfile /{model_name}-f16.gguf /models/{model_name}
 RUN llama-quantize /{model_name}-f16.gguf /models/{model_name}-{args.gguf}.gguf {args.gguf}
@@ -214,23 +214,24 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
                     f"COPY --from=builder /models/{model_name}-{args.gguf}.gguf /models/{model_name}-{args.gguf}.gguf\n"
                 )
             else:
-                for file in ref_file.filenames:
-                    blob_file_path = source_model.model_store.get_blob_file_hash(ref_file.hash, file)
-                    content += f"COPY {blob_file_path} /models/{model_name}/{file}\n"
+                for file in ref_file.files:
+                    blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+                    content += f"COPY {blob_file_path} /models/{model_name}/{file.name}\n"
         elif not has_gguf:
-            for file in ref_file.filenames:
-                blob_file_path = source_model.model_store.get_blob_file_hash(ref_file.hash, file)
-                content += f"COPY {blob_file_path} /models/{model_name}/{file}\n"
+            for file in ref_file.files:
+                blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+                content += f"COPY {blob_file_path} /models/{model_name}/{file.name}\n"
 
         content += f"LABEL {ociimage_car if is_car else ociimage_raw}\n"
 
         return content
 
     def build(self, source_model, args):
-        contextdir = source_model.model_store.blobs_directory
-
+        # use topmost directory here since the paths provided by model store are absolute
+        contextdir = "/"
         content = self._generate_containerfile(source_model, args)
-
+        if args.debug:
+            perror(f"Containerfile: \n{content}")
         containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=False)
 
         # Open the file for writing.
@@ -311,12 +312,12 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         run_cmd(cmd_args, stdout=None)
 
     def _convert(self, source_model, args):
-        print(f"Converting {source_model.model_store.base_path} to {self.model_store.base_path} ...")
+        perror(f"Converting {source_model.model_store.base_path} to {self.model_store.base_path} ...")
         try:
             run_cmd([self.conman, "manifest", "rm", self.model], ignore_stderr=True, stdout=None)
         except subprocess.CalledProcessError:
             pass
-        print(f"Building {self.model} ...")
+        perror(f"Building {self.model} ...")
         imageid = self.build(source_model, args)
         try:
             self._create_manifest(self.model, imageid, args)
@@ -335,7 +336,7 @@ Tagging build instead"""
         target = self.model
         source = source_model.model
 
-        print(f"Pushing {self.model} ...")
+        perror(f"Pushing {self.model} ...")
         conman_args = [self.conman, "push"]
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
@@ -351,52 +352,23 @@ Tagging build instead"""
             raise e
 
     def pull(self, args):
-        if not args.quiet:
-            print(f"Downloading {self.model} ...")
         if not args.engine:
             raise NotImplementedError("OCI images require a container engine like Podman or Docker")
 
         conman_args = [args.engine, "pull"]
         if args.quiet:
             conman_args.extend(['--quiet'])
+        else:
+            # Write message to stderr
+            perror(f"Downloading {self.model} ...")
         if str(args.tlsverify).lower() == "false":
             conman_args.extend([f"--tls-verify={args.tlsverify}"])
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
         conman_args.extend([self.model])
         run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
-        return MNT_FILE
-
-    def _registry_reference(self):
-        try:
-            registry, reference = self.model.split("/", 1)
-            return registry, reference
-        except Exception:
-            return "docker.io", self.model
-
-    def model_path(self, args):
-        registry, reference = self._registry_reference()
-        reference_dir = reference.replace(":", "/")
-        path = f"{args.store}/models/oci/{registry}/{reference_dir}"
-
-        if os.path.isfile(path):
-            return path
-
-        ggufs = [file for file in os.listdir(path) if file.endswith(".gguf")]
-        if len(ggufs) != 1:
-            raise KeyError(f"unable to identify .gguf file in: {path}")
-
-        return f"{path}/{ggufs[0]}"
 
     def remove(self, args, ignore_stderr=False):
-        try:
-            super().remove(args)
-            return
-        except FileNotFoundError:
-            pass
-        except KeyError:
-            pass
-
         if self.conman is None:
             raise NotImplementedError("OCI Images require a container engine")
 
@@ -407,20 +379,13 @@ Tagging build instead"""
             conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
             run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
 
-    def exists(self, args):
-        try:
-            model_path = self.model_path(args)
-            if os.path.exists(model_path):
-                return model_path
-        except FileNotFoundError:
-            pass
-
+    def exists(self) -> bool:
         if self.conman is None:
-            return None
+            return False
 
         conman_args = [self.conman, "image", "inspect", self.model]
         try:
             run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
-            return self.model
+            return True
         except Exception:
-            return None
+            return False

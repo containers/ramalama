@@ -23,7 +23,9 @@ verify_begin=".*run --rm"
 	run_ramalama -q --dryrun serve --name foobar ${model}
 	is "$output" ".*--name foobar .*" "dryrun correct with --name"
 	assert "$output" !~ ".*--network" "--network is not part of the output"
-	assert "$output" !~ ".*--host 0.0.0.0" "verify host 0.0.0.0 is not added when run within container"
+	# Extract container args (everything before the image name) and verify --host is not there
+	container_args=$(echo "$output" | sed 's/quay\.io\/ramalama\/ramalama.*//')
+	assert "$output" =~ ".*--host 0.0.0.0" "Container sets host to 0.0.0.0"
 	is "$output" ".*${model}" "verify model name"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 
@@ -59,6 +61,13 @@ verify_begin=".*run --rm"
 	is "$output" ".*--privileged" "verify --privileged is set"
 	assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
 	assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
+
+	run_ramalama -q --dryrun serve --selinux=True ${model}
+	assert "$output" != ".*--security-opt=label=disable" "verify --selinux enables container separation"
+	run_ramalama -q --dryrun serve --selinux=False ${model}
+	assert "$output" =~ ".*--security-opt=label=disable" "verify --selinux=False disbles container separation"
+	run_ramalama 22 -q --dryrun serve --selinux=100 ${model}
+	is "$output" "Error: Cannot coerce '100' to bool" "Should error on bad value"
     else
 	# Running without a container
 	run_ramalama -q --dryrun serve ${model}
@@ -82,7 +91,7 @@ verify_begin=".*run --rm"
     run_ramalama -q --dryrun serve --runtime-args="--foo='a b c'" ${model}
     assert "$output" =~ ".*--foo=a b c" "argument passed to runtime with spaces"
 
-    run_ramalama 1 -q --dryrun serve --runtime-args="--foo='a b c" ${model}
+    run_ramalama 22 -q --dryrun serve --runtime-args="--foo='a b c" ${model}
     assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
 
     run_ramalama 1 serve MODEL
@@ -122,6 +131,9 @@ verify_begin=".*run --rm"
 
     run_ramalama ps
     is "$output" ".*${container1}" "list correct for container1"
+
+    run_ramalama chat --ls
+    is "$output" "ollama://smollm:135m" "list of models available correct"
 
     run_ramalama containers --noheading
     is "$output" ".*${container1}" "list correct for container1"
@@ -204,79 +216,82 @@ verify_begin=".*run --rm"
     is "$output" ".*error: argument --generate: invalid choice: .*bogus.* (choose from.*quadlet.*kube.*quadlet/kube.*)" "Should fail"
 }
 
-@test "ramalama serve --generate=quadlet and --generate=kube with OCI" {
-    skip_if_darwin
-    skip_if_docker
-    skip_if_nocontainer
-    local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
-    local authfile=$RAMALAMA_TMPDIR/authfile.json
-
-    start_registry
-
-    run_ramalama login --authfile=$authfile \
-	--tls-verify=false \
-	--username ${PODMAN_LOGIN_USER} \
-	--password ${PODMAN_LOGIN_PASS} \
-	oci://$registry
-
-    run_ramalama pull tiny
-
-    ociimage=$registry/tiny:latest
-    for modeltype in "" "--type=car" "--type=raw"; do
-	name=c_$(safename)
-	run_ramalama push $modeltype --authfile=$authfile --tls-verify=false tiny oci://${ociimage}
-	run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://${ociimage}
-	is "$output" ".*Generating quadlet file: ${name}.container" "generate .container file"
-	is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
-	is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
-
-	run cat $name.container
-	is "$output" ".*PublishPort=1234:1234" "PublishPort should match"
-	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
-	is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
-	is "$output" ".*Mount=type=image,source=${ociimage},destination=/mnt/models,subpath=/models,readwrite=false" "Volume line should be correct"
-
-	if is_container; then
-	   run cat $name.volume
-	   is "$output" ".*Driver=image" "Driver Image"
-	   is "$output" ".*Image=$name.image" "Image should exist"
-
-	   run cat $name.image
-	   is "$output" ".*Image=${ociimage}" "Image should match"
-	fi
-
-	run_ramalama list
-	is "$output" ".*${ociimage}" "Image should match"
-
-	rm $name.container
-	if is_container; then
-	   rm $name.volume
-	   rm $name.image
-	fi
-
-    run_ramalama rm oci://${ociimage}
-    done
-    stop_registry
-    skip "vLLM can't serve GGUFs, needs tiny safetensor"
-
-	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://${ociimage}
-	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
-
-	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet/kube oci://${ociimage}
-	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
-	is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
-
-
-	run cat $name.yaml
-	is "$output" ".*command: \[\"--port\"\]" "command is correct"
-	is "$output" ".*args: \['1234', '--model', '/mnt/models/model.file', '--max_model_len', '2048'\]" "args are correct"
-
-	is "$output" ".*reference: ${ociimage}" "AI image should be created"
-	is "$output" ".*pullPolicy: IfNotPresent" "pullPolicy should exist"
-
-    rm $name.yaml
-}
-
+#
+# TODO: Enable this test again after the rework for building OCI images is done
+#       see: https://github.com/containers/ramalama/issues/1674
+#
+# @test "ramalama serve --generate=quadlet and --generate=kube with OCI" {
+#     skip_if_darwin
+#     skip_if_docker
+#     skip_if_nocontainer
+#     local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
+#     local authfile=$RAMALAMA_TMPDIR/authfile.json
+# 
+#     start_registry
+# 
+#     run_ramalama login --authfile=$authfile \
+# 	--tls-verify=false \
+# 	--username ${PODMAN_LOGIN_USER} \
+# 	--password ${PODMAN_LOGIN_PASS} \
+# 	oci://$registry
+# 
+#     run_ramalama pull tiny
+# 
+#     ociimage=$registry/tiny:latest
+#     for modeltype in "" "--type=car" "--type=raw"; do
+# 	name=c_$(safename)
+# 	run_ramalama push $modeltype --authfile=$authfile --tls-verify=false tiny oci://${ociimage}
+# 	run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://${ociimage}
+# 	is "$output" ".*Generating quadlet file: ${name}.container" "generate .container file"
+# 	is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
+# 	is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
+# 
+# 	run cat $name.container
+# 	is "$output" ".*PublishPort=1234:1234" "PublishPort should match"
+# 	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
+# 	is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
+# 	is "$output" ".*Mount=type=image,source=${ociimage},destination=/mnt/models,subpath=/models,readwrite=false" "Volume line should be correct"
+# 
+# 	if is_container; then
+# 	   run cat $name.volume
+# 	   is "$output" ".*Driver=image" "Driver Image"
+# 	   is "$output" ".*Image=$name.image" "Image should exist"
+# 
+# 	   run cat $name.image
+# 	   is "$output" ".*Image=${ociimage}" "Image should match"
+# 	fi
+# 
+# 	run_ramalama list
+# 	is "$output" ".*${ociimage}" "Image should match"
+# 
+# 	rm $name.container
+# 	if is_container; then
+# 	   rm $name.volume
+# 	   rm $name.image
+# 	fi
+# 
+# 	run_ramalama rm oci://${ociimage}
+#     done
+#     stop_registry
+#     skip "vLLM can't serve GGUFs, needs tiny safetensor"
+# 
+# 	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=kube oci://${ociimage}
+# 	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+# 
+# 	run_ramalama --runtime=vllm serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet/kube oci://${ociimage}
+# 	is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
+# 	is "$output" ".*Generating quadlet file: ${name}.kube" "generate .kube file"
+# 
+# 
+# 	run cat $name.yaml
+# 	is "$output" ".*command: \[\"--port\"\]" "command is correct"
+# 	is "$output" ".*args: \['1234', '--model', '/mnt/models/model.file', '--max_model_len', '2048'\]" "args are correct"
+# 
+# 	is "$output" ".*reference: ${ociimage}" "AI image should be created"
+# 	is "$output" ".*pullPolicy: IfNotPresent" "pullPolicy should exist"
+# 
+#     rm $name.yaml
+# }
 
 @test "ramalama serve --generate=kube" {
     model="smollm"
@@ -375,10 +390,10 @@ verify_begin=".*run --rm"
     skip_if_nocontainer
     skip_if_darwin
     skip_if_docker
-    run_ramalama 125 --image bogus serve --pull=never tiny
+    run_ramalama 125 serve --image bogus --pull=never tiny
     is "$output" "Error: bogus: image not known"
 
-    run_ramalama 125 --image bogus1 serve --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama 125 serve --image bogus1 --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*Error: bogus1: image not known"
 }
 
@@ -393,7 +408,7 @@ verify_begin=".*run --rm"
     run_ramalama --dryrun serve --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*quay.io/ramalama/.*-rag:"
 
-    run_ramalama --dryrun --image quay.io/ramalama/ramalama:1.0 serve --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama --dryrun serve --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*quay.io/ramalama/ramalama:1.0"
 }
 

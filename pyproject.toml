@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ramalama"
-version = "0.10.0"
+version = "0.10.1"
 description = "RamaLama is a command line tool for working with AI LLM models."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -64,32 +64,43 @@ line-length = 120
 skip-string-normalization = true
 preview = true
 target-version = ["py310", "py311", "py312", "py313"]
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.tox
-  | \.venv
-  | \.history
-  | build
-  | dist
-  | docs
-  | hack
-  | venv
-)/
-'''
+extend-exclude = "(.history|build|dist|docs|hack)"
 
 [tool.isort]
 profile = "black"
 line_length = 120
+skip = [".venv", "venv"]
 
-[tool.flake8]
-max-line-length = 120
+[tool.codespell]
+skip = ["build","ramalama.egg-info", "logos", ".git", "venv", ".venv"]
+dictionary = ".codespelldict"
+ignore-words-list = ["cann", "clos", "creat", "ro", "hastable", "shouldnot", "mountns", "passt" ,"assertin"]
+check-hidden = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+include = ["\\.pyi?$"]
+exclude = [
+  "/\\.git",
+  "/\\.tox",
+  "/\\.venv",
+  "/\\.history",
+  "/build",
+  "/dist",
+  "/docs",
+  "/hack",
+  "/venv"
+]
+
+[tool.ruff.format]
+preview = true
+quote-style = "preserve"
 
 [tool.pytest.ini_options]
 testpaths = ["."]
 log_cli = true
-log_cli_level = "DEBUG"
+log_cli_level = "WARN"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 

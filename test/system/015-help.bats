@@ -101,7 +101,7 @@ function check_help() {
     # Test for regression of #7273 (spurious "--remote" help on output)
     for helpopt in help --help -h; do
         run_ramalama $helpopt
-        is "${lines[0]}" "usage: ramalama [-h] [--container] [--debug] [--dryrun] [--engine ENGINE]" \
+        is "${lines[0]}" "usage: ramalama [-h] [--debug] [--dryrun] [--engine ENGINE] [--nocontainer]" \
            "ramalama $helpopt: first line of output"
     done
 
@@ -109,12 +109,13 @@ function check_help() {
 
 @test "ramalama verify default image" {
 
-    run_ramalama --help
+    unset RAMALAMA_IMAGE
+    run_ramalama run --help
     is "$output" ".*image IMAGE.*OCI container image to run with the specified AI model"  "Verify default image"
-    is "$output" ".*default: quay.io/ramalama/ramalama"  "Verify default image"
+    is "$output" ".*default: quay.io/ramalama/.*"  "Verify default image"
 
     image=m_$(safename)
-    RAMALAMA_IMAGE=${image} run_ramalama --help
+    RAMALAMA_IMAGE=${image} run_ramalama run --help
     is "$output" ".*default: ${image}"  "Verify default image from environment"
 
     conf=$RAMALAMA_TMPDIR/ramalama.conf
@@ -123,11 +124,11 @@ function check_help() {
 image="$image"
 EOF
 
-    RAMALAMA_CONFIG=${conf} run_ramalama --help
+    RAMALAMA_CONFIG=${conf} run_ramalama bench --help
     is "$output" ".*default: ${image}"  "Verify default image from ramalama.conf"
 
     image1=m_$(safename)
-    RAMALAMA_IMAGE=${image1} RAMALAMA_CONFIG=${conf} run_ramalama --help
+    RAMALAMA_IMAGE=${image1} RAMALAMA_CONFIG=${conf} run_ramalama serve --help
     is "$output" ".*default: ${image1}"  "Verify default image from environment over ramalama.conf"
 }
 
@@ -195,10 +196,10 @@ EOF
     skip_if_nocontainer
 
     run_ramalama --help
-    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: True)"  "Verify default container"
+    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: False)"  "Verify default container"
 
     RAMALAMA_IN_CONTAINER=false run_ramalama --help
-    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: False)"  "Verify default container with environment"
+    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: True)"  "Verify default container with environment"
 
     conf=$RAMALAMA_TMPDIR/ramalama.conf
     cat >$conf <<EOF
@@ -207,7 +208,7 @@ container=false
 EOF
 
     RAMALAMA_CONFIG=${conf} run_ramalama --help
-    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: False)"  "Verify default container override in ramalama.conf"
+    is "$output" ".*The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour. (default: True)"  "Verify default container override in ramalama.conf"
 }
 
 @test "ramalama verify transport" {

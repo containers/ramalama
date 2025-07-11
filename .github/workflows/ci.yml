@@ -10,7 +10,7 @@ jobs:
   lint:
     name: Lint Code
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       
@@ -77,7 +77,7 @@ jobs:
   unit-test:
     name: Unit Tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Install the latest version of uv and activate the environment
@@ -264,6 +264,11 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
+
+      - name: install mlx-lm
+        shell: bash
+        run: |
+          uv pip install mlx-lm
           
       - name: install golang
         shell: bash

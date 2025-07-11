@@ -13,14 +13,10 @@ import shutil
 import string
 import subprocess
 import sys
-import time
-import urllib.error
 from functools import lru_cache
 from typing import TYPE_CHECKING, Callable, List, Literal, Protocol, cast, get_args
 
 import ramalama.amdkfd as amdkfd
-import ramalama.console as console
-from ramalama.http_client import HttpClient
 from ramalama.logger import logger
 from ramalama.version import version
 
@@ -37,10 +33,15 @@ MNT_CHAT_TEMPLATE_FILE = f"{MNT_DIR}/chat_template.file"
 RAG_DIR = "/rag"
 RAG_CONTENT = f"{MNT_DIR}/vector.db"
 
-HTTP_NOT_FOUND = 404
-HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already downloaded)
-
 MIN_VRAM_BYTES = 1073741824  # 1GiB
+
+SPLIT_MODEL_PATH_RE = r'(.*)/([^/]*)-00001-of-(\d{5})\.gguf'
+
+
+def is_split_file_model(model_path):
+    """returns true if ends with -%05d-of-%05d.gguf"""
+    return bool(re.match(SPLIT_MODEL_PATH_RE, model_path))
+
 
 podman_machine_accel = False
 
@@ -64,14 +65,17 @@ def confirm_no_gpu(name, provider) -> bool:
         print("Invalid input. Please enter 'yes' or 'no'.")
 
 
-def handle_provider(machine) -> bool | None:
+def handle_provider(machine, config: Config | None = None) -> bool | None:
     global podman_machine_accel
     name = machine.get("Name")
     provider = machine.get("VMType")
     running = machine.get("Running")
     if running:
         if provider == "applehv":
-            return confirm_no_gpu(name, provider)
+            if config is not None and config.user.no_missing_gpu_prompt:
+                return True
+            else:
+                return confirm_no_gpu(name, provider)
         if "krun" in provider:
             podman_machine_accel = True
             return True
@@ -79,13 +83,13 @@ def handle_provider(machine) -> bool | None:
     return None
 
 
-def apple_vm(engine: SUPPORTED_ENGINES) -> bool:
+def apple_vm(engine: SUPPORTED_ENGINES, config: Config | None = None) -> bool:
     podman_machine_list = [engine, "machine", "list", "--format", "json", "--all-providers"]
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
         machines = json.loads(machines_json)
         for machine in machines:
-            result = handle_provider(machine)
+            result = handle_provider(machine, config)
             if result is not None:
                 return result
     except subprocess.CalledProcessError:
@@ -165,11 +169,11 @@ def generate_sha256(to_hash: str) -> str:
     to_hash (str): The string to generate the sha256 hash for.
 
     Returns:
-    str: Hex digest of the input appended to the prefix sha256:
+    str: Hex digest of the input appended to the prefix sha256-
     """
     h = hashlib.new("sha256")
     h.update(to_hash.encode("utf-8"))
-    return f"sha256:{h.hexdigest()}"
+    return f"sha256-{h.hexdigest()}"
 
 
 def verify_checksum(filename: str) -> bool:
@@ -211,104 +215,13 @@ def verify_checksum(filename: str) -> bool:
     return sha256_hash.hexdigest() == expected_checksum
 
 
-def download_and_verify(url: str, target_path: str, max_retries: int = 2):
-    """
-    Downloads a file from a given URL and verifies its checksum.
-    If the checksum does not match, it retries the download.
-    Args:
-        url (str): The URL to download from.
-        target_path (str): The path to save the downloaded file.
-        max_retries (int): Maximum number of retries for download.
-    Raises:
-        ValueError: If checksum verification fails after multiple attempts.
-    """
-
-    for attempt in range(max_retries):
-        download_file(url, target_path, headers={}, show_progress=True)
-        if verify_checksum(target_path):
-            break
-        console.warning(
-            f"Checksum mismatch for {target_path}, retrying download ... (Attempt {attempt + 1}/{max_retries})"
-        )
-        os.remove(target_path)
-    else:
-        raise ValueError(f"Checksum verification failed for {target_path} after multiple attempts")
-
-
 def genname():
     return "ramalama_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
-def download_file(url: str, dest_path: str, headers: dict[str, str] | None = None, show_progress: bool = True):
-    """
-    Downloads a file from a given URL to a specified destination path.
-
-    Args:
-        url (str): The URL to download from.
-        dest_path (str): The path to save the downloaded file.
-        headers (dict): Optional headers to include in the request.
-        show_progress (bool): Whether to show a progress bar during download.
-
-    Raises:
-        RuntimeError: If the download fails after multiple attempts.
-    """
-    headers = headers or {}
-
-    # If not running in a TTY, disable progress to prevent CI pollution
-    if not sys.stdout.isatty():
-        show_progress = False
-
-    http_client = HttpClient()
-    max_retries = 5  # Stop after 5 failures
-    retries = 0
-
-    while retries < max_retries:
-        try:
-            # Initialize HTTP client for the request
-            http_client.init(url=url, headers=headers, output_file=dest_path, show_progress=show_progress)
-            return  # Exit function if successful
-
-        except urllib.error.HTTPError as e:
-            if e.code in [HTTP_RANGE_NOT_SATISFIABLE, HTTP_NOT_FOUND]:
-                raise e
-            retries += 1
-
-        except urllib.error.URLError as e:
-            console.error(f"Network Error: {e.reason}")
-            retries += 1
-
-        except TimeoutError:
-            retries += 1
-            console.warning(f"TimeoutError: The server took too long to respond. Retrying {retries}/{max_retries} ...")
-
-        except RuntimeError as e:  # Catch network-related errors from HttpClient
-            retries += 1
-            console.warning(f"{e}. Retrying {retries}/{max_retries} ...")
-
-        except IOError as e:
-            retries += 1
-            console.warning(f"I/O Error: {e}. Retrying {retries}/{max_retries} ...")
-
-        except Exception as e:
-            console.error(f"Unexpected error: {str(e)}")
-            raise e
-
-        if retries >= max_retries:
-            error_message = (
-                "\nDownload failed after multiple attempts.\n"
-                "Possible causes:\n"
-                "- Internet connection issue\n"
-                "- Server is down or unresponsive\n"
-                "- Firewall or proxy blocking the request\n"
-            )
-            raise ConnectionError(error_message)
-
-        time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
-
-
 def engine_version(engine: SUPPORTED_ENGINES) -> str:
     # Create manifest list for target with imageid
-    cmd_args = [engine, "version", "--format", "{{ .Client.Version }}"]
+    cmd_args = [str(engine), "version", "--format", "{{ .Client.Version }}"]
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
 
 
@@ -524,7 +437,9 @@ AccelEnvVar = Literal[
 
 
 def get_accel_env_vars() -> dict[GPUEnvVar | AccelEnvVar, str]:
-    return get_gpu_type_env_vars() | {k: os.environ[k] for k in get_args(AccelEnvVar) if k in os.environ}
+    gpu_env_vars: dict[GPUEnvVar, str] = get_gpu_type_env_vars()
+    accel_env_vars: dict[AccelEnvVar, str] = {k: os.environ[k] for k in get_args(AccelEnvVar) if k in os.environ}
+    return gpu_env_vars | accel_env_vars
 
 
 def rm_until_substring(input: str, substring: str) -> str:
@@ -627,7 +542,7 @@ class AccelImageArgsOtherRuntimeRAG(Protocol):
 AccelImageArgs = None | AccelImageArgsVLLMRuntime | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
 
 
-def accel_image(config: Config, pull=True) -> str:
+def accel_image(config: Config) -> str:
     """
     Selects and the appropriate image based on config, arguments, environment.
     """
@@ -650,13 +565,15 @@ def accel_image(config: Config, pull=True) -> str:
         return "registry.redhat.io/rhelai1/ramalama-vllm"
 
     vers = minor_release()
-    if not pull or attempt_to_use_versioned(config.engine, image, vers, True):
+
+    should_pull = config.pull in ["always", "missing"]
+    if attempt_to_use_versioned(config.engine, image, vers, True, should_pull):
         return f"{image}:{vers}"
 
     return f"{image}:latest"
 
 
-def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool) -> bool:
+def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, should_pull: bool) -> bool:
     try:
         # check if versioned image exists locally
         if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True):
@@ -665,10 +582,13 @@ def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool) ->
     except Exception:
         pass
 
+    if not should_pull:
+        return False
+
     try:
         # attempt to pull the versioned image
         if not quiet:
-            print(f"Attempting to pull {image}:{vers} ...")
+            perror(f"Attempting to pull {image}:{vers} ...")
         run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True)
         return True
 

@@ -28,12 +28,14 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux/x86_64
-    - linux/arm64
+    - linux-c4xlarge/amd64
+    - linux-c4xlarge/arm64
   - name: dockerfile
     value: container-images/bats/Containerfile
   pipelineRef:
     name: pull-request-pipeline
+  timeouts:
+    pipeline: 6h
   workspaces:
   - name: git-auth
     secret:

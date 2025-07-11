@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: wait-for-image
+spec:
+  description: Wait for an image to become available.
+  params:
+  - name: ref
+    description: Location of image to wait for.
+  results:
+  - name: digest
+    description: The digest that the image ref resolves to.
+  steps:
+  - name: check-and-wait
+    image: registry.redhat.io/rhel10/skopeo:latest
+    env:
+    - name: REF
+      value: $(params.ref)
+    - name: RESULTS_DIGEST_PATH
+      value: $(results.digest.path)
+    script: |
+      #!/bin/bash -e
+      echo "Fetching digest of $REF"
+      while true; do
+        DIGEST="$(skopeo inspect -n -f {{.Digest}} "docker://$REF" || :)"
+        if [ "${#DIGEST}" -gt 0 ]; then
+          echo -n "$DIGEST" | tee "$RESULTS_DIGEST_PATH"
+          exit
+        fi
+        echo "$(date -uIseconds): digest unavailable, waiting..."
+        sleep 60
+      done

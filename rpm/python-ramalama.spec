@@ -1,7 +1,7 @@
 %global pypi_name ramalama
 %global forgeurl  https://github.com/containers/%{pypi_name}
 # see ramalama/version.py
-%global version0  0.10.0
+%global version0  0.10.1
 %forgemeta
 
 %global summary   RamaLama is a command line tool for working with AI LLM models
@@ -92,6 +92,11 @@ will run the AI Models within a container based on the OCI image.
 %{_mandir}/man1/ramalama*.1*
 %{_mandir}/man5/ramalama*.5*
 %{_mandir}/man7/ramalama*.7*
+
+%post
+if [ $1 -eq 1 ]; then
+   %{_sbindir}/setsebool -P -N container_use_xserver_devices=1
+fi
 
 %changelog
 %autochangelog

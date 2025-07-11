@@ -64,6 +64,12 @@ EOF
 	is "$output" ".*--name foobar" "dryrun correct with --name"
 	is "$output" ".*--cap-drop=all" "verify --cap-add is present"
 	is "$output" ".*no-new-privileges" "verify --no-new-privs is not present"
+	run_ramalama -q --dryrun run --selinux=True ${MODEL}
+	assert "$output" != ".*--security-opt=label=disable" "verify --selinux enables container separation"
+	run_ramalama -q --dryrun run --selinux=False ${MODEL}
+	assert "$output" =~ ".*--security-opt=label=disable" "verify --selinux=False disbles container separation"
+	run_ramalama 22 -q --dryrun run --selinux=100 ${MODEL}
+	is "$output" "Error: Cannot coerce '100' to bool" "Should error on bad value"
 
     run_ramalama -q --dryrun run --runtime-args="--foo -bar" ${MODEL}
     assert "$output" =~ ".*--foo" "--foo passed to runtime"
@@ -72,7 +78,7 @@ EOF
     run_ramalama -q --dryrun run --runtime-args="--foo='a b c'" ${MODEL}
     assert "$output" =~ ".*--foo=a b c" "argument passed to runtime with spaces"
 
-    run_ramalama 1 -q --dryrun run --runtime-args="--foo='a b c" ${MODEL}
+    run_ramalama 22 -q --dryrun run --runtime-args="--foo='a b c" ${MODEL}
     assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
 
 	if is_container; then
@@ -132,9 +138,9 @@ EOF
     skip_if_nocontainer
     skip_if_darwin
     skip_if_docker
-    run_ramalama 22 --image bogus run --pull=never tiny
+    run_ramalama 22 run --image bogus --pull=never tiny
     is "$output" ".*Error: bogus: image not known"
-    run_ramalama 125 --image bogus1 run --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*Error: bogus1: image not known"
 }
 
@@ -148,7 +154,7 @@ EOF
     run_ramalama --dryrun run --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*quay.io/ramalama/.*-rag:"
 
-    run_ramalama --dryrun --image quay.io/ramalama/ramalama:1.0 run --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama --dryrun run --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/testrag --pull=never tiny
     is "$output" ".*quay.io/ramalama/ramalama:1.0"
 }
 

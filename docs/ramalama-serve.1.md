@@ -29,9 +29,12 @@ Modify individual model transports by specifying the `huggingface://`, `oci://`,
 URL support means if a model is on a web site or even on your local system, you can run it directly.
 
 ## REST API ENDPOINTS
-Under the hood, `ramalama-serve` uses the `LLaMA.cpp` HTTP server by default.
+Under the hood, `ramalama-serve` uses the `llama.cpp` HTTP server by default. When using `--runtime=vllm`, it uses the vLLM server. When using `--runtime=mlx`, it uses the MLX LM server.
 
-For REST API endpoint documentation, see: [https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints)
+For REST API endpoint documentation, see:
+- llama.cpp: [https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints)
+- vLLM: [https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
+- MLX LM: [https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md)
 
 ## OPTIONS
 
@@ -89,6 +92,33 @@ show this help message and exit
 
 #### **--host**="0.0.0.0"
 IP address for llama.cpp to listen on.
+
+#### **--image**=IMAGE
+OCI container image to run with specified AI model. RamaLama defaults to using
+images based on the accelerator it discovers. For example:
+`quay.io/ramalama/ramalama`. See the table above for all default images.
+The default image tag is based on the minor version of the RamaLama package.
+Version 0.10.0 of RamaLama pulls an image with a `:0.10` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+
+The default can be overridden in the ramalama.conf file or via the
+RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
+RamaLama to use the `quay.io/ramalama/aiimage:1.2` image.
+
+Accelerated images:
+
+| Accelerator             | Image                      |
+| ------------------------| -------------------------- |
+|  CPU, Apple             | quay.io/ramalama/ramalama  |
+|  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm      |
+|  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda      |
+|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
+|  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu |
+|  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
+|  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
+
+#### **--keep-groups**
+pass --group-add keep-groups to podman (default: False)
+If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
 
 #### **--model-draft**
 
@@ -160,6 +190,9 @@ Add *args* to the runtime (llama.cpp or vllm) invocation.
 
 #### **--seed**=
 Specify seed rather than using random seed model interaction
+
+#### **--selinux**=*true*
+Enable SELinux container separation
 
 #### **--temp**="0.8"
 Temperature of the response from the AI Model.
@@ -461,6 +494,27 @@ WantedBy=multi-user.target default.target
 ## NVIDIA CUDA Support
 
 See **[ramalama-cuda(7)](ramalama-cuda.7.md)** for setting up the host Linux system for CUDA support.
+
+## MLX Support
+
+The MLX runtime is designed for Apple Silicon Macs and provides optimized performance on these systems. MLX support has the following requirements:
+
+- **Operating System**: macOS only
+- **Hardware**: Apple Silicon (M1, M2, M3, or later)
+- **Container Mode**: MLX requires `--nocontainer` as it cannot run inside containers
+- **Dependencies**: Requires `mlx-lm` package to be installed on the host system
+
+To install MLX dependencies, use either `uv` or `pip`:
+```bash
+uv pip install mlx-lm
+# or pip:
+pip install mlx-lm
+```
+
+Example usage:
+```bash
+ramalama --runtime=mlx serve hf://mlx-community/Unsloth-Phi-4-4bit
+```
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman(1)**, **podman-ps(1)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**

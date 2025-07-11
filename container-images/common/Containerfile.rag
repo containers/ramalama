@@ -1,0 +1,8 @@
+ARG PARENT
+FROM $PARENT
+
+ARG GPU
+
+USER root
+RUN /usr/bin/build_rag.sh "$GPU"
+ENTRYPOINT []

@@ -12,13 +12,10 @@ assert sys.version_info >= (3, 10), "Python 3.10 or greater is required."
 
 def initialize_environment():
     # CONFIG.engine is pulled both from the environment and file configs
-    if (
-        CONFIG.engine is not None
-        and CONFIG.is_set("engine")
-        and os.path.basename(CONFIG.engine) == "podman"
-        and sys.platform == "darwin"
-    ):
-        apple_vm(CONFIG.engine)
+    if CONFIG.engine is not None and os.path.basename(CONFIG.engine) == "podman" and sys.platform == "darwin":
+        run_with_podman_engine = apple_vm(CONFIG.engine, CONFIG)
+        if not run_with_podman_engine and not CONFIG.is_set("engine"):
+            CONFIG.engine = None
 
 
 initialize_environment()

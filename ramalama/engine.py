@@ -47,8 +47,8 @@ class Engine:
         if not self.args.dryrun and self.use_docker and self.args.pull == "newer":
             try:
                 if not self.args.quiet:
-                    print(f"Checking for newer image {self.args.image}")
-                run_cmd([self.args.engine, "pull", "-q", self.args.image], ignore_all=True)
+                    perror(f"Checking for newer image {self.args.image}")
+                run_cmd([str(self.args.engine), "pull", "-q", self.args.image], ignore_all=True)
             except Exception:  # Ignore errors, the run command will handle it.
                 pass
         else:
@@ -72,9 +72,10 @@ class Engine:
         if getattr(self.args, "privileged", False):
             self.exec_args += ["--privileged"]
         else:
-            self.exec_args += [
-                "--security-opt=label=disable",
-            ]
+            if not getattr(self.args, "selinux", False):
+                self.exec_args += [
+                    "--security-opt=label=disable",
+                ]
             if not getattr(self.args, "nocapdrop", False):
                 self.exec_args += [
                     "--cap-drop=all",
@@ -146,9 +147,9 @@ class Engine:
         if os.path.exists(self.args.rag):
             rag = os.path.realpath(self.args.rag)
             # Added temp read write because vector database requires write access even if nothing is written
-            self.exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db,rw=true")
+            self.exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db,rw=true{self.relabel()}")
         else:
-            self.exec_args.append(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
+            self.exec_args.append(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true{self.relabel()}")
 
     def handle_podman_specifics(self):
         if getattr(self.args, "podman_keep_groups", None):
@@ -166,6 +167,11 @@ class Engine:
     def exec(self, stdout2null: bool = False, stderr2null: bool = False):
         exec_cmd(self.exec_args, stdout2null, stderr2null)
 
+    def relabel(self):
+        if getattr(self.args, "selinux", False) and self.use_podman:
+            return ",z"
+        return ""
+
 
 def dry_run(args):
     for arg in args:
@@ -179,7 +185,7 @@ def dry_run(args):
 
 
 def images(args):
-    conman = args.engine
+    conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
@@ -204,7 +210,7 @@ def images(args):
 
 
 def containers(args):
-    conman = args.engine
+    conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
@@ -229,8 +235,8 @@ def containers(args):
 
 
 def info(args):
-    conman = args.engine
-    if conman == "":
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "info", "--format", "json"]
@@ -246,8 +252,8 @@ def info(args):
 def inspect(args, name, format=None, ignore_stderr=False):
     if not name:
         raise ValueError("must specify a container name")
-    conman = args.engine
-    if conman == "":
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "inspect"]
@@ -261,8 +267,8 @@ def inspect(args, name, format=None, ignore_stderr=False):
 def stop_container(args, name):
     if not name:
         raise ValueError("must specify a container name")
-    conman = args.engine
-    if conman == "":
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
     ignore_stderr = False
@@ -303,12 +309,12 @@ def container_connection(args, name, port):
     if not port:
         raise ValueError("must specify a port to check")
 
-    conman = args.engine
-    if conman == "":
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
     conman_args = [conman, "port", name, port]
-    output = run_cmd(conman_args, debug=args.debug).stdout.decode("utf-8").strip()
+    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
     return "" if output == "" else output.split(">")[-1].strip()
 
 

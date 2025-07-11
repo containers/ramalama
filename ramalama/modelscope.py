@@ -8,7 +8,7 @@ from ramalama.hf_style_repo_base import (
     HFStyleRepository,
     fetch_checksum_from_api_base,
 )
-from ramalama.model_store import SnapshotFileType
+from ramalama.model_store.snapshot_file import SnapshotFileType
 
 missing_modelscope = """
 Optional: ModelScope models require the modelscope module.
