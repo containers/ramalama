@@ -7,58 +7,29 @@ spec:
   params:
   - name: image
     description: The image to use when setting up the test environment.
-  - name: source-artifact
-    description: The Trusted Artifact URI pointing to the artifact with the application source code.
   - name: cmd
     description: The command to run.
   - name: envs
     description: List of environment variables (NAME=VALUE) to be set in the test environment.
     type: array
     default: []
-  volumes:
-  - name: workdir
-    emptyDir: {}
-  stepTemplate:
-    volumeMounts:
-    - mountPath: /var/workdir
-      name: workdir
+  steps:
+  - name: run
+    image: $(params.image)
     computeResources:
       limits:
         memory: 4Gi
       requests:
         cpu: "1"
         memory: 1Gi
-  steps:
-  - name: use-trusted-artifact
-    image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:4689f88dd253bd1feebf57f1a76a5a751880f739000719cd662bbdc76990a7fd
-    args:
-    - use
-    - $(params.source-artifact)=/var/workdir/source
-  - name: set-env
-    image: $(params.image)
-    workingDir: /var/workdir/source
-    args:
-    - $(params.envs[*])
-    script: |
-      #!/bin/bash -e
-      rm -f .bashenv
-      while [ $# -ne 0 ]; do
-        echo "$1" >> .bashenv
-        shift
-      done
-  - name: run
-    image: $(params.image)
     securityContext:
       capabilities:
         add:
         - SETFCAP
-    workingDir: /var/workdir/source
-    env:
-    - name: BASH_ENV
-      value: .bashenv
     command:
     - /usr/bin/entrypoint.sh
     args:
+    - $(params.envs[*])
     - /bin/bash
     - -ex
     - -c
