@@ -51,7 +51,7 @@ install-cov-requirements:
 
 .PHONY: install-requirements
 install-requirements:
-	./install-uv.sh
+	container-images/scripts/install-uv.sh
 	pip install ".[dev]"
 
 .PHONY: install-completions

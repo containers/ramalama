@@ -131,7 +131,8 @@ is_python3_at_least_310() {
 
 install_uv() {
   local host="raw.githubusercontent.com"
-  local install_uv_url="https://$host/containers/ramalama/s/install-uv.sh"
+  local file="container-images/scripts/install-uv.sh"
+  local install_uv_url="https://$host/containers/ramalama/s/$file"
   curl -fsSL "$install_uv_url" | bash
   echo
 }

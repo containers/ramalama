@@ -3,4 +3,6 @@ FROM quay.io/fedora/fedora:42
 COPY . /src/ramalama
 WORKDIR /src/ramalama
 RUN container-images/scripts/build_llama_and_whisper.sh ramalama
+RUN container-images/scripts/install-uv.sh
+RUN container-images/scripts/build-vllm.sh
 WORKDIR /
