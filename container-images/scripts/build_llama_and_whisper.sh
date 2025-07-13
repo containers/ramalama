@@ -282,18 +282,22 @@ clone_and_build_llama_cpp() {
 }
 
 install_ramalama() {
-  $PYTHON -m pip install . --prefix="$1"
+  if [ -e "pyproject.toml" ]; then
+    $PYTHON -m pip install . --prefix="$1"
+  fi
 }
 
 install_entrypoints() {
-  install -d "$install_prefix"/bin
-  install -m 755 \
-    container-images/scripts/llama-server.sh \
-    container-images/scripts/whisper-server.sh \
-    container-images/scripts/build_rag.sh \
-    container-images/scripts/doc2rag \
-    container-images/scripts/rag_framework \
-    "$install_prefix"/bin
+  if [ -e "container-images" ]; then
+    install -d "$install_prefix"/bin
+    install -m 755 \
+      container-images/scripts/llama-server.sh \
+      container-images/scripts/whisper-server.sh \
+      container-images/scripts/build_rag.sh \
+      container-images/scripts/doc2rag \
+      container-images/scripts/rag_framework \
+      "$install_prefix"/bin
+  fi
 }
 
 main() {
