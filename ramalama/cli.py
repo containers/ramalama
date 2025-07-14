@@ -8,6 +8,9 @@ import sys
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import get_args
+
+from ramalama.config import COLOR_OPTIONS, SUPPORTED_RUNTIMES
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
@@ -121,11 +124,16 @@ class ArgumentParserWithDefaults(argparse.ArgumentParser):
         return action
 
 
-def init_cli():
-    """Initialize the RamaLama CLI and parse command line arguments."""
+def get_parser():
     description = get_description()
     parser = create_argument_parser(description)
     configure_subcommands(parser)
+    return parser
+
+
+def init_cli():
+    """Initialize the RamaLama CLI and parse command line arguments."""
+    parser = get_parser()
     args = parse_arguments(parser)
     post_parse_setup(args)
     return parser, args
@@ -209,7 +217,7 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     parser.add_argument(
         "--runtime",
         default=CONFIG.runtime,
-        choices=["llama.cpp", "vllm", "mlx"],
+        choices=get_args(SUPPORTED_RUNTIMES),
         help="specify the runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx'",
     )
     parser.add_argument(
@@ -256,11 +264,18 @@ def parse_arguments(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
-    if getattr(args, "MODEL", None) and args.subcommand != "rm":
-        resolved_model = shortnames.resolve(args.MODEL)
-        if resolved_model:
-            args.UNRESOLVED_MODEL = args.MODEL
-            args.MODEL = resolved_model
+    if getattr(args, "MODEL", None):
+        if args.subcommand != "rm":
+            resolved_model = shortnames.resolve(args.MODEL)
+            if resolved_model:
+                args.UNRESOLVED_MODEL = args.MODEL
+                args.MODEL = resolved_model
+
+        # TODO: This is a hack. Once we have more typing in place these special cases
+        # _should_ be removed.
+        if not hasattr(args, "model"):
+            args.model = args.MODEL
+
     if hasattr(args, "runtime_args"):
         args.runtime_args = shlex.split(args.runtime_args)
 
@@ -914,7 +929,7 @@ def chat_parser(subparsers):
         '--color',
         '--colour',
         default="auto",
-        choices=['never', 'always', 'auto'],
+        choices=get_args(COLOR_OPTIONS),
         help='possible values are "never", "always" and "auto".',
     )
     parser.add_argument(
@@ -940,7 +955,7 @@ def run_parser(subparsers):
         '--color',
         '--colour',
         default="auto",
-        choices=['never', 'always', 'auto'],
+        choices=get_args(COLOR_OPTIONS),
         help='possible values are "never", "always" and "auto".',
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
@@ -1061,6 +1076,12 @@ def rag_parser(subparsers):
         default=CONFIG.env,
         help="environment variables to add to the running RAG container",
         completer=local_env,
+    )
+    parser.add_argument(
+        "--format",
+        default=CONFIG.rag_format,
+        help="Output format for RAG Data",
+        choices=["qdrant", "json", "markdown"],
     )
     parser.add_argument(
         "--image",

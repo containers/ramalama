@@ -130,6 +130,11 @@ Specify default port for services to listen on
 - **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
 - **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
+**rag_format**="qdrant"
+
+Specify the default output format for output of the `ramalama rag` command
+Options: json, markdown, qdrant
+
 **runtime**="llama.cpp"
 
 Specify the AI runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx' (default: llama.cpp)

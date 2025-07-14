@@ -9,8 +9,10 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from datetime import timedelta
 
+from ramalama.arg_types import ChatArgsType
 from ramalama.common import perror
 from ramalama.config import CONFIG
 from ramalama.console import EMOJI, should_colorize
@@ -76,8 +78,19 @@ def add_api_key(args, headers=None):
     return headers
 
 
+@dataclass
+class ChatOperationalArgs:
+    initial_connection: bool = False
+    pid2kill: int | None = None
+    name: str | None = None
+    keepalive: int | None = None
+
+
 class RamaLamaShell(cmd.Cmd):
-    def __init__(self, args):
+    def __init__(self, args: ChatArgsType, operational_args: ChatOperationalArgs | None = None):
+        if operational_args is None:
+            operational_args = ChatOperationalArgs()
+
         super().__init__()
         self.conversation_history = []
         self.args = args
@@ -86,8 +99,10 @@ class RamaLamaShell(cmd.Cmd):
         self.url = f"{args.url}/chat/completions"
         self.prep_rag_message()
 
+        self.operational_args = operational_args
+
     def prep_rag_message(self):
-        if (context := getattr(self.args, "rag", None)) is None:
+        if (context := self.args.rag) is None:
             return
 
         builder = OpanAIChatAPIMessageBuilder()
@@ -132,7 +147,7 @@ class RamaLamaShell(cmd.Cmd):
             "stream": True,
             "messages": self.conversation_history,
         }
-        if getattr(self.args, "model", False):
+        if self.args.model is not None:
             data["model"] = self.args.model
 
         json_data = json.dumps(data).encode("utf-8")
@@ -222,7 +237,7 @@ def alarm_handler(signum, frame):
     raise TimeoutException()
 
 
-def chat(args):
+def chat(args: ChatArgsType, operational_args: ChatOperationalArgs = ChatOperationalArgs()):
     if args.dryrun:
         prompt = dry_run(args.ARGS)
         print(f"\nramalama chat --color {args.color} --prefix  \"{args.prefix}\" --url {args.url} {prompt}")
@@ -243,7 +258,7 @@ def chat(args):
                 print(id)
 
     try:
-        shell = RamaLamaShell(args)
+        shell = RamaLamaShell(args, operational_args)
         if shell.handle_args():
             return
 

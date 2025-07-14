@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import argparse
+import errno
 import hashlib
 import os
+import os.path
 import sys
 import uuid
 
@@ -23,45 +25,46 @@ COLLECTION_NAME = "rag"
 class Converter:
     """A Class designed to handle all document conversions using Docling"""
 
-    def __init__(self, output, targets, ocr):
+    def __init__(self, args):
         # Docling Setup (Turn off OCR (image processing) for drastically reduced RAM usage and big speed increase)
         pipeline_options = PdfPipelineOptions()
-        pipeline_options.do_ocr = ocr
+        pipeline_options.do_ocr = args.ocr
+        self.sources = []
+        for source in args.sources:
+            self.add(source)
+        self.output = args.output
+        self.format = args.format
         self.doc_converter = DocumentConverter(
             format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
         )
-        self.targets = []
-        for target in targets:
-            self.add(target)
-        self.output = output
-        self.client = qdrant_client.QdrantClient(path=output)
-        self.client.set_model(EMBED_MODEL)
-        self.client.set_sparse_model(SPARSE_MODEL)
-        # optimizations to reduce ram
-        self.client.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=self.client.get_fastembed_vector_params(on_disk=True),
-            sparse_vectors_config=self.client.get_fastembed_sparse_vector_params(on_disk=True),
-            quantization_config=models.ScalarQuantization(
-                scalar=models.ScalarQuantizationConfig(
-                    type=models.ScalarType.INT8,
-                    always_ram=True,
+        if self.format == "qdrant":
+            self.client = qdrant_client.QdrantClient(path=self.output)
+            self.client.set_model(EMBED_MODEL)
+            self.client.set_sparse_model(SPARSE_MODEL)
+            # optimizations to reduce ram
+            self.client.create_collection(
+                collection_name=COLLECTION_NAME,
+                vectors_config=self.client.get_fastembed_vector_params(on_disk=True),
+                sparse_vectors_config=self.client.get_fastembed_sparse_vector_params(on_disk=True),
+                quantization_config=models.ScalarQuantization(
+                    scalar=models.ScalarQuantizationConfig(
+                        type=models.ScalarType.INT8,
+                        always_ram=True,
+                    ),
                 ),
-            ),
-        )
+            )
 
     def add(self, file_path):
         if os.path.isdir(file_path):
             self.walk(file_path)  # Walk directory and process all files
         else:
-            self.targets.append(file_path)  # Process the single file
+            self.sources.append(file_path)  # Process the single file
 
-    def convert(self):
-        result = self.doc_converter.convert_all(self.targets)
+    def convert_qdrant(self, results):
         documents, ids = [], []
         chunker = HybridChunker(tokenizer=EMBED_MODEL, overlap=100, merge_peers=True)
-        for file in result:
-            chunk_iter = chunker.chunk(dl_doc=file.document)
+        for result in results:
+            chunk_iter = chunker.chunk(dl_doc=result.document)
             for chunk in chunk_iter:
                 # Extract the enriched text from the chunk
                 doc_text = chunker.contextualize(chunk=chunk)
@@ -72,6 +75,33 @@ class Converter:
                 ids.append(doc_id)
         return self.client.add(COLLECTION_NAME, documents=documents, ids=ids, batch_size=1)
 
+    def convert(self):
+        results = self.doc_converter.convert_all(self.sources)
+        if self.format == "qdrant":
+            return self.convert_qdrant(results)
+        if self.format == "markdown":
+            # Export the converted document to Markdown
+            return self.convert_markdown(results)
+        if self.format == "json":
+            # Export the converted document to JSON
+            return self.convert_json(results)
+
+    def convert_markdown(self, results):
+        ctr = 0
+        # Process the conversion results
+        for ctr, result in enumerate(results):
+            dirname = self.output + os.path.dirname(self.sources[ctr])
+            os.makedirs(dirname, exist_ok=True)
+            document = result.document
+            document.save_as_markdown(os.path.join(dirname, f"{document.name}.md"))
+
+    def convert_json(self, results):
+        for ctr, result in enumerate(results):
+            dirname = self.output + os.path.dirname(self.sources[ctr])
+            os.makedirs(dirname, exist_ok=True)
+            document = result.document
+            document.save_as_json(os.path.join(dirname, f"{document.name}.json"))
+
     def walk(self, path):
         for root, dirs, files in os.walk(path, topdown=True):
             if len(files) == 0:
@@ -79,7 +109,7 @@ class Converter:
             for f in files:
                 file = os.path.join(root, f)
                 if os.path.isfile(file):
-                    self.targets.append(file)
+                    self.sources.append(file)
 
     def generate_hash(self, document: str) -> str:
         """Generate a unique hash for a document."""
@@ -103,8 +133,14 @@ parser = argparse.ArgumentParser(
     description="process source files into RAG vector database",
 )
 
-parser.add_argument("target", nargs="?", help="Target database")
-parser.add_argument("source", nargs="*", help="Source files")
+parser.add_argument("output", nargs="?", help="Output directory")
+parser.add_argument("sources", nargs="*", help="Source files")
+parser.add_argument(
+    "--format",
+    default="qdrant",
+    help="Output format for RAG Data",
+    choices=["qdrant", "json", "markdown"],
+)
 parser.add_argument(
     "--ocr",
     action='store_true',
@@ -123,16 +159,16 @@ def eprint(e, exit_code):
 
 try:
     args = parser.parse_args()
-    if args.target == "load":
+    if args.output == "load":
         load()
     else:
-        converter = Converter(args.target, args.source, args.ocr)
+        converter = Converter(args)
         converter.convert()
 except docling.exceptions.ConversionError as e:
     eprint(e, 1)
 except FileNotFoundError as e:
-    eprint(e, 1)
+    eprint(e, errno.ENOENT)
 except ValueError as e:
-    eprint(e, 1)
+    eprint(e, errno.EINVAL)
 except KeyboardInterrupt:
     pass

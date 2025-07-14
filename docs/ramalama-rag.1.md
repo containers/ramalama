@@ -19,7 +19,7 @@ positional arguments:
 	    AsciiDoc & Markdown formatted files to be processed.
 	    Can be specified multiple times.
 
-  *IMAGE*   OCI Image name to contain processed rag data
+  *PATH|IMAGE*   Path or OCI Image name to contain processed rag data
 
 ## OPTIONS
 
@@ -31,6 +31,15 @@ This option allows arbitrary environment variables that are available for the
 process to be launched inside of the container. If an environment variable is
 specified without a value, the container engine checks the host environment
 for a value and set the variable only if it is set on the host.
+
+#### **--format**=*json* |  *markdown* | *qdrant* |
+Convert documents into the following formats
+
+| Type    | Description                                          |
+| ------- | ---------------------------------------------------- |
+| json    | JavaScript Object Notation. lightweight format for exchanging data |
+| markdown| Lightweight markup language using plain text editing |
+| qdrant  | Retrieval-Augmented Generation (RAG) Vector database |
 
 #### **--help**, **-h**
 Print usage message
@@ -82,7 +91,7 @@ Enable SELinux container separation
 ## EXAMPLES
 
 ```
-./bin/ramalama rag ./README.md https://github.com/containers/podman/blob/main/README.md quay.io/rhatdan/myrag
+$ ramalama rag ./README.md https://github.com/containers/podman/blob/main/README.md quay.io/rhatdan/myrag
 100% |███████████████████████████████████████████████████████|  114.00 KB/    0.00 B 922.89 KB/s   59m 59s
 Building quay.io/ramalama/myrag...
 adding vectordb...
@@ -90,7 +99,17 @@ c857ebc65c641084b34e39b740fdb6a2d9d2d97be320e6aa9439ed0ab8780fe0
 ```
 
 ```
-ramalama rag --ocr README.md https://mysight.edu/document quay.io/rhatdan/myrag
+$ ramalama rag --ocr README.md https://mysight.edu/document quay.io/rhatdan/myrag
+```
+
+```
+$ ramalama rag --format markdown /tmp/internet.pdf /tmp/output
+$ ls /tmp/output/docs/tmp/
+/tmp/output/docs/tmp/internet.md
+$ ramalama rag --format json /tmp/internet.pdf /tmp/output
+$ ls /tmp/output/docs/tmp/
+/tmp/output/docs/tmp/internet.md
+/tmp/output/docs/tmp/internet.json
 ```
 
 ## SEE ALSO

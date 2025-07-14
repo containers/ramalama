@@ -9,10 +9,13 @@ from ramalama.common import available
 from ramalama.layered_config import LayeredMixin, deep_merge
 from ramalama.toml_parser import TOMLParser
 
+PathStr = str
 DEFAULT_PORT_RANGE: tuple[int, int] = (8080, 8090)
 DEFAULT_PORT: int = DEFAULT_PORT_RANGE[0]
 DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
-SUPPORTED_ENGINES = Literal["podman", "docker"] | os.PathLike[str]
+SUPPORTED_ENGINES = Literal["podman", "docker"] | PathStr
+SUPPORTED_RUNTIMES = Literal["llama.cpp", "vllm", "mlx"]
+COLOR_OPTIONS = Literal["auto", "always", "never"]
 
 
 def get_default_engine() -> SUPPORTED_ENGINES | None:
@@ -86,7 +89,8 @@ class BaseConfig:
     threads: int = -1
     port: str = str(DEFAULT_PORT)
     pull: str = "newer"
-    runtime: str = "llama.cpp"
+    rag_format: Literal["qdrant", "json", "markdown"] = "qdrant"
+    runtime: SUPPORTED_RUNTIMES = "llama.cpp"
     store: str = field(default_factory=get_default_store)
     temp: str = "0.8"
     transport: str = "ollama"
