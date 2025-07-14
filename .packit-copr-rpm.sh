@@ -9,8 +9,7 @@ set -exo pipefail
 # Extract version from pyproject.toml instead of setup.py
 VERSION=$(awk -F'[""]' ' /^\s*version\s*/ {print $(NF-1)}' pyproject.toml )
 
-#SPEC_FILE=rpm-next/ramalama.spec
-SPEC_FILE=rpm/python-ramalama.spec
+SPEC_FILE=rpm-next/ramalama.spec
 
 # RPM Spec modifications
 

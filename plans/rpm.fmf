@@ -2,7 +2,7 @@ discover:
     how: shell
     tests:
         - name: /info
-          test: rpm -qi python3-ramalama
+          test: rpm -qi ramalama
 
 execute:
     how: tmt
