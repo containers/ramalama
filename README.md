@@ -224,7 +224,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 	<br>
 
 	```
-	$ ramalama bench granite-moe3
+	$ ramalama bench granite3-moe
 	```
 </details>
 
@@ -831,7 +831,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 	Perplexity measures how well the model can predict the next token with lower values being better
 	```
-	$ ramalama perplexity granite-moe3
+	$ ramalama perplexity granite3-moe
 	```
 </details>
 

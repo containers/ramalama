@@ -137,6 +137,19 @@ ramalama run granite
 
 This is particularly useful in multi-GPU systems where you want to dedicate specific GPUs to different workloads.
 
+If the `CUDA_VISIBLE_DEVICES` environment variable is set to an empty string, RamaLama will default to using the CPU.
+
+```bash
+export CUDA_VISIBLE_DEVICES=""  # Defaults to CPU
+ramalama run granite
+```
+
+To revert to using all available GPUs, unset the environment variable:
+
+```bash
+unset CUDA_VISIBLE_DEVICES
+```
+
 ## Troubleshooting
 
 ### CUDA Updates

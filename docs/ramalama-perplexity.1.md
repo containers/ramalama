@@ -156,7 +156,7 @@ Calculate the perplexity of an AI Model. Perplexity measures how well the model 
 ## EXAMPLES
 
 ```
-ramalama perplexity granite-moe3
+ramalama perplexity granite3-moe
 ```
 
 ## SEE ALSO

@@ -148,7 +148,7 @@ Benchmark specified AI Model.
 ## EXAMPLES
 
 ```
-ramalama bench granite-moe3
+ramalama bench granite3-moe
 ```
 
 ## SEE ALSO
