@@ -150,7 +150,7 @@ main() {
   if ! $local_install && [ -z "$BRANCH" ]; then
     if available dnf; then
       dnf_install_podman
-      if is_python3_at_least_310 && dnf_install "python3-ramalama"; then
+      if is_python3_at_least_310 && dnf_install "ramalama"; then
         return 0
       fi
     elif available apt; then

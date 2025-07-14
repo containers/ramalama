@@ -7,21 +7,11 @@ upstream_tag_template: v{version}
 packages:
   ramalama-fedora:
     pkg_tool: fedpkg
-    downstream_package_name: python-ramalama
-    specfile_path: rpm/python-ramalama.spec
+    downstream_package_name: ramalama
+    specfile_path: rpm/ramalama.spec
   ramalama-centos:
-    downstream_package_name: python-ramalama
-    specfile_path: rpm/python-ramalama.spec
-
-# Uncomment when we get this approved.
-# packages:
-#   ramalama-fedora:
-#     pkg_tool: fedpkg
-#     downstream_package_name: ramalama
-#     specfile_path: rpm-next/ramalama.spec
-#   ramalama-centos:
-#     downstream_package_name: ramalama
-#     specfile_path: rpm-next/ramalama.spec
+    downstream_package_name: ramalama
+    specfile_path: rpm/ramalama.spec
 
 srpm_build_deps:
   - make
