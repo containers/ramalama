@@ -402,13 +402,10 @@ verify_begin=".*run --rm"
     skip_if_darwin
     skip_if_docker
     run_ramalama ? stop ${name}
-    run_ramalama ? --dryrun serve --rag quay.io/ramalama/rag --pull=never tiny
-    is "$output" ".*Error: quay.io/ramalama/rag: image not known"
-
-    run_ramalama --dryrun serve --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama --dryrun serve --rag quay.io/ramalama/rag --pull=never tiny
     is "$output" ".*quay.io/ramalama/.*-rag:"
 
-    run_ramalama --dryrun serve --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama --dryrun serve --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/rag --pull=never tiny
     is "$output" ".*quay.io/ramalama/ramalama:1.0"
 }
 

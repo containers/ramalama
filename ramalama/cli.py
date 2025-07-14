@@ -703,7 +703,7 @@ def _get_source_model(args):
     smodel = New(src, args)
     if smodel.type == "OCI":
         raise ValueError(f"converting from an OCI based image {src} is not supported")
-    if not smodel.exists():
+    if not smodel.exists() and args.pull != "never" and not args.dryrun:
         smodel.pull(args)
     return smodel
 
@@ -1003,6 +1003,8 @@ def serve_parser(subparsers):
 
 def _get_rag(args):
     if os.path.exists(args.rag):
+        return
+    if args.pull == "never" or args.dryrun:
         return
     model = New(args.rag, args=args, transport="oci")
     if not model.exists():
