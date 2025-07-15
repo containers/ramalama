@@ -30,7 +30,7 @@ spec:
         memory: 1Gi
   steps:
   - name: use-trusted-artifact
-    image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:4689f88dd253bd1feebf57f1a76a5a751880f739000719cd662bbdc76990a7fd
+    image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:f7d0c515f85aebf926b86d6298f9e2d42d905104506389dc9c3e5878c5c0d38f
     args:
     - use
     - $(params.source-artifact)=/var/workdir/source
