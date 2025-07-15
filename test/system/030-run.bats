@@ -14,7 +14,7 @@ EOF
 
     if is_container; then
 	run_ramalama info
-	conman=$(jq .Engine.Name <<< $output | tr -d '"' )
+	conman=$(jq -r .Engine.Name <<< $output)
 	verify_begin="${conman} run --rm"
 
 	run_ramalama -q --dryrun run ${MODEL}

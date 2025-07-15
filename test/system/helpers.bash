@@ -206,7 +206,7 @@ function run_ramalama_testing() {
 function ramalama_runtime() {
     # This function is intended to be used as '$(ramalama_runtime)', i.e.
     # our caller wants our output. It's unsafe to use run_ramalama().
-    runtime=$($RAMALAMA $_RAMALAMA_TEST_OPTS info --format '{{ .Host.OCIRuntime.Name }}' 2>/dev/null)
+    runtime=$($RAMALAMA $_RAMALAMA_TEST_OPTS info | jq -r .Runtime 2>/dev/null)
     basename "${runtime:-[null]}"
 }
 

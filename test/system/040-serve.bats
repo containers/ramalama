@@ -115,7 +115,6 @@ verify_begin=".*run --rm"
 }
 
 @test "ramalama serve and stop" {
-    skip "Seems to cause race conditions"
     skip_if_nocontainer
 
     model=ollama://smollm:135m
@@ -123,17 +122,15 @@ verify_begin=".*run --rm"
     container2=c_$(safename)
 
     run_ramalama serve --name ${container1} --detach ${model}
-    cid="$output"
-    run_ramalama info
-    conmon=$(jq .Engine <<< $output)
-
-    run -0 ${conman} inspect1 $cid
 
     run_ramalama ps
     is "$output" ".*${container1}" "list correct for container1"
 
-    run_ramalama chat --ls
-    is "$output" "ollama://smollm:135m" "list of models available correct"
+    run_ramalama ps --format '{{.Ports}}'
+    port=${output: -8:4}
+
+    run_ramalama chat --ls --url http://127.0.0.1:${port}/v1
+    is "$output" "smollm:135m" "list of models available correct"
 
     run_ramalama containers --noheading
     is "$output" ".*${container1}" "list correct for container1"
@@ -151,7 +148,6 @@ verify_begin=".*run --rm"
 }
 
 @test "ramalama --detach serve multiple" {
-    skip "Seems to cause race conditions"
     skip_if_nocontainer
 
     model=ollama://smollm:135m
