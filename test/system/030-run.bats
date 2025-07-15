@@ -140,7 +140,7 @@ EOF
     skip_if_docker
     run_ramalama 22 run --image bogus --pull=never tiny
     is "$output" ".*Error: bogus: image not known"
-    run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
     is "$output" ".*Error: bogus1: image not known"
 }
 

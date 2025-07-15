@@ -349,7 +349,7 @@ verify_begin=".*run --rm"
     rm /tmp/$name.yaml
 }
 
-@test "ramalama serve --api llama-stack --generate=kube:/tmp" {
+@test "ramalama serve --api llama-stack" {
     skip_if_docker
     skip_if_nocontainer
     model=tiny
@@ -393,7 +393,7 @@ verify_begin=".*run --rm"
     run_ramalama 125 serve --image bogus --pull=never tiny
     is "$output" "Error: bogus: image not known"
 
-    run_ramalama 125 serve --image bogus1 --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama 125 serve --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
     is "$output" ".*Error: bogus1: image not known"
 }
 
