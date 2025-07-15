@@ -1,12 +1,11 @@
 FROM quay.io/fedora/fedora:42
 
 ENV HOME=/tmp \
-    XDG_RUNTIME_DIR=/tmp \
-    STORAGE_DRIVER=vfs
+    XDG_RUNTIME_DIR=/tmp
 WORKDIR /src
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
-RUN dnf -y install make bats jq iproute podman openssl httpd-tools \
+RUN dnf -y install make bats jq iproute podman openssl httpd-tools diffutils \
     python3-huggingface-hub \
     $([ $(uname -m) == "x86_64" ] && echo ollama) \
     # for validate and unit-tests
