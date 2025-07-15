@@ -14,7 +14,7 @@ EOF
 
     if is_container; then
 	run_ramalama info
-	conman=$(jq .Engine.Name <<< $output | tr -d '"' )
+	conman=$(jq -r .Engine.Name <<< $output)
 	verify_begin="${conman} run --rm"
 
 	run_ramalama -q --dryrun run ${MODEL}
@@ -140,7 +140,7 @@ EOF
     skip_if_docker
     run_ramalama 22 run --image bogus --pull=never tiny
     is "$output" ".*Error: bogus: image not known"
-    run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
     is "$output" ".*Error: bogus1: image not known"
 }
 
@@ -148,13 +148,10 @@ EOF
     skip_if_nocontainer
     skip_if_darwin
     skip_if_docker
-    run_ramalama 125 --dryrun run --rag quay.io/ramalama/rag --pull=never tiny
-    is "$output" "Error: quay.io/ramalama/rag: image not known.*"
-
-    run_ramalama --dryrun run --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama --dryrun run --rag quay.io/ramalama/rag --pull=never tiny
     is "$output" ".*quay.io/ramalama/.*-rag:"
 
-    run_ramalama --dryrun run --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/testrag --pull=never tiny
+    run_ramalama --dryrun run --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/rag --pull=never tiny
     is "$output" ".*quay.io/ramalama/ramalama:1.0"
 }
 

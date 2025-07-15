@@ -168,7 +168,7 @@ bats-image:
 	podman inspect $(BATS_IMAGE) &> /dev/null || \
 		podman build -t $(BATS_IMAGE) -f container-images/bats/Containerfile .
 
-bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
+bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun --device /dev/fuse
 
 %-in-container: bats-image
 	podman run -it --rm \

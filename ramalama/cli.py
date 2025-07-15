@@ -133,6 +133,10 @@ def get_parser():
 
 def init_cli():
     """Initialize the RamaLama CLI and parse command line arguments."""
+    # Need to know if we're running with --dryrun or --generate before adding the subcommands,
+    # otherwise calls to accel_image() when setting option defaults will cause unnecessary image pulls.
+    if any(arg in ("--dryrun", "--dry-run", "--generate") or arg.startswith("--generate=") for arg in sys.argv[1:]):
+        CONFIG.dryrun = True
     parser = get_parser()
     args = parse_arguments(parser)
     post_parse_setup(args)
@@ -703,7 +707,7 @@ def _get_source_model(args):
     smodel = New(src, args)
     if smodel.type == "OCI":
         raise ValueError(f"converting from an OCI based image {src} is not supported")
-    if not smodel.exists():
+    if not smodel.exists() and not args.dryrun:
         smodel.pull(args)
     return smodel
 
@@ -1003,6 +1007,8 @@ def serve_parser(subparsers):
 
 def _get_rag(args):
     if os.path.exists(args.rag):
+        return
+    if args.pull == "never" or args.dryrun:
         return
     model = New(args.rag, args=args, transport="oci")
     if not model.exists():

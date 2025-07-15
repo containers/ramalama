@@ -566,7 +566,7 @@ def accel_image(config: Config) -> str:
 
     vers = minor_release()
 
-    should_pull = config.pull in ["always", "missing"]
+    should_pull = config.pull in ["always", "missing"] and not config.dryrun
     if attempt_to_use_versioned(config.engine, image, vers, True, should_pull):
         return f"{image}:{vers}"
 

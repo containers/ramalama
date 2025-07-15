@@ -98,6 +98,7 @@ class BaseConfig:
     default_image: str = DEFAULT_IMAGE
     user: UserConfig = field(default_factory=UserConfig)
     selinux: bool = False
+    dryrun: bool = False
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
 
     def __post_init__(self):
