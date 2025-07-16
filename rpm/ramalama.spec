@@ -31,9 +31,10 @@ BuildRequires:    make
 BuildRequires:    python3-devel
 BuildRequires:    podman
 BuildRequires:    python3-pytest
+BuildRequires:    mailcap
 
 Provides: python3-ramalama = %{version}-%{release}
-Obsoletes: python3-ramalama < 0.10.1-2
+Obsoletes: python3-ramalama < 0.11.0-1
 
 Requires: podman
 
