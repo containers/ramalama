@@ -12,7 +12,7 @@ from ramalama.model_store.snapshot_file import SnapshotFileType
 
 missing_modelscope = """
 Optional: ModelScope models require the modelscope module.
-This module can be installed via PyPi tools like uv, pip, pip3, pipx, or via
+This module can be installed via PyPI tools like uv, pip, pip3, pipx, or via
 distribution package managers like dnf or apt. Example:
 uv pip install modelscope
 """
