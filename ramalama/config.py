@@ -65,13 +65,16 @@ class RamalamaSettings:
 
 @dataclass
 class BaseConfig:
-    container: bool = None  # type: ignore
-    image: str = None  # type: ignore
+    api: str = "none"
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
+    container: bool = None  # type: ignore
     ctx_size: int = 2048
+    default_image: str = DEFAULT_IMAGE
+    dryrun: bool = False
     engine: SUPPORTED_ENGINES | None = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
     host: str = "0.0.0.0"
+    image: str = None  # type: ignore
     images: dict[str, str] = field(
         default_factory=lambda: {
             "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
@@ -83,23 +86,21 @@ class BaseConfig:
             "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
         }
     )
-    api: str = "none"
     keep_groups: bool = False
     ngl: int = -1
-    threads: int = -1
+    ocr: bool = False
     port: str = str(DEFAULT_PORT)
+    prefix: str = None  # type: ignore
     pull: str = "newer"
     rag_format: Literal["qdrant", "json", "markdown"] = "qdrant"
     runtime: SUPPORTED_RUNTIMES = "llama.cpp"
+    selinux: bool = False
+    settings: RamalamaSettings = field(default_factory=RamalamaSettings)
     store: str = field(default_factory=get_default_store)
     temp: str = "0.8"
+    threads: int = -1
     transport: str = "ollama"
-    ocr: bool = False
-    default_image: str = DEFAULT_IMAGE
     user: UserConfig = field(default_factory=UserConfig)
-    selinux: bool = False
-    dryrun: bool = False
-    settings: RamalamaSettings = field(default_factory=RamalamaSettings)
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
