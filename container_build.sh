@@ -62,7 +62,7 @@ add_rag() {
     tag=$tag-rag
     containerfile="container-images/common/Containerfile.rag"
     GPU=cpu
-    case $2 in
+    case "${2##*/}" in
 	cuda)
 	    GPU=cuda
 	    ;;

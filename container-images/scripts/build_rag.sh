@@ -40,7 +40,18 @@ update_python() {
 }
 
 docling() {
-    ${python} -m pip install --prefix=/usr docling docling-core accelerate --extra-index-url https://download.pytorch.org/whl/"$1"
+    case $1 in
+        cuda)
+            PYTORCH_DIR="cu128"
+            ;;
+        rocm)
+            PYTORCH_DIR="rocm6.3"
+            ;;
+        *)
+            PYTORCH_DIR="cpu"
+            ;;
+    esac
+    ${python} -m pip install --prefix=/usr docling docling-core accelerate --extra-index-url "https://download.pytorch.org/whl/$PYTORCH_DIR"
     # Preloads models (assumes its installed from container_build.sh)
     doc2rag load
 }
