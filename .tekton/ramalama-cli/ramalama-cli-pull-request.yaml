@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/containers/ramalama?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: >-
+      event == "pull_request" && target_branch == "main" && body.action != "ready_for_review"
+  labels:
+    appstudio.openshift.io/application: ramalama
+    appstudio.openshift.io/component: ramalama-cli
+    pipelines.appstudio.openshift.io/type: build
+  name: ramalama-cli-on-pull-request
+  namespace: ramalama-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama-cli:on-pr-{{revision}}
+  - name: image-expires-after
+    value: 5d
+  - name: build-platforms
+    value:
+    - linux-c4xlarge/amd64
+    - linux-c4xlarge/arm64
+  - name: dockerfile
+    value: container-images/ramalama-cli/Containerfile
+  pipelineRef:
+    name: pull-request-pipeline
+  timeouts:
+    pipeline: 6h
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
