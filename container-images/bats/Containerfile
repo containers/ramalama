@@ -25,4 +25,6 @@ RUN git clone --depth=1 https://github.com/ggml-org/llama.cpp && \
 
 COPY container-images/bats/entrypoint.sh /usr/bin
 COPY container-images/bats/containers.conf /etc/containers
+COPY . /src
+RUN chmod -R a+rw /src
 RUN chmod a+rw /etc/subuid /etc/subgid
