@@ -71,6 +71,9 @@ main() {
     # shellcheck disable=SC1091
     source /etc/os-release
 
+    # caching in a container build is unhelpful, and can cause errors
+    export PIP_NO_CACHE_DIR=1
+
     local arch
     arch="$(uname -m)"
     local gpu="${1-cpu}"
