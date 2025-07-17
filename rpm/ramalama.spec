@@ -56,14 +56,12 @@ will run the AI Models within a container based on the OCI image.
 %forgeautosetup -p1
 
 %build
+make docs
 %pyproject_wheel
-%{__make} docs
 
 %install
 %pyproject_install
 %pyproject_save_files -l %{pypi_name}
-%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-docs install-shortnames
-%{__make} DESTDIR=%{buildroot} PREFIX=%{_prefix} install-completions
 
 %check
 %pytest -v test/unit
