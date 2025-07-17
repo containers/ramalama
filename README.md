@@ -2,14 +2,12 @@
 <img src="https://github.com/user-attachments/assets/1a338ecf-dc84-4495-8c70-16882955da47" width=50%>
 </p>
 
-[RamaLama](https://ramalama.ai) is an open-source tool that simplifies the local use and serving of AI models for inference from any source through the familiar approach of containers.
+[RamaLama](https://ramalama.ai) strives to make working with AI simple, straightforward, and familiar by using OCI containers.
 <br>
 <br>
 
 ## Description
-RamaLama strives to make working with AI simple, straightforward, and familiar by using OCI containers.
-
-RamaLama is an open-source tool that simplifies the local use and serving of AI models for inference from any source through the familiar approach of containers. Using a container engine like Podman, engineers can use container-centric development patterns and benefits to extend to AI use cases.
+RamaLama is an open-source tool that simplifies the local use and serving of AI models for inference from any source through the familiar approach of containers. It allows engineers to use container-centric development patterns and benefits to extend to AI use cases.
 
 RamaLama eliminates the need to configure the host system by instead pulling a container image specific to the GPUs discovered on the host system, and allowing you to work with various models and platforms.
 
@@ -22,6 +20,25 @@ RamaLama eliminates the need to configure the host system by instead pulling a c
 - Keep data secure by defaulting to no network access and removing all temporary data on application exits.
 - Interact with models via REST API or as a chatbot.
 <br>
+
+## Install
+### Install on Fedora
+RamaLama is available in [Fedora](https://fedoraproject.org/) and later. To install it, run:
+```
+sudo dnf install python3-ramalama
+```
+
+### Install via PyPI
+RamaLama is available via PyPI at [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
+```
+pip install ramalama
+```
+
+### Install script (Linux and macOS)
+Install RamaLama by running:
+```
+curl -fsSL https://ramalama.ai/install.sh | bash
+```
 
 ## Accelerated images
 
@@ -101,25 +118,6 @@ uv pip install mlx-lm
 pip install mlx-lm
 
 ramalama --runtime=mlx serve hf://mlx-community/Unsloth-Phi-4-4bit
-```
-
-## Install
-### Install on Fedora
-RamaLama is available in [Fedora 40](https://fedoraproject.org/) and later. To install it, run:
-```
-sudo dnf install ramalama
-```
-
-### Install via PyPi
-RamaLama is available via PyPi at [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
-```
-pip install ramalama
-```
-
-### Install script (Linux and macOS)
-Install RamaLama by running:
-```
-curl -fsSL https://ramalama.ai/install.sh | bash
 ```
 
 #### Default Container Engine
