@@ -127,7 +127,7 @@ def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
         raise
 
 
-def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_all=False):
+def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_all=False, encoding=None):
     """
     Run the given command arguments.
 
@@ -137,6 +137,7 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     stdout: standard output configuration
     ignore_stderr: if True, ignore standard error
     ignore_all: if True, ignore both standard output and standard error
+    encoding: encoding to apply to the result text
     """
     logger.debug(f"run_cmd: {quoted(args)}")
     logger.debug(f"Working directory: {cwd}")
@@ -151,7 +152,7 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     if ignore_all:
         sout = subprocess.DEVNULL
 
-    result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr)
+    result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr, encoding=encoding)
     logger.debug(f"Command finished with return code: {result.returncode}")
 
     return result
@@ -225,34 +226,72 @@ def engine_version(engine: SUPPORTED_ENGINES) -> str:
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
 
 
-def resolve_cdi(spec_dirs: List[str]):
-    """Loads all CDI specs from the given directories."""
-    for spec_dir in spec_dirs:
-        for root, _, files in os.walk(spec_dir):
-            for file in files:
-                if file.endswith('.json') or file.endswith('.yaml'):
-                    if load_spec(os.path.join(root, file)):
-                        return True
+def load_cdi_yaml(stream) -> dict:
+    # Returns a dict containing just the "devices" key, whose value is
+    # a list of dicts, each mapping the key "name" to a device name.
+    # For example: {'devices': [{'name': 'all'}]}
+    # This depends on the key "name" being unique to the list of dicts
+    # under "devices" and the value of the "name" key being on the
+    # same line following a colon.
 
-    return False
-
-
-def yaml_safe_load(stream) -> dict:
-    data = {}
+    data = {"devices": []}
     for line in stream:
         if ':' in line:
             key, value = line.split(':', 1)
-            data[key.strip()] = value.strip()
-
+            if key.strip() == "name":
+                data['devices'].append({'name': value.strip().strip('"')})
     return data
 
 
-def load_spec(path: str):
-    """Loads a single CDI spec file."""
-    with open(path, 'r') as f:
-        spec = json.load(f) if path.endswith('.json') else yaml_safe_load(f)
+def load_cdi_config(spec_dirs: List[str]) -> dict | None:
+    # Loads the first YAML or JSON CDI configuration file found in the
+    # given directories."""
 
-    return spec.get('kind')
+    for spec_dir in spec_dirs:
+        for root, _, files in os.walk(spec_dir):
+            for file in files:
+                _, ext = os.path.splitext(file)
+                file_path = os.path.join(root, file)
+                if ext in [".yaml", ".yml"]:
+                    try:
+                        with open(file_path, "r") as stream:
+                            return load_cdi_yaml(stream)
+                    except OSError:
+                        continue
+                elif ext == ".json":
+                    try:
+                        with open(file_path, "r") as stream:
+                            return json.load(stream)
+                    except json.JSONDecodeError:
+                        continue
+                    except UnicodeDecodeError:
+                        continue
+                    except OSError:
+                        continue
+    return None
+
+
+def find_in_cdi(devices: List[str]) -> tuple[List[str], List[str]]:
+    # Attempts to find a CDI configuration for each device in devices
+    # and returns a list of configured devices and a list of
+    # unconfigured devices.
+    cdi = load_cdi_config(['/etc/cdi', '/var/run/cdi'])
+    cdi_devices = cdi.get("devices", []) if cdi else []
+    cdi_device_names = [name for cdi_device in cdi_devices if (name := cdi_device.get("name"))]
+
+    configured = []
+    unconfigured = []
+    for device in devices:
+        if device in cdi_device_names:
+            configured.append(device)
+        # A device can be specified by a prefix of the uuid
+        elif device.startswith("GPU") and any(name.startswith(device) for name in cdi_device_names):
+            configured.append(device)
+        else:
+            perror(f"Device {device} does not have a CDI configuration")
+            unconfigured.append(device)
+
+    return configured, unconfigured
 
 
 def check_asahi() -> Literal["asahi"] | None:
@@ -278,27 +317,41 @@ def check_metal(args: ContainerArgType) -> bool:
 @lru_cache(maxsize=1)
 def check_nvidia() -> Literal["cuda"] | None:
     try:
-        command = ['nvidia-smi']
-        run_cmd(command).stdout.decode("utf-8")
+        command = ['nvidia-smi', '--query-gpu=index,uuid', '--format=csv,noheader']
+        result = run_cmd(command, encoding="utf-8")
+    except OSError:
+        return None
 
-        # ensure at least one CDI device resolves
-        if resolve_cdi(['/etc/cdi', '/var/run/cdi']):
-            if "CUDA_VISIBLE_DEVICES" not in os.environ:
-                dev_command = ['nvidia-smi', '--query-gpu=index', '--format=csv,noheader']
-                try:
-                    result = run_cmd(dev_command)
-                    output = result.stdout.decode("utf-8").strip()
-                    if not output:
-                        raise ValueError("nvidia-smi returned empty GPU indices")
-                    devices = ','.join(output.split('\n'))
-                except Exception:
-                    devices = "0"
+    smi_lines = result.stdout.splitlines()
+    parsed_lines = [[item.strip() for item in line.split(',')] for line in smi_lines if line]
+    if not parsed_lines:
+        return None
 
-                os.environ["CUDA_VISIBLE_DEVICES"] = devices
+    indices, uuids = zip(*parsed_lines) if parsed_lines else (tuple(), tuple())
+    # Get the list of devices specified by CUDA_VISIBLE_DEVICES, if any
+    cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+    visible_devices = cuda_visible_devices.split(',') if cuda_visible_devices else []
+    for device in visible_devices:
+        if device not in indices and not any(uuid.startswith(device) for uuid in uuids):
+            perror(f"{device} not found")
+            return None
 
-            return "cuda"
-    except Exception:
-        pass
+    configured, unconfigured = find_in_cdi(visible_devices + ["all"])
+
+    if unconfigured and "all" not in configured:
+        perror(f"No CDI configuration found for {','.join(unconfigured)}")
+        perror("You can use the \"nvidia-ctk cdi generate\" command from the ")
+        perror("nvidia-container-toolkit to generate a CDI configuration.")
+        perror("See ramalama-cuda(7).")
+        return None
+    elif configured:
+        if "all" in configured:
+            configured.remove("all")
+            if not configured:
+                configured = indices
+
+        os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(configured)
+        return "cuda"
 
     return None
 
