@@ -40,7 +40,18 @@ update_python() {
 }
 
 docling() {
-    ${python} -m pip install --prefix=/usr docling docling-core accelerate --extra-index-url https://download.pytorch.org/whl/"$1"
+    case $1 in
+        cuda)
+            PYTORCH_DIR="cu128"
+            ;;
+        rocm)
+            PYTORCH_DIR="rocm6.3"
+            ;;
+        *)
+            PYTORCH_DIR="cpu"
+            ;;
+    esac
+    ${python} -m pip install --prefix=/usr docling docling-core accelerate --extra-index-url "https://download.pytorch.org/whl/$PYTORCH_DIR"
     # Preloads models (assumes its installed from container_build.sh)
     doc2rag load
 }
@@ -51,6 +62,8 @@ rag() {
 }
 
 to_gguf() {
+    # required to build under GCC 15 until a new release is available, see https://github.com/google/sentencepiece/issues/1108 for details
+    export CXXFLAGS="-include cstdint"
     ${python} -m pip install --prefix=/usr "numpy~=1.26.4" "sentencepiece~=0.2.0" "transformers>=4.45.1,<5.0.0" git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py "protobuf>=4.21.0,<5.0.0"
 }
 
@@ -59,6 +72,9 @@ main() {
 
     # shellcheck disable=SC1091
     source /etc/os-release
+
+    # caching in a container build is unhelpful, and can cause errors
+    export PIP_NO_CACHE_DIR=1
 
     local arch
     arch="$(uname -m)"
@@ -73,10 +89,6 @@ main() {
     fi
     if [ "${gpu}" = "cuda" ]; then
         pkgs+=("libcudnn9-devel-cuda-12" "libcusparselt0" "cuda-cupti-12-*")
-    fi
-
-    if [[ "$ID" = "fedora" && "$VERSION_ID" -ge 42 ]] ; then
-        pkgs+=("python3-sentencepiece-0.2.0")
     fi
 
     update_python
