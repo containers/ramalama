@@ -110,7 +110,7 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 include = ["ramalama", "ramalama.*"]
 
 [tool.setuptools.data-files]
-"share/ramalama" = ["shortnames/shortnames.conf"]
+"share/ramalama" = ["shortnames/shortnames.conf", "docs/ramalama.conf"]
 "share/man/man1" = ["docs/*.1"]
 "share/man/man5" = ["docs/*.5"]
 "share/man/man7" = ["docs/*.7"]
