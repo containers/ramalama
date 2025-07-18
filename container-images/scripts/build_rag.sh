@@ -83,9 +83,9 @@ main() {
     python=$(python_version)
     local pkgs
     if available dnf; then
-        pkgs=("git-core" "gcc" "gcc-c++")
+        pkgs=("git-core" "gcc" "gcc-c++" "cmake")
     else
-        pkgs=("git" "gcc" "g++")
+        pkgs=("git" "gcc" "g++" "cmake")
     fi
     if [ "${gpu}" = "cuda" ]; then
         pkgs+=("libcudnn9-devel-cuda-12" "libcusparselt0" "cuda-cupti-12-*")
