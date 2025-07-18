@@ -1,4 +1,5 @@
-FROM quay.io/ramalama/ramalama
+ARG PARENT=quay.io/ramalama/ramalama:latest
+FROM $PARENT
 
 ENV PATH="/root/.local/bin:$PATH"
 ENV VIRTUAL_ENV="/opt/venv"

@@ -28,6 +28,11 @@ spec:
     - linux-c4xlarge/amd64
   - name: dockerfile
     value: container-images/ramalama-vllm/Containerfile
+  - name: parent-image
+    value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama:{{revision}}
+  - name: build-args
+    value:
+    - PARENT=quay.io/redhat-user-workloads/ramalama-tenant/ramalama:{{revision}}
   pipelineRef:
     name: push-pipeline
   timeouts:
