@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/containers/ramalama?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: >-
+      event == "push" && target_branch == "main"
+  labels:
+    appstudio.openshift.io/application: ramalama
+    appstudio.openshift.io/component: asahi
+    pipelines.appstudio.openshift.io/type: build
+  name: asahi-on-push
+  namespace: ramalama-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/ramalama-tenant/asahi:{{revision}}
+  - name: build-platforms
+    value:
+    - linux-c4xlarge/amd64
+    - linux-c4xlarge/arm64
+  - name: dockerfile
+    value: container-images/asahi/Containerfile
+  pipelineRef:
+    name: push-pipeline
+  timeouts:
+    pipeline: 6h
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
