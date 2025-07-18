@@ -403,6 +403,9 @@ def check_intel() -> Literal["intel"] | None:
     intel_gpus = (
         b"0xe20b",
         b"0xe20c",
+        b"0x46a6",
+        b"0x46a8",
+        b"0x46aa",
         b"0x56a0",
         b"0x56a1",
         b"0x7d51",
