@@ -1,0 +1,17 @@
+FROM quay.io/ramalama/ramalama
+
+ENV PATH="/root/.local/bin:$PATH"
+ENV VIRTUAL_ENV="/opt/venv"
+ENV UV_PYTHON_INSTALL_DIR="/opt/uv/python"
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+ENV UV_HTTP_TIMEOUT=500
+
+ENV UV_INDEX_STRATEGY="unsafe-best-match"
+ENV UV_LINK_MODE="copy"
+
+COPY . /src/ramalama
+WORKDIR /src/ramalama
+RUN container-images/scripts/build-vllm.sh
+WORKDIR /
+
