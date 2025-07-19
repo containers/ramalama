@@ -119,6 +119,17 @@ In some cases this is needed to access the gpu from a rootless container
 number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
 The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
+**prefix**=""
+Specify default prefix for chat and run command. By default the prefix
+is based on the container engine used.
+
+| Container Engine| Prefix  |
+| --------------- | ------- |
+| Podman          | "🦭 > " |
+| Docker          | "🐋 > " |
+| No Engine       | "🦙 > " |
+| No EMOJI support| "> "    |
+
 **port**="8080"
 
 Specify default port for services to listen on
