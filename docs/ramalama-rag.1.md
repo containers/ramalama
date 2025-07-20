@@ -19,7 +19,7 @@ positional arguments:
 	    AsciiDoc & Markdown formatted files to be processed.
 	    Can be specified multiple times.
 
-  *PATH|IMAGE*   Path or OCI Image name to contain processed rag data
+  *DESTINATION*   Path or OCI Image name to contain processed rag data
 
 ## OPTIONS
 

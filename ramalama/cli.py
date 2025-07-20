@@ -1126,7 +1126,9 @@ If GPU device on host is accessible to via group access, this option leaks the u
 Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
 formatted files to be processed""",
     )
-    parser.add_argument("IMAGE", help="OCI Image name to contain processed rag data", completer=suppressCompleter)
+    parser.add_argument(
+        "DESTINATION", help="Path or OCI Image name to contain processed rag data", completer=suppressCompleter
+    )
     parser.add_argument(
         "--ocr",
         dest="ocr",
@@ -1138,7 +1140,7 @@ formatted files to be processed""",
 
 
 def rag_cli(args):
-    rag = ramalama.rag.Rag(args.IMAGE)
+    rag = ramalama.rag.Rag(args.DESTINATION)
     rag.generate(args)
 
 
