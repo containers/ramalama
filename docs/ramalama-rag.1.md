@@ -39,7 +39,8 @@ Convert documents into the following formats
 | ------- | ---------------------------------------------------- |
 | json    | JavaScript Object Notation. lightweight format for exchanging data |
 | markdown| Lightweight markup language using plain text editing |
-| qdrant  | Retrieval-Augmented Generation (RAG) Vector database |
+| qdrant  | Retrieval-Augmented Generation (RAG) Vector database Qdrant distribution |
+| milvus  | Retrieval-Augmented Generation (RAG) Vector database Milvus distribution |
 
 #### **--help**, **-h**
 Print usage message

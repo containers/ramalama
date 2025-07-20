@@ -1087,7 +1087,7 @@ def rag_parser(subparsers):
         "--format",
         default=CONFIG.rag_format,
         help="Output format for RAG Data",
-        choices=["qdrant", "json", "markdown"],
+        choices=["qdrant", "json", "markdown", "milvus"],
     )
     parser.add_argument(
         "--image",
