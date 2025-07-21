@@ -33,15 +33,16 @@ def in_existing_cache(model_name, model_tag):
 
 
 class OllamaRepository:
-    REGISTRY_URL = "https://registry.ollama.ai/v2/library"
+    REGISTRY_URL = "https://registry.ollama.ai/v2"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
     FILE_NAME_CONFIG = "config.json"
     FILE_NAME_CHAT_TEMPLATE = "chat_template"
 
-    def __init__(self, name):
+    def __init__(self, name: str, namespace: str = "library"):
         self.name = name
-        self.registry_head = f"{OllamaRepository.REGISTRY_URL}/{name}"
+        self.namespace = namespace
+        self.registry_head = f"{OllamaRepository.REGISTRY_URL}/{namespace}/{name}"
         self.blob_url = f"{self.registry_head}/blobs"
         self.headers = {"Accept": OllamaRepository.ACCEPT}
 
@@ -142,22 +143,30 @@ class Ollama(Model):
 
         self.type = "Ollama"
 
+    def extract_model_identifiers(self):
+        model_name, model_tag, model_organization = super().extract_model_identifiers()
+
+        # use the ollama default namespace if no model organization has been identified
+        if not model_organization:
+            model_organization = "library"
+        return model_name, model_tag, model_organization
+
     def pull(self, args):
-        name, tag, _ = self.extract_model_identifiers()
+        name, tag, organization = self.extract_model_identifiers()
         _, cached_files, all = self.model_store.get_cached_files(tag)
         if all:
             if not args.quiet:
-                perror(f"Using cached ollama://{name}:{tag} ...")
+                perror(f"Using cached ollama://{organization}/{name}:{tag} ...")
             return
 
-        ollama_repo = OllamaRepository(self.model_store.model_name)
+        ollama_repo = OllamaRepository(name, organization)
         manifest = ollama_repo.fetch_manifest(tag)
         ollama_cache_path = in_existing_cache(self.model_name, tag)
         is_model_in_ollama_cache = ollama_cache_path is not None
         files: list[SnapshotFile] = ollama_repo.get_file_list(tag, cached_files, is_model_in_ollama_cache)
 
         if not args.quiet:
-            self.print_pull_message(f"ollama://{name}:{tag}")
+            self.print_pull_message(f"ollama://{organization}/{name}:{tag}")
 
         model_hash = ollama_repo.get_model_hash(manifest)
         self.model_store.new_snapshot(tag, model_hash, files)
