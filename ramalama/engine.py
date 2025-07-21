@@ -162,7 +162,7 @@ class Engine:
         dry_run(self.exec_args)
 
     def run(self):
-        run_cmd(self.exec_args)
+        run_cmd(self.exec_args, stdout=None)
 
     def exec(self, stdout2null: bool = False, stderr2null: bool = False):
         exec_cmd(self.exec_args, stdout2null, stderr2null)

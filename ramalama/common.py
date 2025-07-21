@@ -148,7 +148,7 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     if ignore_all or ignore_stderr:
         serr = subprocess.DEVNULL
 
-    sout = subprocess.PIPE
+    sout = stdout
     if ignore_all:
         sout = subprocess.DEVNULL
 
