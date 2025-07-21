@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import cmd
+import copy
 import itertools
 import json
 import os
@@ -212,7 +213,9 @@ class RamaLamaShell(cmd.Cmd):
             os.kill(self.args.pid2kill, signal.SIGTERM)
             os.kill(self.args.pid2kill, signal.SIGKILL)
         elif getattr(self.args, "name", None):
-            stop_container(self.args, self.args.name)
+            args = copy.copy(self.args)
+            args.ignore = True
+            stop_container(args, self.args.name)
 
     def loop(self):
         while True:
@@ -275,7 +278,10 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs = ChatOperati
     finally:
         # Reset the alarm to 0 to cancel any pending alarms
         signal.alarm(0)
-    shell.kills()
+    try:
+        shell.kills()
+    except Exception as e:
+        logger.warning(f"Failed to clean up resources: {e}")
 
 
 UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
