@@ -75,11 +75,11 @@ COPY {src} /vector.db
 
     def generate(self, args):
         args.nocapdrop = True
-        self.engine = Engine(args)
         if not args.container:
             raise KeyError("rag command requires a container. Can not be run with --nocontainer option.")
         if not args.engine or args.engine == "":
             raise KeyError("rag command requires a container. Can not be run without a container engine.")
+        self.engine = Engine(args)
 
         tmpdir = "."
         if not os.access(tmpdir, os.W_OK):
