@@ -14,7 +14,7 @@ load setup_suite
     run_ramalama inspect tiny
 
     is "${lines[0]}" "tinyllama" "model name"
-    is "${lines[1]}" "   Path: .*store/ollama/tinyllama/.*" "model path"
+    is "${lines[1]}" "   Path: .*store/ollama/library/tinyllama/.*" "model path"
     is "${lines[2]}" "   Registry: ollama" "model registry"
     is "${lines[3]}" "   Format: GGUF" "model format"
     is "${lines[4]}" "   Version: 3" "model format version"
@@ -28,7 +28,7 @@ load setup_suite
     run_ramalama inspect --all tiny
 
     is "${lines[0]}" "tinyllama" "model name"
-    is "${lines[1]}" "   Path: .*store/ollama/tinyllama/.*" "model path"
+    is "${lines[1]}" "   Path: .*store/ollama/library/tinyllama/.*" "model path"
     is "${lines[2]}" "   Registry: ollama" "model registry"
     is "${lines[3]}" "   Format: GGUF" "model format"
     is "${lines[4]}" "   Version: 3" "model format version"

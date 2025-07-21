@@ -49,14 +49,14 @@ ms_granite_blob = "https://modelscope.cn/models/ibm-granite/granite-3b-code-base
             "f823b84ec4b84f9a6742c8a1f6a893deeca75f06",
             "modelscope.cn/models/ibm-granite/granite-3b-code-base-2k-GGUF",
         ),
-        ("ollama://granite-code", "granite-code", "latest", ""),
+        ("ollama://granite-code", "granite-code", "latest", "library"),
         (
             "https://ollama.com/huihui_ai/granite3.1-dense-abliterated:2b-instruct-fp16",
             "granite3.1-dense-abliterated",
             "2b-instruct-fp16",
             "ollama.com/huihui_ai",
         ),
-        ("ollama.com/library/granite-code", "granite-code", "latest", ""),
+        ("ollama.com/library/granite-code", "granite-code", "latest", "library"),
         (
             "huihui_ai/granite3.1-dense-abliterated:2b-instruct-fp16",
             "granite3.1-dense-abliterated",
