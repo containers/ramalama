@@ -852,7 +852,7 @@ If GPU device on host is accessible to via group access, this option leaks the u
         choices=["always", "missing", "never", "newer"],
         help='pull image policy',
     )
-    if command in ["run", "serve"]:
+    if command in ["serve"]:
         parser.add_argument(
             "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
         )
@@ -921,6 +921,18 @@ def default_threads():
     return CONFIG.threads
 
 
+def chat_run_options(parser):
+    parser.add_argument(
+        '--color',
+        '--colour',
+        default="auto",
+        choices=get_args(COLOR_OPTIONS),
+        help='possible values are "never", "always" and "auto".',
+    )
+    parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
+    parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
+
+
 def chat_parser(subparsers):
     parser = subparsers.add_parser("chat", help="OpenAI chat with the specified RESTAPI URL")
     parser.add_argument(
@@ -929,21 +941,13 @@ def chat_parser(subparsers):
         default=os.getenv("API_KEY"),
         help="OpenAI-compatible API key. Can also be set via the API_KEY environment variable.",
     )
-    parser.add_argument(
-        '--color',
-        '--colour',
-        default="auto",
-        choices=get_args(COLOR_OPTIONS),
-        help='possible values are "never", "always" and "auto".',
-    )
+    chat_run_options(parser)
     parser.add_argument(
         "--list",
         "--ls",
         action="store_true",
         help="list the available models at an endpoint",
     )
-    parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
-    parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
     parser.add_argument("--url", type=str, default="http://127.0.0.1:8080/v1", help="the url to send requests to")
     parser.add_argument("--model", "-m", type=str, completer=local_models, help="model for inferencing")
     parser.add_argument(
@@ -955,14 +959,7 @@ def chat_parser(subparsers):
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     runtime_options(parser, "run")
-    parser.add_argument(
-        '--color',
-        '--colour',
-        default="auto",
-        choices=get_args(COLOR_OPTIONS),
-        help='possible values are "never", "always" and "auto".',
-    )
-    parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
+    chat_run_options(parser)
     parser.add_argument("MODEL", completer=local_models)  # positional argument
 
     parser.add_argument(

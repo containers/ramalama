@@ -52,6 +52,9 @@ def default_prefix():
     if not EMOJI:
         return "> "
 
+    if CONFIG.prefix:
+        return CONFIG.prefix
+
     engine = CONFIG.engine
 
     if engine:
