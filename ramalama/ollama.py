@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import urllib.error
 from typing import Optional
 
@@ -42,7 +43,7 @@ class OllamaRepository:
     def __init__(self, name: str, namespace: str = "library"):
         self.name = name
         self.namespace = namespace
-        self.registry_head = f"{OllamaRepository.REGISTRY_URL}/{namespace}/{name}"
+        self.registry_head = f"{OllamaRepository.REGISTRY_URL}/{self.namespace}/{self.name}"
         self.blob_url = f"{self.registry_head}/blobs"
         self.headers = {"Accept": OllamaRepository.ACCEPT}
 
@@ -158,6 +159,20 @@ class Ollama(Model):
             if not args.quiet:
                 perror(f"Using cached ollama://{organization}/{name}:{tag} ...")
             return
+
+        #
+        # Temporary migration routine to prevent pulling non-namespaced models again due to
+        # https://github.com/containers/ramalama/pull/1721
+        #
+        _, _, org = super().extract_model_identifiers()
+        if not org:
+            o = Ollama(f"{self.model_name}/{self.model_name}", self._model_store_path)
+            if o.exists():
+                try:
+                    shutil.move(o.model_store.model_base_directory, self.model_store.model_base_directory)
+                    return
+                except Exception:
+                    pass
 
         ollama_repo = OllamaRepository(name, organization)
         manifest = ollama_repo.fetch_manifest(tag)
