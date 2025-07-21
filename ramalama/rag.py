@@ -65,8 +65,9 @@ COPY {src} /vector.db
         parsed = urlparse(path)
         if parsed.scheme in ["file", ""] and parsed.netloc == "":
             if os.path.exists(parsed.path):
-                fpath = os.path.realpath(parsed.path)
-                self.engine.add(["-v", f"{fpath}:{INPUT_DIR}/{fpath}:ro,z"])
+                fpath = os.path.realpath(parsed.path.rstrip("/"))
+                input_name = os.path.basename(fpath)
+                self.engine.add(["-v", f"{fpath}:{INPUT_DIR}/{input_name}:ro,z"])
             else:
                 raise ValueError(f"{path} does not exist")
             return

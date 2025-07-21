@@ -15,7 +15,7 @@ load helpers
 
     FILE=README.md
     run_ramalama --dryrun rag $FILE quay.io/ramalama/myrag:1.2
-    is "$output" ".*-v ${PWD}/$FILE:/docs/$PWD/$FILE" "Expected to see file volume mounted in"
+    is "$output" ".*-v ${PWD}/$FILE:/docs/$FILE" "Expected to see file volume mounted in"
     is "$output" ".*doc2rag --format qdrant /output /docs " "Expected to doc2rag command"
     is "$output" ".*--pull missing" "only pull if missing"
 
@@ -25,7 +25,7 @@ load helpers
 
     FILE_URL=file://${PWD}/README.md
     run_ramalama --dryrun rag $FILE_URL quay.io/ramalama/myrag:1.2
-    is "$output" ".*-v ${PWD}/$FILE:/docs/$PWD/$FILE" "Expected to see file volume mounted in"
+    is "$output" ".*-v ${PWD}/$FILE:/docs/$FILE" "Expected to see file volume mounted in"
 
     FILE=BOGUS
     run_ramalama 22 --dryrun rag $FILE quay.io/ramalama/myrag:1.2
