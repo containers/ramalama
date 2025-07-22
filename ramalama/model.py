@@ -258,7 +258,7 @@ class Model(ModelBase):
     def base(self, args, name):
         # force accel_image to use -rag version. Drop TAG if it exists
         # so that accel_image will add -rag to the image specification.
-        if args.image == self.default_image and getattr(args, "rag", None):
+        if getattr(args, "rag", None) and not getattr(args, "image_override", False):
             args.image = rag_image(args.image)
         self.engine = Engine(args)
         if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():

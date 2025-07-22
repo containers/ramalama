@@ -51,6 +51,8 @@ load helpers
        RAMALAMA_CONFIG=/dev/null run_ramalama --dryrun run --rag quay.io/ramalama/myrag:1.2 ollama://smollm:135m
        is "$output" ".*--pull newer.*" "Expected to use --pull newer"
     fi
+    run_ramalama --image quay.io/ramalama/bogus --dryrun run --rag quay.io/ramalama/myrag:1.2 ollama://smollm:135m
+    assert "$output" !~ ".*quay.io/ramalama/bogus-rag.*" "Expected to not use -rag image"
 
     run_ramalama info
     engine=$(echo "$output" | jq --raw-output '.Engine.Name')
