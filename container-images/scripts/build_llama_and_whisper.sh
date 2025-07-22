@@ -99,10 +99,13 @@ is_rhel_based() { # doesn't include openEuler
 dnf_install_mesa() {
   if [ "${ID}" = "fedora" ]; then
     dnf copr enable -y slp/mesa-libkrun-vulkan
-    dnf install -y mesa-vulkan-drivers-25.0.7-100.fc42 virglrenderer "${vulkan_rpms[@]}"
+    dnf install -y mesa-vulkan-drivers-25.0.7-100.fc42 virglrenderer \
+      "${vulkan_rpms[@]}"
     dnf versionlock add mesa-vulkan-drivers-25.0.7-100.fc42
-  else
+  elif [ "${ID}" = "openEuler" ]; then
     dnf install -y mesa-vulkan-drivers virglrenderer "${vulkan_rpms[@]}"
+  else # virglrenderer not available on RHEL or EPEL
+    dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
   fi
 
   rm_non_ubi_repos
