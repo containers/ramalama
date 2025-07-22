@@ -114,7 +114,8 @@ COPY {src} /vector.db
 
             self.engine.add(["-e", f"{k}={v}"])
 
-        self.engine.add([rag_image(args.image)])
+        image = args.image if getattr(args, "image_override", False) else rag_image(args.image)
+        self.engine.add([image])
         self.engine.add(["doc2rag", "--format", args.format, "/output", INPUT_DIR])
         if args.ocr:
             self.engine.add(["--ocr"])
