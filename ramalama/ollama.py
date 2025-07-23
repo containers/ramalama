@@ -152,6 +152,10 @@ class Ollama(Model):
             model_organization = "library"
         return model_name, model_tag, model_organization
 
+    def resolve_model(self):
+        name, tag, organization = self.extract_model_identifiers()
+        return f"ollama://{organization}/{name}:{tag}"
+
     def pull(self, args):
         name, tag, organization = self.extract_model_identifiers()
         _, cached_files, all = self.model_store.get_cached_files(tag)
