@@ -593,10 +593,9 @@ class Model(ModelBase):
         else:
             exec_args += ["--jinja"]
 
-            # TODO: see https://github.com/containers/ramalama/issues/1202
-            # chat_template_path = self._get_chat_template_path(args.container, args.generate, args.dryrun)
-            # if chat_template_path is not None:
-            #     exec_args += ["--chat-template-file", chat_template_path]
+            chat_template_path = self._get_chat_template_path(args.container, args.generate, args.dryrun)
+            if chat_template_path is not None:
+                exec_args += ["--chat-template-file", chat_template_path]
 
         if should_colorize():
             exec_args += ["--log-colors"]
