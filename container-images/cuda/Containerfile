@@ -1,13 +1,13 @@
-ARG VERSION=12.8.1
+ARG CUDA_VERSION=12.8.1
 # Base image with CUDA for compilation
-FROM docker.io/nvidia/cuda:${VERSION}-devel-ubi9 AS builder
+FROM docker.io/nvidia/cuda:${CUDA_VERSION}-devel-ubi9 AS builder
 
 COPY . /src/ramalama
 WORKDIR /src/ramalama
 RUN container-images/scripts/build_llama_and_whisper.sh cuda
 
 # Final runtime image
-FROM docker.io/nvidia/cuda:${VERSION}-runtime-ubi9
+FROM docker.io/nvidia/cuda:${CUDA_VERSION}-runtime-ubi9
 
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr
