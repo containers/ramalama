@@ -1,0 +1,39 @@
+.features {
+  display: flex;
+  align-items: center;
+  padding: 4rem 0;
+  width: 100%;
+  background: linear-gradient(135deg, #cf3c23 0%, #e64c32 100%);
+  color: white;
+}
+
+.featureIcon {
+  font-size: 2.5rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  display: inline-block;
+  background: rgba(254, 237, 193, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(254, 237, 193, 0.2);
+  transition: transform 0.2s ease-in-out;
+}
+
+.featureIcon:hover {
+  transform: scale(1.05);
+  background: rgba(254, 237, 193, 0.15);
+}
+
+.features h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #feedc1;
+}
+
+.features p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(254, 237, 193, 0.9);
+  margin-bottom: 2rem;
+}

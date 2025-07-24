@@ -1,0 +1,88 @@
+---
+title: Installation
+description: How to install RamaLama on your system
+sidebar_position: 1
+---
+
+# Installation
+
+RamaLama can be installed on multiple platforms using various methods. Choose the installation method that best fits your environment.
+
+## Quick Install
+
+### Universal Install Script (Linux and macOS)
+
+The easiest way to install RamaLama is using the universal install script:
+
+```bash
+curl -fsSL https://ramalama.ai/install.sh | bash
+```
+
+This script will automatically detect your system and install RamaLama with the appropriate method.
+
+## Platform-Specific Installation
+
+### Fedora
+
+On Fedora systems, you can install RamaLama directly from the official repositories:
+
+```bash
+sudo dnf install python3-ramalama
+```
+
+### PyPI (All Platforms)
+
+RamaLama is available on PyPI and can be installed using pip:
+
+```bash
+pip install ramalama
+```
+
+## Optional Components
+
+### MLX Runtime (macOS with Apple Silicon)
+
+For macOS users with Apple Silicon hardware (M1, M2, M3, or later), you can install the MLX runtime for enhanced performance:
+
+```bash
+# Using uv (recommended)
+uv pip install mlx-lm
+
+# Or using pip
+pip install mlx-lm
+```
+
+:::note
+The MLX runtime is specifically designed for Apple Silicon Macs and provides optimized AI model inference. To use MLX, you'll need to run RamaLama with the `--nocontainer` option.
+:::
+
+## Verify Installation
+
+After installation, verify that RamaLama is working correctly:
+
+```bash
+ramalama version
+```
+
+You should see output similar to:
+```
+ramalama version 0.11.1
+```
+
+## Next Steps
+
+Once RamaLama is installed, you can:
+
+1. **Pull your first model**: `ramalama pull ollama://tinyllama`
+2. **Run a model**: `ramalama run ollama://tinyllama`
+3. **Explore available commands**: `ramalama --help`
+
+For detailed usage instructions, see the [Commands](../commands/ramalama/ramalama) section.
+
+## Platform-Specific Setup
+
+After installation, you may need additional platform-specific configuration:
+
+- **NVIDIA GPUs**: See [CUDA Setup](../platform-guides/cuda)
+- **macOS**: See [macOS Setup](../platform-guides/macos)
+- **Ascend NPUs**: See [CANN Setup](../platform-guides/cann)

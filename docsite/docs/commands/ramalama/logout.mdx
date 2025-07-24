@@ -1,0 +1,48 @@
+---
+title: ramalama logout.1
+description: logout from remote registry
+# This file is auto-generated from manpages. Do not edit manually.
+# Source: ramalama-logout.1.md
+---
+
+# ramalama logout.1
+
+## Synopsis
+**ramalama logout** [*options*] [*registry*]
+
+## Description
+Logout to remote model registry
+
+## Options
+
+Options are specific to registry types.
+
+#### **--help**, **-h**
+Print usage message
+
+#### **--token**
+
+Token to be passed to Model registry
+
+## EXAMPLE
+
+Logout to quay.io/username oci repository
+```bash
+$ ramalama logout quay.io/username
+```
+
+Logout from ollama repository
+```bash
+$ ramalama logout ollama
+```
+
+Logout from huggingface
+```bash
+$ ramalama logout huggingface
+```
+## See Also
+[ramalama(1)](../../commands/ramalama/ramalama)
+
+---
+
+*Aug 2024, Originally compiled by Dan Walsh &lt;dwalsh&#64;redhat.com&gt;*

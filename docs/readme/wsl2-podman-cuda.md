@@ -26,6 +26,7 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
 2. **Update the packages list from the repository:**
    ```bash
    sudo apt-get update
+   ```
 3. **Install the NVIDIA Container Toolkit packages:**
    ```bash
    sudo apt-get install -y nvidia-container-toolkit
@@ -47,9 +48,9 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
    Open and edit the NVIDIA container runtime configuration:
    ```bash
    nvidia-ctk cdi list
-     ```
-   **We Should See Something Like This**
    ```
+   **We Should See Something Like This**
+   ```bash
    INFO[0000] Found 1 CDI devices
    nvidia.com/gpu=all
    ```
