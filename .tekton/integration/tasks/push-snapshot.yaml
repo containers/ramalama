@@ -1,0 +1,132 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: push-snapshot
+spec:
+  description: Push images referenced by the provided Snapshot to another registry
+  params:
+  - name: SNAPSHOT
+    description: Information about the Snapshot to be pushed
+  - name: event-type
+    description: The type of event that triggered the pipeline
+  - name: sync
+    description: >-
+      True if all components are built from the same git commit. False if components
+      are built from different commits.
+  - name: repo-prefix
+    description: >-
+      The prefix (usually hostname/orgname) of the destination repo to push the Snapshot components to.
+      The name of the component will be appended to this prefix and the result will be used as the
+      destination repo to push the component to.
+  - name: skip-components
+    description: >-
+      A space-separated list of components that should not be pushed
+    default: ""
+  results:
+  - name: TEST_OUTPUT
+    description: Test results in JSON format
+  steps:
+  - name: push-to-registry
+    image: registry.access.redhat.com/ubi10/skopeo:latest
+    env:
+    - name: SNAPSHOT
+      value: $(params.SNAPSHOT)
+    - name: EVENT_TYPE
+      value: $(params.event-type)
+    - name: SYNC
+      value: $(params.sync)
+    - name: REPO_PREFIX
+      value: $(params.repo-prefix)
+    - name: SKIP_COMPONENTS
+      value: $(params.skip-components)
+    - name: RESULTS_TEST_OUTPUT_PATH
+      value: $(results.TEST_OUTPUT.path)
+    - name: NAMESPACE
+      value: $(context.taskRun.namespace)
+    script: |
+      #!/bin/bash -x
+      dnf -y install jq
+
+      log() {
+        echo "[$(date -uIns)]" $*
+      }
+
+      in_args() {
+        local item="$1"
+        shift
+        while [ "$#" -gt 0 ]; do
+          if [ "$item" == "$1" ]; then
+            return 0
+          fi
+          shift
+        done
+        return 1
+      }
+
+      test_output() {
+        local RESULT="$1"
+        local SUCCESSES="$2"
+        local FAILURES="$3"
+        local WARNINGS="$4"
+        local NOTE="$5"
+
+        jq -jnc \
+          --arg result "$RESULT" \
+          --arg note "$NOTE" \
+          --arg namespace "$NAMESPACE" \
+          --arg successes "$SUCCESSES" \
+          --arg failures "$FAILURES" \
+          --arg warnings "$WARNINGS" \
+          '{
+             result: $result,
+             timestamp: now | todateiso8601[:-1] | "\(.)+00:00",
+             note: $note,
+             namespace: $namespace,
+             successes: $successes | tonumber,
+             failures: $failures | tonumber,
+             warnings: $warnings | tonumber
+          }' | tee "$RESULTS_TEST_OUTPUT_PATH"
+      }
+
+      COMPONENTS="$(jq -r '.components | length' <<< "$SNAPSHOT")"
+      SKIP=($SKIP_COMPONENTS)
+
+      if [ "$EVENT_TYPE" != "push" ]; then
+        NOTE="Skipped push of $COMPONENTS components from \"$EVENT_TYPE\" event"
+        test_output SKIPPED 0 0 0 "$NOTE"
+        exit
+      elif [ "$SYNC" != "true" ]; then
+        NOTE="Skipped push of $COMPONENTS components due to out-of-sync components"
+        test_output SKIPPED 0 0 0 "$NOTE"
+        exit
+      fi
+
+      SUCCESSES=0
+      SKIPS=0
+      FAILED_COMPONENTS=()
+      while read NAME SRC DEST; do
+        if in_args "$NAME" "${SKIP[@]}"; then
+          log Skipping push of "$NAME"
+          (( SKIPS+=1 ))
+          continue
+        fi
+        log Copying "$NAME" from "$SRC" to "$DEST"
+        if skopeo copy --all --multi-arch all --retry-times 5 "docker://$SRC" "docker://$DEST"; then
+          (( SUCCESSES+=1 ))
+        else
+          FAILED_COMPONENTS+=("$NAME")
+        fi
+      done < <(
+        jq -r --arg prefix "$REPO_PREFIX" \
+          '.components[] | "\(.name) \(.containerImage) \($prefix)/\(.name):\(.source.git.revision)"' \
+          <<< "$SNAPSHOT"
+      )
+
+      if [ "${#FAILED_COMPONENTS[*]}" -gt 0 ]; then
+        NOTE="$SUCCESSES components successfully pushed, $SKIPS components skipped, ${#FAILED_COMPONENTS[*]} failed to push: ${FAILED_COMPONENTS[*]}"
+        test_output FAILURE "$SUCCESSES" "${#FAILED_COMPONENTS[*]}" 0 "$NOTE"
+        exit 1
+      else
+        NOTE="$SUCCESSES components successfully pushed, $SKIPS components skipped"
+        test_output SUCCESS "$SUCCESSES" 0 0 "$NOTE"
+      fi
