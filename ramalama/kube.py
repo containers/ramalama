@@ -52,7 +52,7 @@ class Kube:
             mounts += m
             volumes += v
 
-        if os.path.exists(self.src_chat_template_path):
+        if self.src_chat_template_path and os.path.exists(self.src_chat_template_path):
             volumes += self._gen_chat_template_volume()
 
         m, v = self._gen_devices()
