@@ -117,6 +117,9 @@ verify_begin=".*run --rm"
 @test "ramalama serve and stop" {
     skip_if_nocontainer
 
+    run_ramalama -q --dryrun serve smollm
+    is "$output" ".*ai.ramalama.model=ollama://library/smollm:latest" "smollm should be expanded to fullname"
+
     model=ollama://smollm:135m
     container1=c_$(safename)
     container2=c_$(safename)
