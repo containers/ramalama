@@ -689,13 +689,16 @@ class Model(ModelBase):
         # Get the blob paths (src) and mounted paths (dest)
         model_src_path = self._get_entry_model_path(False, False, args.dryrun)
         chat_template_src_path = self._get_chat_template_path(False, False, args.dryrun)
+        mmproj_src_path = self._get_mmproj_path(False, False, args.dryrun)
         model_dest_path = self._get_entry_model_path(True, True, args.dryrun)
         chat_template_dest_path = self._get_chat_template_path(True, True, args.dryrun)
+        mmproj_dest_path = self._get_mmproj_path(True, True, args.dryrun)
 
         if args.generate.gen_type == "quadlet":
             self.quadlet(
                 (model_src_path, model_dest_path),
                 (chat_template_src_path, chat_template_dest_path),
+                (mmproj_src_path, mmproj_dest_path),
                 args,
                 exec_args,
                 args.generate.output_dir,
@@ -712,6 +715,7 @@ class Model(ModelBase):
             self.quadlet_kube(
                 (model_src_path, model_dest_path),
                 (chat_template_src_path, chat_template_dest_path),
+                (mmproj_src_path, mmproj_dest_path),
                 args,
                 exec_args,
                 args.generate.output_dir,
@@ -755,16 +759,16 @@ class Model(ModelBase):
 
         self.execute_command(exec_args, args)
 
-    def quadlet(self, model_paths, chat_template_paths, args, exec_args, output_dir):
-        quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, args, exec_args)
+    def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
+        quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
 
-    def quadlet_kube(self, model_paths, chat_template_paths, args, exec_args, output_dir):
+    def quadlet_kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
         kube = Kube(self.model_name, model_paths, chat_template_paths, args, exec_args)
         kube.generate().write(output_dir)
 
-        quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, args, exec_args)
+        quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
         quadlet.kube().write(output_dir)
 
     def kube(self, model_paths, chat_template_paths, args, exec_args, output_dir):

@@ -30,6 +30,9 @@ class Input:
         chat_template_src_blob: str = "",
         chat_template_dest_name: str = "",
         chat_template_file_exists: bool = False,
+        mmproj_src_blob: str = "",
+        mmproj_dest_name: str = "",
+        mmproj_file_exists: bool = False,
         image: str = "",
         args: Args = Args(),
         exec_args: list = [],
@@ -41,6 +44,9 @@ class Input:
         self.chat_template_src_blob = chat_template_src_blob
         self.chat_template_dest_name = chat_template_dest_name
         self.chat_template_file_exists = chat_template_file_exists
+        self.mmproj_src_blob = mmproj_src_blob
+        self.mmproj_dest_name = mmproj_dest_name
+        self.mmproj_file_exists = mmproj_file_exists
         self.image = image
         self.args = args
         self.exec_args = exec_args
@@ -104,6 +110,20 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
             ),
             DATA_PATH / "modelfromstore_ct",
         ),
+        (
+            Input(
+                model_name="modelfromstore_mmproj",
+                model_src_blob="sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816",
+                model_dest_name="longpathtoablobsha",
+                image="testimage",
+                args=Args(MODEL="modelfromstore_mmproj"),
+                model_file_exists=True,
+                mmproj_src_blob="sha256-c21bc76d14f19f6552bfd8bbf4e5f57494169b902c73aa12ce3ce855466477fa",
+                mmproj_dest_name="model.mmproj",
+                mmproj_file_exists=True,
+            ),
+            DATA_PATH / "modelfromstore_mmproj",
+        ),
     ],
 )
 def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
@@ -115,6 +135,7 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
     existence = {
         input.model_src_blob: input.model_file_exists,
         input.chat_template_src_blob: input.chat_template_file_exists,
+        input.mmproj_src_blob: input.mmproj_file_exists,
     }
 
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
@@ -124,6 +145,7 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
         input.model_name,
         (input.model_src_blob, input.model_dest_name),
         (input.chat_template_src_blob, input.chat_template_dest_name),
+        (input.mmproj_src_blob, input.mmproj_dest_name),
         input.args,
         input.exec_args,
     ).generate():

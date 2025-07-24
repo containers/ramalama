@@ -12,6 +12,7 @@ class Quadlet:
         model_name: str,
         model_paths: Tuple[str, str],
         chat_template_paths: Optional[Tuple[str, str]],
+        mmproj_path: Optional[Tuple[str, str]],
         args,
         exec_args,
     ):
@@ -19,6 +20,7 @@ class Quadlet:
         self.src_chat_template_path, self.dest_chat_template_path = (
             chat_template_paths if chat_template_paths is not None else ("", "")
         )
+        self.src_mmproj_path, self.dest_mmproj_path = mmproj_path if mmproj_path is not None else ("", "")
 
         self.ai_image = model_name
         self.src_model_path = self.src_model_path.removeprefix("oci://")
@@ -67,6 +69,7 @@ class Quadlet:
                 quadlet_file.add("Container", "NoNewPrivileges", "true")
 
         self._gen_chat_template_volume(quadlet_file)
+        self._gen_mmproj_volume(quadlet_file)
         self._gen_env(quadlet_file)
         self._gen_name(quadlet_file)
         self._gen_port(quadlet_file)
@@ -83,11 +86,19 @@ class Quadlet:
         return files
 
     def _gen_chat_template_volume(self, quadlet_file: UnitFile):
-        if os.path.exists(self.src_chat_template_path):
+        if self.src_chat_template_path and os.path.exists(self.src_chat_template_path):
             quadlet_file.add(
                 "Container",
                 "Mount",
                 f"type=bind,src={self.src_chat_template_path},target={self.dest_chat_template_path},ro,Z",
+            )
+
+    def _gen_mmproj_volume(self, quadlet_file: UnitFile):
+        if self.src_mmproj_path and os.path.exists(self.src_mmproj_path):
+            quadlet_file.add(
+                "Container",
+                "Mount",
+                f"type=bind,src={self.src_mmproj_path},target={self.dest_mmproj_path},ro,Z",
             )
 
     def _gen_env(self, quadlet_file: UnitFile):
