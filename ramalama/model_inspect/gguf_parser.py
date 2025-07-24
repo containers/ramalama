@@ -192,8 +192,6 @@ class GGUFInfoParser:
                 raise ParseError(f"Invalid GGUF magic number '{magic_number}'")
 
             gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
-            if gguf_version != GGUFModelInfo.VERSION:
-                raise ParseError(f"Expected GGUF version '{GGUFModelInfo.VERSION}', but got '{gguf_version}'")
 
             tensor_count = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
             metadata_kv_count = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
@@ -215,4 +213,6 @@ class GGUFInfoParser:
                 offset = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
                 tensors.append(Tensor(name, n_dimensions, dimensions, tensor_type, offset))
 
-            return GGUFModelInfo(model_name, model_registry, model_path, metadata, tensors, model_endianness)
+            return GGUFModelInfo(
+                model_name, model_registry, model_path, gguf_version, metadata, tensors, model_endianness
+            )
