@@ -271,7 +271,7 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local llama_cpp_sha="f667f1e6244e1f420512fa66692b7096ff17f366"
+  local llama_cpp_sha="3f4fc97f1d745f1d5d3c853949503136d419e6de"
   local install_prefix
   install_prefix=$(set_install_prefix)
   git clone https://github.com/ggml-org/llama.cpp
@@ -326,7 +326,7 @@ main() {
   install_entrypoints
 
   setup_build_env
-  if [ "$uname_m" != "s390x" ]; then
+  if [ "$uname_m" != "s390x" ] && [ "$containerfile" != "musa" ]; then
     clone_and_build_whisper_cpp
   fi
   common_flags+=("-DLLAMA_CURL=ON" "-DGGML_RPC=ON")
