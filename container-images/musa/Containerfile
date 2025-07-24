@@ -1,14 +1,14 @@
-ARG VERSION=rc4.0.1
+ARG VERSION=rc4.2.0
 ARG UBUNTU_VERSION=22.04
 # Base image with MUSA for compilation
-FROM docker.io/mthreads/musa:${VERSION}-mudnn-devel-ubuntu${UBUNTU_VERSION} AS builder
+FROM docker.io/mthreads/musa:${VERSION}-devel-ubuntu${UBUNTU_VERSION}-amd64 AS builder
 
 COPY . /src/ramalama
 WORKDIR /src/ramalama
 RUN container-images/scripts/build_llama_and_whisper.sh musa
 
 # Final runtime image
-FROM docker.io/mthreads/musa:${VERSION}-mudnn-runtime-ubuntu${UBUNTU_VERSION}
+FROM docker.io/mthreads/musa:${VERSION}-runtime-ubuntu${UBUNTU_VERSION}-amd64
 
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr
