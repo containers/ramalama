@@ -1,0 +1,9 @@
+{
+  "label": "Platform Guides",
+  "position": 3,
+  "collapsed": true,
+  "link": {
+    "type": "generated-index",
+    "description": "Platform-specific setup guides for RamaLama."
+  }
+}

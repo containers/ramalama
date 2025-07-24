@@ -1,0 +1,76 @@
+---
+title: ramalama login.1
+description: login to remote registry
+# This file is auto-generated from manpages. Do not edit manually.
+# Source: ramalama-login.1.md
+---
+
+# ramalama login.1
+
+## Synopsis
+**ramalama login** [*options*] [*registry*]
+
+## Description
+login to remote model registry
+
+By default, RamaLama uses the Ollama registry transport. You can override this default by configuring the `ramalama.conf` file or setting the `RAMALAMA_TRANSPORTS` environment variable. Ensure a registry transport is set before attempting to log in.
+
+## Options
+Options are specific to registry types.
+
+#### **--authfile**=*password*
+path of the authentication file for OCI registries
+
+#### **--help**, **-h**
+show this help message and exit
+
+#### **--password**, **-p**=*password*
+password for registry
+
+#### **--password-stdin**
+take the password from stdin
+
+#### **--tls-verify**=*true*
+require HTTPS and verify certificates when contacting OCI registries
+
+#### **--token**=*token*
+token to be passed to Model registry
+
+#### **--username**, **-u**=*username*
+username for registry
+
+## Examples
+
+Login to quay.io/username oci registry
+```bash
+$ export RAMALAMA_TRANSPORT=quay.io/username
+$ ramalama login -u username
+```
+
+Login to ollama registry
+```bash
+$ export RAMALAMA_TRANSPORT=ollama
+$ ramalama login
+```
+
+Login to huggingface registry
+```bash
+$ export RAMALAMA_TRANSPORT=huggingface
+$ ramalama login --token=XYZ
+```
+Logging in to Hugging Face requires the `huggingface-cli` tool. For installation and usage instructions, see the documentation of the Hugging Face command line interface: [*https://huggingface.co/docs/huggingface_hub/en/guides/cli*](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
+
+Login to ModelScope registry
+```bash
+$ export RAMALAMA_TRANSPORT=modelscope
+$ ramalama login --token=XYZ
+```
+
+Logging in to ModelScope requires the `modelscope` tool. For installation and usage instructions, see the documentation of the ModelScope command line interface: [*https://www.modelscope.cn/docs/Beginner-s-Guide/Environment-Setup*](https://www.modelscope.cn/docs/Beginner-s-Guide/Environment-Setup).
+
+## See Also
+[ramalama(1)](../../commands/ramalama/ramalama)
+
+---
+
+*Aug 2024, Originally compiled by Dan Walsh &lt;dwalsh&#64;redhat.com&gt;*

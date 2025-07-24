@@ -1,0 +1,81 @@
+---
+title: ramalama push.1
+description: push AI Models from local storage to remote registries
+# This file is auto-generated from manpages. Do not edit manually.
+# Source: ramalama-push.1.md
+---
+
+# ramalama push.1
+
+## Synopsis
+**ramalama push** [*options*] *model* [*target*]
+
+## Description
+Push specified AI Model (OCI-only at present)
+
+The model can be from RamaLama model storage in Huggingface, Ollama, or OCI Model format.
+The model can also just be a model stored on disk.
+
+Users can convert without pushing using the `ramalama convert` command.
+
+## Options
+
+#### **--authfile**=*password*
+path of the authentication file for OCI registries
+
+#### **--help**, **-h**
+Print usage message
+
+#### **--network**=*none*
+sets the configuration for network namespaces when handling RUN instructions
+
+#### **--tls-verify**=*true*
+require HTTPS and verify certificates when contacting OCI registries
+
+#### **--type**=*raw* | *car*
+
+type of OCI Model Image to push.
+
+| Type | Description                                                   |
+| ---- | ------------------------------------------------------------- |
+| car  | Includes base image with the model stored in a /models subdir |
+| raw  | Only the model and a link file model.file to it stored at /   |
+
+Only supported for pushing OCI Model Images.
+
+## EXAMPLE
+
+Push and OCI model to registry
+```bash
+$ ramalama push oci://quay.io/rhatdan/tiny:latest
+Pushing quay.io/rhatdan/tiny:latest...
+Getting image source signatures
+Copying blob e0166756db86 skipped: already exists
+Copying config ebe856e203 done   |
+Writing manifest to image destination
+```
+
+Generate an oci model out of an Ollama model and push to registry
+```bash
+$ ramalama push ollama://tinyllama:latest oci://quay.io/rhatdan/tiny:latest
+Building quay.io/rhatdan/tiny:latest...
+STEP 1/2: FROM scratch
+STEP 2/2: COPY sha256:2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816 /model
+--> Using cache 69db4a10191c976d2c3c24da972a2a909adec45135a69dbb9daeaaf2a3a36344
+COMMIT quay.io/rhatdan/tiny:latest
+--> 69db4a10191c
+Successfully tagged quay.io/rhatdan/tiny:latest
+69db4a10191c976d2c3c24da972a2a909adec45135a69dbb9daeaaf2a3a36344
+Pushing quay.io/rhatdan/tiny:latest...
+Getting image source signatures
+Copying blob e0166756db86 skipped: already exists
+Copying config 69db4a1019 done   |
+Writing manifest to image destination
+```
+
+## See Also
+[ramalama(1)](../../commands/ramalama/ramalama), [ramalama-convert(1)](../../commands/ramalama/convert)
+
+---
+
+*Aug 2024, Originally compiled by Eric Curtin &lt;ecurtin&#64;redhat.com&gt;*

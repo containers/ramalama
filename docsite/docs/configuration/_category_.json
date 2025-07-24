@@ -1,0 +1,9 @@
+{
+  "label": "Configuration",
+  "position": 2,
+  "collapsed": true,
+  "link": {
+    "type": "generated-index",
+    "description": "Configuration files and options for RamaLama."
+  }
+}
