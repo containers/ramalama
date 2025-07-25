@@ -7,10 +7,10 @@ from ramalama.kube import Kube
 
 
 class Args:
-    def __init__(self, name: str = "", rag: str = "", port: str = "", env: list = [], MODEL: Optional[str] = None):
+    def __init__(self, name: str = "", rag: str = "", port: str = "", env: list = None, MODEL: Optional[str] = None):
         self.name = name
         self.rag = rag
-        self.env = env
+        self.env = env if env is not None else []
         if port:  # Only set port attribute if port is provided
             self.port = port
         self.image = "testimage"
@@ -32,7 +32,7 @@ class Input:
         mmproj_dest_path: str = "",
         mmproj_file_exists: bool = False,
         args: Args = Args(),
-        exec_args: list = [],
+        exec_args: list = None,
     ):
         self.model_name = model_name
         self.model_src_path = model_src_path
@@ -45,7 +45,7 @@ class Input:
         self.mmproj_dest_path = mmproj_dest_path
         self.mmproj_file_exists = mmproj_file_exists
         self.args = args
-        self.exec_args = exec_args
+        self.exec_args = exec_args if exec_args is not None else []
 
 
 DATA_PATH = Path(__file__).parent / "data" / "test_kube"
@@ -141,22 +141,17 @@ def test_kube_generate(input: Input, expected_file_name: str, monkeypatch):
 
     # Read expected output
     expected_file_path = DATA_PATH / expected_file_name
-    with open(expected_file_path) as f:
-        expected_content = f.read()
+    expected_content = Path(expected_file_path).read_text()
 
-    # Mock file existence
-    def mock_exists(path):
-        if path == input.model_src_path:
-            return input.model_file_exists
-        elif path == input.chat_template_src_path:
-            return input.chat_template_file_exists
-        elif path == input.mmproj_src_path:
-            return input.mmproj_file_exists
-        elif path in ["/dev/dri", "/dev/kfd"]:
-            return True  # Assume GPU devices exist for testing
-        return False
+    existence = {
+        input.model_src_path: input.model_file_exists,
+        input.chat_template_src_path: input.chat_template_file_exists,
+        input.mmproj_src_path: input.mmproj_file_exists,
+        "/dev/dri": True,
+        "/dev/kfd": True,
+    }
 
-    monkeypatch.setattr("os.path.exists", mock_exists)
+    monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
 
     # Mock environment variables
     monkeypatch.setattr("ramalama.kube.get_accel_env_vars", lambda: {"TEST_ENV": "test_value"})
