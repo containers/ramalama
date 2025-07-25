@@ -1,4 +1,4 @@
-ARG PARENT=quay.io/ramalama/ramalama:latest
+ARG PARENT=quay.io/ramalama/cuda:latest
 FROM $PARENT
 
 ENV UV_PYTHON_INSTALL_DIR="/opt/uv/python"
@@ -12,6 +12,6 @@ ENV UV_LINK_MODE="copy"
 
 COPY . /src/ramalama
 WORKDIR /src/ramalama
-RUN container-images/scripts/build-vllm.sh "ramalama"
+RUN container-images/scripts/build-vllm.sh "cuda"
 WORKDIR /
 

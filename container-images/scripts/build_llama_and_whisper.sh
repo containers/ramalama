@@ -128,7 +128,7 @@ dnf_install_ffmpeg() {
     add_stream_repo "CRB"
   fi
 
-  if [[ "${ID}" == "openEuler" ]]; then
+  if [ "${ID}" = "openEuler" ]; then
     dnf install -y ffmpeg
   else
     dnf install -y ffmpeg-free
