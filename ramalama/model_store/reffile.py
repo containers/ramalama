@@ -1,6 +1,12 @@
 import json
+import os
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
+from typing import Optional
+
+from ramalama.common import generate_sha256, sanitize_filename
+from ramalama.logger import logger
 
 
 class RefFile:
@@ -74,6 +80,56 @@ class RefFile:
         with open(self.path, "w") as file:
             file.write(self.serialize())
             file.flush()
+
+    @staticmethod
+    def map_to_refjsonfile(ref_file_path: str, snapshot_directory: str) -> "RefJSONFile":
+        ref_file = RefFile.from_path(ref_file_path)
+
+        ref = RefJSONFile(
+            hash=ref_file.hash,
+            path=f"{ref_file.path}.json",
+            files=[],
+        )
+
+        def determine_type(filename: str) -> StoreFileType:
+            if filename == ref_file.model_name:
+                return StoreFileType.GGUF_MODEL
+            if filename == ref_file.chat_template_name:
+                return StoreFileType.CHAT_TEMPLATE
+            if filename == ref_file.mmproj_name:
+                return StoreFileType.MMPROJ
+            return StoreFileType.OTHER
+
+        def determine_blob_hash(filename: str) -> str:
+            blob_path = Path(os.path.join(snapshot_directory, sanitize_filename(ref_file.hash), filename)).resolve()
+            if not os.path.exists(blob_path):
+                return generate_sha256(filename)
+            return blob_path.stem
+
+        for file in ref_file.filenames:
+            ftype = determine_type(file)
+            ref.files.append(StoreFile(determine_blob_hash(file), file, ftype))
+
+        return ref
+
+
+#
+# Temporary migration routine to ensure smooth transition to new RefFile format
+#
+def migrate_reffile_to_refjsonfile(ref_file_path: str, snapshot_directory: str) -> Optional["RefJSONFile"]:
+    # Check if a ref file in old format is present by removing the file extension
+    old_ref_file_path = ref_file_path.replace(".json", "")
+    if os.path.exists(old_ref_file_path):
+        logger.debug(f"Migrating old ref file '{old_ref_file_path}' to new format")
+        ref: RefJSONFile = RefFile.map_to_refjsonfile(old_ref_file_path, snapshot_directory)
+        ref.write_to_file()
+        try:
+            os.remove(old_ref_file_path)
+            return ref
+        except Exception as ex:
+            logger.debug(f"Failed to remove old ref file '{old_ref_file_path}'\n: {ex}")
+
+    return None
 
 
 class StoreFileType(StrEnum):

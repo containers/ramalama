@@ -43,6 +43,10 @@ def is_split_file_model(model_path):
     return bool(re.match(SPLIT_MODEL_PATH_RE, model_path))
 
 
+def sanitize_filename(filename: str) -> str:
+    return filename.replace(":", "-")
+
+
 podman_machine_accel = False
 
 
