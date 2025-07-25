@@ -11,6 +11,12 @@ spec:
   results:
   - name: event-type
     description: The type of event that triggered the pipeline
+  - name: snapshot-type
+    description: The type of Snapshot that is being tested.
+  - name: sync
+    description: >-
+      True if all components are built from the same git commit. False if components
+      are built from different commits.
   - name: bats-image
     description: URI of the bats image included in the snapshot
   - name: ramalama-image
@@ -27,8 +33,16 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: metadata.labels['pac.test.appstudio.openshift.io/event-type']
+    - name: SNAPSHOT_TYPE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['test.appstudio.openshift.io/type']
     - name: RESULTS_EVENT_TYPE_PATH
       value: $(results.event-type.path)
+    - name: RESULTS_SNAPSHOT_TYPE_PATH
+      value: $(results.snapshot-type.path)
+    - name: RESULTS_SYNC_PATH
+      value: $(results.sync.path)
     - name: RESULTS_BATS_IMAGE_PATH
       value: $(results.bats-image.path)
     - name: RESULTS_RAMALAMA_IMAGE_PATH
@@ -39,6 +53,10 @@ spec:
       #!/bin/bash -ex
       dnf -y install jq
       echo -n "$EVENT_TYPE" | tee "$RESULTS_EVENT_TYPE_PATH"
+      echo
+      echo -n "$SNAPSHOT_TYPE" | tee "$RESULTS_SNAPSHOT_TYPE_PATH"
+      echo
+      jq -j '[.components[] | .source.git.revision] | unique | length == 1' <<< "$SNAPSHOT" | tee "$RESULTS_SYNC_PATH"
       echo
       component_image() {
         TAGSEP=":"
