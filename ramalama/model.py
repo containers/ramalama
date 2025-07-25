@@ -707,6 +707,7 @@ class Model(ModelBase):
             self.kube(
                 (model_src_path, model_dest_path),
                 (chat_template_src_path, chat_template_dest_path),
+                (mmproj_src_path, mmproj_dest_path),
                 args,
                 exec_args,
                 args.generate.output_dir,
@@ -765,14 +766,14 @@ class Model(ModelBase):
             generated_file.write(output_dir)
 
     def quadlet_kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, args, exec_args)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
         kube.generate().write(output_dir)
 
-        quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
+        quadlet = Quadlet(kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
         quadlet.kube().write(output_dir)
 
-    def kube(self, model_paths, chat_template_paths, args, exec_args, output_dir):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, args, exec_args)
+    def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
         kube.generate().write(output_dir)
 
     def inspect(self, args):

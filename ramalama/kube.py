@@ -12,6 +12,7 @@ class Kube:
         model_name: str,
         model_paths: Tuple[str, str],
         chat_template_paths: Optional[Tuple[str, str]],
+        mmproj_paths: Optional[Tuple[str, str]],
         args,
         exec_args,
     ):
@@ -19,7 +20,7 @@ class Kube:
         self.src_chat_template_path, self.dest_chat_template_path = (
             chat_template_paths if chat_template_paths is not None else ("", "")
         )
-
+        self.src_mmproj_path, self.dest_mmproj_path = mmproj_paths if mmproj_paths is not None else ("", "")
         self.src_model_path = self.src_model_path.removeprefix("oci://")
 
         self.ai_image = model_name
@@ -33,18 +34,21 @@ class Kube:
         self.image = args.image
 
     def _gen_volumes(self):
-        mounts = f"""\
-        volumeMounts:
-        - mountPath: {MNT_DIR}
-          subPath: /models
-          name: model"""
+        mounts = """\
+        volumeMounts:"""
 
         volumes = """
       volumes:"""
 
         if os.path.exists(self.src_model_path):
-            volumes += self._gen_path_volume()
+            m, v = self._gen_path_volume()
+            mounts += m
+            volumes += v
         else:
+            mounts += f"""
+        - mountPath: {MNT_DIR}
+          subPath: /models
+          name: model"""
             volumes += self._gen_oci_volume()
 
         if self.args.rag:
@@ -53,7 +57,14 @@ class Kube:
             volumes += v
 
         if self.src_chat_template_path and os.path.exists(self.src_chat_template_path):
-            volumes += self._gen_chat_template_volume()
+            m, v = self._gen_chat_template_volume()
+            mounts += m
+            volumes += v
+
+        if self.src_mmproj_path and os.path.exists(self.src_mmproj_path):
+            m, v = self._gen_mmproj_volume()
+            mounts += m
+            volumes += v
 
         m, v = self._gen_devices()
         mounts += m
@@ -75,10 +86,14 @@ class Kube:
         return mounts, volumes
 
     def _gen_path_volume(self):
-        return f"""
+        mount = f"""
+        - mountPath: {self.dest_model_path}
+          name: model"""
+        volume = f"""
       - hostPath:
           path: {self.src_model_path}
         name: model"""
+        return mount, volume
 
     def _gen_oci_volume(self):
         return f"""
@@ -101,10 +116,24 @@ class Kube:
         return mounts, volumes
 
     def _gen_chat_template_volume(self):
-        return f"""
+        mount = f"""
+        - mountPath: {self.dest_chat_template_path}
+          name: chat_template"""
+        volume = f"""
       - hostPath:
           path: {self.src_chat_template_path}
         name: chat_template"""
+        return mount, volume
+
+    def _gen_mmproj_volume(self):
+        mount = f"""
+        - mountPath: {self.dest_mmproj_path}
+          name: mmproj"""
+        volume = f"""
+      - hostPath:
+          path: {self.src_mmproj_path}
+        name: mmproj"""
+        return mount, volume
 
     def __gen_ports(self):
         if not hasattr(self.args, "port"):
