@@ -1,0 +1,12 @@
+FROM quay.io/ramalama/ramalama-rag:latest
+RUN mkdir -p /models/tinyllama; cd /models; ln -s tinyllama-Q3_K_L.gguf model.file
+COPY sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816 /models/tinyllama/tinyllama
+COPY sha256-6331358be52a6ebc2fd0755a51ad1175734fd17a628ab5ea6897109396245362 /models/tinyllama/config.json
+COPY sha256-af0ddbdaaa26f30d54d727f9dd944b76bdb926fdaf9a58f63f78c532f57c191f /models/tinyllama/chat_template
+COPY sha256-d9c61d99be002196cfaa025ab517dc149ec1894f0bbb56195aee86853299fa01 /models/tinyllama/chat_template_converted
+
+RUN convert_hf_to_gguf.py --outfile /tinyllama-f16.gguf /models/tinyllama
+RUN llama-quantize /tinyllama-f16.gguf /models/tinyllama-Q3_K_L.gguf Q3_K_L
+RUN ln -s /models/tinyllama-Q3_K_L.gguf model.file
+RUN rm -rf /tinyllama-f16.gguf /models/tinyllama
+LABEL org.containers.type=ai.image.model.car

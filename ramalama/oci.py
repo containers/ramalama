@@ -195,6 +195,7 @@ class OCI(Model):
             )
             for file in ref_file.files:
                 blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+                blob_file_path = os.path.relpath(blob_file_path, source_model.model_store.blobs_directory)
                 content += f"COPY {blob_file_path} /models/{model_name}/{file.name}\n"
             content += f"""
 RUN convert_hf_to_gguf.py --outfile /{model_name}-f16.gguf /models/{model_name}
@@ -216,10 +217,12 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             else:
                 for file in ref_file.files:
                     blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+                    blob_file_path = os.path.relpath(blob_file_path, source_model.model_store.blobs_directory)
                     content += f"COPY {blob_file_path} /models/{model_name}/{file.name}\n"
         elif not has_gguf:
             for file in ref_file.files:
                 blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+                blob_file_path = os.path.relpath(blob_file_path, source_model.model_store.blobs_directory)
                 content += f"COPY {blob_file_path} /models/{model_name}/{file.name}\n"
 
         content += f"LABEL {ociimage_car if is_car else ociimage_raw}\n"
@@ -227,8 +230,8 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         return content
 
     def build(self, source_model, args):
-        # use topmost directory here since the paths provided by model store are absolute
-        contextdir = "/"
+        # use blobs directory as context since paths in Containerfile are relative to it
+        contextdir = source_model.model_store.blobs_directory
         content = self._generate_containerfile(source_model, args)
         if args.debug:
             perror(f"Containerfile: \n{content}")
