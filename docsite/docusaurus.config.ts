@@ -97,7 +97,7 @@ const config: Config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/docs/getting-started',
+              to: '/docs/getting-started/installation',
             },
             {
               label: 'API References',

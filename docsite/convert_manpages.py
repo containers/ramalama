@@ -43,8 +43,14 @@ def extract_title_and_description(content, filename):
 
         title = f"{platform} Setup"
     if base_name.endswith('.5.md'):
-        # Config: ramalama.conf.5.md -> ramalama.conf
-        title = base_name.replace('.5.md', '')
+        # Config files with custom titles
+        if base_name == 'ramalama.conf.5.md':
+            title = 'Configuration File'
+        elif base_name == 'ramalama-oci.5.md':
+            title = 'OCI Spec'
+        else:
+            # Fallback for other .5.md files
+            title = base_name.replace('.5.md', '')
     else:
         # Fallback
         title = base_name.replace('.md', '').replace('-', ' ')
@@ -136,6 +142,8 @@ def convert_markdown_to_mdx(content, filename):
     if history_match:
         history_text = history_match.group(1).strip()
         content = re.sub(history_pattern, '', content, flags=re.DOTALL)
+        # Remove TOC links to HISTORY since it becomes a footer
+        content = re.sub(r'\s*- \[HISTORY\]\(#history\)\n?', '', content)
         # Add history as footer
         content += f"\n\n---\n\n*{history_text}*"
 
@@ -171,7 +179,7 @@ def convert_markdown_to_mdx(content, filename):
                 if filename == 'ramalama.1.md':
                     return f'[{text}](#)'  # Self-reference
                 else:
-                    return f'[{text}]({base_path}commands/ramalama/ramalama)'
+                    return f'[{text}](/docs/commands/ramalama/)'  # Link to ramalama category index
             return f'[{text}]({base_path}commands/ramalama/{command_name})'
         if link.endswith('.5.md'):
             # Configuration file

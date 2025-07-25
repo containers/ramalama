@@ -7,7 +7,7 @@ This guide walks through the steps required to set up RamaLama with Ascend NPU s
  - [Hardware](#hardware)
  - [Model](#model)
  - [Docker](#docker)
- - [HISTORY](#todo)
+ - [HISTORY](#history)
 
 ## Background
 
