@@ -106,6 +106,7 @@ pip_install_all() {
     pip_install requirements/cpu-build.txt
     pip_install requirements/cpu.txt
   elif [ "$containerfile" = "cuda" ]; then
+    pip_install requirements/build.txt
     pip_install requirements/cuda.txt
   fi
 }
