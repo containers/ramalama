@@ -6,7 +6,7 @@ from typing import Dict, List
 import ramalama.oci
 from ramalama.arg_types import EngineArgs
 from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
-from ramalama.model_store.reffile import RefFile
+from ramalama.model_store.reffile import RefJSONFile, migrate_reffile_to_refjsonfile
 
 
 @dataclass
@@ -35,7 +35,13 @@ class GlobalModelStore:
             if DIRECTORY_NAME_REFS in subdirs:
                 ref_dir = os.path.join(root, DIRECTORY_NAME_REFS)
                 for ref_file_name in os.listdir(ref_dir):
-                    ref_file: RefFile = RefFile.from_path(os.path.join(ref_dir, ref_file_name))
+                    ref_file_path = os.path.join(ref_dir, ref_file_name)
+                    ref_file = migrate_reffile_to_refjsonfile(
+                        ref_file_path, os.path.join(root, DIRECTORY_NAME_SNAPSHOTS)
+                    )
+                    if ref_file is None:
+                        ref_file = RefJSONFile.from_path(ref_file_path)
+
                     model_path = root.replace(self.path, "").replace(os.sep, "", 1)
 
                     parts = model_path.split("/")
@@ -47,9 +53,11 @@ class GlobalModelStore:
                     model_name = f"{model_source}{separator}{model_path_without_source}:{tag}"
 
                     collected_files = []
-                    for snapshot_file in ref_file.filenames:
+                    for snapshot_file in ref_file.files:
                         is_partially_downloaded = False
-                        snapshot_file_path = os.path.join(root, DIRECTORY_NAME_SNAPSHOTS, ref_file.hash, snapshot_file)
+                        snapshot_file_path = os.path.join(
+                            root, DIRECTORY_NAME_SNAPSHOTS, ref_file.hash, snapshot_file.name
+                        )
                         if not os.path.exists(snapshot_file_path):
                             blobs_partial_file_path = os.path.join(
                                 root, DIRECTORY_NAME_BLOBS, ref_file.hash + ".partial"
