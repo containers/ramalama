@@ -7,23 +7,19 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import ramalama.model_store.go2jinja as go2jinja
-from ramalama.common import generate_sha256, perror, verify_checksum
+from ramalama.common import perror, sanitize_filename, verify_checksum
 from ramalama.endian import EndianMismatchError, get_system_endianness
 from ramalama.logger import logger
 from ramalama.model_inspect.gguf_parser import GGUFInfoParser, GGUFModelInfo
 from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
 from ramalama.model_store.global_store import GlobalModelStore
-from ramalama.model_store.reffile import RefFile, RefJSONFile, StoreFile, StoreFileType
+from ramalama.model_store.reffile import RefJSONFile, StoreFile, StoreFileType, migrate_reffile_to_refjsonfile
 from ramalama.model_store.snapshot_file import (
     LocalSnapshotFile,
     SnapshotFile,
     SnapshotFileType,
     validate_snapshot_files,
 )
-
-
-def sanitize_filename(filename: str) -> str:
-    return filename.replace(":", "-")
 
 
 def map_to_store_file_type(snapshot_type: SnapshotFileType) -> StoreFileType:
@@ -36,35 +32,6 @@ def map_to_store_file_type(snapshot_type: SnapshotFileType) -> StoreFileType:
         ftype = StoreFileType.MMPROJ
 
     return ftype
-
-
-def map_ref_file(ref_file: RefFile, snapshot_directory: str) -> RefJSONFile:
-    ref = RefJSONFile(
-        hash=ref_file.hash,
-        path=f"{ref_file.path}.json",
-        files=[],
-    )
-
-    def determine_type(filename: str) -> StoreFileType:
-        if filename == ref_file.model_name:
-            return StoreFileType.GGUF_MODEL
-        if filename == ref_file.chat_template_name:
-            return StoreFileType.CHAT_TEMPLATE
-        if filename == ref_file.mmproj_name:
-            return StoreFileType.MMPROJ
-        return StoreFileType.OTHER
-
-    def determine_blob_hash(filename: str) -> str:
-        blob_path = Path(os.path.join(snapshot_directory, sanitize_filename(ref_file.hash), filename)).resolve()
-        if not os.path.exists(blob_path):
-            return generate_sha256(filename)
-        return blob_path.stem
-
-    for file in ref_file.filenames:
-        ftype = determine_type(file)
-        ref.files.append(StoreFile(determine_blob_hash(file), file, ftype))
-
-    return ref
 
 
 class ModelStore:
@@ -119,19 +86,11 @@ class ModelStore:
         return os.path.join(self.refs_directory, f"{model_tag}.json")
 
     def get_ref_file(self, model_tag: str) -> Optional[RefJSONFile]:
-        # Check if a ref file in old format is present by removing the file extension
-        old_ref_file_path = self.get_ref_file_path(model_tag).replace(".json", "")
-        if os.path.exists(old_ref_file_path):
-            ref = map_ref_file(RefFile.from_path(old_ref_file_path), self.snapshots_directory)
-            ref.write_to_file()
-            try:
-                os.remove(old_ref_file_path)
-            except Exception as ex:
-                logger.debug(f"Failed to remove old ref file '{old_ref_file_path}'\n: {ex}")
-
+        ref_file_path = self.get_ref_file_path(model_tag)
+        ref = migrate_reffile_to_refjsonfile(ref_file_path, self.snapshots_directory)
+        if ref is not None:
             return ref
 
-        ref_file_path = self.get_ref_file_path(model_tag)
         if not os.path.exists(ref_file_path):
             return None
 
