@@ -200,7 +200,8 @@ spec:
         args: {self.exec_args[1:]}
 {env_string}
 {port_string}
-{volume_string}"""
+{volume_string}
+"""
 
         return genfile(self.name, content)
 
