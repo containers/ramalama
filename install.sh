@@ -165,7 +165,7 @@ main() {
   fi
 
   install_uv
-  uv tool install --force --python python3.12 ramalama
+  uv tool install --force --python python3.11 ramalama
   print_success_info
 }
 

@@ -1,12 +1,13 @@
 #!/bin/bash
 
 python_version() {
+  local pyversion
   pyversion=$(python3 --version)
   # $2 is empty when no Python is installed, so just install python3
   if [ -n "$pyversion" ]; then
-    string="$pyversion
+    local pystr="$pyversion
 Python 3.10"
-    if [ "$string" == "$(sort --version-sort <<<"$string")" ]; then
+    if [ "$pystr" == "$(sort --version-sort <<<"$pystr")" ]; then
       echo "python3.11"
       return
     fi
