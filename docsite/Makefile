@@ -3,7 +3,7 @@
 # This Makefile provides commands for building and managing the RamaLama
 # documentation site powered by Docusaurus.
 
-.PHONY: help convert dev build serve clean install
+.PHONY: help convert dev build serve clean install clean-generated
 
 # Default target - show help
 help: ## Show this help message
@@ -42,6 +42,14 @@ clean: ## Clean build artifacts and node_modules
 	@echo "Cleaning build artifacts..."
 	@rm -rf build .docusaurus node_modules
 	@echo "✅ Clean complete!"
+
+clean-generated: ## Clean auto-generated MDX files
+	@echo "Cleaning auto-generated MDX files..."
+	@find docs -name "*.mdx" -exec grep -l "# This file is auto-generated from manpages. Do not edit manually." {} \; | while read file; do \
+		echo "  Removing: $$file"; \
+		rm "$$file"; \
+	done
+	@echo "✅ Auto-generated files cleaned!"
 
 all: install convert build ## Install deps, convert manpages, and build site
 
