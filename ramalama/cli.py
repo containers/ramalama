@@ -280,6 +280,15 @@ def post_parse_setup(args):
         if not hasattr(args, "model"):
             args.model = args.MODEL
 
+    # Validate that --add-to-unit is only used with --generate and its format is <section>:<key>:<value>
+    if hasattr(args, "add_to_unit") and (add_to_units := args.add_to_unit):
+        if getattr(args, "generate", None) is None:
+            parser = get_parser()
+            parser.error("--add-to-unit can only be used with --generate")
+        if not (all(len([value for value in unit_to_add.split(":", 2) if value]) == 3 for unit_to_add in add_to_units)):
+            parser = get_parser()
+            parser.error("--add-to-unit parameters must be of the form <section>:<key>:<value>")
+
     if hasattr(args, "runtime_args"):
         args.runtime_args = shlex.split(args.runtime_args)
 
@@ -783,6 +792,14 @@ def runtime_options(parser, command):
             type=parse_generate_option,
             choices=GENERATE_OPTIONS,
             help="generate specified configuration format for running the AI Model as a service",
+        )
+        parser.add_argument(
+            "--add-to-unit",
+            dest="add_to_unit",
+            action='append',
+            type=str,
+            help="add KEY VALUE pair to generated unit file in the section SECTION (only valid with --generate)",
+            metavar="SECTION:KEY:VALUE",
         )
         parser.add_argument(
             "--host",

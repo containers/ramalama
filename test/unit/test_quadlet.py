@@ -17,6 +17,7 @@ class Args:
         host: str = "0.0.0.0",
         env: list = [],
         MODEL: Optional[str] = None,
+        add_to_unit=None,
     ):
         self.name = name
         self.rag = rag
@@ -26,6 +27,7 @@ class Args:
         self.image = "testimage"
         if MODEL is not None:
             self.MODEL = MODEL
+        self.add_to_unit = add_to_unit
 
 
 class Input:
@@ -142,6 +144,28 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
                 mmproj_file_exists=True,
             ),
             DATA_PATH / "modelfromstore_mmproj",
+        ),
+        (
+            Input(
+                model_name="modelfromstore_add_to_unit",
+                model_src_blob="sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816",
+                model_dest_name="longpathtoablobsha",
+                image="testimage",
+                args=Args(
+                    MODEL="modelfromstore_add_to_unit",
+                    add_to_unit=[
+                        "section1:key0:value0",
+                        "section1:key1:valu:e:1",
+                        "section1:key2:value1:",
+                        "Container:test:dummy",
+                    ],
+                ),
+                model_file_exists=True,
+                mmproj_src_blob="sha256-c21bc76d14f19f6552bfd8bbf4e5f57494169b902c73aa12ce3ce855466477fa",
+                mmproj_dest_name="model.mmproj",
+                mmproj_file_exists=True,
+            ),
+            DATA_PATH / "modelfromstore_add_to_unit",
         ),
         (
             Input(

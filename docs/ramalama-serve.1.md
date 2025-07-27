@@ -38,6 +38,18 @@ For REST API endpoint documentation, see:
 
 ## OPTIONS
 
+#### **--add-to-unit**
+
+format: --add-to-unit section:key:value
+
+Adds to the generated unit file (quadlet) in the section *section* the key *key* with the value *value*.
+
+Useful, for instance, to add environment variables to the generated unit file, or to place the container in a specific pod/network (Container:Network:xxx.network).
+
+**Only valid with *--generate* parameter.**
+
+Section, key and value are required and must be separated by colons.
+
 #### **--api**=**llama-stack** | none**
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
 The default can be overridden in the ramalama.conf file.
@@ -75,6 +87,7 @@ process to be launched inside of the container. If an environment variable is
 specified without a value, the container engine checks the host environment
 for a value and set the variable only if it is set on the host.
 
+
 #### **--generate**=type
 Generate specified configuration format for running the AI Model as a service
 
@@ -86,6 +99,7 @@ Generate specified configuration format for running the AI Model as a service
 
 Optionally, an output directory for the generated files can be specified by
 appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
+
 
 #### **--help**, **-h**
 show this help message and exit
