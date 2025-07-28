@@ -141,17 +141,17 @@ class Converter:
         results = []
         names = []
         for source in self.sources:
-            name = Path((str(source))).stem
+            name = Path((str(source))).name
             names.append(name)
             stop_event = threading.Event()
-            progress_thread = threading.Thread(target=self.show_progress, args=(f"Converting {name}.pdf", stop_event))
+            progress_thread = threading.Thread(target=self.show_progress, args=(f"Converting {name}", stop_event))
             progress_thread.start()
             try:
                 results.append(self.doc_converter.convert(source))
             finally:
                 stop_event.set()
                 progress_thread.join()
-            print(f"Finished converting {name}.pdf")
+            print(f"Finished converting {name}")
 
         if self.format == "qdrant":
             return self.convert_qdrant(results)

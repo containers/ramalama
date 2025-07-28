@@ -3,8 +3,11 @@
 # All imports first
 import argparse
 import cmd
+import http.client
 import os
+import socket
 import sys
+import time
 import warnings
 from pathlib import Path
 
@@ -31,6 +34,35 @@ def eprint(e, exit_code):
 
 
 # Helper Classes and Functions
+
+
+def wait_for_llama_server(host: str, port: int, timeout: int = 10):
+    end_time = time.monotonic() + timeout
+    first_attempt = True
+
+    while time.monotonic() < end_time:
+        conn = None
+        try:
+            conn = http.client.HTTPConnection(host, port, timeout=5)
+            conn.request("GET", "/health")
+            resp = conn.getresponse()
+            if resp.status == 200:
+                return True
+            elif first_attempt:
+                print(f"Server at {host}:{port} is running but not ready (status={resp.status}), retrying...")
+                first_attempt = False
+        except OSError:
+            if first_attempt:
+                print(f"No server responding at {host}:{port}, retrying for up to {timeout} seconds...")
+                first_attempt = False
+        except socket.gaierror:
+            print(f"Cannot resolve host '{host}'", file=sys.stderr)
+            sys.exit(1)
+        finally:
+            if conn:
+                conn.close()
+    print(f"Error: llama-server at {host}:{port} did not become ready after {timeout} seconds.")
+    sys.exit(1)
 
 
 class qdrant:
@@ -107,8 +139,11 @@ class Rag(cmd.Cmd):
             self.vectordb = qdrant(vector_path)
 
         # Setup openai api
-        self.llm = openai.OpenAI(api_key="your-api-key", base_url="http://localhost:8080")
-        self.chat_history = []  # Store chat history
+        self.port = int(os.getenv("RAMALAMA_PORT", "8080"))
+        wait_for_llama_server("localhost", self.port)
+
+        self.llm = openai.OpenAI(api_key="your-api-key", base_url=f"http://localhost:{self.port}")
+        self.chat_history = []
 
     def is_milvus(self, vector_path):
         return any(f.suffix == ".db" and f.is_file() for f in Path(vector_path).iterdir())
