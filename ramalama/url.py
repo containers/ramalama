@@ -75,6 +75,35 @@ class URL(Model):
 
         return model_name, model_tag, model_organization
 
+    def _assemble_split_file_list(self, snapshot_hash: str) -> list[SnapshotFile]:
+        files: list[SnapshotFile] = []
+
+        # model is split, lets fetch all files based on the name pattern
+        match = re.match(SPLIT_MODEL_PATH_RE, self.model)
+        if match is None:
+            return files
+
+        path_part = match[1]
+        filename_base = match[2]
+        total_parts = int(match[3])
+
+        for i in range(1, total_parts + 1):
+            file_name = f"{filename_base}-{i:05d}-of-{total_parts:05d}.gguf"
+            url = f"{self.type}://{path_part}/{file_name}"
+            files.append(
+                SnapshotFile(
+                    url=url,
+                    header={},
+                    hash=snapshot_hash,
+                    type=SnapshotFileType.Model,
+                    name=file_name,
+                    should_show_progress=True,
+                    required=True,
+                )
+            )
+
+        return files
+
     def pull(self, _):
         name, tag, _ = self.extract_model_identifiers()
         _, _, all_files = self.model_store.get_cached_files(tag)
@@ -96,40 +125,21 @@ class URL(Model):
             self.model_store.new_snapshot(tag, snapshot_hash, files)
             return
 
-        if not is_split_file_model(self.model):
-            files.append(
-                SnapshotFile(
-                    url=f"{self.type}://{self.model}",
-                    header={},
-                    hash=snapshot_hash,
-                    type=SnapshotFileType.Model,
-                    name=name,
-                    should_show_progress=True,
-                    required=True,
-                )
-            )
+        if is_split_file_model(self.model):
+            files = self._assemble_split_file_list(snapshot_hash)
             self.model_store.new_snapshot(tag, snapshot_hash, files)
             return
 
-        # model is split, lets fetch all files based on the name pattern
-        match = re.match(SPLIT_MODEL_PATH_RE, self.model)
-        path_part = match[1]
-        filename_base = match[2]
-        total_parts = int(match[3])
-
-        for i in range(total_parts - 1):
-            i_off = i + 2
-            url = f"{self.type}://{path_part}/{filename_base}-{i_off:05d}-of-{total_parts:05d}.gguf"
-            files.append(
-                SnapshotFile(
-                    url=url,
-                    header={},
-                    hash=snapshot_hash,
-                    type=SnapshotFileType.Model,
-                    name=name,
-                    should_show_progress=True,
-                    required=True,
-                )
+        files.append(
+            SnapshotFile(
+                url=f"{self.type}://{self.model}",
+                header={},
+                hash=snapshot_hash,
+                type=SnapshotFileType.Model,
+                name=name,
+                should_show_progress=True,
+                required=True,
             )
-
+        )
         self.model_store.new_snapshot(tag, snapshot_hash, files)
+        return
