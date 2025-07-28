@@ -7,6 +7,8 @@ import os
 import sys
 import warnings
 from pathlib import Path
+import time
+import httpx
 
 import openai
 import qdrant_client
@@ -31,6 +33,22 @@ def eprint(e, exit_code):
 
 
 # Helper Classes and Functions
+
+
+def wait_for_llama_server(base_url: str, timeout: int = 20):
+    start = time.time()
+    with httpx.Client() as client:
+        while time.time() - start < timeout:
+            try:
+                # Try a health endpoint or root path; adjust if your llama-server has a different path
+                resp = client.get(f"{base_url}/health", timeout=5)
+                if resp.status_code == 200:
+                    return True
+            except httpx.RequestError:
+                pass  # Can't connect yet, server is not up.
+            time.sleep(2)
+    print(f"Error: llama-server not ready after {timeout} seconds, exiting.", file=sys.stderr)
+    sys.exit(1)
 
 
 class qdrant:
@@ -107,7 +125,12 @@ class Rag(cmd.Cmd):
             self.vectordb = qdrant(vector_path)
 
         # Setup openai api
-        self.llm = openai.OpenAI(api_key="your-api-key", base_url="http://localhost:8080")
+        self.port = os.getenv("RAMALAMA_PORT", "8080")
+        url = f"http://localhost:{self.port}"
+
+        wait_for_llama_server(url, timeout=20)
+
+        self.llm = openai.OpenAI(api_key="your-api-key", base_url=url)
         self.chat_history = []  # Store chat history
 
     def is_milvus(self, vector_path):
