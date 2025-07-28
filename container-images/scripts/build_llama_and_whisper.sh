@@ -253,8 +253,7 @@ configure_common_flags() {
 
 clone_and_build_whisper_cpp() {
   local whisper_flags=("${common_flags[@]}")
-  # last time we tried to upgrade the whisper sha, rocm build broke
-  local whisper_cpp_sha="d682e150908e10caa4c15883c633d7902d385237"
+  local whisper_cpp_sha="d0a9d8c7f8f7b91c51d77bbaa394b915f79cde6b"
   whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
   # See: https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#compilation-options
   if [ "$containerfile" = "musa" ]; then
@@ -327,7 +326,7 @@ main() {
   install_entrypoints
 
   setup_build_env
-  if [ "$uname_m" != "s390x" ] && [ "$containerfile" != "musa" ]; then
+  if [ "$uname_m" != "s390x" ]; then
     clone_and_build_whisper_cpp
   fi
   common_flags+=("-DLLAMA_CURL=ON" "-DGGML_RPC=ON")
