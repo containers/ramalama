@@ -183,7 +183,7 @@ spec:
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}
         - name: INFERENCE_MODEL
-          value: {self.model}\
+          value: {self.model.model_name}\
         {security}
         ports:
         - containerPort: 8321
