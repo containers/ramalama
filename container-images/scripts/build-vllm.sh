@@ -88,7 +88,7 @@ preload_and_ulimit() {
   fi
 
   echo 'ulimit -c 0' >> ~/.bashrc
-  export PATH="$virtual_env/bin:/root/.local/bin:$PATH"
+  export PATH="/opt/app-root/bin:$virtual_env/bin:/root/.local/bin:$PATH"
   add_to_environment "PATH" "$PATH"
 }
 
@@ -156,14 +156,14 @@ main() {
   uv pip install --upgrade pip
 
   local vllm_url="https://github.com/vllm-project/vllm"
-  local commit="ac9fb732a5c0b8e671f8c91be8b40148282bb14a"
+  local commit="6d8d0a24c02bfd84d46b3016b865a44f048ae84b"
   git_clone_specific_commit
   set_vllm_env_vars
   pip_install_all
 
   # Have had to set MAX_JOBS as low as 1 while building, even on machine
   # with 32GB RAM, kept running out of memory causing crashes.
-  MAX_JOBS=1 python3 setup.py install
+  MAX_JOBS=2 python3 setup.py install
 
   cd -
   rm -rf vllm /root/.cache

@@ -15,5 +15,5 @@ WORKDIR /
 # Final runtime image
 FROM quay.io/ramalama/cuda:latest
 
-COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /opt /opt
 
