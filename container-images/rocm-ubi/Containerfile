@@ -7,5 +7,5 @@ ARG AMDGPU_TARGETS=
 ENV AMDGPU_TARGETS=${AMDGPU_TARGETS}
 COPY . /src/ramalama
 WORKDIR /src/ramalama
-RUN container-images/scripts/build_llama_and_whisper.sh rocm
+RUN container-images/scripts/build_llama_and_whisper.sh rocm-ubi
 WORKDIR /
