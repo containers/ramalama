@@ -341,7 +341,6 @@ class Model(ModelBase):
     def bench(self, args):
         self.ensure_model_exists(args)
         exec_args = self.build_exec_args_bench(args)
-        self.validate_args(args)
         self.execute_command(exec_args, args)
 
     def run(self, args):
@@ -492,7 +491,6 @@ class Model(ModelBase):
         return exec_args
 
     def perplexity(self, args):
-        self.validate_args(args)
         self.ensure_model_exists(args)
         exec_args = self.build_exec_args_perplexity(args)
         self.execute_command(exec_args, args)
@@ -517,6 +515,8 @@ class Model(ModelBase):
         return all
 
     def ensure_model_exists(self, args):
+        self.validate_args(args)
+
         if args.dryrun or self.exists():
             return
 
@@ -550,7 +550,7 @@ class Model(ModelBase):
         # If --nocontainer=False was specified return valid
         if args.container:
             return
-        if args.privileged:
+        if getattr(args, "privileged", None):
             raise KeyError(
                 "--nocontainer and --privileged options conflict. The --privileged option requires a container."
             )
@@ -738,7 +738,6 @@ class Model(ModelBase):
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
     def serve(self, args, quiet=False):
-        self.validate_args(args)
         self.ensure_model_exists(args)
 
         args.port = compute_serving_port(args, quiet=quiet or args.generate)
