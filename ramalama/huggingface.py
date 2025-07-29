@@ -13,11 +13,15 @@ from ramalama.hf_style_repo_base import (
 from ramalama.logger import logger
 from ramalama.model_store.snapshot_file import SnapshotFileType
 
-missing_huggingface = """
-Optional: Huggingface models require the huggingface-cli module.
-This module can be installed via PyPI tools like uv, pip, pip3, pipx, or via
-distribution package managers like dnf or apt. Example:
-uv pip install huggingface_hub
+missing_huggingface = """This operation requires huggingface-cli which is not available.
+
+This tool can be installed via PyPI tools like uv, pip, pip3 or pipx. Example:
+
+pip install -U "huggingface_hub[cli]"
+
+Or via distribution package managers like dnf or apt. Example:
+
+sudo dnf install python3-huggingface-hub
 """
 
 
