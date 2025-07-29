@@ -59,14 +59,12 @@ dnf_install_cann() {
 }
 
 dnf_install_rocm() {
-  if [ "$containerfile" = "rocm" ]; then
-    if [ "${ID}" = "fedora" ]; then
-      dnf update -y
-      dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
-    else
-      add_stream_repo "AppStream"
-      dnf install -y rocm-dev hipblas-devel rocblas-devel
-    fi
+  if [ "${ID}" = "fedora" ]; then
+    dnf update -y
+    dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
+  else
+    add_stream_repo "AppStream"
+    dnf install -y rocm-dev hipblas-devel rocblas-devel
   fi
 
   rm_non_ubi_repos
@@ -160,7 +158,7 @@ dnf_install() {
     else
       dnf_install_s390
     fi
-  elif [[ "$containerfile" =~ rocm* ]]; then
+  elif [[ "$containerfile" = rocm* ]]; then
     dnf_install_rocm
   elif [ "$containerfile" = "asahi" ]; then
     dnf_install_asahi
@@ -326,7 +324,7 @@ main() {
   install_entrypoints
 
   setup_build_env
-  if [ "$uname_m" != "s390x" ]; then
+  if [ "$uname_m" != "s390x" ] && [ "$containerfile" != "rocm-ubi" ]; then
     clone_and_build_whisper_cpp
   fi
   common_flags+=("-DLLAMA_CURL=ON" "-DGGML_RPC=ON")
