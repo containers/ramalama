@@ -148,7 +148,8 @@ class Quadlet:
 
     def _gen_port(self, quadlet_file: UnitFile):
         if getattr(self.args, "port", "") != "":
-            quadlet_file.add("Container", "PublishPort", f"{self.args.port}:{self.args.port}")
+            host = getattr(self.args, "host", None) or "0.0.0.0"
+            quadlet_file.add("Container", "PublishPort", f"{host}:{self.args.port}:{self.args.port}")
 
     def _gen_rag_volume(self, quadlet_file: UnitFile):
         files: list[UnitFile] = []

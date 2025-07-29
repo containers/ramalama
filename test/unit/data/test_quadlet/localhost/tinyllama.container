@@ -13,7 +13,7 @@ Exec=
 SecurityLabelDisable=true
 DropCapability=all
 NoNewPrivileges=true
-PublishPort=0.0.0.0:2020:2020
+PublishPort=127.0.0.1:2020:2020
 Mount=type=image,source=tinyllama,destination=/mnt/models,subpath=/models,readwrite=false
 
 [Install]

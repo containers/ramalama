@@ -9,11 +9,20 @@ from ramalama.quadlet import Quadlet
 
 
 class Args:
-    def __init__(self, name: str = "", rag: str = "", port: str = "", env: list = [], MODEL: Optional[str] = None):
+    def __init__(
+        self,
+        name: str = "",
+        rag: str = "",
+        port: str = "",
+        host: str = "0.0.0.0",
+        env: list = [],
+        MODEL: Optional[str] = None,
+    ):
         self.name = name
         self.rag = rag
         self.env = env
         self.port = port
+        self.host = host
         self.image = "testimage"
         if MODEL is not None:
             self.MODEL = MODEL
@@ -84,6 +93,16 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
                 args=Args(port="2020"),
             ),
             DATA_PATH / "portmapping",
+        ),
+        (
+            Input(
+                model_name="tinyllama",
+                model_src_blob="sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816",
+                model_dest_name="tinyllama",
+                image="testimage",
+                args=Args(port="2020", host="127.0.0.1"),
+            ),
+            DATA_PATH / "localhost",
         ),
         (
             Input(
