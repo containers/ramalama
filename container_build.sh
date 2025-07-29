@@ -105,7 +105,7 @@ build() {
       echo "${conman_show_size[@]}"
       "${conman_show_size[@]}"
       case ${target} in
-	  ramalama-cli | llama-stack | openvino | bats)
+	  ramalama-cli | llama-stack | openvino | bats | stable-diffusion)
 	  ;;
 	  *)
 	      if [ "${build_all}" -eq 1 ]; then
