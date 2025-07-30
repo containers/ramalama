@@ -1,0 +1,20 @@
+# Save this output to a 'docker-compose.yaml' file and run 'docker compose up'.
+#
+# Created with ramalama-0.1.0-test
+services:
+  tinyllama:
+    container_name: ramalama-tinyllama
+    image: test-image/ramalama:latest
+    volumes:
+      - "/models/tinyllama.gguf:/mnt/models/tinyllama.gguf:ro"
+    ports:
+      - "8080:8080"
+    environment:
+      - ACCEL_ENV=true
+      - LOG_LEVEL=debug
+      - THREADS=8
+    devices:
+      - "/dev/dri:/dev/dri"
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/accel:/dev/accel"
+    restart: unless-stopped
