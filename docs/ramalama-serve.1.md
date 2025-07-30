@@ -204,6 +204,9 @@ llama.cpp explains this as:
 
 	Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
 
+#### **--thinking**=*true*
+Enable or disable thinking mode in reasoning models
+
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.
 The default is to use half the cores available on this system for the number of threads.

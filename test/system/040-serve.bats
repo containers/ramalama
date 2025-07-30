@@ -88,6 +88,12 @@ verify_begin=".*run --rm"
     assert "$output" =~ ".*--foo" "--foo passed to runtime"
     assert "$output" =~ ".*-bar" "-bar passed to runtime"
 
+    run_ramalama -q --dryrun serve --thinking False ${model}
+    assert "$output" =~ ".*--reasoning-budget 0" "--reasoning-budget 0 passed to runtime"
+
+    run_ramalama -q --dryrun serve ${model}
+    assert "$output" != ".*--reasoning-budget" "--reasoning-budget not passed by default"
+
     run_ramalama -q --dryrun serve --runtime-args="--foo='a b c'" ${model}
     assert "$output" =~ ".*--foo=a b c" "argument passed to runtime with spaces"
 

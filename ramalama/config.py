@@ -98,6 +98,7 @@ class BaseConfig:
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
     store: str = field(default_factory=get_default_store)
     temp: str = "0.8"
+    thinking: bool = True
     threads: int = -1
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
