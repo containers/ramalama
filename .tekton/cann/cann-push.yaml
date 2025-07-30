@@ -25,8 +25,8 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/cann:{{revision}}
   - name: build-platforms
     value:
-    - linux-c4xlarge/amd64
-    - linux-c4xlarge/arm64
+    - linux-c8xlarge/amd64
+    - linux-c8xlarge/arm64
   - name: dockerfile
     value: container-images/cann/Containerfile
   pipelineRef:
