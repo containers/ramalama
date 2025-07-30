@@ -71,27 +71,20 @@ EOF
 	run_ramalama 22 -q --dryrun run --selinux=100 ${MODEL}
 	is "$output" "Error: Cannot coerce '100' to bool" "Should error on bad value"
 
-    run_ramalama -q --dryrun run --runtime-args="--foo -bar" ${MODEL}
-    assert "$output" =~ ".*--foo" "--foo passed to runtime"
-    assert "$output" =~ ".*-bar" "-bar passed to runtime"
+	run_ramalama -q --dryrun run --runtime-args="--foo -bar" ${MODEL}
+	assert "$output" =~ ".*--foo" "--foo passed to runtime"
+	assert "$output" =~ ".*-bar" "-bar passed to runtime"
 
-    run_ramalama -q --dryrun run --runtime-args="--foo='a b c'" ${MODEL}
-    assert "$output" =~ ".*--foo=a b c" "argument passed to runtime with spaces"
+	run_ramalama -q --dryrun run --runtime-args="--foo='a b c'" ${MODEL}
+	assert "$output" =~ ".*--foo=a b c" "argument passed to runtime with spaces"
 
-    run_ramalama 22 -q --dryrun run --runtime-args="--foo='a b c" ${MODEL}
-    assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
+	run_ramalama 22 -q --dryrun run --runtime-args="--foo='a b c" ${MODEL}
+	assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
 
-	if is_container; then
-	    run_ramalama -q --dryrun run --privileged ${MODEL}
-	    is "$output" ".*--privileged" "verify --privileged is set"
-	    assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
-	    assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
-	else
-	    run_ramalama 1 run --name foobar ${MODEL}
-	    is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
-	    run_ramalama 1 run --privileged ${MODEL}
-	    is "${lines[0]}"  "Error: --nocontainer and --privileged options conflict. The --privileged option requires a container." "conflict between nocontainer and --privileged line"
-	fi
+	run_ramalama -q --dryrun run --privileged ${MODEL}
+	is "$output" ".*--privileged" "verify --privileged is set"
+	assert "$output" != ".*--cap-drop=all" "verify --cap-add is not present"
+	assert "$output" != ".*no-new-privileges" "verify --no-new-privs is not present"
 	RAMALAMA_IMAGE=${image}:1234 run_ramalama -q --dryrun run ${MODEL}
 	is "$output" ".*${image}:1234.*serve" "verify image name"
 
@@ -102,6 +95,10 @@ EOF
 
 	run_ramalama 1 run --ctx-size=4096 --name foobar ${MODEL}
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
+	run_ramalama 1 run --name foobar ${MODEL}
+	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
+	run_ramalama 1 run --privileged ${MODEL}
+	is "${lines[0]}"  "Error: --nocontainer and --privileged options conflict. The --privileged option requires a container." "conflict between nocontainer and --privileged line"
     fi
 }
 

@@ -346,7 +346,6 @@ class Model(ModelBase):
     def run(self, args):
         # The Run command will first launch a daemonized service
         # and run chat to communicate with it.
-        self.validate_args(args)
 
         args.port = compute_serving_port(args, quiet=args.debug)
         if args.container:
@@ -590,6 +589,8 @@ class Model(ModelBase):
             self._get_entry_model_path(args.container, args.generate, args.dryrun),
             "--no-warmup",
         ]
+        if not args.thinking:
+            exec_args += ["--reasoning-budget", "0"]
         mmproj_path = self._get_mmproj_path(args.container, args.generate, args.dryrun)
         if mmproj_path is not None:
             exec_args += ["--mmproj", mmproj_path]

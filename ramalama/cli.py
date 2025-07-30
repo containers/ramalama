@@ -828,6 +828,12 @@ If GPU device on host is accessible to via group access, this option leaks the u
         completer=suppressCompleter,
     )
     parser.add_argument(
+        "--thinking",
+        default=CONFIG.thinking,
+        help="enable/disable thinking mode in reasoning models",
+        action=CoerceToBool,
+    )
+    parser.add_argument(
         "--oci-runtime",
         help="override the default OCI runtime used to launch the container",
         completer=suppressCompleter,
