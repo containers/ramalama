@@ -40,7 +40,8 @@ spec:
   pipelineRef:
     name: pull-request-pipeline
   timeouts:
-    pipeline: 6h
+    pipeline: 12h
+    finally: 15m
   workspaces:
   - name: git-auth
     secret:
