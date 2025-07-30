@@ -997,6 +997,7 @@ def run_cli(args):
         except Exception as exc:
             raise e from exc
 
+
 def serve_parser(subparsers):
     parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
     runtime_options(parser, "serve")
