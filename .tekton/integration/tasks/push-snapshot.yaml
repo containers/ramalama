@@ -111,7 +111,7 @@ spec:
           continue
         fi
         log Copying "$NAME" from "$SRC" to "$DEST"
-        if skopeo copy --all --multi-arch all --retry-times 5 "docker://$SRC" "docker://$DEST"; then
+        if skopeo copy --all --retry-times 5 "docker://$SRC" "docker://$DEST"; then
           (( SUCCESSES+=1 ))
         else
           FAILED_COMPONENTS+=("$NAME")
