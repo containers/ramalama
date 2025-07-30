@@ -204,6 +204,13 @@ This program is a Python script that allows the user to interact with a terminal
  [end of text]
 ```
 
+Run command and send multiple lines at once to the chatbot by adding a backslash `\`
+at the end of the line
+$ ramalama run granite
+🦭 > Hi \
+🦭 > tell me a funny story \
+🦭 > please
+
 ## Exit Codes:
 
 0   Success

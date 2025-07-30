@@ -53,6 +53,12 @@ $ ramalama chat
 Communicate with an alternative OpenAI REST API URL. With Docker containers.
 $ ramalama chat --url http://localhost:1234
 🐋 >
+
+Send multiple lines at once
+$ ramalama chat
+🦭 > Hi \
+🦭 > tell me a funny story \
+🦭 > please
 ```
 
 ## SEE ALSO
