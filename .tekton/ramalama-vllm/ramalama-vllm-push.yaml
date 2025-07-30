@@ -26,6 +26,7 @@ spec:
   - name: build-platforms
     value:
     - linux-c8xlarge/amd64
+    - linux-c8xlarge/arm64
   - name: dockerfile
     value: container-images/ramalama-vllm/Containerfile
   - name: parent-image
