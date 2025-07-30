@@ -1,38 +1,5 @@
 #!/bin/bash
 
-available() {
-  command -v "$1" >/dev/null
-}
-
-is_rhel_based() { # doesn't include openEuler
-  # shellcheck disable=SC1091
-  source /etc/os-release
-  [ "$ID" = "rhel" ] || [ "$ID" = "redhat" ] || [ "$ID" == "centos" ]
-}
-
-dnf_install_epel() {
-  local rpm_exclude_list="selinux-policy,container-selinux"
-  local url="https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
-  dnf reinstall -y "$url" || dnf install -y "$url" --exclude "$rpm_exclude_list"
-  crb enable # this is in epel-release, can only install epel-release via url
-}
-
-add_stream_repo() {
-  local url="https://mirror.stream.centos.org/9-stream/$1/$uname_m/os/"
-  dnf config-manager --add-repo "$url"
-  url="http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official"
-  local file="/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-Official"
-  if [ ! -e $file ]; then
-    curl --retry 8 --retry-all-errors -o $file "$url"
-    rpm --import $file
-  fi
-}
-
-rm_non_ubi_repos() {
-  local dir="/etc/yum.repos.d"
-  rm -rf $dir/mirror.stream.centos.org_9-stream_* $dir/epel*
-}
-
 install_deps() {
   if available dnf; then
     dnf install -y git wget ca-certificates gcc gcc-c++ libSM libXext \
@@ -103,15 +70,6 @@ pip_install() {
   uv pip install -v -r "$1" --extra-index-url "$url"
 }
 
-git_clone_specific_commit() {
-  local repo="${vllm_url##*/}"
-  git init "$repo"
-  cd "$repo"
-  git remote add origin "$vllm_url"
-  git fetch --depth 1 origin $commit
-  git reset --hard $commit
-}
-
 pip_install_all() {
   if [ "$containerfile" = "ramalama" ]; then
     pip_install requirements/cpu-build.txt
@@ -140,6 +98,9 @@ set_vllm_env_vars() {
 main() {
   set -eux -o pipefail
 
+  # shellcheck disable=SC1091
+  source container-images/scripts/lib.sh
+
   local containerfile=$1
   if [ "$containerfile" != "ramalama" ] && [ "$containerfile" != "cuda" ]; then
     echo "First argument must be 'ramalama' or 'cuda'. Got: '$containerfile'"
@@ -157,7 +118,7 @@ main() {
 
   local vllm_url="https://github.com/vllm-project/vllm"
   local commit="6d8d0a24c02bfd84d46b3016b865a44f048ae84b"
-  git_clone_specific_commit
+  git_clone_specific_commit "$vllm_url" "$commit"
   set_vllm_env_vars
   pip_install_all
 
