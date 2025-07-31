@@ -13,8 +13,8 @@ Exec=
 SecurityLabelDisable=true
 DropCapability=all
 NoNewPrivileges=true
-Mount=type=bind,src=sha256-c21bc76d14f19f6552bfd8bbf4e5f57494169b902c73aa12ce3ce855466477fa,target=chat_template,ro,Z
-Mount=type=bind,src=sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816,target=longpathtoablobsha,ro,Z
+Mount=type=bind,src=sha256-c21bc76d14f19f6552bfd8bbf4e5f57494169b902c73aa12ce3ce855466477fa,target=/mnt/models/chat_template,ro,Z
+Mount=type=bind,src=sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816,target=/mnt/models/modelfromstore_ct,ro,Z
 
 [Install]
 WantedBy=multi-user.target default.target

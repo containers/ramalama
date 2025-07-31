@@ -22,8 +22,11 @@ class Quadlet:
         )
         self.src_mmproj_path, self.dest_mmproj_path = mmproj_path if mmproj_path is not None else ("", "")
 
-        self.ai_image = model_name
-        self.src_model_path = self.src_model_path.removeprefix("oci://")
+        if self.src_model_path.startswith("oci://"):
+            self.src_model_path = self.src_model_path.removeprefix("oci://")
+            self.ai_image = self.src_model_path
+        else:
+            self.ai_image = model_name
         if getattr(args, "name", None):
             self.name = args.name
         else:

@@ -184,6 +184,12 @@ class Model(ModelBase):
         if dry_run:
             return "/path/to/model"
 
+        if self.model_type == 'oci':
+            if use_container or should_generate:
+                return os.path.join(MNT_DIR, 'model.file')
+            else:
+                return f"oci://{self.model}"
+
         ref_file = self.model_store.get_ref_file(self.model_tag)
         if ref_file is None or not ref_file.model_files:
             raise NoRefFileFound(self.model)
@@ -210,6 +216,9 @@ class Model(ModelBase):
         if dry_run:
             return ""
 
+        if self.model_type == 'oci':
+            return None
+
         ref_file = self.model_store.get_ref_file(self.model_tag)
         if ref_file is None:
             raise NoRefFileFound(self.model)
@@ -230,6 +239,9 @@ class Model(ModelBase):
         """
         if dry_run:
             return ""
+
+        if self.model_type == 'oci':
+            return None
 
         ref_file = self.model_store.get_ref_file(self.model_tag)
         if ref_file is None:
@@ -321,6 +333,9 @@ class Model(ModelBase):
     def setup_mounts(self, args):
         if args.dryrun:
             return
+
+        if self.model_type == 'oci':
+            return None
 
         ref_file = self.model_store.get_ref_file(self.model_tag)
         if ref_file is None:
