@@ -1,0 +1,4 @@
+[Volume]
+Driver=image
+Image=oci-model-rag.image
+
