@@ -206,7 +206,7 @@ verify_begin=".*run --rm"
     is "$output" "Generating quadlet file: $quadlet" "generate $quadlet"
 
     run cat $quadlet
-    is "$output" ".*PublishPort=1234:1234" "PublishPort should match"
+    is "$output" ".*PublishPort=0.0.0.0:1234:1234" "PublishPort should match"
     is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*$model" "Mount line should be correct"
 
@@ -252,7 +252,7 @@ verify_begin=".*run --rm"
 # 	is "$output" ".*Generating quadlet file: ${name}.image" "generate .image file"
 # 
 # 	run cat $name.container
-# 	is "$output" ".*PublishPort=1234:1234" "PublishPort should match"
+# 	is "$output" ".*PublishPort=0.0.0.0:1234:1234" "PublishPort should match"
 # 	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
 # 	is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
 # 	is "$output" ".*Mount=type=image,source=${ociimage},destination=/mnt/models,subpath=/models,readwrite=false" "Volume line should be correct"
