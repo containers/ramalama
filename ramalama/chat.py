@@ -105,6 +105,8 @@ class RamaLamaShell(cmd.Cmd):
 
         self.operational_args = operational_args
 
+        self.content = []
+
     def prep_rag_message(self):
         if (context := self.args.rag) is None:
             return
@@ -134,10 +136,16 @@ class RamaLamaShell(cmd.Cmd):
         return True
 
     def default(self, user_content):
+        self.content.append(user_content.rstrip(" \\"))
+        if user_content.endswith(" \\"):
+            return False
+
         if user_content in ["/bye", "exit"]:
             return True
 
-        self.conversation_history.append({"role": "user", "content": user_content})
+        content = "\n".join(self.content)
+        self.content = []
+        self.conversation_history.append({"role": "user", "content": content})
         self.request_in_process = True
         response = self._req()
         if not response:
