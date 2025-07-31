@@ -1,7 +1,7 @@
 import io
 import struct
 from enum import IntEnum
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 from ramalama.endian import GGUFEndian
 from ramalama.logger import logger
@@ -116,7 +116,7 @@ class GGUFInfoParser:
         model: io.BufferedReader, model_endianness: GGUFEndian = GGUFEndian.LITTLE, length: int = -1
     ) -> str:
         if length == -1:
-            length = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
+            length = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness))
 
         raw = model.read(length)
         if len(raw) < length:
@@ -144,12 +144,14 @@ class GGUFInfoParser:
 
     @staticmethod
     def read_value_type(model: io.BufferedReader, model_endianness: GGUFEndian) -> GGUFValueType:
-        value_type = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
+        value_type = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness))
         return GGUFValueType(value_type)
 
     @staticmethod
-    def read_value(model: io.BufferedReader, value_type: GGUFValueType, model_endianness: GGUFEndian) -> Any:
-        value = None
+    def read_value(
+        model: io.BufferedReader, value_type: GGUFValueType, model_endianness: GGUFEndian
+    ) -> str | int | float | bool | list:
+        value: Any
         if value_type in GGUF_NUMBER_FORMATS:
             value = GGUFInfoParser.read_number(model, value_type, model_endianness)
         elif value_type == GGUFValueType.BOOL:
@@ -158,12 +160,12 @@ class GGUFInfoParser:
             value = GGUFInfoParser.read_string(model, model_endianness)
         elif value_type == GGUFValueType.ARRAY:
             array_type = GGUFInfoParser.read_value_type(model, model_endianness)
-            array_length = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
+            array_length = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness))
             value = [GGUFInfoParser.read_value(model, array_type, model_endianness) for _ in range(array_length)]
+        else:
+            raise ParseError(f"Unknown type '{value_type}'")
 
-        if value is not None:
-            return value
-        raise ParseError(f"Unknown type '{value_type}'")
+        return value
 
     @staticmethod
     def get_model_endianness(model_path: str) -> GGUFEndian:
@@ -176,7 +178,7 @@ class GGUFInfoParser:
             if magic_number != GGUFModelInfo.MAGIC_NUMBER:
                 raise ParseError(f"Invalid GGUF magic number '{magic_number}'")
 
-            gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
+            gguf_version = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness))
             if gguf_version & 0xFFFF == 0x0000:
                 model_endianness = GGUFEndian.BIG
 
@@ -191,10 +193,10 @@ class GGUFInfoParser:
             if magic_number != GGUFModelInfo.MAGIC_NUMBER:
                 raise ParseError(f"Invalid GGUF magic number '{magic_number}'")
 
-            gguf_version = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
+            gguf_version = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness))
 
-            tensor_count = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
-            metadata_kv_count = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
+            tensor_count = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness))
+            metadata_kv_count = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness))
 
             metadata = {}
             for _ in range(metadata_kv_count):
@@ -205,13 +207,17 @@ class GGUFInfoParser:
             tensors: list[Tensor] = []
             for _ in range(tensor_count):
                 name = GGUFInfoParser.read_string(model, model_endianness)
-                n_dimensions = GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness)
+                n_dimensions = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness))
                 dimensions: list[int] = []
                 for _ in range(n_dimensions):
-                    dimensions.append(GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness))
-                tensor_type = GGML_TYPE(GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness))
-                offset = GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness)
-                tensors.append(Tensor(name, n_dimensions, dimensions, tensor_type, offset))
+                    dim = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness))
+                    dimensions.append(dim)
+                tensor_type = GGML_TYPE(
+                    cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT32, model_endianness))
+                )
+
+                offset = cast(int, GGUFInfoParser.read_number(model, GGUFValueType.UINT64, model_endianness))
+                tensors.append(Tensor(name, n_dimensions, dimensions, tensor_type.name, offset))
 
             return GGUFModelInfo(
                 model_name, model_registry, model_path, gguf_version, metadata, tensors, model_endianness

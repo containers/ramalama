@@ -12,17 +12,17 @@ INPUT_DIR = "/docs"
 
 
 class Rag:
-    model = ""
-    target = ""
-    urls = []
+    model: str = ""
+    target: str = ""
+    urls: list[str] = []
 
-    def __init__(self, target):
+    def __init__(self, target: str):
         if not target.islower():
             raise ValueError(f"invalid reference format: repository name '{target}' must be lowercase")
         self.target = target
         set_accel_env_vars()
 
-    def build(self, source, target, args):
+    def build(self, source: str, target: str, args):
         perror(f"\nBuilding {target} ...")
         contextdir = os.path.dirname(source)
         src = os.path.basename(source)
@@ -60,7 +60,7 @@ COPY {src} /vector.db
         )
         return imageid
 
-    def _handle_paths(self, path):
+    def _handle_paths(self, path: str):
         """Adds a volume mount if path exists, otherwise add URL."""
         parsed = urlparse(path)
         if parsed.scheme in ["file", ""] and parsed.netloc == "":
@@ -135,7 +135,7 @@ COPY {src} /vector.db
                 shutil.rmtree(ragdb.name, ignore_errors=True)
 
 
-def rag_image(image) -> str:
+def rag_image(image: str) -> str:
     imagespec = image.split(":")
     rag_image = f"{imagespec[0]}-rag"
     if len(imagespec) > 1:

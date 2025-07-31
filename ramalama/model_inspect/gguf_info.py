@@ -53,7 +53,7 @@ class GGUFModelInfo(ModelInfoBase):
             i = 0
             for tensor in self.Tensors:
                 ret = ret + adjust_new_line(
-                    f"      {i}: {tensor.name, tensor.type.name, tensor.n_dimensions, tensor.offset}"
+                    f"      {i}: {tensor.name, tensor.type, tensor.n_dimensions, tensor.offset}"
                 )
                 i = i + 1
 

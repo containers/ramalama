@@ -13,8 +13,9 @@ import shutil
 import string
 import subprocess
 import sys
+from collections.abc import Callable, Iterable
 from functools import lru_cache
-from typing import TYPE_CHECKING, Callable, List, Literal, Protocol, cast, get_args
+from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict, cast, get_args
 
 import ramalama.amdkfd as amdkfd
 from ramalama.logger import logger
@@ -230,7 +231,15 @@ def engine_version(engine: SUPPORTED_ENGINES) -> str:
     return run_cmd(cmd_args).stdout.decode("utf-8").strip()
 
 
-def load_cdi_yaml(stream) -> dict:
+class CDI_DEVICE(TypedDict):
+    name: str
+
+
+class CDI_RETURN_TYPE(TypedDict):
+    devices: list[CDI_DEVICE]
+
+
+def load_cdi_yaml(stream: Iterable[str]) -> CDI_RETURN_TYPE:
     # Returns a dict containing just the "devices" key, whose value is
     # a list of dicts, each mapping the key "name" to a device name.
     # For example: {'devices': [{'name': 'all'}]}
@@ -238,7 +247,7 @@ def load_cdi_yaml(stream) -> dict:
     # under "devices" and the value of the "name" key being on the
     # same line following a colon.
 
-    data = {"devices": []}
+    data: CDI_RETURN_TYPE = {"devices": []}
     for line in stream:
         if ':' in line:
             key, value = line.split(':', 1)
@@ -247,7 +256,7 @@ def load_cdi_yaml(stream) -> dict:
     return data
 
 
-def load_cdi_config(spec_dirs: List[str]) -> dict | None:
+def load_cdi_config(spec_dirs: list[str]) -> CDI_RETURN_TYPE | None:
     # Loads the first YAML or JSON CDI configuration file found in the
     # given directories."""
 
@@ -275,7 +284,7 @@ def load_cdi_config(spec_dirs: List[str]) -> dict | None:
     return None
 
 
-def find_in_cdi(devices: List[str]) -> tuple[List[str], List[str]]:
+def find_in_cdi(devices: list[str]) -> tuple[list[str], list[str]]:
     # Attempts to find a CDI configuration for each device in devices
     # and returns a list of configured devices and a list of
     # unconfigured devices.
@@ -327,11 +336,12 @@ def check_nvidia() -> Literal["cuda"] | None:
         return None
 
     smi_lines = result.stdout.splitlines()
-    parsed_lines = [[item.strip() for item in line.split(',')] for line in smi_lines if line]
+    parsed_lines: list[list[str]] = [[item.strip() for item in line.split(',')] for line in smi_lines if line]
+
     if not parsed_lines:
         return None
 
-    indices, uuids = zip(*parsed_lines) if parsed_lines else (tuple(), tuple())
+    indices, uuids = map(list, zip(*parsed_lines))
     # Get the list of devices specified by CUDA_VISIBLE_DEVICES, if any
     cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "")
     visible_devices = cuda_visible_devices.split(',') if cuda_visible_devices else []
@@ -342,14 +352,14 @@ def check_nvidia() -> Literal["cuda"] | None:
 
     configured, unconfigured = find_in_cdi(visible_devices + ["all"])
 
-    if unconfigured and "all" not in configured:
+    if unconfigured and not (configured_has_all := "all" in configured):
         perror(f"No CDI configuration found for {','.join(unconfigured)}")
         perror("You can use the \"nvidia-ctk cdi generate\" command from the ")
         perror("nvidia-container-toolkit to generate a CDI configuration.")
         perror("See ramalama-cuda(7).")
         return None
     elif configured:
-        if "all" in configured:
+        if configured_has_all:
             configured.remove("all")
             if not configured:
                 configured = indices
@@ -442,7 +452,7 @@ def check_mthreads() -> Literal["musa"] | None:
     return None
 
 
-AccelType = Literal["asahi", "cuda", "cann", "hip", "intel", "musa"]
+AccelType: TypeAlias = Literal["asahi", "cuda", "cann", "hip", "intel", "musa"]
 
 
 def get_accel() -> AccelType | Literal["none"]:
@@ -474,7 +484,7 @@ def set_gpu_type_env_vars():
     get_accel()
 
 
-GPUEnvVar = Literal[
+GPUEnvVar: TypeAlias = Literal[
     "ASAHI_VISIBLE_DEVICES",
     "ASCEND_VISIBLE_DEVICES",
     "CUDA_VISIBLE_DEVICES",
@@ -486,10 +496,10 @@ GPUEnvVar = Literal[
 
 
 def get_gpu_type_env_vars() -> dict[GPUEnvVar, str]:
-    return {k: os.environ[k] for k in get_args(GPUEnvVar) if k in os.environ}
+    return {k: v for k in get_args(GPUEnvVar) if (v := os.environ.get(k))}
 
 
-AccelEnvVar = Literal[
+AccelEnvVar: TypeAlias = Literal[
     "CUDA_LAUNCH_BLOCKING",
     "HSA_VISIBLE_DEVICES",
     "HSA_OVERRIDE_GFX_VERSION",
@@ -498,7 +508,7 @@ AccelEnvVar = Literal[
 
 def get_accel_env_vars() -> dict[GPUEnvVar | AccelEnvVar, str]:
     gpu_env_vars: dict[GPUEnvVar, str] = get_gpu_type_env_vars()
-    accel_env_vars: dict[AccelEnvVar, str] = {k: os.environ[k] for k in get_args(AccelEnvVar) if k in os.environ}
+    accel_env_vars: dict[AccelEnvVar, str] = {k: v for k in get_args(AccelEnvVar) if (v := os.environ.get(k))}
     return gpu_env_vars | accel_env_vars
 
 
@@ -599,7 +609,9 @@ class AccelImageArgsOtherRuntimeRAG(Protocol):
     quiet: bool
 
 
-AccelImageArgs = None | AccelImageArgsVLLMRuntime | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
+AccelImageArgs: TypeAlias = (
+    None | AccelImageArgsVLLMRuntime | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
+)
 
 
 def accel_image(config: Config) -> str:
@@ -627,7 +639,7 @@ def accel_image(config: Config) -> str:
     vers = minor_release()
 
     should_pull = config.pull in ["always", "missing"] and not config.dryrun
-    if attempt_to_use_versioned(config.engine, image, vers, True, should_pull):
+    if config.engine and attempt_to_use_versioned(config.engine, image, vers, True, should_pull):
         return f"{image}:{vers}"
 
     return f"{image}:latest"

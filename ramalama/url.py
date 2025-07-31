@@ -104,7 +104,7 @@ class URL(Model):
 
         return files
 
-    def pull(self, _):
+    def pull(self, _) -> None:
         name, tag, _ = self.extract_model_identifiers()
         _, _, all_files = self.model_store.get_cached_files(tag)
         if all_files:

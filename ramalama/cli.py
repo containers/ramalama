@@ -16,7 +16,7 @@ from ramalama.config import COLOR_OPTIONS, SUPPORTED_RUNTIMES
 try:
     import argcomplete
 
-    suppressCompleter = argcomplete.completers.SuppressCompleter
+    suppressCompleter: type[argcomplete.completers.SuppressCompleter] | None = argcomplete.completers.SuppressCompleter
 except Exception:
     suppressCompleter = None
 
@@ -44,7 +44,6 @@ GENERATE_OPTIONS = ["quadlet", "kube", "quadlet/kube"]
 
 
 class ParsedGenerateInput:
-
     def __init__(self, gen_type: str, output_dir: str):
         self.gen_type = gen_type
         self.output_dir = output_dir
@@ -1226,7 +1225,6 @@ def inspect_cli(args):
 
 
 def main():
-
     def eprint(e, exit_code):
         perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)

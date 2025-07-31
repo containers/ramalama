@@ -7,7 +7,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 
 
 class NodeType(Enum):
@@ -298,7 +298,6 @@ def parse_go_template(content: str) -> list[Node]:
             artificial=False,
         )
         root_nodes.append(content_node)
-
     return root_nodes
 
 
@@ -353,7 +352,6 @@ def translate_continue_nodes(root_nodes: list[Node]) -> list[Node]:
         parent_node.children = parent_node.children[:start_index] + [if_node, end_node]
 
     find_continue_nodes(root_nodes)
-
     skip_variable = "$should_continue"
     for continue_node in continue_nodes:
         # find start of loop to initialize continue skip variable
@@ -376,6 +374,7 @@ def translate_continue_nodes(root_nodes: list[Node]) -> list[Node]:
                     children=[],
                     artificial=True,
                 )
+                for_node.next = cast(Node, for_node.next)
                 for_node.next.prev = initial_set_node
                 for_node.next = initial_set_node
                 for_node.children = [initial_set_node] + for_node.children
@@ -553,13 +552,13 @@ def go_to_jinja(content: str) -> str:
             if m is None:
                 return ""
 
-            if node.open_scope_node.type in [NodeType.IF, NodeType.ELIF, NodeType.ELSE]:
+            if node.open_scope_node.type in [NodeType.IF, NodeType.ELIF, NodeType.ELSE]:  # type: ignore
                 return (
                     node.content[: m.start(1)].replace(GO_SYMBOL_OPEN_BRACKETS, JINJA_SYMBOL_OPEN_BRACKETS)
                     + "endif"
                     + node.content[m.end(1) :].replace(GO_SYMBOL_CLOSE_BRACKETS, JINJA_SYMBOL_CLOSE_BRACKETS)
                 )
-            elif node.open_scope_node.type == NodeType.RANGE:
+            elif node.open_scope_node.type == NodeType.RANGE:  # type: ignore
                 loop_vars.pop()
                 if loop_index_vars:
                     loop_index_vars.pop()

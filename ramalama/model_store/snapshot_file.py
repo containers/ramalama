@@ -1,6 +1,6 @@
 import os
 from enum import IntEnum
-from typing import Dict
+from typing import Dict, Sequence
 
 from ramalama.common import generate_sha256
 from ramalama.http_client import download_file
@@ -60,7 +60,7 @@ class LocalSnapshotFile(SnapshotFile):
     ):
         super().__init__(
             "",
-            "",
+            {},
             generate_sha256(content),
             name,
             type,
@@ -77,7 +77,7 @@ class LocalSnapshotFile(SnapshotFile):
         return os.path.relpath(blob_file_path, start=snapshot_dir)
 
 
-def validate_snapshot_files(snapshot_files: list[SnapshotFile]):
+def validate_snapshot_files(snapshot_files: Sequence[SnapshotFile]):
     chat_template_files = []
     mmproj_files = []
     for file in snapshot_files:

@@ -313,6 +313,7 @@ class TestOpanAIChatAPIMessageBuilder:
             assert isinstance(messages[1]["content"], list)
             assert len(messages[1]["content"]) == 1
 
+    @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     def test_builder_load_no_supported_files(self):
         """Test loading directory with no supported files."""
         with tempfile.TemporaryDirectory() as tmp_dir:

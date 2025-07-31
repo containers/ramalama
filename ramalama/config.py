@@ -3,19 +3,19 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, Mapping
+from typing import Any, Literal, Mapping, TypeAlias
 
 from ramalama.common import available
 from ramalama.layered_config import LayeredMixin, deep_merge
 from ramalama.toml_parser import TOMLParser
 
-PathStr = str
+PathStr: TypeAlias = str
 DEFAULT_PORT_RANGE: tuple[int, int] = (8080, 8090)
 DEFAULT_PORT: int = DEFAULT_PORT_RANGE[0]
-DEFAULT_IMAGE = "quay.io/ramalama/ramalama"
-SUPPORTED_ENGINES = Literal["podman", "docker"] | PathStr
-SUPPORTED_RUNTIMES = Literal["llama.cpp", "vllm", "mlx"]
-COLOR_OPTIONS = Literal["auto", "always", "never"]
+DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
+SUPPORTED_ENGINES: TypeAlias = Literal["podman", "docker"] | PathStr
+SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx"]
+COLOR_OPTIONS: TypeAlias = Literal["auto", "always", "never"]
 
 
 def get_default_engine() -> SUPPORTED_ENGINES | None:
@@ -157,7 +157,7 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     if env is None:
         env = os.environ
 
-    config = {}
+    config: dict[str, Any] = {}
     for k, v in env.items():
         if not k.startswith("RAMALAMA"):
             continue

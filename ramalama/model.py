@@ -5,6 +5,7 @@ import shlex
 import socket
 import sys
 import time
+from abc import ABC, abstractmethod
 from typing import Optional
 
 import ramalama.chat as chat
@@ -54,7 +55,6 @@ $(error)s"""
 
 
 class NoRefFileFound(Exception):
-
     def __init__(self, model: str, *args):
         super().__init__(*args)
 
@@ -74,7 +74,10 @@ def trim_model_name(model):
     return model
 
 
-class ModelBase:
+class ModelBase(ABC):
+    model: str
+    type: str
+
     def __not_implemented_error(self, param):
         return NotImplementedError(f"ramalama {param} for '{type(self).__name__}' not implemented")
 
@@ -90,24 +93,31 @@ class ModelBase:
     def push(self, source_model, args):
         raise self.__not_implemented_error("push")
 
+    @abstractmethod
     def remove(self, args):
         raise self.__not_implemented_error("rm")
 
+    @abstractmethod
     def bench(self, args):
         raise self.__not_implemented_error("bench")
 
+    @abstractmethod
     def run(self, args):
         raise self.__not_implemented_error("run")
 
+    @abstractmethod
     def perplexity(self, args):
         raise self.__not_implemented_error("perplexity")
 
+    @abstractmethod
     def serve(self, args):
         raise self.__not_implemented_error("serve")
 
+    @abstractmethod
     def exists(self) -> bool:
         raise self.__not_implemented_error("exists")
 
+    @abstractmethod
     def inspect(self, args):
         raise self.__not_implemented_error("inspect")
 
@@ -115,15 +125,14 @@ class ModelBase:
 class Model(ModelBase):
     """Model super class"""
 
-    model = ""
-    type = "Model"
+    type: str = "Model"
 
-    def __init__(self, model, model_store_path):
+    def __init__(self, model: str, model_store_path: str):
         self.model = model
 
-        split = self.model.rsplit("/", 1)
-        self.directory = split[0] if len(split) > 1 else ""
-        self.filename = split[1] if len(split) > 1 else split[0]
+        split: list[str] = self.model.rsplit("/", 1)
+        self.directory: str = split[0] if len(split) > 1 else ""
+        self.filename: str = split[1] if len(split) > 1 else split[0]
 
         self._model_name: str
         self._model_tag: str
@@ -419,7 +428,7 @@ class Model(ModelBase):
                     chat.chat(args)
                     break
                 else:
-                    logger.debug(f"MLX server not ready, waiting... (attempt {i+1}/{max_retries})")
+                    logger.debug(f"MLX server not ready, waiting... (attempt {i + 1}/{max_retries})")
                     time.sleep(3)
                     continue
 
@@ -428,7 +437,7 @@ class Model(ModelBase):
                     perror(f"Error: Failed to connect to MLX server after {max_retries} attempts: {e}")
                     self._cleanup_server_process(args.pid2kill)
                     raise e
-                logger.debug(f"Connection attempt failed, retrying... (attempt {i+1}/{max_retries}): {e}")
+                logger.debug(f"Connection attempt failed, retrying... (attempt {i + 1}/{max_retries}): {e}")
                 time.sleep(3)
 
         args.initial_connection = False
@@ -685,7 +694,6 @@ class Model(ModelBase):
         return exec_args
 
     def generate_container_config(self, args, exec_args):
-
         # Get the blob paths (src) and mounted paths (dest)
         model_src_path = self._get_entry_model_path(False, False, args.dryrun)
         chat_template_src_path = self._get_chat_template_path(False, False, args.dryrun)
@@ -776,7 +784,7 @@ class Model(ModelBase):
         kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
         kube.generate().write(output_dir)
 
-    def inspect(self, args):
+    def inspect(self, args) -> None:
         self.ensure_model_exists(args)
 
         model_name = self.filename

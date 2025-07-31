@@ -4,7 +4,7 @@ import urllib.error
 from collections import Counter
 from http import HTTPStatus
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 
 import ramalama.model_store.go2jinja as go2jinja
 from ramalama.common import perror, sanitize_filename, verify_checksum
@@ -97,9 +97,12 @@ class ModelStore:
         return RefJSONFile.from_path(ref_file_path)
 
     def update_ref_file(
-        self, model_tag: str, snapshot_hash: str = "", snapshot_files: list[SnapshotFile] = []
+        self, model_tag: str, snapshot_hash: str = "", snapshot_files: Optional[list[SnapshotFile]] = None
     ) -> Optional[RefJSONFile]:
-        ref_file: RefJSONFile = self.get_ref_file(model_tag)
+        if snapshot_files is None:
+            snapshot_files = []
+
+        ref_file: RefJSONFile | None = self.get_ref_file(model_tag)
         if ref_file is None:
             return None
 
@@ -154,9 +157,9 @@ class ModelStore:
         )
 
     def get_cached_files(self, model_tag: str) -> Tuple[str, list[str], bool]:
-        cached_files = []
+        cached_files: list[str] = []
 
-        ref_file: RefJSONFile = self.get_ref_file(model_tag)
+        ref_file: RefJSONFile | None = self.get_ref_file(model_tag)
         if ref_file is None:
             return ("", cached_files, False)
 
@@ -182,8 +185,10 @@ class ModelStore:
         snapshot_directory = self.get_snapshot_directory(snapshot_hash)
         os.makedirs(snapshot_directory, exist_ok=True)
 
-    def _download_snapshot_files(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
-        ref_file = self.get_ref_file(model_tag)
+    def _download_snapshot_files(self, model_tag: str, snapshot_hash: str, snapshot_files: Sequence[SnapshotFile]):
+        ref_file: None | RefJSONFile = self.get_ref_file(model_tag)
+        if ref_file is None:
+            raise ValueError("Cannot download snapshots without a valid ref file.")
 
         for file in snapshot_files:
             dest_path = self.get_blob_file_path(file.hash)
@@ -223,8 +228,8 @@ class ModelStore:
             if file.type == SnapshotFileType.ChatTemplate:
                 chat_template_file_path = self.get_blob_file_path(file.hash)
                 chat_template = ""
-                with open(chat_template_file_path, "r") as file:
-                    chat_template = file.read()
+                with open(chat_template_file_path, "r") as template_file:
+                    chat_template = template_file.read()
 
                 if not go2jinja.is_go_template(chat_template):
                     return
@@ -321,7 +326,7 @@ class ModelStore:
             self.remove_snapshot(model_tag)
             raise ex
 
-    def update_snapshot(self, model_tag: str, snapshot_hash: str, new_snapshot_files: list[SnapshotFile]) -> bool:
+    def update_snapshot(self, model_tag: str, snapshot_hash: str, new_snapshot_files: Sequence[SnapshotFile]) -> bool:
         validate_snapshot_files(new_snapshot_files)
         snapshot_hash = sanitize_filename(snapshot_hash)
 
@@ -363,7 +368,7 @@ class ModelStore:
             for entry in os.listdir(self.refs_directory)
             if os.path.isfile(os.path.join(self.refs_directory, entry))
         ]
-        refs = [self.get_ref_file(tag) for tag in model_tags]
+        refs = [ref for tag in model_tags if (ref := self.get_ref_file(tag))]
 
         blob_refcounts = Counter(file.name for ref in refs for file in ref.files)
 

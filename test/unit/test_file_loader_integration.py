@@ -70,6 +70,7 @@ class TestFileUploadChatIntegration:
             assert "readme.md" in system_message["content"]
             assert "<!--start_document" in system_message["content"]
 
+    @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     @patch('urllib.request.urlopen')
     def test_chat_with_file_input_no_files(self, mock_urlopen):
         """Test chat functionality with input directory containing no supported files."""
@@ -385,6 +386,7 @@ class TestImageUploadChatIntegration:
                 for item in image_msg["content"]
             )
 
+    @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     @patch('urllib.request.urlopen')
     def test_chat_with_image_input_unsupported_image_types(self, mock_urlopen):
         """Test chat functionality with unsupported image file types."""

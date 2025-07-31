@@ -139,12 +139,12 @@ class OllamaRepository:
 
 
 class Ollama(Model):
-    def __init__(self, model, model_store_path):
+    def __init__(self, model, model_store_path) -> None:
         super().__init__(model, model_store_path)
 
         self.type = "Ollama"
 
-    def extract_model_identifiers(self):
+    def extract_model_identifiers(self) -> tuple[str, str, str]:
         model_name, model_tag, model_organization = super().extract_model_identifiers()
 
         # use the ollama default namespace if no model organization has been identified
@@ -152,11 +152,11 @@ class Ollama(Model):
             model_organization = "library"
         return model_name, model_tag, model_organization
 
-    def resolve_model(self):
+    def resolve_model(self) -> str:
         name, tag, organization = self.extract_model_identifiers()
         return f"ollama://{organization}/{name}:{tag}"
 
-    def pull(self, args):
+    def pull(self, args) -> None:
         name, tag, organization = self.extract_model_identifiers()
         _, cached_files, all = self.model_store.get_cached_files(tag)
         if all:

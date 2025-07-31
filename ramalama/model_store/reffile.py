@@ -15,7 +15,7 @@ class RefFile:
     CHAT_TEMPLATE_SUFFIX = "chat"
     MMPROJ_SUFFIX = "mmproj"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.hash: str = ""
         self.filenames: list[str] = []
         self.model_name: str = ""
@@ -133,7 +133,6 @@ def migrate_reffile_to_refjsonfile(ref_file_path: str, snapshot_directory: str) 
 
 
 class StoreFileType(StrEnum):
-
     GGUF_MODEL = "gguf"
     MMPROJ = "mmproj"
     CHAT_TEMPLATE = "chat_template"
@@ -152,7 +151,6 @@ class StoreFileType(StrEnum):
 
 @dataclass
 class StoreFile:
-
     hash: str
     name: str
     type: StoreFileType
@@ -160,7 +158,6 @@ class StoreFile:
 
 @dataclass
 class RefJSONFile:
-
     hash: str
     path: str
     files: list[StoreFile]

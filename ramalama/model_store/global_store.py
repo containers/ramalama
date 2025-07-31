@@ -71,7 +71,7 @@ class GlobalModelStore:
                         last_modified = os.path.getmtime(snapshot_file_path)
                         file_size = os.path.getsize(snapshot_file_path)
                         collected_files.append(
-                            ModelFile(snapshot_file, last_modified, file_size, is_partially_downloaded)
+                            ModelFile(snapshot_file.name, last_modified, file_size, is_partially_downloaded)
                         )
                     models[model_name] = collected_files
 
