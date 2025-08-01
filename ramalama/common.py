@@ -352,7 +352,8 @@ def check_nvidia() -> Literal["cuda"] | None:
 
     configured, unconfigured = find_in_cdi(visible_devices + ["all"])
 
-    if unconfigured and not (configured_has_all := "all" in configured):
+    configured_has_all = "all" in configured
+    if unconfigured and not configured_has_all:
         perror(f"No CDI configuration found for {','.join(unconfigured)}")
         perror("You can use the \"nvidia-ctk cdi generate\" command from the ")
         perror("nvidia-container-toolkit to generate a CDI configuration.")
