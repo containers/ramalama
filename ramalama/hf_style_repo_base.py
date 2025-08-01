@@ -64,7 +64,7 @@ class HFStyleRepository(ABC):
         self.name = name
         self.organization = organization
         self.tag = tag
-        self.headers = {}
+        self.headers: dict = {}
         self.blob_url = None
         self.model_filename = None
         self.model_hash = None

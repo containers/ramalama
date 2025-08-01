@@ -1,8 +1,9 @@
 import copy
-from typing import Callable, Tuple, Union
+from collections.abc import Callable
+from typing import TypeAlias
 from urllib.parse import urlparse
 
-from ramalama.arg_types import StoreArgs
+from ramalama.arg_types import StoreArgType
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
 from ramalama.huggingface import Huggingface
@@ -12,12 +13,14 @@ from ramalama.oci import OCI
 from ramalama.ollama import Ollama
 from ramalama.url import URL
 
+CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope
+
 
 class ModelFactory:
     def __init__(
         self,
         model: str,
-        args: StoreArgs,
+        args: StoreArgType,
         transport: str = "ollama",
         ignore_stderr: bool = False,
     ):
@@ -28,20 +31,20 @@ class ModelFactory:
         self.ignore_stderr = ignore_stderr
         self.container = args.container
 
-        self.model_cls: type[Union[Huggingface, ModelScope, Ollama, OCI, URL]]
-        self.create: Callable[[], Union[Huggingface, ModelScope, Ollama, OCI, URL]]
-        self.model_cls, self.create = self.detect_model_model_type()
+        model_cls, _create = self.detect_model_model_type()
+
+        self.model_cls = model_cls
+        self._create = _create
 
         self.pruned_model = self.prune_model_input()
         self.draft_model = None
+
         if getattr(args, 'model_draft', None):
             dm_args = copy.deepcopy(args)
             dm_args.model_draft = None
             self.draft_model = ModelFactory(args.model_draft, dm_args, ignore_stderr=True).create()
 
-    def detect_model_model_type(
-        self,
-    ) -> Tuple[type[Union[Huggingface, Ollama, OCI, URL]], Callable[[], Union[Huggingface, Ollama, OCI, URL]]]:
+    def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
         for prefix in ["huggingface://", "hf://", "hf.co/"]:
             if self.model.startswith(prefix):
                 return Huggingface, self.create_huggingface
@@ -89,6 +92,9 @@ class ModelFactory:
             if self.model.startswith(t + "://"):
                 raise ValueError(f"{self.model} invalid: Only OCI Model types supported")
 
+    def create(self) -> CLASS_MODEL_TYPES:
+        return self._create()
+
     def create_huggingface(self) -> Huggingface:
         model = Huggingface(self.pruned_model, self.store_path)
         model.draft_model = self.draft_model
@@ -108,7 +114,11 @@ class ModelFactory:
         if not self.container:
             raise ValueError("OCI containers cannot be used with the --nocontainer option.")
 
+        if self.engine is None:
+            raise ValueError("Constructing an OCI model factory requires an engine value")
+
         self.validate_oci_model_input()
+
         model = OCI(self.pruned_model, self.store_path, self.engine, self.ignore_stderr)
         model.draft_model = self.draft_model
         return model
@@ -119,13 +129,13 @@ class ModelFactory:
         return model
 
 
-def New(name, args, transport: str = None) -> Union[Huggingface | ModelScope | Ollama | OCI | URL]:
+def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
     if transport is None:
         transport = CONFIG.transport
     return ModelFactory(name, args, transport=transport).create()
 
 
-def Serve(name, args):
+def Serve(name, args) -> None:
     model = New(name, args)
     try:
         model.serve(args)

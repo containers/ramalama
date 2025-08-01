@@ -23,7 +23,7 @@ class BaseFileManager(ABC):
         return loader
 
     @abstractmethod
-    def load(self):
+    def load(self, *args, **kwargs):
         pass
 
     @classmethod
@@ -121,12 +121,11 @@ class OpanAIChatAPIMessageBuilder:
         if unsupported_files:
             unsupported_files_warning(unsupported_files, list(self.supported_extensions()))
 
-        messages = []
+        messages: list[dict] = []
         if text_files:
             messages.append({"role": "system", "content": self.text_manager.load(text_files)})
         if image_files:
-            message = {"role": "system", "content": []}
-            for content in self.image_manager.load(image_files):
-                message['content'].append({"type": "image_url", "image_url": {"url": content}})
+            content = [{"type": "image_url", "image_url": {"url": c}} for c in self.image_manager.load(image_files)]
+            message = {"role": "system", "content": content}
             messages.append(message)
         return messages

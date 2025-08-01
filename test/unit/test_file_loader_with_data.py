@@ -182,6 +182,7 @@ class TestFileUploadWithDataFiles:
             assert "sample.md" in content
             assert "sample.json" in content
 
+    @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     def test_unsupported_file_handling(self, data_dir):
         """Test that unsupported files are handled correctly."""
 
@@ -310,6 +311,7 @@ class TestImageUploadWithDataFiles:
             assert all("data:image/" in item["image_url"]["url"] for item in messages[0]["content"])
             assert all("base64," in item["image_url"]["url"] for item in messages[0]["content"])
 
+    @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     def test_image_unsupported_file_handling(self, data_dir):
         """Test that unsupported image files are handled correctly."""
         with tempfile.TemporaryDirectory() as tmp_dir:

@@ -130,10 +130,11 @@ def list_models(args: EngineArgType):
 
 
 class OCI(Model):
-    def __init__(self, model, model_store_path, conman, ignore_stderr=False):
+    type = "OCI"
+
+    def __init__(self, model: str, model_store_path: str, conman: str, ignore_stderr: bool = False):
         super().__init__(model, model_store_path)
 
-        self.type = "OCI"
         if not conman:
             raise ValueError("RamaLama OCI Images requires a container engine")
 

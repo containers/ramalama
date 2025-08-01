@@ -96,7 +96,7 @@ class RamaLamaShell(cmd.Cmd):
             operational_args = ChatOperationalArgs()
 
         super().__init__()
-        self.conversation_history = []
+        self.conversation_history: list[dict] = []
         self.args = args
         self.request_in_process = False
         self.prompt = args.prefix
