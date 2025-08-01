@@ -1,0 +1,11 @@
+FROM registry.fedoraproject.org/fedora:42
+
+COPY container-images/stable-diffusion/entrypoint.sh /usr/bin/entrypoint.sh
+COPY container-images/scripts/build_stable_diffusion.sh /tmp/
+
+WORKDIR /tmp
+RUN /tmp/build_stable_diffusion.sh stable-diffusion && \
+    chmod +x /usr/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+CMD ["sd"] 
