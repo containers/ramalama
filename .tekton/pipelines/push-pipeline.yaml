@@ -178,6 +178,7 @@ spec:
       value: $(params.parent-image)
     taskRef:
       name: wait-for-image
+    timeout: 10h
     when:
     - input: $(params.parent-image)
       operator: notin
@@ -229,6 +230,7 @@ spec:
       - name: kind
         value: task
       resolver: bundles
+    timeout: 10h
     when:
     - input: $(tasks.init.results.build)
       operator: in
