@@ -70,7 +70,10 @@ class Quadlet:
             if not getattr(self.args, "nocapdrop", False):
                 quadlet_file.add("Container", "DropCapability", "all")
                 quadlet_file.add("Container", "NoNewPrivileges", "true")
-
+        if add_to_units := getattr(self.args, "add_to_unit", None):
+            for unit in add_to_units:
+                section, key, value = unit.split(":", 2)
+                quadlet_file.add(section, key, value)
         self._gen_chat_template_volume(quadlet_file)
         self._gen_mmproj_volume(quadlet_file)
         self._gen_env(quadlet_file)
