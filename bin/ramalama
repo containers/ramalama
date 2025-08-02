@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 
 
 def main():
     if not sys.stdout.isatty():
         sys.stdout.reconfigure(line_buffering=True)
+
+    if sys.platform != 'win32':
+        # default TMPDIR environment to /var/tmp on non Windows platforms
+        os.environ["TMPDIR"] = os.getenv("TMPDIR", "/var/tmp")
 
     sys.path.insert(0, './')
     try:
