@@ -310,64 +310,7 @@ function clean_setup() {
     if [[ "${_RAMALAMA_TEST_OPTS}" == "--nocontainer" ]]; then
 	return
     fi
-    local actions=(
-        "pod rm -t 0 --all --force --ignore"
-            "rm -t 0 --all --force --ignore"
-        "network prune --force"
-        "volume rm -a -f"
-    )
-    for action in "${actions[@]}"; do
-        _run_podman_quiet $action
-
-        # The -f commands should never exit nonzero, but if they do we want
-        # to know about it.
-        #   FIXME: someday: also test for [[ -n "$output" ]] - can't do this
-        #   yet because too many tests don't clean up their containers
-        if [[ $status -ne 0 ]]; then
-            echo "# [teardown] $_LOG_PROMPT podman $action" >&3
-            for line in "${lines[*]}"; do
-                echo "# $line" >&3
-            done
-
-            # Special case for timeout: check for locks (#18514)
-            if [[ $status -eq 124 ]]; then
-                echo "# [teardown] $_LOG_PROMPT podman system locks" >&3
-                run $PODMAN system locks
-                for line in "${lines[*]}"; do
-                    echo "# $line" >&3
-                done
-            fi
-        fi
-    done
-
-    # ...including external (buildah) ones
-    _run_podman_quiet ps --all --external --format '{{.ID}} {{.Names}}'
-    for line in "${lines[@]}"; do
-        set $line
-        echo "# setup(): removing stray external container $1 ($2)" >&3
-        run_podman '?' rm -f $1
-        if [[ $status -ne 0 ]]; then
-            echo "# [setup] $_LOG_PROMPT podman rm -f $1" >&3
-            for errline in "${lines[@]}"; do
-                echo "# $errline" >&3
-            done
-        fi
-    done
-
-    # Load (create, actually) the pause image. This way, all pod tests will
-    # have it available. Without this, pod tests run in parallel will leave
-    # behind <none>:<none> images.
-    # FIXME: only do this when running parallel! Otherwise, we may break
-    #        test expectations.
-    #        SUB-FIXME: there's no actual way to tell if we're running bats
-    #                   in parallel (see bats-core#998). Use undocumented hack.
-    # FIXME: #23292 -- this should not be necessary.
-    if [[ -n "$BATS_SEMAPHORE_DIR" ]]; then
-        run_podman pod create mypod
-        run_podman pod rm mypod
-        # And now, we have a pause image, and each test does not
-        # need to build their own.
-    fi
+    # We don't want to wipe clean podman content.
 }
 
 # END   setup/teardown tools
