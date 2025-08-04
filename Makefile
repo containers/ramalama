@@ -144,11 +144,14 @@ ifeq ($(OS),Linux)
 	hack/xref-helpmsgs-manpages
 endif
 
-.PHONY: pypi
-pypi:   clean
+.PHONY: pypi-build
+pypi-build:   clean
 	make docs
 	python3 -m build --sdist
 	python3 -m build --wheel
+
+.PHONY: pypi
+pypi: pypi-build
 	python3 -m twine upload dist/*
 
 .PHONY: bats
