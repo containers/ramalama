@@ -49,6 +49,10 @@ case ${1} in
 	podman run --pull=never --rm "${REPO}/$1" llama -h
 	release "$1"
 	;;
+    stable-diffusion)
+	podman run --pull=never --rm "${REPO}/$1" sd -h
+	release "$1"
+	;;
     *)
 	podman run --pull=never --rm "${REPO}/$1" ls -l /usr/bin/llama-server
 	podman run --pull=never --rm "${REPO}/$1" ls -l /usr/bin/llama-run
