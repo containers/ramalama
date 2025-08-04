@@ -1,7 +1,7 @@
 %global pypi_name ramalama
 %global forgeurl  https://github.com/containers/%{pypi_name}
 # see ramalama/version.py
-%global version0  0.11.2
+%global version0  0.11.3
 %forgemeta
 
 %global summary   Command line tool for working with AI LLM models
@@ -34,7 +34,7 @@ BuildRequires:    python3-pytest
 BuildRequires:    mailcap
 
 Provides: python3-ramalama = %{version}-%{release}
-Obsoletes: python3-ramalama < 0.11.2-1
+Obsoletes: python3-ramalama < 0.11.3-1
 
 Requires: podman
 
