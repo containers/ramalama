@@ -22,7 +22,7 @@ load setup_suite
     run_ramalama pull ollama://smollm:360m
     run_ramalama list
     is "$output" ".*ollama://library/smollm:360m" "image was actually pulled locally"
-    run_ramalama rm ollama://smollm:135m ollama://smollm:360m
+    run_ramalama rm https://ollama.com/library/smollm:135m ollama://smollm:360m
 
     random_image_name=i_$(safename)
     run_ramalama 1 -q pull ${random_image_name}
