@@ -13,13 +13,14 @@ spec:
     description: VM platforms on which to run test commands
     type: array
     default:
-    - linux-c8xlarge/amd64
-    - linux-c8xlarge/arm64
+    - linux-m4xlarge/amd64
+    - linux-m4xlarge/arm64
+    - linux-g64xlarge/amd64
   - name: commands
     description: Test commands to run
     type: array
     default:
-    - make bats
+    - bash -c "bin/ramalama info && make bats"
   - name: git-url
     description: URL of the Git repository containing pipeline and task definitions
     default: https://github.com/containers/ramalama.git
@@ -64,7 +65,9 @@ spec:
       value: $(tasks.init.results.bats-image)
     - name: envs
       value:
-      - RAMALAMA_IMAGE=$(tasks.init.results.ramalama-image)
+      - RAMALAMA_DEFAULT_IMAGE="$(tasks.init.results.ramalama-image)"
+      - >-
+        RAMALAMA_IMAGES='{"CUDA_VISIBLE_DEVICES": "$(tasks.init.results.cuda-image)"}'
     taskRef:
       resolver: git
       params:

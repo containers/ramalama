@@ -88,12 +88,23 @@ spec:
 
       cat > scripts/test.sh <<SCRIPTEOF
       #!/bin/bash -ex
+      EXTRA_ARGS=()
+      if [ -f /etc/cdi/nvidia.yaml ]; then
+        echo "Found NVIDIA config, enabling CDI"
+        EXTRA_ARGS+=("--device" "nvidia.com/gpu=all")
+        EXTRA_ARGS+=("--device" "/dev/dri")
+        EXTRA_ARGS+=("--volume" "/etc/cdi:/etc/cdi")
+        if [ -x /usr/bin/nvidia-smi ]; then
+          nvidia-smi -L
+        fi
+      fi
       podman run \
       --userns=keep-id \
       --security-opt label=disable \
       --security-opt unmask=/proc/* \
       --device /dev/net/tun \
       --device /dev/fuse \
+      \${EXTRA_ARGS[*]} \
       ${PODMAN_ENV[*]} \
       $TEST_IMAGE $TEST_CMD
       SCRIPTEOF
