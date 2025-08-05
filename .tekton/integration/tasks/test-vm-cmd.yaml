@@ -88,12 +88,37 @@ spec:
 
       cat > scripts/test.sh <<SCRIPTEOF
       #!/bin/bash -ex
+      EXTRA_ARGS=()
+      if [ -f /etc/cdi/nvidia.yaml ]; then
+        echo "Found NVIDIA config, enabling CDI"
+        EXTRA_ARGS+=("--device" "nvidia.com/gpu=all")
+        EXTRA_ARGS+=("-v" "/dev/dri:/dev/dri")
+        if [ -x /usr/bin/nvidia-smi ]; then
+          nvidia-smi -L
+        fi
+        curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.47.2/yq_linux_amd64.tar.gz | tar -xzv
+        # Delete the CDI hook which mounts /proc/driver/nvidia/params into the container,
+        # preventing mounting of a new /proc when running podman-in-podman.
+        ./yq_linux_amd64 -i --indent=4 \
+          'del(.containerEdits.hooks[] | select(.args[] == "disable-device-node-modification"))' \
+          /etc/cdi/nvidia.yaml
+        # Some files are mounted from /usr/share/vulkan into /etc/vulkan in the outer container.
+        # Remap their source paths to /etc/vulkan so they can be found by podman-in-podman.
+        sed -e 's|/usr/share/vulkan|/etc/vulkan|' /etc/cdi/nvidia.yaml > /tmp/nvidia.yaml
+        # Delete all hooks from the podman-in-podman CDI config, they are unnecessary and fail because
+        # the nested container is not running as root.
+        ./yq_linux_amd64 -i --indent=4 \
+          'del(.containerEdits.hooks[]) | del(.devices[].containerEdits.hooks[])' \
+          /tmp/nvidia.yaml
+        EXTRA_ARGS+=("-v" "/tmp/nvidia.yaml:/etc/cdi/nvidia.yaml")
+      fi
       podman run \
       --userns=keep-id \
       --security-opt label=disable \
       --security-opt unmask=/proc/* \
       --device /dev/net/tun \
       -v /tmp \
+      \${EXTRA_ARGS[*]} \
       ${PODMAN_ENV[*]} \
       $TEST_IMAGE $TEST_CMD
       SCRIPTEOF

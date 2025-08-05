@@ -25,6 +25,8 @@ spec:
     description: URI of the ramalama image included in the snapshot
   - name: stack-image
     description: URI of the llama-stack image included in the snapshot
+  - name: cuda-image
+    description: URI of the cuda image included in the snapshot
   - name: TEST_OUTPUT
     description: Test result in json format
   steps:
@@ -59,6 +61,8 @@ spec:
       value: $(results.ramalama-image.path)
     - name: RESULTS_STACK_IMAGE_PATH
       value: $(results.stack-image.path)
+    - name: RESULTS_CUDA_IMAGE_PATH
+      value: $(results.cuda-image.path)
     - name: RESULTS_TEST_OUTPUT_PATH
       value: $(results.TEST_OUTPUT.path)
     script: |
@@ -84,6 +88,8 @@ spec:
       component_image ramalama | tee "$RESULTS_RAMALAMA_IMAGE_PATH"
       echo
       component_image llama-stack | tee "$RESULTS_STACK_IMAGE_PATH"
+      echo
+      component_image cuda | tee "$RESULTS_CUDA_IMAGE_PATH"
       echo
       jq -jnc '{result: "SUCCESS", timestamp: now | todateiso8601, failures: 0, successes: 1, warnings: 0}' | tee "$RESULTS_TEST_OUTPUT_PATH"
       echo
