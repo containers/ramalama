@@ -28,7 +28,7 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-c4xlarge/amd64
+    - linux-d160-c8xlarge/amd64
   - name: dockerfile
     value: container-images/musa/Containerfile
   pipelineRef:

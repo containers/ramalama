@@ -26,10 +26,6 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/asahi-llama-server:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
-  - name: build-platforms
-    value:
-    - linux-m2xlarge/amd64
-    - linux-m2xlarge/arm64
   - name: dockerfile
     value: container-images/common/Containerfile.entrypoint
   - name: parent-image

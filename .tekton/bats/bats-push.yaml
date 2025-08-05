@@ -23,10 +23,6 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/redhat-user-workloads/ramalama-tenant/bats:{{revision}}
-  - name: build-platforms
-    value:
-    - linux-c4xlarge/amd64
-    - linux-c4xlarge/arm64
   - name: dockerfile
     value: container-images/bats/Containerfile
   pipelineRef:

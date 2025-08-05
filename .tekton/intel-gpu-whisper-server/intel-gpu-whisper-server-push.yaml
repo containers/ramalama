@@ -25,7 +25,7 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/intel-gpu-whisper-server:{{revision}}
   - name: build-platforms
     value:
-    - linux-m2xlarge/amd64
+    - linux-d160-c8xlarge/amd64
   - name: dockerfile
     value: container-images/common/Containerfile.entrypoint
   - name: parent-image

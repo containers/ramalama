@@ -28,7 +28,7 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-fast/amd64
+    - linux-d160-m7-8xlarge/amd64
   - name: dockerfile
     value: container-images/rocm/Containerfile
   pipelineRef:

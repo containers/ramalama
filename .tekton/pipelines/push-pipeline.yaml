@@ -67,7 +67,8 @@ spec:
     name: privileged-nested
     type: string
   - default:
-    - linux-c4xlarge/amd64
+    - linux-d160-c8xlarge/amd64
+    - linux-d160-c8xlarge/arm64
     description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
     name: build-platforms
     type: array

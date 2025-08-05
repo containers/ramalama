@@ -26,9 +26,6 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama-vllm-rag:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
-  - name: build-platforms
-    value:
-    - linux-d160-c8xlarge/amd64
   - name: dockerfile
     value: container-images/common/Containerfile.rag
   - name: parent-image
