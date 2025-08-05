@@ -1,5 +1,7 @@
 import re
 
+from ramalama.logger import logger
+
 
 class TOMLParser:
     def __init__(self):
@@ -19,8 +21,10 @@ class TOMLParser:
                 key, value = line.split("=", 1)
                 key = key.strip()
                 value = self._parse_value(value.strip())
+                # We are parsing multiple TOML files,
+                # if there are duplicate keys from previous files, we just overwrite them
                 if key in current_section:
-                    raise ValueError(f"Duplicate key found: {key}")
+                    logger.debug(f"Duplicate key found: {key}")
                 current_section[key] = value
             else:
                 raise ValueError(f"Invalid TOML line: {line}")

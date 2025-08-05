@@ -29,7 +29,9 @@ When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAM
 
 Note: On MacOS systems that use Podman for containers, configure the Podman machine to use the `libkrun` machine provider. The `libkrun` provider enables containers within the Podman Machine access to the Mac's GPU. See **[ramalama-macos(7)](ramalama-macos.7.md)** for further information.
 
-Note: On systems with NVIDIA GPUs, see **[ramalama-cuda(7)](ramalama-cuda.7.md)** to correctly configure the host system. Default settings for flags are defined in **[ramalama.conf(5)](ramalama.conf.5.md)**.
+Note: On systems with NVIDIA GPUs, see **[ramalama-cuda(7)](ramalama-cuda.7.md)** to correctly configure the host system.
+
+RamaLama CLI defaults can be modified via ramalama.conf files. Default settings for flags are defined in **[ramalama.conf(5)](ramalama.conf.5.md)**.
 
 ## SECURITY
 
@@ -154,7 +156,7 @@ The default can be overridden in the ramalama.conf file.
 
 ## CONFIGURATION FILES
 
-**ramalama.conf** (`/usr/share/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf`, `$HOME/.config/ramalama/ramalama.conf`)
+**ramalama.conf** (`/usr/share/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf.d/*.conf`, `$HOME/.config/ramalama/ramalama.conf`, `$HOME/.config/ramalama/ramalama.conf.d/*.conf`)
 
 RamaLama has builtin defaults for command line options. These defaults can be overridden using the ramalama.conf configuration files.
 

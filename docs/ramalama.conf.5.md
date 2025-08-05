@@ -5,7 +5,7 @@ ramalama.conf - These configuration files specifies default
 configuration options and command-line flags for RamaLama.
 
 # DESCRIPTION
-RamaLama reads the ramalama.conf file, if it exists
+RamaLama reads all ramalama.conf files, if they exists
 and modify the defaults for running RamaLama on the host. ramalama.conf uses
 a TOML format that can be easily modified and versioned.
 
@@ -29,8 +29,8 @@ For user specific configuration it reads
 | __$HOME/.config/ramalama/ramalama.conf__ | `$XDG_CONFIG_HOME` not set |
 | __$HOME/.config/ramalama/ramalama.conf.d/\*.conf__ | `$XDG_CONFIG_HOME` not set |
 
-Fields specified in ramalama conf override the default options, as well as
-options in previously read ramalama.conf files.
+Fields specified in ramalama conf files override the default options, as well as
+options in previously read ramalama conf files.
 
 Config files in the `.d` directories, are added in alpha numeric sorted order and must end in `.conf`.
 
