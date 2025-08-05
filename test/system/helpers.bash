@@ -282,5 +282,12 @@ function skip_if_no_ollama() {
     fi
 }
 
+function skip_if_no_llama_bench() {
+    if ! command -v llama-bench 2>&1 >/dev/null
+    then
+        skip "Not supported without llama-bench"
+    fi
+}
+
 # END   miscellaneous tools
 ###############################################################################
