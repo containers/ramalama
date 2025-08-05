@@ -26,10 +26,6 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/stable-diffusion:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
-  - name: build-platforms
-    value:
-    - linux-c8xlarge/amd64
-    - linux-c8xlarge/arm64
   - name: dockerfile
     value: container-images/stable-diffusion/Containerfile
   pipelineRef:

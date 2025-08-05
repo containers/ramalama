@@ -26,10 +26,6 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/llama-stack:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
-  - name: build-platforms
-    value:
-    - linux-c4xlarge/amd64
-    - linux-c4xlarge/arm64
   - name: dockerfile
     value: container-images/llama-stack/Containerfile
   pipelineRef:
