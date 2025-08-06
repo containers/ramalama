@@ -205,7 +205,8 @@ RUN ln -s /models/{model_name}-{args.gguf}.gguf model.file
 RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
 """
         else:
-            content += f"RUN mkdir -p /models; cd /models; ln -s {model_name} model.file\n"
+            name = ref_file.model_files[0].name if ref_file.model_files else model_name
+            content += f"""RUN mkdir -p /models; cd /models; ln -s {model_name}/{name} model.file\n"""
 
         if not is_car:
             content += "\nFROM scratch\n"

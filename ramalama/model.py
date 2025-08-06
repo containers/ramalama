@@ -344,6 +344,9 @@ class Model(ModelBase):
             return
 
         if self.model_type == 'oci':
+            if not self.engine.use_podman:
+                raise NotImplementedError("Serving OCI models via image mount is only supported with Podman.")
+            self.engine.add([f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"])
             return None
 
         ref_file = self.model_store.get_ref_file(self.model_tag)
