@@ -3,6 +3,7 @@ import platform
 import random
 import shlex
 import socket
+import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
@@ -23,7 +24,7 @@ from ramalama.common import (
 )
 from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
 from ramalama.console import should_colorize
-from ramalama.engine import Engine, dry_run
+from ramalama.engine import Engine, dry_run, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.logger import logger
 from ramalama.model_inspect.base_info import ModelInfoBase
@@ -295,6 +296,12 @@ class Model(ModelBase):
                 "--name",
                 name,
                 "--env=HOME=/tmp",
+                "--health-cmd",
+                f"curl --fail http://127.0.0.1:{args.port}/models",
+                "--health-interval=3s",
+                "--health-retries=10",
+                "--health-timeout=3s",
+                "--health-start-period=3s",
                 "--init",
             ]
         )
@@ -380,6 +387,7 @@ class Model(ModelBase):
 
         args.noout = not args.debug
 
+        self.ensure_model_exists(args)
         pid = os.fork()
         if pid == 0:
             # Child process - start the server
@@ -418,6 +426,14 @@ class Model(ModelBase):
         _, status = os.waitpid(server_pid, 0)
         if status != 0:
             raise ValueError(f"Failed to serve model {self.model_name}, for ramalama run command")
+
+        if not args.dryrun and args.engine == "podman":
+            try:
+                wait_for_healthy(args)
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                logger.error(f"Failed to serve model {self.model_name}, for ramalama run command")
+                logger.error(f"Try `ramalama serve {self.model_name}` for failure logs")
+                raise
 
         args.ignore = getattr(args, "dryrun", False)
         for i in range(6):
