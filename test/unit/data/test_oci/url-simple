@@ -1,5 +1,5 @@
 FROM quay.io/ramalama/ramalama-rag:latest AS builder
-RUN mkdir -p /models; cd /models; ln -s aimodel model.file
+RUN mkdir -p /models; cd /models; ln -s aimodel/aimodel model.file
 
 FROM scratch
 COPY --from=builder /models /models
