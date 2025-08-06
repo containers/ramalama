@@ -277,6 +277,7 @@ def configure_subcommands(parser):
     serve_parser(subparsers)
     stop_parser(subparsers)
     version_parser(subparsers)
+    daemon_parser(subparsers)
 
 
 def parse_arguments(parser):
@@ -1108,6 +1109,52 @@ def stop_container(args):
     args.format = "{{ .Names }}"
     for i in engine.containers(args):
         engine.stop_container(args, i)
+
+
+def daemon_parser(subparsers):
+    parser = subparsers.add_parser("daemon", help="daemon operations")
+    parser.set_defaults(func=daemon_setup_cli)
+
+    daemon_parsers = parser.add_subparsers(dest="daemon_command")
+
+    run_parser = daemon_parsers.add_parser("setup")
+    run_parser.set_defaults(func=daemon_setup_cli)
+
+    cli_parser = daemon_parsers.add_parser("run")
+    cli_parser.set_defaults(func=daemon_run_cli)
+    cli_parser.add_argument("--store", default=CONFIG.store, type=abspath, help="path to store models")
+
+
+def daemon_setup_cli(args):
+    from ramalama.common import exec_cmd
+
+    exec_cmd(
+        [
+            "podman",
+            "run",
+            "--pull",
+            "never",
+            "-i",
+            "-t",
+            "-d",
+            "-p",
+            "8080:8080",
+            "-v",
+            f"{CONFIG.store}:/ramalama/models",
+            "quay.io/ramalama/rocm:latest",
+            "ramalama",
+            "daemon",
+            "run",
+            "--store",
+            "/ramalama/models",
+        ],
+    )
+
+
+def daemon_run_cli(args):
+    from ramalama.daemon.daemon import run
+
+    run(model_store_path=args.store)
 
 
 def version_parser(subparsers):

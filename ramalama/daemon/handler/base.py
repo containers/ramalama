@@ -4,6 +4,9 @@ from abc import ABC, abstractmethod
 
 class APIHandler(ABC):
 
+    def __init__(self):
+        super().__init__()
+
     @abstractmethod
     def handle_get(self, handler: http.server.SimpleHTTPRequestHandler):
         raise NotImplementedError("Not implemented")
