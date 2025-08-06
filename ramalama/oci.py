@@ -243,6 +243,9 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             c.write(content)
             c.flush()
 
+        # ensure base image is available
+        run_cmd([self.conman, "pull", args.carimage])
+
         build_cmd = [
             self.conman,
             "build",
