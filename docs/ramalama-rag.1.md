@@ -8,7 +8,7 @@ ramalama\-rag - generate and convert Retrieval Augmented Generation (RAG) data f
 
 ## DESCRIPTION
 Generate RAG data from provided documents and convert into an OCI Image. This command uses a specific container image containing the docling
-tool to convert the specified content into a RAG vector database. If the image does not exists locally RamaLama will pull the image
+tool to convert the specified content into a RAG vector database. If the image does not exist locally, RamaLama will pull the image
 down and launch a container to process the data.
 
 NOTE: this command does not work without a container engine.
