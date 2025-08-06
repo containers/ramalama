@@ -1,4 +1,4 @@
-FROM quay.io/ramalama/ramalama-rag:latest as builder
+FROM quay.io/ramalama/ramalama-rag:latest AS builder
 RUN mkdir -p /models; cd /models; ln -s aimodel model.file
 
 FROM scratch

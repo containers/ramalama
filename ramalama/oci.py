@@ -188,7 +188,7 @@ class OCI(Model):
         if is_car:
             content += f"FROM {args.carimage}\n"
         else:
-            content += f"FROM {args.carimage} as builder\n"
+            content += f"FROM {args.carimage} AS builder\n"
 
         if has_gguf:
             content += (
