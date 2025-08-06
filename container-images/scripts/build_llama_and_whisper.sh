@@ -312,7 +312,7 @@ main() {
 
   install_entrypoints
   setup_build_env
-  if [ "$uname_m" != "s390x" ] && [ "$containerfile" != "rocm-ubi" ]; then
+  if [ "$uname_m" != "s390x" ]; then
     clone_and_build_whisper_cpp
   fi
 
