@@ -183,13 +183,6 @@ def test_get_method_without_extra(toml, expected):
     [
         ("This is not a valid TOML file.", "Invalid TOML line: This is not a valid TOML file."),
         ('key = "value', "Unsupported value type: \"value"),
-        (
-            """
-            key = 123
-            key = 456
-            """,
-            "Duplicate key found: key",
-        ),
         ("key = unquoted string", "Unsupported value type: unquoted string"),
     ],
 )

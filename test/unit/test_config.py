@@ -198,7 +198,7 @@ class TestLoadEnvConfig:
         """Test loading nested configuration via double underscores."""
         env = {
             "RAMALAMA_USER__NO_MISSING_GPU_PROMPT": "true",
-            "RAMALAMA_SETTINGS__CONFIG_FILE": "/path/to/config",
+            "RAMALAMA_SETTINGS__CONFIG_FILES": ["/path/to/config"],
             "RAMALAMA_IMAGES": '{"CUDA_VISIBLE_DEVICES": "custom/cuda:latest"}',
         }
 
@@ -206,7 +206,7 @@ class TestLoadEnvConfig:
 
         expected = {
             "user": {"no_missing_gpu_prompt": "true"},
-            "settings": {"config_file": "/path/to/config"},
+            "settings": {"config_files": ["/path/to/config"]},
             "images": {"CUDA_VISIBLE_DEVICES": "custom/cuda:latest"},
         }
 
@@ -431,7 +431,7 @@ class TestConfigIntegration:
         """Test that nested environment variables are properly loaded and merged."""
         env = {
             "RAMALAMA_USER__NO_MISSING_GPU_PROMPT": "true",
-            "RAMALAMA_SETTINGS__CONFIG_FILE": "/custom/config.toml",
+            "RAMALAMA_SETTINGS__CONFIG_FILES": ["/custom/config.toml"],
             "RAMALAMA_IMAGES": (
                 '{"CUDA_VISIBLE_DEVICES": "custom/cuda:latest", "HIP_VISIBLE_DEVICES": "custom/rocm:latest"}'
             ),
@@ -441,7 +441,7 @@ class TestConfigIntegration:
             cfg = default_config(env)
 
             assert cfg.user.no_missing_gpu_prompt is True
-            assert cfg.settings.config_file == "/custom/config.toml"
+            assert cfg.settings.config_files == ["/custom/config.toml"]
             assert cfg.images["CUDA_VISIBLE_DEVICES"] == "custom/cuda:latest"
             assert cfg.images["HIP_VISIBLE_DEVICES"] == "custom/rocm:latest"
 

@@ -26,7 +26,7 @@ import ramalama.oci
 from ramalama import engine
 from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
-from ramalama.config import CONFIG, coerce_to_bool
+from ramalama.config import CONFIG, coerce_to_bool, load_file_config
 from ramalama.logger import configure_logger, logger
 from ramalama.model import MODEL_TYPES, trim_model_name
 from ramalama.model_factory import ModelFactory, New
@@ -528,6 +528,7 @@ def _list_models(args):
 
 def info_cli(args):
     info = {
+        "Config": load_file_config(),
         "Engine": {
             "Name": args.engine,
         },
