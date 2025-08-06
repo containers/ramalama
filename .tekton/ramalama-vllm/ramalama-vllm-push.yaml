@@ -25,7 +25,8 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama-vllm:{{revision}}
   - name: build-platforms
     value:
-    - linux-c4xlarge/amd64
+    - linux-c8xlarge/amd64
+    - linux-c8xlarge/arm64
   - name: dockerfile
     value: container-images/ramalama-vllm/Containerfile
   - name: parent-image
@@ -36,7 +37,8 @@ spec:
   pipelineRef:
     name: push-pipeline
   timeouts:
-    pipeline: 6h
+    pipeline: 18h
+    finally: 15m
   workspaces:
   - name: git-auth
     secret:

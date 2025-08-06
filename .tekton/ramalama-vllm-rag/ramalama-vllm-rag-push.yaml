@@ -26,6 +26,7 @@ spec:
   - name: build-platforms
     value:
     - linux-d160-c8xlarge/amd64
+    - linux-d160-c8xlarge/arm64
   - name: dockerfile
     value: container-images/common/Containerfile.rag
   - name: parent-image
@@ -37,7 +38,8 @@ spec:
   pipelineRef:
     name: push-pipeline
   timeouts:
-    pipeline: 6h
+    pipeline: 18h
+    finally: 15m
   workspaces:
   - name: git-auth
     secret:

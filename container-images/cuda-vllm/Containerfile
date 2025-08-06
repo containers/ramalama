@@ -1,3 +1,4 @@
+ARG PARENT=quay.io/ramalama/cuda:latest
 ARG CUDA_VERSION=12.8.1
 # Base image with CUDA for compilation
 FROM docker.io/nvidia/cuda:${CUDA_VERSION}-devel-ubi9 AS builder
@@ -13,7 +14,6 @@ RUN container-images/scripts/build-vllm.sh "cuda"
 WORKDIR /
 
 # Final runtime image
-FROM quay.io/ramalama/cuda:latest
+FROM $PARENT
 
 COPY --from=builder /opt /opt
-
