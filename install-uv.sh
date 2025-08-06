@@ -1960,7 +1960,7 @@ verify_checksum() {
             local _test_blake2s
             _test_blake2s="$(printf "can do blake2s" | b2sum -a blake2s | awk '{printf $1}')" || _test_blake2s=""
 
-            if [ "X$_test_blake2s" = "X$_well_known_blake2s_checksum" ]; then
+            if [ "$_test_blake2s" = "$_well_known_blake2s_checksum" ]; then
                 _calculated_checksum="$(b2sum -a blake2s "$_file" | awk '{printf $1}')" || _calculated_checksum=""
             else
                 say "skipping blake2s checksum verification (installed b2sum doesn't support blake2s)"

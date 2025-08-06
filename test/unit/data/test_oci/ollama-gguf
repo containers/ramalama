@@ -1,4 +1,4 @@
-FROM quay.io/ramalama/ramalama-rag:latest as builder
+FROM quay.io/ramalama/ramalama-rag:latest AS builder
 RUN mkdir -p /models/tinyllama; cd /models; ln -s tinyllama-Q3_K_S.gguf model.file
 COPY sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816 /models/tinyllama/tinyllama
 COPY sha256-6331358be52a6ebc2fd0755a51ad1175734fd17a628ab5ea6897109396245362 /models/tinyllama/config.json

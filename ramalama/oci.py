@@ -188,7 +188,7 @@ class OCI(Model):
         if is_car:
             content += f"FROM {args.carimage}\n"
         else:
-            content += f"FROM {args.carimage} as builder\n"
+            content += f"FROM {args.carimage} AS builder\n"
 
         if has_gguf:
             content += (
@@ -242,6 +242,9 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         with open(containerfile.name, 'w') as c:
             c.write(content)
             c.flush()
+
+        # ensure base image is available
+        run_cmd([self.conman, "pull", args.carimage])
 
         build_cmd = [
             self.conman,
