@@ -18,7 +18,7 @@ load helpers
     run_ramalama -q version
     is "$output" "$version"
 
-    unset RAMALAMA_IMAGE
+    unset RAMALAMA_IMAGE RAMALAMA_IMAGES RAMALAMA_DEFAULT_IMAGE
     run_ramalama info
 
     # FIXME Engine  (podman|docker|'')

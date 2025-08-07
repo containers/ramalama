@@ -109,7 +109,7 @@ function check_help() {
 
 @test "ramalama verify default image" {
 
-    unset RAMALAMA_IMAGE
+    unset RAMALAMA_IMAGE RAMALAMA_IMAGES RAMALAMA_DEFAULT_IMAGE
     run_ramalama run --help
     is "$output" ".*image IMAGE.*OCI container image to run with the specified AI model"  "Verify default image"
     is "$output" ".*default: quay.io/ramalama/.*"  "Verify default image"
