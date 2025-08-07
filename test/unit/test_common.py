@@ -2,14 +2,24 @@ import os
 import shutil
 import tempfile
 from contextlib import ExitStack
+from io import StringIO
 from pathlib import Path
 from sys import platform
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
 from ramalama.cli import configure_subcommands, create_argument_parser
-from ramalama.common import accel_image, get_accel, rm_until_substring, verify_checksum
+from ramalama.common import (
+    CDI_RETURN_TYPE,
+    accel_image,
+    find_in_cdi,
+    get_accel,
+    load_cdi_config,
+    load_cdi_yaml,
+    rm_until_substring,
+    verify_checksum,
+)
 from ramalama.config import DEFAULT_IMAGE, default_config
 
 
@@ -183,3 +193,58 @@ class TestGetAccel:
                 stack.enter_context(patch(f"ramalama.common.{other_accel}", return_value=None))
             returned_accel = get_accel()
             assert returned_accel == "none"
+
+
+CDI_GPU_UUID = "GPU-abcdefgh"
+CDI_NODEV = """---
+cdiVersion: 0.5.0
+kind: nvidia.com/gpu
+devices:
+"""
+CDI_ZERO = CDI_NODEV + '  - name: "0"\n'
+CDI_ALL = CDI_NODEV + "  - name: all\n"
+CDI_UUID = CDI_NODEV + f"  - name: {CDI_GPU_UUID}\n"
+CDI_EVERYTHING = CDI_UUID + '  - name: "0"\n  - name: all\n'
+
+
+@pytest.mark.parametrize(
+    "input,result",
+    [
+        (StringIO(CDI_NODEV), {"devices": []}),
+        (StringIO(CDI_ZERO), {"devices": [{"name": "0"}]}),
+        (StringIO(CDI_ALL), {"devices": [{"name": "all"}]}),
+        (StringIO(CDI_UUID), {"devices": [{"name": CDI_GPU_UUID}]}),
+        (StringIO(CDI_EVERYTHING), {"devices": [{"name": CDI_GPU_UUID}, {"name": "0"}, {"name": "all"}]}),
+    ],
+)
+def test_load_cdi_yaml(input: str, result: CDI_RETURN_TYPE):
+    assert load_cdi_yaml(input) == result
+
+
+@patch("builtins.open", mock_open(read_data=CDI_EVERYTHING))
+@patch("os.walk", return_value=(("/etc/cdi", None, ("nvidia.yaml",)),))
+def test_load_cdi_config(mock_walk):
+    assert load_cdi_config(['/etc/cdi', '/var/run/cdi']) == {
+        "devices": [{"name": CDI_GPU_UUID}, {"name": "0"}, {"name": "all"}]
+    }
+
+
+@pytest.mark.parametrize(
+    "visible,conf,unconf",
+    [
+        (["all"], ["all"], []),
+        (["0", "all"], ["0", "all"], []),
+        ([CDI_GPU_UUID, "all"], [CDI_GPU_UUID, "all"], []),
+        (["1", "all"], ["all"], ["1"]),
+        (["dummy", "all"], ["all"], ["dummy"]),
+    ],
+)
+@patch("builtins.open", mock_open(read_data=CDI_EVERYTHING))
+@patch("os.walk", return_value=(("/etc/cdi", None, ("nvidia.yaml",)),))
+def test_find_in_cdi(mock_walk, visible, conf, unconf):
+    assert find_in_cdi(visible) == (conf, unconf)
+
+
+@patch("ramalama.common.load_cdi_config", return_value=None)
+def test_find_in_cdi_no_config(mock_load_cdi_config):
+    assert find_in_cdi(["all"]) == ([], ["all"])
