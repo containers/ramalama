@@ -4,17 +4,16 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/containers/ramalama?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
-    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "true"
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: >-
-      event == "pull_request" && target_branch == "main" && body.action != "ready_for_review"
+      event == "push" && target_branch == "main"
   labels:
     appstudio.openshift.io/application: ramalama
-    appstudio.openshift.io/component: rocm-ubi
+    appstudio.openshift.io/component: stable-diffusion
     pipelines.appstudio.openshift.io/type: build
-  name: rocm-ubi-on-pull-request
+  name: stable-diffusion-on-push
   namespace: ramalama-tenant
 spec:
   params:
@@ -23,18 +22,18 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ramalama-tenant/rocm-ubi:on-pr-{{revision}}
-  - name: image-expires-after
-    value: 5d
+    value: quay.io/redhat-user-workloads/ramalama-tenant/stable-diffusion:{{revision}}
   - name: build-platforms
     value:
-    - linux-fast/amd64
+    - linux-c8xlarge/amd64
+    - linux-c8xlarge/arm64
   - name: dockerfile
-    value: container-images/rocm-ubi/Containerfile
+    value: container-images/stable-diffusion/Containerfile
   pipelineRef:
-    name: pull-request-pipeline
+    name: push-pipeline
   timeouts:
-    pipeline: 6h
+    pipeline: 12h
+    finally: 15m
   workspaces:
   - name: git-auth
     secret:
