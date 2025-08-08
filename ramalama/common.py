@@ -251,7 +251,7 @@ def load_cdi_yaml(stream: Iterable[str]) -> CDI_RETURN_TYPE:
     for line in stream:
         if ':' in line:
             key, value = line.split(':', 1)
-            if key.strip() == "name":
+            if key.strip() == "- name":
                 data['devices'].append({'name': value.strip().strip('"')})
     return data
 
