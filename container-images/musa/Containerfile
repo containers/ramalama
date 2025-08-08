@@ -5,7 +5,8 @@ FROM docker.io/mthreads/musa:${VERSION}-devel-ubuntu${UBUNTU_VERSION}-amd64 AS b
 
 COPY . /src/ramalama
 WORKDIR /src/ramalama
-RUN container-images/scripts/build_llama_and_whisper.sh musa
+RUN python3 -m pip config unset global.index-url && \
+    container-images/scripts/build_llama_and_whisper.sh musa
 
 # Final runtime image
 FROM docker.io/mthreads/musa:${VERSION}-runtime-ubuntu${UBUNTU_VERSION}-amd64
