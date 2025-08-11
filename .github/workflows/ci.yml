@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
         with:
@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
@@ -157,7 +157,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
@@ -197,7 +197,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
@@ -258,7 +258,7 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Install the latest version of uv and activate the environment
         uses: astral-sh/setup-uv@v6
