@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 # Live reference for checking global vars
 import ramalama.common
@@ -333,3 +334,26 @@ def add_labels(args, add_label):
     for arg, label_prefix in label_map.items():
         if value := getattr(args, arg, None):
             add_label(f"{label_prefix}={value}")
+
+
+def wait_for_healthy(args, timeout=20):
+    """Waits for a container to become healthy by polling its status."""
+    logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        try:
+            status = inspect(args, args.name, format='{{.State.Health.Status}}', ignore_stderr=not args.debug).strip()
+            if status == 'healthy':
+                logger.debug(f"Container {args.name} is healthy.")
+                return
+            if status == 'unhealthy':
+                logger.error(f"Container {args.name} is unhealthy.")
+                raise subprocess.CalledProcessError(1, f"{str(args.engine)} inspect", "Container is unhealthy")
+        except subprocess.CalledProcessError as e:
+            logger.debug(f"Inspect failed for {args.name}, retrying... Error: {e}")
+            raise
+
+        time.sleep(1)
+
+    raise subprocess.TimeoutExpired(f"Timeout waiting for container {args.name} to become healthy.")
