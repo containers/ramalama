@@ -23,9 +23,6 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama-vllm-rag:{{revision}}
-  - name: build-platforms
-    value:
-    - linux-d160-c8xlarge/amd64
   - name: dockerfile
     value: container-images/common/Containerfile.rag
   - name: parent-image
@@ -37,7 +34,8 @@ spec:
   pipelineRef:
     name: push-pipeline
   timeouts:
-    pipeline: 6h
+    pipeline: 12h
+    finally: 15m
   workspaces:
   - name: git-auth
     secret:

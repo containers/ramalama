@@ -623,19 +623,23 @@ def accel_image(config: Config) -> str:
     if config.is_set("image"):
         return tagged_image(config.image)
 
+    if config.runtime == "vllm":
+        return "registry.redhat.io/rhelai1/ramalama-vllm"
+
     set_gpu_type_env_vars()
     gpu_type = next(iter(get_gpu_type_env_vars()), None)
 
     # Get image based on detected GPU type
     image = config.images.get(gpu_type or "", config.default_image)  # the or "" is just to keep mypy happy
 
+    # If the image from the config is specified by tag or digest, return it unmodified
+    if ":" in image:
+        return image
+
     # Special handling for CUDA images based on version - only if the image is the default CUDA image
     cuda_image = config.images.get("CUDA_VISIBLE_DEVICES")
     if image == cuda_image:
         image = select_cuda_image(config)
-
-    if config.runtime == "vllm":
-        return "registry.redhat.io/rhelai1/ramalama-vllm"
 
     vers = minor_release()
 
