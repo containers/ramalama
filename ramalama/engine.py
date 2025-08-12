@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import time
+from http.client import HTTPConnection, HTTPException
 
 # Live reference for checking global vars
 import ramalama.common
@@ -269,6 +270,17 @@ def inspect(args, name, format=None, ignore_stderr=False):
     return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
 
 
+def logs(args, name, ignore_stderr=False):
+    if not name:
+        raise ValueError("must specify a container name")
+    conman = str(args.engine) if args.engine is not None else None
+    if not conman:
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "logs", name]
+    return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
+
+
 def stop_container(args, name):
     if not name:
         raise ValueError("must specify a container name")
@@ -336,24 +348,52 @@ def add_labels(args, add_label):
             add_label(f"{label_prefix}={value}")
 
 
+def is_healthy(args, timeout=3):
+    """Check if the response from the container indicates a healthy status."""
+    conn = None
+    try:
+        conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
+        if args.debug:
+            conn.set_debuglevel(1)
+        conn.request("GET", "/models")
+        resp = conn.getresponse()
+        if resp.status != 200:
+            logger.debug(f"Container {args.name} returned status code {resp.status}: {resp.reason}")
+            return False
+        content = resp.read()
+        if not content:
+            logger.debug(f"Container {args.name} returned an empty response")
+            return False
+        body = json.loads(content)
+        if "models" not in body:
+            logger.debug(f"Container {args.name} does not include a model list in the response")
+            return False
+        model_names = [m["name"] for m in body["models"]]
+        # The transport is not included in the model name returned by the endpoint
+        model_name = args.MODEL.split("://")[-1]
+        if model_name not in model_names:
+            logger.debug(f'Container {args.name} does not include "{model_name}" in the model list: {model_names}')
+            return False
+        logger.debug(f"Container {args.name} is healthy")
+        return True
+    finally:
+        if conn:
+            conn.close()
+
+
 def wait_for_healthy(args, timeout=20):
-    """Waits for a container to become healthy by polling its status."""
+    """Waits for a container to become healthy by polling its endpoint."""
     logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()
 
     while time.time() - start_time < timeout:
         try:
-            status = inspect(args, args.name, format='{{.State.Health.Status}}', ignore_stderr=not args.debug).strip()
-            if status == 'healthy':
-                logger.debug(f"Container {args.name} is healthy.")
+            if is_healthy(args):
                 return
-            if status == 'unhealthy':
-                logger.error(f"Container {args.name} is unhealthy.")
-                raise subprocess.CalledProcessError(1, f"{str(args.engine)} inspect", "Container is unhealthy")
-        except subprocess.CalledProcessError as e:
-            logger.debug(f"Inspect failed for {args.name}, retrying... Error: {e}")
-            raise
-
+        except (ConnectionError, HTTPException, UnicodeDecodeError, json.JSONDecodeError) as e:
+            logger.debug(f"Health check of container {args.name} failed, retrying... Error: {e}")
         time.sleep(1)
 
-    raise subprocess.TimeoutExpired(f"Timeout waiting for container {args.name} to become healthy.")
+    raise subprocess.TimeoutExpired(
+        f"health check of container {args.name}", timeout, output=logs(args, args.name, ignore_stderr=not args.debug)
+    )
