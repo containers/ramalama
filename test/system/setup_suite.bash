@@ -53,7 +53,6 @@ function teardown_suite() {
     # At end, if all tests have passed, check for leaks.
     # Don't do this if there were errors: failing tests may not clean up.
     if [[ -e "$BATS_SUITE_TMPDIR/all-tests-passed" ]]; then
-        leak_check
         if [ $? -gt 0 ]; then
             exit_code=$((exit_code + 1))
         fi

@@ -297,14 +297,20 @@ class Model(ModelBase):
                 name,
                 "--env=HOME=/tmp",
                 "--health-cmd",
-                f"curl --fail http://127.0.0.1:{args.port}/models",
-                "--health-interval=3s",
-                "--health-retries=10",
-                "--health-timeout=3s",
-                "--health-start-period=3s",
                 "--init",
             ]
         )
+
+        if args.subcommand == "run" or args.subcommand == "serve":
+            self.engine.add(
+                [
+                    f"curl --fail http://127.0.0.1:{args.port}/models",
+                    "--health-interval=3s",
+                    "--health-retries=10",
+                    "--health-timeout=3s",
+                    "--health-start-period=3s",
+                ]
+            )
 
     def setup_container(self, args):
         name = self.get_container_name(args)
