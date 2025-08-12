@@ -25,13 +25,14 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/musa:{{revision}}
   - name: build-platforms
     value:
-    - linux-c4xlarge/amd64
+    - linux-d160-c8xlarge/amd64
   - name: dockerfile
     value: container-images/musa/Containerfile
   pipelineRef:
     name: push-pipeline
   timeouts:
-    pipeline: 6h
+    pipeline: 12h
+    finally: 15m
   workspaces:
   - name: git-auth
     secret:
