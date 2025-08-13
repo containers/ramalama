@@ -1,0 +1,30 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/containers/ramalama?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: "{{revision}}"
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    build.appstudio.redhat.com/git_tag: "{{git_tag}}"
+    pipelinesascode.tekton.dev/on-event: "[push]"
+    pipelinesascode.tekton.dev/on-target-branch: "[refs/tags/v*]"
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+  labels:
+    appstudio.openshift.io/application: ramalama
+    pipelines.appstudio.openshift.io/type: release
+  name: ramalama-release-tag
+  namespace: ramalama-tenant
+spec:
+  params:
+  - name: commit-sha
+    value: "{{revision}}"
+  - name: tag
+    value: "{{git_tag}}"
+  - name: skip
+    value: e2e cuda-vllm cuda-vllm-llama-server cuda-vllm-whisper-server cuda-vllm-rag
+  pipelineRef:
+    name: override-snapshot-pipeline
+  timeouts:
+    pipeline: 6h
+    finally: 15m

@@ -9,6 +9,11 @@ spec:
     description: Information about the Snapshot to be pushed
   - name: event-type
     description: The type of event that triggered the pipeline
+  - name: snapshot-type
+    description: The type of snapshot that triggered the pipeline
+  - name: release-tag
+    description: The symbolic tag used to reference the release
+    default: ""
   - name: sync
     description: >-
       True if all components are built from the same git commit. False if components
@@ -33,6 +38,10 @@ spec:
       value: $(params.SNAPSHOT)
     - name: EVENT_TYPE
       value: $(params.event-type)
+    - name: SNAPSHOT_TYPE
+      value: $(params.snapshot-type)
+    - name: RELEASE_TAG
+      value: $(params.release-tag)
     - name: SYNC
       value: $(params.sync)
     - name: REPO_PREFIX
@@ -112,7 +121,16 @@ spec:
         fi
         log Copying "$NAME" from "$SRC" to "$DEST"
         if skopeo copy --all --retry-times 5 "docker://$SRC" "docker://$DEST"; then
-          (( SUCCESSES+=1 ))
+          if [ -n "$RELEASE_TAG" ]; then
+            RELEASE_DEST="${DEST%:*}:$RELEASE_TAG"
+            if skopeo copy --all --retry-times 5 "docker://$DEST" "docker://$RELEASE_DEST"; then
+              (( SUCCESSES+=1 ))
+            else
+              FAILED_COMPONENTS+=("$NAME")
+            fi
+          else
+            (( SUCCESSES+=1 ))
+          fi
         else
           FAILED_COMPONENTS+=("$NAME")
         fi

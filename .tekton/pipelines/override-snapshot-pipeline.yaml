@@ -1,0 +1,48 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: override-snapshot-pipeline
+  labels:
+    appstudio.openshift.io/application: ramalama
+spec:
+  description: >-
+    Pipeline for creating an override snapshot, which will be used for
+    releasing RamaLama images to quay.io.
+  params:
+  - name: git-url
+    description: URL of the Git repository containing pipeline and task definitions
+    default: https://github.com/containers/ramalama.git
+  - name: git-revision
+    description: Revision of the Git repository containing pipeline and task definitions
+    default: main
+  - name: commit-sha
+    description: SHA of the commit that was pushed
+  - name: tag
+    description: Tag to include in the snapshot
+    default: ""
+  - name: skip
+    description: A space-separated list of component names to exclude from the snapshot
+    default: ""
+  results:
+  - name: TEST_OUTPUT
+    description: Test results in JSON format
+    value: $(tasks.create.results.TEST_OUTPUT)
+  tasks:
+  - name: create
+    params:
+    - name: commit-sha
+      value: $(params.commit-sha)
+    - name: tag
+      value: $(params.tag)
+    - name: skip
+      value: $(params.skip)
+    taskRef:
+      resolver: git
+      params:
+      - name: url
+        value: $(params.git-url)
+      - name: revision
+        value: $(params.git-revision)
+      - name: pathInRepo
+        value: .tekton/release/tasks/create-override-snapshot.yaml
+    timeout: 5h
