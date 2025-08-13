@@ -9,6 +9,11 @@ spec:
     description: Information about the Snapshot to be pushed
   - name: event-type
     description: The type of event that triggered the pipeline
+  - name: snapshot-type
+    description: The type of snapshot that triggered the pipeline
+  - name: release-tags
+    description: A space-separated list of tags that should be applied to the release
+    default: ""
   - name: sync
     description: >-
       True if all components are built from the same git commit. False if components
@@ -33,6 +38,10 @@ spec:
       value: $(params.SNAPSHOT)
     - name: EVENT_TYPE
       value: $(params.event-type)
+    - name: SNAPSHOT_TYPE
+      value: $(params.snapshot-type)
+    - name: RELEASE_TAGS
+      value: $(params.release-tags)
     - name: SYNC
       value: $(params.sync)
     - name: REPO_PREFIX
@@ -91,7 +100,11 @@ spec:
       COMPONENTS="$(jq -r '.components | length' <<< "$SNAPSHOT")"
       SKIP=($SKIP_COMPONENTS)
 
-      if [ "$EVENT_TYPE" != "push" ]; then
+      if [ "$SNAPSHOT_TYPE" != "override" ]; then
+        NOTE="Skipped push of $COMPONENTS components from \"$SNAPSHOT_TYPE\" snapshot"
+        test_output SKIPPED 0 0 0 "$NOTE"
+        exit
+      elif [ "$EVENT_TYPE" != "override" ]; then
         NOTE="Skipped push of $COMPONENTS components from \"$EVENT_TYPE\" event"
         test_output SKIPPED 0 0 0 "$NOTE"
         exit
@@ -110,8 +123,21 @@ spec:
           (( SKIPS+=1 ))
           continue
         fi
-        log Copying "$NAME" from "$SRC" to "$DEST"
-        if skopeo copy --all --retry-times 5 "docker://$SRC" "docker://$DEST"; then
+        DESTS=("$DEST")
+        for TAG in $RELEASE_TAGS; do
+          RELEASE_DEST="${DEST%:*}:$TAG"
+          DESTS+=("$RELEASE_DEST")
+        done
+        SUCCESS="true"
+        for DEST in "${DESTS[@]}"; do
+          log Copying "$NAME" from "$SRC" to "$DEST"
+          if skopeo copy --all --retry-times 5 "docker://$SRC" "docker://$DEST"; then
+            :
+          else
+            SUCCESS="false"
+          fi
+        done
+        if [ "$SUCCESS" == "true" ]; then
           (( SUCCESSES+=1 ))
         else
           FAILED_COMPONENTS+=("$NAME")
