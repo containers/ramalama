@@ -65,6 +65,7 @@ spec:
     - name: envs
       value:
       - RAMALAMA_IMAGE=$(tasks.init.results.ramalama-image)
+      - RAMALAMA_STACK_IMAGE=$(tasks.init.results.stack-image)
     taskRef:
       resolver: git
       params:

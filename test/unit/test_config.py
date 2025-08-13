@@ -423,6 +423,15 @@ class TestLoadEnvConfig:
             "INTEL_VISIBLE_DEVICES": "custom/intel:latest",
         }
 
+    def test_stack_image(self):
+        """Test that the llama-stack image can be set from an env var."""
+        env = {
+            "RAMALAMA_STACK_IMAGE": "custom/llama-stack:latest",
+        }
+        result = load_env_config(env)
+        assert "stack_image" in result
+        assert result["stack_image"] == "custom/llama-stack:latest"
+
 
 class TestConfigIntegration:
     """Integration tests for the complete config system with deep merge and env loading."""
