@@ -296,12 +296,6 @@ class Model(ModelBase):
                 "--name",
                 name,
                 "--env=HOME=/tmp",
-                "--health-cmd",
-                f"curl --fail http://127.0.0.1:{args.port}/models",
-                "--health-interval=3s",
-                "--health-retries=10",
-                "--health-timeout=3s",
-                "--health-start-period=3s",
                 "--init",
             ]
         )
@@ -427,12 +421,12 @@ class Model(ModelBase):
         if status != 0:
             raise ValueError(f"Failed to serve model {self.model_name}, for ramalama run command")
 
-        if not args.dryrun and args.engine == "podman":
+        if not args.dryrun:
             try:
                 wait_for_healthy(args)
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            except subprocess.TimeoutExpired as e:
                 logger.error(f"Failed to serve model {self.model_name}, for ramalama run command")
-                logger.error(f"Try `ramalama serve {self.model_name}` for failure logs")
+                logger.error(f"{e}: logs: {e.output}")
                 raise
 
         args.ignore = getattr(args, "dryrun", False)
