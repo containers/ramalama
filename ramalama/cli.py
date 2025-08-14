@@ -28,7 +28,7 @@ from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import CONFIG, coerce_to_bool, load_file_config
 from ramalama.logger import configure_logger, logger
-from ramalama.model import MODEL_TYPES, trim_model_name
+from ramalama.model import MODEL_TYPES, NoGGUFModelFileFound, SafetensorModelNotSupported, trim_model_name
 from ramalama.model_factory import ModelFactory, New
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
@@ -1256,6 +1256,8 @@ def main():
         perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)
 
+    parser: ArgumentParserWithDefaults
+    args: argparse.Namespace
     try:
         parser, args = init_cli()
         try:
@@ -1293,3 +1295,13 @@ def main():
         eprint(e, errno.EIO)
     except ParseError as e:
         eprint(f"Failed to parse model: {e}", errno.EINVAL)
+    except SafetensorModelNotSupported:
+        eprint(
+            f"""Safetensor models are not supported. Please convert it to GGUF via:
+$ ramalama convert --gguf=<quantization> {args.model} <oci-name>
+$ ramalama run <oci-name>
+""",
+            errno.EMEDIUMTYPE,
+        )
+    except NoGGUFModelFileFound:
+        eprint(f"No GGUF model file found for downloaded model '{args.model}'", errno.ENOMEDIUM)
