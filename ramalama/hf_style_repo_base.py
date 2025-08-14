@@ -1,10 +1,19 @@
 import json
 import os
+import re
 import tempfile
 import urllib.request
 from abc import ABC, abstractmethod
 
-from ramalama.common import available, exec_cmd, generate_sha256, perror, run_cmd
+from ramalama.common import (
+    SPLIT_MODEL_PATH_RE,
+    available,
+    exec_cmd,
+    generate_sha256,
+    is_split_file_model,
+    perror,
+    run_cmd,
+)
 from ramalama.logger import logger
 from ramalama.model import Model
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
@@ -80,6 +89,31 @@ class HFStyleRepository(ABC):
         files = []
         if self.model_filename not in cached_files:
             files.append(self.model_file())
+        if is_split_file_model(self.model_filename):
+            # If the model is split, we need to add all parts
+            match = re.match(SPLIT_MODEL_PATH_RE, self.model_filename)
+            if match:
+                path_part = match[1]
+                if path_part:
+                    path_part += '/'
+                filename_base = match[2]
+                total_parts = int(match[3])
+                for i in range(2, total_parts + 1):
+                    file_name = f"{path_part}{filename_base}-{i:05d}-of-{total_parts:05d}.gguf"
+                    if file_name not in cached_files:
+                        # Add the split file part if it is not already cached
+                        logger.debug(f"Adding split file part: {file_name}")
+                        files.append(
+                            SnapshotFile(
+                                url=f"{self.blob_url}/{file_name}",
+                                header=self.headers,
+                                hash=generate_sha256(file_name),
+                                type=SnapshotFileType.Other,
+                                name=file_name,
+                                should_show_progress=True,
+                                should_verify_checksum=False,
+                            )
+                        )
         if self.mmproj_filename and self.mmproj_filename not in cached_files:
             files.append(self.mmproj_file())
         if self.FILE_NAME_CONFIG not in cached_files:
