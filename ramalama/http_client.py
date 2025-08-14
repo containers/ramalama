@@ -59,24 +59,27 @@ class HttpClient:
         self.start_time = time.time()
         accumulated_size = 0
         last_update_time = time.time()
-        while True:
-            data = self.response.read(1024)
-            if not data:
-                return
+        try:
+            while True:
+                data = self.response.read(1024)
+                if not data:
+                    break
 
-            size = file.write(data)
+                size = file.write(data)
+                if show_progress:
+                    accumulated_size += size
+                    if time.time() - last_update_time >= 0.1:
+                        self.update_progress(accumulated_size)
+                        accumulated_size = 0
+                        last_update_time = time.time()
+
             if show_progress:
-                accumulated_size += size
-                if time.time() - last_update_time >= 0.1:
+                if accumulated_size > 0:
                     self.update_progress(accumulated_size)
-                    accumulated_size = 0
-                    last_update_time = time.time()
-
-        if accumulated_size > 0:
-            self.update_progress(accumulated_size)
-
-        if show_progress:
-            perror("\033[K", end="\r")
+        finally:
+            if show_progress:
+                # Output a newline after the progress bar
+                perror("")
 
     def human_readable_time(self, seconds):
         hrs = int(seconds) // 3600
