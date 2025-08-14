@@ -476,7 +476,7 @@ verify_begin=".*run --rm"
     run cat /tmp/$name.yaml
     is "$output" ".*llama-server" "Should command"
     is "$output" ".*hostPort: 1234" "Should container container port"
-    is "$output" ".*quay.io/ramalama/llama-stack" "Should container llama-stack"
+    is "$output" ".*quay.io/.*/llama-stack" "Should contain llama-stack"
     rm /tmp/$name.yaml
 }
 

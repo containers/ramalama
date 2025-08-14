@@ -13,6 +13,7 @@ PathStr: TypeAlias = str
 DEFAULT_PORT_RANGE: tuple[int, int] = (8080, 8090)
 DEFAULT_PORT: int = DEFAULT_PORT_RANGE[0]
 DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
+DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
 SUPPORTED_ENGINES: TypeAlias = Literal["podman", "docker"] | PathStr
 SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx"]
 COLOR_OPTIONS: TypeAlias = Literal["auto", "always", "never"]
@@ -96,6 +97,7 @@ class BaseConfig:
     runtime: SUPPORTED_RUNTIMES = "llama.cpp"
     selinux: bool = False
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
+    stack_image: str = DEFAULT_STACK_IMAGE
     store: str = field(default_factory=get_default_store)
     temp: str = "0.8"
     thinking: bool = True

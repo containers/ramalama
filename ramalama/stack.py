@@ -10,6 +10,7 @@ from ramalama.common import (
     get_accel_env_vars,
     tagged_image,
 )
+from ramalama.config import CONFIG
 from ramalama.engine import add_labels
 from ramalama.model import compute_serving_port
 from ramalama.model_factory import New
@@ -29,7 +30,7 @@ class Stack:
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
         self.model_port = str(int(self.args.port) + 1)
-        self.stack_image = tagged_image("quay.io/ramalama/llama-stack")
+        self.stack_image = tagged_image(CONFIG.stack_image)
         self.labels = ""
 
     def add_label(self, label):
