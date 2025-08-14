@@ -11,8 +11,8 @@ spec:
     description: The type of event that triggered the pipeline
   - name: snapshot-type
     description: The type of snapshot that triggered the pipeline
-  - name: release-tag
-    description: The symbolic tag used to reference the release
+  - name: release-tags
+    description: A space-separated list of tags that should be applied to the release
     default: ""
   - name: sync
     description: >-
@@ -40,8 +40,8 @@ spec:
       value: $(params.event-type)
     - name: SNAPSHOT_TYPE
       value: $(params.snapshot-type)
-    - name: RELEASE_TAG
-      value: $(params.release-tag)
+    - name: RELEASE_TAGS
+      value: $(params.release-tags)
     - name: SYNC
       value: $(params.sync)
     - name: REPO_PREFIX
@@ -119,18 +119,22 @@ spec:
           (( SKIPS+=1 ))
           continue
         fi
-        log Copying "$NAME" from "$SRC" to "$DEST"
-        if skopeo copy --all --retry-times 5 "docker://$SRC" "docker://$DEST"; then
-          if [ -n "$RELEASE_TAG" ]; then
-            RELEASE_DEST="${DEST%:*}:$RELEASE_TAG"
-            if skopeo copy --all --retry-times 5 "docker://$DEST" "docker://$RELEASE_DEST"; then
-              (( SUCCESSES+=1 ))
-            else
-              FAILED_COMPONENTS+=("$NAME")
-            fi
+        DESTS=("$DEST")
+        for TAG in $RELEASE_TAGS; do
+          RELEASE_DEST="${DEST%:*}:$TAG"
+          DESTS+=("$RELEASE_DEST")
+        done
+        SUCCESS="true"
+        for DEST in "${DESTS[@]}"; do
+          log Copying "$NAME" from "$SRC" to "$DEST"
+          if skopeo copy --all --retry-times 5 "docker://$SRC" "docker://$DEST"; then
+            :
           else
-            (( SUCCESSES+=1 ))
+            SUCCESS="false"
           fi
+        done
+        if [ "$SUCCESS" == "true" ]; then
+          (( SUCCESSES+=1 ))
         else
           FAILED_COMPONENTS+=("$NAME")
         fi
