@@ -191,6 +191,7 @@ spec:
         value:
         - $(params.build-platforms)
     name: build-images
+    displayName: build-image $(params.PLATFORM)
     params:
     - name: IMAGE
       value: $(params.output-image)
