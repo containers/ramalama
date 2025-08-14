@@ -21,3 +21,4 @@ htmlcov/
 .idea/
 .hypothesis/
 uv.lock
+.podman-tmp
