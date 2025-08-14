@@ -39,6 +39,8 @@ spec:
   timeouts:
     pipeline: 12h
     finally: 15m
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-rocm-whisper-server
   workspaces:
   - name: git-auth
     secret:
