@@ -55,6 +55,14 @@ with the default RamaLama
 $(error)s"""
 
 
+class NoGGUFModelFileFound(Exception):
+    pass
+
+
+class SafetensorModelNotSupported(Exception):
+    pass
+
+
 class NoRefFileFound(Exception):
     def __init__(self, model: str, *args):
         super().__init__(*args)
@@ -62,7 +70,7 @@ class NoRefFileFound(Exception):
         self.model = model
 
     def __str__(self):
-        return f"No ref file or models found for '{self.model}'. Please pull model."
+        return f"No ref file found for '{self.model}'. Please pull model."
 
 
 def trim_model_name(model):
@@ -201,8 +209,12 @@ class Model(ModelBase):
                 return f"oci://{self.model}"
 
         ref_file = self.model_store.get_ref_file(self.model_tag)
-        if ref_file is None or not ref_file.model_files:
+        if ref_file is None:
             raise NoRefFileFound(self.model)
+        if not ref_file.model_files:
+            if any(file.name.endswith(".safetensors") for file in ref_file.files):
+                raise SafetensorModelNotSupported()
+            raise NoGGUFModelFileFound()
 
         # Use the first model file
         if is_split_file_model(self.model_name):
