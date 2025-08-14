@@ -92,6 +92,14 @@ load setup_suite
     run_ramalama list
     is "$output" ".*ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0" "image was actually pulled locally"
     run_ramalama rm huggingface://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0
+
+    run_ramalama pull hf://owalsh/SmolLM2-135M-Instruct-GGUF-Split:Q4_0
+    for i in $(seq 1 3); do
+        is "$output" ".*Downloading Q4_0/SmolLM2-135M-Instruct-Q4_0-0000${i}-of-00003.gguf" "model part ${i} downloaded"
+    done
+    run_ramalama list
+    is "$output" ".*owalsh/SmolLM2-135M-Instruct-GGUF-Split:Q4_0" "image was actually pulled locally"
+    run_ramalama rm hf://owalsh/SmolLM2-135M-Instruct-GGUF-Split:Q4_0
 }
 
 # bats test_tags=distro-integration
