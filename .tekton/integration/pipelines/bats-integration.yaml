@@ -15,6 +15,8 @@ spec:
     default:
     - linux-c8xlarge/amd64
     - linux-c8xlarge/arm64
+    - linux/ppc64le
+    - linux/s390x
   - name: commands
     description: Test commands to run
     type: array
