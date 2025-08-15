@@ -1,6 +1,7 @@
 FROM quay.io/fedora/fedora:42
 
 ARG RAMALAMA_STACK_VERSION=0.2.5
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
 # hack that should be removed when the following bug is addressed
 # https://github.com/containers/ramalama-stack/issues/53
@@ -8,13 +9,32 @@ RUN curl --create-dirs --output ~/.llama/providers.d/remote/inference/ramalama.y
     curl --create-dirs --output /etc/ramalama/ramalama-run.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v${RAMALAMA_STACK_VERSION}/src/ramalama_stack/ramalama-run.yaml
 
 RUN dnf -y update && \
-    dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config sentencepiece-devel && \
+    dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config sentencepiece-devel \
+    # For building pytorch from source
+    $(if [ "$(uname -m)" == "ppc64le" ] || [ "$(uname -m)" == "s390x" ]; then \
+        echo git-core ninja-build conan rust cargo ; \
+      fi) \
+    && \
     dnf -y clean all
 
-RUN uv venv && \
-    uv pip install ramalama-stack==${RAMALAMA_STACK_VERSION}
+COPY --chmod=755 container-images/llama-stack/entrypoint.sh \
+                 container-images/scripts/build-pytorch.sh \
+                 /usr/bin/
 
-COPY --chmod=755 container-images/llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
+WORKDIR /opt
+RUN uv venv --seed && \
+    uv pip install setuptools wheel && \
+    if [ "$(uname -m)" == "ppc64le" ] || [ "$(uname -m)" == "s390x" ]; then \
+      uv run /usr/bin/build-pytorch.sh && \
+      git clone -n https://github.com/milvus-io/milvus-lite.git && \
+      pushd milvus-lite && \
+      git checkout -b v2.5.1-local refs/tags/v2.5.1 && \
+      git submodule update --init --recursive && \
+      conan profile detect --force && \
+      uv pip install ./python && \
+      popd ; \
+    fi && \
+    uv pip install ramalama-stack==${RAMALAMA_STACK_VERSION}
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
 
