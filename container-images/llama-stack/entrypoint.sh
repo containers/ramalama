@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # shellcheck source=/dev/null
-source /.venv/bin/activate
+source "$VIRTUAL_ENV/bin/activate"
 
 if [ $# -eq 0 ]; then
     exec bash
