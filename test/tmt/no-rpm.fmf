@@ -19,6 +19,7 @@ require:
     - podman-docker
     - pytest
     - python3-argcomplete
+    - python3-yaml
     - python3-huggingface-hub
     - shellcheck
 

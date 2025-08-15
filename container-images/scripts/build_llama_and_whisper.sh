@@ -108,7 +108,7 @@ dnf_install_ffmpeg() {
 dnf_install() {
   local rpm_exclude_list="selinux-policy,container-selinux"
   local rpm_list=("${PYTHON}" "${PYTHON}-pip"
-    "python3-argcomplete" "python3-dnf-plugin-versionlock"
+    "python3-argcomplete" "python3-yaml" "python3-dnf-plugin-versionlock"
     "${PYTHON}-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
     "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools"
