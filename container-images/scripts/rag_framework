@@ -5,9 +5,11 @@ import argparse
 import cmd
 import os
 import sys
+import time
 import warnings
 from pathlib import Path
 
+import httpx
 import openai
 import qdrant_client
 from fastembed import SparseTextEmbedding, TextEmbedding
@@ -31,6 +33,18 @@ def eprint(e, exit_code):
 
 
 # Helper Classes and Functions
+
+
+def wait_for_llama_server(base_url: str, timeout: int = 20):
+    end_time = time.monotonic() + timeout
+    while time.monotonic() < end_time:
+        try:
+            if httpx.get(f"{base_url}/health", timeout=5).status_code == 200:
+                return True
+        except httpx.RequestError:
+            pass
+    print(f"Error: llama-server not ready after {timeout} seconds.", file=sys.stderr)
+    sys.exit(1)
 
 
 class qdrant:
@@ -107,7 +121,12 @@ class Rag(cmd.Cmd):
             self.vectordb = qdrant(vector_path)
 
         # Setup openai api
-        self.llm = openai.OpenAI(api_key="your-api-key", base_url="http://localhost:8080")
+        self.port = os.getenv("RAMALAMA_PORT", "8080")
+        url = f"http://localhost:{self.port}"
+
+        wait_for_llama_server(url)
+
+        self.llm = openai.OpenAI(api_key="your-api-key", base_url=url)
         self.chat_history = []  # Store chat history
 
     def is_milvus(self, vector_path):
