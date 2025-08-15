@@ -33,6 +33,8 @@ spec:
   timeouts:
     pipeline: 12h
     finally: 15m
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-bats
   workspaces:
   - name: git-auth
     secret:

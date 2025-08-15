@@ -36,6 +36,8 @@ spec:
   timeouts:
     pipeline: 12h
     finally: 15m
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-openvino
   workspaces:
   - name: git-auth
     secret:
