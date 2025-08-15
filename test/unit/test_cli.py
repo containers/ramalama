@@ -1,6 +1,10 @@
+import sys
+from unittest import mock
+
 import pytest
 
 from ramalama.cli import ParsedGenerateInput, parse_generate_option
+from ramalama.model import NoGGUFModelFileFound, SafetensorModelNotSupported
 
 
 @pytest.mark.parametrize(
@@ -130,3 +134,19 @@ def test_human_readable_size(size: int, expected: str):
 )
 def test_parsed_generate_input_repr(input: ParsedGenerateInput, expected: str):
     assert repr(input) == expected
+
+
+@pytest.mark.parametrize(
+    "exc_type",
+    [
+        NoGGUFModelFileFound,
+        SafetensorModelNotSupported,
+    ],
+)
+def test_main_doesnt_crash_on_exc(monkeypatch, exc_type):
+    from ramalama.cli import main
+
+    monkeypatch.setattr(sys, "argv", ["ramalama", "inspect", "nonexistent-model"])
+    with pytest.raises(SystemExit):
+        with mock.patch("ramalama.cli.inspect_cli", side_effect=exc_type):
+            main()

@@ -1301,7 +1301,7 @@ def main():
 $ ramalama convert --gguf=<quantization> {args.model} <oci-name>
 $ ramalama run <oci-name>
 """,
-            errno.EMEDIUMTYPE,
+            errno.ENOTSUP,
         )
     except NoGGUFModelFileFound:
-        eprint(f"No GGUF model file found for downloaded model '{args.model}'", errno.ENOMEDIUM)
+        eprint(f"No GGUF model file found for downloaded model '{args.model}'", errno.ENOENT)
