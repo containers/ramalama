@@ -277,7 +277,7 @@ add_common_flags() {
   case "$containerfile" in
   ramalama)
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
-      common_flags+=("-DGGML_VULKAN=ON")
+      common_flags+=("-DGGML_KOMPUTE=ON")
     elif [ "$uname_m" = "s390x" ]; then
       common_flags+=("-DGGML_VXE=ON" "-DGGML_BLAS=ON")
       common_flags+=("-DGGML_BLAS_VENDOR=OpenBLAS")
