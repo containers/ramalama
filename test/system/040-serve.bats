@@ -202,7 +202,7 @@ verify_begin=".*run --rm"
     quadlet="$model.container"
     name=c_$(safename)
     run_ramalama pull $model_quant
-    run_ramalama -q serve --port 1234 --generate=quadlet $model
+    run_ramalama -q serve --port 1234 --generate=quadlet $model_quant
     is "$output" "Generating quadlet file: $quadlet" "generate $quadlet"
 
     run cat $quadlet
@@ -210,18 +210,17 @@ verify_begin=".*run --rm"
     is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*$model" "Mount line should be correct"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet $model
+    HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet $model_quant
     is "$output" "Generating quadlet file: $quadlet" "generate $quadlet"
 
     run cat $quadlet
     is "$output" ".*Environment=HIP_VISIBLE_DEVICES=99" "Should contain env property"
 
     rm $quadlet
-    run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus $model
+    run_ramalama 2 serve --name=${name} --port 1234 --generate=bogus $model_quant
     is "$output" ".*error: argument --generate: invalid choice: .*bogus.* (choose from.*quadlet.*kube.*quadlet/kube.*)" "Should fail"
 
-        run_ramalama pull $model_quant
-    run_ramalama -q serve --port 1234 --generate=quadlet --add-to-unit "section1:key0:value0" $model
+    run_ramalama -q serve --port 1234 --generate=quadlet --add-to-unit "section1:key0:value0" $model_quant
     is "$output" "Generating quadlet file: $quadlet" "generate $quadlet"
 
     run cat $quadlet
@@ -230,11 +229,11 @@ verify_begin=".*run --rm"
     is "$output" ".*Mount=type=bind,.*$model" "Mount line should be correct"
     is "$output" ".*key0=value0.*" "added unit should be correct"
 
-    run_ramalama 2 -q serve --port 1234 --generate=quadlet --add-to-unit "section1:key0:" $model
+    run_ramalama 2 -q serve --port 1234 --generate=quadlet --add-to-unit "section1:key0:" $model_quant
     is "$output" ".*error: --add-to-unit parameters must be of the form <section>:<key>:<value>.*"
 
     rm $quadlet
-    run_ramalama 2 serve --name=${name} --port 1234 --add-to-unit "section1:key0:value0"  $model
+    run_ramalama 2 serve --name=${name} --port 1234 --add-to-unit "section1:key0:value0"  $model_quant
     is "$output" ".*error: --add-to-unit can only be used with --generate.*"
 }
 
