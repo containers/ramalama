@@ -8,13 +8,26 @@ RUN curl --create-dirs --output ~/.llama/providers.d/remote/inference/ramalama.y
     curl --create-dirs --output /etc/ramalama/ramalama-run.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v${RAMALAMA_STACK_VERSION}/src/ramalama_stack/ramalama-run.yaml
 
 RUN dnf -y update && \
-    dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config sentencepiece-devel && \
+    dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config \
+    # For building pytorch from source
+    $(if [ "$(uname -m)" == "ppc64le" ]; then \
+        echo git-core ninja-build rust cargo ; \
+      elif [ "$(uname -m)" == "s390x" ]; then \
+        echo git-core ninja-build ; \
+      fi) \
+    && \
     dnf -y clean all
 
-RUN uv venv && \
-    uv pip install ramalama-stack==${RAMALAMA_STACK_VERSION}
+COPY --chmod=755 container-images/llama-stack/entrypoint.sh \
+                 container-images/scripts/build-pytorch.sh \
+                 /usr/bin/
 
-COPY --chmod=755 container-images/llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
+WORKDIR /opt
+RUN uv venv && \
+    if [ "$(uname -m)" == "ppc64le" ] || [ "$(uname -m)" == "s390x" ]; then \
+      uv run /usr/bin/build-pytorch.sh; \
+    fi && \
+    uv pip install ramalama-stack==${RAMALAMA_STACK_VERSION}
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
 
