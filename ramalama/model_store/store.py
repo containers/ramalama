@@ -213,6 +213,10 @@ class ModelStore:
 
             link_path = self.get_snapshot_file_path(snapshot_hash, file.name)
             try:
+                os.makedirs(os.path.dirname(link_path))
+            except FileExistsError:
+                pass
+            try:
                 os.symlink(blob_relative_path, link_path)
             except FileExistsError:
                 os.unlink(link_path)
