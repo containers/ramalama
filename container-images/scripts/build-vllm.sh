@@ -4,6 +4,9 @@ install_deps() {
   if available dnf; then
     dnf install -y git wget ca-certificates gcc gcc-c++ libSM libXext \
       mesa-libGL jq lsof vim numactl
+    if [ "$uname_m" = "ppc64le" ] || [ "$uname_m" = "s390x" ]; then
+      dnf -y install rust cargo llvm-devel
+    fi
     if is_rhel_based; then
       add_stream_repo "AppStream"
       dnf install -y numactl-devel
@@ -15,9 +18,6 @@ install_deps() {
     else
       dnf install -y numactl-devel gperftools-libs
     fi
-
-    dnf -y clean all
-    rm -rf /var/cache/*dnf*
   elif available apt-get; then
     apt-get update -y
     apt-get install -y --no-install-recommends git curl wget ca-certificates \
@@ -72,6 +72,14 @@ pip_install() {
 
 pip_install_all() {
   if [ "$containerfile" = "ramalama" ]; then
+    if [ "$uname_m" = "ppc64le" ] || [ "$uname_m" = "s390x" ]; then
+      # torch is built and installed from source in build-pytorch.sh
+      sed -i '/^torch/d' \
+        requirements/cpu-build.txt \
+        requirements/cpu.txt
+      # llvmlite only supports llvm up to version 16, and Fedora has version 20
+      export LLVMLITE_SKIP_LLVM_VERSION_CHECK="1"
+    fi
     pip_install requirements/cpu-build.txt
     pip_install requirements/cpu.txt
   elif [ "$containerfile" = "cuda" ]; then
@@ -114,7 +122,12 @@ main() {
   local virtual_env="/opt/venv"
   preload_and_ulimit
   uv venv --python 3.11 --seed "$virtual_env"
+  # shellcheck disable=SC1091
+  source "$virtual_env/bin/activate"
   uv pip install --upgrade pip
+  if [ "$uname_m" = "ppc64le" ] || [ "$uname_m" = "s390x" ]; then
+    container-images/scripts/build-pytorch.sh
+  fi
 
   local vllm_url="https://github.com/vllm-project/vllm"
   local commit="fcfd1eb9c556e295eb5708eb0f5e6ae775807775"
@@ -128,6 +141,10 @@ main() {
 
   cd -
   rm -rf vllm /root/.cache
+  if available dnf; then
+    dnf -y clean all
+    rm -rf /var/cache/*dnf*
+  fi
 }
 
 main "$@"
