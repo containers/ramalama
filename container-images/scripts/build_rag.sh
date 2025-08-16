@@ -85,6 +85,9 @@ main() {
     else
         pkgs=("git" "gcc" "g++" "cmake")
     fi
+    if [ "$arch" = "ppc64le" ]; then
+        pkgs+=("gcc-gfortran" "openblas-devel")
+    fi
     if [ "${gpu}" = "cuda" ]; then
         pkgs+=("libcudnn9-devel-cuda-12" "libcusparselt0" "cuda-cupti-12-*")
     fi
