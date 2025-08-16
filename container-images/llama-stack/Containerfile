@@ -34,6 +34,7 @@ RUN uv venv --seed && \
       uv pip install ./python && \
       popd ; \
     fi && \
+    uv pip list -v && \
     uv pip install ramalama-stack==${RAMALAMA_STACK_VERSION}
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
