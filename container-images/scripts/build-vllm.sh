@@ -4,6 +4,9 @@ install_deps() {
   if available dnf; then
     dnf install -y git wget ca-certificates gcc gcc-c++ libSM libXext \
       mesa-libGL jq lsof vim numactl
+    if [ "$uname_m" = "ppc64le" ]; then
+      dnf -y install rust cargo
+    fi
     if is_rhel_based; then
       add_stream_repo "AppStream"
       dnf install -y numactl-devel
@@ -72,6 +75,9 @@ pip_install() {
 
 pip_install_all() {
   if [ "$containerfile" = "ramalama" ]; then
+    if [ "$uname_m" = "ppc64le" ] || [ "$uname_m" = "s390x" ]; then
+      uv run ../container-images/scripts/build-pytorch.sh
+    fi
     pip_install requirements/cpu-build.txt
     pip_install requirements/cpu.txt
   elif [ "$containerfile" = "cuda" ]; then
