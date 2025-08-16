@@ -9,7 +9,7 @@ RUN curl --create-dirs --output ~/.llama/providers.d/remote/inference/ramalama.y
     curl --create-dirs --output /etc/ramalama/ramalama-run.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v${RAMALAMA_STACK_VERSION}/src/ramalama_stack/ramalama-run.yaml
 
 RUN dnf -y update && \
-    dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config sentencepiece-devel \
+    dnf -y install uv cmake gcc gcc-c++ python3-devel pkg-config \
     # For building pytorch from source
     $(if [ "$(uname -m)" == "ppc64le" ] || [ "$(uname -m)" == "s390x" ]; then \
         echo git-core ninja-build conan rust cargo ; \
