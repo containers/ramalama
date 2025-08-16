@@ -250,7 +250,8 @@ def load_cdi_yaml(stream: Iterable[str]) -> CDI_RETURN_TYPE:
 
     data: CDI_RETURN_TYPE = {"devices": []}
     parsed = yaml.safe_load(stream) or {}
-    for device in parsed.get("devices", []):
+    devices = parsed.get("devices") or []
+    for device in devices:
         if not isinstance(device, dict):
             continue
         for key, value in device.items():
