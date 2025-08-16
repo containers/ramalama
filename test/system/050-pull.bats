@@ -78,10 +78,10 @@ load setup_suite
     run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
     skip_if_no_hf-cli
-    run_ramalama pull hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0
+    run_ramalama pull hf://HuggingFaceTB/SmolLM-135M
     run_ramalama list
-    is "$output" ".*TinyLlama/TinyLlama-1.1B-Chat-v1.0" "image was actually pulled locally"
-    run_ramalama rm huggingface://TinyLlama/TinyLlama-1.1B-Chat-v1.0
+    is "$output" ".*HuggingFaceTB/SmolLM-135M" "image was actually pulled locally"
+    run_ramalama rm huggingface://HuggingFaceTB/SmolLM-135M
 
     run_ramalama pull hf://ggml-org/SmolVLM-256M-Instruct-GGUF
     run_ramalama list
