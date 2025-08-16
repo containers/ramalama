@@ -92,12 +92,12 @@ main() {
     update_python
     to_gguf
 
-    # Temporarily disable build for s390x
-    if [[ "$arch" != "s390x" ]]; then
+    # Temporarily disable build for s390x and ppc64le
+    if [ "$arch" != "s390x" ] && [ "$arch" != "ppc64le" ]; then
         rag
         docling "${gpu}"
     else
-        echo "skipping rag and docling build for s390x architecture: build temporarily disabled."
+        echo "skipping rag and docling build for s390x and ppc64le architectures: build temporarily disabled."
     fi
 
     if available dnf; then
