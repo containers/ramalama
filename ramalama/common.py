@@ -17,6 +17,8 @@ from collections.abc import Callable, Iterable
 from functools import lru_cache
 from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict, cast, get_args
 
+import yaml
+
 import ramalama.amdkfd as amdkfd
 from ramalama.logger import logger
 from ramalama.version import version
@@ -248,11 +250,14 @@ def load_cdi_yaml(stream: Iterable[str]) -> CDI_RETURN_TYPE:
     # same line following a colon.
 
     data: CDI_RETURN_TYPE = {"devices": []}
-    for line in stream:
-        if ':' in line:
-            key, value = line.split(':', 1)
-            if key.strip() == "- name":
-                data['devices'].append({'name': value.strip().strip('"')})
+    parsed = yaml.safe_load(stream) or {}
+    devices = parsed.get("devices") or []
+    for device in devices:
+        if not isinstance(device, dict):
+            continue
+        for key, value in device.items():
+            if key == "name":
+                data['devices'].append({'name': value})
     return data
 
 
