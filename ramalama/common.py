@@ -13,10 +13,11 @@ import shutil
 import string
 import subprocess
 import sys
-import yaml
 from collections.abc import Callable, Iterable
 from functools import lru_cache
 from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict, cast, get_args
+
+import yaml
 
 import ramalama.amdkfd as amdkfd
 from ramalama.logger import logger
