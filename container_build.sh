@@ -40,6 +40,10 @@ add_build_platform() {
       # set to 'y' to include the debug tools and debug files in the image
       "RAMALAMA_IMAGE_BUILD_DEBUG_MODE"
 
+      # with the 'remoting' target, set this to 'vulkan' to include
+      # the API backend _and_ the ggml-vulkan backend
+      "RAMALAMA_IMAGE_BUILD_REMOTING_BACKEND"
+
       # reference to a llama.cpp repo and commit to use
       "LLAMA_CPP_REPO"
       "LLAMA_CPP_PULL_REF"
@@ -103,7 +107,7 @@ build() {
       echo "${conman_show_size[@]}"
       "${conman_show_size[@]}"
       case ${target} in
-	  ramalama-cli | llama-stack | openvino | stable-diffusion)
+	  ramalama-cli | llama-stack | openvino | stable-diffusion | remoting)
 	  ;;
 	  *)
 	      if [ "${build_all}" -eq 1 ]; then
