@@ -1,0 +1,30 @@
+FROM quay.io/fedora/fedora:43 AS builder
+
+COPY container-images/scripts/build_llama.sh \
+     container-images/scripts/lib.sh \
+     /src/
+WORKDIR /src/
+RUN ./build_llama.sh remoting
+
+FROM quay.io/fedora/fedora:43
+
+RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install \
+    cp -a /tmp/install/bin/ /usr/ && \
+    cp -a /tmp/install/lib64/*.so* /usr/lib64/ && \
+    { test -f /tmp/install/libexec/virgl_render_server && cp -a /tmp/install/libexec/virgl_render_server /usr/libexec/ || true ; }
+COPY container-images/scripts/build_llama.sh \
+     container-images/scripts/lib.sh \
+     /tmp/
+RUN bash /tmp/build_llama.sh remoting runtime
+
+ENV RENDER_SERVER_EXEC_PATH=/usr/libexec/virgl_render_server
+
+ENV VIRGL_APIR_BACKEND_LIBRARY=/usr/bin/libggml-virtgpu-backend.so
+ENV APIR_LLAMA_CPP_GGML_LIBRARY_PATH=/usr/bin/libggml-vulkan.so
+ENV APIR_LLAMA_CPP_GGML_LIBRARY_REG=ggml_backend_vk_reg
+
+ENV VIRGL_ROUTE_VENUS_TO_APIR=1
+ENV GGML_DISABLE_VULKAN=1
+
+ENV VIRGL_APIR_LOG_TO_FILE=/tmp/ramalama_apir_virglrenderer.log
+ENV APIR_LLAMA_CPP_LOG_TO_FILE=/tmp/ramalama_apir_llama_cpp.log
