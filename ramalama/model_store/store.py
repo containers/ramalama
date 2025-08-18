@@ -212,6 +212,7 @@ class ModelStore:
                         raise ValueError(f"Checksum verification failed for blob {dest_path}")
 
             link_path = self.get_snapshot_file_path(snapshot_hash, file.name)
+            os.makedirs(os.path.dirname(link_path), exist_ok=True)
             try:
                 os.symlink(blob_relative_path, link_path)
             except FileExistsError:
