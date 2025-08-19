@@ -141,6 +141,11 @@ dnf_install() {
   fi
 
   dnf_install_ffmpeg
+
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
+      dnf install -y gdb strace
+  fi
+
   dnf -y clean all
 }
 
@@ -179,7 +184,11 @@ setup_build_env() {
 cmake_steps() {
   local cmake_flags=("$@")
   cmake -B build "${cmake_flags[@]}" 2>&1 | cmake_check_warnings
-  cmake --build build --config Release -j"$(nproc)" 2>&1 | cmake_check_warnings
+  local build_config=Release
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
+      build_config=Debug
+  fi
+  cmake --build build --config "$build_config" -j"$(nproc)" 2>&1 | cmake_check_warnings
   cmake --install build 2>&1 | cmake_check_warnings
 }
 
@@ -192,7 +201,13 @@ set_install_prefix() {
 }
 
 configure_common_flags() {
-  common_flags=("-DGGML_NATIVE=OFF" "-DGGML_CMAKE_BUILD_TYPE=Release")
+  common_flags=("-DGGML_NATIVE=OFF")
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
+      common_flags+=("-DGGML_CMAKE_BUILD_TYPE=Debug")
+  else
+      common_flags+=("-DGGML_CMAKE_BUILD_TYPE=Release")
+  fi
+
   case "$containerfile" in
   rocm*)
     if [ "${ID}" = "fedora" ]; then
@@ -232,7 +247,9 @@ clone_and_build_whisper_cpp() {
   cmake_steps "${whisper_flags[@]}"
   mkdir -p "$install_prefix/bin"
   cd ..
-  rm -rf whisper.cpp
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" != y ]]; then
+      rm -rf whisper.cpp
+  fi
 }
 
 clone_and_build_llama_cpp() {
@@ -243,7 +260,9 @@ clone_and_build_llama_cpp() {
   cmake_steps "${common_flags[@]}"
   install -m 755 build/bin/rpc-server "$install_prefix"/bin/rpc-server
   cd ..
-  rm -rf llama.cpp
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" != y ]]; then
+      rm -rf llama.cpp
+  fi
 }
 
 install_ramalama() {
