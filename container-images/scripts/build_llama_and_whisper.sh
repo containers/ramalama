@@ -287,7 +287,6 @@ install_entrypoints() {
 }
 
 cleanup() {
-  clone_and_build_llama_cpp
   available dnf && dnf_remove
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
   ldconfig # needed for libraries
@@ -338,6 +337,7 @@ main() {
   fi
 
   add_common_flags
+  clone_and_build_llama_cpp
   cleanup
 }
 
