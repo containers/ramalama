@@ -235,15 +235,16 @@ configure_common_flags() {
 }
 
 clone_and_build_whisper_cpp() {
+  local DEFAULT_WHISPER_COMMIT="d0a9d8c7f8f7b91c51d77bbaa394b915f79cde6b"
+  local whisper_cpp_commit="${WHISPER_CPP_PULL_REF:-$DEFAULT_WHISPER_COMMIT}"
   local whisper_flags=("${common_flags[@]}")
-  local whisper_cpp_sha="d0a9d8c7f8f7b91c51d77bbaa394b915f79cde6b"
   whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
   # See: https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#compilation-options
   if [ "$containerfile" = "musa" ]; then
     whisper_flags+=("-DCMAKE_POSITION_INDEPENDENT_CODE=ON")
   fi
 
-  git_clone_specific_commit "https://github.com/ggerganov/whisper.cpp" "$whisper_cpp_sha"
+  git_clone_specific_commit "${WHISPER_CPP_REPO:-https://github.com/ggerganov/whisper.cpp}" "$whisper_cpp_commit"
   cmake_steps "${whisper_flags[@]}"
   mkdir -p "$install_prefix/bin"
   cd ..
@@ -253,10 +254,11 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local llama_cpp_sha="1d72c841888b9450916bdd5a9b3274da380f5b36"
+  local DEFAULT_LLAMA_CPP_COMMIT=1d72c841888b9450916bdd5a9b3274da380f5b36
+  local llama_cpp_commit="${LLAMA_CPP_PULL_REF:-$DEFAULT_LLAMA_CPP_COMMIT}"
   local install_prefix
   install_prefix=$(set_install_prefix)
-  git_clone_specific_commit "https://github.com/ggml-org/llama.cpp" "$llama_cpp_sha"
+  git_clone_specific_commit "${LLAMA_CPP_REPO:-https://github.com/ggml-org/llama.cpp}" "$llama_cpp_commit"
   cmake_steps "${common_flags[@]}"
   install -m 755 build/bin/rpc-server "$install_prefix"/bin/rpc-server
   cd ..
