@@ -272,8 +272,8 @@ class Model(ModelBase):
         if not ref_file.chat_templates:
             return None
 
-        # Use the first chat template file
-        chat_template_file = ref_file.chat_templates[0]
+        # Use the last chat template file (may have been go template converted to jinja)
+        chat_template_file = ref_file.chat_templates[-1]
         if use_container or should_generate:
             return os.path.join(MNT_DIR, chat_template_file.name)
         return self.model_store.get_blob_file_path(chat_template_file.hash)
