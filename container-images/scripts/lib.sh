@@ -41,7 +41,6 @@ git_clone_specific_commit() {
   cd "$repo" || return 1
   git remote add origin "$1"
   git fetch --depth 1 origin "$2"
-  git reset --hard "$2"
+  git reset --hard "FETCH_HEAD"
   git submodule update --init --recursive
 }
-

@@ -141,6 +141,11 @@ dnf_install() {
   fi
 
   dnf_install_ffmpeg
+
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
+      dnf install -y gdb strace
+  fi
+
   dnf -y clean all
 }
 
@@ -179,7 +184,11 @@ setup_build_env() {
 cmake_steps() {
   local cmake_flags=("$@")
   cmake -B build "${cmake_flags[@]}" 2>&1 | cmake_check_warnings
-  cmake --build build --config Release -j"$(nproc)" 2>&1 | cmake_check_warnings
+  local build_config=Release
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
+      build_config=Debug
+  fi
+  cmake --build build --config "$build_config" -j"$(nproc)" 2>&1 | cmake_check_warnings
   cmake --install build 2>&1 | cmake_check_warnings
 }
 
@@ -192,7 +201,13 @@ set_install_prefix() {
 }
 
 configure_common_flags() {
-  common_flags=("-DGGML_NATIVE=OFF" "-DGGML_CMAKE_BUILD_TYPE=Release")
+  common_flags=("-DGGML_NATIVE=OFF")
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
+      common_flags+=("-DGGML_CMAKE_BUILD_TYPE=Debug")
+  else
+      common_flags+=("-DGGML_CMAKE_BUILD_TYPE=Release")
+  fi
+
   case "$containerfile" in
   rocm*)
     if [ "${ID}" = "fedora" ]; then
@@ -220,30 +235,36 @@ configure_common_flags() {
 }
 
 clone_and_build_whisper_cpp() {
+  local DEFAULT_WHISPER_COMMIT="d0a9d8c7f8f7b91c51d77bbaa394b915f79cde6b"
+  local whisper_cpp_commit="${WHISPER_CPP_PULL_REF:-$DEFAULT_WHISPER_COMMIT}"
   local whisper_flags=("${common_flags[@]}")
-  local whisper_cpp_sha="d0a9d8c7f8f7b91c51d77bbaa394b915f79cde6b"
   whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
   # See: https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#compilation-options
   if [ "$containerfile" = "musa" ]; then
     whisper_flags+=("-DCMAKE_POSITION_INDEPENDENT_CODE=ON")
   fi
 
-  git_clone_specific_commit "https://github.com/ggerganov/whisper.cpp" "$whisper_cpp_sha"
+  git_clone_specific_commit "${WHISPER_CPP_REPO:-https://github.com/ggerganov/whisper.cpp}" "$whisper_cpp_commit"
   cmake_steps "${whisper_flags[@]}"
   mkdir -p "$install_prefix/bin"
   cd ..
-  rm -rf whisper.cpp
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" != y ]]; then
+      rm -rf whisper.cpp
+  fi
 }
 
 clone_and_build_llama_cpp() {
-  local llama_cpp_sha="1d72c841888b9450916bdd5a9b3274da380f5b36"
+  local DEFAULT_LLAMA_CPP_COMMIT=1d72c841888b9450916bdd5a9b3274da380f5b36
+  local llama_cpp_commit="${LLAMA_CPP_PULL_REF:-$DEFAULT_LLAMA_CPP_COMMIT}"
   local install_prefix
   install_prefix=$(set_install_prefix)
-  git_clone_specific_commit "https://github.com/ggml-org/llama.cpp" "$llama_cpp_sha"
+  git_clone_specific_commit "${LLAMA_CPP_REPO:-https://github.com/ggml-org/llama.cpp}" "$llama_cpp_commit"
   cmake_steps "${common_flags[@]}"
   install -m 755 build/bin/rpc-server "$install_prefix"/bin/rpc-server
   cd ..
-  rm -rf llama.cpp
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" != y ]]; then
+      rm -rf llama.cpp
+  fi
 }
 
 install_ramalama() {
@@ -266,7 +287,6 @@ install_entrypoints() {
 }
 
 cleanup() {
-  clone_and_build_llama_cpp
   available dnf && dnf_remove
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
   ldconfig # needed for libraries
@@ -317,6 +337,7 @@ main() {
   fi
 
   add_common_flags
+  clone_and_build_llama_cpp
   cleanup
 }
 
