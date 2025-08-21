@@ -21,6 +21,7 @@ require:
     - python3-argcomplete
     - python3-huggingface-hub
     - shellcheck
+    - python3-pyyaml
 
 /gpu_info:
     summary: Display GPU info
