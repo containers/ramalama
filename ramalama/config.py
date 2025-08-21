@@ -14,7 +14,7 @@ DEFAULT_PORT_RANGE: tuple[int, int] = (8080, 8090)
 DEFAULT_PORT: int = DEFAULT_PORT_RANGE[0]
 DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
 DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
-SUPPORTED_ENGINES: TypeAlias = Literal["podman", "docker"] | PathStr
+SUPPORTED_ENGINES: TypeAlias = Literal["podman", "docker"]
 SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx"]
 COLOR_OPTIONS: TypeAlias = Literal["auto", "always", "never"]
 

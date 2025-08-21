@@ -151,7 +151,7 @@ EOF
     is "$output" ".*default: ${engine1}"  "Verify default engine from environment variable override ramamalama.conf"
 
     engine2=e_$(safename)
-    RAMALAMA_CONTAINER_ENGINE=${engine1} RAMALAMA_CONFIG=${conf} run_ramalama --engine ${engine2} --help
+    RAMALAMA_CONTAINER_ENGINE=${engine1} RAMALAMA_CONFIG=${conf} run_ramalama 2 --engine ${engine2} --help
     is "$output" ".*default: ${engine2}"  "Verify --engine rules them all"
 }
 
