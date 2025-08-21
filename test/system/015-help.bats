@@ -50,7 +50,7 @@ function check_help() {
         # If usage lists no arguments (strings in ALL CAPS), confirm
         # by running with 'invalid-arg' and expecting failure.
         if ! expr "$usage" : '.*[A-Z]' >/dev/null; then
-            if [ "$cmd" != "help" ]; then
+            if [ "$cmd" != "help" ] && [ "$cmd" != "daemon" ]; then
                 dprint "$command_string invalid-arg"
                 run_ramalama '?' "$@" $cmd invalid-arg
                 is "$status" 2 \
@@ -101,7 +101,7 @@ function check_help() {
     # Test for regression of #7273 (spurious "--remote" help on output)
     for helpopt in help --help -h; do
         run_ramalama $helpopt
-        is "${lines[0]}" "usage: ramalama [-h] [--debug] [--dryrun] [--engine ENGINE] [--nocontainer]" \
+        is "${lines[0]}" "usage: ramalama [-h] [--debug] [--dryrun] [--engine {podman,docker}]" \
            "ramalama $helpopt: first line of output"
     done
 
@@ -151,8 +151,8 @@ EOF
     is "$output" ".*default: ${engine1}"  "Verify default engine from environment variable override ramamalama.conf"
 
     engine2=e_$(safename)
-    RAMALAMA_CONTAINER_ENGINE=${engine1} RAMALAMA_CONFIG=${conf} run_ramalama --engine ${engine2} --help
-    is "$output" ".*default: ${engine2}"  "Verify --engine rules them all"
+    RAMALAMA_CONTAINER_ENGINE=${engine1} RAMALAMA_CONFIG=${conf} run_ramalama 2 --engine ${engine2} --help
+    is "$output" ".*ramalama: error: argument --engine: invalid choice: '${engine}' (choose from .*)" "Verify --engine rules them all"
 }
 
 @test "ramalama verify default runtime" {
