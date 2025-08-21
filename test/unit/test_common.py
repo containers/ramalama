@@ -2,7 +2,6 @@ import os
 import shutil
 import tempfile
 from contextlib import ExitStack
-from io import StringIO
 from pathlib import Path
 from sys import platform
 from unittest.mock import mock_open, patch
@@ -10,16 +9,7 @@ from unittest.mock import mock_open, patch
 import pytest
 
 from ramalama.cli import configure_subcommands, create_argument_parser
-from ramalama.common import (
-    CDI_RETURN_TYPE,
-    accel_image,
-    find_in_cdi,
-    get_accel,
-    load_cdi_config,
-    load_cdi_yaml,
-    rm_until_substring,
-    verify_checksum,
-)
+from ramalama.common import accel_image, find_in_cdi, get_accel, load_cdi_config, rm_until_substring, verify_checksum
 from ramalama.config import DEFAULT_IMAGE, default_config
 
 
@@ -195,38 +185,158 @@ class TestGetAccel:
             assert returned_accel == "none"
 
 
-CDI_GPU_UUID = "GPU-abcdefgh"
-CDI_NODEV = """---
-cdiVersion: 0.5.0
-kind: nvidia.com/gpu
+CDI_GPU_UUID = "GPU-08b3c2e8-cb7b-ea3f-7711-a042c580b3e8"
+
+# Sample from WSL2
+CDI_YAML_1 = '''
+---
+cdiVersion: 0.3.0
+containerEdits:
+  env:
+  - NVIDIA_VISIBLE_DEVICES=void
+  hooks:
+  - args:
+    - nvidia-cdi-hook
+    - create-symlinks
+    - --link
+    - /usr/lib/wsl/drivers/nvlti.inf_amd64_4bd2a3580753f54d/nvidia-smi::/usr/bin/nvidia-smi
+    hookName: createContainer
+    path: /usr/bin/nvidia-cdi-hook
 devices:
-"""
-CDI_ZERO = CDI_NODEV + '  - name: "0"\n'
-CDI_ALL = CDI_NODEV + "  - name: all\n"
-CDI_UUID = CDI_NODEV + f"  - name: {CDI_GPU_UUID}\n"
-CDI_EVERYTHING = CDI_UUID + '  - name: "0"\n  - name: all\n'
+- containerEdits:
+    deviceNodes:
+    - path: /dev/dxg
+  name: all
+kind: nvidia.com/gpu
+'''
+
+CDI_YAML_2 = '''
+---
+cdiVersion: 0.5.0
+containerEdits:
+  deviceNodes:
+  - path: /dev/nvidia-modeset
+  - path: /dev/nvidia-uvm
+  - path: /dev/nvidia-uvm-tools
+  - path: /dev/nvidiactl
+  env:
+  - NVIDIA_VISIBLE_DEVICES=void
+  hooks:
+  - args:
+    - nvidia-cdi-hook
+    - create-symlinks
+    - --link
+    - ../libnvidia-allocator.so.1::/usr/lib64/gbm/nvidia-drm_gbm.so
+    env:
+    - NVIDIA_CTK_DEBUG=false
+    hookName: createContainer
+    path: /usr/bin/nvidia-cdi-hook
+devices:
+- containerEdits:
+    deviceNodes:
+    - path: /dev/nvidia0
+    - path: /dev/dri/card1
+    - path: /dev/dri/renderD128
+    hooks:
+    - args:
+      - nvidia-cdi-hook
+      - create-symlinks
+      - --link
+      - ../card1::/dev/dri/by-path/pci-0000:52:00.0-card
+      - --link
+      - ../renderD128::/dev/dri/by-path/pci-0000:52:00.0-render
+      env:
+      - NVIDIA_CTK_DEBUG=false
+      hookName: createContainer
+      path: /usr/bin/nvidia-cdi-hook
+  name: "0"
+- containerEdits:
+    deviceNodes:
+    - path: /dev/nvidia0
+    - path: /dev/dri/card1
+    - path: /dev/dri/renderD128
+    hooks:
+    - args:
+      - nvidia-cdi-hook
+      - create-symlinks
+      - --link
+      - ../card1::/dev/dri/by-path/pci-0000:52:00.0-card
+      - --link
+      - ../renderD128::/dev/dri/by-path/pci-0000:52:00.0-render
+      env:
+      - NVIDIA_CTK_DEBUG=false
+      hookName: createContainer
+      path: /usr/bin/nvidia-cdi-hook
+  name: GPU-08b3c2e8-cb7b-ea3f-7711-a042c580b3e8
+- containerEdits:
+    deviceNodes:
+    - path: /dev/nvidia0
+    - path: /dev/dri/card1
+    - path: /dev/dri/renderD128
+    hooks:
+    - args:
+      - nvidia-cdi-hook
+      - create-symlinks
+      - --link
+      - ../card1::/dev/dri/by-path/pci-0000:52:00.0-card
+      - --link
+      - ../renderD128::/dev/dri/by-path/pci-0000:52:00.0-render
+      env:
+      - NVIDIA_CTK_DEBUG=false
+      hookName: createContainer
+      path: /usr/bin/nvidia-cdi-hook
+  name: all
+kind: nvidia.com/gpu
+'''
+
+CDI_JSON_1 = '''
+{"cdiVersion":"0.3.0","kind":"nvidia.com/gpu","devices":[{"name":"all","containerEdits":{"deviceNodes":[{"path":"/dev/dxg"}]}}],"containerEdits":{"env":["NVIDIA_VISIBLE_DEVICES=void"]}}
+'''
+CDI_JSON_2 = '''
+{"cdiVersion":"0.5.0","kind":"nvidia.com/gpu","devices":[{"name":"0","containerEdits":{"deviceNodes":[{"path":"/dev/nvidia0"},{"path":"/dev/dri/card1"},{"path":"/dev/dri/renderD128"}],"hooks":[{"hookName":"createContainer","path":"/usr/bin/nvidia-cdi-hook","args":["nvidia-cdi-hook","create-symlinks","--link","../card1::/dev/dri/by-path/pci-0000:52:00.0-card","--link","../renderD128::/dev/dri/by-path/pci-0000:52:00.0-render"]},{"hookName":"createContainer","path":"/usr/bin/nvidia-cdi-hook","args":["nvidia-cdi-hook","chmod","--mode","755","--path","/dev/dri"]}]}},{"name":"GPU-08b3c2e8-cb7b-ea3f-7711-a042c580b3e8","containerEdits":{"deviceNodes":[{"path":"/dev/nvidia0"},{"path":"/dev/dri/card1"},{"path":"/dev/dri/renderD128"}],"hooks":[{"hookName":"createContainer","path":"/usr/bin/nvidia-cdi-hook","args":["nvidia-cdi-hook","create-symlinks","--link","../card1::/dev/dri/by-path/pci-0000:52:00.0-card","--link","../renderD128::/dev/dri/by-path/pci-0000:52:00.0-render"]},{"hookName":"createContainer","path":"/usr/bin/nvidia-cdi-hook","args":["nvidia-cdi-hook","chmod","--mode","755","--path","/dev/dri"]}]}},{"name":"all","containerEdits":{"deviceNodes":[{"path":"/dev/nvidia0"},{"path":"/dev/dri/card1"},{"path":"/dev/dri/renderD128"}],"hooks":[{"hookName":"createContainer","path":"/usr/bin/nvidia-cdi-hook","args":["nvidia-cdi-hook","create-symlinks","--link","../card1::/dev/dri/by-path/pci-0000:52:00.0-card","--link","../renderD128::/dev/dri/by-path/pci-0000:52:00.0-render"]},{"hookName":"createContainer","path":"/usr/bin/nvidia-cdi-hook","args":["nvidia-cdi-hook","chmod","--mode","755","--path","/dev/dri"]}]}}],"containerEdits":{"env":["NVIDIA_VISIBLE_DEVICES=void"]}}'''  # noqa: E501
 
 
 @pytest.mark.parametrize(
-    "input,result",
+    "filename,source,expected",
     [
-        (StringIO(CDI_NODEV), {"devices": []}),
-        (StringIO(CDI_ZERO), {"devices": [{"name": "0"}]}),
-        (StringIO(CDI_ALL), {"devices": [{"name": "all"}]}),
-        (StringIO(CDI_UUID), {"devices": [{"name": CDI_GPU_UUID}]}),
-        (StringIO(CDI_EVERYTHING), {"devices": [{"name": CDI_GPU_UUID}, {"name": "0"}, {"name": "all"}]}),
+        pytest.param(
+            "nvidia.yaml",
+            CDI_YAML_1,
+            [
+                "all",
+            ],
+            id="YAML-all",
+        ),
+        pytest.param("nvidia.yaml", CDI_YAML_2, ["0", "all", CDI_GPU_UUID], id="YAML-0-UUID-all"),
+        pytest.param(
+            "nvidia.json",
+            CDI_JSON_1,
+            [
+                "all",
+            ],
+            id="JSON-all",
+        ),
+        pytest.param(
+            "nvidia.json",
+            CDI_JSON_2,
+            [
+                "0",
+                CDI_GPU_UUID,
+                "all",
+            ],
+            id="JSON-0-UUID-all",
+        ),
     ],
 )
-def test_load_cdi_yaml(input: str, result: CDI_RETURN_TYPE):
-    assert load_cdi_yaml(input) == result
-
-
-@patch("builtins.open", mock_open(read_data=CDI_EVERYTHING))
-@patch("os.walk", return_value=(("/etc/cdi", None, ("nvidia.yaml",)),))
-def test_load_cdi_config(mock_walk):
-    assert load_cdi_config(['/etc/cdi', '/var/run/cdi']) == {
-        "devices": [{"name": CDI_GPU_UUID}, {"name": "0"}, {"name": "all"}]
-    }
+def test_load_cdi_config(filename, source, expected):
+    with patch("os.walk", return_value=(("/etc/cdi", None, (filename,)),)):
+        with patch("builtins.open", mock_open(read_data=source)):
+            cdi = load_cdi_config(["/var/run/cdi", "/etc/cdi"])
+            assert cdi
+            assert "devices" in cdi
+            devices = cdi["devices"]
+            names = [device["name"] for device in devices]
+            assert set(expected) == set(names)
 
 
 @pytest.mark.parametrize(
@@ -239,9 +349,23 @@ def test_load_cdi_config(mock_walk):
         (["dummy", "all"], ["all"], ["dummy"]),
     ],
 )
-@patch("builtins.open", mock_open(read_data=CDI_EVERYTHING))
+@patch("builtins.open", mock_open(read_data=CDI_YAML_2))
 @patch("os.walk", return_value=(("/etc/cdi", None, ("nvidia.yaml",)),))
 def test_find_in_cdi(mock_walk, visible, conf, unconf):
+    assert find_in_cdi(visible) == (conf, unconf)
+
+
+@pytest.mark.parametrize(
+    "visible,conf,unconf",
+    [
+        (["all"], [], ["all"]),
+        (["0", "all"], [], ["0", "all"]),
+        ([CDI_GPU_UUID, "all"], [], [CDI_GPU_UUID, "all"]),
+    ],
+)
+@patch("builtins.open", mock_open(read_data="asdf\n- ghjk\n"))
+@patch("os.walk", return_value=(("/etc/cdi", None, ("nvidia.yaml",)),))
+def test_find_in_cdi_broken(mock_walk, visible, conf, unconf):
     assert find_in_cdi(visible) == (conf, unconf)
 
 
