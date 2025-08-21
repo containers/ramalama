@@ -95,7 +95,7 @@ def args_to_cli_args(args_obj, subcommand: str | None, special_cases: dict | Non
 @given(
     st.builds(
         DefaultArgs,
-        engine=st.sampled_from(get_args(get_args(SUPPORTED_ENGINES)[0])),
+        engine=st.sampled_from(get_args(SUPPORTED_ENGINES)),
         store=st.sampled_from(['/', '/tmp']),
         debug=st.just(False),
         quiet=st.just(False),

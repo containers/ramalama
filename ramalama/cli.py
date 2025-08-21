@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import get_args
 
-from ramalama.config import COLOR_OPTIONS, SUPPORTED_RUNTIMES
+from ramalama.config import COLOR_OPTIONS, SUPPORTED_ENGINES, SUPPORTED_RUNTIMES
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
@@ -224,6 +224,7 @@ def configure_arguments(parser):
         "--engine",
         dest="engine",
         default=CONFIG.engine,
+        choices=get_args(SUPPORTED_ENGINES),
         help="""run RamaLama using the specified container engine.
 The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
     )
@@ -1112,49 +1113,104 @@ def stop_container(args):
 
 
 def daemon_parser(subparsers):
-    parser = subparsers.add_parser("daemon", help="daemon operations")
-    parser.set_defaults(func=daemon_setup_cli)
+    parser: ArgumentParserWithDefaults = subparsers.add_parser("daemon", help="daemon operations")
+    parser.set_defaults(func=lambda _: parser.print_help())
 
     daemon_parsers = parser.add_subparsers(dest="daemon_command")
 
-    run_parser = daemon_parsers.add_parser("setup")
-    run_parser.set_defaults(func=daemon_setup_cli)
+    start_parser = daemon_parsers.add_parser("start")
+    start_parser.add_argument(
+        "--image",
+        default=accel_image(CONFIG),
+        help="OCI container image to run with the specified AI model",
+        action=OverrideDefaultAction,
+        completer=local_images,
+    )
+    start_parser.add_argument(
+        "--pull",
+        dest="pull",
+        type=str,
+        default=CONFIG.pull,
+        choices=["always", "missing", "never", "newer"],
+        help='pull image policy',
+    )
+    start_parser.add_argument(
+        "--host",
+        default=CONFIG.host,
+        help="IP address to listen",
+        completer=suppressCompleter,
+    )
+    start_parser.add_argument(
+        "-p",
+        "--port",
+        type=parse_port_option,
+        default=CONFIG.port,
+        help="port for AI Model server to listen on",
+        completer=suppressCompleter,
+    )
+    start_parser.set_defaults(func=daemon_start_cli)
 
-    cli_parser = daemon_parsers.add_parser("run")
-    cli_parser.set_defaults(func=daemon_run_cli)
-    cli_parser.add_argument("--store", default=CONFIG.store, type=abspath, help="path to store models")
+    run_parser = daemon_parsers.add_parser("run")
+    run_parser.add_argument(
+        "--host",
+        default=CONFIG.host,
+        help="IP address to listen",
+        completer=suppressCompleter,
+    )
+    run_parser.add_argument(
+        "-p",
+        "--port",
+        type=parse_port_option,
+        default=CONFIG.port,
+        help="port for AI Model server to listen on",
+        completer=suppressCompleter,
+    )
+    run_parser.set_defaults(func=daemon_run_cli)
 
 
-def daemon_setup_cli(args):
+def daemon_start_cli(args):
     from ramalama.common import exec_cmd
 
-    exec_cmd(
-        [
+    daemon_cmd = []
+    daemon_model_store_dir = args.store
+    is_daemon_in_container = args.container and args.engine in get_args(SUPPORTED_ENGINES)
+
+    if is_daemon_in_container:
+        # If run inside a container, map the model store to the container internal directory
+        daemon_model_store_dir = "/ramalama/models"
+
+        daemon_cmd += [
             "podman",
             "run",
             "--pull",
-            "never",
-            "-i",
-            "-t",
+            args.pull,
             "-d",
             "-p",
-            "8080:8080",
+            f"{args.port}:8080",
             "-v",
-            f"{CONFIG.store}:/ramalama/models",
-            "quay.io/ramalama/rocm:latest",
-            "ramalama",
-            "daemon",
-            "run",
-            "--store",
-            "/ramalama/models",
-        ],
-    )
+            f"{args.store}:{daemon_model_store_dir}",
+            args.image,
+        ]
+
+    daemon_cmd += [
+        "ramalama",
+        "--store",
+        daemon_model_store_dir,
+        "daemon",
+        "run",
+        "--port",
+        "8080" if is_daemon_in_container else args.port,
+        "--host",
+        CONFIG.host if is_daemon_in_container else args.host,
+    ]
+
+    exec_cmd(daemon_cmd)
 
 
 def daemon_run_cli(args):
     from ramalama.daemon.daemon import run
 
-    run(model_store_path=args.store)
+    run(host=args.host, port=int(args.port), model_store_path=args.store)
 
 
 def version_parser(subparsers):
