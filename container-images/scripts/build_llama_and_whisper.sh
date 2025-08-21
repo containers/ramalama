@@ -66,8 +66,7 @@ dnf_install_rocm() {
   rm_non_ubi_repos
 }
 
-dnf_install_s390() {
-  # I think this was for s390, maybe ppc also
+dnf_install_s390_ppc64le() {
   dnf install -y "openblas-devel"
 }
 
@@ -126,7 +125,7 @@ dnf_install() {
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
       dnf_install_mesa # on x86_64 and aarch64 we use vulkan via mesa
     else
-      dnf_install_s390
+      dnf_install_s390_ppc64le
     fi
   elif [[ "$containerfile" = rocm* ]]; then
     dnf_install_rocm
@@ -298,9 +297,8 @@ add_common_flags() {
   ramalama)
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
       common_flags+=("-DGGML_VULKAN=ON")
-    elif [ "$uname_m" = "s390x" ]; then
-      common_flags+=("-DGGML_VXE=ON" "-DGGML_BLAS=ON")
-      common_flags+=("-DGGML_BLAS_VENDOR=OpenBLAS")
+    elif [ "$uname_m" = "s390x" ] || [ "$uname_m" = "ppc64le" ]; then
+      common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
     fi
     ;;
   esac
