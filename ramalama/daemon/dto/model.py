@@ -12,6 +12,7 @@ class ModelDetailsResponse:
 
     def to_dict(self) -> dict:
         return {
+            "parent_model": "",
             "format": self.format,
             "family": self.family,
             "families": self.families or [],
@@ -27,16 +28,26 @@ class ModelDetailsResponse:
 class ModelResponse:
 
     name: str
+    organization: str
+    tag: str
+    source: str
+    model: str
     modified_at: str
     size: int
+    is_partial: bool
     digest: str
     details: ModelDetailsResponse
 
     def to_dict(self) -> dict:
         return {
             "name": self.name,
+            "organization": self.organization,
+            "tag": self.tag,
+            "source": self.source,
+            "model": self.model,
             "modified_at": self.modified_at,
             "size": self.size,
+            "is_partial": self.is_partial,
             "digest": self.digest,
             "details": self.details.to_dict(),
         }
@@ -46,7 +57,7 @@ class ModelResponse:
 
 
 def model_list_to_dict(models: list[ModelResponse]) -> list[dict]:
-    return [model.to_dict() for model in models]
+    return {"models": [model.to_dict() for model in models]}
 
 
 def model_list_serialize(models: list[ModelResponse]) -> str:
