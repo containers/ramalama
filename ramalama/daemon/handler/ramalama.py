@@ -57,6 +57,11 @@ class RamalamaHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.startswith(ModelProxyHandler.PATH_PREFIX) or is_referred:
             ModelProxyHandler(self.model_runner).handle_head(self, is_referred)
 
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.flush()
+
     def do_POST(self):
         logger.debug(f"Handling POST request for path: {self.path}")
 
