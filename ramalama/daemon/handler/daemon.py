@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 
 from ramalama.arg_types import StoreArgs
+from ramalama.common import generate_sha256
 from ramalama.config import CONFIG
 from ramalama.daemon.dto.model import ModelDetailsResponse, ModelResponse, model_list_to_dict
 from ramalama.daemon.dto.serve import ServeRequest, ServeResponse, StopServeRequest
@@ -11,7 +12,6 @@ from ramalama.daemon.handler.proxy import ModelProxyHandler
 from ramalama.daemon.logging import logger
 from ramalama.daemon.model_runner.command_factory import CommandFactory
 from ramalama.daemon.model_runner.runner import ManagedModel, ModelRunner
-from ramalama.model import trim_model_name
 from ramalama.model_factory import ModelFactory
 from ramalama.model_store.global_store import GlobalModelStore
 
@@ -68,19 +68,30 @@ class DaemonAPIHandler(APIHandler):
             if not arg_show_all and is_partially_downloaded:
                 continue
 
-            model = trim_model_name(model)
             size_sum = 0
             last_modified = 0.0
             for file in model_files:
                 size_sum += file.size
                 last_modified = max(file.modified, last_modified)
 
+            model = ModelFactory(
+                model, StoreArgs(engine=arg_engine, container=arg_show_container, store=self.model_store_path)
+            ).create()
+            full_model_name = f"{model.model_type}://{model.model_organization}/{model.model_name}:{model.model_tag}"
+            #
+            # TODO: # Get model details via inspect
+            #
             collected_models.append(
                 ModelResponse(
-                    name=f"{model} (partial)" if is_partially_downloaded else model,
+                    name=model.model_name,
+                    organization=model.model_organization,
+                    tag=model.model_tag,
+                    source=model.model_type,
+                    model=full_model_name,
                     modified_at=datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
                     size=size_sum,
-                    digest="",
+                    is_partial=is_partially_downloaded,
+                    digest=generate_sha256(full_model_name, with_sha_prefix=False),
                     details=ModelDetailsResponse(
                         format="", family="", families=[], parameter_size="", quantization_level=""
                     ),
