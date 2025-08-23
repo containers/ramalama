@@ -7,7 +7,7 @@ import threading
 
 from ramalama.daemon.handler.ramalama import RamalamaHandler
 from ramalama.daemon.logging import configure_logger, logger
-from ramalama.daemon.model_runner.runner import ModelRunner
+from ramalama.daemon.service.model_runner import ModelRunner
 
 
 class ShutdownHandler:
