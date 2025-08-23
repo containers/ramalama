@@ -1,4 +1,5 @@
 import subprocess
+from datetime import datetime, timedelta
 from typing import Optional
 
 from ramalama.common import generate_sha256
@@ -7,16 +8,28 @@ from ramalama.model_factory import CLASS_MODEL_TYPES
 
 class ManagedModel:
 
-    def __init__(self, id: str, model: CLASS_MODEL_TYPES, run_cmd: list[str], port: int):
+    def __init__(
+        self,
+        id: str,
+        model: CLASS_MODEL_TYPES,
+        run_cmd: list[str],
+        port: int,
+        expires_after: timedelta = timedelta(minutes=5),
+    ):
         self.id = id
         self.model = model
         self.run_cmd: list[str] = run_cmd
         self.port: str = port
+
+        self.expires_after = expires_after
+        self.expiration_date: Optional[datetime] = None
+
         self.process: Optional[subprocess.Popen] = None
 
     def start(self):
         if self.process is not None:
             raise RuntimeError(f"Model {self.id} is already running.")
+        self.update_expiration_date()
         self.process = subprocess.Popen(self.run_cmd)
 
     def stop(self):
@@ -24,6 +37,9 @@ class ManagedModel:
             self.process.terminate()
             self.process.wait()
             self.process = None
+
+    def update_expiration_date(self):
+        self.expiration_date = datetime.now() + self.expires_after
 
 
 class ModelRunner:
@@ -47,7 +63,7 @@ class ModelRunner:
 
     @staticmethod
     def generate_model_id(model_name: str, model_tag: str, model_organization: str) -> str:
-        return generate_sha256(f"{model_name}-{model_tag}-{model_organization}")
+        return generate_sha256(f"{model_name}-{model_tag}-{model_organization}", with_sha_prefix=False)
 
     def add_model(self, model: ManagedModel):
         if model.id in self._models:
