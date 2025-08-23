@@ -62,3 +62,43 @@ def model_list_to_dict(models: list[ModelResponse]) -> list[dict]:
 
 def model_list_serialize(models: list[ModelResponse]) -> str:
     return json.dumps(model_list_to_dict(models), indent=4, sort_keys=True)
+
+
+@dataclass
+class RunningModelResponse:
+
+    id: str
+    name: str
+    organization: str
+    tag: str
+    source: str
+    model: str
+    expires_at: str
+    size_vram: int
+    digest: str
+    cmd: str
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "organization": self.organization,
+            "tag": self.tag,
+            "source": self.source,
+            "model": self.model,
+            "expires_at": self.expires_at,
+            "size_vram": self.size_vram,
+            "digest": self.digest,
+            "cmd": self.cmd,
+        }
+
+    def serialize(self) -> str:
+        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
+
+
+def running_model_list_to_dict(models: list[RunningModelResponse]) -> list[dict]:
+    return {"models": [model.to_dict() for model in models]}
+
+
+def running_model_list_serialize(models: list[RunningModelResponse]) -> str:
+    return json.dumps(running_model_list_to_dict(models), indent=4, sort_keys=True)
