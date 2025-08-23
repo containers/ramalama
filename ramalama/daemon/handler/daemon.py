@@ -10,8 +10,8 @@ from ramalama.daemon.dto.serve import ServeRequest, ServeResponse, StopServeRequ
 from ramalama.daemon.handler.base import APIHandler
 from ramalama.daemon.handler.proxy import ModelProxyHandler
 from ramalama.daemon.logging import logger
-from ramalama.daemon.model_runner.command_factory import CommandFactory
-from ramalama.daemon.model_runner.runner import ManagedModel, ModelRunner
+from ramalama.daemon.service.command_factory import CommandFactory
+from ramalama.daemon.service.model_runner import ManagedModel, ModelRunner
 from ramalama.model_factory import ModelFactory
 from ramalama.model_store.global_store import GlobalModelStore
 
@@ -20,15 +20,17 @@ class DaemonAPIHandler(APIHandler):
 
     PATH_PREFIX = "/api"
 
-    def __init__(self, model_store_path: str, model_runner: ModelRunner):
-        super().__init__()
+    def __init__(self, model_runner: ModelRunner, model_store_path: str):
+        super().__init__(model_runner)
 
         self.model_store_path = model_store_path
-        self.model_runner = model_runner
 
     def handle_get(self, handler: http.server.SimpleHTTPRequestHandler):
         if handler.path.startswith(f"{DaemonAPIHandler.PATH_PREFIX}/tags"):
             self._handle_get_tags(handler)
+            return
+        if handler.path.startswith(f"{DaemonAPIHandler.PATH_PREFIX}/ps"):
+            self._handle_get_running_models(handler)
             return
 
         raise Exception("Unsupported GET request path")

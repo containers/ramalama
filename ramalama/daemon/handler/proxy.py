@@ -1,11 +1,9 @@
 import http.server
-import json
 import urllib.request
 
-from ramalama.daemon.dto.proxy import RunningModelResponse, running_model_list_to_dict
 from ramalama.daemon.handler.base import APIHandler
 from ramalama.daemon.logging import logger
-from ramalama.daemon.model_runner.runner import ModelRunner
+from ramalama.daemon.service.model_runner import ModelRunner
 
 
 class ModelProxyHandler(APIHandler):
@@ -13,29 +11,13 @@ class ModelProxyHandler(APIHandler):
     PATH_PREFIX = "/model"
 
     def __init__(self, model_runner: ModelRunner):
-        super().__init__()
+        super().__init__(model_runner)
 
         self.model_runner = model_runner
 
     def handle_get(self, handler: http.server.SimpleHTTPRequestHandler, is_referred: bool = False):
         if handler.path == f"{ModelProxyHandler.PATH_PREFIX}":
-            models: list[RunningModelResponse] = []
-            for model_id, managed_model in self.model_runner.managed_models.items():
-                models.append(
-                    RunningModelResponse(
-                        id=managed_model.id,
-                        name=managed_model.model.model_name,
-                        organization=managed_model.model.model_organization,
-                        tag=managed_model.model.model_tag,
-                        cmd=" ".join(managed_model.run_cmd),
-                    )
-                )
-
-            handler.send_response(200)
-            handler.send_header("Content-Type", "application/json")
-            handler.end_headers()
-            handler.wfile.write(json.dumps(running_model_list_to_dict(models), indent=4).encode("utf-8"))
-            handler.wfile.flush()
+            self._handle_get_running_models(handler)
 
             return
 
