@@ -1,7 +1,6 @@
 import http.server
 import json
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
 
 from ramalama.daemon.dto.model import RunningModelResponse, running_model_list_to_dict
 from ramalama.daemon.service.model_runner import ModelRunner
@@ -40,7 +39,6 @@ class APIHandler(ABC):
             full_model_name = (
                 f"{m.model.model_type}://{m.model.model_organization}/{m.model.model_name}:{m.model.model_tag}"
             )
-            expiration = datetime.now() + timedelta(minutes=5)
             models.append(
                 RunningModelResponse(
                     id=m.id,
@@ -49,7 +47,7 @@ class APIHandler(ABC):
                     tag=m.model.model_tag,
                     source=m.model.type,
                     model=full_model_name,
-                    expires_at=expiration.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    expires_at=m.expiration_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
                     size_vram=0,
                     digest=m.id.replace("sha-", ""),
                     cmd=" ".join(m.run_cmd),
