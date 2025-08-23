@@ -1,6 +1,6 @@
 import http.server
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ramalama.arg_types import StoreArgs
 from ramalama.common import generate_sha256
@@ -123,7 +123,7 @@ class DaemonAPIHandler(APIHandler):
 
         logger.info(f"Starting model runner for {serve_request.model_name} with command: {cmd}")
         id = ModelRunner.generate_model_id(model.model_name, model.model_tag, model.model_organization)
-        model = ManagedModel(id, model, cmd, port)
+        model = ManagedModel(id, model, cmd, port, timedelta(seconds=30))
         self.model_runner.add_model(model)
         self.model_runner.start_model(id)
 

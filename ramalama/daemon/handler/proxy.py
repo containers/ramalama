@@ -74,6 +74,8 @@ class ModelProxyHandler(APIHandler):
             return
 
         managed_model = self.model_runner.managed_models[model_id]
+        managed_model.update_expiration_date()
+
         target_url = f"http://0.0.0.0:{managed_model.port}{path}"
         method = handler.command
         headers = handler.headers
