@@ -169,7 +169,7 @@ def find_working_directory():
     return os.path.dirname(__file__)
 
 
-def generate_sha256(to_hash: str) -> str:
+def generate_sha256(to_hash: str, with_sha_prefix: bool = True) -> str:
     """
     Generates a sha256 for a string.
 
@@ -181,7 +181,9 @@ def generate_sha256(to_hash: str) -> str:
     """
     h = hashlib.new("sha256")
     h.update(to_hash.encode("utf-8"))
-    return f"sha256-{h.hexdigest()}"
+    if with_sha_prefix:
+        return f"sha256-{h.hexdigest()}"
+    return h.hexdigest()
 
 
 def verify_checksum(filename: str) -> bool:
