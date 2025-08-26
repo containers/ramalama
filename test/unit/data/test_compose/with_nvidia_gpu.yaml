@@ -1,0 +1,25 @@
+# Save this output to a 'docker-compose.yaml' file and run 'docker compose up'.
+#
+# Created with ramalama-0.1.0-test
+services:
+  gemma-cuda:
+    container_name: ramalama-gemma-cuda
+    image: test-image/cuda:latest
+    volumes:
+      - "/models/gemma.gguf:/mnt/models/gemma.gguf:ro"
+    ports:
+      - "8080:8080"
+    environment:
+      - ACCEL_ENV=true
+    devices:
+      - "/dev/dri:/dev/dri"
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/accel:/dev/accel"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
