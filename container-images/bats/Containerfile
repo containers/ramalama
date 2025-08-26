@@ -5,12 +5,13 @@ ENV HOME=/tmp \
 WORKDIR /src
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
-RUN dnf -y install make bats jq iproute podman openssl httpd-tools diffutils \
+RUN dnf -y --setopt=install_weak_deps=false install \
+    make bats jq iproute podman openssl httpd-tools diffutils \
     python3-huggingface-hub \
     $([ $(uname -m) == "x86_64" ] && echo ollama) \
     # for validate and unit-tests
     black codespell shellcheck \
-    python3-flake8 python3-isort python3-pip python3-pytest \
+    python3-flake8 python3-isort python3-pip python3-pytest python3-pyyaml \
     perl-Clone perl-FindBin \
     # for building llama-bench
     git-core cmake gcc-c++ curl-devel && \
