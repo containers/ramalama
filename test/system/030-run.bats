@@ -93,11 +93,11 @@ EOF
 	is "$output" '.*serve.*--ctx-size 4096 --temp 0.8.*' "dryrun correct"
 	is "$output" ".*--ctx-size 4096" "verify model name"
 
-	run_ramalama 1 run --ctx-size=4096 --name foobar ${MODEL}
+	run_ramalama 22 run --ctx-size=4096 --name foobar ${MODEL}
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
-	run_ramalama 1 run --name foobar ${MODEL}
+	run_ramalama 22 run --name foobar ${MODEL}
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
-	run_ramalama 1 run --privileged ${MODEL}
+	run_ramalama 22 run --privileged ${MODEL}
 	is "${lines[0]}"  "Error: --nocontainer and --privileged options conflict. The --privileged option requires a container." "conflict between nocontainer and --privileged line"
     fi
 }

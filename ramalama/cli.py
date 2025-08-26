@@ -1277,20 +1277,14 @@ def main():
         eprint(f"pulling {e.geturl()} failed: {e}", errno.EINVAL)
     except HelpException:
         parser.print_help()
-    except IndexError as e:
+    except (ConnectionError, IndexError, KeyError, ValueError) as e:
         eprint(e, errno.EINVAL)
-    except KeyError as e:
-        eprint(e, 1)
     except NotImplementedError as e:
-        eprint(e, errno.ENOTSUP)
+        eprint(e, errno.ENOSYS)
     except subprocess.CalledProcessError as e:
         eprint(e, e.returncode)
     except KeyboardInterrupt:
         sys.exit(0)
-    except ConnectionError as e:
-        eprint(e, errno.EINVAL)
-    except ValueError as e:
-        eprint(e, errno.EINVAL)
     except IOError as e:
         eprint(e, errno.EIO)
     except ParseError as e:

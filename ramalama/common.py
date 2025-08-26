@@ -574,13 +574,13 @@ def select_cuda_image(config: Config) -> str:
         str: The appropriate CUDA image name
 
     Raises:
-        RuntimeError: If CUDA version is less than 12.4
+        NotImplementedError: If CUDA version is less than 12.4
     """
     # Get the default CUDA image from config
     cuda_image = config.images.get("CUDA_VISIBLE_DEVICES")
 
     if cuda_image is None:
-        raise RuntimeError("No image repository found for CUDA_VISIBLE_DEVICES in config.")
+        raise NotImplementedError("No image repository found for CUDA_VISIBLE_DEVICES in config.")
 
     # Check CUDA version and select appropriate image
     cuda_version = check_cuda_version()
@@ -591,7 +591,7 @@ def select_cuda_image(config: Config) -> str:
     elif cuda_version >= (12, 4):
         return f"{cuda_image}-12.4.1"  # Use the specific version for older CUDA
     else:
-        raise RuntimeError(f"CUDA version {cuda_version} is not supported. Minimum required version is 12.4.")
+        raise NotImplementedError(f"CUDA version {cuda_version} is not supported. Minimum required version is 12.4.")
 
 
 class AccelImageArgsWithImage(Protocol):

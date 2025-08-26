@@ -25,7 +25,7 @@ load setup_suite
     run_ramalama rm https://ollama.com/library/smollm:135m ollama://smollm:360m
 
     random_image_name=i_$(safename)
-    run_ramalama 1 -q pull ${random_image_name}
+    run_ramalama 22 -q pull ${random_image_name}
     is "$output" "Error: Manifest for ${random_image_name}:latest was not found in the Ollama registry"
 }
 
@@ -54,7 +54,7 @@ load setup_suite
     ollama rm smollm:135m smollm:360m
 
     random_image_name=i_$(safename)
-    run_ramalama 1 -q pull ${random_image_name}
+    run_ramalama 22 -q pull ${random_image_name}
     is "$output" "Error: Manifest for ${random_image_name}:latest was not found in the Ollama registry"
 
     pkill ollama

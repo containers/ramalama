@@ -163,7 +163,7 @@ function skip_if_no_mlx() {
     skip_if_no_mlx
     
     # --name requires container mode, which MLX doesn't support
-    run_ramalama 1 --runtime=mlx run --name test ${MODEL}
+    run_ramalama 22 --runtime=mlx run --name test ${MODEL}
     is "$output" ".*--nocontainer.*--name.*conflict.*" "should show conflict error"
 }
 
@@ -172,6 +172,6 @@ function skip_if_no_mlx() {
     skip_if_no_mlx
     
     # --privileged requires container mode, which MLX doesn't support
-    run_ramalama 1 --runtime=mlx run --privileged ${MODEL}
+    run_ramalama 22 --runtime=mlx run --privileged ${MODEL}
     is "$output" ".*--nocontainer.*--privileged.*conflict.*" "should show conflict error"
 }

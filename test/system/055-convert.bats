@@ -9,7 +9,7 @@ load helpers
 	is "$output" ".*ramalama convert: error: the following arguments are required: SOURCE, TARGET"
 	run_ramalama 2 convert tiny
 	is "$output" ".*ramalama convert: error: the following arguments are required: TARGET"
-	run_ramalama 1 convert bogus foobar
+	run_ramalama 22 convert bogus foobar
 	is "$output" "Error: Manifest for bogus:latest was not found in the Ollama registry"
    else
 	run_ramalama 22 convert tiny quay.io/ramalama/foobar
