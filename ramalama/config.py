@@ -85,6 +85,7 @@ class BaseConfig:
             "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
             "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
             "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
+            "VLLM": "registry.redhat.io/rhelai1/ramalama-vllm",
         }
     )
     keep_groups: bool = False

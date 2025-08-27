@@ -628,6 +628,9 @@ def accel_image(config: Config) -> str:
     if config.is_set("image"):
         return tagged_image(config.image)
 
+    if config.runtime == "vllm":
+        return config.images["VLLM"]
+
     set_gpu_type_env_vars()
     gpu_type = next(iter(get_gpu_type_env_vars()), None)
 
@@ -637,10 +640,11 @@ def accel_image(config: Config) -> str:
     # Special handling for CUDA images based on version - only if the image is the default CUDA image
     cuda_image = config.images.get("CUDA_VISIBLE_DEVICES")
     if image == cuda_image:
-        image = select_cuda_image(config)
-
-    if config.runtime == "vllm":
-        return "registry.redhat.io/rhelai1/ramalama-vllm"
+        try:
+            image = select_cuda_image(config)
+        except NotImplementedError as e:
+            logger.warn(f"{e}: Falling back to default image.")
+            image = config.default_image
 
     vers = minor_release()
 
