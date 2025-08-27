@@ -80,7 +80,7 @@ verify_begin=".*run --rm"
 	run_ramalama -q --dryrun serve --seed abcd --host 127.0.0.1 ${model}
 	assert "$output" =~ ".*--host 127.0.0.1" "Outside container overrides host to 127.0.0.1"
 	assert "$output" =~ ".*--seed abcd" "Verify seed is set"
-	run_ramalama 1 --nocontainer serve --name foobar tiny
+	run_ramalama 22 --nocontainer serve --name foobar tiny
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"
     fi
 
@@ -100,7 +100,7 @@ verify_begin=".*run --rm"
     run_ramalama 22 -q --dryrun serve --runtime-args="--foo='a b c" ${model}
     assert "$output" =~ "No closing quotation" "error for improperly quoted runtime arguments"
 
-    run_ramalama 1 serve MODEL
+    run_ramalama 22 serve MODEL
     assert "$output" =~ "Error: Manifest for MODEL:latest was not found in the Ollama registry"
 }
 
