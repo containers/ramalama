@@ -176,7 +176,7 @@ multi-modal() {
     echo ""
 
     echo_color "Use web browser to show interaction"
-    exec_color "google-chrome docs/demo/camera-demo.html"
+    exec_color "firefox \"$(dirname \"$1\")/camera-demo.html\""
 
     echo_color "Stop the ramalama container"
     exec_color "ramalama stop multi-modal	"
