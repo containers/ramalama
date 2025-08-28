@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 from http.client import HTTPConnection, HTTPException
+from typing import Any, Callable
 
 # Live reference for checking global vars
 import ramalama.common
@@ -385,14 +386,14 @@ def is_healthy(args, timeout=3):
             conn.close()
 
 
-def wait_for_healthy(args, timeout=20):
+def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=20):
     """Waits for a container to become healthy by polling its endpoint."""
     logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()
 
     while time.time() - start_time < timeout:
         try:
-            if is_healthy(args):
+            if health_func(args):
                 return
         except (ConnectionError, HTTPException, UnicodeDecodeError, json.JSONDecodeError) as e:
             logger.debug(f"Health check of container {args.name} failed, retrying... Error: {e}")

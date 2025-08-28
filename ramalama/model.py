@@ -25,7 +25,7 @@ from ramalama.common import (
 from ramalama.compose import Compose
 from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
 from ramalama.console import should_colorize
-from ramalama.engine import Engine, dry_run, wait_for_healthy
+from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.logger import logger
 from ramalama.model_inspect.base_info import ModelInfoBase
@@ -436,7 +436,7 @@ class Model(ModelBase):
 
         if not args.dryrun:
             try:
-                wait_for_healthy(args)
+                wait_for_healthy(args, is_healthy)
             except subprocess.TimeoutExpired as e:
                 logger.error(f"Failed to serve model {self.model_name}, for ramalama run command")
                 logger.error(f"{e}: logs: {e.output}")
