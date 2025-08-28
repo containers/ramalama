@@ -1,4 +1,5 @@
 import http.server
+import traceback
 
 from ramalama.daemon.handler.daemon import DaemonAPIHandler
 from ramalama.daemon.handler.proxy import ModelProxyHandler
@@ -22,6 +23,7 @@ class RamalamaHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             self.send_error(500, f"Internal Server Error: {e}")
             logger.error(f"Error handling request: {e}")
+            logger.debug(f"{traceback.format_exc()}")
         finally:
             self.finish()
 
@@ -37,7 +39,7 @@ class RamalamaHandler(http.server.SimpleHTTPRequestHandler):
             DaemonAPIHandler(self.model_runner, self.model_store_path).handle_get(self)
             return
 
-        is_referred = referer is not None and f"{ModelProxyHandler.PATH_PREFIX}/sha256-" in referer
+        is_referred = referer is not None
         if self.path.startswith(ModelProxyHandler.PATH_PREFIX) or is_referred:
             ModelProxyHandler(self.model_runner).handle_get(self, is_referred)
 
@@ -53,7 +55,7 @@ class RamalamaHandler(http.server.SimpleHTTPRequestHandler):
             DaemonAPIHandler(self.model_runner, self.model_store_path).handle_head(self)
             return
 
-        is_referred = referer is not None and f"{ModelProxyHandler.PATH_PREFIX}/sha256-" in referer
+        is_referred = referer is not None
         if self.path.startswith(ModelProxyHandler.PATH_PREFIX) or is_referred:
             ModelProxyHandler(self.model_runner).handle_head(self, is_referred)
 
@@ -74,7 +76,7 @@ class RamalamaHandler(http.server.SimpleHTTPRequestHandler):
             DaemonAPIHandler(self.model_runner, self.model_store_path).handle_post(self)
             return
 
-        is_referred = referer is not None and f"{ModelProxyHandler.PATH_PREFIX}/sha256-" in referer
+        is_referred = referer is not None
         if self.path.startswith(ModelProxyHandler.PATH_PREFIX) or is_referred:
             ModelProxyHandler(self.model_runner).handle_post(self, is_referred)
 
@@ -90,7 +92,7 @@ class RamalamaHandler(http.server.SimpleHTTPRequestHandler):
             DaemonAPIHandler(self.model_runner, self.model_store_path).handle_put(self)
             return
 
-        is_referred = referer is not None and f"{ModelProxyHandler.PATH_PREFIX}/sha256-" in referer
+        is_referred = referer is not None
         if self.path.startswith(ModelProxyHandler.PATH_PREFIX) or is_referred:
             ModelProxyHandler(self.model_runner).handle_put(self, is_referred)
 
@@ -106,6 +108,6 @@ class RamalamaHandler(http.server.SimpleHTTPRequestHandler):
             DaemonAPIHandler(self.model_runner, self.model_store_path).handle_delete(self)
             return
 
-        is_referred = referer is not None and f"{ModelProxyHandler.PATH_PREFIX}/sha256-" in referer
+        is_referred = referer is not None
         if self.path.startswith(ModelProxyHandler.PATH_PREFIX) or is_referred:
             ModelProxyHandler(self.model_runner).handle_delete(self, is_referred)

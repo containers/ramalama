@@ -1,9 +1,11 @@
 import http.server
+import urllib.parse
 import urllib.request
 
 from ramalama.daemon.handler.base import APIHandler
 from ramalama.daemon.logging import logger
 from ramalama.daemon.service.model_runner import ModelRunner
+from ramalama.model_factory import CLASS_MODEL_TYPES
 
 
 class ModelProxyHandler(APIHandler):
@@ -14,6 +16,10 @@ class ModelProxyHandler(APIHandler):
         super().__init__(model_runner)
 
         self.model_runner = model_runner
+
+    @staticmethod
+    def build_proxy_path(model: CLASS_MODEL_TYPES) -> str:
+        return f"{ModelProxyHandler.PATH_PREFIX}/{model.model_organization}/{model.model_name}"
 
     def handle_get(self, handler: http.server.SimpleHTTPRequestHandler, is_referred: bool = False):
         if handler.path == f"{ModelProxyHandler.PATH_PREFIX}":
@@ -37,46 +43,31 @@ class ModelProxyHandler(APIHandler):
 
     def _forward_request(self, handler: http.server.SimpleHTTPRequestHandler, is_referred: bool = False):
 
-        model_id = ""
-        path = ""
-
+        forward_path = ""
+        proxy_path = ""
         if is_referred:
             logger.debug("request is referred")
-            path = handler.path.replace("/model", "", 1)
             if "Referer" not in handler.headers:
                 msg = "Something went wrong, no referer header found"
                 logger.error(msg)
                 handler.send_error(500, msg)
                 return
-            referer = handler.headers["Referer"]
-            logger.debug(f"Request referer: {referer}")
-
-            for part in referer.split("/"):
-                if part.startswith("sha256-"):
-                    model_id = part
-                    break
+            proxy_path = urllib.parse.urlparse(handler.headers["Referer"]).path
+            forward_path = handler.path.replace("/".join(proxy_path.split("/")[:-1]), "", 1)
         else:
             logger.debug("request is not referred")
-            path_parts = handler.path.split("/")
-            if len(path_parts) < 3:
-                msg = "Model id is required in the path"
-                logger.error(msg)
-                handler.send_error(400, msg)
-                return
-            model_id = path_parts[2]
-            # remove the path prefix and model id in the request path
-            path = handler.path.replace(f"{ModelProxyHandler.PATH_PREFIX}/{model_id}", "", 1)
+            proxy_path = handler.path
+            forward_path = handler.path.replace(proxy_path, "", 1)
 
-        if model_id not in self.model_runner.managed_models:
-            msg = f"Model with id {model_id} not found"
+        model = self.model_runner.served_models.get(proxy_path, None)
+        if model is None:
+            msg = f"No model for path '{proxy_path}' found"
             logger.error(msg)
             handler.send_error(404, msg)
             return
+        model.update_expiration_date()
 
-        managed_model = self.model_runner.managed_models[model_id]
-        managed_model.update_expiration_date()
-
-        target_url = f"http://0.0.0.0:{managed_model.port}{path}"
+        target_url = f"http://0.0.0.0:{model.port}{forward_path}"
         method = handler.command
         headers = handler.headers
         data = None

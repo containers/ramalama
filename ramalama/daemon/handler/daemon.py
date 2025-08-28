@@ -11,7 +11,7 @@ from ramalama.daemon.handler.base import APIHandler
 from ramalama.daemon.handler.proxy import ModelProxyHandler
 from ramalama.daemon.logging import logger
 from ramalama.daemon.service.command_factory import CommandFactory
-from ramalama.daemon.service.model_runner import ManagedModel, ModelRunner
+from ramalama.daemon.service.model_runner import ManagedModel, ModelRunner, generate_model_id
 from ramalama.model_factory import ModelFactory
 from ramalama.model_store.global_store import GlobalModelStore
 
@@ -122,17 +122,15 @@ class DaemonAPIHandler(APIHandler):
         cmd = CommandFactory(model, serve_request.runtime, port, serve_request.exec_args).build()
 
         logger.info(f"Starting model runner for {serve_request.model_name} with command: {cmd}")
-        id = ModelRunner.generate_model_id(model.model_name, model.model_tag, model.model_organization)
-        model = ManagedModel(id, model, cmd, port, timedelta(seconds=30))
-        self.model_runner.add_model(model)
-        self.model_runner.start_model(id)
+        managed_model = ManagedModel(model, cmd, port, timedelta(seconds=30))
+        serve_path = ModelProxyHandler.build_proxy_path(model)
+        self.model_runner.add_model(managed_model)
+        self.model_runner.start_model(managed_model.id, serve_path)
 
         handler.send_response(200)
         handler.send_header("Content-Type", "application/json")
         handler.end_headers()
-        handler.wfile.write(
-            json.dumps(ServeResponse(id, f"{ModelProxyHandler.PATH_PREFIX}/{id}").to_dict(), indent=4).encode("utf-8")
-        )
+        handler.wfile.write(json.dumps(ServeResponse(managed_model.id, serve_path).to_dict(), indent=4).encode("utf-8"))
         handler.wfile.flush()
 
     def _handle_post_stop(self, handler: http.server.SimpleHTTPRequestHandler):
@@ -148,7 +146,7 @@ class DaemonAPIHandler(APIHandler):
             transport=CONFIG.transport,
         ).create()
 
-        id = ModelRunner.generate_model_id(model.model_name, model.model_tag, model.model_organization)
+        id = generate_model_id(model.model_name, model.model_tag, model.model_organization)
         self.model_runner.stop_model(id)
 
         handler.send_response(200)
