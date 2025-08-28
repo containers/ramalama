@@ -235,7 +235,7 @@ configure_common_flags() {
 }
 
 clone_and_build_whisper_cpp() {
-  local DEFAULT_WHISPER_COMMIT="d0a9d8c7f8f7b91c51d77bbaa394b915f79cde6b"
+  local DEFAULT_WHISPER_COMMIT="7745fcf32846006128f16de429cfe1677c963b30"
   local whisper_cpp_commit="${WHISPER_CPP_PULL_REF:-$DEFAULT_WHISPER_COMMIT}"
   local whisper_flags=("${common_flags[@]}")
   whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
@@ -254,7 +254,7 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local DEFAULT_LLAMA_CPP_COMMIT=1d72c841888b9450916bdd5a9b3274da380f5b36
+  local DEFAULT_LLAMA_CPP_COMMIT=55042b3692cb1467c9ee15c62c4a9fbf180f89e3
   local llama_cpp_commit="${LLAMA_CPP_PULL_REF:-$DEFAULT_LLAMA_CPP_COMMIT}"
   local install_prefix
   install_prefix=$(set_install_prefix)
