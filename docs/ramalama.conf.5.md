@@ -106,8 +106,10 @@ RAMALAMA_IMAGE environment variable overrides this field.
   INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu"
   ASCEND_VISIBLE_DEVICES = "quay.io/ramalama/cann"
   MUSA_VISIBLE_DEVICES   = "quay.io/ramalama/musa"
+  VLLM                   = "registry.redhat.io/rhelai1/ramalama-vllm"
 
-Alternative images to use when RamaLama recognizes specific hardware
+Alternative images to use when RamaLama recognizes specific hardware or user
+specified vllm model runtime.
 
 **keep_groups**=false
 
