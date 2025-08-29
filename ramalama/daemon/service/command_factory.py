@@ -7,10 +7,13 @@ from ramalama.model_factory import CLASS_MODEL_TYPES
 
 class CommandFactory:
 
-    def __init__(self, model: CLASS_MODEL_TYPES, runtime: str, assigned_port: int, request_args: dict[str, str]):
+    def __init__(
+        self, model: CLASS_MODEL_TYPES, runtime: str, assigned_port: int, log_path: str, request_args: dict[str, str]
+    ):
         self.model = model
         self.runtime = runtime
         self.assigned_port = assigned_port
+        self.log_path = log_path
         self.request_args = request_args
 
     def build(self) -> list[str]:
@@ -63,7 +66,7 @@ class CommandFactory:
         raise NotImplementedError("MLX serve command building is not implemented yet.")
 
     def _build_llama_serve_command(self) -> list[str]:
-        cmd = ["llama-server", "--host", "0.0.0.0", "--port", f"{self.assigned_port}"]
+        cmd = ["llama-server", "--host", "0.0.0.0", "--port", f"{self.assigned_port}", "--log-file", self.log_path]
         cmd += [
             "--model",
             self.model._get_entry_model_path(False, False, False),

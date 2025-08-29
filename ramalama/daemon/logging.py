@@ -2,10 +2,12 @@ import logging
 import os
 import typing
 
+DEFAULT_LOG_DIR = "/var/tmp"
+
 logger = logging.getLogger("ramalama-daemon")
 
 
-def configure_logger(verbosity: str = "WARNING", log_file: str = "/var/tmp") -> None:
+def configure_logger(verbosity: str = "WARNING", log_file: str = DEFAULT_LOG_DIR) -> None:
     lvl = logging.WARNING
     if verbosity in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
         lvl = typing.cast(int, getattr(logging, verbosity))
