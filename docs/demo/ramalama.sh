@@ -4,6 +4,12 @@
 # This script will demonstrate a lot of the features of RamaLama, concentrating
 # on the security features.
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+if [[ -z "${SCRIPT_DIR}" ]]; then
+    echo "Error: Could not determine script directory." >&2
+    exit 1
+fi
+
 #set -eou pipefail
 IFS=$'\n\t'
 
@@ -176,7 +182,7 @@ multi-modal() {
     echo ""
 
     echo_color "Use web browser to show interaction"
-    exec_color "firefox \"$(dirname \"$1\")/camera-demo.html\""
+    exec_color "firefox \"${SCRIPT_DIR}/camera-demo.html\""
 
     echo_color "Stop the ramalama container"
     exec_color "ramalama stop multi-modal	"
