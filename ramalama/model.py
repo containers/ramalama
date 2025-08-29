@@ -788,7 +788,7 @@ class Model(ModelBase):
             if args.dryrun:
                 dry_run(exec_args)
                 return
-            exec_cmd(exec_args, stdout2null=args.noout)
+            exec_cmd(exec_args, stdout2null=args.noout, stderr2null=args.noout)
         except FileNotFoundError as e:
             if args.container:
                 raise NotImplementedError(
