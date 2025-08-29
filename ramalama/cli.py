@@ -1041,6 +1041,59 @@ def _get_rag(args):
 
 
 def serve_cli(args):
+    #
+    # Use new daemon backend for llama.cpp in container
+    # TODO: This is quite hacky and needs to be improved, e.g. using a command builder
+    #
+    if args.runtime == "llama.cpp" and args.container and args.engine in get_args(SUPPORTED_ENGINES):
+        start_daemon(args.store, args.host, args.port, args.pull, args.engine, True, args.image)
+
+        import json
+
+        import requests
+
+        from ramalama.daemon.dto.serve import ServeRequest
+
+        model = New(args.MODEL, args)
+        llama_exec_args = model.llama_serve(args)
+
+        # remove the first 5 entries (llama-server binary, path to model etc)
+        llama_exec_args = llama_exec_args[5:]
+        exec_args = {}
+        for i in range(len(llama_exec_args)):
+            entry = llama_exec_args[i]
+            # Is entry a option key or value
+            if entry.startswith("--"):
+                entry_args = ""
+                while i + 1 < len(llama_exec_args) and not llama_exec_args[i + 1].startswith("--"):
+                    i += 1
+                    entry_args += llama_exec_args[i]
+                exec_args[entry] = entry_args
+
+        data = ServeRequest(args.MODEL, args.runtime, exec_args=exec_args)
+        headers = {"Content-Type": "application/json"}
+
+        def check_daemon_healthy(_) -> bool:
+            import requests.exceptions
+
+            try:
+                resp = requests.get(f"http://localhost:{args.port}/api/health")
+            except requests.exceptions.ConnectionError:
+                return False
+            return resp.status_code == 204
+
+        engine.wait_for_healthy(args, check_daemon_healthy)
+
+        resp = requests.post(
+            f"http://{args.host}:{args.port}/api/serve", data=json.dumps(data.to_dict()), headers=headers
+        )
+        if resp.status_code != 200:
+            perror(f"Failed to start model: {resp.text}", errno.EIO)
+        serve_path = json.loads(resp.text).get("serve_path", "")
+        print(f"Model API served on http://{args.host}:{args.port}{serve_path}")
+
+        return
+
     if not args.container:
         args.detach = False
 
@@ -1146,27 +1199,32 @@ def daemon_parser(subparsers):
 
 
 def daemon_start_cli(args):
-    from ramalama.common import exec_cmd
-
-    daemon_cmd = []
-    daemon_model_store_dir = args.store
     is_daemon_in_container = args.container and args.engine in get_args(SUPPORTED_ENGINES)
+
+    start_daemon(args.store, args.host, args.port, args.pull, args.engine, is_daemon_in_container, args.image)
+
+
+def start_daemon(
+    host_store_path: str, host: str, port: int, pull: str, engine: str, is_daemon_in_container: bool, image: str
+):
+    daemon_cmd = []
+    daemon_model_store_dir = host_store_path
 
     if is_daemon_in_container:
         # If run inside a container, map the model store to the container internal directory
         daemon_model_store_dir = "/ramalama/models"
 
         daemon_cmd += [
-            "podman",
+            engine,
             "run",
             "--pull",
-            args.pull,
+            pull,
             "-d",
             "-p",
-            f"{args.port}:8080",
+            f"{port}:8080",
             "-v",
-            f"{args.store}:{daemon_model_store_dir}",
-            args.image,
+            f"{host_store_path}:{daemon_model_store_dir}",
+            image,
         ]
 
     daemon_cmd += [
@@ -1176,12 +1234,12 @@ def daemon_start_cli(args):
         "daemon",
         "run",
         "--port",
-        "8080" if is_daemon_in_container else args.port,
+        "8080" if is_daemon_in_container else port,
         "--host",
-        CONFIG.host if is_daemon_in_container else args.host,
+        CONFIG.host if is_daemon_in_container else host,
     ]
 
-    exec_cmd(daemon_cmd)
+    os.popen(" ".join(daemon_cmd))
 
 
 def daemon_run_cli(args):

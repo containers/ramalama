@@ -26,6 +26,9 @@ class DaemonAPIHandler(APIHandler):
         self.model_store_path = model_store_path
 
     def handle_get(self, handler: http.server.SimpleHTTPRequestHandler):
+        if handler.path.startswith(f"{DaemonAPIHandler.PATH_PREFIX}/health"):
+            self._handle_get_health(handler)
+            return
         if handler.path.startswith(f"{DaemonAPIHandler.PATH_PREFIX}/tags"):
             self._handle_get_tags(handler)
             return
@@ -53,6 +56,10 @@ class DaemonAPIHandler(APIHandler):
 
     def handle_delete(self, handler: http.server.SimpleHTTPRequestHandler):
         pass
+
+    def _handle_get_health(self, handler: http.server.SimpleHTTPRequestHandler):
+        handler.end_headers()
+        handler.send_response(204)
 
     def _handle_get_tags(self, handler: http.server.SimpleHTTPRequestHandler):
         # get args for querying
