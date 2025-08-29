@@ -9,7 +9,7 @@ from ramalama.daemon.dto.model import ModelDetailsResponse, ModelResponse, model
 from ramalama.daemon.dto.serve import ServeRequest, ServeResponse, StopServeRequest
 from ramalama.daemon.handler.base import APIHandler
 from ramalama.daemon.handler.proxy import ModelProxyHandler
-from ramalama.daemon.logging import logger
+from ramalama.daemon.logging import DEFAULT_LOG_DIR, logger
 from ramalama.daemon.service.command_factory import CommandFactory
 from ramalama.daemon.service.model_runner import ManagedModel, ModelRunner, generate_model_id
 from ramalama.model_factory import ModelFactory
@@ -58,8 +58,8 @@ class DaemonAPIHandler(APIHandler):
         pass
 
     def _handle_get_health(self, handler: http.server.SimpleHTTPRequestHandler):
-        handler.end_headers()
         handler.send_response(204)
+        handler.end_headers()
 
     def _handle_get_tags(self, handler: http.server.SimpleHTTPRequestHandler):
         # get args for querying
@@ -126,7 +126,8 @@ class DaemonAPIHandler(APIHandler):
             StoreArgs(store=self.model_store_path, engine=None, container=False),
             transport=CONFIG.transport,
         ).create()
-        cmd = CommandFactory(model, serve_request.runtime, port, serve_request.exec_args).build()
+        log_path = f"{DEFAULT_LOG_DIR}/{model.model_organization}_{model.model_name}_{model.model_tag}.log"
+        cmd = CommandFactory(model, serve_request.runtime, port, log_path, serve_request.exec_args).build()
 
         logger.info(f"Starting model runner for {serve_request.model_name} with command: {cmd}")
         managed_model = ManagedModel(model, cmd, port, timedelta(seconds=30))
