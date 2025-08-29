@@ -4,8 +4,10 @@ DNF_CMD="dnf -y --setopt=install_weak_deps=false"
 
 conan_build_cmake() {
     git clone --depth=1 https://github.com/conan-io/conan-center-index.git
-    # These builds complain about the conan cmake version, so build them first using the system cmake
-    for i in bzip2/1.0.8 double-conversion/3.2.1 gflags/2.2.2 lz4/1.9.4; do
+    # Remove cmake tool_requires from glog so it uses the system cmake
+    sed -i -e 's/self.tool_requires.*/pass/' conan-center-index/recipes/glog/all/conanfile.py
+    # These builds complain about the cmake version, so build them first using the system cmake
+    for i in bzip2/1.0.8 double-conversion/3.2.1 gflags/2.2.2 glog/0.6.0 lz4/1.9.4; do
         name="${i%/*}"
         version="${i#*/}"
         echo "Building $name $version with conan"
@@ -14,13 +16,13 @@ conan_build_cmake() {
         conan create -o "${name}:shared=True" --build=missing \
               "conan-center-index/recipes/$name/all" "${version}@"
     done
-    yq -i '
-      .sources."3.30.5" = {
-        "url": "https://github.com/Kitware/CMake/releases/download/v3.30.5/cmake-3.30.5.tar.gz",
-        "sha256": "9f55e1a40508f2f29b7e065fa08c29f82c402fa0402da839fffe64a25755a86d"
-      }' conan-center-index/recipes/cmake/3.x.x/conandata.yml
-    conan create -o cmake:bootstrap=True -o cmake:with_openssl=False --build=missing \
-          conan-center-index/recipes/cmake/3.x.x 3.30.5@
+    # yq -i '
+    #   .sources."3.30.5" = {
+    #     "url": "https://github.com/Kitware/CMake/releases/download/v3.30.5/cmake-3.30.5.tar.gz",
+    #     "sha256": "9f55e1a40508f2f29b7e065fa08c29f82c402fa0402da839fffe64a25755a86d"
+    #   }' conan-center-index/recipes/cmake/3.x.x/conandata.yml
+    # conan create -o cmake:bootstrap=True -o cmake:with_openssl=False --build=missing \
+    #       conan-center-index/recipes/cmake/3.x.x 3.30.5@
 }
 
 build_milvus_lite() {
@@ -69,7 +71,7 @@ main() {
     source "$VIRTUAL_ENV/bin/activate"
 
     if [ "$(uname -m)" == "ppc64le" ] || [ "$(uname -m)" == "s390x" ]; then
-        $DNF_CMD install git-core yq rust cargo perl texinfo diffutils openblas-devel
+        $DNF_CMD install git-core yq hostname rust cargo perl texinfo diffutils openblas-devel
         if [ "$(uname -m)" != "s390x" ]; then
             $DNF_CMD install libquadmath-devel
         fi
