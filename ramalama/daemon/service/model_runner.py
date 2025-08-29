@@ -22,7 +22,7 @@ class ManagedModel:
         self.model = model
         self.id = generate_model_id(model)
         self.run_cmd: list[str] = run_cmd
-        self.port: str = port
+        self.port: int = port
 
         self.expires_after = expires_after
         self.expiration_date: Optional[datetime] = None
@@ -99,5 +99,5 @@ class ModelRunner:
         del self._models[model_id]
 
     def stop(self):
-        for id in self._models.keys():
+        for id in list(self._models.keys()):
             self.stop_model(id)

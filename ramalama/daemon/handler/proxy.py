@@ -67,7 +67,7 @@ class ModelProxyHandler(APIHandler):
             return
         model.update_expiration_date()
 
-        target_url = f"http://0.0.0.0:{model.port}{forward_path}"
+        target_url = f"http://127.0.0.1:{model.port}{forward_path}"
         method = handler.command
         headers = handler.headers
         data = None
