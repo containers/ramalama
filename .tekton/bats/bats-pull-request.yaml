@@ -26,6 +26,12 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/bats:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
+  - name: build-platforms
+    value:
+    - linux-d160-c8xlarge/amd64
+    - linux-d160-c8xlarge/arm64
+    - linux/ppc64le
+    - linux/s390x
   - name: dockerfile
     value: container-images/bats/Containerfile
   pipelineRef:
