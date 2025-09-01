@@ -121,7 +121,7 @@ serve() {
     echo ""
     
     echo_color "Waiting for the model service to come up"
-    exec_color "timeout 20 bash -c 'until curl -s -f -o /dev/null http://localhost:8085/v1/openai/v1/models;; do sleep 1; done';"
+    exec_color "timeout 25 bash -c 'until curl -s -f -o /dev/null http://localhost:8085/v1/openai/v1/models; do sleep 1; done';"
     echo ""
 
     echo_color "Inference against the model using llama-stack API"
@@ -192,7 +192,7 @@ multi-modal() {
     echo ""
 
     echo_color "Stop the ramalama container"
-    exec_color "ramalama stop multi-modal	"
+    exec_color "ramalama stop multi-modal"
     echo ""
 
     read -r -p "--> clear"
