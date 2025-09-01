@@ -4,6 +4,12 @@
 # This script will demonstrate a lot of the features of RamaLama, concentrating
 # on the security features.
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+if [[ -z "${SCRIPT_DIR}" ]]; then
+   echo "Error: Could not determine script directory." >&2
+   exit 1
+fi
+
 #set -eou pipefail
 IFS=$'\n\t'
 
@@ -115,7 +121,7 @@ serve() {
     echo ""
     
     echo_color "Waiting for the model service to come up"
-    exec_color "sleep 20"
+    exec_color "timeout 20 bash -c 'until curl -s -f -o /dev/null http://localhost:8085/v1/openai/v1/models;; do sleep 1; done';"
     echo ""
 
     echo_color "Inference against the model using llama-stack API"
@@ -181,9 +187,8 @@ multi-modal() {
     exec_color "ramalama serve --port 8080  --pull=never  --name multi-modal -d smolvlm"
     echo ""
 
-    local demo_html="${1:-$PWD/camera-demo.html}"
     echo_color "Use web browser to show interaction"
-    exec_color "$BROWSER \"$demo_html\""
+    exec_color "$BROWSER \"${SCRIPT_DIR}/camera-demo.html\""
     echo ""
 
     echo_color "Stop the ramalama container"
