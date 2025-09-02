@@ -28,7 +28,13 @@ from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import CONFIG, coerce_to_bool, load_file_config
 from ramalama.logger import configure_logger, logger
-from ramalama.model import MODEL_TYPES, NoGGUFModelFileFound, SafetensorModelNotSupported, trim_model_name
+from ramalama.model import (
+    MODEL_TYPES,
+    NoGGUFModelFileFound,
+    NoRefFileFound,
+    SafetensorModelNotSupported,
+    trim_model_name,
+)
 from ramalama.model_factory import ModelFactory, New
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
@@ -107,6 +113,19 @@ def local_containers(prefix, parsed_args, **kwargs):
 def local_images(prefix, parsed_args, **kwargs):
     parsed_args.format = "{{.Repository}}:{{.Tag}}"
     return engine.images(parsed_args)
+
+
+def available_metadata(prefix, parsed_args, **kwargs):
+    if parsed_args.MODEL:
+        # shotnames resolution has not been applied for auto-completion
+        # Therefore it needs to be done explicitly here in order to support it
+        resolved_model = shortnames.resolve(parsed_args.MODEL)
+        if not resolved_model:
+            resolved_model = parsed_args.MODEL
+
+        metadata = New(resolved_model, parsed_args).inspect_metadata()
+        return [field for field in metadata.keys() if field.startswith(parsed_args.get)]
+    return []
 
 
 class ArgumentParserWithDefaults(argparse.ArgumentParser):
@@ -1240,6 +1259,14 @@ def perplexity_cli(args):
 def inspect_parser(subparsers):
     parser = subparsers.add_parser("inspect", help="inspect an AI Model")
     parser.add_argument("--all", dest="all", action="store_true", help="display all available information of AI Model")
+    parser.add_argument(
+        "--get",
+        dest="get",
+        type=str,
+        default="",
+        completer=available_metadata,
+        help="display specific metadata field of AI Model",
+    )
     parser.add_argument("--json", dest="json", action="store_true", help="display AI Model information in JSON format")
     parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.set_defaults(func=inspect_cli)
@@ -1248,7 +1275,7 @@ def inspect_parser(subparsers):
 def inspect_cli(args):
     args.pull = "never"
     model = New(args.MODEL, args)
-    model.inspect(args)
+    model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)
 
 
 def main():
@@ -1277,7 +1304,7 @@ def main():
         eprint(f"pulling {e.geturl()} failed: {e}", errno.EINVAL)
     except HelpException:
         parser.print_help()
-    except (ConnectionError, IndexError, KeyError, ValueError) as e:
+    except (ConnectionError, IndexError, KeyError, ValueError, NoRefFileFound) as e:
         eprint(e, errno.EINVAL)
     except NotImplementedError as e:
         eprint(e, errno.ENOSYS)
