@@ -388,7 +388,7 @@ class Model(ModelBase):
         # The Run command will first launch a daemonized service
         # and run chat to communicate with it.
 
-        args.port = compute_serving_port(args, quiet=args.debug)
+        args.port = compute_serving_port(args, quiet=not args.debug)
         if args.container:
             args.name = self.get_container_name(args)
 
