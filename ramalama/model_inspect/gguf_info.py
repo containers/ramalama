@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 from ramalama.endian import GGUFEndian
 from ramalama.model_inspect.base_info import ModelInfoBase, Tensor, adjust_new_line
@@ -27,8 +27,15 @@ class GGUFModelInfo(ModelInfoBase):
         self.Tensors: list[Tensor] = tensors
         self.Endianness: GGUFEndian = endianness
 
-    def get_chat_template(self) -> str:
-        return self.Metadata.get("chat_template", "")
+    def get_chat_template(self) -> Optional[str]:
+        return next(
+            (
+                self.Metadata.get(template)
+                for template in ["chat_template", "tokenizer.chat_template"]
+                if template in self.Metadata
+            ),
+            None,
+        )
 
     def serialize(self, json: bool = False, all: bool = False) -> str:
         if json:

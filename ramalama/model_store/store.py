@@ -222,43 +222,48 @@ class ModelStore:
         # save updated ref file
         ref_file.write_to_file()
 
-    def _ensure_chat_template(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
-        model_file: SnapshotFile | None = None
-        for file in snapshot_files:
-            # Give preference to a chat template that has been specified in the file list
-            if file.type == SnapshotFileType.ChatTemplate:
-                chat_template_file_path = self.get_blob_file_path(file.hash)
-                chat_template = ""
-                with open(chat_template_file_path, "r") as template_file:
-                    chat_template = template_file.read()
+    def _try_convert_existing_chat_template(self, model_tag: str, snapshot_hash: str) -> bool:
+        ref_file = self.get_ref_file(model_tag)
 
-                if not go2jinja.is_go_template(chat_template):
-                    return
+        for file in ref_file.chat_templates:
+            chat_template_file_path = self.get_blob_file_path(file.hash)
+            with open(chat_template_file_path, "r") as template_file:
+                chat_template = template_file.read()
 
-                try:
-                    jinja_template = go2jinja.go_to_jinja(chat_template)
-                    files = [
-                        LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate)
-                    ]
-                    self.update_snapshot(model_tag, snapshot_hash, files)
-                except Exception as ex:
-                    logger.debug(f"Failed to convert Go Template to Jinja: {ex}")
-                return
-            if file.type == SnapshotFileType.Model:
-                model_file = file
+            if not go2jinja.is_go_template(chat_template):
+                return True
 
-        # Could not find model file in store
-        if model_file is None:
+            try:
+                jinja_template = go2jinja.go_to_jinja(chat_template)
+            except Exception as ex:
+                logger.debug(f"Failed to convert Go Template to Jinja: {ex}")
+                return False
+            else:
+                files = [LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
+                self.update_snapshot(model_tag, snapshot_hash, files)
+
+            return True
+
+    def _ensure_chat_template(self, model_tag: str, snapshot_hash: str):
+
+        # Give preference to a chat template that has been specified in the file list
+        # If it succeeds, then return. Otherwise continue and try to extract from model file
+        if self._try_convert_existing_chat_template(model_tag, snapshot_hash):
             return
 
-        model_file_path = self.get_blob_file_path(model_file.hash)
+        models = self.get_ref_file(model_tag).model_files
+        if not models:
+            return
+
+        # Only the first model file is considered for chat template extraction
+        model_file_path = self.get_blob_file_path(models[0].hash)
         if not GGUFInfoParser.is_model_gguf(model_file_path):
             return
 
         # Parse model, first and second parameter are irrelevant here
         info: GGUFModelInfo = GGUFInfoParser.parse("model", "registry", model_file_path)
         tmpl = info.get_chat_template()
-        if tmpl == "":
+        if tmpl is None:
             return
 
         is_go_template = go2jinja.is_go_template(tmpl)
@@ -267,7 +272,9 @@ class ModelStore:
         # chat template if it is a Go Template (ollama-specific)
         files = [
             LocalSnapshotFile(
-                tmpl, "chat_template", SnapshotFileType.Other if is_go_template else SnapshotFileType.ChatTemplate
+                tmpl,
+                "chat_template_extracted",
+                SnapshotFileType.Other if is_go_template else SnapshotFileType.ChatTemplate,
             )
         ]
         if is_go_template:
@@ -308,7 +315,7 @@ class ModelStore:
         try:
             self._prepare_new_snapshot(model_tag, snapshot_hash, snapshot_files)
             self._download_snapshot_files(model_tag, snapshot_hash, snapshot_files)
-            self._ensure_chat_template(model_tag, snapshot_hash, snapshot_files)
+            self._ensure_chat_template(model_tag, snapshot_hash)
         except urllib.error.HTTPError as ex:
             perror(f"Failed to fetch required file: {ex}")
             perror("Removing snapshot...")
