@@ -4,6 +4,12 @@
 # This script will demonstrate a lot of the features of RamaLama, concentrating
 # on the security features.
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+if [[ -z "${SCRIPT_DIR}" ]]; then
+   echo "Error: Could not determine script directory." >&2
+   exit 1
+fi
+
 #set -eou pipefail
 IFS=$'\n\t'
 
@@ -12,6 +18,9 @@ IFS=$'\n\t'
 bold=$(tput bold)
 cyan=$(tput setaf 6)
 reset=$(tput sgr0)
+
+# Allow overriding browser (default: firefox)
+BROWSER="${BROWSER:-firefox}"
 
 echo_color() {
     echo "${cyan}$1${reset}"
@@ -100,7 +109,8 @@ serve() {
     echo ""
 
     echo_color "Use web browser to show interaction"
-    exec_color "firefox http://localhost:8080"
+    exec_color "$BROWSER http://localhost:8080"
+    echo ""
 
     echo_color "Stop the ramalama container"
     exec_color "ramalama stop granite-service"
@@ -109,12 +119,14 @@ serve() {
     echo_color "Serve granite via RamaLama model service"
     exec_color "ramalama serve --port 8085 --api llama-stack --name granite-service -d granite"
     echo ""
+    
+    echo_color "Waiting for the model service to come up"
+    exec_color "timeout 25 bash -c 'until curl -s -f -o /dev/null http://localhost:8085/v1/openai/v1/models; do sleep 1; done';"
+    echo ""
 
-    echo_color "Use web browser to show interaction"
-    exec_color "firefox http://localhost:8085"
-
-    echo_color "Use web browser to show interaction"
-    exec_color "firefox http://localhost:8085/v1/openai"
+    echo_color "Inference against the model using llama-stack API"
+    exec_color "printf \"\n\"; curl --no-progress-meter http://localhost:8085/v1/openai/v1/chat/completions -H \"Content-Type: application/json\" -d '{ \"model\": \"granite3.1-dense\", \"messages\": [{\"role\": \"user\", \"content\": \"Tell me a joke\"}], \"stream\": false }' | grep -Po '(?<=\"content\":\")[^\"]*' | head -1"
+    echo ""
 
     echo_color "Stop the ramalama container"
     exec_color "ramalama stop granite-service"
@@ -176,31 +188,46 @@ multi-modal() {
     echo ""
 
     echo_color "Use web browser to show interaction"
-    exec_color "firefox \"$(dirname \"$1\")/camera-demo.html\""
+    exec_color "$BROWSER \"${SCRIPT_DIR}/camera-demo.html\""
+    echo ""
 
     echo_color "Stop the ramalama container"
-    exec_color "ramalama stop multi-modal	"
+    exec_color "ramalama stop multi-modal"
     echo ""
 
     read -r -p "--> clear"
     clear
 }
 
-setup
+if [[ $# -eq 0 ]]; then
+    # No argument: runs the whole demo script
+    setup
 
-version
+    version
 
-pull
+    pull
 
-run
+    run
 
-serve
+    serve
 
-kubernetes
+    kubernetes
 
-quadlet
+    quadlet
 
-multi-modal
+    multi-modal
 
-echo_color "End of Demo"
-echo "Thank you!"
+else
+    # Runs only the called function as an argument
+    cmd="$1"
+    if declare -f "$cmd" > /dev/null; then
+        "$cmd" "${@:2}"   # extra arguments if there is any
+
+    else
+        echo "Error: function '$cmd' not found"
+        exit 1
+    fi
+fi
+
+    echo_color "End of Demo"
+    echo "Thank you!"
