@@ -2,6 +2,34 @@
 <img src="https://github.com/user-attachments/assets/1a338ecf-dc84-4495-8c70-16882955da47" width=50%>
 </p>
 
+<p align="center">
+  <a href="https://github.com/containers/ramalama">
+    <img src="https://img.shields.io/github/issues/containers/ramalama?style=flat-square" height="22" alt="Open Issues"/>
+  </a>
+  <img src="https://img.shields.io/github/license/containers/ramalama?style=flat-square" height="22" alt="License"/>
+  <a href="https://github.com/containers/ramalama">
+    <img src="https://img.shields.io/github/languages/top/containers/ramalama?style=flat-square" height="22" alt="Top language"/>
+  </a>
+  <a href="https://pypi.org/project/ramalama/">
+    <img src="https://img.shields.io/pypi/v/ramalama?style=flat-square" height="22" alt="PyPI version"/>
+  </a>
+  <a href="https://pypi.org/project/ramalama/">
+	<img src="https://img.shields.io/pypi/pyversions/ramalama?style=flat-square" height="22" alt="Supported Python versions"/>
+  </a>
+  <a href="https://discord.gg/MkCXuTRBUn">
+    <img src="https://img.shields.io/discord/1388199960503128165?style=flat-square&logo=discord&label=discord" height="22" alt="Join Discord"/>
+  </a>
+  <a href="https://matrix.to/#/#ramalama:fedoraproject.org">
+    <img src="https://img.shields.io/badge/matrix-join-blue?style=flat-square&logo=matrix" height="22" alt="Join Matrix"/>
+  </a>
+</p>
+
+<h3 align="center">
+  <a href="https://docs.ramalama.com/">Docs</a> &bull;
+  <a href="https://github.com/containers/ramalama/discussions" title="Community Page">Discussion</a> &bull;
+  <a href="https://blog.ramalama.com" title="RamaLama Blog">Blog</a>
+</h3>
+
 [RamaLama](https://ramalama.ai) strives to make working with AI simple, straightforward, and familiar by using OCI containers.
 <br>
 <br>
