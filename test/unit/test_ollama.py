@@ -1,3 +1,4 @@
+import tempfile
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +15,8 @@ def ollama_model(args: StoreArgs):
 
 @pytest.fixture
 def args():
-    return StoreArgs(store="/tmp/ramalama/store", engine="podman", container=True)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield StoreArgs(store=tmpdir, engine="podman", container=True)
 
 
 def test_ollama_model_initialization(ollama_model):
