@@ -6,7 +6,9 @@
   <a href="https://github.com/containers/ramalama">
     <img src="https://img.shields.io/github/issues/containers/ramalama?style=flat-square" height="22" alt="Open Issues"/>
   </a>
-  <img src="https://img.shields.io/github/license/containers/ramalama?style=flat-square" height="22" alt="License"/>
+  <a href="https://github.com/containers/ramalama/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/containers/ramalama?style=flat-square" height="22" alt="License"/>
+  </a>
   <a href="https://github.com/containers/ramalama">
     <img src="https://img.shields.io/github/languages/top/containers/ramalama?style=flat-square" height="22" alt="Top language"/>
   </a>
