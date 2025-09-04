@@ -1182,6 +1182,9 @@ and
 [PRs](https://github.com/containers/ramalama/pulls)
 tracking system.
 
+## Roadmap
+See the full [Roadmap](./Roadmap.md).
+
 ## Contributors
 
 Open to contributors
