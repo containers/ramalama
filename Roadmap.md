@@ -26,7 +26,7 @@ Contributors can comment on or contribute to the issues linked here.
   - `OpenVINO`  
 
 - **OpenVINO integration**  
-  - Kush Gupta coordinating with Erin O. Moseley (Intel) for CPU/accelerator support.  
+  - Coordinating with Intel for CPU/accelerator support.
 
 - **Model OCI Artifact support**  
   - Podman 5.6: `podman-remote artifact` support.  
