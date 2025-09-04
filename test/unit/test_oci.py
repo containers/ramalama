@@ -3,12 +3,12 @@ from typing import Optional, Union
 
 import pytest
 
-from ramalama.huggingface import Huggingface
+from ramalama.model_store.stores.huggingface import Huggingface
 from ramalama.model_store.reffile import RefJSONFile, StoreFile, StoreFileType
 from ramalama.model_store.store import ModelStore
 from ramalama.oci import OCI
-from ramalama.ollama import Ollama
-from ramalama.url import URL
+from ramalama.model_store.stores.ollama import Ollama
+from ramalama.model_store.stores.url import URL
 
 
 class Args:

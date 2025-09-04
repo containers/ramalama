@@ -5,7 +5,7 @@ import pytest
 
 from ramalama.arg_types import StoreArgs
 from ramalama.model_store.snapshot_file import LocalSnapshotFile, SnapshotFile, SnapshotFileType
-from ramalama.ollama import Ollama, OllamaRepository
+from ramalama.model_store.stores.ollama import Ollama, OllamaRepository
 
 
 @pytest.fixture

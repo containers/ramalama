@@ -3,12 +3,12 @@ from typing import Union
 
 import pytest
 
-from ramalama.huggingface import Huggingface
 from ramalama.model_factory import ModelFactory
-from ramalama.modelscope import ModelScope
+from ramalama.model_store.stores.huggingface import Huggingface
+from ramalama.model_store.stores.modelscope import ModelScope
+from ramalama.model_store.stores.ollama import Ollama
+from ramalama.model_store.stores.url import URL
 from ramalama.oci import OCI
-from ramalama.ollama import Ollama
-from ramalama.url import URL
 
 
 @dataclass

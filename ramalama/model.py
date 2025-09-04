@@ -302,16 +302,14 @@ class Model(ModelBase):
         if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
             self.engine.add(["-i"])
 
-        self.engine.add(
-            [
-                "--label",
-                "ai.ramalama",
-                "--name",
-                name,
-                "--env=HOME=/tmp",
-                "--init",
-            ]
-        )
+        self.engine.add([
+            "--label",
+            "ai.ramalama",
+            "--name",
+            name,
+            "--env=HOME=/tmp",
+            "--init",
+        ])
 
     def setup_container(self, args):
         name = self.get_container_name(args)
@@ -356,7 +354,6 @@ class Model(ModelBase):
     def setup_mounts(self, args):
         if args.dryrun:
             return
-
         if self.model_type == 'oci':
             if not self.engine.use_podman:
                 raise NotImplementedError("Serving OCI models via image mount is only supported with Podman.")
@@ -364,6 +361,7 @@ class Model(ModelBase):
             return None
 
         ref_file = self.model_store.get_ref_file(self.model_tag)
+
         if ref_file is None:
             raise NoRefFileFound(self.model)
 
@@ -375,9 +373,9 @@ class Model(ModelBase):
 
         if self.draft_model:
             draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
-            self.engine.add(
-                [f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro{self.engine.relabel()}"]
-            )
+            self.engine.add([
+                f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro{self.engine.relabel()}"
+            ])
 
     def bench(self, args):
         self.ensure_model_exists(args)
@@ -710,14 +708,12 @@ class Model(ModelBase):
             if args.context:
                 vllm_max_model_len = args.context
 
-            exec_args.extend(
-                [
-                    "--max_model_len",
-                    str(vllm_max_model_len),
-                    "--served-model-name",
-                    self.model_name,
-                ]
-            )
+            exec_args.extend([
+                "--max_model_len",
+                str(vllm_max_model_len),
+                "--served-model-name",
+                self.model_name,
+            ])
 
             if getattr(args, 'runtime_args', None):
                 exec_args.extend(args.runtime_args)
