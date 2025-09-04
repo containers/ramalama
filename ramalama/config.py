@@ -90,6 +90,8 @@ class BaseConfig:
     )
     keep_groups: bool = False
     ngl: int = -1
+    normalize_domain: str = "quay.io"
+    normalize_prefix: str = "ramalama/"
     ocr: bool = False
     port: str = str(DEFAULT_PORT)
     prefix: str = None  # type: ignore
@@ -195,6 +197,12 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     for key in ['threads', 'ctx_size', 'ngl']:
         if key in config:
             config[key] = int(config[key])
+    
+    # Handle normalize_domain and normalize_prefix as string values
+    for key in ['normalize_domain', 'normalize_prefix']:
+        if key in config:
+            config[key] = str(config[key])
+    
     return config
 
 

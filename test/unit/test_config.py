@@ -95,6 +95,41 @@ def test_env_overrides_file_and_default():
             assert cfg.is_set("threads") is True
 
 
+def test_normalize_config_defaults():
+    """Test that normalize config fields have correct defaults."""
+    cfg = default_config()
+    assert cfg.normalize_domain == "quay.io"
+    assert cfg.normalize_prefix == "ramalama/"
+
+
+def test_normalize_config_file_override():
+    """Test that normalize config can be overridden via file config."""
+    mock_file_config = {
+        "normalize_domain": "custom.registry.io",
+        "normalize_prefix": "custom/",
+    }
+
+    with patch("ramalama.config.load_file_config", return_value=mock_file_config):
+        with patch("ramalama.config.load_env_config", return_value={}):
+            cfg = default_config()
+            assert cfg.normalize_domain == "custom.registry.io"
+            assert cfg.normalize_prefix == "custom/"
+
+
+def test_normalize_config_env_override():
+    """Test that normalize config can be overridden via environment variables."""
+    mock_env_config = {
+        "normalize_domain": "env.registry.com",
+        "normalize_prefix": "env/",
+    }
+
+    with patch("ramalama.config.load_file_config", return_value={}):
+        with patch("ramalama.config.load_env_config", return_value=mock_env_config):
+            cfg = default_config()
+            assert cfg.normalize_domain == "env.registry.com"
+            assert cfg.normalize_prefix == "env/"
+
+
 @pytest.mark.parametrize(
     "uid,is_root,expected",
     [
