@@ -17,6 +17,16 @@ maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
    { name="Eric Curtin", email = "ecurtin@redhat.com" },
 ]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Environment :: Console",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
 [project.license]
 text = "MIT"

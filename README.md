@@ -2,6 +2,36 @@
 <img src="https://github.com/user-attachments/assets/1a338ecf-dc84-4495-8c70-16882955da47" width=50%>
 </p>
 
+<p align="center">
+  <a href="https://github.com/containers/ramalama">
+    <img src="https://img.shields.io/github/issues/containers/ramalama?style=flat-square" height="22" alt="Open Issues"/>
+  </a>
+  <a href="https://github.com/containers/ramalama/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/containers/ramalama?style=flat-square" height="22" alt="License"/>
+  </a>
+  <a href="https://github.com/containers/ramalama">
+    <img src="https://img.shields.io/github/languages/top/containers/ramalama?style=flat-square" height="22" alt="Top language"/>
+  </a>
+  <a href="https://pypi.org/project/ramalama/">
+    <img src="https://img.shields.io/pypi/v/ramalama?style=flat-square" height="22" alt="PyPI version"/>
+  </a>
+  <a href="https://pypi.org/project/ramalama/">
+    <img src="https://img.shields.io/pypi/pyversions/ramalama?style=flat-square" height="22" alt="Supported Python versions"/>
+  </a>
+  <a href="https://discord.gg/MkCXuTRBUn">
+    <img src="https://img.shields.io/discord/1388199960503128165?style=flat-square&logo=discord&label=discord" height="22" alt="Join Discord"/>
+  </a>
+  <a href="https://matrix.to/#/#ramalama:fedoraproject.org">
+    <img src="https://img.shields.io/badge/matrix-join-blue?style=flat-square&logo=matrix" height="22" alt="Join Matrix"/>
+  </a>
+</p>
+
+<h3 align="center">
+  <a href="https://docs.ramalama.com/">Docs</a> &bull;
+  <a href="https://github.com/containers/ramalama/discussions" title="Community Page">Discussion</a> &bull;
+  <a href="https://blog.ramalama.com" title="RamaLama Blog">Blog</a>
+</h3>
+
 [RamaLama](https://ramalama.ai) strives to make working with AI simple, straightforward, and familiar by using OCI containers.
 <br>
 <br>
@@ -216,650 +246,650 @@ $ cat /usr/share/ramalama/shortnames.conf
 ### [`ramalama-bench`](https://github.com/containers/ramalama/blob/main/docs/ramalama-bench.1.md)
 #### Benchmark specified AI Model.
 - <details>
-	<summary>
-		Benchmark specified AI Model
-	</summary>
-	<br>
+    <summary>
+        Benchmark specified AI Model
+    </summary>
+    <br>
 
-	```
-	$ ramalama bench granite3-moe
-	```
+    ```
+    $ ramalama bench granite3-moe
+    ```
 </details>
 
 ### [`ramalama-containers`](https://github.com/containers/ramalama/blob/main/docs/ramalama-containers.1.md)
 #### List all RamaLama containers.
 - <details>
-	<summary>
-		List all containers running AI Models
-	</summary>
-	<br>
+    <summary>
+        List all containers running AI Models
+    </summary>
+    <br>
 
-	```
-	$ ramalama containers
-	```
-	Returns for example:
-	```
-	CONTAINER ID  IMAGE                             COMMAND               CREATED        STATUS                    PORTS                   NAMES
-	85ad75ecf866  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  5 hours ago    Up 5 hours                0.0.0.0:8080->8080/tcp  ramalama_s3Oh6oDfOP
-	85ad75ecf866  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  4 minutes ago  Exited (0) 4 minutes ago                          granite-server
-	```
+    ```
+    $ ramalama containers
+    ```
+    Returns for example:
+    ```
+    CONTAINER ID  IMAGE                             COMMAND               CREATED        STATUS                    PORTS                   NAMES
+    85ad75ecf866  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  5 hours ago    Up 5 hours                0.0.0.0:8080->8080/tcp  ramalama_s3Oh6oDfOP
+    85ad75ecf866  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  4 minutes ago  Exited (0) 4 minutes ago                          granite-server
+    ```
 </details>
 
 - <details>
-	<summary>
-		List all containers in a particular format
-	</summary>
-	<br>
+    <summary>
+        List all containers in a particular format
+    </summary>
+    <br>
 
-	```
-	$ ramalama ps --noheading --format "{{ .Names }}"
-	```
-	Returns for example:
+    ```
+    $ ramalama ps --noheading --format "{{ .Names }}"
+    ```
+    Returns for example:
 
-	```
-	ramalama_s3Oh6oDfOP
-	granite-server
-	```
+    ```
+    ramalama_s3Oh6oDfOP
+    granite-server
+    ```
 </details>
 
 ### [`ramalama-convert`](https://github.com/containers/ramalama/blob/main/docs/ramalama-convert.1.md)
 #### Convert AI Model from local storage to OCI Image.
 - <details>
-	<summary>
-		Generate an oci model out of an Ollama model.
-	</summary>
-	<br>
+    <summary>
+        Generate an oci model out of an Ollama model.
+    </summary>
+    <br>
 
-	```
-	$ ramalama convert ollama://tinyllama:latest oci://quay.io/rhatdan/tiny:latest
-	```
-	Returns for example:
-	```
-	Building quay.io/rhatdan/tiny:latest...
-	STEP 1/2: FROM scratch
-	STEP 2/2: COPY sha256:2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816 /model
-	--> Using cache 69db4a10191c976d2c3c24da972a2a909adec45135a69dbb9daeaaf2a3a36344
-	COMMIT quay.io/rhatdan/tiny:latest
-	--> 69db4a10191c
-	Successfully tagged quay.io/rhatdan/tiny:latest
-	69db4a10191c976d2c3c24da972a2a909adec45135a69dbb9daeaaf2a3a36344
-	```
+    ```
+    $ ramalama convert ollama://tinyllama:latest oci://quay.io/rhatdan/tiny:latest
+    ```
+    Returns for example:
+    ```
+    Building quay.io/rhatdan/tiny:latest...
+    STEP 1/2: FROM scratch
+    STEP 2/2: COPY sha256:2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816 /model
+    --> Using cache 69db4a10191c976d2c3c24da972a2a909adec45135a69dbb9daeaaf2a3a36344
+    COMMIT quay.io/rhatdan/tiny:latest
+    --> 69db4a10191c
+    Successfully tagged quay.io/rhatdan/tiny:latest
+    69db4a10191c976d2c3c24da972a2a909adec45135a69dbb9daeaaf2a3a36344
+    ```
 </details>
 
 - <details>
-	<summary>
-		Generate and run an OCI model with a quantized GGUF converted from Safetensors.
-	</summary>
-	<br>
+    <summary>
+        Generate and run an OCI model with a quantized GGUF converted from Safetensors.
+    </summary>
+    <br>
 
-	Generate OCI model
-	```
-	$ ramalama --image quay.io/ramalama/ramalama-rag convert --gguf Q4_K_M hf://ibm-granite/granite-3.2-2b-instruct oci://quay.io/kugupta/granite-3.2-q4-k-m:latest
-	```
+    Generate OCI model
+    ```
+    $ ramalama --image quay.io/ramalama/ramalama-rag convert --gguf Q4_K_M hf://ibm-granite/granite-3.2-2b-instruct oci://quay.io/kugupta/granite-3.2-q4-k-m:latest
+    ```
 
-	Returns for example:
-	```
-	Converting /Users/kugupta/.local/share/ramalama/models/huggingface/ibm-granite/granite-3.2-2b-instruct to quay.io/kugupta/granite-3.2-q4-k-m:latest...
-	Building quay.io/kugupta/granite-3.2-q4-k-m:latest...
-	```
+    Returns for example:
+    ```
+    Converting /Users/kugupta/.local/share/ramalama/models/huggingface/ibm-granite/granite-3.2-2b-instruct to quay.io/kugupta/granite-3.2-q4-k-m:latest...
+    Building quay.io/kugupta/granite-3.2-q4-k-m:latest...
+    ```
 
-	Run the generated model
-	```
-	$ ramalama run oci://quay.io/kugupta/granite-3.2-q4-k-m:latest
-	```
+    Run the generated model
+    ```
+    $ ramalama run oci://quay.io/kugupta/granite-3.2-q4-k-m:latest
+    ```
 </details>
 
 ### [`ramalama-info`](https://github.com/containers/ramalama/blob/main/docs/ramalama-info.1.md)
 #### Display RamaLama configuration information.
 - <details>
-	<summary>
-		Info with no container engine.
-	</summary>
-	<br>
+    <summary>
+        Info with no container engine.
+    </summary>
+    <br>
 
-	```
-	$ ramalama info
-	```
-	Returns for example:
-	```
-	{
-	    "Accelerator": "cuda",
-	    "Engine": {
-		"Name": ""
-	    },
-	    "Image": "quay.io/ramalama/cuda:0.7",
-	    "Runtime": "llama.cpp",
-	    "Shortnames": {
-		"Names": {
-		    "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
-		    "deepseek": "ollama://deepseek-r1",
-		    "dragon": "huggingface://llmware/dragon-mistral-7b-v0/dragon-mistral-7b-q4_k_m.gguf",
-		    "gemma3": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
-		    "gemma3:12b": "hf://bartowski/google_gemma-3-12b-it-GGUF/google_gemma-3-12b-it-IQ2_M.gguf",
-		    "gemma3:1b": "hf://bartowski/google_gemma-3-1b-it-GGUF/google_gemma-3-1b-it-IQ2_M.gguf",
-		    "gemma3:27b": "hf://bartowski/google_gemma-3-27b-it-GGUF/google_gemma-3-27b-it-IQ2_M.gguf",
-		    "gemma3:4b": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
-		    "granite": "ollama://granite3.1-dense",
-		    "granite-code": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
-		    "granite-code:20b": "hf://ibm-granite/granite-20b-code-base-8k-GGUF/granite-20b-code-base.Q4_K_M.gguf",
-		    "granite-code:34b": "hf://ibm-granite/granite-34b-code-base-8k-GGUF/granite-34b-code-base.Q4_K_M.gguf",
-		    "granite-code:3b": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
-		    "granite-code:8b": "hf://ibm-granite/granite-8b-code-base-4k-GGUF/granite-8b-code-base.Q4_K_M.gguf",
-		    "granite-lab-7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-		    "granite-lab-8b": "huggingface://ibm-granite/granite-8b-code-base-GGUF/granite-8b-code-base.Q4_K_M.gguf",
-		    "granite-lab:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-		    "granite:2b": "ollama://granite3.1-dense:2b",
-		    "granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-		    "granite:8b": "ollama://granite3.1-dense:8b",
-		    "hermes": "huggingface://NousResearch/Hermes-2-Pro-Mistral-7B-GGUF/Hermes-2-Pro-Mistral-7B.Q4_K_M.gguf",
-		    "ibm/granite": "ollama://granite3.1-dense:8b",
-		    "ibm/granite:2b": "ollama://granite3.1-dense:2b",
-		    "ibm/granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-		    "ibm/granite:8b": "ollama://granite3.1-dense:8b",
-		    "merlinite": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-		    "merlinite-lab-7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-		    "merlinite-lab:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-		    "merlinite:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-		    "mistral": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
-		    "mistral:7b": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
-		    "mistral:7b-v1": "huggingface://TheBloke/Mistral-7B-Instruct-v0.1-GGUF/mistral-7b-instruct-v0.1.Q5_K_M.gguf",
-		    "mistral:7b-v2": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
-		    "mistral:7b-v3": "huggingface://MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF/Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
-		    "mistral_code_16k": "huggingface://TheBloke/Mistral-7B-Code-16K-qlora-GGUF/mistral-7b-code-16k-qlora.Q4_K_M.gguf",
-		    "mistral_codealpaca": "huggingface://TheBloke/Mistral-7B-codealpaca-lora-GGUF/mistral-7b-codealpaca-lora.Q4_K_M.gguf",
-		    "mixtao": "huggingface://MaziyarPanahi/MixTAO-7Bx2-MoE-Instruct-v7.0-GGUF/MixTAO-7Bx2-MoE-Instruct-v7.0.Q4_K_M.gguf",
-		    "openchat": "huggingface://TheBloke/openchat-3.5-0106-GGUF/openchat-3.5-0106.Q4_K_M.gguf",
-		    "openorca": "huggingface://TheBloke/Mistral-7B-OpenOrca-GGUF/mistral-7b-openorca.Q4_K_M.gguf",
-		    "phi2": "huggingface://MaziyarPanahi/phi-2-GGUF/phi-2.Q4_K_M.gguf",
-		    "smollm:135m": "ollama://smollm:135m",
-		    "tiny": "ollama://tinyllama"
-		},
-		"Files": [
-		    "/usr/share/ramalama/shortnames.conf",
-		    "/home/dwalsh/.config/ramalama/shortnames.conf",
-		]
-	    },
-	    "Store": "/home/dwalsh/.local/share/ramalama",
-	    "UseContainer": true,
-	    "Version": "0.7.5"
-	}
-	```
+    ```
+    $ ramalama info
+    ```
+    Returns for example:
+    ```
+    {
+        "Accelerator": "cuda",
+        "Engine": {
+        "Name": ""
+        },
+        "Image": "quay.io/ramalama/cuda:0.7",
+        "Runtime": "llama.cpp",
+        "Shortnames": {
+        "Names": {
+            "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
+            "deepseek": "ollama://deepseek-r1",
+            "dragon": "huggingface://llmware/dragon-mistral-7b-v0/dragon-mistral-7b-q4_k_m.gguf",
+            "gemma3": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
+            "gemma3:12b": "hf://bartowski/google_gemma-3-12b-it-GGUF/google_gemma-3-12b-it-IQ2_M.gguf",
+            "gemma3:1b": "hf://bartowski/google_gemma-3-1b-it-GGUF/google_gemma-3-1b-it-IQ2_M.gguf",
+            "gemma3:27b": "hf://bartowski/google_gemma-3-27b-it-GGUF/google_gemma-3-27b-it-IQ2_M.gguf",
+            "gemma3:4b": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
+            "granite": "ollama://granite3.1-dense",
+            "granite-code": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
+            "granite-code:20b": "hf://ibm-granite/granite-20b-code-base-8k-GGUF/granite-20b-code-base.Q4_K_M.gguf",
+            "granite-code:34b": "hf://ibm-granite/granite-34b-code-base-8k-GGUF/granite-34b-code-base.Q4_K_M.gguf",
+            "granite-code:3b": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
+            "granite-code:8b": "hf://ibm-granite/granite-8b-code-base-4k-GGUF/granite-8b-code-base.Q4_K_M.gguf",
+            "granite-lab-7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+            "granite-lab-8b": "huggingface://ibm-granite/granite-8b-code-base-GGUF/granite-8b-code-base.Q4_K_M.gguf",
+            "granite-lab:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+            "granite:2b": "ollama://granite3.1-dense:2b",
+            "granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+            "granite:8b": "ollama://granite3.1-dense:8b",
+            "hermes": "huggingface://NousResearch/Hermes-2-Pro-Mistral-7B-GGUF/Hermes-2-Pro-Mistral-7B.Q4_K_M.gguf",
+            "ibm/granite": "ollama://granite3.1-dense:8b",
+            "ibm/granite:2b": "ollama://granite3.1-dense:2b",
+            "ibm/granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+            "ibm/granite:8b": "ollama://granite3.1-dense:8b",
+            "merlinite": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+            "merlinite-lab-7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+            "merlinite-lab:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+            "merlinite:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+            "mistral": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+            "mistral:7b": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+            "mistral:7b-v1": "huggingface://TheBloke/Mistral-7B-Instruct-v0.1-GGUF/mistral-7b-instruct-v0.1.Q5_K_M.gguf",
+            "mistral:7b-v2": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+            "mistral:7b-v3": "huggingface://MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF/Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
+            "mistral_code_16k": "huggingface://TheBloke/Mistral-7B-Code-16K-qlora-GGUF/mistral-7b-code-16k-qlora.Q4_K_M.gguf",
+            "mistral_codealpaca": "huggingface://TheBloke/Mistral-7B-codealpaca-lora-GGUF/mistral-7b-codealpaca-lora.Q4_K_M.gguf",
+            "mixtao": "huggingface://MaziyarPanahi/MixTAO-7Bx2-MoE-Instruct-v7.0-GGUF/MixTAO-7Bx2-MoE-Instruct-v7.0.Q4_K_M.gguf",
+            "openchat": "huggingface://TheBloke/openchat-3.5-0106-GGUF/openchat-3.5-0106.Q4_K_M.gguf",
+            "openorca": "huggingface://TheBloke/Mistral-7B-OpenOrca-GGUF/mistral-7b-openorca.Q4_K_M.gguf",
+            "phi2": "huggingface://MaziyarPanahi/phi-2-GGUF/phi-2.Q4_K_M.gguf",
+            "smollm:135m": "ollama://smollm:135m",
+            "tiny": "ollama://tinyllama"
+        },
+        "Files": [
+            "/usr/share/ramalama/shortnames.conf",
+            "/home/dwalsh/.config/ramalama/shortnames.conf",
+        ]
+        },
+        "Store": "/home/dwalsh/.local/share/ramalama",
+        "UseContainer": true,
+        "Version": "0.7.5"
+    }
+    ```
 </details>
 
 - <details>
-	<summary>
-		Info with Podman engine.
-	</summary>
-	<br>
+    <summary>
+        Info with Podman engine.
+    </summary>
+    <br>
 
-	```
-	$ ramalama info
-	```
-	Returns for example:
-	```
-	{
-	    "Accelerator": "cuda",
-	    "Engine": {
-		"Info": {
-		    "host": {
-			"arch": "amd64",
-			"buildahVersion": "1.39.4",
-			"cgroupControllers": [
-			    "cpu",
-			    "io",
-			    "memory",
-			    "pids"
-			],
-			"cgroupManager": "systemd",
-			"cgroupVersion": "v2",
-			"conmon": {
-			    "package": "conmon-2.1.13-1.fc42.x86_64",
-			    "path": "/usr/bin/conmon",
-			    "version": "conmon version 2.1.13, commit: "
-			},
-			"cpuUtilization": {
-			    "idlePercent": 97.36,
-			    "systemPercent": 0.64,
-			    "userPercent": 2
-			},
-			"cpus": 32,
-			"databaseBackend": "sqlite",
-			"distribution": {
-			    "distribution": "fedora",
-			    "variant": "workstation",
-			    "version": "42"
-			},
-			"eventLogger": "journald",
-			"freeLocks": 2043,
-			"hostname": "danslaptop",
-			"idMappings": {
-			    "gidmap": [
-				{
-				    "container_id": 0,
-				    "host_id": 3267,
-				    "size": 1
-				},
-				{
-				    "container_id": 1,
-				    "host_id": 524288,
-				    "size": 65536
-				}
-			    ],
-			    "uidmap": [
-				{
-				    "container_id": 0,
-				    "host_id": 3267,
-				    "size": 1
-				},
-				{
-				    "container_id": 1,
-				    "host_id": 524288,
-				    "size": 65536
-				}
-			    ]
-			},
-			"kernel": "6.14.2-300.fc42.x86_64",
-			"linkmode": "dynamic",
-			"logDriver": "journald",
-			"memFree": 65281908736,
-			"memTotal": 134690979840,
-			"networkBackend": "netavark",
-			"networkBackendInfo": {
-			    "backend": "netavark",
-			    "dns": {
-				"package": "aardvark-dns-1.14.0-1.fc42.x86_64",
-				"path": "/usr/libexec/podman/aardvark-dns",
-				"version": "aardvark-dns 1.14.0"
-			    },
-			    "package": "netavark-1.14.1-1.fc42.x86_64",
-			    "path": "/usr/libexec/podman/netavark",
-			    "version": "netavark 1.14.1"
-			},
-			"ociRuntime": {
-			    "name": "crun",
-			    "package": "crun-1.21-1.fc42.x86_64",
-			    "path": "/usr/bin/crun",
-			    "version": "crun version 1.21\ncommit: 10269840aa07fb7e6b7e1acff6198692d8ff5c88\nrundir: /run/user/3267/crun\nspec: 1.0.0\n+SYSTEMD +SELINUX +APPARMOR +CAP +SECCOMP +EBPF +CRIU +LIBKRUN +WASM:wasmedge +YAJL"
-			},
-			"os": "linux",
-			"pasta": {
-			    "executable": "/bin/pasta",
-			    "package": "passt-0^20250415.g2340bbf-1.fc42.x86_64",
-			    "version": ""
-			},
-			"remoteSocket": {
-			    "exists": true,
-			    "path": "/run/user/3267/podman/podman.sock"
-			},
-			"rootlessNetworkCmd": "pasta",
-			"security": {
-			    "apparmorEnabled": false,
-			    "capabilities": "CAP_CHOWN,CAP_DAC_OVERRIDE,CAP_FOWNER,CAP_FSETID,CAP_KILL,CAP_NET_BIND_SERVICE,CAP_SETFCAP,CAP_SETGID,CAP_SETPCAP,CAP_SETUID,CAP_SYS_CHROOT",
-			    "rootless": true,
-			    "seccompEnabled": true,
-			    "seccompProfilePath": "/usr/share/containers/seccomp.json",
-			    "selinuxEnabled": true
-			},
-			"serviceIsRemote": false,
-			"slirp4netns": {
-			    "executable": "/bin/slirp4netns",
-			    "package": "slirp4netns-1.3.1-2.fc42.x86_64",
-			    "version": "slirp4netns version 1.3.1\ncommit: e5e368c4f5db6ae75c2fce786e31eef9da6bf236\nlibslirp: 4.8.0\nSLIRP_CONFIG_VERSION_MAX: 5\nlibseccomp: 2.5.5"
-			},
-			"swapFree": 8589930496,
-			"swapTotal": 8589930496,
-			"uptime": "116h 35m 40.00s (Approximately 4.83 days)",
-			"variant": ""
-		    },
-		    "plugins": {
-			"authorization": null,
-			"log": [
-			    "k8s-file",
-			    "none",
-			    "passthrough",
-			    "journald"
-			],
-			"network": [
-			    "bridge",
-			    "macvlan",
-			    "ipvlan"
-			],
-			"volume": [
-			    "local"
-			]
-		    },
-		    "registries": {
-			"search": [
-			    "registry.fedoraproject.org",
-			    "registry.access.redhat.com",
-			    "docker.io"
-			]
-		    },
-		    "store": {
-			"configFile": "/home/dwalsh/.config/containers/storage.conf",
-			"containerStore": {
-			    "number": 5,
-			    "paused": 0,
-			    "running": 0,
-			    "stopped": 5
-			},
-			"graphDriverName": "overlay",
-			"graphOptions": {},
-			"graphRoot": "/home/dwalsh/.local/share/containers/storage",
-			"graphRootAllocated": 2046687182848,
-			"graphRootUsed": 399990419456,
-			"graphStatus": {
-			    "Backing Filesystem": "btrfs",
-			    "Native Overlay Diff": "true",
-			    "Supports d_type": "true",
-			    "Supports shifting": "false",
-			    "Supports volatile": "true",
-			    "Using metacopy": "false"
-			},
-			"imageCopyTmpDir": "/var/tmp",
-			"imageStore": {
-			    "number": 297
-			},
-			"runRoot": "/run/user/3267/containers",
-			"transientStore": false,
-			"volumePath": "/home/dwalsh/.local/share/containers/storage/volumes"
-		    },
-		    "version": {
-			"APIVersion": "5.4.2",
-			"BuildOrigin": "Fedora Project",
-			"Built": 1743552000,
-			"BuiltTime": "Tue Apr  1 19:00:00 2025",
-			"GitCommit": "be85287fcf4590961614ee37be65eeb315e5d9ff",
-			"GoVersion": "go1.24.1",
-			"Os": "linux",
-			"OsArch": "linux/amd64",
-			"Version": "5.4.2"
-		    }
-		},
-		"Name": "podman"
-	    },
-	    "Image": "quay.io/ramalama/cuda:0.7",
-	    "Runtime": "llama.cpp",
-	    "Shortnames": {
-		"Names": {
-		    "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
-		    "deepseek": "ollama://deepseek-r1",
-		    "dragon": "huggingface://llmware/dragon-mistral-7b-v0/dragon-mistral-7b-q4_k_m.gguf",
-		    "gemma3": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
-		    "gemma3:12b": "hf://bartowski/google_gemma-3-12b-it-GGUF/google_gemma-3-12b-it-IQ2_M.gguf",
-		    "gemma3:1b": "hf://bartowski/google_gemma-3-1b-it-GGUF/google_gemma-3-1b-it-IQ2_M.gguf",
-		    "gemma3:27b": "hf://bartowski/google_gemma-3-27b-it-GGUF/google_gemma-3-27b-it-IQ2_M.gguf",
-		    "gemma3:4b": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
-		    "granite": "ollama://granite3.1-dense",
-		    "granite-code": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
-		    "granite-code:20b": "hf://ibm-granite/granite-20b-code-base-8k-GGUF/granite-20b-code-base.Q4_K_M.gguf",
-		    "granite-code:34b": "hf://ibm-granite/granite-34b-code-base-8k-GGUF/granite-34b-code-base.Q4_K_M.gguf",
-		    "granite-code:3b": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
-		    "granite-code:8b": "hf://ibm-granite/granite-8b-code-base-4k-GGUF/granite-8b-code-base.Q4_K_M.gguf",
-		    "granite-lab-7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-		    "granite-lab-8b": "huggingface://ibm-granite/granite-8b-code-base-GGUF/granite-8b-code-base.Q4_K_M.gguf",
-		    "granite-lab:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-		    "granite:2b": "ollama://granite3.1-dense:2b",
-		    "granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-		    "granite:8b": "ollama://granite3.1-dense:8b",
-		    "hermes": "huggingface://NousResearch/Hermes-2-Pro-Mistral-7B-GGUF/Hermes-2-Pro-Mistral-7B.Q4_K_M.gguf",
-		    "ibm/granite": "ollama://granite3.1-dense:8b",
-		    "ibm/granite:2b": "ollama://granite3.1-dense:2b",
-		    "ibm/granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-		    "ibm/granite:8b": "ollama://granite3.1-dense:8b",
-		    "merlinite": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-		    "merlinite-lab-7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-		    "merlinite-lab:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-		    "merlinite:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-		    "mistral": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
-		    "mistral:7b": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
-		    "mistral:7b-v1": "huggingface://TheBloke/Mistral-7B-Instruct-v0.1-GGUF/mistral-7b-instruct-v0.1.Q5_K_M.gguf",
-		    "mistral:7b-v2": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
-		    "mistral:7b-v3": "huggingface://MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF/Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
-		    "mistral_code_16k": "huggingface://TheBloke/Mistral-7B-Code-16K-qlora-GGUF/mistral-7b-code-16k-qlora.Q4_K_M.gguf",
-		    "mistral_codealpaca": "huggingface://TheBloke/Mistral-7B-codealpaca-lora-GGUF/mistral-7b-codealpaca-lora.Q4_K_M.gguf",
-		    "mixtao": "huggingface://MaziyarPanahi/MixTAO-7Bx2-MoE-Instruct-v7.0-GGUF/MixTAO-7Bx2-MoE-Instruct-v7.0.Q4_K_M.gguf",
-		    "openchat": "huggingface://TheBloke/openchat-3.5-0106-GGUF/openchat-3.5-0106.Q4_K_M.gguf",
-		    "openorca": "huggingface://TheBloke/Mistral-7B-OpenOrca-GGUF/mistral-7b-openorca.Q4_K_M.gguf",
-		    "phi2": "huggingface://MaziyarPanahi/phi-2-GGUF/phi-2.Q4_K_M.gguf",
-		    "smollm:135m": "ollama://smollm:135m",
-		    "tiny": "ollama://tinyllama"
-		},
-		"Files": [
-		    "/usr/share/ramalama/shortnames.conf",
-		    "/home/dwalsh/.config/ramalama/shortnames.conf",
-		]
-	    },
-	    "Store": "/home/dwalsh/.local/share/ramalama",
-	    "UseContainer": true,
-	    "Version": "0.7.5"
-	}
-	```
+    ```
+    $ ramalama info
+    ```
+    Returns for example:
+    ```
+    {
+        "Accelerator": "cuda",
+        "Engine": {
+        "Info": {
+            "host": {
+            "arch": "amd64",
+            "buildahVersion": "1.39.4",
+            "cgroupControllers": [
+                "cpu",
+                "io",
+                "memory",
+                "pids"
+            ],
+            "cgroupManager": "systemd",
+            "cgroupVersion": "v2",
+            "conmon": {
+                "package": "conmon-2.1.13-1.fc42.x86_64",
+                "path": "/usr/bin/conmon",
+                "version": "conmon version 2.1.13, commit: "
+            },
+            "cpuUtilization": {
+                "idlePercent": 97.36,
+                "systemPercent": 0.64,
+                "userPercent": 2
+            },
+            "cpus": 32,
+            "databaseBackend": "sqlite",
+            "distribution": {
+                "distribution": "fedora",
+                "variant": "workstation",
+                "version": "42"
+            },
+            "eventLogger": "journald",
+            "freeLocks": 2043,
+            "hostname": "danslaptop",
+            "idMappings": {
+                "gidmap": [
+                {
+                    "container_id": 0,
+                    "host_id": 3267,
+                    "size": 1
+                },
+                {
+                    "container_id": 1,
+                    "host_id": 524288,
+                    "size": 65536
+                }
+                ],
+                "uidmap": [
+                {
+                    "container_id": 0,
+                    "host_id": 3267,
+                    "size": 1
+                },
+                {
+                    "container_id": 1,
+                    "host_id": 524288,
+                    "size": 65536
+                }
+                ]
+            },
+            "kernel": "6.14.2-300.fc42.x86_64",
+            "linkmode": "dynamic",
+            "logDriver": "journald",
+            "memFree": 65281908736,
+            "memTotal": 134690979840,
+            "networkBackend": "netavark",
+            "networkBackendInfo": {
+                "backend": "netavark",
+                "dns": {
+                "package": "aardvark-dns-1.14.0-1.fc42.x86_64",
+                "path": "/usr/libexec/podman/aardvark-dns",
+                "version": "aardvark-dns 1.14.0"
+                },
+                "package": "netavark-1.14.1-1.fc42.x86_64",
+                "path": "/usr/libexec/podman/netavark",
+                "version": "netavark 1.14.1"
+            },
+            "ociRuntime": {
+                "name": "crun",
+                "package": "crun-1.21-1.fc42.x86_64",
+                "path": "/usr/bin/crun",
+                "version": "crun version 1.21\ncommit: 10269840aa07fb7e6b7e1acff6198692d8ff5c88\nrundir: /run/user/3267/crun\nspec: 1.0.0\n+SYSTEMD +SELINUX +APPARMOR +CAP +SECCOMP +EBPF +CRIU +LIBKRUN +WASM:wasmedge +YAJL"
+            },
+            "os": "linux",
+            "pasta": {
+                "executable": "/bin/pasta",
+                "package": "passt-0^20250415.g2340bbf-1.fc42.x86_64",
+                "version": ""
+            },
+            "remoteSocket": {
+                "exists": true,
+                "path": "/run/user/3267/podman/podman.sock"
+            },
+            "rootlessNetworkCmd": "pasta",
+            "security": {
+                "apparmorEnabled": false,
+                "capabilities": "CAP_CHOWN,CAP_DAC_OVERRIDE,CAP_FOWNER,CAP_FSETID,CAP_KILL,CAP_NET_BIND_SERVICE,CAP_SETFCAP,CAP_SETGID,CAP_SETPCAP,CAP_SETUID,CAP_SYS_CHROOT",
+                "rootless": true,
+                "seccompEnabled": true,
+                "seccompProfilePath": "/usr/share/containers/seccomp.json",
+                "selinuxEnabled": true
+            },
+            "serviceIsRemote": false,
+            "slirp4netns": {
+                "executable": "/bin/slirp4netns",
+                "package": "slirp4netns-1.3.1-2.fc42.x86_64",
+                "version": "slirp4netns version 1.3.1\ncommit: e5e368c4f5db6ae75c2fce786e31eef9da6bf236\nlibslirp: 4.8.0\nSLIRP_CONFIG_VERSION_MAX: 5\nlibseccomp: 2.5.5"
+            },
+            "swapFree": 8589930496,
+            "swapTotal": 8589930496,
+            "uptime": "116h 35m 40.00s (Approximately 4.83 days)",
+            "variant": ""
+            },
+            "plugins": {
+            "authorization": null,
+            "log": [
+                "k8s-file",
+                "none",
+                "passthrough",
+                "journald"
+            ],
+            "network": [
+                "bridge",
+                "macvlan",
+                "ipvlan"
+            ],
+            "volume": [
+                "local"
+            ]
+            },
+            "registries": {
+            "search": [
+                "registry.fedoraproject.org",
+                "registry.access.redhat.com",
+                "docker.io"
+            ]
+            },
+            "store": {
+            "configFile": "/home/dwalsh/.config/containers/storage.conf",
+            "containerStore": {
+                "number": 5,
+                "paused": 0,
+                "running": 0,
+                "stopped": 5
+            },
+            "graphDriverName": "overlay",
+            "graphOptions": {},
+            "graphRoot": "/home/dwalsh/.local/share/containers/storage",
+            "graphRootAllocated": 2046687182848,
+            "graphRootUsed": 399990419456,
+            "graphStatus": {
+                "Backing Filesystem": "btrfs",
+                "Native Overlay Diff": "true",
+                "Supports d_type": "true",
+                "Supports shifting": "false",
+                "Supports volatile": "true",
+                "Using metacopy": "false"
+            },
+            "imageCopyTmpDir": "/var/tmp",
+            "imageStore": {
+                "number": 297
+            },
+            "runRoot": "/run/user/3267/containers",
+            "transientStore": false,
+            "volumePath": "/home/dwalsh/.local/share/containers/storage/volumes"
+            },
+            "version": {
+            "APIVersion": "5.4.2",
+            "BuildOrigin": "Fedora Project",
+            "Built": 1743552000,
+            "BuiltTime": "Tue Apr  1 19:00:00 2025",
+            "GitCommit": "be85287fcf4590961614ee37be65eeb315e5d9ff",
+            "GoVersion": "go1.24.1",
+            "Os": "linux",
+            "OsArch": "linux/amd64",
+            "Version": "5.4.2"
+            }
+        },
+        "Name": "podman"
+        },
+        "Image": "quay.io/ramalama/cuda:0.7",
+        "Runtime": "llama.cpp",
+        "Shortnames": {
+        "Names": {
+            "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
+            "deepseek": "ollama://deepseek-r1",
+            "dragon": "huggingface://llmware/dragon-mistral-7b-v0/dragon-mistral-7b-q4_k_m.gguf",
+            "gemma3": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
+            "gemma3:12b": "hf://bartowski/google_gemma-3-12b-it-GGUF/google_gemma-3-12b-it-IQ2_M.gguf",
+            "gemma3:1b": "hf://bartowski/google_gemma-3-1b-it-GGUF/google_gemma-3-1b-it-IQ2_M.gguf",
+            "gemma3:27b": "hf://bartowski/google_gemma-3-27b-it-GGUF/google_gemma-3-27b-it-IQ2_M.gguf",
+            "gemma3:4b": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
+            "granite": "ollama://granite3.1-dense",
+            "granite-code": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
+            "granite-code:20b": "hf://ibm-granite/granite-20b-code-base-8k-GGUF/granite-20b-code-base.Q4_K_M.gguf",
+            "granite-code:34b": "hf://ibm-granite/granite-34b-code-base-8k-GGUF/granite-34b-code-base.Q4_K_M.gguf",
+            "granite-code:3b": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
+            "granite-code:8b": "hf://ibm-granite/granite-8b-code-base-4k-GGUF/granite-8b-code-base.Q4_K_M.gguf",
+            "granite-lab-7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+            "granite-lab-8b": "huggingface://ibm-granite/granite-8b-code-base-GGUF/granite-8b-code-base.Q4_K_M.gguf",
+            "granite-lab:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+            "granite:2b": "ollama://granite3.1-dense:2b",
+            "granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+            "granite:8b": "ollama://granite3.1-dense:8b",
+            "hermes": "huggingface://NousResearch/Hermes-2-Pro-Mistral-7B-GGUF/Hermes-2-Pro-Mistral-7B.Q4_K_M.gguf",
+            "ibm/granite": "ollama://granite3.1-dense:8b",
+            "ibm/granite:2b": "ollama://granite3.1-dense:2b",
+            "ibm/granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+            "ibm/granite:8b": "ollama://granite3.1-dense:8b",
+            "merlinite": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+            "merlinite-lab-7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+            "merlinite-lab:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+            "merlinite:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+            "mistral": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+            "mistral:7b": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+            "mistral:7b-v1": "huggingface://TheBloke/Mistral-7B-Instruct-v0.1-GGUF/mistral-7b-instruct-v0.1.Q5_K_M.gguf",
+            "mistral:7b-v2": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+            "mistral:7b-v3": "huggingface://MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF/Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
+            "mistral_code_16k": "huggingface://TheBloke/Mistral-7B-Code-16K-qlora-GGUF/mistral-7b-code-16k-qlora.Q4_K_M.gguf",
+            "mistral_codealpaca": "huggingface://TheBloke/Mistral-7B-codealpaca-lora-GGUF/mistral-7b-codealpaca-lora.Q4_K_M.gguf",
+            "mixtao": "huggingface://MaziyarPanahi/MixTAO-7Bx2-MoE-Instruct-v7.0-GGUF/MixTAO-7Bx2-MoE-Instruct-v7.0.Q4_K_M.gguf",
+            "openchat": "huggingface://TheBloke/openchat-3.5-0106-GGUF/openchat-3.5-0106.Q4_K_M.gguf",
+            "openorca": "huggingface://TheBloke/Mistral-7B-OpenOrca-GGUF/mistral-7b-openorca.Q4_K_M.gguf",
+            "phi2": "huggingface://MaziyarPanahi/phi-2-GGUF/phi-2.Q4_K_M.gguf",
+            "smollm:135m": "ollama://smollm:135m",
+            "tiny": "ollama://tinyllama"
+        },
+        "Files": [
+            "/usr/share/ramalama/shortnames.conf",
+            "/home/dwalsh/.config/ramalama/shortnames.conf",
+        ]
+        },
+        "Store": "/home/dwalsh/.local/share/ramalama",
+        "UseContainer": true,
+        "Version": "0.7.5"
+    }
+    ```
 </details>
 
 - <details>
-	<summary>
-		Using jq to print specific `ramalama info` content.
-	</summary>
-	<br>
+    <summary>
+        Using jq to print specific `ramalama info` content.
+    </summary>
+    <br>
 
-	```
-	$ ramalama info |  jq .Shortnames.Names.mixtao
-	```
-	Returns for example:
-	```
+    ```
+    $ ramalama info |  jq .Shortnames.Names.mixtao
+    ```
+    Returns for example:
+    ```
    "huggingface://MaziyarPanahi/MixTAO-7Bx2-MoE-Instruct-v7.0-GGUF/MixTAO-7Bx2-MoE-Instruct-v7.0.Q4_K_M.gguf"
-	```
+    ```
 </details>
 
 ### [`ramalama-inspect`](https://github.com/containers/ramalama/blob/main/docs/ramalama-inspect.1.md)
 #### Inspect the specified AI Model.
 - <details>
-	<summary>
-		Inspect the smollm:135m model for basic information.
-	</summary>
-	<br>
+    <summary>
+        Inspect the smollm:135m model for basic information.
+    </summary>
+    <br>
 
-	```
-	$ ramalama inspect smollm:135m
-	```
-	Returns for example:
-	```
-	smollm:135m
-	   Path: /var/lib/ramalama/models/ollama/smollm:135m
-	   Registry: ollama
-	   Format: GGUF
-	   Version: 3
-	   Endianness: little
-	   Metadata: 39 entries
-	   Tensors: 272 entries
-	```
+    ```
+    $ ramalama inspect smollm:135m
+    ```
+    Returns for example:
+    ```
+    smollm:135m
+       Path: /var/lib/ramalama/models/ollama/smollm:135m
+       Registry: ollama
+       Format: GGUF
+       Version: 3
+       Endianness: little
+       Metadata: 39 entries
+       Tensors: 272 entries
+    ```
 </details>
 
 - <details>
-	<summary>
-		Inspect the smollm:135m model for all information in json format.
-	</summary>
-	<br>
+    <summary>
+        Inspect the smollm:135m model for all information in json format.
+    </summary>
+    <br>
 
-	```
-	$ ramalama inspect smollm:135m --all --json
-	```
-	Returns for example:
-	```
-	{
-	    "Name": "smollm:135m",
-	    "Path": "/home/mengel/.local/share/ramalama/models/ollama/smollm:135m",
-	    "Registry": "ollama",
-	    "Format": "GGUF",
-	    "Version": 3,
-	    "LittleEndian": true,
-	    "Metadata": {
-		"general.architecture": "llama",
-		"general.base_model.0.name": "SmolLM 135M",
-		"general.base_model.0.organization": "HuggingFaceTB",
-		"general.base_model.0.repo_url": "https://huggingface.co/HuggingFaceTB/SmolLM-135M",
-		...
-	    },
-	    "Tensors": [
-		{
-		    "dimensions": [
-			576,
-			49152
-		    ],
-		    "n_dimensions": 2,
-		    "name": "token_embd.weight",
-		    "offset": 0,
-		    "type": 8
-		},
-		...
-	    ]
-	}
-	```
+    ```
+    $ ramalama inspect smollm:135m --all --json
+    ```
+    Returns for example:
+    ```
+    {
+        "Name": "smollm:135m",
+        "Path": "/home/mengel/.local/share/ramalama/models/ollama/smollm:135m",
+        "Registry": "ollama",
+        "Format": "GGUF",
+        "Version": 3,
+        "LittleEndian": true,
+        "Metadata": {
+        "general.architecture": "llama",
+        "general.base_model.0.name": "SmolLM 135M",
+        "general.base_model.0.organization": "HuggingFaceTB",
+        "general.base_model.0.repo_url": "https://huggingface.co/HuggingFaceTB/SmolLM-135M",
+        ...
+        },
+        "Tensors": [
+        {
+            "dimensions": [
+            576,
+            49152
+            ],
+            "n_dimensions": 2,
+            "name": "token_embd.weight",
+            "offset": 0,
+            "type": 8
+        },
+        ...
+        ]
+    }
+    ```
 </details>
 
 ### [`ramalama-list`](https://github.com/containers/ramalama/blob/main/docs/ramalama-list.1.md)
 #### List all downloaded AI Models.
 - <details>
-	<summary>
-		You can `list` all models pulled into local storage.
-	</summary>
-	<br>
+    <summary>
+        You can `list` all models pulled into local storage.
+    </summary>
+    <br>
 
-	```
-	$ ramalama list
-	```
-	Returns for example:
-	```
-	NAME                                                                    MODIFIED      SIZE
-	ollama://smollm:135m                                                    16 hours ago  5.5M
-	huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf     14 hours ago  460M
-	ollama://moondream:latest                                               6 days ago    791M
-	ollama://phi4:latest                                                    6 days ago    8.43 GB
-	ollama://tinyllama:latest                                               1 week ago    608.16 MB
-	ollama://granite3-moe:3b                                                1 week ago    1.92 GB
-	ollama://granite3-moe:latest                                            3 months ago  1.92 GB
-	ollama://llama3.1:8b                                                    2 months ago  4.34 GB
-	ollama://llama3.1:latest                                                2 months ago  4.34 GB
-	```
+    ```
+    $ ramalama list
+    ```
+    Returns for example:
+    ```
+    NAME                                                                    MODIFIED      SIZE
+    ollama://smollm:135m                                                    16 hours ago  5.5M
+    huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf     14 hours ago  460M
+    ollama://moondream:latest                                               6 days ago    791M
+    ollama://phi4:latest                                                    6 days ago    8.43 GB
+    ollama://tinyllama:latest                                               1 week ago    608.16 MB
+    ollama://granite3-moe:3b                                                1 week ago    1.92 GB
+    ollama://granite3-moe:latest                                            3 months ago  1.92 GB
+    ollama://llama3.1:8b                                                    2 months ago  4.34 GB
+    ollama://llama3.1:latest                                                2 months ago  4.34 GB
+    ```
 </details>
 
 ### [`ramalama-login`](https://github.com/containers/ramalama/blob/main/docs/ramalama-login.1.md)
 #### Log in to a remote registry.
 - <details>
-	<summary>
-		Log in to quay.io/username oci registry
-	</summary>
-	<br>
+    <summary>
+        Log in to quay.io/username oci registry
+    </summary>
+    <br>
 
-	```
-	$ export RAMALAMA_TRANSPORT=quay.io/username
-	$ ramalama login -u username
-	```
+    ```
+    $ export RAMALAMA_TRANSPORT=quay.io/username
+    $ ramalama login -u username
+    ```
 </details>
 
 - <details>
-	<summary>
-		Log in to ollama registry
-	</summary>
-	<br>
+    <summary>
+        Log in to ollama registry
+    </summary>
+    <br>
 
-	```
-	$ export RAMALAMA_TRANSPORT=ollama
-	$ ramalama login
-	```
+    ```
+    $ export RAMALAMA_TRANSPORT=ollama
+    $ ramalama login
+    ```
 </details>
 
 - <details>
-	<summary>
-		Log in to huggingface registry
-	</summary>
-	<br>
+    <summary>
+        Log in to huggingface registry
+    </summary>
+    <br>
 
-	```
-	$ export RAMALAMA_TRANSPORT=huggingface
-	$ ramalama login --token=XYZ
-	```
+    ```
+    $ export RAMALAMA_TRANSPORT=huggingface
+    $ ramalama login --token=XYZ
+    ```
 
-	Logging in to Hugging Face requires the `huggingface-cli tool`. For installation and usage instructions, see the documentation of the [Hugging Face command line interface](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
+    Logging in to Hugging Face requires the `huggingface-cli tool`. For installation and usage instructions, see the documentation of the [Hugging Face command line interface](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
 </details>
 
 ### [`ramalama-logout`](https://github.com/containers/ramalama/blob/main/docs/ramalama-logout.1.md)
 #### Log out of a remote registry.
 - <details>
-	<summary>
-		Log out from quay.io/username oci repository
-	</summary>
-	<br>
+    <summary>
+        Log out from quay.io/username oci repository
+    </summary>
+    <br>
 
-	```
-	$ ramalama logout quay.io/username
-	```
+    ```
+    $ ramalama logout quay.io/username
+    ```
 </details>
 
 - <details>
-	<summary>
-		Log out from ollama repository
-	</summary>
-	<br>
+    <summary>
+        Log out from ollama repository
+    </summary>
+    <br>
 
-	```
-	$ ramalama logout ollama
-	```
+    ```
+    $ ramalama logout ollama
+    ```
 </details>
 
 - <details>
-	<summary>
-		Log out from huggingface
-	</summary>
-	<br>
+    <summary>
+        Log out from huggingface
+    </summary>
+    <br>
 
-	```
-	$ ramalama logout huggingface
-	```
+    ```
+    $ ramalama logout huggingface
+    ```
 </details>
 
 ### [`ramalama-perplexity`](https://github.com/containers/ramalama/blob/main/docs/ramalama-perplexity.1.md)
 #### Calculate perplexity for the specified AI Model.
 - <details>
-	<summary>
-		Calculate the perplexity of an AI Model.
-	</summary>
-	<br>
+    <summary>
+        Calculate the perplexity of an AI Model.
+    </summary>
+    <br>
 
-	Perplexity measures how well the model can predict the next token with lower values being better
-	```
-	$ ramalama perplexity granite3-moe
-	```
+    Perplexity measures how well the model can predict the next token with lower values being better
+    ```
+    $ ramalama perplexity granite3-moe
+    ```
 </details>
 
 ### [`ramalama-pull`](https://github.com/containers/ramalama/blob/main/docs/ramalama-pull.1.md)
 #### Pull the AI Model from the Model registry to local storage.
 - <details>
-	<summary>
-		Pull a model
-	</summary>
-	<br>
+    <summary>
+        Pull a model
+    </summary>
+    <br>
 
-	You can `pull` a model using the `pull` command. By default, it pulls from the Ollama registry.
-	```
-	$ ramalama pull granite3-moe
-	```
+    You can `pull` a model using the `pull` command. By default, it pulls from the Ollama registry.
+    ```
+    $ ramalama pull granite3-moe
+    ```
 </details>
 
 
 ### [`ramalama-push`](https://github.com/containers/ramalama/blob/main/docs/ramalama-push.1.md)
 #### Push the AI Model from local storage to a remote registry.
 - <details>
-	<summary>
-		Push specified AI Model (OCI-only at present)
-	</summary>
-	<br>
+    <summary>
+        Push specified AI Model (OCI-only at present)
+    </summary>
+    <br>
 
-	A model can  from RamaLama model storage in Huggingface, Ollama, or OCI Model format. The model can also just be a model stored on disk
-	```
-	$ ramalama push oci://quay.io/rhatdan/tiny:latest
-	```
+    A model can  from RamaLama model storage in Huggingface, Ollama, or OCI Model format. The model can also just be a model stored on disk
+    ```
+    $ ramalama push oci://quay.io/rhatdan/tiny:latest
+    ```
 </details>
 
 ### [`ramalama-rag`](https://github.com/containers/ramalama/blob/main/docs/ramalama-rag.1.md)
@@ -869,142 +899,142 @@ $ cat /usr/share/ramalama/shortnames.conf
 > this command does not work without a container engine.
 
 - <details>
-	<summary>
-		Generate RAG data from provided documents and convert into an OCI Image.
-	</summary>
-	<br>
+    <summary>
+        Generate RAG data from provided documents and convert into an OCI Image.
+    </summary>
+    <br>
 
 This command uses a specific container image containing the docling tool to convert the specified content into a RAG vector database. If the image does not exist locally, RamaLama will pull the image down and launch a container to process the data.
 
-	**Positional arguments:**
+    **Positional arguments:**
 
-	PATH Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown formatted files to be processed. Can be specified multiple times.
+    PATH Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown formatted files to be processed. Can be specified multiple times.
 
-	IMAGE OCI Image name to contain processed rag data
+    IMAGE OCI Image name to contain processed rag data
 
-	```
-	./bin/ramalama rag ./README.md https://github.com/containers/podman/blob/main/README.md quay.io/rhatdan/myrag
-	100% |███████████████████████████████████████████████████████|  114.00 KB/    0.00 B 922.89 KB/s   59m 59s
-	Building quay.io/ramalama/myrag...
-	adding vectordb...
-	c857ebc65c641084b34e39b740fdb6a2d9d2d97be320e6aa9439ed0ab8780fe0
-	```
+    ```
+    ./bin/ramalama rag ./README.md https://github.com/containers/podman/blob/main/README.md quay.io/rhatdan/myrag
+    100% |███████████████████████████████████████████████████████|  114.00 KB/    0.00 B 922.89 KB/s   59m 59s
+    Building quay.io/ramalama/myrag...
+    adding vectordb...
+    c857ebc65c641084b34e39b740fdb6a2d9d2d97be320e6aa9439ed0ab8780fe0
+    ```
 </details>
 
 ### [`ramalama-rm`](https://github.com/containers/ramalama/blob/main/docs/ramalama-rm.1.md)
 #### Remove the AI Model from local storage.
 - <details>
-	<summary>
-		Specify one or more AI Models to be removed from local storage.
-	</summary>
-	<br>
+    <summary>
+        Specify one or more AI Models to be removed from local storage.
+    </summary>
+    <br>
 
-	```
-	$ ramalama rm ollama://tinyllama
-	```
+    ```
+    $ ramalama rm ollama://tinyllama
+    ```
 </details>
 
 - <details>
-	<summary>
-		Remove all AI Models from local storage.
-	</summary>
-	<br>
+    <summary>
+        Remove all AI Models from local storage.
+    </summary>
+    <br>
 
-	```
-	$ ramalama rm --all
-	```
+    ```
+    $ ramalama rm --all
+    ```
 </details>
 
 ### [`ramalama-run`](https://github.com/containers/ramalama/blob/main/docs/ramalama-run.1.md)
 #### Run the specified AI Model as a chatbot.
 
 - <details>
-	<summary>
-		Run a chatbot on a model using the run command. By default, it pulls from the Ollama registry.
-	</summary>
-	<br>
+    <summary>
+        Run a chatbot on a model using the run command. By default, it pulls from the Ollama registry.
+    </summary>
+    <br>
 
-	Note: RamaLama will inspect your machine for native GPU support and then will use a container engine like Podman to pull an OCI container image with the appropriate code and libraries to run the AI Model. This can take a long time to setup, but only on the first run.
+    Note: RamaLama will inspect your machine for native GPU support and then will use a container engine like Podman to pull an OCI container image with the appropriate code and libraries to run the AI Model. This can take a long time to setup, but only on the first run.
 
-	```
-	$ ramalama run instructlab/merlinite-7b-lab
-	```
+    ```
+    $ ramalama run instructlab/merlinite-7b-lab
+    ```
 </details>
 
 - <details>
-	<summary>
-		After the initial container image has been downloaded, you can interact with different models using the container image.
-	</summary>
-	<br>
+    <summary>
+        After the initial container image has been downloaded, you can interact with different models using the container image.
+    </summary>
+    <br>
 
-	```
-	$ ramalama run granite3-moe
-	```
-	Returns for example:
-	```
-	> Write a hello world application in python
+    ```
+    $ ramalama run granite3-moe
+    ```
+    Returns for example:
+    ```
+    > Write a hello world application in python
 
-	print("Hello World")
-	```
+    print("Hello World")
+    ```
 </details>
 
 - <details>
-	<summary>
-		In a different terminal window see the running podman container.
-	</summary>
-	<br>
+    <summary>
+        In a different terminal window see the running podman container.
+    </summary>
+    <br>
 
-	```
-	$ podman ps
-	CONTAINER ID  IMAGE                             COMMAND               CREATED        STATUS        PORTS       NAMES
-	91df4a39a360  quay.io/ramalama/ramalama:latest  /home/dwalsh/rama...  4 minutes ago  Up 4 minutes              gifted_volhard
-	```
+    ```
+    $ podman ps
+    CONTAINER ID  IMAGE                             COMMAND               CREATED        STATUS        PORTS       NAMES
+    91df4a39a360  quay.io/ramalama/ramalama:latest  /home/dwalsh/rama...  4 minutes ago  Up 4 minutes              gifted_volhard
+    ```
 </details>
 
 ### [`ramalama-serve`](https://github.com/containers/ramalama/blob/main/docs/ramalama-serve.1.md)
 #### Serve REST API on the specified AI Model.
 - <details>
-	<summary>
-		Serve a model and connect via a browser.
-	</summary>
-	<br>
+    <summary>
+        Serve a model and connect via a browser.
+    </summary>
+    <br>
 
-	```
-	$ ramalama serve llama3
-	```
-	When the web UI is enabled, you can connect via your browser at: 127.0.0.1:< port >
-	The default serving port will be 8080 if available, otherwise a free random port in the range 8081-8090. If you wish, you can specify a port to use with --port/-p.
+    ```
+    $ ramalama serve llama3
+    ```
+    When the web UI is enabled, you can connect via your browser at: 127.0.0.1:< port >
+    The default serving port will be 8080 if available, otherwise a free random port in the range 8081-8090. If you wish, you can specify a port to use with --port/-p.
 </details>
 
 - <details>
-	<summary>
-		Run two AI Models at the same time. Notice both are running within Podman Containers.
-	</summary>
-	<br>
+    <summary>
+        Run two AI Models at the same time. Notice both are running within Podman Containers.
+    </summary>
+    <br>
 
-	```
-	$ ramalama serve -d -p 8080 --name mymodel ollama://smollm:135m
-	09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
+    ```
+    $ ramalama serve -d -p 8080 --name mymodel ollama://smollm:135m
+    09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
 
-	$ ramalama serve -d -n example --port 8081 oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
-	3f64927f11a5da5ded7048b226fbe1362ee399021f5e8058c73949a677b6ac9c
+    $ ramalama serve -d -n example --port 8081 oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
+    3f64927f11a5da5ded7048b226fbe1362ee399021f5e8058c73949a677b6ac9c
 
-	$ podman ps
-	CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS         PORTS                   NAMES
-	09b0e0d26ed2  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  32 seconds ago  Up 32 seconds  0.0.0.0:8081->8081/tcp  ramalama_sTLNkijNNP
-	3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8082->8082/tcp  ramalama_YMPQvJxN97
-	```
+    $ podman ps
+    CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS         PORTS                   NAMES
+    09b0e0d26ed2  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  32 seconds ago  Up 32 seconds  0.0.0.0:8081->8081/tcp  ramalama_sTLNkijNNP
+    3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8082->8082/tcp  ramalama_YMPQvJxN97
+    ```
 </details>
 
 - <details>
-	<summary>
-		To disable the web UI, use the `--webui` off flag.
-	</summary>
-	<br>
+    <summary>
+        To disable the web UI, use the `--webui` off flag.
+    </summary>
+    <br>
 
-	```
-	$ ramalama serve --webui off llama3
-	```
+    ```
+    $ ramalama serve --webui off llama3
+    ```
 </details>
 
 
@@ -1012,42 +1042,42 @@ This command uses a specific container image containing the docling tool to conv
 ### [`ramalama-stop`](https://github.com/containers/ramalama/blob/main/docs/ramalama-stop.1.md)
 #### Stop the named container that is running the AI Model.
 - <details>
-	<summary>
-		Stop a running model if it is running in a container.
-	</summary>
-	<br>
+    <summary>
+        Stop a running model if it is running in a container.
+    </summary>
+    <br>
 
-	```
-	$ ramalama stop mymodel
-	```
+    ```
+    $ ramalama stop mymodel
+    ```
 </details>
 
 - <details>
-	<summary>
-		Stop all running models running in containers.
-	</summary>
-	<br>
+    <summary>
+        Stop all running models running in containers.
+    </summary>
+    <br>
 
-	```
-	$ ramalama stop --all
-	```
+    ```
+    $ ramalama stop --all
+    ```
 </details>
 
 ### [`ramalama-version`](https://github.com/containers/ramalama/blob/main/docs/ramalama-version.1.md)
 #### Display version of the AI Model.
 - <details>
-	<summary>
-		Print the version of RamaLama.
-	</summary>
-	<br>
+    <summary>
+        Print the version of RamaLama.
+    </summary>
+    <br>
 
-	```
-	$ ramalama version
-	```
-	Returns for example:
-	```
-	ramalama version 1.2.3
-	```
+    ```
+    $ ramalama version
+    ```
+    Returns for example:
+    ```
+    ramalama version 1.2.3
+    ```
 </details>
 
 ### Appendix
@@ -1084,28 +1114,28 @@ This command uses a specific container image containing the docling tool to conv
 | ramalama run granite3-moe |
 |                           |
 +-------+-------------------+
-	|
-	|
-	|           +------------------+           +------------------+
-	|           | Pull inferencing |           | Pull model layer |
-	+-----------| runtime (cuda)   |---------->| granite3-moe     |
-		    +------------------+           +------------------+
-						   | Repo options:    |
-						   +-+-------+------+-+
-						     |       |      |
-						     v       v      v
-					     +---------+ +------+ +----------+
-					     | Hugging | | OCI  | | Ollama   |
-					     | Face    | |      | | Registry |
-					     +-------+-+ +---+--+ +-+--------+
-						     |       |      |
-						     v       v      v
-						   +------------------+
-						   | Start with       |
-						   | cuda runtime     |
-						   | and              |
-						   | granite3-moe     |
-						   +------------------+
+    |
+    |
+    |           +------------------+           +------------------+
+    |           | Pull inferencing |           | Pull model layer |
+    +-----------| runtime (cuda)   |---------->| granite3-moe     |
+            +------------------+           +------------------+
+                           | Repo options:    |
+                           +-+-------+------+-+
+                             |       |      |
+                             v       v      v
+                         +---------+ +------+ +----------+
+                         | Hugging | | OCI  | | Ollama   |
+                         | Face    | |      | | Registry |
+                         +-------+-+ +---+--+ +-+--------+
+                             |       |      |
+                             v       v      v
+                           +------------------+
+                           | Start with       |
+                           | cuda runtime     |
+                           | and              |
+                           | granite3-moe     |
+                           +------------------+
 ```
 
 ## In development
@@ -1151,6 +1181,9 @@ For discussions around issues/bugs and features, you can use the GitHub
 and
 [PRs](https://github.com/containers/ramalama/pulls)
 tracking system.
+
+## Roadmap
+See the full [Roadmap](./Roadmap.md).
 
 ## Contributors
 
