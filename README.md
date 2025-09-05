@@ -790,7 +790,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 - <details>
     <summary>
-        Log in to 
+        Log in to Ollama Registry
     </summary>
     <br>
 
