@@ -14,7 +14,14 @@ like the repository, its metadata and tensor information.
 
 #### **--all**
 Print all available information about the AI Model.
-By default, only a basic subset is printed.
+By default, only a basic subset is printed. 
+
+#### **--get**=*field*
+Print the value of a specific metadata field of the AI Model.
+This option supports autocomplete with the available metadata
+fields of the given model.
+The special value `all` will print all available metadata
+fields and values.
 
 #### **--help**, **-h**
 Print usage message
@@ -68,6 +75,40 @@ $ ramalama inspect smollm:135m --all --json
         ...
     ]
 }
+```
+
+Use the autocomplete function of `--get` to view a list of fields:
+```
+$ ramalama inspect smollm:135m --get general.
+general.architecture               general.languages
+general.base_model.0.name          general.license
+general.base_model.0.organization  general.name
+general.base_model.0.repo_url      general.organization
+general.base_model.count           general.quantization_version
+general.basename                   general.size_label
+general.datasets                   general.tags
+general.file_type                  general.type
+general.finetune                   
+```
+
+Print the value of a specific field of the smollm:135m model:
+```
+$ ramalama inspect smollm:135m --get tokenizer.chat_template
+{% for message in messages %}{{'<|im_start|>' + message['role'] + '
+' + message['content'] + '<|im_end|>' + '
+'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant
+' }}{% endif %}
+```
+
+Print all key-value pairs of the metadata of the smollm:135m model:
+```
+$ ramalama inspect smollm:135m --get all
+general.architecture: llama
+general.base_model.0.name: SmolLM 135M
+general.base_model.0.organization: HuggingFaceTB
+general.base_model.0.repo_url: https://huggingface.co/HuggingFaceTB/SmolLM-135M
+general.base_model.count: 1
+...
 ```
 
 ## SEE ALSO

@@ -3,13 +3,7 @@ import tempfile
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import (
-    check_nvidia,
-    exec_cmd,
-    genname,
-    get_accel_env_vars,
-    tagged_image,
-)
+from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image
 from ramalama.config import CONFIG
 from ramalama.engine import add_labels
 from ramalama.model import compute_serving_port
