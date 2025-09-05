@@ -1114,28 +1114,29 @@ This command uses a specific container image containing the docling tool to conv
 | ramalama run granite3-moe |
 |                           |
 +-------+-------------------+
-    |
-    |
-    |           +------------------+           +------------------+
-    |           | Pull inferencing |           | Pull model layer |
-    +-----------| runtime (cuda)   |---------->| granite3-moe     |
-            +------------------+           +------------------+
-                           | Repo options:    |
-                           +-+-------+------+-+
-                             |       |      |
-                             v       v      v
-                         +---------+ +------+ +----------+
-                         | Hugging | | OCI  | | Ollama   |
-                         | Face    | |      | | Registry |
-                         +-------+-+ +---+--+ +-+--------+
-                             |       |      |
-                             v       v      v
-                           +------------------+
-                           | Start with       |
-                           | cuda runtime     |
-                           | and              |
-                           | granite3-moe     |
-                           +------------------+
+        |
+        |
+        v
+        +------------------+           +------------------+
+        | Pull inferencing | --------> | Pull model layer |
+        | runtime (cuda)   |           | granite3-moe     |
+        +------------------+           +------------------+
+                      |
+                      |  Repo options:
+                      +--------+--------+--------+
+                               |        |        |
+                               v        v        v
+                         +---------+  +------+  +----------+
+                         | Hugging |  | OCI  |  | Ollama   |
+                         | Face    |  |      |  | Registry |
+                         +---------+  +------+  +----------+
+                               |        |        |
+                               v        v        v
+                             +----------------------+
+                             | Start with           |
+                             | cuda runtime         |
+                             | and granite3-moe     |
+                             +----------------------+
 ```
 
 ## In development
