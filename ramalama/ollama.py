@@ -188,7 +188,7 @@ class Ollama(Model):
             self.print_pull_message(f"ollama://{organization}/{name}:{tag}")
 
         model_hash = ollama_repo.get_model_hash(manifest)
-        self.model_store.new_snapshot(tag, model_hash, files)
+        self.model_store.new_snapshot(tag, model_hash, files, verify=getattr(args, "verify", True))
 
         # If a model has been downloaded via ollama cli, only create symlink in the snapshots directory
         if is_model_in_ollama_cache:

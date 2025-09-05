@@ -30,6 +30,7 @@ def test_correct_config_defaults(monkeypatch):
     assert cfg.temp == "0.8"
     assert cfg.transport == "ollama"
     assert cfg.ocr is False
+    assert cfg.verify is True
 
 
 def test_config_defaults_not_set(monkeypatch):
@@ -55,6 +56,7 @@ def test_config_defaults_not_set(monkeypatch):
     assert cfg.is_set("temp") is False
     assert cfg.is_set("transport") is False
     assert cfg.is_set("ocr") is False
+    assert cfg.is_set("verify") is False
 
 
 def test_file_config_overrides_defaults():
@@ -62,6 +64,7 @@ def test_file_config_overrides_defaults():
         "image": "custom/image:latest",
         "threads": 8,
         "container": False,
+        "verify": False,
     }
 
     with patch("ramalama.config.load_file_config", return_value=mock_file_config):
@@ -70,10 +73,12 @@ def test_file_config_overrides_defaults():
             assert cfg.image == "custom/image:latest"
             assert cfg.threads == 8
             assert cfg.container is False
+            assert cfg.verify is False
 
             assert cfg.is_set("image") is True
             assert cfg.is_set("threads") is True
             assert cfg.is_set("container") is True
+            assert cfg.is_set("verify") is True
 
 
 def test_env_overrides_file_and_default():
@@ -183,6 +188,7 @@ class TestLoadEnvConfig:
             "RAMALAMA_THREADS": "8",
             "RAMALAMA_CONTAINER": "true",
             "RAMALAMA_HOST": "127.0.0.1",
+            "RAMALAMA_VERIFY": "false",
         }
 
         result = load_env_config(env)
@@ -192,6 +198,7 @@ class TestLoadEnvConfig:
             "threads": 8,
             "container": True,
             "host": "127.0.0.1",
+            "verify": False,
         }
         assert result == expected
 
