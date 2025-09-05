@@ -150,3 +150,28 @@ def test_main_doesnt_crash_on_exc(monkeypatch, exc_type):
     with pytest.raises(SystemExit):
         with mock.patch("ramalama.cli.inspect_cli", side_effect=exc_type):
             main()
+
+
+@pytest.mark.parametrize(
+    "option, value",
+    [
+        (None, True),
+        ("yes", True),
+        ("on", True),
+        ("1", True),
+        ("no", False),
+        ("off", False),
+        ("0", False),
+    ],
+)
+def test_pull_verify(monkeypatch, option, value):
+    from ramalama.cli import init_cli
+
+    argv = ["ramalama", "pull"]
+    if option:
+        argv.append(f"--verify={option}")
+    argv.append("model")
+    monkeypatch.setattr(sys, "argv", argv)
+    parser, args = init_cli()
+    assert hasattr(args, "verify")
+    assert args.verify == value

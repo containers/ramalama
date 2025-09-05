@@ -605,6 +605,12 @@ def pull_parser(subparsers):
         default=True,
         help="require HTTPS and verify certificates when contacting registries",
     )
+    parser.add_argument(
+        "--verify",
+        default=True,
+        action=CoerceToBool,
+        help="verify the model after pull, disable to allow pulling of models with different endianness",
+    )
     parser.add_argument("MODEL", completer=suppressCompleter)  # positional argument
     parser.set_defaults(func=pull_cli)
 

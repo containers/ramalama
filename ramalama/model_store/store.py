@@ -309,7 +309,7 @@ class ModelStore:
         self._verify_endianness(model_tag)
         self._store.verify_snapshot()
 
-    def new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]):
+    def new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile], verify: bool = True):
         snapshot_hash = sanitize_filename(snapshot_hash)
 
         try:
@@ -327,7 +327,8 @@ class ModelStore:
             raise ex
 
         try:
-            self.verify_snapshot(model_tag)
+            if verify:
+                self.verify_snapshot(model_tag)
         except EndianMismatchError as ex:
             perror(f"Verification of snapshot failed: {ex}")
             perror("Removing snapshot...")
