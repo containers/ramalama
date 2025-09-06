@@ -10,7 +10,7 @@ load setup_suite
     run_ramalama 22 inspect ${MODEL}
     is "$output" "Error: ${MODEL} does not exists" "error on missing models"
     
-    run_ramalama pull tiny
+    run_ramalama pull --verify=off tiny
     run_ramalama inspect tiny
 
     is "${lines[0]}" "tinyllama" "model name"

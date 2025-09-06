@@ -126,7 +126,7 @@ verify_begin=".*run --rm"
     run_ramalama -q --dryrun serve smollm
     is "$output" ".*ai.ramalama.model=ollama://library/smollm:latest" "smollm should be expanded to fullname"
 
-    model=ollama://smollm:135m
+    model=$(test_model ollama://smollm:135m)
     container1=c_$(safename)
     container2=c_$(safename)
 
@@ -139,7 +139,7 @@ verify_begin=".*run --rm"
     port=${output: -8:4}
 
     run_ramalama chat --ls --url http://127.0.0.1:${port}/v1
-    is "$output" "smollm:135m" "list of models available correct"
+    is "$output" ${model#*://} "list of models available correct"
 
     run_ramalama containers --noheading
     is "$output" ".*${container1}" "list correct for container1"
@@ -159,7 +159,7 @@ verify_begin=".*run --rm"
 @test "ramalama --detach serve multiple" {
     skip_if_nocontainer
 
-    model=ollama://smollm:135m
+    model=$(test_model ollama://smollm:135m)
     container=c_$(safename)
     port1=8100
     port2=8200
@@ -197,8 +197,8 @@ verify_begin=".*run --rm"
 }
 
 @test "ramalama serve --generate=quadlet" {
-    model="smollm"
-    model_quant="$model:135m"
+    model_quant=$(test_model smollm:135m)
+    model=$(model_base $model_quant)
     quadlet="$model.container"
     name=c_$(safename)
     run_ramalama pull $model_quant
@@ -252,12 +252,12 @@ verify_begin=".*run --rm"
 	--password ${PODMAN_LOGIN_PASS} \
 	oci://$registry
 
-    run_ramalama pull tiny
+    run_ramalama pull $(test_model tiny)
 
-    ociimage=$registry/tiny:latest
+    ociimage=$registry/$(model_base $(test_model tiny)):latest
     for modeltype in "" "--type=car" "--type=raw"; do
 	name=c_$(safename)
-	run_ramalama push $modeltype --authfile=$authfile --tls-verify=false tiny oci://${ociimage}
+	run_ramalama push $modeltype --authfile=$authfile --tls-verify=false $(test_model tiny) oci://${ociimage}
 	run_ramalama serve --authfile=$authfile --tls-verify=false --name=${name} --port 1234 --generate=quadlet oci://${ociimage}
 	is "$output" ".*Generating quadlet file: ${name}.container" "generate .container file"
 	is "$output" ".*Generating quadlet file: ${name}.volume" "generate .volume file"
@@ -387,8 +387,8 @@ verify_begin=".*run --rm"
 # }
 
 @test "ramalama serve --generate=kube" {
-    model="smollm"
-    model_quant="$model:135m"
+    model_quant=$(test_model smollm:135m)
+    model=$(model_base $model_quant)
     name=c_$(safename)
     run_ramalama pull $model_quant
     run_ramalama serve --name=${name} --port 1234 --generate=kube $model_quant
@@ -429,7 +429,7 @@ verify_begin=".*run --rm"
 }
 
 @test "ramalama serve --generate=kube:/tmp" {
-    model=tiny
+    model=$(test_model tiny)
     name=c_$(safename)
     run_ramalama pull ${model}
     run_ramalama serve --name=${name} --port 1234 --generate=kube:/tmp ${model}
@@ -445,6 +445,8 @@ verify_begin=".*run --rm"
 @test "ramalama serve --api llama-stack" {
     skip_if_docker
     skip_if_nocontainer
+    skip_if_ppc64le
+    skip_if_s390x
     model=tiny
     name=c_$(safename)
     run_ramalama pull ${model}
@@ -483,10 +485,10 @@ verify_begin=".*run --rm"
     skip_if_nocontainer
     skip_if_darwin
     skip_if_docker
-    run_ramalama 125 serve --image bogus --pull=never tiny
+    run_ramalama 125 serve --image bogus --pull=never $(test_model tiny)
     is "$output" "Error: bogus: image not known"
 
-    run_ramalama 125 serve --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
+    run_ramalama 125 serve --image bogus1 --rag quay.io/ramalama/rag --pull=never $(test_model tiny)
     is "$output" ".*Error: bogus1: image not known"
 }
 
