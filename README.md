@@ -829,7 +829,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 - <details>
     <summary>
-        Log out from Ollama repository
+        Log out from Ollama registry
     </summary>
     <br>
 
