@@ -1132,11 +1132,11 @@ This command uses a specific container image containing the docling tool to conv
                          +---------+  +------+  +----------+
                                |        |        |
                                v        v        v
-                             +----------------------+
-                             | Start with           |
-                             | cuda runtime         |
-                             | and granite3-moe     |
-                             +----------------------+
+                            +----------------------+
+                            | Start with           |
+                            | cuda runtime         |
+                            | and granite3-moe     |
+                            +----------------------+
 ```
 
 ## In development
