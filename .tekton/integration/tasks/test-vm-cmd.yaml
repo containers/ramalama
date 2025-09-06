@@ -88,12 +88,13 @@ spec:
 
       cat > scripts/test.sh <<SCRIPTEOF
       #!/bin/bash -ex
+      mkdir podman-tmp
       podman run \
+      -v \$PWD/podman-tmp:/tmp \
       --userns=keep-id \
       --security-opt label=disable \
       --security-opt unmask=/proc/* \
       --device /dev/net/tun \
-      --device /dev/fuse \
       ${PODMAN_ENV[*]} \
       $TEST_IMAGE $TEST_CMD
       SCRIPTEOF

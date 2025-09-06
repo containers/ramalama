@@ -264,7 +264,7 @@ class HFStyleRepoModel(Model, ABC):
             repo = self.create_repository(name, organization, tag)
             snapshot_hash = repo.model_hash
             files = repo.get_file_list(cached_files)
-            self.model_store.new_snapshot(tag, snapshot_hash, files)
+            self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
 
         except Exception as e:
             if not available(self.get_cli_command()):
@@ -278,7 +278,7 @@ class HFStyleRepoModel(Model, ABC):
                 run_cmd(conman_args)
 
                 snapshot_hash, files = self._collect_cli_files(tempdir)
-                self.model_store.new_snapshot(tag, snapshot_hash, files)
+                self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
 
     def exec(self, cmd_args, args):
         try:

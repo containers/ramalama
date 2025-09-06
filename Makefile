@@ -177,9 +177,10 @@ bats-image:
 	podman inspect $(BATS_IMAGE) &> /dev/null || \
 		podman build -t $(BATS_IMAGE) -f container-images/bats/Containerfile .
 
-bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun --device /dev/fuse
+bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun -v $(CURDIR)/.podman-tmp:/tmp
 
 %-in-container: bats-image
+	mkdir -p .podman-tmp
 	podman run -it --rm \
 		--userns=keep-id:size=200000 \
 		--security-opt label=disable \
@@ -187,6 +188,7 @@ bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/
 		$(extra-opts) \
 		-v $(CURDIR):/src \
 		$(BATS_IMAGE) make $*
+	rm -rf .podman-tmp
 
 .PHONY: ci
 ci:

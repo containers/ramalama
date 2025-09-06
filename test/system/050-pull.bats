@@ -12,14 +12,14 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama pull ollama" {
-    run_ramalama pull tiny
+    run_ramalama pull --verify=off tiny
     run_ramalama rm tiny
-    run_ramalama pull https://ollama.com/library/smollm:135m
+    run_ramalama pull --verify=off https://ollama.com/library/smollm:135m
     run_ramalama list
     is "$output" ".*https://ollama.com/library/smollm:135m" "image was actually pulled locally"
 
-    RAMALAMA_TRANSPORT=ollama run_ramalama pull smollm:360m
-    run_ramalama pull ollama://smollm:360m
+    RAMALAMA_TRANSPORT=ollama run_ramalama pull --verify=off smollm:360m
+    run_ramalama pull --verify=off ollama://smollm:360m
     run_ramalama list
     is "$output" ".*ollama://library/smollm:360m" "image was actually pulled locally"
     run_ramalama rm https://ollama.com/library/smollm:135m ollama://smollm:360m
@@ -62,38 +62,38 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama pull huggingface" {
-    run_ramalama pull hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+    run_ramalama pull --verify=off hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
     run_ramalama rm hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
-    run_ramalama pull huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+    run_ramalama pull --verify=off huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
     run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
-    RAMALAMA_TRANSPORT=huggingface run_ramalama pull Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+    RAMALAMA_TRANSPORT=huggingface run_ramalama pull --verify=off Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
     run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
     skip_if_no_hf-cli
-    run_ramalama pull hf://HuggingFaceTB/SmolLM-135M
+    run_ramalama pull --verify=off hf://HuggingFaceTB/SmolLM-135M
     run_ramalama list
     is "$output" ".*HuggingFaceTB/SmolLM-135M" "image was actually pulled locally"
     run_ramalama rm huggingface://HuggingFaceTB/SmolLM-135M
 
-    run_ramalama pull hf://ggml-org/SmolVLM-256M-Instruct-GGUF
+    run_ramalama pull --verify=off hf://ggml-org/SmolVLM-256M-Instruct-GGUF
     run_ramalama list
     is "$output" ".*ggml-org/SmolVLM-256M-Instruct-GGUF" "image was actually pulled locally"
     run_ramalama rm huggingface://ggml-org/SmolVLM-256M-Instruct-GGUF
 
-    run_ramalama pull hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0
+    run_ramalama pull --verify=off hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0
     run_ramalama list
     is "$output" ".*ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0" "image was actually pulled locally"
     run_ramalama rm huggingface://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0
 
-    run_ramalama pull hf://owalsh/SmolLM2-135M-Instruct-GGUF-Split:Q4_0
+    run_ramalama pull --verify=off hf://owalsh/SmolLM2-135M-Instruct-GGUF-Split:Q4_0
     for i in $(seq 1 3); do
         is "$output" ".*Downloading Q4_0/SmolLM2-135M-Instruct-Q4_0-0000${i}-of-00003.gguf" "model part ${i} downloaded"
     done
@@ -104,10 +104,10 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama pull huggingface tag multiple references" {
-    run_ramalama pull hf://ggml-org/SmolVLM-256M-Instruct-GGUF
+    run_ramalama pull --verify=off hf://ggml-org/SmolVLM-256M-Instruct-GGUF
     run_ramalama list
     is "$output" ".*ggml-org/SmolVLM-256M-Instruct-GGUF" "image was actually pulled locally"
-    run_ramalama --debug pull hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0
+    run_ramalama --debug pull --verify=off hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0
     is "$output" ".*Using cached blob" "cached blob was used"
     run_ramalama list
     is "$output" ".*ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0" "reference was created to existing image"
@@ -122,17 +122,17 @@ load setup_suite
     skip_if_no_hf-cli
     huggingface-cli download Felladrin/gguf-smollm-360M-instruct-add-basics smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
-    run_ramalama pull hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+    run_ramalama pull --verify=off hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally from hf-cli cache"
     run_ramalama rm hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
-    run_ramalama pull huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+    run_ramalama pull --verify=off huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally from hf-cli cache"
     run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
-    RAMALAMA_TRANSPORT=huggingface run_ramalama pull Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+    RAMALAMA_TRANSPORT=huggingface run_ramalama pull --verify=off Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally from hf-cli cache"
     run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
@@ -144,24 +144,24 @@ load setup_suite
 @test "ramalama pull oci" {
     if is_container; then
         model=oci://quay.io/ramalama/smollm:135m
-        run_ramalama pull ${model}
+        run_ramalama pull --verify=off ${model}
         run_ramalama list
         is "$output" ".*${model}.*" "image was actually pulled locally"
         run_ramalama --nocontainer list
         assert "$output" !~ ".*${model}" "model is not in list"
         run_ramalama rm ${model}
     else
-        run_ramalama 22 pull oci://quay.io/ramalama/smollm:135m
+        run_ramalama 22 pull --verify=off oci://quay.io/ramalama/smollm:135m
 	is "$output" "Error: OCI containers cannot be used with the --nocontainer option."
     fi
 
     skip "Waiting for podman artiface support" 
-    run_ramalama pull oci://quay.io/mmortari/gguf-py-example:v1
+    run_ramalama pull --verify=off oci://quay.io/mmortari/gguf-py-example:v1
     run_ramalama list
     is "$output" ".*quay.io/mmortari/gguf-py-example" "OCI image was actually pulled locally"
     run_ramalama rm oci://quay.io/mmortari/gguf-py-example:v1
 
-    RAMALAMA_TRANSPORT=oci run_ramalama pull quay.io/mmortari/gguf-py-example:v1
+    RAMALAMA_TRANSPORT=oci run_ramalama pull --verify=off quay.io/mmortari/gguf-py-example:v1
     run_ramalama list
     is "$output" ".*quay.io/mmortari/gguf-py-example" "OCI image was actually pulled locally"
     run_ramalama rm oci://quay.io/mmortari/gguf-py-example:v1
@@ -221,7 +221,7 @@ load setup_suite
 	--username ${PODMAN_LOGIN_USER} \
 	--password ${PODMAN_LOGIN_PASS} \
 	oci://$registry
-    run_ramalama pull tiny
+    run_ramalama pull --verify=off tiny
     run_ramalama push --authfile=$authfile --tls-verify=false tiny oci://$registry/tiny
     run_ramalama push --authfile=$authfile --tls-verify=false tiny $registry/tiny
     run_ramalama push --authfile=$authfile --tls-verify=false --type car tiny oci://$registry/tiny-car

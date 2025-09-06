@@ -2,7 +2,7 @@
 
 load helpers
 
-MODEL=smollm:135m
+MODEL=$(test_model smollm:135m)
 
 @test "ramalama --dryrun run basic output" {
     image=m_$(safename)
@@ -128,16 +128,16 @@ EOF
 
 @test "ramalama run --keepalive" {
     # timeout within 1 second and generate a 124 error code.
-    run_ramalama 0 --debug run --keepalive 1s tiny
+    run_ramalama 0 --debug run --keepalive 1s $(test_model tiny)
 }
 
 @test "ramalama run --image bogus" {
     skip_if_nocontainer
     skip_if_darwin
     skip_if_docker
-    run_ramalama 22 run --image bogus --pull=never tiny
+    run_ramalama 22 run --image bogus --pull=never $(test_model tiny)
     is "$output" ".*Error: bogus: image not known"
-    run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
+    run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/rag --pull=never $(test_model tiny)
     is "$output" ".*Error: bogus1: image not known"
 }
 
