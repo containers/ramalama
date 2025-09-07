@@ -4,11 +4,11 @@ from typing import Union
 import pytest
 
 from ramalama.model_factory import ModelFactory
-from ramalama.model_store.stores.huggingface import Huggingface
-from ramalama.model_store.stores.modelscope import ModelScope
-from ramalama.model_store.stores.ollama import Ollama
-from ramalama.model_store.stores.url import URL
-from ramalama.oci import OCI
+from ramalama.transports.huggingface import Huggingface
+from ramalama.transports.modelscope import ModelScope
+from ramalama.transports.oci import OCI
+from ramalama.transports.ollama import Ollama
+from ramalama.transports.url import URL
 
 
 @dataclass

@@ -22,7 +22,7 @@ except Exception:
 
 
 import ramalama.chat as chat
-import ramalama.oci
+import ramalama.rag
 from ramalama import engine
 from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror

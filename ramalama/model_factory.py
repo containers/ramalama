@@ -7,12 +7,12 @@ from ramalama.arg_types import StoreArgType
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
 from ramalama.model import MODEL_TYPES
-from ramalama.model_store.stores.huggingface import Huggingface
-from ramalama.model_store.stores.modelscope import ModelScope
-from ramalama.model_store.stores.ollama import Ollama
-from ramalama.model_store.stores.rlcr import RamalamaContainerRegistry
-from ramalama.model_store.stores.url import URL
-from ramalama.oci import OCI
+from ramalama.transports.huggingface import Huggingface
+from ramalama.transports.modelscope import ModelScope
+from ramalama.transports.oci import OCI
+from ramalama.transports.ollama import Ollama
+from ramalama.transports.rlcr import RamalamaContainerRegistry
+from ramalama.transports.url import URL
 
 CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry
 
