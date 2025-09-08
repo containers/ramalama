@@ -62,9 +62,9 @@ rag() {
 }
 
 to_gguf() {
-    # required to build under GCC 15 until a new release is available, see https://github.com/google/sentencepiece/issues/1108 for details
-    export CXXFLAGS="-include cstdint"
-    ${python} -m pip install "numpy~=1.26.4" "sentencepiece~=0.2.0" "transformers>=4.45.1,<5.0.0" git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py "protobuf>=5.27.2,<6.0.0"
+    ${python} -m pip install "numpy~=1.26.4" "sentencepiece~=0.2.1" "transformers>=4.45.1,<5.0.0" \
+              "git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py" \
+              "protobuf>=5.27.2,<6.0.0" "mistral-common>=1.8.3"
 }
 
 main() {
