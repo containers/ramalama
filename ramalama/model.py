@@ -652,7 +652,7 @@ class Model(ModelBase):
                 exec_args += ["--chat-template-file", chat_template_path]
 
         if should_colorize():
-            exec_args += ["--log-colors"]
+            exec_args += ["--log-colors", "on"]
 
         exec_args += [
             "--alias",
@@ -681,7 +681,7 @@ class Model(ModelBase):
             exec_args.extend(["--no-webui"])
 
         if check_nvidia() or check_metal(args):
-            exec_args.extend(["--flash-attn"])
+            exec_args.extend(["--flash-attn", "on"])
         return exec_args
 
     def mlx_serve(self, args):

@@ -254,7 +254,7 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local DEFAULT_LLAMA_CPP_COMMIT=9961d244f2df6baf40af2f1ddc0927f8d91578c8
+  local DEFAULT_LLAMA_CPP_COMMIT="b0d52998b962bd2681c34bf52af993af79f178b8"
   local llama_cpp_commit="${LLAMA_CPP_PULL_REF:-$DEFAULT_LLAMA_CPP_COMMIT}"
   local install_prefix
   install_prefix=$(set_install_prefix)
