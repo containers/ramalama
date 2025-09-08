@@ -83,13 +83,15 @@ class TestModelFileDiscovery:
             result = find_model_file_in_image("podman", "rlcr.io/ramalama/test-model")
 
             assert result == "gemma3-270m.gguf"
-            mock_run.assert_called_once_with([
-                "podman",
-                "image",
-                "inspect",
-                "--format={{index .Config.Labels \"com.ramalama.model.file.location\"}}",
-                "rlcr.io/ramalama/test-model",
-            ])
+            mock_run.assert_called_once_with(
+                [
+                    "podman",
+                    "image",
+                    "inspect",
+                    "--format={{index .Config.Labels \"com.ramalama.model.file.location\"}}",
+                    "rlcr.io/ramalama/test-model",
+                ]
+            )
 
     def test_find_model_file_with_no_value_label(self):
         """Test finding model file when label returns '<no value>'"""
@@ -109,13 +111,15 @@ class TestModelFileDiscovery:
             )
 
             # Check only the label inspection was called
-            mock_run.assert_called_once_with([
-                "podman",
-                "image",
-                "inspect",
-                "--format={{index .Config.Labels \"com.ramalama.model.file.location\"}}",
-                "rlcr.io/ramalama/test-model",
-            ])
+            mock_run.assert_called_once_with(
+                [
+                    "podman",
+                    "image",
+                    "inspect",
+                    "--format={{index .Config.Labels \"com.ramalama.model.file.location\"}}",
+                    "rlcr.io/ramalama/test-model",
+                ]
+            )
 
     def test_find_model_file_label_fails(self):
         """Test fallback to default when label inspection fails"""
