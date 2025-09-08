@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from ramalama.common import MNT_DIR
 from ramalama.model import Model, compute_serving_port
 from ramalama.model_factory import ModelFactory
 
@@ -324,3 +325,65 @@ class TestMLXRuntime:
 
         with pytest.raises(NotImplementedError, match="Perplexity calculation is not supported by the MLX runtime"):
             model.build_exec_args_perplexity(args)
+
+
+class TestOCIModelSetupMounts:
+    """Test the OCI model setup_mounts functionality that was refactored"""
+
+    @pytest.fixture
+    def mock_engine(self):
+        """Create a mock engine for testing"""
+        engine = Mock()
+        engine.use_podman = True
+        engine.add = Mock()
+        return engine
+
+    @pytest.fixture
+    def oci_model(self):
+        """Create an OCI model for testing"""
+        model = Model("test-model", "/tmp/store")
+        model._model_type = 'oci'
+        model.model = "test-registry.io/test-model:latest"
+        return model
+
+    def test_setup_mounts_dryrun(self, oci_model, mock_engine):
+        """Test that setup_mounts returns early on dryrun"""
+        args = Namespace(dryrun=True)
+        oci_model.engine = mock_engine
+
+        result = oci_model.setup_mounts(args)
+
+        assert result is None
+        mock_engine.add.assert_not_called()
+
+    def test_setup_mounts_oci_podman(self, oci_model, mock_engine):
+        """Test OCI model mounting with Podman (image mount)"""
+        args = Namespace(dryrun=False)
+        mock_engine.use_podman = True
+        oci_model.engine = mock_engine
+
+        oci_model.setup_mounts(args)
+
+        expected_mount = f"--mount=type=image,src={oci_model.model},destination={MNT_DIR},subpath=/models,rw=false"
+        mock_engine.add.assert_called_once_with([expected_mount])
+
+    @patch('ramalama.model.populate_volume_from_image')
+    def test_setup_mounts_oci_docker(self, mock_populate_volume, oci_model, mock_engine):
+        """Test OCI model mounting with Docker (volume mount using populate_volume_from_image)"""
+        args = Namespace(dryrun=False, container=True, generate=False)
+        mock_engine.use_podman = False
+        oci_model.engine = mock_engine
+
+        mock_volume_name = "ramalama-models-abc123"
+        mock_populate_volume.return_value = mock_volume_name
+
+        oci_model.setup_mounts(args)
+
+        # Verify populate_volume_from_image was called
+        mock_populate_volume.assert_called_once()
+        call_args = mock_populate_volume.call_args
+        assert call_args[0][0] == oci_model  # model argument
+
+        # Verify mount command was added
+        expected_mount = f"--mount=type=volume,src={mock_volume_name},dst={MNT_DIR},readonly"
+        mock_engine.add.assert_called_once_with([expected_mount])
