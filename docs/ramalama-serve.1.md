@@ -75,6 +75,9 @@ Example: --device=/dev/dri/renderD128:/dev/xvdc:rwm
 
 The device specification is passed directly to the underlying container engine. See documentation of the supported container engine for more information.
 
+Pass '--device=none' explicitly add no device to the container, eg for
+running a CPU-only performance comparison.
+
 #### **--dri**=*on* | *off*
 Enable or disable mounting `/dev/dri` into the container when running with `--api=llama-stack` (enabled by default). Use to prevent access to the host device when not required, or avoid errors in environments where `/dev/dri` is not available.
 
