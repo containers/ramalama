@@ -23,6 +23,7 @@ registry if it does not exist in local storage.
 | ModelScope    | modelscope://, ms:// | [`modelscope.cn`](https://modelscope.cn/)|
 | Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)|
 | OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
+| rlcr          | rlcr://   | [`ramalama.com`](https://registry.ramalama.com/projects/ramalama) |
 |||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
 
 RamaLama defaults to the Ollama registry transport. This default can be overridden in the `ramalama.conf` file or via the RAMALAMA_TRANSPORTS
@@ -41,6 +42,18 @@ For REST API endpoint documentation, see:
 - MLX LM: [https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md)
 
 ## Options
+
+#### **--add-to-unit**
+
+format: --add-to-unit section:key:value
+
+Adds to the generated unit file (quadlet) in the section *section* the key *key* with the value *value*.
+
+Useful, for instance, to add environment variables to the generated unit file, or to place the container in a specific pod/network (Container:Network:xxx.network).
+
+**Only valid with *--generate* parameter.**
+
+Section, key and value are required and must be separated by colons.
 
 #### **--api**=**llama-stack** | none**
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
@@ -102,7 +115,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table above for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.11.1 of RamaLama pulls an image with a `:0.11` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.12.1 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -209,6 +222,9 @@ llama.cpp explains this as:
     The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
 	Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+
+#### **--thinking**=*true*
+Enable or disable thinking mode in reasoning models
 
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.

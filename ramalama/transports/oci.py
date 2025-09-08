@@ -5,7 +5,7 @@ import tempfile
 import ramalama.annotations as annotations
 from ramalama.common import exec_cmd, perror, run_cmd
 from ramalama.model import Model
-from ramalama.oci_tools import engine_supports_manifest_attributes
+from ramalama.oci_tools import engine_supports_manifest_attributes, ocilabeltype
 
 prefix = "oci://"
 
@@ -195,7 +195,7 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             "--annotation",
             f"{annotations.AnnotationModel}=true",
             "--annotation",
-            "org.containers.type=''",
+            f"{ocilabeltype}=''",
             "--annotation",
             f"{annotations.AnnotationTitle}=args.SOURCE",
             target,

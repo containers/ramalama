@@ -42,7 +42,7 @@ class RamalamaContainerRegistry(OCI):
         return self._model_entrypoint
 
     def _build_docker_mount_command(self) -> str:
-        """Builds"""
+        """Builds a Docker-compatible mount string that mirrors Podman image mounts for model assets."""
 
         vol_hash = hashlib.sha256(self.model.encode()).hexdigest()[:12]
         volume = f"ramalama-models-{vol_hash}"

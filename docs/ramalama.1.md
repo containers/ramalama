@@ -58,6 +58,7 @@ RamaLama supports multiple AI model registries types called transports. Supporte
 | HuggingFace   | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)|
 | ModelScope    | modelscope://, ms:// | [`modelscope.cn`](https://modelscope.cn/)|
 | Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)|
+| rlcr          | rlcr://   | [`ramalama.com`](https://registry.ramalama.com/projects/ramalama) |
 | OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
 |||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
 
@@ -135,25 +136,25 @@ The default can be overridden in the ramalama.conf file.
 
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
-| [ramalama-bench(1)](ramalama-bench.1.md)          | benchmark specified AI Model                               |
-| [ramalama-chat(1)](ramalama-chat.1.md)            |  OpenAI chat with the specified REST API URL               |
-| [ramalama-containers(1)](ramalama-containers.1.md)| list all RamaLama containers                               |
-| [ramalama-convert(1)](ramalama-convert.1.md)      | convert AI Models from local storage to OCI Image          |
-| [ramalama-daemon(1)](ramalama-daemon.1.md)        | run a RamaLama REST server                                 |
-| [ramalama-info(1)](ramalama-info.1.md)            | display RamaLama configuration information                 |
-| [ramalama-inspect(1)](ramalama-inspect.1.md)      | inspect the specified AI Model                             |
-| [ramalama-list(1)](ramalama-list.1.md)            | list all downloaded AI Models                              |
-| [ramalama-login(1)](ramalama-login.1.md)          | login to remote registry                                   |
-| [ramalama-logout(1)](ramalama-logout.1.md)        | logout from remote registry                                |
-| [ramalama-perplexity(1)](ramalama-perplexity.1.md)| calculate the perplexity value of an AI Model              |
-| [ramalama-pull(1)](ramalama-pull.1.md)            | pull AI Models from Model registries to local storage      |
-| [ramalama-push(1)](ramalama-push.1.md)            | push AI Models from local storage to remote registries     |
-| [ramalama-rag(1)](ramalama-rag.1.md)              | generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image |
-| [ramalama-rm(1)](ramalama-rm.1.md)                | remove AI Models from local storage                        |
-| [ramalama-run(1)](ramalama-run.1.md)              | run specified AI Model as a chatbot                        |
-| [ramalama-serve(1)](ramalama-serve.1.md)          | serve REST API on specified AI Model                       |
-| [ramalama-stop(1)](ramalama-stop.1.md)            | stop named container that is running AI Model              |
-| [ramalama-version(1)](ramalama-version.1.md)      | display version of RamaLama                                |
+| [ramalama-bench(1)](ramalama-bench.1.md)          |benchmark specified AI Model|
+| [ramalama-chat(1)](ramalama-chat.1.md)            |OpenAI chat with the specified REST API URL|
+| [ramalama-containers(1)](ramalama-containers.1.md)|list all RamaLama containers|
+| [ramalama-convert(1)](ramalama-convert.1.md)      |convert AI Models from local storage to OCI Image|
+| [ramalama-daemon(1)](ramalama-daemon.1.md)        |run a RamaLama REST server|
+| [ramalama-info(1)](ramalama-info.1.md)            |display RamaLama configuration information|
+| [ramalama-inspect(1)](ramalama-inspect.1.md)      |inspect the specified AI Model|
+| [ramalama-list(1)](ramalama-list.1.md)            |list all downloaded AI Models|
+| [ramalama-login(1)](ramalama-login.1.md)          |login to remote registry|
+| [ramalama-logout(1)](ramalama-logout.1.md)        |logout from remote registry|
+| [ramalama-perplexity(1)](ramalama-perplexity.1.md)|calculate the perplexity value of an AI Model|
+| [ramalama-pull(1)](ramalama-pull.1.md)            |pull AI Models from Model registries to local storage|
+| [ramalama-push(1)](ramalama-push.1.md)            |push AI Models from local storage to remote registries|
+| [ramalama-rag(1)](ramalama-rag.1.md)              |generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image|
+| [ramalama-rm(1)](ramalama-rm.1.md)                |remove AI Models from local storage|
+| [ramalama-run(1)](ramalama-run.1.md)              |run specified AI Model as a chatbot|
+| [ramalama-serve(1)](ramalama-serve.1.md)          |serve REST API on specified AI Model|
+| [ramalama-stop(1)](ramalama-stop.1.md)            |stop named container that is running AI Model|
+| [ramalama-version(1)](ramalama-version.1.md)      |display version of RamaLama|
 
 ## CONFIGURATION FILES
 

@@ -35,7 +35,7 @@ def list_manifests(args: EngineArgType):
     if output == "":
         return []
 
-    manifests = json.loads("[" + output[:-1] + "]")
+    manifests = json.loads(f"[{output[:-1]}]")
     if not engine_supports_manifest_attributes(args.engine):
         return manifests
 
@@ -95,7 +95,7 @@ def list_models(args: EngineArgType):
     if output == "":
         return []
 
-    models = json.loads("[" + output[:-1] + "]")
+    models = json.loads(f"[{output[:-1]}]")
     # exclude dangling images having no tag (i.e. <none>:<none>)
     models = [model for model in models if model["name"] != "oci://<none>:<none>"]
 
