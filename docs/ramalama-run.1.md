@@ -49,6 +49,9 @@ Example: --device=/dev/dri/renderD128:/dev/xvdc:rwm
 
 The device specification is passed directly to the underlying container engine.  See documentation of the supported container engine for more information.
 
+Pass '--device=none' explicitly add no device to the container, eg for
+running a CPU-only performance comparison.
+
 #### **--env**=
 
 Set environment variables inside of the container.

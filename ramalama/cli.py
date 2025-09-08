@@ -794,7 +794,11 @@ def runtime_options(parser, command):
             "-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode"
         )
     parser.add_argument(
-        "--device", dest="device", action='append', type=str, help="device to leak in to the running container"
+        "--device",
+        dest="device",
+        action='append',
+        type=str,
+        help="device to leak in to the running container (or 'none' to pass no device)",
     )
     parser.add_argument(
         "--env",

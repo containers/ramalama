@@ -118,6 +118,10 @@ class Engine:
             self.exec_args += ["-p", f"{host}{self.args.port}:{self.args.port}"]
 
     def add_device_options(self):
+        request_no_device = getattr(self.args, "device", None) == ['none']
+        if request_no_device:
+            return
+
         if getattr(self.args, "device", None):
             for device_arg in self.args.device:
                 self.exec_args += ["--device", device_arg]
