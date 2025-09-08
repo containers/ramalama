@@ -291,8 +291,9 @@ class TestPopulateVolumeFromImage:
 
     @patch('subprocess.Popen')
     @patch('ramalama.common.run_cmd')
-    def test_populate_volume_export_failure(self, mock_popen, mock_model):
+    def test_populate_volume_export_failure(self, mock_run_cmd, mock_popen, mock_model):
         """Test handling of export process failure"""
+        mock_run_cmd  # satisfies the linter
         output_filename = "model.gguf"
 
         # Mock export process failure
@@ -314,8 +315,9 @@ class TestPopulateVolumeFromImage:
 
     @patch('subprocess.Popen')
     @patch('ramalama.common.run_cmd')
-    def test_populate_volume_tar_failure(self, mock_popen, mock_model):
+    def test_populate_volume_tar_failure(self, mock_run_cmd, mock_popen, mock_model):
         """Test handling of tar process failure"""
+        mock_run_cmd  # satisfies the linter
         output_filename = "model.gguf"
 
         # Mock tar process failure
