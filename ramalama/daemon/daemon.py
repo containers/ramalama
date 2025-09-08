@@ -66,7 +66,7 @@ class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
                 continue
 
             try:
-                logger.error(f"Stopping expired model '{name}'...")
+                logger.info(f"Stopping expired model '{name}'...")
                 self.model_runner.stop_model(m.id)
             except Exception as e:
                 logger.error(f"Failed to stop expired model '{name}': {e}")
@@ -95,7 +95,7 @@ def parse_args():
 
 def run(host: str = "0.0.0.0", port: int = 8080, model_store_path: str = "/models"):
     configure_logger(LogLevel.DEBUG)
-    logger.info(f"Starting Ramalama daemon on {host}:{port}...")
+    logger.debug(f"Starting Ramalama daemon on {host}:{port}...")
     with RamalamaServer(host, port, model_store_path, timedelta(seconds=10)) as httpd:
         with ShutdownHandler(httpd):
             server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)

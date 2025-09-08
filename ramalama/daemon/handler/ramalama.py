@@ -1,5 +1,6 @@
 import http.server
 import traceback
+import urllib.error
 
 from ramalama.daemon.handler.daemon import DaemonAPIHandler
 from ramalama.daemon.handler.proxy import ModelProxyHandler
@@ -20,6 +21,10 @@ class RamalamaHandler(http.server.SimpleHTTPRequestHandler):
         self.setup()
         try:
             self.handle()
+        except urllib.error.HTTPError as e:
+            self.send_error(e.code, e.reason)
+            logger.error(f"Error handling request: {e}")
+            logger.debug(f"{traceback.format_exc()}")
         except Exception as e:
             self.send_error(500, f"Internal Server Error: {e}")
             logger.error(f"Error handling request: {e}")

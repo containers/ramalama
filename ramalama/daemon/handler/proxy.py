@@ -78,37 +78,28 @@ class ModelProxyHandler(APIHandler):
 
         logger.debug(f"Forwarding request -X {method} {target_url}\nHEADER: {headers} \nDATA: {data}")
 
-        try:
-            request = urllib.request.Request(target_url, data=data, headers=dict(headers), method=method)
-            with urllib.request.urlopen(request) as response:
-                handler.send_response(response.status)
+        request = urllib.request.Request(target_url, data=data, headers=dict(headers), method=method)
+        with urllib.request.urlopen(request) as response:
+            handler.send_response(response.status)
 
-                hop_by_hop_headers = [
-                    'connection',
-                    'keep-alive',
-                    'proxy-authenticate',
-                    'proxy-authorization',
-                    'te',
-                    'trailers',
-                    'transfer-encoding',
-                    'upgrade',
-                ]
-                for key, value in response.getheaders():
-                    if key.lower() in hop_by_hop_headers:
-                        continue
-                    handler.send_header(key, value)
+            hop_by_hop_headers = [
+                'connection',
+                'keep-alive',
+                'proxy-authenticate',
+                'proxy-authorization',
+                'te',
+                'trailers',
+                'transfer-encoding',
+                'upgrade',
+            ]
+            for key, value in response.getheaders():
+                if key.lower() in hop_by_hop_headers:
+                    continue
+                handler.send_header(key, value)
 
-                handler.end_headers()
-                for line in response:
-                    handler.wfile.write(line)
-                handler.wfile.flush()
-
-                logger.debug(f"Received response from -X {method} {target_url}\nRESPONSE: ")
-        except urllib.error.HTTPError as e:
-            handler.send_response(e.code)
             handler.end_headers()
-            raise e
-        except urllib.error.URLError as e:
-            handler.send_response(500)
-            handler.end_headers()
-            raise e
+            for line in response:
+                handler.wfile.write(line)
+            handler.wfile.flush()
+
+            logger.debug(f"Received response from -X {method} {target_url}\nRESPONSE: ")
