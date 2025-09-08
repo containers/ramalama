@@ -289,5 +289,43 @@ function skip_if_no_llama_bench() {
     fi
 }
 
+function is_ppc64le() {
+    [ "$(uname -m)" == "ppc64le" ]
+}
+
+function skip_if_ppc64le() {
+    if is_ppc64le; then
+        skip "Not yet supported on ppc64le"
+    fi
+}
+
+function is_s390x() {
+    [ "$(uname -m)" == "s390x" ]
+}
+
+function skip_if_s390x() {
+    if is_s390x; then
+        skip "Not yet supported on s390x"
+    fi
+}
+
+function is_bigendian() {
+    is_s390x
+}
+
+function test_model() {
+    if is_bigendian; then
+        # If there's a smaller, functional bigendian model, put it here
+        echo ${2:-granite-be-3.0:1b}
+    else
+        echo ${1:-smollm:135m}
+    fi
+}
+
+function model_base() {
+    local base=${1##*/}
+    echo ${base%:*}
+}
+
 # END   miscellaneous tools
 ###############################################################################

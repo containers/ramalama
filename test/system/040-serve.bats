@@ -126,7 +126,9 @@ verify_begin=".*run --rm"
     run_ramalama -q --dryrun serve smollm
     is "$output" ".*ai.ramalama.model=ollama://library/smollm:latest" "smollm should be expanded to fullname"
 
-    model=ollama://smollm:135m
+    model=$(test_model smollm:135m)
+    run_ramalama info
+    full_model=$(jq -r --arg model $model -r '.Shortnames.Names[$model]' <<<"$output")
     container1=c_$(safename)
     container2=c_$(safename)
 
@@ -139,7 +141,7 @@ verify_begin=".*run --rm"
     port=${output: -8:4}
 
     run_ramalama chat --ls --url http://127.0.0.1:${port}/v1
-    is "$output" "smollm:135m" "list of models available correct"
+    is "$output" ${full_model#*://} "list of models available correct"
 
     run_ramalama containers --noheading
     is "$output" ".*${container1}" "list correct for container1"
@@ -159,7 +161,7 @@ verify_begin=".*run --rm"
 @test "ramalama --detach serve multiple" {
     skip_if_nocontainer
 
-    model=ollama://smollm:135m
+    model=$(test_model ollama://smollm:135m)
     container=c_$(safename)
     port1=8100
     port2=8200
@@ -445,6 +447,8 @@ verify_begin=".*run --rm"
 @test "ramalama serve --api llama-stack" {
     skip_if_docker
     skip_if_nocontainer
+    skip_if_ppc64le
+    skip_if_s390x
     model=tiny
     name=c_$(safename)
     run_ramalama pull ${model}

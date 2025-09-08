@@ -16,7 +16,10 @@ function setup() {
 # bats test_tags=distro-integration
 @test "ramalama bench" {
     skip_if_no_llama_bench
-    run_ramalama bench -t 2 smollm:135m
+    if is_s390x; then
+        local RAMALAMA_TIMEOUT=1200
+    fi
+    run_ramalama bench -t 2 $(test_model smollm:135m)
     is "$output" ".*model.*size.*" "model and size in output"
 }
 

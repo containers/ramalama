@@ -125,19 +125,20 @@ EOF
     is "$output" ".*-e HSA_OVERRIDE_GFX_VERSION=0.0.0" "ensure HSA_OVERRIDE_GFX_VERSION is set from environment"
 }
 
-@test "ramalama run smollm with prompt" {
-    run_ramalama run --temp 0 ${MODEL} "What is the first line of the declaration of independence?"
+@test "ramalama run with prompt" {
+    run_ramalama run --temp 0 $(test_model ${MODEL} granite-be-3.3:2b) "What is the first line of the declaration of independence?"
 }
 
 @test "ramalama run --keepalive" {
     # timeout within 1 second and generate a 124 error code.
-    run_ramalama 0 --debug run --keepalive 1s tiny
+    run_ramalama 0 --debug run --keepalive 1s $(test_model tiny)
 }
 
 @test "ramalama run --image bogus" {
     skip_if_nocontainer
     skip_if_darwin
     skip_if_docker
+    run_ramalama pull tiny
     run_ramalama 22 run --image bogus --pull=never tiny
     is "$output" ".*Error: bogus: image not known"
     run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny

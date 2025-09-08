@@ -19,6 +19,9 @@ load helpers
 
 @test "ramalama convert file to image" {
     skip_if_nocontainer
+    # Requires the -rag images which are not available on these arches yet
+    skip_if_ppc64le
+    skip_if_s390x
     echo "hello" > $RAMALAMA_TMPDIR/aimodel
     run_ramalama convert file://$RAMALAMA_TMPDIR/aimodel foobar
     run_ramalama list
@@ -45,6 +48,9 @@ load helpers
 @test "ramalama convert tiny to image" {
     skip_if_nocontainer
     skip_if_docker
+    # Requires the -rag images which are not available on these arches yet
+    skip_if_ppc64le
+    skip_if_s390x
     run_ramalama pull tiny
     run_ramalama convert tiny oci://quay.io/ramalama/tiny
     run_ramalama list
@@ -75,6 +81,9 @@ load helpers
 @test "ramalama convert tiny to GGUF image" {
     skip_if_nocontainer
     skip_if_docker
+    # Requires the -rag images which are not available on these arches yet
+    skip_if_ppc64le
+    skip_if_s390x
     run_ramalama pull hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0
     run_ramalama convert --gguf Q4_0 hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 oci://quay.io/ramalama/tiny-q4-0
     run_ramalama list
