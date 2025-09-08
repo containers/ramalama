@@ -152,4 +152,16 @@ EOF
     is "$output" ".*quay.io/ramalama/ramalama:1.0"
 }
 
+@test "ramalama --dryrun run with a device" {
+    skip_if_nocontainer
+    run_ramalama --dryrun run --device /dev/null --pull=never tiny
+    is "$output" ".*--device /dev/null .*"
+}
+
+@test "ramalama --dryrun run with no device" {
+    skip_if_nocontainer
+    run_ramalama --dryrun run --device none --pull=never tiny
+    assert "$output" != ".*--device.*"
+}
+
 # vim: filetype=sh
