@@ -12,7 +12,8 @@ def test_correct_config_defaults(monkeypatch):
 
     assert cfg.carimage == "registry.access.redhat.com/ubi10-micro:latest"
     assert cfg.container in [True, False]  # depends on env/system
-    assert cfg.ctx_size == 2048
+    assert cfg.ctx_size == 0
+    assert cfg.cache_reuse == 256
     assert cfg.engine in ["podman", "docker", None]
     assert cfg.env == []
     assert cfg.host == "0.0.0.0"
