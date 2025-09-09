@@ -160,44 +160,45 @@ def test_is_healthy_success(mock_conn, mock_debug):
 
 
 @pytest.mark.parametrize(
-    "exc, msg",
+    "exc",
     [
-        (ConnectionError("conn"), "conn"),
-        (HTTPException("http"), "http"),
-        (UnicodeDecodeError("utf-8", b'\xe6', 0, 1, "invalid"), "'utf-8' codec"),
-        (JSONDecodeError("json", "resp", 0), "json"),
+        (ConnectionError("conn")),
+        (HTTPException("http")),
+        (UnicodeDecodeError("utf-8", b'\xe6', 0, 1, "invalid")),
+        (JSONDecodeError("json", "resp", 0)),
     ],
 )
-@patch("ramalama.engine.time.sleep", side_effect=TimeoutExpired("sleep", 1))
-@patch("ramalama.engine.logger.debug")
-@patch("ramalama.engine.is_healthy")
-def test_wait_for_healthy_error(mock_is_healthy, mock_debug, mock_sleep, exc, msg):
-    mock_is_healthy.side_effect = exc
-    args = Namespace(name="thecontainer", port=8080)
-    with pytest.raises(TimeoutExpired):
-        wait_for_healthy(args, timeout=1)
-    assert f"failed, retrying... Error: {msg}" in mock_debug.call_args.args[0]
-
-
-@pytest.mark.parametrize("debug", [False, True])
 @patch("ramalama.engine.logs", return_value="container logs...")
-def test_wait_for_healthy_timeout(mock_logs, debug):
-    args = Namespace(name="thecontainer", debug=debug)
-    with pytest.raises(TimeoutExpired, match="timed out after 0 seconds") as exc_info:
-        wait_for_healthy(args, timeout=0)
-    assert exc_info.value.output == mock_logs.return_value
-    mock_logs.assert_called_once_with(args, args.name, ignore_stderr=not debug)
+def test_wait_for_healthy_error(mock_logs, exc):
+
+    def healthy_func(args):
+        raise exc
+
+    args = Namespace(name="thecontainer", debug=True, engine="podman")
+    with pytest.raises(TimeoutExpired):
+        wait_for_healthy(args, healthy_func, timeout=1)
+    mock_logs.assert_called_once()
 
 
-@patch("ramalama.engine.logger.debug")
-@patch("ramalama.engine.HTTPConnection")
-def test_wait_for_healthy_success(mock_conn, mock_debug):
-    mock_resp = mock_conn.return_value.getresponse.return_value
-    mock_resp.status = 200
-    mock_resp.read.return_value = '{"models": [{"name": "themodel"}]}'
-    args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
-    wait_for_healthy(args, timeout=1)
-    assert mock_debug.call_args.args[0] == "Container thecontainer is healthy"
+@patch("ramalama.engine.logs", return_value="container logs...")
+def test_wait_for_healthy_timeout(mock_logs):
+
+    def healthy_func(args):
+        return True
+
+    args = Namespace(name="thecontainer", debug=True, engine="podman")
+    with pytest.raises(TimeoutExpired, match="timed out after 0 seconds"):
+        wait_for_healthy(args, healthy_func, timeout=0)
+    mock_logs.assert_called_once()
+
+
+def test_wait_for_healthy_success():
+
+    def healthy_func(args):
+        return True
+
+    args = Namespace(name="thecontainer", debug=False)
+    wait_for_healthy(args, healthy_func, timeout=1)
 
 
 if __name__ == '__main__':

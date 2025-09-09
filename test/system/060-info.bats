@@ -39,7 +39,7 @@ Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)
 
     image=i_$(safename):1.0
     runtime=vllm
-    engine=e_$(safename)
+    engine=podman
     store=s_$(safename)
 
     RAMALAMA_IMAGE=$image run_ramalama --store $store --runtime $runtime --engine $engine info
