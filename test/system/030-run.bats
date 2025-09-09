@@ -3,6 +3,7 @@
 load helpers
 
 MODEL=smollm:135m
+MODEL_FULLNAME=smollm-135M-instruct-v0.2-Q8_0-GGUF
 
 @test "ramalama --dryrun run basic output" {
     image=m_$(safename)
@@ -19,7 +20,7 @@ EOF
 
 	run_ramalama -q --dryrun run ${MODEL}
 	is "$output" "${verify_begin}.*"
-	is "$output" ".*${MODEL}" "verify model name"
+	is "$output" ".*${MODEL_FULLNAME}" "verify model name"
 	is "$output" ".*--cache-reuse 256" "verify cache-reuse is being set"
 	assert "$output" !~ ".*--ctx-size" "assert ctx-size is not show by default"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
@@ -41,7 +42,7 @@ EOF
 
 	RAMALAMA_CONFIG=/dev/null run_ramalama -q --dryrun run --cache-reuse 512 --seed 9876 -c 4096 --net bridge --name foobar ${MODEL}
 	is "$output" ".*--network bridge.*" "dryrun correct with --name"
-	is "$output" ".*${MODEL}" "verify model name"
+	is "$output" ".*${MODEL_FULLNAME}" "verify model name"
 	is "$output" ".*--ctx-size 4096" "verify ctx-size is set"
 	is "$output" ".*--cache-reuse 512" "verify cache-reuse is being set"
 	is "$output" ".*--temp 0.8" "verify temp is set"
