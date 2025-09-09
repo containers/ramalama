@@ -34,8 +34,11 @@ def res(response, color):
     for line in response:
         line = line.decode("utf-8").strip()
         if line.startswith("data: {"):
-            line = line[len("data: ") :]
-            choice = json.loads(line)["choices"][0]["delta"]
+            choice = ""
+
+            json_line = json.loads(line[len("data: ") :])
+            if "choices" in json_line and json_line["choices"]:
+                choice = json_line["choices"][0]["delta"]
             if "content" in choice:
                 choice = choice["content"]
             else:
@@ -270,7 +273,6 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs = ChatOperati
             ids = [model["id"] for model in data.get("data", [])]
             for id in ids:
                 print(id)
-
     try:
         shell = RamaLamaShell(args, operational_args)
         if shell.handle_args():
