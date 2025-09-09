@@ -133,7 +133,7 @@ format:
 
 .PHONY: codespell
 codespell:
-	codespell -w $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	codespell $(PROJECT_DIR) $(PYTHON_SCRIPTS)
 
 .PHONY: test-run
 test-run:

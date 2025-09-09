@@ -87,9 +87,18 @@ line_length = 120
 skip = [".venv", "venv"]
 
 [tool.codespell]
-skip = ["build","ramalama.egg-info", "logos", ".git", "venv", ".venv"]
+skip = ["build", "ramalama.egg-info", "logos", ".git", "venv", ".venv"]
 dictionary = ".codespelldict"
-ignore-words-list = ["cann", "clos", "creat", "ro", "hastable", "shouldnot", "mountns", "passt" ,"assertin"]
+ignore-words-list = [
+  "assertin",
+  "cann",
+  "clos",
+  "creat",
+  "hastable",
+  "passt",
+  "ro",
+  "shouldnot",
+]
 check-hidden = true
 
 [tool.ruff]
