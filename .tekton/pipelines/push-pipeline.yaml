@@ -400,7 +400,12 @@ spec:
       operator: in
       values:
       - "false"
-  - name: clamav-scan
+  - matrix:
+      params:
+      - name: image-arch
+        value:
+        - $(params.build-platforms)
+    name: clamav-scan
     params:
     - name: image-digest
       value: $(tasks.build-image-index.results.IMAGE_DIGEST)
