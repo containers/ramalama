@@ -118,7 +118,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table above for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.12.1 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.12.2 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells

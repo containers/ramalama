@@ -5,4 +5,4 @@ if [[ "$#" != 2 ]]; then
 fi
 curversion=$1
 newversion=$2
-sed "s/${curversion}/${newversion}/g" -i pyproject.toml ramalama/version.py rpm/ramalama.spec docs/ramalama*.md
+sed "s/${curversion}/${newversion}/g" -i ramalama/version.py rpm/ramalama.spec docs/ramalama*.md
