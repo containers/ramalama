@@ -82,9 +82,11 @@ class CommandFactory:
         else:
             cmd += ["--jinja"]
 
-            chat_template_path = self.model._get_chat_template_path(False, False, False)
-            if chat_template_path:
-                cmd += ["--chat-template-file", chat_template_path]
+            # Skip chat template when MCP is specified
+            if self.request_args.get('tool'):
+                chat_template_path = self.model._get_chat_template_path(False, False, False)
+                if chat_template_path:
+                    cmd += ["--chat-template-file", chat_template_path]
 
         cmd += [
             "--alias",

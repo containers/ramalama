@@ -97,6 +97,11 @@ If GPU device on host system is accessible to user via group access, this option
 #### **--keepalive**
 duration to keep a model loaded (e.g. 5m)
 
+#### **--mcp**=SERVER_URL
+MCP (Model Context Protocol) servers to use for enhanced tool calling capabilities.
+Can be specified multiple times to connect to multiple MCP servers.
+Each server provides tools that can be automatically invoked during chat conversations.
+
 #### **--name**, **-n**
 name of the container to run the Model in
 
@@ -176,6 +181,10 @@ The default is to use half the cores available on this system for the number of 
 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
+
+#### **--tool**
+Enable tool calling functionality for the model. When enabled, the model can invoke
+external tools and functions during conversations. (default: enabled)
 
 ## DESCRIPTION
 Run specified AI Model as a chat bot. RamaLama pulls specified AI Model from

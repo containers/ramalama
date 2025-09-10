@@ -906,6 +906,7 @@ If GPU device on host is accessible to via group access, this option leaks the u
             help="port for AI Model server to listen on",
             completer=suppressCompleter,
         )
+    parser.add_argument("--tool", dest="tool", action="store_false", help="enable tool calling for the serve command")
     parser.add_argument(
         "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
     )
@@ -996,6 +997,7 @@ def chat_run_options(parser):
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
     parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
+    parser.add_argument("--mcp", nargs="*", help="MCP servers to use for the chat")
 
 
 def chat_parser(subparsers):

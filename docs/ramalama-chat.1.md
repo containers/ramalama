@@ -29,6 +29,11 @@ Show this help message and exit
 #### **--list**
 List the available models at an endpoint
 
+#### **--mcp**=SERVER_URL
+MCP (Model Context Protocol) servers to use for enhanced tool calling capabilities.
+Can be specified multiple times to connect to multiple MCP servers.
+Each server provides tools that can be automatically invoked during chat conversations.
+
 #### **--model**=MODEL
 Model for inferencing (may not be required for endpoints that only serve one model)
 
