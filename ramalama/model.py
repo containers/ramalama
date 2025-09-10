@@ -657,13 +657,14 @@ class Model(ModelBase):
         exec_args += [
             "--alias",
             self.model,
-            "--ctx-size",
-            f"{args.context}",
             "--temp",
             f"{args.temp}",
             "--cache-reuse",
-            "256",
+            f"{args.cache_reuse}",
         ]
+        if args.context > 0:
+            exec_args += ["--ctx-size", f"{args.context}"]
+
         exec_args += args.runtime_args
 
         if draft_model_path:

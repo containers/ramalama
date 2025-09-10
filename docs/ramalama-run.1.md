@@ -33,12 +33,15 @@ The default can be overridden in the ramalama.conf file.
 #### **--authfile**=*password*
 path of the authentication file for OCI registries
 
+#### **--cache-reuse**=256
+Min chunk size to attempt reusing from the cache via KV shifting
+
 #### **--color**
 Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)
 
 #### **--ctx-size**, **-c**
-size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 2048, 0 = loaded from model)
+size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 4096, 0 = loaded from model)
 
 #### **--device**
 Add a host device to the container. Optional permissions parameter  can

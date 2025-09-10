@@ -71,12 +71,16 @@ OCI model car image
 
 Image to be used when building and pushing --type=car models
 
+**cache_reuse**=256
+
+Min chunk size to attempt reusing from the cache via KV shifting
+
 **container**=true
 
 Run RamaLama in the default container.
 RAMALAMA_IN_CONTAINER environment variable overrides this field.
 
-**ctx_size**=2048
+**ctx_size**=0
 
 Size of the prompt context (0 = loaded from model)
 

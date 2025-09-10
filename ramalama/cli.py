@@ -777,9 +777,18 @@ def runtime_options(parser, command):
     parser.add_argument("--authfile", help="path of the authentication file")
     if command in ["run", "perplexity", "serve"]:
         parser.add_argument(
+            "--cache-reuse",
+            dest="cache_reuse",
+            type=int,
+            default=CONFIG.cache_reuse,
+            help="min chunk size to attempt reusing from the cache via KV shifting",
+            completer=suppressCompleter,
+        )
+        parser.add_argument(
             "-c",
             "--ctx-size",
             dest="context",
+            type=int,
             default=CONFIG.ctx_size,
             help="size of the prompt context (0 = loaded from model)",
             completer=suppressCompleter,
@@ -787,6 +796,7 @@ def runtime_options(parser, command):
         parser.add_argument(
             "--max-model-len",
             dest="context",
+            type=int,
             default=CONFIG.ctx_size,
             help=argparse.SUPPRESS,
             completer=suppressCompleter,

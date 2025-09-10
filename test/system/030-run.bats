@@ -20,7 +20,8 @@ EOF
 	run_ramalama -q --dryrun run ${MODEL}
 	is "$output" "${verify_begin}.*"
 	is "$output" ".*${MODEL}" "verify model name"
-	is "$output" ".*--ctx-size 2048" "verify model name"
+	is "$output" ".*--cache-reuse 256" "verify cache-reuse is being set"
+	assert "$output" !~ ".*--ctx-size" "assert ctx-size is not show by default"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
 	assert "$output" !~ ".*-t -i" "assert -t -i not present without tty"
 
@@ -38,10 +39,11 @@ EOF
 	run_ramalama -q --dryrun run --oci-runtime foobar ${MODEL}
 	is "$output" ".*--runtime foobar" "dryrun correct with --oci-runtime"
 
-	RAMALAMA_CONFIG=/dev/null run_ramalama -q --dryrun run --seed 9876 -c 4096 --net bridge --name foobar ${MODEL}
+	RAMALAMA_CONFIG=/dev/null run_ramalama -q --dryrun run --cache-reuse 512 --seed 9876 -c 4096 --net bridge --name foobar ${MODEL}
 	is "$output" ".*--network bridge.*" "dryrun correct with --name"
 	is "$output" ".*${MODEL}" "verify model name"
 	is "$output" ".*--ctx-size 4096" "verify ctx-size is set"
+	is "$output" ".*--cache-reuse 512" "verify cache-reuse is being set"
 	is "$output" ".*--temp 0.8" "verify temp is set"
 	is "$output" ".*--seed 9876" "verify seed is set"
 	if not_docker; then
@@ -90,8 +92,8 @@ EOF
 
     else
 	run_ramalama -q --dryrun run --ctx-size 4096 ${MODEL}
-	is "$output" '.*serve.*--ctx-size 4096 --temp 0.8.*' "dryrun correct"
-	is "$output" ".*--ctx-size 4096" "verify model name"
+	is "$output" '.*--ctx-size 4096.*' "verify ctx-size is set"
+	is "$output" '.*--cache-reuse 256.*' "assert cache-reuse is set by default to 256"
 
 	run_ramalama 22 run --ctx-size=4096 --name foobar ${MODEL}
 	is "${lines[0]}"  "Error: --nocontainer and --name options conflict. The --name option requires a container." "conflict between nocontainer and --name line"

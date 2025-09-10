@@ -57,8 +57,11 @@ The default can be overridden in the ramalama.conf file.
 #### **--authfile**=*password*
 Path of the authentication file for OCI registries
 
+#### **--cache-reuse**=256
+Min chunk size to attempt reusing from the cache via KV shifting
+
 #### **--ctx-size**, **-c**
-size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 2048, 0 = loaded from model)
+size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 4096, 0 = loaded from model)
 
 #### **--detach**, **-d**
 Run the container in the background and print the new container ID.
@@ -426,7 +429,7 @@ spec:
       - name: model-server
 	image: quay.io/ramalama/ramalama:0.8
 	command: ["llama-server"]
-	args: ['--port', '8081', '--model', '/mnt/models/model.file', '--alias', 'quay.io/rhatdan/granite:latest', '--ctx-size', 2048, '--temp', '0.8', '--jinja', '--cache-reuse', '256', '-v', '--threads', 16, '--host', '127.0.0.1']
+	args: ['--port', '8081', '--model', '/mnt/models/model.file', '--alias', 'quay.io/rhatdan/granite:latest', '--temp', '0.8', '--jinja', '--cache-reuse', '256', '-v', '--threads', 16, '--host', '127.0.0.1']
 	securityContext:
 	  allowPrivilegeEscalation: false
 	  capabilities:
