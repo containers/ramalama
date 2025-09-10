@@ -10,8 +10,8 @@ load setup_suite
     run_ramalama 22 inspect ${MODEL}
     is "$output" "Error: No ref file found for '${MODEL}'. Please pull model."
     
-    run_ramalama pull tiny
-    run_ramalama inspect tiny
+    run_ramalama pull ollama://tinyllama
+    run_ramalama inspect ollama://tinyllama
 
     is "${lines[0]}" "tinyllama" "model name"
     is "${lines[1]}" "   Path: .*store/ollama/library/tinyllama/.*" "model path"
@@ -25,8 +25,8 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama inspect GGUF model with --all" {
-    run_ramalama pull tiny
-    run_ramalama inspect --all tiny
+    run_ramalama pull ollama://tinyllama
+    run_ramalama inspect --all ollama://tinyllama
 
     is "${lines[0]}" "tinyllama" "model name"
     is "${lines[1]}" "   Path: .*store/ollama/library/tinyllama/.*" "model path"
@@ -40,20 +40,20 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama inspect GGUF model with --get" {
-    run_ramalama pull tiny
+    run_ramalama pull ollama://tinyllama
 
-    run_ramalama inspect --get general.architecture tiny
+    run_ramalama inspect --get general.architecture ollama://tinyllama
     is "$output" "llama"
 
-    run_ramalama inspect --get general.name tiny
+    run_ramalama inspect --get general.name ollama://tinyllama
     is "$output" "TinyLlama"
 }
 
 # bats test_tags=distro-integration
 @test "ramalama inspect GGUF model with --get all" {
-    run_ramalama pull tiny
+    run_ramalama pull ollama://tinyllama
 
-    run_ramalama inspect --get all tiny
+    run_ramalama inspect --get all ollama://tinyllama
     is "${lines[0]}" "general.architecture: llama" "check for general.architecture"
     is "${lines[1]}" "general.file_type: 2" "check for general.file_type"
     is "${lines[2]}" "general.name: TinyLlama" "check for general.name"

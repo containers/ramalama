@@ -12,8 +12,8 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama pull ollama" {
-    run_ramalama pull tiny
-    run_ramalama rm tiny
+    run_ramalama pull ollama://tinyllama
+    run_ramalama rm ollama://tinyllama
     run_ramalama pull https://ollama.com/library/smollm:135m
     run_ramalama list
     is "$output" ".*https://ollama.com/library/smollm:135m" "image was actually pulled locally"
@@ -36,8 +36,8 @@ load setup_suite
     ollama serve &
     sleep 3
     ollama pull tinyllama
-    run_ramalama pull tiny
-    run_ramalama rm tiny
+    run_ramalama pull ollama://tinyllama
+    run_ramalama rm ollama://tinyllama
     ollama rm tinyllama
 
     ollama pull smollm:135m
