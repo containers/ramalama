@@ -5,7 +5,7 @@ import pytest
 
 from ramalama.arg_types import StoreArgs
 from ramalama.model_store.snapshot_file import LocalSnapshotFile, SnapshotFile, SnapshotFileType
-from ramalama.ollama import Ollama, OllamaRepository
+from ramalama.transports.ollama import Ollama, OllamaRepository
 
 
 @pytest.fixture
@@ -45,5 +45,5 @@ class OllamaRepositoryMock(OllamaRepository):
 
 def test_ollama_model_pull(ollama_model, args):
     args.quiet = True
-    with patch("ramalama.ollama.OllamaRepository", return_value=OllamaRepositoryMock("dummy-model")):
+    with patch("ramalama.transports.ollama.OllamaRepository", return_value=OllamaRepositoryMock("dummy-model")):
         ollama_model.pull(args)

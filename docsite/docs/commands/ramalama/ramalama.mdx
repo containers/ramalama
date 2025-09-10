@@ -36,8 +36,10 @@ When both Podman and Docker are installed, RamaLama defaults to Podman, The `RAM
 :::
 
 :::note
- On systems with NVIDIA GPUs, see [ramalama-cuda(7)](../../platform-guides/cuda) to correctly configure the host system. Default settings for flags are defined in [ramalama.conf(5)](../../configuration/conf).
+ On systems with NVIDIA GPUs, see [ramalama-cuda(7)](../../platform-guides/cuda) to correctly configure the host system.
 :::
+
+RamaLama CLI defaults can be modified via ramalama.conf files. Default settings for flags are defined in [ramalama.conf(5)](../../configuration/conf).
 
 ## SECURITY
 
@@ -64,6 +66,7 @@ RamaLama supports multiple AI model registries types called transports. Supporte
 | HuggingFace   | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)|
 | ModelScope    | modelscope://, ms:// | [`modelscope.cn`](https://modelscope.cn/)|
 | Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)|
+| rlcr          | rlcr://   | [`ramalama.com`](https://registry.ramalama.com/projects/ramalama) |
 | OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
 |||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
 
@@ -143,28 +146,29 @@ The default can be overridden in the ramalama.conf file.
 
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
-| [ramalama-bench(1)](../../commands/ramalama/bench)          | benchmark specified AI Model                               |
-| [ramalama-chat(1)](../../commands/ramalama/chat)            |  OpenAI chat with the specified REST API URL                |
-| [ramalama-containers(1)](../../commands/ramalama/containers)| list all RamaLama containers                               |
-| [ramalama-convert(1)](../../commands/ramalama/convert)      | convert AI Models from local storage to OCI Image          |
-| [ramalama-info(1)](../../commands/ramalama/info)            | display RamaLama configuration information                 |
-| [ramalama-inspect(1)](../../commands/ramalama/inspect)      | inspect the specified AI Model                             |
-| [ramalama-list(1)](../../commands/ramalama/list)            | list all downloaded AI Models                              |
-| [ramalama-login(1)](../../commands/ramalama/login)          | login to remote registry                                   |
-| [ramalama-logout(1)](../../commands/ramalama/logout)        | logout from remote registry                                |
-| [ramalama-perplexity(1)](../../commands/ramalama/perplexity)| calculate the perplexity value of an AI Model              |
-| [ramalama-pull(1)](../../commands/ramalama/pull)            | pull AI Models from Model registries to local storage      |
-| [ramalama-push(1)](../../commands/ramalama/push)            | push AI Models from local storage to remote registries     |
-| [ramalama-rag(1)](../../commands/ramalama/rag)              | generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image |
-| [ramalama-rm(1)](../../commands/ramalama/rm)                | remove AI Models from local storage                        |
-| [ramalama-run(1)](../../commands/ramalama/run)              | run specified AI Model as a chatbot                        |
-| [ramalama-serve(1)](../../commands/ramalama/serve)          | serve REST API on specified AI Model                       |
-| [ramalama-stop(1)](../../commands/ramalama/stop)            | stop named container that is running AI Model              |
-| [ramalama-version(1)](../../commands/ramalama/version)      | display version of RamaLama                                |
+| [ramalama-bench(1)](../../commands/ramalama/bench)          |benchmark specified AI Model|
+| [ramalama-chat(1)](../../commands/ramalama/chat)            |OpenAI chat with the specified REST API URL|
+| [ramalama-containers(1)](../../commands/ramalama/containers)|list all RamaLama containers|
+| [ramalama-convert(1)](../../commands/ramalama/convert)      |convert AI Models from local storage to OCI Image|
+| [ramalama-daemon(1)](../../commands/ramalama/daemon)        |run a RamaLama REST server|
+| [ramalama-info(1)](../../commands/ramalama/info)            |display RamaLama configuration information|
+| [ramalama-inspect(1)](../../commands/ramalama/inspect)      |inspect the specified AI Model|
+| [ramalama-list(1)](../../commands/ramalama/list)            |list all downloaded AI Models|
+| [ramalama-login(1)](../../commands/ramalama/login)          |login to remote registry|
+| [ramalama-logout(1)](../../commands/ramalama/logout)        |logout from remote registry|
+| [ramalama-perplexity(1)](../../commands/ramalama/perplexity)|calculate the perplexity value of an AI Model|
+| [ramalama-pull(1)](../../commands/ramalama/pull)            |pull AI Models from Model registries to local storage|
+| [ramalama-push(1)](../../commands/ramalama/push)            |push AI Models from local storage to remote registries|
+| [ramalama-rag(1)](../../commands/ramalama/rag)              |generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image|
+| [ramalama-rm(1)](../../commands/ramalama/rm)                |remove AI Models from local storage|
+| [ramalama-run(1)](../../commands/ramalama/run)              |run specified AI Model as a chatbot|
+| [ramalama-serve(1)](../../commands/ramalama/serve)          |serve REST API on specified AI Model|
+| [ramalama-stop(1)](../../commands/ramalama/stop)            |stop named container that is running AI Model|
+| [ramalama-version(1)](../../commands/ramalama/version)      |display version of RamaLama|
 
 ## CONFIGURATION FILES
 
-**ramalama.conf** (`/usr/share/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf`, `$HOME/.config/ramalama/ramalama.conf`)
+**ramalama.conf** (`/usr/share/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf.d/*.conf`, `$HOME/.config/ramalama/ramalama.conf`, `$HOME/.config/ramalama/ramalama.conf.d/*.conf`)
 
 RamaLama has builtin defaults for command line options. These defaults can be overridden using the ramalama.conf configuration files.
 
@@ -188,6 +192,7 @@ although the recommended way is to use the ramalama.conf file.
 | RAMALAMA_IN_CONTAINER     | Run RamaLama in the default container      |
 | RAMALAMA_STORE            | location to store AI Models                |
 | RAMALAMA_TRANSPORT        | default AI Model transport (ollama, huggingface, OCI) |
+| TMPDIR                    | directory for temporary files. Defaults to /var/tmp if unset.|
 
 ## See Also
 [podman(1)](https://github.com/containers/podman/blob/main/docs/source/markdown/podman.1.md), **docker(1)**, [ramalama.conf(5)](../../configuration/conf), [ramalama-cuda(7)](../../platform-guides/cuda), [ramalama-macos(7)](../../platform-guides/macos)

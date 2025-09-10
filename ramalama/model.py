@@ -20,6 +20,7 @@ from ramalama.common import (
     genname,
     is_split_file_model,
     perror,
+    populate_volume_from_image,
     set_accel_env_vars,
 )
 from ramalama.compose import Compose
@@ -356,14 +357,19 @@ class Model(ModelBase):
     def setup_mounts(self, args):
         if args.dryrun:
             return
-
         if self.model_type == 'oci':
             if not self.engine.use_podman:
-                raise NotImplementedError("Serving OCI models via image mount is only supported with Podman.")
-            self.engine.add([f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"])
+                output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
+                volume = populate_volume_from_image(self, output_filename)
+                mount_cmd = f"--mount=type=volume,src={volume},dst={MNT_DIR},readonly"
+            else:
+                mount_cmd = f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"
+
+            self.engine.add([mount_cmd])
             return None
 
         ref_file = self.model_store.get_ref_file(self.model_tag)
+
         if ref_file is None:
             raise NoRefFileFound(self.model)
 

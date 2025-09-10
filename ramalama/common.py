@@ -26,6 +26,7 @@ from ramalama.version import version
 if TYPE_CHECKING:
     from ramalama.arg_types import SUPPORTED_ENGINES, ContainerArgType
     from ramalama.config import Config
+    from ramalama.model import Model
 
 MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
@@ -163,6 +164,60 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     logger.debug(f"Command finished with return code: {result.returncode}")
 
     return result
+
+
+def populate_volume_from_image(model: Model, output_filename: str, src_model_dir: str = "models"):
+    """Builds a Docker-compatible mount string that mirrors Podman image mounts for model assets.
+
+    This function requires the model
+    """
+
+    vol_hash = hashlib.sha256(model.model.encode()).hexdigest()[:12]
+    volume = f"ramalama-models-{vol_hash}"
+    src = f"src-{vol_hash}"
+
+    # Ensure volume exists
+    run_cmd([model.conman, "volume", "create", volume], ignore_stderr=True)
+
+    # Fresh source container to export from
+    run_cmd([model.conman, "rm", "-f", src], ignore_stderr=True)
+    run_cmd([model.conman, "create", "--name", src, model.model])
+
+    try:
+        # Stream whole rootfs -> extract only models/<basename>
+        export_cmd = [model.conman, "export", src]
+        untar_cmd = [
+            model.conman,
+            "run",
+            "--rm",
+            "-i",
+            "--mount",
+            f"type=volume,src={volume},dst=/mnt",
+            "busybox",
+            "tar",
+            "-C",
+            "/mnt",
+            "--strip-components=1",
+            "-x",
+            "-p",
+            "-f",
+            "-",
+            f"{src_model_dir}/{output_filename}",  # NOTE: double check this
+        ]
+
+        with (
+            subprocess.Popen(export_cmd, stdout=subprocess.PIPE) as p_out,
+            subprocess.Popen(untar_cmd, stdin=p_out.stdout) as p_in,
+        ):
+            p_out.stdout.close()
+            rc_in = p_in.wait()
+            rc_out = p_out.wait()
+            if rc_in != 0 or rc_out != 0:
+                raise subprocess.CalledProcessError(rc_in or rc_out, untar_cmd if rc_in else export_cmd)
+    finally:
+        run_cmd([model.conman, "rm", "-f", src], ignore_stderr=True)
+
+    return volume
 
 
 def find_working_directory():
