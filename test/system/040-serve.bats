@@ -74,7 +74,7 @@ verify_begin=".*run --rm"
 	assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
 	is "$output" ".*--cache-reuse 256" "should use cache"
 	if is_darwin; then
-	   is "$output" ".*--flash-attn" "use flash-attn on Darwin metal"
+	   is "$output" ".*--flash-attn on" "use flash-attn on Darwin metal"
 	fi
 
 	run_ramalama -q --dryrun serve --seed abcd --host 127.0.0.1 ${model}
