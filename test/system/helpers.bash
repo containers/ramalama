@@ -315,8 +315,7 @@ function is_bigendian() {
 
 function test_model() {
     if is_bigendian; then
-        # If there's a smaller, functional bigendian model, put it here
-        echo ${2:-granite-be-3.0:1b}
+        echo ${2:-stories-be:260k}
     else
         echo ${1:-smollm:135m}
     fi
