@@ -1,0 +1,535 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: create-override-snapshot
+spec:
+  description: >-
+    Collect information about component builds and assemble them into an
+    override snapshot for release.
+  params:
+  - name: skip
+    description: A space-separated list of component names to exclude from the snapshot
+    default: ""
+  results:
+  - name: TEST_OUTPUT
+    description: Test result in json format
+  steps:
+  - name: create
+    image: registry.access.redhat.com/ubi10/ubi:latest
+    env:
+    - name: COMMIT_SHA
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.annotations['build.appstudio.redhat.com/commit_sha']
+    - name: TAG
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.annotations['build.appstudio.redhat.com/git_tag']
+    - name: LATEST
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.annotations['build.appstudio.redhat.com/latest_tag']
+    - name: EVENT_TYPE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['pac.test.appstudio.openshift.io/event-type']
+    - name: SKIP_COMPONENTS
+      value: $(params.skip)
+    - name: RESULTS_TEST_OUTPUT_PATH
+      value: $(results.TEST_OUTPUT.path)
+    - name: NAMESPACE
+      value: $(context.taskRun.namespace)
+    script: |
+      #!/usr/bin/env python3
+
+      import json
+      import os
+      import subprocess
+      import sys
+      import tempfile
+      from dataclasses import dataclass, field
+      from datetime import UTC
+      from datetime import datetime as dt
+      from pprint import pprint
+      from textwrap import dedent
+
+      OC_VERSION = "4.19.9"
+      OC_URL = f"https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/{OC_VERSION}/openshift-client-linux-{OC_VERSION}.tar.gz"
+      OPC_VERSION = "1.19.0"
+      OPC_URL = f"https://github.com/openshift-pipelines/opc/releases/download/v{OPC_VERSION}/opc_{OPC_VERSION}_linux_x86_64.tar.gz"
+
+
+      def perror(*args, **kwargs):
+          print(*args, file=sys.stderr, **kwargs)
+
+
+      def env_true(name):
+          return os.environ.get(name, "").lower() in ("true", "yes", "1")
+
+
+      def write_test_output(result, note, successes=0, failures=0, warnings=0):
+          if test_output_path := os.environ.get("RESULTS_TEST_OUTPUT_PATH"):
+              output = {
+                  "result": result,
+                  "timestamp": dt.now(tz=UTC).isoformat(timespec="seconds"),
+                  "note": note,
+                  "namespace": os.environ.get("NAMESPACE", "default"),
+                  "successes": successes,
+                  "failures": failures,
+                  "warnings": warnings,
+              }
+              with open(test_output_path, "w") as outfd:
+                  json.dump(output, outfd)
+          else:
+              perror("Missing RESULTS_TEST_OUTPUT_PATH environment variable")
+
+
+      def install_util(url):
+          curl_proc = subprocess.Popen(
+              ["curl", "-fsSL", url],
+              stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE,
+          )
+          tar_proc = subprocess.Popen(
+              ["tar", "-xz"],
+              stdin=curl_proc.stdout,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE,
+          )
+          for proc in (tar_proc, curl_proc):
+              out, err = proc.communicate(timeout=600)
+              if proc.returncode:
+                  if out:
+                      perror(out.decode("utf-8"))
+                  if err:
+                      perror(err.decode("utf-8"))
+                  raise RuntimeError(f"{proc.args[0]} exited with status {proc.returncode}")
+
+
+      def run(cmd, input=None):
+          proc = subprocess.run(
+              cmd,
+              input=input,
+              capture_output=True,
+              text=True,
+          )
+          if proc.stderr:
+              perror(proc.stderr)
+          proc.check_returncode()
+          return proc.stdout
+
+
+      def configure_opc():
+          with tempfile.NamedTemporaryFile(delete=False) as conf:
+              api_server = run(["./oc", "whoami", "--show-server"]).strip()
+              token = run(["./oc", "whoami", "--show-token"]).strip()
+              tkn_results_server = "https://tekton-results-tekton-results.apps.kflux-prd-rh03.nnv1.p1.openshiftapps.com"
+              namespace = os.environ.get("NAMESPACE", "")
+              ca_bundle = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+              if not os.path.exists(ca_bundle):
+                  ca_bundle = "/etc/pki/tls/cert.pem"
+              os.environ["OPCCONFIG"] = conf.name
+              conf.write(
+                  dedent(
+                      f"""\
+              apiVersion: v1
+              clusters:
+              - cluster:
+                  certificate-authority: {ca_bundle}
+                  server: {api_server}
+                name: local
+              contexts:
+              - context:
+                  cluster: local
+                  extensions:
+                  - extension:
+                      api-path: ""
+                      apiVersion: results.tekton.dev/v1alpha2
+                      host: {tkn_results_server}
+                      kind: Client
+                      token: {token}
+                    name: tekton-results
+                  namespace: {namespace}
+                  user: svcacct
+                name: default
+              current-context: default
+              kind: Config
+              preferences: {{}}
+              users:
+              - name: svcacct
+                user:
+                  token: {token}
+              """
+                  ).encode("utf-8")
+              )
+
+
+      @dataclass
+      class Component:
+          name: str
+          url: str
+          dockerfileUrl: str
+
+
+      @dataclass
+      class PipelineRun:
+          uid: str = None
+          name: str = None
+          component: str = field(init=False)
+          creation_time: dt = field(init=False)
+          status: str = field(init=False)
+          image_url: str = field(init=False)
+          image_digest: str = field(init=False)
+
+          @staticmethod
+          def _get_result_value(name, status):
+              for item in status.get("results", []):
+                  if item["name"] == name:
+                      return item["value"]
+
+          def __post_init__(self):
+              if self.name:
+                  pr_json = run(
+                      [
+                          "./oc",
+                          "get",
+                          "-o",
+                          "json",
+                          self.name,
+                      ]
+                  )
+              elif self.uid:
+                  pr_json = run(
+                      [
+                          "./opc",
+                          "-k",
+                          os.environ["OPCCONFIG"],
+                          "results",
+                          "pipelinerun",
+                          "describe",
+                          "-o",
+                          "json",
+                          "--uid",
+                          self.uid,
+                      ]
+                  )
+              else:
+                  raise ValueError("name or uid must be provided")
+              pr = json.loads(pr_json)
+              self.name = pr["metadata"]["name"]
+              self.component = pr["metadata"]["labels"]["appstudio.openshift.io/component"]
+              self.creation_time = dt.fromisoformat(pr["metadata"]["creationTimestamp"])
+              last_cond = pr["status"]["conditions"][0]
+              if last_cond["type"] == "Succeeded":
+                  if (status := last_cond["status"]) == "True":
+                      self.status = "Succeeded"
+                  elif status in ["False", "Unknown"]:
+                      self.status = last_cond["reason"]
+                  else:
+                      raise ValueError(f"{self.name} has an invalid PipelineRun status: {status}")
+              else:
+                  raise ValueError(f"{self.name} has an invalid condition: {last_cond["type"]}")
+              self.image_url = self._get_result_value("IMAGE_URL", pr["status"])
+              self.image_digest = self._get_result_value("IMAGE_DIGEST", pr["status"])
+
+          @property
+          def digest_url(self):
+              return f"{self.image_url.split(":")[0]}@{self.image_digest}"
+
+          @property
+          def succeeded(self):
+              return self.status == "Succeeded"
+
+          @property
+          def running(self):
+              return self.status == "Running"
+
+          @property
+          def has_results(self):
+              return bool(self.image_url and self.image_digest)
+
+          @property
+          def valid(self):
+              return bool(self.succeeded and self.has_results)
+
+          def is_newer_than(self, pr):
+              return self.creation_time > pr.creation_time
+
+
+      @dataclass
+      class Snapshot:
+          commit_sha: str
+          event_type: str
+          tag: str
+          latest: str
+          skip: list[str]
+          namespace: str
+          components: dict[str, Component] = field(init=False)
+          prs: dict[str, PipelineRun] = field(init=False, default_factory=dict)
+          running: set[str] = field(init=False, default_factory=set)
+          missing: set[str] = field(init=False, default_factory=set)
+          images: list[dict] = field(init=False, default_factory=list)
+          name: str = field(init=False, default=None)
+
+          def __post_init__(self):
+              self.components = {c.name: c for c in self._get_components()}
+              list(map(self.add_pr, (PipelineRun(name=name) for name in self.pr_names)))
+              list(map(self.add_pr, (PipelineRun(uid=uid) for uid in self.pr_uids)))
+              self._gen_image_list()
+              # Remove components with running PipelineRuns from the "missing" list
+              self.missing -= self.running
+
+          def _get_components(self):
+              output = run(
+                  [
+                      "./oc",
+                      "get",
+                      "-o",
+                      "jsonpath={range .items[*]}"
+                      '{.metadata.name} {.spec.source.git.url} {.spec.source.git.dockerfileUrl}{"\\n"}'
+                      "{end}",
+                      "component",
+                  ]
+              )
+              for line in output.splitlines():
+                  if not line:
+                      continue
+                  tokens = line.split()
+                  if len(tokens) != 3:
+                      raise ValueError(f"Invalid line in component output: {line}")
+                  yield Component(*tokens)
+
+          @property
+          def pr_names(self):
+              output = run(
+                  [
+                      "./oc",
+                      "get",
+                      "pipelinerun",
+                      "-o",
+                      "name",
+                      "-l",
+                      "pipelines.appstudio.openshift.io/type=build,"
+                      "pipelinesascode.tekton.dev/event-type=push,"
+                      f"pipelinesascode.tekton.dev/sha={self.commit_sha}",
+                  ]
+              )
+              for line in output.splitlines():
+                  yield line
+
+          @property
+          def pr_uids(self):
+              output = run(
+                  [
+                      "./opc",
+                      "-k",
+                      os.environ["OPCCONFIG"],
+                      "results",
+                      "pipelinerun",
+                      "list",
+                      "--limit",
+                      "1000",
+                      "-L",
+                      "pipelines.appstudio.openshift.io/type=build,"
+                      "pipelinesascode.tekton.dev/event-type=push,"
+                      f"pipelinesascode.tekton.dev/sha={self.commit_sha}",
+                  ]
+              )
+              for line in output.splitlines():
+                  if not line:
+                      continue
+                  if line == "No PipelineRuns found":
+                      return
+                  tokens = line.split()
+                  if tokens[0] == "NAME":
+                      # Skip header
+                      continue
+                  yield tokens[1]
+
+          def add_pr(self, pr):
+              if not pr.valid:
+                  if pr.running:
+                      self.running.add(pr.component)
+                  else:
+                      perror(f"{pr.name} has status {pr.status}")
+                  return
+              if current_pr := self.prs.get(pr.component):
+                  if current_pr.name == pr.name:
+                      # The same PipelineRun can be returned by oc (Tekton) and opc (Tekton Results)
+                      return
+                  if current_pr.is_newer_than(pr):
+                      perror(
+                          f"{current_pr.name} (started {current_pr.creation_time}) is newer than "
+                          f"{pr.name} (started {pr.creation_time}), ignoring"
+                      )
+                      return
+                  perror(
+                      f"Replacing {current_pr.name} (started {current_pr.creation_time}) with "
+                      f"{pr.name} (started {pr.creation_time})"
+                  )
+              self.prs[pr.component] = pr
+
+          @property
+          def ready(self):
+              return bool(self.images and not (self.running or self.missing))
+
+          def _gen_image_list(self):
+              for name, comp in self.components.items():
+                  if name in self.skip:
+                      continue
+                  pr = self.prs.get(name)
+                  if not pr:
+                      self.missing.add(name)
+                      continue
+                  self.images.append(
+                      {
+                          "containerImage": pr.digest_url,
+                          "name": name,
+                          "source": {
+                              "git": {
+                                  "url": comp.url,
+                                  "dockerfileUrl": comp.dockerfileUrl,
+                                  "revision": self.commit_sha,
+                              },
+                          },
+                      }
+                  )
+
+          @property
+          def release_tags(self):
+              """
+              Convert a tag like "v0.1.2" into a list of tags like ["0.1", "0.1.2"].
+              If self.latest is true, include "latest".
+              """
+              if not self.tag:
+                  return
+              tokens = self.tag.lstrip("v").split(".")
+              if len(tokens) < 2:
+                  raise ValueError(f"Invalid tag: {self.tag}")
+              for end in list(range(len(tokens), 1, -1)):
+                  yield ".".join(tokens[:end])
+              if self.latest:
+                  yield "latest"
+
+          def generate(self):
+              if not self.ready:
+                  raise RuntimeError(f"Snapshot for {self.commit_sha} is not ready")
+              repo_url = "https://github.com/containers/ramalama"
+              # A Snapshot will trigger an integration test with the "push" context if either the
+              # pac.test.appstudio.openshift.io/event-type or pac.test.appstudio.openshift.io/pull-request
+              # labels are missing. Set them to dummy values below to avoid triggering an infinite loop
+              # of PipelineRuns. See: https://issues.redhat.com/browse/KFLUXSPRT-4979
+              snapshot = {
+                  "apiVersion": "appstudio.redhat.com/v1alpha1",
+                  "kind": "Snapshot",
+                  "metadata": {
+                      "namespace": self.namespace,
+                      "generateName": "ramalama-release-",
+                      "annotations": {
+                          "build.appstudio.openshift.io/repo": f"{repo_url}?rev={self.commit_sha}",
+                          "build.appstudio.redhat.com/commit_sha": self.commit_sha,
+                          "pac.test.appstudio.openshift.io/branch": "main",
+                          "pac.test.appstudio.openshift.io/cancel-in-progress": "false",
+                          "pac.test.appstudio.openshift.io/repo-url": repo_url,
+                          "pac.test.appstudio.openshift.io/repository": "ramalama",
+                          "pac.test.appstudio.openshift.io/sha": self.commit_sha,
+                          "pac.test.appstudio.openshift.io/url-org": "containers",
+                          "pac.test.appstudio.openshift.io/url-repository": "ramalama",
+                          "test.appstudio.openshift.io/source-repo-url": repo_url,
+                      },
+                      "labels": {
+                          "appstudio.openshift.io/application": "ramalama",
+                          "pac.test.appstudio.openshift.io/sha": self.commit_sha,
+                          "pac.test.appstudio.openshift.io/cancel-in-progress": "false",
+                          "pac.test.appstudio.openshift.io/event-type": "override",
+                          "pac.test.appstudio.openshift.io/pull-request": "",
+                          "pac.test.appstudio.openshift.io/repository": "ramalama",
+                          "pac.test.appstudio.openshift.io/url-org": "containers",
+                          "pac.test.appstudio.openshift.io/url-repository": "ramalama",
+                          "test.appstudio.openshift.io/type": "override",
+                      },
+                  },
+                  "spec": {
+                      "application": "ramalama",
+                      "artifacts": {},
+                      "components": self.images,
+                  },
+              }
+              if self.event_type != "push":
+                  # It's safe to set the event-type label without causing an infinite loop
+                  snapshot["metadata"]["labels"]["pac.test.appstudio.openshift.io/event-type"] = self.event_type
+              if self.tag:
+                  if self.event_type != "push":
+                      raise ValueError('tag may only be specified for "push" events')
+                  snapshot["metadata"]["annotations"]["custom.appstudio.openshift.io/release-tags"] = " ".join(self.release_tags)
+                  snapshot["metadata"]["generateName"] += "tag-"
+              return snapshot
+
+          def create(self):
+              output = run(["./oc", "create", "-f", "-"], input=json.dumps(self.generate()))
+              print(output)
+              self.name = output.split()[0].split("/")[-1]
+
+          @property
+          def test_output(self):
+              successes = len(self.images)
+              if self.ready:
+                  note = (
+                      f"{"Created" if self.name else "Would create"} override Snapshot "
+                      f"{self.name if self.name else "ramalama-release-<rand>"} with "
+                      f"{successes} Components for commit {self.commit_sha}"
+                  )
+                  if self.tag:
+                      note = f"{note} (tag {self.tag})"
+              else:
+                  note = f"Unable to create override Snapshot for commit {self.commit_sha}"
+                  if self.running:
+                      note = f"{note}, {len(self.running)} PipelineRuns in progress"
+                  if self.missing:
+                      note = f"{note}, {len(self.missing)} Components without a successful build"
+              output = {
+                  "result": "SUCCESS" if self.ready else "SKIPPED",
+                  "note": note,
+                  "successes": successes,
+                  "failures": len(self.missing),
+                  "warnings": len(self.running),
+              }
+              return output
+
+
+      def main():
+          commit_sha = os.environ.get("COMMIT_SHA")
+          if not commit_sha:
+              msg = "COMMIT_SHA environment variable must be defined"
+              perror(msg)
+              write_test_output("SKIPPED", msg, warnings=1)
+              return
+
+          if not os.path.exists("oc"):
+              install_util(OC_URL)
+          if not os.path.exists("opc"):
+              install_util(OPC_URL)
+          configure_opc()
+
+          snapshot = Snapshot(
+              commit_sha=commit_sha,
+              event_type=os.environ.get("EVENT_TYPE"),
+              tag=os.environ.get("TAG"),
+              latest=env_true("LATEST"),
+              skip=os.environ.get("SKIP_COMPONENTS", "").split(),
+              namespace=os.environ.get("NAMESPACE"),
+          )
+
+          if snapshot.ready:
+              if env_true("DRY_RUN"):
+                  pprint(snapshot.generate())
+              else:
+                  snapshot.create()
+
+          report = snapshot.test_output
+          perror(report["note"])
+          write_test_output(**report)
+
+
+      if __name__ == "__main__":
+          main()

@@ -5,6 +5,8 @@ metadata:
 spec:
   description: |
     Test the newly-built ramalama image and layered images on all supported architectures.
+    If the tests succeed, push the images to the public repos. If the tests were triggered by
+    pushing a tag to the git repo, apply floating tags to the pushed images.
   params:
   - name: SNAPSHOT
     description: >-
@@ -85,6 +87,10 @@ spec:
       value: $(params.SNAPSHOT)
     - name: event-type
       value: $(tasks.init.results.event-type)
+    - name: snapshot-type
+      value: $(tasks.init.results.snapshot-type)
+    - name: release-tags
+      value: $(tasks.init.results.release-tags)
     - name: sync
       value: $(tasks.init.results.sync)
     - name: repo-prefix

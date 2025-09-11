@@ -1,0 +1,40 @@
+kind: Pipeline
+apiVersion: tekton.dev/v1
+metadata:
+  name: create-release-snapshot
+spec:
+  description: |
+    Check if all builds associated with the given commit are complete. If they are, create an override Snapshot
+    to test all the images together.
+  params:
+  - name: SNAPSHOT
+    description: >-
+      Information about the components included in the current snapshot under test.
+    default: ""
+  - name: skip-components
+    description: A space-separated list of components that should not be pushed
+    default: ""
+  - name: git-url
+    description: URL of the Git repository containing pipeline and task definitions
+    default: https://github.com/containers/ramalama.git
+  - name: git-revision
+    description: Revision of the Git repository containing pipeline and task definitions
+    default: main
+  results:
+  - name: TEST_OUTPUT
+    description: Test results in JSON format
+    value: $(tasks.create.results.TEST_OUTPUT)
+  tasks:
+  - name: create
+    params:
+    - name: skip
+      value: $(params.skip-components)
+    taskRef:
+      resolver: git
+      params:
+      - name: url
+        value: $(params.git-url)
+      - name: revision
+        value: $(params.git-revision)
+      - name: pathInRepo
+        value: .tekton/release/tasks/create-override-snapshot.yaml
