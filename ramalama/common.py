@@ -93,14 +93,14 @@ def handle_provider(machine, config: Config | None = None) -> bool | None:
 def apple_vm(engine: SUPPORTED_ENGINES, config: Config | None = None) -> bool:
     podman_machine_list = [engine, "machine", "list", "--format", "json", "--all-providers"]
     try:
-        machines_json = run_cmd(podman_machine_list, ignore_stderr=True).stdout.decode("utf-8").strip()
+        machines_json = run_cmd(podman_machine_list, ignore_stderr=True, encoding="utf-8").stdout.strip()
         machines = json.loads(machines_json)
         for machine in machines:
             result = handle_provider(machine, config)
             if result is not None:
                 return result
-    except subprocess.CalledProcessError:
-        pass
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+        logger.warning(f"Failed to list and parse podman machines: {e}")
     return False
 
 
@@ -232,7 +232,7 @@ def genname():
 def engine_version(engine: SUPPORTED_ENGINES) -> str:
     # Create manifest list for target with imageid
     cmd_args = [str(engine), "version", "--format", "{{ .Client.Version }}"]
-    return run_cmd(cmd_args).stdout.decode("utf-8").strip()
+    return run_cmd(cmd_args, encoding="utf-8").stdout.strip()
 
 
 class CDI_DEVICE(TypedDict):
@@ -381,7 +381,7 @@ def check_nvidia() -> Literal["cuda"] | None:
 def check_ascend() -> Literal["cann"] | None:
     try:
         command = ['npu-smi', 'info']
-        run_cmd(command).stdout.decode("utf-8")
+        run_cmd(command, encoding="utf-8")
         os.environ["ASCEND_VISIBLE_DEVICES"] = "0"
         return "cann"
     except Exception:
@@ -451,7 +451,7 @@ def check_intel() -> Literal["intel"] | None:
 def check_mthreads() -> Literal["musa"] | None:
     try:
         command = ['mthreads-gmi']
-        run_cmd(command).stdout.decode("utf-8")
+        run_cmd(command, encoding="utf-8")
         os.environ["MUSA_VISIBLE_DEVICES"] = "0"
         return "musa"
     except Exception:
@@ -551,7 +551,7 @@ def check_cuda_version() -> tuple[int, int]:
     try:
         # Run nvidia-smi --version to get version info
         command = ['nvidia-smi']
-        output = run_cmd(command).stdout.decode("utf-8").strip()
+        output = run_cmd(command, encoding="utf-8").stdout.strip()
 
         # Look for CUDA Version in the output
         cuda_match = re.search(r'CUDA Version\s*:\s*(\d+)\.(\d+)', output)
