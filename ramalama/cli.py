@@ -27,6 +27,7 @@ from ramalama import engine
 from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import CONFIG, coerce_to_bool, load_file_config
+from ramalama.endian import EndianMismatchError
 from ramalama.logger import configure_logger, logger
 from ramalama.model import (
     MODEL_TYPES,
@@ -625,6 +626,12 @@ def pull_parser(subparsers):
         dest="tlsverify",
         default=True,
         help="require HTTPS and verify certificates when contacting registries",
+    )
+    parser.add_argument(
+        "--verify",
+        default=CONFIG.verify,
+        action=CoerceToBool,
+        help="verify the model after pull, disable to allow pulling of models with different endianness",
     )
     parser.add_argument("MODEL", completer=suppressCompleter)  # positional argument
     parser.set_defaults(func=pull_cli)
@@ -1427,6 +1434,8 @@ def main():
         eprint(e, errno.ENOSYS)
     except subprocess.CalledProcessError as e:
         eprint(e, e.returncode)
+    except EndianMismatchError:
+        sys.exit(1)
     except KeyboardInterrupt:
         sys.exit(0)
     except IOError as e:

@@ -106,6 +106,7 @@ class BaseConfig:
     threads: int = -1
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
+    verify: bool = True
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
@@ -189,7 +190,7 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     if 'images' in config:
         config['images'] = json.loads(config['images'])
 
-    for key in ['ocr', 'keep_groups', 'container']:
+    for key in ['ocr', 'keep_groups', 'container', 'verify']:
         if key in config:
             config[key] = coerce_to_bool(config[key])
 

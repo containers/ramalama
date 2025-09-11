@@ -1,5 +1,5 @@
 import tempfile
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -43,7 +43,7 @@ class OllamaRepositoryMock(OllamaRepository):
         return [LocalSnapshotFile("dummy content", "dummy", SnapshotFileType.Other)]
 
 
-def test_ollama_model_pull(ollama_model, args):
+def test_ollama_model_pull(ollama_model):
     args.quiet = True
     with patch("ramalama.ollama.OllamaRepository", return_value=OllamaRepositoryMock("dummy-model")):
-        ollama_model.pull(args)
+        ollama_model.pull(Mock(verify=True))

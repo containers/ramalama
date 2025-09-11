@@ -104,7 +104,7 @@ class URL(Model):
 
         return files
 
-    def pull(self, _) -> None:
+    def pull(self, args) -> None:
         name, tag, _ = self.extract_model_identifiers()
         _, _, all_files = self.model_store.get_cached_files(tag)
         if all_files:
@@ -122,12 +122,12 @@ class URL(Model):
                     required=True,
                 )
             )
-            self.model_store.new_snapshot(tag, snapshot_hash, files)
+            self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
             return
 
         if is_split_file_model(self.model):
             files = self._assemble_split_file_list(snapshot_hash)
-            self.model_store.new_snapshot(tag, snapshot_hash, files)
+            self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
             return
 
         files.append(
@@ -141,5 +141,5 @@ class URL(Model):
                 required=True,
             )
         )
-        self.model_store.new_snapshot(tag, snapshot_hash, files)
+        self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
         return

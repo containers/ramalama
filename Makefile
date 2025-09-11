@@ -177,7 +177,7 @@ bats-image:
 	podman inspect $(BATS_IMAGE) &> /dev/null || \
 		podman build -t $(BATS_IMAGE) -f container-images/bats/Containerfile .
 
-bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun --device /dev/fuse
+bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
 
 %-in-container: bats-image
 	podman run -it --rm \
@@ -185,6 +185,7 @@ bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/
 		--security-opt label=disable \
 		--security-opt=mask=/sys/bus/pci/drivers/i915 \
 		$(extra-opts) \
+		-v /tmp \
 		-v $(CURDIR):/src \
 		$(BATS_IMAGE) make $*
 
