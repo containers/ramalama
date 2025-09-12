@@ -126,7 +126,7 @@ EOF
 }
 
 @test "ramalama run with prompt" {
-    run_ramalama run --temp 0 $(test_model ${MODEL} granite-be-3.3:2b) "What is the first line of the declaration of independence?"
+    run_ramalama run --temp 0 $(test_model ${MODEL}) "What is the first line of the declaration of independence?"
 }
 
 @test "ramalama run --keepalive" {

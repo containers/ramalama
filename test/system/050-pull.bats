@@ -180,8 +180,8 @@ load setup_suite
     if is_bigendian; then
         skip "Testing pulls of opposite-endian models"
     fi
-    run_ramalama rm --ignore granite-be-3.0:1b
-    run_ramalama 1 pull --verify=on granite-be-3.0:1b
+    run_ramalama rm --ignore stories-be:260k
+    run_ramalama 1 pull --verify=on stories-be:260k
     is "$output" ".*Endian mismatch of host (LITTLE) and model (BIG).*" "detected big-endian model"
 }
 
