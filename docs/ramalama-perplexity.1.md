@@ -156,6 +156,10 @@ The default is to use half the cores available on this system for the number of 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
 
+#### **--tool**
+Enable tool calling functionality for the model. When enabled, the model can invoke
+external tools and functions during perplexity calculations. (default: enabled)
+
 ## DESCRIPTION
 Calculate the perplexity of an AI Model. Perplexity measures how well the model can predict the next token with lower values being better.
 

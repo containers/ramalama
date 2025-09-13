@@ -234,6 +234,10 @@ The default is to use half the cores available on this system for the number of 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
 
+#### **--tool**
+Enable tool calling functionality for the served model. When enabled, the model can invoke
+external tools and functions during API requests. (default: enabled)
+
 #### **--webui**=*on* | *off*
 Enable or disable the web UI for the served model (enabled by default). When set to "on" (the default), the web interface is properly initialized. When set to "off", the `--no-webui` option is passed to the llama-server command to disable the web interface.
 
