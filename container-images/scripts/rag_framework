@@ -195,9 +195,10 @@ class Rag(cmd.Cmd):
         # Collect the AI response and add it to chat history
         full_response = ""
         for chunk in response:
-            if chunk.choices[0].delta.content:
-                full_response += chunk.choices[0].delta.content
-                print(chunk.choices[0].delta.content, end="", flush=True)
+            if chunk.choices and chunk.choices[0].delta.content:
+                content = chunk.choices[0].delta.content
+                full_response += content
+                print(content, end="", flush=True)
 
         # Add AI response to chat history
         self.chat_history.append({"role": "assistant", "content": full_response})
