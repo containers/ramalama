@@ -433,6 +433,7 @@ spec:
                           "pac.test.appstudio.openshift.io/repo-url": repo_url,
                           "pac.test.appstudio.openshift.io/repository": "ramalama",
                           "pac.test.appstudio.openshift.io/sha": self.commit_sha,
+                          "pac.test.appstudio.openshift.io/source-repo-url": repo_url,
                           "pac.test.appstudio.openshift.io/url-org": "containers",
                           "pac.test.appstudio.openshift.io/url-repository": "ramalama",
                           "test.appstudio.openshift.io/source-repo-url": repo_url,
