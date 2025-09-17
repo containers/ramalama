@@ -62,7 +62,7 @@ jobs:
            sudo chown runner:runner /mnt/runner /home/runner/.local
            sudo mount --bind /mnt/runner /home/runner/.local
            # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
            sudo apt-get purge firefox
@@ -95,7 +95,7 @@ jobs:
         run: |
            set -e
            # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
            sudo apt-get purge firefox
@@ -136,7 +136,7 @@ jobs:
         run: |
            set -e
            # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
            sudo apt-get purge firefox
@@ -174,7 +174,7 @@ jobs:
         run: |
            set -e
            # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
            sudo apt-get purge firefox
@@ -209,7 +209,7 @@ jobs:
         run: |
            set -e
            # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu oracular universe"
+           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
            sudo apt-get purge firefox
