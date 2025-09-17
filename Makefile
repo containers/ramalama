@@ -10,8 +10,7 @@ PATH := $(PATH):$(HOME)/.local/bin
 MYPIP ?= pip
 IMAGE ?= ramalama
 PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" --exclude-dir={.venv,venv} $(PROJECT_DIR) || true)
-PYTEST_COMMON_CMD ?= PYTHONPATH=. pytest test/unit/ -vv
+PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" --exclude-dir={.venv,venv,.tox} $(PROJECT_DIR) || true)
 BATS_IMAGE ?= localhost/bats:latest
 
 default: help
@@ -42,13 +41,6 @@ help:
 	@echo
 	@echo "  - make clean"
 	@echo
-
-install-detailed-cov-requirements:
-	${MYPIP} install ".[cov-detailed]"
-
-.PHONY: install-cov-requirements
-install-cov-requirements:
-	${MYPIP} install ".[cov]"
 
 .PHONY: install-uv
 install-uv:
@@ -193,30 +185,30 @@ bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/
 ci:
 	test/ci.sh
 
+.PHONY: requires-tox
+requires-tox:
+	@command -v tox >/dev/null 2>&1 || ${MYPIP} install tox
+
 .PHONY: unit-tests
-unit-tests:
-	$(PYTEST_COMMON_CMD)
+unit-tests: requires-tox
+	tox
 
 .PHONY: unit-tests-verbose
-unit-tests-verbose:
-	$(PYTEST_COMMON_CMD) --full-trace --capture=tee-sys
-
-.PHONY: cov-run
-cov-run: install-cov-requirements
-	PYTHONPATH=. coverage run -m pytest test/unit/
+unit-tests-verbose: requires-tox
+	tox -- --full-trace --capture=tee-sys
 
 .PHONY: cov-tests
-cov-tests: cov-run
-	PYTHONPATH=. coverage report
+cov-tests: requires-tox
+	tox -- --cov
 
 .PHONY: detailed-cov-tests
-detailed-cov-tests: install-detailed-cov-requirements cov-run
-	PYTHONPATH=. coverage report -m
-	PYTHONPATH=. coverage html
-	PYTHONPATH=. coverage json
-	PYTHONPATH=. coverage lcov
-	PYTHONPATH=. coverage xml
+detailed-cov-tests: requires-tox
+	tox -e coverage
 
+.PHONY: e2e-tests
+e2e-tests: requires-tox
+	# This makefile target runs the new e2e-tests pytest based
+	tox -e e2e
 
 .PHONY: end-to-end-tests
 end-to-end-tests: validate bats bats-nocontainer ci
