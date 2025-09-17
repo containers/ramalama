@@ -16,8 +16,10 @@ venv/
 __pycache__/
 .aider*
 .coverage
+coverage/
 coverage.*
 htmlcov/
 .idea/
 .hypothesis/
 uv.lock
+.tox

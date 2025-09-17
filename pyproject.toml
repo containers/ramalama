@@ -45,6 +45,7 @@ dev = [
     "wheel~=0.45.0",
     "mypy",
     "pyyaml",
+    "tox"
 ]
 
 cov = [
@@ -87,10 +88,10 @@ extend-exclude = "(.history|build|dist|docs|hack)"
 [tool.isort]
 profile = "black"
 line_length = 120
-skip = [".venv", "venv"]
+skip = [".venv", "venv", ".tox"]
 
 [tool.codespell]
-skip = ["build", "ramalama.egg-info", "logos", ".git", "venv", ".venv"]
+skip = ["build", "ramalama.egg-info", "logos", ".git", "venv", ".venv", ".tox"]
 dictionary = ".codespelldict"
 ignore-words-list = [
   "assertin",
@@ -124,13 +125,16 @@ exclude = [
 preview = true
 quote-style = "preserve"
 
-[tool.pytest.ini_options]
-testpaths = ["."]
-log_cli = true
-log_cli_level = "WARN"
-log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
-log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+[tool.coverage]
+html.directory = "coverage/html"
+xml.output = "coverage/coverage.xml"
+json.output = "coverage/coverage.json"
+lcov.output = "coverage/coverage.lcov"
 
+[tool.pytest.ini_options]
+testpaths = ["test"]
+markers = ["e2e", "distro_integration"]
+addopts = "-m 'not e2e' --color=yes"
 
 [tool.setuptools.packages.find]
 include = ["ramalama", "ramalama.*"]
@@ -144,3 +148,50 @@ include = ["ramalama", "ramalama.*"]
 "share/zsh/site-functions" = ["completions/zsh/site-functions/*"]
 "share/fish/vendor_completions.d" = ["completions/fish/vendor_completions.d/*"]
 
+[tool.tox]
+
+[tool.tox.env_run_base]
+package = "wheel"
+extras = ["dev", "cov"]
+pass_env = [
+  "GITHUB_ACTIONS",
+]
+commands = [
+  [
+    "pytest",
+    "-vvv",
+    "--tb=short",
+    "--basetemp={envtmpdir}",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[tool.tox.env.e2e]
+commands = [
+  [
+    "pytest",
+    "-m", "e2e",
+    "-vvv",
+    "--basetemp={envtmpdir}",
+    "--tb=short",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[tool.tox.env.coverage]
+extras = ["dev", "cov", "cov-detailed"]
+commands = [
+  [
+    "pytest",
+    "-vvv",
+    "--cov",
+    "--cov-report=xml",
+    "--cov-report=html",
+    "--cov-report=json",
+    "--cov-report=lcov",
+    "--cov-report=term",
+    "--tb=short",
+    "--basetemp={envtmpdir}",
+    { replace = "posargs", extend = true },
+  ],
+]
