@@ -1,6 +1,7 @@
 import os
 import platform
 import shutil
+import sys
 
 import pytest
 
@@ -49,6 +50,13 @@ def container_engine(request):
     return ramalama_container_engine
 
 
+@pytest.fixture()
+def test_model():
+    # Use different models for little-endian (e.g. x86_64, aarch64) and
+    # big-endian (e.g. s390x) architectures.
+    return "smollm:135m" if sys.byteorder == "little" else "stories-be:260k"
+
+
 skip_if_no_container = pytest.mark.skipif("not config.option.container", reason="no container mode is enabled")
 skip_if_container = pytest.mark.skipif("config.option.container", reason="container mode is enabled")
 skip_if_docker = pytest.mark.skipif(
@@ -65,3 +73,5 @@ skip_if_gh_actions_darwin = pytest.mark.skipif(
 skip_if_no_huggingface_cli = pytest.mark.skipif(
     shutil.which("huggingface-cli") is None, reason="huggingface-cli not installed"
 )
+
+skip_if_no_llama_bench = pytest.mark.skipif(shutil.which("llama-bench") is None, reason="llama-bench not installed")
