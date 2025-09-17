@@ -184,7 +184,7 @@ services:
 
 def genfile(name: str, content: str) -> PlainFile:
     file_name = "docker-compose.yaml"
-    print(f"Generating Docker Compose file: {file_name}")
+    print(f"Generating Compose YAML file: {file_name}")
 
     file = PlainFile(file_name)
     file.content = content

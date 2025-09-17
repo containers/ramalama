@@ -200,7 +200,7 @@ def test_compose_genfile(monkeypatch):
 
     assert result.filename == "docker-compose.yaml"
     assert result.content == content
-    assert printed_output == ["Generating Docker Compose file: docker-compose.yaml"]
+    assert printed_output == ["Generating Compose YAML file: docker-compose.yaml"]
 
 
 def test_genfile_empty_content(monkeypatch):
@@ -215,7 +215,7 @@ def test_genfile_empty_content(monkeypatch):
 
     assert result.filename == "docker-compose.yaml"
     assert result.content == ""
-    assert printed_output == ["Generating Docker Compose file: docker-compose.yaml"]
+    assert printed_output == ["Generating Compose YAML file: docker-compose.yaml"]
 
 
 def test_compose_no_port_arg(monkeypatch):

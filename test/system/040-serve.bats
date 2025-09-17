@@ -444,6 +444,43 @@ verify_begin=".*run --rm"
     rm /tmp/$name.yaml
 }
 
+@test  "ramalama serve --generate=compose" {
+    model="smollm:135m"
+    name="docker-compose"
+    run_ramalama pull $model
+    run_ramalama serve --name=$name --port 1234 --generate=compose $model
+    is "$output" ".*Generating Compose YAML file: ${name}.yaml" "generate .yaml file"
+
+    run cat $name.yaml
+    is "$output" ".*command: .*serve.*" "Should contain serve command"
+    is "$output" ".*ports:" "Should contain ports section"
+    is "$output" ".*- \"1234:1234\"" "Should map the container port"
+
+    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=compose $model
+    is "$output" ".*Generating Compose YAML file: ${name}.yaml" "generate .yaml file"
+
+    run cat $name.yaml
+    is "$output" ".*environment:" "Should contain environment section"
+    is "$output" ".*- HIP_VISIBLE_DEVICES=99" "Should contain the HIP_VISIBLE_DEVICES env var"
+
+    rm $name.yaml
+}
+
+@test "ramalama serve --generate=compose:/tmp" {
+    model=tiny
+    name="docker-compose"
+    run_ramalama pull ${model}
+    run_ramalama serve --name=$name --port 1234 --generate=compose:/tmp ${model}
+    is "$output" ".*Generating Compose YAML file: ${name}.yaml" "generate .yaml file in /tmp"
+
+    run cat /tmp/$name.yaml
+    is "$output" ".*command: .*serve.*" "Should contain serve command"
+    is "$output" ".*ports:" "Should contain ports section"
+    is "$output" ".*- \"1234:1234\"" "Should map the container port correctly"
+
+    rm /tmp/$name.yaml
+}
+
 @test "ramalama serve --api llama-stack" {
     skip_if_docker
     skip_if_nocontainer
