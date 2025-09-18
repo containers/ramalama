@@ -1,18 +1,24 @@
 import json
 from dataclasses import dataclass
+from typing import TypedDict
 
 from ramalama.config import BaseConfig
 from ramalama.daemon.dto.errors import MissingArgumentError
 
 
-@dataclass
-class ServeRequest:
-
+class ServeRequestDict(TypedDict):
     model_name: str
     runtime: str
     exec_args: dict[str, str]
 
-    def to_dict(self) -> dict:
+
+@dataclass
+class ServeRequest:
+    model_name: str
+    runtime: str
+    exec_args: dict[str, str]
+
+    def to_dict(self) -> ServeRequestDict:
         return {
             "model_name": self.model_name,
             "runtime": self.runtime,
@@ -67,13 +73,17 @@ class ServeRequest:
         )
 
 
-@dataclass
-class ServeResponse:
-
+class ServeResponseDict(TypedDict):
     model_id: str
     serve_path: str
 
-    def to_dict(self) -> dict:
+
+@dataclass
+class ServeResponse:
+    model_id: str
+    serve_path: str
+
+    def to_dict(self) -> ServeResponseDict:
         return {
             "model_id": self.model_id,
             "serve_path": self.serve_path,
@@ -83,9 +93,12 @@ class ServeResponse:
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
+class StopServeRequestDict:
+    model_name: str
+
+
 @dataclass
 class StopServeRequest:
-
     model_name: str
 
     @staticmethod
@@ -98,7 +111,7 @@ class StopServeRequest:
 
         return StopServeRequest(model_name=model_name)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> StopServeRequestDict:
         return {
             "model_name": self.model_name,
         }

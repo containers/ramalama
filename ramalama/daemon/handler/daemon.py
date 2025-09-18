@@ -146,7 +146,7 @@ class DaemonAPIHandler(APIHandler):
             transport=CONFIG.transport,
         ).create()
 
-        mid = generate_model_id(model.model_name, model.model_tag, model.model_organization)
+        mid = generate_model_id(model)
         self.model_runner.stop_model(mid)
 
         handler.send_response(200)
