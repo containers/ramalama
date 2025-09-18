@@ -177,6 +177,7 @@ spec:
           name: str = None
           component: str = field(init=False)
           creation_time: dt = field(init=False)
+          event_type: str = field(init=False)
           status: str = field(init=False)
           image_url: str = field(init=False)
           image_digest: str = field(init=False)
@@ -219,6 +220,7 @@ spec:
               self.name = pr["metadata"]["name"]
               self.component = pr["metadata"]["labels"]["appstudio.openshift.io/component"]
               self.creation_time = dt.fromisoformat(pr["metadata"]["creationTimestamp"])
+              self.event_type = pr["metadata"]["labels"]["pipelinesascode.tekton.dev/event-type"]
               last_cond = pr["status"]["conditions"][0]
               if last_cond["type"] == "Succeeded":
                   if (status := last_cond["status"]) == "True":
@@ -249,8 +251,12 @@ spec:
               return bool(self.image_url and self.image_digest)
 
           @property
+          def is_allowed_event(self):
+              return self.event_type in ("push", "incoming")
+
+          @property
           def valid(self):
-              return bool(self.succeeded and self.has_results)
+              return bool(self.succeeded and self.has_results and self.is_allowed_event)
 
           def is_newer_than(self, pr):
               return self.creation_time > pr.creation_time
@@ -310,7 +316,6 @@ spec:
                       "name",
                       "-l",
                       "pipelines.appstudio.openshift.io/type=build,"
-                      "pipelinesascode.tekton.dev/event-type=push,"
                       f"pipelinesascode.tekton.dev/sha={self.commit_sha}",
                   ]
               )
@@ -331,7 +336,6 @@ spec:
                       "1000",
                       "-L",
                       "pipelines.appstudio.openshift.io/type=build,"
-                      "pipelinesascode.tekton.dev/event-type=push,"
                       f"pipelinesascode.tekton.dev/sha={self.commit_sha}",
                   ]
               )
