@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.6-1756915113
+FROM registry.access.redhat.com/ubi9/ubi:9.6-1758184894
 
 # Install Python development dependencies
 RUN dnf install -y python3-devel wget compat-openssl11 python3-jinja2 python3-markupsafe
