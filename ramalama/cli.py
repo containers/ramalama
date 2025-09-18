@@ -892,6 +892,13 @@ If GPU device on host is accessible to via group access, this option leaks the u
         help="enable/disable thinking mode in reasoning models",
         action=CoerceToBool,
     )
+    if command in ["run", "serve"]:
+        parser.add_argument(
+            "--default-template",
+            dest="default_template",
+            action="store_true",
+            help="use the default chat template instead of model-specific chat template files",
+        )
     parser.add_argument(
         "--oci-runtime",
         help="override the default OCI runtime used to launch the container",
