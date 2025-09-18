@@ -3,10 +3,10 @@ import re
 import shutil
 
 from ramalama.common import SPLIT_MODEL_PATH_RE, generate_sha256, is_split_file_model
-from ramalama.huggingface import HuggingfaceRepository
 from ramalama.model import Model
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
-from ramalama.modelscope import ModelScopeRepository
+from ramalama.transports.huggingface import HuggingfaceRepository
+from ramalama.transports.modelscope import ModelScopeRepository
 
 
 class LocalModelFile(SnapshotFile):

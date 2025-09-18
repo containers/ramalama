@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import pytest
 
 from ramalama.model_store.snapshot_file import SnapshotFile
-from ramalama.url import URL
+from ramalama.transports.url import URL
 
 
 @dataclass

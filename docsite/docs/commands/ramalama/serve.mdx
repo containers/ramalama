@@ -23,6 +23,7 @@ registry if it does not exist in local storage.
 | ModelScope    | modelscope://, ms:// | [`modelscope.cn`](https://modelscope.cn/)|
 | Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)|
 | OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
+| rlcr          | rlcr://   | [`ramalama.com`](https://registry.ramalama.com/projects/ramalama) |
 |||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
 
 RamaLama defaults to the Ollama registry transport. This default can be overridden in the `ramalama.conf` file or via the RAMALAMA_TRANSPORTS
@@ -42,6 +43,18 @@ For REST API endpoint documentation, see:
 
 ## Options
 
+#### **--add-to-unit**
+
+format: --add-to-unit section:key:value
+
+Adds to the generated unit file (quadlet) in the section *section* the key *key* with the value *value*.
+
+Useful, for instance, to add environment variables to the generated unit file, or to place the container in a specific pod/network (Container:Network:xxx.network).
+
+**Only valid with *--generate* parameter.**
+
+Section, key and value are required and must be separated by colons.
+
 #### **--api**=**llama-stack** | none**
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
 The default can be overridden in the ramalama.conf file.
@@ -49,8 +62,11 @@ The default can be overridden in the ramalama.conf file.
 #### **--authfile**=*password*
 Path of the authentication file for OCI registries
 
+#### **--cache-reuse**=256
+Min chunk size to attempt reusing from the cache via KV shifting
+
 #### **--ctx-size**, **-c**
-size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 2048, 0 = loaded from model)
+size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 4096, 0 = loaded from model)
 
 #### **--detach**, **-d**
 Run the container in the background and print the new container ID.
@@ -66,6 +82,9 @@ write, and m for mknod(2).
 Example: --device=/dev/dri/renderD128:/dev/xvdc:rwm
 
 The device specification is passed directly to the underlying container engine. See documentation of the supported container engine for more information.
+
+Pass '--device=none' explicitly add no device to the container, eg for
+running a CPU-only performance comparison.
 
 #### **--dri**=*on* | *off*
 Enable or disable mounting `/dev/dri` into the container when running with `--api=llama-stack` (enabled by default). Use to prevent access to the host device when not required, or avoid errors in environments where `/dev/dri` is not available.
@@ -102,7 +121,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table above for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.11.1 of RamaLama pulls an image with a `:0.11` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.12.1 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -209,6 +228,9 @@ llama.cpp explains this as:
     The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
 	Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+
+#### **--thinking**=*true*
+Enable or disable thinking mode in reasoning models
 
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.
@@ -411,7 +433,7 @@ spec:
       - name: model-server
 	image: quay.io/ramalama/ramalama:0.8
 	command: ["llama-server"]
-	args: ['--port', '8081', '--model', '/mnt/models/model.file', '--alias', 'quay.io/rhatdan/granite:latest', '--ctx-size', 2048, '--temp', '0.8', '--jinja', '--cache-reuse', '256', '-v', '--threads', 16, '--host', '127.0.0.1']
+	args: ['--port', '8081', '--model', '/mnt/models/model.file', '--alias', 'quay.io/rhatdan/granite:latest', '--temp', '0.8', '--jinja', '--cache-reuse', '256', '-v', '--threads', 16, '--host', '127.0.0.1']
 	securityContext:
 	  allowPrivilegeEscalation: false
 	  capabilities:

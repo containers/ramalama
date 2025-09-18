@@ -22,7 +22,6 @@ except Exception:
 
 
 import ramalama.chat as chat
-import ramalama.oci
 from ramalama import engine
 from ramalama.chat import default_prefix
 from ramalama.common import accel_image, get_accel, perror
@@ -39,7 +38,7 @@ from ramalama.model import (
 from ramalama.model_factory import ModelFactory, New
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
-from ramalama.rag import rag_image
+from ramalama.rag import rag_image, Rag
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack
 from ramalama.version import print_version, version
@@ -533,13 +532,11 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append(
-            {
-                "name": f"{model} (partial)" if is_partially_downloaded else model,
-                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-                "size": size_sum,
-            }
-        )
+        ret.append({
+            "name": f"{model} (partial)" if is_partially_downloaded else model,
+            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+            "size": size_sum,
+        })
 
     return ret
 
@@ -1306,7 +1303,7 @@ formatted files to be processed""",
 
 
 def rag_cli(args):
-    rag = ramalama.rag.Rag(args.DESTINATION)
+    rag = Rag(args.DESTINATION)
     rag.generate(args)
 
 
