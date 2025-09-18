@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-
-import pytest
 from ramalama.model_store.template_conversion import wrap_template_with_messages_loop
+
 
 class TestWrapTemplateWithMessagesLoop:
     """Test suite for the wrap_template_with_messages_loop function."""
@@ -160,10 +158,19 @@ class TestWrapTemplateWithMessagesLoop:
 
     def test_inline_template(self):
         """Test compact inline template."""
-        input_template = """{% if system %}<|system|>{{ system }}<|end|>{% endif %}{% if prompt %}<|user|>{{ prompt }}<|end|>{% endif %}<|assistant|>{{ response }}<|end|>"""
+        input_template = (
+            """{% if system %}<|system|>{{ system }}<|end|>{% endif %}"""
+            """{% if prompt %}<|user|>{{ prompt }}<|end|>{% endif %}"""
+            """<|assistant|>{{ response }}<|end|>"""
+        )
 
         result = wrap_template_with_messages_loop(input_template)
 
-        expected = """{% for message in messages %}{% if message.role == 'system' %}<|system|>{{ message.content }}<|end|>{% endif %}{% if message.role == 'user' %}<|user|>{{ message.content }}<|end|>{% endif %}{% endfor %}<|assistant|>{{ response }}<|end|>"""
+        expected = (
+            """{% for message in messages %}"""
+            """{% if message.role == 'system' %}<|system|>{{ message.content }}<|end|>{% endif %}"""
+            """{% if message.role == 'user' %}<|user|>{{ message.content }}<|end|>{% endif %}"""
+            """{% endfor %}<|assistant|>{{ response }}<|end|>"""
+        )
 
         assert result == expected

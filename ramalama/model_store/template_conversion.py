@@ -1,4 +1,5 @@
 from functools import singledispatchmethod
+
 from ramalama.model_store import go2jinja
 
 
@@ -44,7 +45,8 @@ def wrap_template_with_messages_loop(jinja_template: str) -> str:
     Wrap a flat-variable Jinja template with OpenAI messages loop.
 
     Input: {% if system %}...{% endif %}{% if prompt %}...{% endif %}
-    Output: {% for message in messages %}{% if message.role == 'system' %}...{% if message.role == 'user' %}...{% endfor %}
+    Output: {% for message in messages %}{% if message.role == 'system' %}...
+        {% if message.role == 'user' %}...{% endfor %}
     """
     # First, pull out the final assistant chunk if present
     split_point = jinja_template.rfind('<|assistant|>')
