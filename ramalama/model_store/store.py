@@ -20,6 +20,7 @@ from ramalama.model_store.snapshot_file import (
     SnapshotFileType,
     validate_snapshot_files,
 )
+from ramalama.model_store.template_conversion import convert_template
 
 
 def map_to_store_file_type(snapshot_type: SnapshotFileType) -> StoreFileType:
@@ -230,22 +231,15 @@ class ModelStore:
             with open(chat_template_file_path, "r") as template_file:
                 chat_template = template_file.read()
 
-            if not go2jinja.is_go_template(chat_template):
-                return True
-
-            try:
-                jinja_template = go2jinja.go_to_jinja(chat_template)
-            except Exception as ex:
-                logger.debug(f"Failed to convert Go Template to Jinja: {ex}")
+            normalized_template = convert_template(chat_template)
+            if normalized_template == chat_template:
                 return False
-            else:
-                files = [LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
-                self.update_snapshot(model_tag, snapshot_hash, files)
 
+            files = [LocalSnapshotFile(normalized_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
+            self.update_snapshot(model_tag, snapshot_hash, files)
             return True
 
     def _ensure_chat_template(self, model_tag: str, snapshot_hash: str):
-
         # Give preference to a chat template that has been specified in the file list
         # If it succeeds, then return. Otherwise continue and try to extract from model file
         if self._try_convert_existing_chat_template(model_tag, snapshot_hash):

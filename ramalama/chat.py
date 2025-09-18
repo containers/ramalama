@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from datetime import timedelta
+import urllib.response
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.common import perror
@@ -22,7 +23,7 @@ from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
 
 
-def res(response, color):
+def res(response: urllib.response.addinfourl, color: str) -> str:
     color_default = ""
     color_yellow = ""
     if (color == "auto" and should_colorize()) or color == "always":
@@ -158,10 +159,7 @@ class RamaLamaShell(cmd.Cmd):
         self.request_in_process = False
 
     def _make_request_data(self):
-        data = {
-            "stream": True,
-            "messages": self.conversation_history,
-        }
+        data = {"stream": True, "messages": self.conversation_history}
         if self.args.model is not None:
             data["model"] = self.args.model
 
