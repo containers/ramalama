@@ -10,9 +10,9 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import urllib.response
 from dataclasses import dataclass
 from datetime import timedelta
-import urllib.response
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.common import perror
