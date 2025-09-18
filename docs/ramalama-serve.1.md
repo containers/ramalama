@@ -102,6 +102,7 @@ Generate specified configuration format for running the AI Model as a service
 | quadlet      | Podman supported container definition for running AI Model under systemd |
 | kube         | Kubernetes YAML definition for running the AI Model as a service         |
 | quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
+| compose      | Compose YAML definition for running the AI Model as a service            |
 
 Optionally, an output directory for the generated files can be specified by
 appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
@@ -396,6 +397,30 @@ spec:
       - hostPath:
 	  path: /dev/dri
 	name: dri
+```
+
+### Generate Compose file
+```
+$ ramalama serve --name=my-smollm-server --port 1234 --generate=compose smollm:135m
+Generating Compose YAML file: docker-compose.yaml
+$ cat docker-compose.yaml
+version: '3.8'
+services:
+  my-smollm-server:
+    image: quay.io/ramalama/ramalama:latest
+    container_name: my-smollm-server
+    command: ramalama serve --host 0.0.0.0 --port 1234 smollm:135m
+    ports:
+      - "1234:1234"
+    volumes:
+      - ~/.local/share/ramalama/models/smollm-135m-instruct:/mnt/models/model.file:ro
+    environment:
+      - HOME=/tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+      - label=disable
 ```
 
 ### Generate a Llama Stack Kubernetes YAML file named MyLamaStack
