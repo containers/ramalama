@@ -647,9 +647,12 @@ class Model(ModelBase):
         else:
             exec_args += ["--jinja"]
 
-            chat_template_path = self._get_chat_template_path(args.container, args.generate, args.dryrun)
-            if chat_template_path is not None:
-                exec_args += ["--chat-template-file", chat_template_path]
+            # Add chat template unless using default template
+            use_default_template = getattr(args, 'default_template', False)
+            if not use_default_template:
+                chat_template_path = self._get_chat_template_path(args.container, args.generate, args.dryrun)
+                if chat_template_path is not None:
+                    exec_args += ["--chat-template-file", chat_template_path]
 
         if should_colorize():
             exec_args += ["--log-colors", "on"]
@@ -739,17 +742,28 @@ class Model(ModelBase):
     def generate_container_config(self, args, exec_args):
         # Get the blob paths (src) and mounted paths (dest)
         model_src_path = self._get_entry_model_path(False, False, args.dryrun)
-        chat_template_src_path = self._get_chat_template_path(False, False, args.dryrun)
         mmproj_src_path = self._get_mmproj_path(False, False, args.dryrun)
         model_dest_path = self._get_entry_model_path(True, True, args.dryrun)
-        chat_template_dest_path = self._get_chat_template_path(True, True, args.dryrun)
         mmproj_dest_path = self._get_mmproj_path(True, True, args.dryrun)
+        
+        # Get chat template paths unless using default template
+        use_default_template = getattr(args, 'default_template', False)
+        if use_default_template:
+            chat_template_src_path = None
+            chat_template_dest_path = None
+        else:
+            chat_template_src_path = self._get_chat_template_path(False, False, args.dryrun)
+            chat_template_dest_path = self._get_chat_template_path(True, True, args.dryrun)
+
+        # Prepare chat template paths tuple or None
+        chat_template_paths = None if chat_template_src_path is None else (chat_template_src_path, chat_template_dest_path)
+        mmproj_paths = None if mmproj_src_path is None else (mmproj_src_path, mmproj_dest_path)
 
         if args.generate.gen_type == "quadlet":
             self.quadlet(
                 (model_src_path, model_dest_path),
-                (chat_template_src_path, chat_template_dest_path),
-                (mmproj_src_path, mmproj_dest_path),
+                chat_template_paths,
+                mmproj_paths,
                 args,
                 exec_args,
                 args.generate.output_dir,
@@ -757,8 +771,8 @@ class Model(ModelBase):
         elif args.generate.gen_type == "kube":
             self.kube(
                 (model_src_path, model_dest_path),
-                (chat_template_src_path, chat_template_dest_path),
-                (mmproj_src_path, mmproj_dest_path),
+                chat_template_paths,
+                mmproj_paths,
                 args,
                 exec_args,
                 args.generate.output_dir,
@@ -766,8 +780,8 @@ class Model(ModelBase):
         elif args.generate.gen_type == "quadlet/kube":
             self.quadlet_kube(
                 (model_src_path, model_dest_path),
-                (chat_template_src_path, chat_template_dest_path),
-                (mmproj_src_path, mmproj_dest_path),
+                chat_template_paths,
+                mmproj_paths,
                 args,
                 exec_args,
                 args.generate.output_dir,
@@ -775,8 +789,8 @@ class Model(ModelBase):
         elif args.generate.gen_type == "compose":
             self.compose(
                 (model_src_path, model_dest_path),
-                (chat_template_src_path, chat_template_dest_path),
-                (mmproj_src_path, mmproj_dest_path),
+                chat_template_paths,
+                mmproj_paths,
                 args,
                 exec_args,
                 args.generate.output_dir,

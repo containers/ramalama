@@ -43,6 +43,9 @@ Possible values are "never", "always" and "auto". (default: auto)
 #### **--ctx-size**, **-c**
 size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 4096, 0 = loaded from model)
 
+#### **--default-template**
+Use the default chat template instead of model-specific chat template files. When specified, RamaLama will not use any extracted chat template files from the model and will rely on the runtime's built-in default template handling.
+
 #### **--device**
 Add a host device to the container. Optional permissions parameter  can
 be  used  to  specify device permissions by combining r for read, w for

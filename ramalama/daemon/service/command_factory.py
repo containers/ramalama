@@ -82,9 +82,12 @@ class CommandFactory:
         else:
             cmd += ["--jinja"]
 
-            chat_template_path = self.model._get_chat_template_path(False, False, False)
-            if chat_template_path:
-                cmd += ["--chat-template-file", chat_template_path]
+            # Add chat template unless using default template
+            use_default_template = self.request_args.get("default_template", False)
+            if not use_default_template:
+                chat_template_path = self.model._get_chat_template_path(False, False, False)
+                if chat_template_path:
+                    cmd += ["--chat-template-file", chat_template_path]
 
         cmd += [
             "--alias",

@@ -63,6 +63,9 @@ Min chunk size to attempt reusing from the cache via KV shifting
 #### **--ctx-size**, **-c**
 size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 4096, 0 = loaded from model)
 
+#### **--default-template**
+Use the default chat template instead of model-specific chat template files. When specified, RamaLama will not use any extracted chat template files from the model and will rely on the runtime's built-in default template handling.
+
 #### **--detach**, **-d**
 Run the container in the background and print the new container ID.
 The default is TRUE. The --nocontainer option forces this option to False.
