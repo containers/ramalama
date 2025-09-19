@@ -97,6 +97,11 @@ If GPU device on host system is accessible to user via group access, this option
 #### **--keepalive**
 duration to keep a model loaded (e.g. 5m)
 
+#### **--mcp**=SERVER_URL
+MCP (Model Context Protocol) servers to use for enhanced tool calling capabilities.
+Can be specified multiple times to connect to multiple MCP servers.
+Each server provides tools that can be automatically invoked during chat conversations.
+
 #### **--name**, **-n**
 name of the container to run the Model in
 
