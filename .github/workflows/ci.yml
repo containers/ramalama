@@ -67,7 +67,7 @@ jobs:
            sudo apt-get update
            sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade
+           sudo apt-get upgrade -y podman crun
 
       - name: Build a container for CPU inferencing
         shell: bash
@@ -100,7 +100,7 @@ jobs:
            sudo apt-get update
            sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade
+           sudo apt-get upgrade -y podman crun
 
       - name: Run unit tests
         run: |
@@ -141,7 +141,7 @@ jobs:
            sudo apt-get update
            sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade
+           sudo apt-get upgrade -y podman crun
 
       - name: run bats
         run: |
@@ -179,7 +179,7 @@ jobs:
            sudo apt-get update
            sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade
+           sudo apt-get upgrade -y podman crun
 
       - name: run bats-nocontainer
         run: |
@@ -214,7 +214,7 @@ jobs:
            sudo apt-get update
            sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade
+           sudo apt-get upgrade -y podman crun
 
       - name: Free Disk Space Linux
         shell: bash
@@ -307,7 +307,7 @@ jobs:
            sudo apt-get update
            sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get install -y podman
+           sudo apt-get upgrade -y podman crun
 
       - name: run e2e-tests
         run: |
@@ -348,7 +348,7 @@ jobs:
            sudo apt-get update
            sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get install -y podman
+           sudo apt-get upgrade -y podman crun
 
       - name: run e2e-tests-nocontainer
         run: |
@@ -387,7 +387,7 @@ jobs:
            sudo apt-get update
            sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get install -y podman
+           sudo apt-get upgrade -y podman crun
 
       - name: Free Disk Space Linux
         shell: bash
