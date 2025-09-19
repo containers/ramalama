@@ -136,7 +136,7 @@ class TransportBase(ABC):
 
 
 class Transport(TransportBase):
-    """Model super class"""
+    """Transport super class"""
 
     type: str = "Model"
 
