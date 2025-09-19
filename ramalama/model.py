@@ -9,6 +9,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
+from mypyc.irbuild.builder import UnsupportedException
+
 import ramalama.chat as chat
 from ramalama.common import (
     MNT_DIR,
@@ -356,13 +358,14 @@ class Model(ModelBase):
         if args.dryrun:
             return
         if self.model_type == 'oci':
-            if not self.engine.use_podman:
+            if self.engine.use_podman:
+                mount_cmd = f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"
+            elif self.engine.use_docker:
                 output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
                 volume = populate_volume_from_image(self, os.path.basename(output_filename))
                 mount_cmd = f"--mount=type=volume,src={volume},dst={MNT_DIR},readonly"
             else:
-                mount_cmd = f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"
-
+                raise UnsupportedException(f"No compatible oci mount method for engine: {self.engine.args.engine}")
             self.engine.add([mount_cmd])
             return None
 
