@@ -138,7 +138,7 @@ class TransportBase(ABC):
 class Transport(TransportBase):
     """Transport super class"""
 
-    type: str = "Model"
+    type: str = "Transport"
 
     def __init__(self, model: str, model_store_path: str):
         self.model = model
