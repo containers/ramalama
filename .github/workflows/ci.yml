@@ -273,6 +273,183 @@ jobs:
         run: |
            uv run -- make bats-nocontainer
 
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+
+      - name: install requirements
+        shell: bash
+        run: |
+           df -h
+           sudo apt-get update
+           sudo apt-get install podman bash codespell
+           uv tool install tox --with tox-uv
+           uv pip install ".[dev]"
+
+      - name: install ollama
+        shell: bash
+        run: ./.github/scripts/install-ollama.sh
+
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           # Enable universe repository which contains podman
+           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+           # Update package lists
+           sudo apt-get update
+           sudo apt-get purge firefox
+           # Install specific podman version
+           sudo apt-get install -y podman
+
+      - name: run e2e-tests
+        run: |
+           make e2e-tests
+
+  e2e-tests-nocontainer:
+    name: E2E Tests (--no-container)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+
+      - name: install requirements
+        shell: bash
+        run: |
+          df -h
+          sudo apt-get update
+          sudo apt-get install podman bash codespell git cmake libcurl4-openssl-dev
+          sudo ./container-images/scripts/build_llama_and_whisper.sh
+          uv tool install tox --with tox-uv
+          uv pip install ".[dev]"
+
+      - name: install ollama
+        shell: bash
+        run: ./.github/scripts/install-ollama.sh
+
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           # Enable universe repository which contains podman
+           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+           # Update package lists
+           sudo apt-get update
+           sudo apt-get purge firefox
+           # Install specific podman version
+           sudo apt-get install -y podman
+
+      - name: run e2e-tests-nocontainer
+        run: |
+           make e2e-tests-nocontainer
+
+  e2e-tests-docker:
+    name: E2E Tests (docker)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+
+      - name: install requirements
+        shell: bash
+        run: |
+           sudo apt-get update
+           sudo apt-get install bash codespell
+           uv tool install tox --with tox-uv
+           uv pip install ".[dev]"
+
+      - name: install ollama
+        shell: bash
+        run: ./.github/scripts/install-ollama.sh
+
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           # Enable universe repository which contains podman
+           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+           # Update package lists
+           sudo apt-get update
+           sudo apt-get purge firefox
+           # Install specific podman version
+           sudo apt-get install -y podman
+
+      - name: Free Disk Space Linux
+        shell: bash
+        run: |
+           sudo docker rmi "$(docker image ls -aq)" >/dev/null 2>&1 || true
+           sudo rm -rf \
+              /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup \
+              /usr/lib/jvm || true
+
+      # /mnt has ~ 65 GB free disk space. / is too small.
+      - name: Reconfigure Docker data-root
+        run: |
+           sudo mkdir -p /mnt/docker /etc/docker
+           echo '{"data-root": "/mnt/docker"}' > /tmp/daemon.json
+           sudo mv /tmp/daemon.json /etc/docker/daemon.json
+           cat /etc/docker/daemon.json
+           sudo systemctl restart docker.service
+           sudo mkdir -m a=rwx -p /mnt/tmp /mnt/runner
+           sudo mkdir -m o=rwx -p /home/runner/.local
+           sudo chown runner:runner /mnt/runner /home/runner/.local
+           sudo mount --bind /mnt/runner /home/runner/.local
+           df -h
+
+      - name: run e2e-tests-docker
+        run: |
+           docker info
+           make e2e-tests-docker
+
+  e2e-tests-macos:
+    name: E2E Tests (macos)
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+
+      - name: install mlx-lm
+        shell: bash
+        run: |
+          uv pip install mlx-lm
+
+      - name: install requirements
+        shell: bash
+        run: |
+          brew install go bash jq llama.cpp shellcheck podman
+          uv tool install tox --with tox-uv
+          uv run -- make install-requirements
+
+      - name: install ollama
+        shell: bash
+        run: ./.github/scripts/install-ollama.sh
+
+      - name: run e2e-tests-nocontainer
+        shell: bash
+        run: |
+          make e2e-tests-nocontainer
+
 # FIXME: ci script should be able to run on MAC.
 #      - name: Run ci
 #        shell: bash
