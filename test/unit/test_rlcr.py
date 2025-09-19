@@ -1,7 +1,6 @@
 import subprocess
 import tempfile
 import warnings
-from dataclasses import dataclass
 from unittest.mock import Mock, patch
 
 import pytest
@@ -94,7 +93,9 @@ class TestModelFileDiscovery:
 
     def test_find_model_file_label_fails(self):
         """Test fallback when label inspection fails"""
-        with patch('ramalama.transports.rlcr.run_cmd', side_effect=subprocess.CalledProcessError(1, "inspect")) as mock_run:
+        with patch(
+            'ramalama.transports.rlcr.run_cmd', side_effect=subprocess.CalledProcessError(1, "inspect")
+        ) as mock_run:
             result = find_model_file_in_image("docker", "rlcr.io/ramalama/test-model")
 
             assert result is None

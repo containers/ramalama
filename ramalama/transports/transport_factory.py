@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from ramalama.arg_types import StoreArgType
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
-from ramalama.model import MODEL_TYPES
+from ramalama.transports.base import MODEL_TYPES
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
 from ramalama.transports.oci import OCI
@@ -17,7 +17,7 @@ from ramalama.transports.url import URL
 CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry
 
 
-class ModelFactory:
+class TransportFactory:
     def __init__(
         self,
         model: str,
@@ -42,7 +42,7 @@ class ModelFactory:
         if getattr(args, 'model_draft', None):
             dm_args = copy.deepcopy(args)
             dm_args.model_draft = None
-            self.draft_model = ModelFactory(args.model_draft, dm_args, ignore_stderr=True).create()
+            self.draft_model = TransportFactory(args.model_draft, dm_args, ignore_stderr=True).create()
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
         for prefix in ["huggingface://", "hf://", "hf.co/"]:
@@ -153,7 +153,7 @@ class ModelFactory:
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
     if transport is None:
         transport = CONFIG.transport
-    return ModelFactory(name, args, transport=transport).create()
+    return TransportFactory(name, args, transport=transport).create()
 
 
 def Serve(name, args) -> None:
@@ -163,7 +163,7 @@ def Serve(name, args) -> None:
     except KeyError as e:
         try:
             args.quiet = True
-            model = ModelFactory(name, args, ignore_stderr=True).create_oci()
+            model = TransportFactory(name, args, ignore_stderr=True).create_oci()
             model.serve(args)
         except Exception:
             raise e

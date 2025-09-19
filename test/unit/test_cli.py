@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 
 from ramalama.cli import ParsedGenerateInput, parse_generate_option
-from ramalama.model import NoGGUFModelFileFound, SafetensorModelNotSupported
+from ramalama.transports.base import NoGGUFModelFileFound, SafetensorModelNotSupported
 
 
 @pytest.mark.parametrize(

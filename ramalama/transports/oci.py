@@ -4,8 +4,8 @@ import tempfile
 
 import ramalama.annotations as annotations
 from ramalama.common import exec_cmd, perror, run_cmd
-from ramalama.model import Model
-from ramalama.oci_tools import engine_supports_manifest_attributes, ocilabeltype
+from ramalama.transports.base import Transport
+from ramalama.oci_tools import engine_supports_manifest_attributes
 
 prefix = "oci://"
 
@@ -13,7 +13,7 @@ ociimage_raw = "org.containers.type=ai.image.model.raw"
 ociimage_car = "org.containers.type=ai.image.model.car"
 
 
-class OCI(Model):
+class OCI(Transport):
     type = "OCI"
 
     def __init__(self, model: str, model_store_path: str, conman: str, ignore_stderr: bool = False):

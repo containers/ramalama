@@ -1,7 +1,5 @@
 import os
 import subprocess
-import tempfile
-import warnings
 
 from ramalama.common import MNT_DIR, run_cmd
 from ramalama.transports.oci import OCI

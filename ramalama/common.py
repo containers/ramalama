@@ -26,7 +26,7 @@ from ramalama.version import version
 if TYPE_CHECKING:
     from ramalama.arg_types import SUPPORTED_ENGINES, ContainerArgType
     from ramalama.config import Config
-    from ramalama.model import Model
+    from ramalama.transports.base import Transport
 
 MNT_DIR = "/mnt/models"
 MNT_FILE = f"{MNT_DIR}/model.file"
@@ -166,7 +166,7 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     return result
 
 
-def populate_volume_from_image(model: Model, output_filename: str, src_model_dir: str = "models"):
+def populate_volume_from_image(model: Transport, output_filename: str, src_model_dir: str = "models"):
     """Builds a Docker-compatible mount string that mirrors Podman image mounts for model assets.
 
     This function requires the model

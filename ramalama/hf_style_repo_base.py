@@ -16,7 +16,7 @@ from ramalama.common import (
 )
 from ramalama.endian import EndianMismatchError
 from ramalama.logger import logger
-from ramalama.model import Model
+from ramalama.transports.base import Transport
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
 
 
@@ -180,7 +180,7 @@ class HFStyleRepository(ABC):
         )
 
 
-class HFStyleRepoModel(Model, ABC):
+class HFStyleRepoModel(Transport, ABC):
     def __init__(self, model, model_store_path):
         super().__init__(model, model_store_path)
 

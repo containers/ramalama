@@ -3,7 +3,7 @@ from typing import Union
 
 import pytest
 
-from ramalama.model_factory import ModelFactory
+from ramalama.transports.transport_factory import TransportFactory
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
 from ramalama.transports.oci import OCI
@@ -74,9 +74,9 @@ def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ol
 
     if error is not None:
         with pytest.raises(error):
-            ModelFactory(input.Model, args, input.Transport).create()
+            TransportFactory(input.Model, args, input.Transport).create()
     else:
-        model = ModelFactory(input.Model, args, input.Transport).create()
+        model = TransportFactory(input.Model, args, input.Transport).create()
         assert isinstance(model, expected)
 
 
@@ -104,10 +104,10 @@ def test_validate_oci_model_input(input: Input, error):
 
     if error is not None:
         with pytest.raises(error):
-            ModelFactory(input.Model, args, input.Transport).validate_oci_model_input()
+            TransportFactory(input.Model, args, input.Transport).validate_oci_model_input()
         return
 
-    ModelFactory(input.Model, args, input.Transport).validate_oci_model_input()
+    TransportFactory(input.Model, args, input.Transport).validate_oci_model_input()
 
 
 @pytest.mark.parametrize(
@@ -162,5 +162,5 @@ def test_validate_oci_model_input(input: Input, error):
 )
 def test_prune_model_input(input: Input, expected: str):
     args = ARGS(input.Engine)
-    pruned_model_input = ModelFactory(input.Model, args, input.Transport).prune_model_input()
+    pruned_model_input = TransportFactory(input.Model, args, input.Transport).prune_model_input()
     assert pruned_model_input == expected

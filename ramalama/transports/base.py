@@ -87,7 +87,7 @@ def trim_model_name(model):
     return model
 
 
-class ModelBase(ABC):
+class TransportBase(ABC):
     model: str
     type: str
 
@@ -135,7 +135,7 @@ class ModelBase(ABC):
         raise self.__not_implemented_error("inspect")
 
 
-class Model(ModelBase):
+class Transport(TransportBase):
     """Model super class"""
 
     type: str = "Model"

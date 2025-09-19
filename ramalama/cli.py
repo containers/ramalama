@@ -28,14 +28,14 @@ from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import CONFIG, coerce_to_bool, load_file_config
 from ramalama.endian import EndianMismatchError
 from ramalama.logger import configure_logger, logger
-from ramalama.model import (
+from ramalama.transports.base import (
     MODEL_TYPES,
     NoGGUFModelFileFound,
     NoRefFileFound,
     SafetensorModelNotSupported,
     trim_model_name,
 )
-from ramalama.model_factory import ModelFactory, New
+from ramalama.transports.transport_factory import TransportFactory, New
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.rag import rag_image, Rag
@@ -693,7 +693,7 @@ def convert_cli(args):
     if not tgt:
         tgt = target
 
-    model = ModelFactory(tgt, args).create_oci()
+    model = TransportFactory(tgt, args).create_oci()
 
     source_model = _get_source_model(args)
     args.carimage = rag_image(accel_image(CONFIG))
@@ -763,7 +763,7 @@ def push_cli(args):
                 raise e
         try:
             # attempt to push as a container image
-            m = ModelFactory(target, args).create_oci()
+            m = TransportFactory(target, args).create_oci()
             m.push(source_model, args)
         except Exception as e1:
             logger.debug(e1)
@@ -1052,7 +1052,7 @@ def run_cli(args):
         logger.debug(e)
         try:
             args.quiet = True
-            oci_model = ModelFactory(args.MODEL, args, ignore_stderr=True).create_oci()
+            oci_model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
             oci_model.ensure_model_exists(args)
 
             oci_model.serve(args, quiet=True) if args.rag else oci_model.run(args)
@@ -1097,7 +1097,7 @@ def serve_cli(args):
     except KeyError as e:
         try:
             args.quiet = True
-            model = ModelFactory(args.MODEL, args, ignore_stderr=True).create_oci()
+            model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
             model.serve(args)
         except Exception:
             raise e
@@ -1331,7 +1331,7 @@ def _rm_model(models, args):
                         raise e
             try:
                 # attempt to remove as a container image
-                m = ModelFactory(model, args, ignore_stderr=True).create_oci()
+                m = TransportFactory(model, args, ignore_stderr=True).create_oci()
                 m.remove(args)
                 return
             except Exception:
