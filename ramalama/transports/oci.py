@@ -4,8 +4,8 @@ import tempfile
 
 import ramalama.annotations as annotations
 from ramalama.common import exec_cmd, perror, run_cmd
-from ramalama.transports.base import Transport
 from ramalama.oci_tools import engine_supports_manifest_attributes
+from ramalama.transports.base import Transport
 
 prefix = "oci://"
 

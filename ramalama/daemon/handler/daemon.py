@@ -12,8 +12,8 @@ from ramalama.daemon.handler.proxy import ModelProxyHandler
 from ramalama.daemon.logging import DEFAULT_LOG_DIR, logger
 from ramalama.daemon.service.command_factory import CommandFactory
 from ramalama.daemon.service.model_runner import ManagedModel, ModelRunner, generate_model_id
-from ramalama.transports.transport_factory import TransportFactory
 from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.transports.transport_factory import TransportFactory
 
 
 class DaemonAPIHandler(APIHandler):

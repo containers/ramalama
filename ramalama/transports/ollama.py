@@ -5,9 +5,9 @@ import urllib.error
 from typing import Optional
 
 from ramalama.common import available, perror
-from ramalama.transports.base import Transport
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
 from ramalama.ollama_repo_utils import fetch_manifest_data
+from ramalama.transports.base import Transport
 
 
 def in_existing_cache(model_name, model_tag):

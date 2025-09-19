@@ -6,8 +6,8 @@ import pytest
 
 from ramalama.common import MNT_DIR
 from ramalama.transports.base import Transport, compute_serving_port
-from ramalama.transports.transport_factory import TransportFactory
 from ramalama.transports.oci import OCI
+from ramalama.transports.transport_factory import TransportFactory
 
 
 class ARGS:

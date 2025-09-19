@@ -16,8 +16,8 @@ from ramalama.common import (
 )
 from ramalama.endian import EndianMismatchError
 from ramalama.logger import logger
-from ramalama.transports.base import Transport
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
+from ramalama.transports.base import Transport
 
 
 class HFStyleRepoFile(SnapshotFile):
