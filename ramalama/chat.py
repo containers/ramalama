@@ -140,7 +140,7 @@ class RamaLamaShell(cmd.Cmd):
             if clients:
                 # Use the same LLM URL as the chat for the agent
                 llm_url = self.args.url
-                self.mcp_agent = LLMAgent(clients, llm_url)
+                self.mcp_agent = LLMAgent(clients, llm_url, self.args.model, self.args)
 
                 # Set up proper streaming callback for MCP agent
                 def mcp_stream_callback(text):
@@ -211,12 +211,12 @@ class RamaLamaShell(cmd.Cmd):
 
         responses = []
         for tool in selected_tools:
-            response = self.mcp_agent.execute_specific_tool(question, tool['name'], manual=True)
+            response = self.mcp_agent.execute_specific_tool(question, tool['name'], manual=False)
             responses.append({"tool": tool['name'], "output": response})
 
         # Display results
         for r in responses:
-            print(f"\n🔧 {r['tool']} -> {r['output']}")
+            print(f"\n {r['tool']} -> {r['output']}")
 
         # Save to history
         self.conversation_history.append({"role": "user", "content": f"/tool {question}"})
