@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 import urllib.error
 import urllib.request
 from typing import Any, Dict, List
@@ -15,9 +16,13 @@ logging.basicConfig(level=logging.INFO)
 class LLMAgent:
     """An LLM-powered agent that can make multiple tool calls to accomplish tasks."""
 
-    def __init__(self, clients: List[PureMCPClient], llm_base_url: str = "http://localhost:8080"):
+    def __init__(
+        self, clients: List[PureMCPClient], llm_base_url: str = "http://localhost:8080", model: str = None, args=None
+    ):
         self.clients = clients if isinstance(clients, list) else [clients]
         self.llm_base_url = llm_base_url.rstrip('/')
+        self.model = model
+        self.args = args
         self.available_tools: List[Dict[str, Any]] = []
         self.tool_to_client: Dict[str, PureMCPClient] = {}
         self._stream_callback = None
@@ -77,8 +82,9 @@ class LLMAgent:
         """Determine if the request should be handled by tools using LLM."""
         tools_context = "Available tools:\n"
         for i, tool in enumerate(self.available_tools, 1):
-            server_info = f" (from {tool['server']})" if 'server' in tool else ""
-            tools_context += f"{i}. {tool['name']}: {tool['description']}{server_info}\n"
+            name = tool.get("name", "unknown")
+            description = tool.get("description", "")
+            tools_context += f"{i}. {name}: {description}\n"
 
         context_info = ""
         if conversation_history:
@@ -93,7 +99,7 @@ class LLMAgent:
                 "role": "system",
                 "content": (
                     "You are an intelligent assistant that determines whether a user's "
-                    "request should be handled by available tools or by regular conversation.\n\n"
+                    "request should use the available tools.\n\n"
                     "Answer ONLY \"YES\" if tools should be used or \"NO\" otherwise."
                 ),
             },
@@ -108,7 +114,6 @@ Should this request use the available tools?"""
                 ),
             },
         ]
-
         response = self._call_llm(messages)
         return response and response.upper().strip() == "YES"
 
@@ -117,37 +122,56 @@ Should this request use the available tools?"""
         Call the LLM with the given messages.
         """
         request_data = {"messages": messages, "stream": True}
+        if self.model is not None:
+            request_data["model"] = self.model
         data = json.dumps(request_data).encode("utf-8")
 
+        headers = {"Content-Type": "application/json"}
+
+        # Add API key if available
+        if self.args and getattr(self.args, "api_key", None):
+            headers["Authorization"] = f"Bearer {self.args.api_key}"
         request = urllib.request.Request(
             f"{self.llm_base_url}/chat/completions",
             data=data,
-            headers={"Content-Type": "application/json", "Authorization": "Bearer dummy"},
+            headers=headers,
             method="POST",
         )
 
         if not console_stream:
             content = ""
-            try:
-                with urllib.request.urlopen(request, timeout=30) as response:
-                    for raw_line in response:
-                        line = raw_line.decode("utf-8").strip()
-                        if line.startswith("data: "):
-                            payload = line[6:]
-                            if payload.strip() == "[DONE]":
-                                break
-                            try:
-                                event = json.loads(payload)
-                                if "choices" in event and event["choices"]:
-                                    delta = event["choices"][0].get("delta", {})
-                                    if "content" in delta and delta["content"] is not None:
-                                        content += delta["content"]
-                            except json.JSONDecodeError:
-                                logging.warning("Malformed SSE line: %s", payload)
-                return content.strip()
-            except Exception as e:
-                logging.error("LLM call failed: %s", e, exc_info=True)
-                return ""
+            # Retry logic similar to regular chat system
+            max_retries = 10
+            retry_delay = 0.5
+
+            for attempt in range(max_retries):
+                try:
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        for raw_line in response:
+                            line = raw_line.decode("utf-8").strip()
+                            if line.startswith("data: "):
+                                payload = line[6:]
+                                if payload.strip() == "[DONE]":
+                                    break
+                                try:
+                                    event = json.loads(payload)
+                                    if "choices" in event and event["choices"]:
+                                        delta = event["choices"][0].get("delta", {})
+                                        if "content" in delta and delta["content"] is not None:
+                                            content += delta["content"]
+                                except json.JSONDecodeError:
+                                    logging.warning("Malformed SSE line: %s", payload)
+                        return content.strip()
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        # Last attempt failed, log error and return empty
+                        logging.error("LLM call failed after %d attempts: %s", max_retries, e)
+                        return ""
+                    else:
+                        # Retry after delay
+                        logging.debug("LLM call failed (attempt %d/%d), retrying: %s", attempt + 1, max_retries, e)
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
 
         elif console_stream:
             try:
@@ -222,16 +246,29 @@ Should this request use the available tools?"""
         if not tool_inputs:
             return {}
 
-        prompt_lines = [f"Generate arguments for tool '{tool['name']}' for the task: {task}."]
-        prompt_lines.append("Required arguments:")
+        # Build argument descriptions
+        arg_descriptions = []
         for name, info in tool_inputs.items():
             param_type = info.get('type', 'string')
-            req = "required" if info.get("required") else "optional"
-            prompt_lines.append(f"- {name} ({param_type}, {req})")
+            description = info.get('description', '')
+            arg_descriptions.append(f"- {name} ({param_type}): {description}")
+
+        prompt = f"""Task: {task}
+Tool: {tool['name']}
+Arguments needed:
+{chr(10).join(arg_descriptions)}
+
+Generate ONLY a JSON object with the arguments. Extract values from the task."""
 
         messages = [
-            {"role": "system", "content": "You are an assistant that generates tool arguments in JSON."},
-            {"role": "user", "content": "\n".join(prompt_lines)},
+            {
+                "role": "system",
+                "content": (
+                    "You are a JSON generator. Respond ONLY with valid JSON. "
+                    "No explanations, no markdown, just the JSON object."
+                ),
+            },
+            {"role": "user", "content": prompt},
         ]
 
         if stream:
@@ -239,7 +276,14 @@ Should this request use the available tools?"""
         else:
             response = self._call_llm(messages, console_stream=False)
             try:
-                args = json.loads(response)
+                # Extract JSON from markdown code blocks if present
+                json_str = response.strip()
+                if json_str.startswith("```json") and json_str.endswith("```"):
+                    json_str = json_str[7:-3].strip()
+                elif json_str.startswith("```") and json_str.endswith("```"):
+                    json_str = json_str[3:-3].strip()
+
+                args = json.loads(json_str)
                 # Convert types based on schema
                 converted_args = {}
                 for k, v in args.items():
@@ -351,8 +395,9 @@ Should this request use the available tools?"""
 
         tools_context = "Available tools:\n"
         for i, tool in enumerate(self.available_tools, 1):
-            server_info = f" (from {tool['server']})" if "server" in tool else ""
-            tools_context += f"{i}. {tool['name']}: {tool['description']}{server_info}\n"
+            name = tool.get("name", "unknown")
+            description = tool.get("description", "")
+            tools_context += f"{i}. {name}: {description}\n"
 
         messages = [
             {
@@ -403,7 +448,6 @@ Should this request use the available tools?"""
         ]
         result = self._call_llm(messages, console_stream=stream)
         if stream and result is None:
-            # Add newline after streaming is complete
             print("")
         return result
 
@@ -413,4 +457,4 @@ Should this request use the available tools?"""
             try:
                 client.close()
             except Exception as e:
-                logging.warning("Error closing client: %s", e)
+                logging.debug("Error closing MCP client %s", e)

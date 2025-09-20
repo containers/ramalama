@@ -30,7 +30,7 @@ Contributors can comment on or contribute to the issues linked here.
 
 - **Model OCI Artifact support**  
   - Podman 5.6: `podman-remote artifact` support.  
-  - Match Docker behavior for storing models as OCI artifacts.  
+  - Match Docker behaviour for storing models as OCI artifacts.  
   - Reference: [CNCF sandbox issue #358](https://github.com/cncf/sandbox/issues/358).  
   - Evaluate defaulting `--container` mode to automatically convert models to OCI artifacts.
 

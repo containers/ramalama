@@ -146,9 +146,4 @@ class PureMCPClient:
         return self._send_request("prompts/get", {"name": name, "arguments": arguments or {}})
 
     def close(self):
-        """Close session (shutdown then clear state)."""
-        try:
-            self.shutdown()
-        except Exception as e:
-            logging.warning("Error during shutdown: %s", e)
         self.session_id = None
