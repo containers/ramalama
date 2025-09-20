@@ -12,7 +12,7 @@ ramalama.conf - These configuration files specifies default
 configuration options and command-line flags for RamaLama.
 
 # DESCRIPTION
-RamaLama reads the ramalama.conf file, if it exists
+RamaLama reads all ramalama.conf files, if they exists
 and modify the defaults for running RamaLama on the host. ramalama.conf uses
 a TOML format that can be easily modified and versioned.
 
@@ -35,8 +35,8 @@ For user specific configuration it reads
 | __$HOME/.config/ramalama/ramalama.conf__ | `$XDG_CONFIG_HOME` not set |
 | __$HOME/.config/ramalama/ramalama.conf.d/\*.conf__ | `$XDG_CONFIG_HOME` not set |
 
-Fields specified in ramalama conf override the default options, as well as
-options in previously read ramalama.conf files.
+Fields specified in ramalama conf files override the default options, as well as
+options in previously read ramalama conf files.
 
 Config files in the `.d` directories, are added in alpha numeric sorted order and must end in `.conf`.
 
@@ -77,12 +77,16 @@ OCI model car image
 
 Image to be used when building and pushing --type=car models
 
+**cache_reuse**=256
+
+Min chunk size to attempt reusing from the cache via KV shifting
+
 **container**=true
 
 Run RamaLama in the default container.
 RAMALAMA_IN_CONTAINER environment variable overrides this field.
 
-**ctx_size**=2048
+**ctx_size**=0
 
 Size of the prompt context (0 = loaded from model)
 
@@ -112,8 +116,10 @@ RAMALAMA_IMAGE environment variable overrides this field.
   INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu"
   ASCEND_VISIBLE_DEVICES = "quay.io/ramalama/cann"
   MUSA_VISIBLE_DEVICES   = "quay.io/ramalama/musa"
+  VLLM                   = "registry.redhat.io/rhelai1/ramalama-vllm"
 
-Alternative images to use when RamaLama recognizes specific hardware
+Alternative images to use when RamaLama recognizes specific hardware or user
+specified vllm model runtime.
 
 **keep_groups**=false
 
@@ -174,6 +180,10 @@ llama.cpp explains this as:
     The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+
+**thinking**=true
+
+Enable thinking mode on reasoning models
 
 **threads**=-1
 

@@ -8,7 +8,9 @@ from ramalama.config import DEFAULT_PORT, default_config, get_default_engine, ge
 
 def test_correct_config_defaults(monkeypatch):
     monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
-    cfg = default_config()
+    with patch("ramalama.config.load_file_config", return_value={}):
+        with patch("ramalama.config.load_env_config", return_value={}):
+            cfg = default_config()
 
     assert cfg.carimage == "registry.access.redhat.com/ubi10-micro:latest"
     assert cfg.container in [True, False]  # depends on env/system
@@ -35,7 +37,9 @@ def test_correct_config_defaults(monkeypatch):
 
 def test_config_defaults_not_set(monkeypatch):
     monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
-    cfg = default_config()
+    with patch("ramalama.config.load_file_config", return_value={}):
+        with patch("ramalama.config.load_env_config", return_value={}):
+            cfg = default_config()
 
     assert cfg.is_set("carimage") is False
     assert cfg.is_set("container") is False  # depends on env/system

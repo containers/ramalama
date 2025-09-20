@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from ramalama.common import check_metal, check_nvidia
 from ramalama.config import CONFIG
-from ramalama.model_factory import CLASS_MODEL_TYPES
+from ramalama.transports.transport_factory import CLASS_MODEL_TYPES
 
 
 class CommandFactory:

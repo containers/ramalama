@@ -12,12 +12,11 @@ from ramalama.daemon.handler.proxy import ModelProxyHandler
 from ramalama.daemon.logging import DEFAULT_LOG_DIR, logger
 from ramalama.daemon.service.command_factory import CommandFactory
 from ramalama.daemon.service.model_runner import ManagedModel, ModelRunner, generate_model_id
-from ramalama.model_factory import ModelFactory
 from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.transports.transport_factory import TransportFactory
 
 
 class DaemonAPIHandler(APIHandler):
-
     PATH_PREFIX = "/api"
 
     def __init__(self, model_runner: ModelRunner, model_store_path: str):
@@ -76,7 +75,7 @@ class DaemonAPIHandler(APIHandler):
                 size_sum += file.size
                 last_modified = max(file.modified, last_modified)
 
-            model = ModelFactory(
+            model = TransportFactory(
                 model, StoreArgs(engine=arg_engine, container=arg_show_container, store=self.model_store_path)
             ).create()
             full_model_name = f"{model.model_type}://{model.model_organization}/{model.model_name}:{model.model_tag}"
@@ -114,7 +113,7 @@ class DaemonAPIHandler(APIHandler):
         logger.debug(f"Received serve request: {serve_request.serialize()}")
 
         port = self.model_runner.next_available_port()
-        model = ModelFactory(
+        model = TransportFactory(
             serve_request.model_name,
             StoreArgs(store=self.model_store_path, engine=None, container=False),
             transport=CONFIG.transport,
@@ -141,7 +140,7 @@ class DaemonAPIHandler(APIHandler):
 
         logger.debug(f"Received stop serve request: {stop_serve_request.serialize()}")
 
-        model = ModelFactory(
+        model = TransportFactory(
             stop_serve_request.model_name,
             StoreArgs(store=self.model_store_path, engine=None, container=False),
             transport=CONFIG.transport,

@@ -1,15 +1,24 @@
 import os
 import shutil
+import subprocess
 import tempfile
 from contextlib import ExitStack
 from pathlib import Path
 from sys import platform
-from unittest.mock import mock_open, patch
+from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
 
 from ramalama.cli import configure_subcommands, create_argument_parser
-from ramalama.common import accel_image, find_in_cdi, get_accel, load_cdi_config, rm_until_substring, verify_checksum
+from ramalama.common import (
+    accel_image,
+    find_in_cdi,
+    get_accel,
+    load_cdi_config,
+    populate_volume_from_image,
+    rm_until_substring,
+    verify_checksum,
+)
 from ramalama.config import DEFAULT_IMAGE, default_config
 
 
@@ -132,7 +141,6 @@ image = "{config_override}"
             env["RAMALAMA_IMAGE"] = env_override
 
         with patch.dict("os.environ", env, clear=True):
-
             config = default_config()
             with patch("ramalama.cli.CONFIG", config):
                 parser = create_argument_parser("test_accel_image")
@@ -372,3 +380,106 @@ def test_find_in_cdi_broken(mock_walk, visible, conf, unconf):
 @patch("ramalama.common.load_cdi_config", return_value=None)
 def test_find_in_cdi_no_config(mock_load_cdi_config):
     assert find_in_cdi(["all"]) == ([], ["all"])
+
+
+class TestPopulateVolumeFromImage:
+    """Test the populate_volume_from_image function for Docker volume creation"""
+
+    @pytest.fixture
+    def mock_model(self):
+        """Create a mock model with required attributes"""
+        model = Mock()
+        model.model = "test-registry.io/test-model:latest"
+        model.conman = "docker"
+        return model
+
+    @patch('subprocess.Popen')
+    @patch('ramalama.common.run_cmd')
+    def test_populate_volume_success(self, mock_run_cmd, mock_popen, mock_model):
+        """Test successful volume population with Docker"""
+        output_filename = "model.gguf"
+
+        # Mock the Popen processes for export/tar streaming
+        mock_export_proc = MagicMock()
+        mock_export_proc.stdout = Mock()
+        mock_export_proc.wait.return_value = 0
+        mock_export_proc.__enter__ = Mock(return_value=mock_export_proc)
+        mock_export_proc.__exit__ = Mock(return_value=None)
+
+        mock_tar_proc = MagicMock()
+        mock_tar_proc.wait.return_value = 0
+        mock_tar_proc.__enter__ = Mock(return_value=mock_tar_proc)
+        mock_tar_proc.__exit__ = Mock(return_value=None)
+
+        mock_popen.side_effect = [mock_export_proc, mock_tar_proc]
+
+        result = populate_volume_from_image(mock_model, output_filename)
+
+        assert result.startswith("ramalama-models-")
+
+        assert mock_run_cmd.call_count >= 3
+        assert mock_popen.call_count == 2
+
+    @patch('subprocess.Popen')
+    @patch('ramalama.common.run_cmd')
+    def test_populate_volume_export_failure(self, _, mock_popen, mock_model):
+        """Test handling of export process failure"""
+        output_filename = "model.gguf"
+
+        # Mock export process failure
+        mock_export_proc = MagicMock()
+        mock_export_proc.stdout = Mock()
+        mock_export_proc.wait.return_value = 1  # Failure
+        mock_export_proc.__enter__ = Mock(return_value=mock_export_proc)
+        mock_export_proc.__exit__ = Mock(return_value=None)
+
+        mock_tar_proc = MagicMock()
+        mock_tar_proc.wait.return_value = 0
+        mock_tar_proc.__enter__ = Mock(return_value=mock_tar_proc)
+        mock_tar_proc.__exit__ = Mock(return_value=None)
+
+        mock_popen.side_effect = [mock_export_proc, mock_tar_proc]
+
+        with pytest.raises(subprocess.CalledProcessError):
+            populate_volume_from_image(mock_model, output_filename)
+
+    @patch('subprocess.Popen')
+    @patch('ramalama.common.run_cmd')
+    def test_populate_volume_tar_failure(self, _, mock_popen, mock_model):
+        """Test handling of tar process failure"""
+        output_filename = "model.gguf"
+
+        # Mock tar process failure
+        mock_export_proc = MagicMock()
+        mock_export_proc.stdout = Mock()
+        mock_export_proc.wait.return_value = 0
+        mock_export_proc.__enter__ = Mock(return_value=mock_export_proc)
+        mock_export_proc.__exit__ = Mock(return_value=None)
+
+        mock_tar_proc = MagicMock()
+        mock_tar_proc.wait.return_value = 1  # Failure
+        mock_tar_proc.__enter__ = Mock(return_value=mock_tar_proc)
+        mock_tar_proc.__exit__ = Mock(return_value=None)
+
+        mock_popen.side_effect = [mock_export_proc, mock_tar_proc]
+
+        with pytest.raises(subprocess.CalledProcessError):
+            populate_volume_from_image(mock_model, output_filename)
+
+    def test_volume_name_generation(self, mock_model):
+        """Test that volume names are generated consistently based on model hash"""
+        import hashlib
+
+        expected_hash = hashlib.sha256(mock_model.model.encode()).hexdigest()[:12]
+        expected_volume = f"ramalama-models-{expected_hash}"
+
+        with patch('subprocess.Popen') as mock_popen, patch('ramalama.common.run_cmd'):
+            # Mock successful processes
+            mock_proc = MagicMock()
+            mock_proc.wait.return_value = 0
+            mock_proc.__enter__ = Mock(return_value=mock_proc)
+            mock_proc.__exit__ = Mock(return_value=None)
+            mock_popen.return_value = mock_proc
+
+            result = populate_volume_from_image(mock_model, "test.gguf")
+            assert result == expected_volume

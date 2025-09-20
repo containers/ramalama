@@ -3,12 +3,13 @@ from typing import Union
 
 import pytest
 
-from ramalama.huggingface import Huggingface
-from ramalama.model_factory import ModelFactory
-from ramalama.modelscope import ModelScope
-from ramalama.oci import OCI
-from ramalama.ollama import Ollama
-from ramalama.url import URL
+from ramalama.transports.huggingface import Huggingface
+from ramalama.transports.modelscope import ModelScope
+from ramalama.transports.oci import OCI
+from ramalama.transports.ollama import Ollama
+from ramalama.transports.rlcr import RamalamaContainerRegistry
+from ramalama.transports.transport_factory import TransportFactory
+from ramalama.transports.url import URL
 
 
 @dataclass
@@ -43,6 +44,7 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
         (Input("ollama.com/library/granite-code", "", ""), Ollama, None),
         (Input("oci://granite-code", "", "podman"), OCI, None),
         (Input("docker://granite-code", "", "podman"), OCI, None),
+        (Input("rlcr://granite-code", "", "podman"), RamalamaContainerRegistry, None),
         (
             Input(
                 f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
@@ -72,9 +74,9 @@ def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ol
 
     if error is not None:
         with pytest.raises(error):
-            ModelFactory(input.Model, args, input.Transport).create()
+            TransportFactory(input.Model, args, input.Transport).create()
     else:
-        model = ModelFactory(input.Model, args, input.Transport).create()
+        model = TransportFactory(input.Model, args, input.Transport).create()
         assert isinstance(model, expected)
 
 
@@ -84,6 +86,7 @@ def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ol
         (Input("", "", ""), KeyError),
         (Input("oci://granite-code", "", "podman"), None),
         (Input("docker://granite-code", "", "podman"), None),
+        (Input("rlcr://granite-code", "", "podman"), None),
         (Input("file:///tmp/models/granite-3b-code-base.Q4_K_M.gguf", "", ""), ValueError),
         (Input("huggingface://granite-code", "", ""), ValueError),
         (Input("hf://granite-code", "", ""), ValueError),
@@ -101,10 +104,10 @@ def test_validate_oci_model_input(input: Input, error):
 
     if error is not None:
         with pytest.raises(error):
-            ModelFactory(input.Model, args, input.Transport).validate_oci_model_input()
+            TransportFactory(input.Model, args, input.Transport).validate_oci_model_input()
         return
 
-    ModelFactory(input.Model, args, input.Transport).validate_oci_model_input()
+    TransportFactory(input.Model, args, input.Transport).validate_oci_model_input()
 
 
 @pytest.mark.parametrize(
@@ -131,6 +134,7 @@ def test_validate_oci_model_input(input: Input, error):
         ),
         (Input("oci://granite-code", "", "podman"), "granite-code"),
         (Input("docker://granite-code", "", "podman"), "granite-code"),
+        (Input("rlcr://granite-code", "", "podman"), "granite-code"),
         (
             Input(
                 f"{hf_granite_blob}/main/granite-3b-code-base.Q4_K_M.gguf",
@@ -158,5 +162,5 @@ def test_validate_oci_model_input(input: Input, error):
 )
 def test_prune_model_input(input: Input, expected: str):
     args = ARGS(input.Engine)
-    pruned_model_input = ModelFactory(input.Model, args, input.Transport).prune_model_input()
+    pruned_model_input = TransportFactory(input.Model, args, input.Transport).prune_model_input()
     assert pruned_model_input == expected

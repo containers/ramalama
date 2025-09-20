@@ -1,11 +1,11 @@
 import tempfile
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from ramalama.arg_types import StoreArgs
 from ramalama.model_store.snapshot_file import LocalSnapshotFile, SnapshotFile, SnapshotFileType
-from ramalama.ollama import Ollama, OllamaRepository
+from ramalama.transports.ollama import Ollama, OllamaRepository
 
 
 @pytest.fixture
@@ -25,7 +25,6 @@ def test_ollama_model_initialization(ollama_model):
 
 
 class OllamaRepositoryMock(OllamaRepository):
-
     def __init__(self, name):
         super().__init__(name)
 
@@ -45,5 +44,5 @@ class OllamaRepositoryMock(OllamaRepository):
 
 def test_ollama_model_pull(ollama_model):
     args.quiet = True
-    with patch("ramalama.ollama.OllamaRepository", return_value=OllamaRepositoryMock("dummy-model")):
-        ollama_model.pull(Mock(verify=True))
+    with patch("ramalama.transports.ollama.OllamaRepository", return_value=OllamaRepositoryMock("dummy-model")):
+        ollama_model.pull(args)
