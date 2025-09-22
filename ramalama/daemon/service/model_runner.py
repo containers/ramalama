@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from ramalama.common import generate_sha256
-from ramalama.model_factory import CLASS_MODEL_TYPES
+from ramalama.transports.transport_factory import CLASS_MODEL_TYPES
 
 
 def generate_model_id(model: CLASS_MODEL_TYPES) -> str:

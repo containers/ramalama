@@ -6,17 +6,18 @@ from urllib.parse import urlparse
 from ramalama.arg_types import StoreArgType
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
-from ramalama.huggingface import Huggingface
-from ramalama.model import MODEL_TYPES
-from ramalama.modelscope import ModelScope
-from ramalama.oci import OCI
-from ramalama.ollama import Ollama
-from ramalama.url import URL
+from ramalama.transports.base import MODEL_TYPES
+from ramalama.transports.huggingface import Huggingface
+from ramalama.transports.modelscope import ModelScope
+from ramalama.transports.oci import OCI
+from ramalama.transports.ollama import Ollama
+from ramalama.transports.rlcr import RamalamaContainerRegistry
+from ramalama.transports.url import URL
 
-CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope
+CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry
 
 
-class ModelFactory:
+class TransportFactory:
     def __init__(
         self,
         model: str,
@@ -38,11 +39,10 @@ class ModelFactory:
 
         self.pruned_model = self.prune_model_input()
         self.draft_model = None
-
         if getattr(args, 'model_draft', None):
             dm_args = copy.deepcopy(args)
             dm_args.model_draft = None
-            self.draft_model = ModelFactory(args.model_draft, dm_args, ignore_stderr=True).create()
+            self.draft_model = TransportFactory(args.model_draft, dm_args, ignore_stderr=True).create()
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
         for prefix in ["huggingface://", "hf://", "hf.co/"]:
@@ -57,6 +57,8 @@ class ModelFactory:
         for prefix in ["oci://", "docker://"]:
             if self.model.startswith(prefix):
                 return OCI, self.create_oci
+        if self.model.startswith("rlcr://"):
+            return RamalamaContainerRegistry, self.create_rlcr
         for prefix in ["http://", "https://", "file://"]:
             if self.model.startswith(prefix):
                 return URL, self.create_url
@@ -66,6 +68,8 @@ class ModelFactory:
             return ModelScope, self.create_modelscope
         if self.transport == "ollama":
             return Ollama, self.create_ollama
+        if self.transport == "rlcr":
+            return RamalamaContainerRegistry, self.create_rlcr
         if self.transport == "oci":
             return OCI, self.create_oci
 
@@ -85,7 +89,7 @@ class ModelFactory:
         return pruned_model_input
 
     def validate_oci_model_input(self):
-        if self.model.startswith("oci://") or self.model.startswith("docker://"):
+        if self.model.startswith("oci://") or self.model.startswith("docker://") or self.model.startswith("rlcr://"):
             return
 
         for t in MODEL_TYPES:
@@ -107,6 +111,23 @@ class ModelFactory:
 
     def create_ollama(self) -> Ollama:
         model = Ollama(self.pruned_model, self.store_path)
+        model.draft_model = self.draft_model
+        return model
+
+    def create_rlcr(self) -> RamalamaContainerRegistry:
+        if not self.container:
+            raise ValueError("OCI containers cannot be used with the --nocontainer option.")
+
+        if self.engine is None:
+            raise ValueError("Constructing an OCI model factory requires an engine value")
+
+        self.validate_oci_model_input()
+        model = RamalamaContainerRegistry(
+            model=self.pruned_model,
+            model_store_path=self.store_path,
+            conman=self.engine,
+            ignore_stderr=self.ignore_stderr,
+        )
         model.draft_model = self.draft_model
         return model
 
@@ -132,7 +153,7 @@ class ModelFactory:
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
     if transport is None:
         transport = CONFIG.transport
-    return ModelFactory(name, args, transport=transport).create()
+    return TransportFactory(name, args, transport=transport).create()
 
 
 def Serve(name, args) -> None:
@@ -142,7 +163,7 @@ def Serve(name, args) -> None:
     except KeyError as e:
         try:
             args.quiet = True
-            model = ModelFactory(name, args, ignore_stderr=True).create_oci()
+            model = TransportFactory(name, args, ignore_stderr=True).create_oci()
             model.serve(args)
         except Exception:
             raise e

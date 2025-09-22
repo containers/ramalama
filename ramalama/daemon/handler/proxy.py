@@ -5,7 +5,7 @@ import urllib.request
 from ramalama.daemon.handler.base import APIHandler
 from ramalama.daemon.logging import logger
 from ramalama.daemon.service.model_runner import ModelRunner
-from ramalama.model_factory import CLASS_MODEL_TYPES
+from ramalama.transports.transport_factory import CLASS_MODEL_TYPES
 
 
 class ModelProxyHandler(APIHandler):

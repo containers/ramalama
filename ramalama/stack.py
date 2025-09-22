@@ -6,8 +6,8 @@ import ramalama.quadlet as quadlet
 from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image
 from ramalama.config import CONFIG
 from ramalama.engine import add_labels
-from ramalama.model import compute_serving_port
-from ramalama.model_factory import New
+from ramalama.transports.base import compute_serving_port
+from ramalama.transports.transport_factory import New
 
 
 class Stack:

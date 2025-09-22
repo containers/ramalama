@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from ramalama.model import Model, compute_serving_port
-from ramalama.model_factory import ModelFactory
+from ramalama.common import MNT_DIR
+from ramalama.transports.base import Transport, compute_serving_port
+from ramalama.transports.oci import OCI
+from ramalama.transports.transport_factory import TransportFactory
 
 
 class ARGS:
@@ -77,7 +79,7 @@ ms_granite_blob = "https://modelscope.cn/models/ibm-granite/granite-3b-code-base
 def test_extract_model_identifiers(model_input: str, expected_name: str, expected_tag: str, expected_orga: str):
     args = ARGS()
     args.engine = "podman"
-    name, tag, orga = ModelFactory(model_input, args).create().extract_model_identifiers()
+    name, tag, orga = TransportFactory(model_input, args).create().extract_model_identifiers()
     assert name == expected_name
     assert tag == expected_tag
     assert orga == expected_orga
@@ -120,7 +122,7 @@ def test_compute_serving_port(
     mock_socket.bind = MagicMock(side_effect=expectedRandomPortsAvl)
     mock_compute_ports = Mock(return_value=expectedRandomizedResult)
 
-    with patch('ramalama.model.compute_ports', mock_compute_ports):
+    with patch('ramalama.transports.base.compute_ports', mock_compute_ports):
         with patch('socket.socket', mock_socket):
             if expectedErr:
                 with pytest.raises(expectedErr):
@@ -147,7 +149,7 @@ class TestMLXRuntime:
             dryrun=True,
         )
 
-        model = Model("test-model", "/tmp/store")
+        model = Transport("test-model", "/tmp/store")
 
         exec_args = model.mlx_serve(args)
 
@@ -168,8 +170,8 @@ class TestMLXRuntime:
 
         assert exec_args == expected_args
 
-    @patch('ramalama.model.platform.system')
-    @patch('ramalama.model.platform.machine')
+    @patch('ramalama.transports.base.platform.system')
+    @patch('ramalama.transports.base.platform.machine')
     def test_mlx_validation_container_no_error(self, mock_machine, mock_system):
         """Test that MLX runtime validation passes when mocking macOS with Apple Silicon"""
         mock_system.return_value = "Darwin"
@@ -177,13 +179,13 @@ class TestMLXRuntime:
 
         args = Namespace(runtime="mlx", container=True)
 
-        model = Model("test-model", "/tmp/store")
+        model = Transport("test-model", "/tmp/store")
 
         # Should not raise an error since we're mocking macOS with Apple Silicon
         model.validate_args(args)
 
-    @patch('ramalama.model.platform.system')
-    @patch('ramalama.model.platform.machine')
+    @patch('ramalama.transports.base.platform.system')
+    @patch('ramalama.transports.base.platform.machine')
     def test_mlx_validation_non_macos_error(self, mock_machine, mock_system):
         """Test that MLX runtime fails on non-macOS systems"""
         mock_system.return_value = "Linux"
@@ -191,13 +193,13 @@ class TestMLXRuntime:
 
         args = Namespace(runtime="mlx", container=False, privileged=False)
 
-        model = Model("test-model", "/tmp/store")
+        model = Transport("test-model", "/tmp/store")
 
         with pytest.raises(ValueError, match="MLX runtime is only supported on macOS"):
             model.validate_args(args)
 
-    @patch('ramalama.model.platform.system')
-    @patch('ramalama.model.platform.machine')
+    @patch('ramalama.transports.base.platform.system')
+    @patch('ramalama.transports.base.platform.machine')
     def test_mlx_validation_success(self, mock_machine, mock_system):
         """Test that MLX runtime passes validation on macOS with --nocontainer"""
         mock_system.return_value = "Darwin"
@@ -205,15 +207,15 @@ class TestMLXRuntime:
 
         args = Namespace(runtime="mlx", container=False, privileged=False)
 
-        model = Model("test-model", "/tmp/store")
+        model = Transport("test-model", "/tmp/store")
 
         # Should not raise any exception
         model.validate_args(args)
 
-    @patch('ramalama.model.platform.system')
-    @patch('ramalama.model.platform.machine')
-    @patch('ramalama.model.compute_serving_port')
-    @patch('ramalama.model.os.fork')
+    @patch('ramalama.transports.base.platform.system')
+    @patch('ramalama.transports.base.platform.machine')
+    @patch('ramalama.transports.base.compute_serving_port')
+    @patch('ramalama.transports.base.os.fork')
     @patch('ramalama.chat.chat')
     @patch('socket.socket')
     def test_mlx_run_uses_server_client_model(
@@ -244,7 +246,7 @@ class TestMLXRuntime:
             dryrun=True,  # use dryrun to avoid file system checks
         )
 
-        model = Model("test-model", "/tmp/store")
+        model = Transport("test-model", "/tmp/store")
 
         with patch.object(model, 'get_container_name', return_value="test-container"):
             with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
@@ -264,8 +266,8 @@ class TestMLXRuntime:
         assert args.url == "http://127.0.0.1:8080/v1"
         assert args.pid2kill == 123
 
-    @patch('ramalama.model.platform.system')
-    @patch('ramalama.model.platform.machine')
+    @patch('ramalama.transports.base.platform.system')
+    @patch('ramalama.transports.base.platform.machine')
     def test_mlx_build_exec_args_includes_server_subcommand(self, mock_machine, mock_system):
         """Test that MLX build_exec_args correctly handles server subcommand"""
         mock_system.return_value = "Darwin"
@@ -275,7 +277,7 @@ class TestMLXRuntime:
             temp="0.7", seed=42, context=1024, runtime_args=["--verbose"], container=False, generate=False, dryrun=True
         )
 
-        model = Model("test-model", "/tmp/store")
+        model = Transport("test-model", "/tmp/store")
 
         # Test that server subcommand is supported
         exec_args = model._build_mlx_exec_args("server", args, ["--port", "8080"])
@@ -297,8 +299,8 @@ class TestMLXRuntime:
 
         assert exec_args == expected_args
 
-    @patch('ramalama.model.platform.system')
-    @patch('ramalama.model.platform.machine')
+    @patch('ramalama.transports.base.platform.system')
+    @patch('ramalama.transports.base.platform.machine')
     def test_mlx_benchmarking_not_supported(self, mock_machine, mock_system):
         """Test that MLX runtime raises NotImplementedError for benchmarking"""
         mock_system.return_value = "Darwin"
@@ -306,13 +308,13 @@ class TestMLXRuntime:
 
         args = Namespace(runtime="mlx", MODEL="test-model", container=False, generate=False, dryrun=True)
 
-        model = Model("test-model", "/tmp/store")
+        model = Transport("test-model", "/tmp/store")
 
         with pytest.raises(NotImplementedError, match="Benchmarking is not supported by the MLX runtime"):
             model.build_exec_args_bench(args)
 
-    @patch('ramalama.model.platform.system')
-    @patch('ramalama.model.platform.machine')
+    @patch('ramalama.transports.base.platform.system')
+    @patch('ramalama.transports.base.platform.machine')
     def test_mlx_perplexity_not_supported(self, mock_machine, mock_system):
         """Test that MLX runtime raises NotImplementedError for perplexity"""
         mock_system.return_value = "Darwin"
@@ -320,7 +322,68 @@ class TestMLXRuntime:
 
         args = Namespace(runtime="mlx", MODEL="test-model", container=False, generate=False, dryrun=True)
 
-        model = Model("test-model", "/tmp/store")
+        model = Transport("test-model", "/tmp/store")
 
         with pytest.raises(NotImplementedError, match="Perplexity calculation is not supported by the MLX runtime"):
             model.build_exec_args_perplexity(args)
+
+
+class TestOCIModelSetupMounts:
+    """Test the OCI model setup_mounts functionality that was refactored"""
+
+    @pytest.fixture
+    def mock_engine(self):
+        """Create a mock engine for testing"""
+        engine = Mock()
+        engine.use_podman = True
+        engine.add = Mock()
+        return engine
+
+    @pytest.fixture
+    def oci_model(self):
+        """Create an OCI model for testing"""
+        model = OCI("test-registry.io/test-model:latest", "/tmp/store", "podman")
+        return model
+
+    def test_setup_mounts_dryrun(self, oci_model, mock_engine):
+        """Test that setup_mounts returns early on dryrun"""
+        args = Namespace(dryrun=True)
+        oci_model.engine = mock_engine
+
+        result = oci_model.setup_mounts(args)
+
+        assert result is None
+        mock_engine.add.assert_not_called()
+
+    def test_setup_mounts_oci_podman(self, oci_model, mock_engine):
+        """Test OCI model mounting with Podman (image mount)"""
+        args = Namespace(dryrun=False)
+        mock_engine.use_podman = True
+        oci_model.engine = mock_engine
+
+        oci_model.setup_mounts(args)
+
+        expected_mount = f"--mount=type=image,src={oci_model.model},destination={MNT_DIR},subpath=/models,rw=false"
+        mock_engine.add.assert_called_once_with([expected_mount])
+
+    @patch('ramalama.transports.base.populate_volume_from_image')
+    def test_setup_mounts_oci_docker(self, mock_populate_volume, oci_model, mock_engine):
+        """Test OCI model mounting with Docker (volume mount using populate_volume_from_image)"""
+        args = Namespace(dryrun=False, container=True, generate=False)
+        mock_engine.use_podman = False
+        mock_engine.use_docker = True
+        oci_model.engine = mock_engine
+
+        mock_volume_name = "ramalama-models-abc123"
+        mock_populate_volume.return_value = mock_volume_name
+
+        oci_model.setup_mounts(args)
+
+        # Verify populate_volume_from_image was called
+        mock_populate_volume.assert_called_once()
+        call_args = mock_populate_volume.call_args
+        assert call_args[0][0] == oci_model  # model argument
+
+        # Verify mount command was added
+        expected_mount = f"--mount=type=volume,src={mock_volume_name},dst={MNT_DIR},readonly"
+        mock_engine.add.assert_called_once_with([expected_mount])

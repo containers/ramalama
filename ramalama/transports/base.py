@@ -85,7 +85,7 @@ def trim_model_name(model):
     return model
 
 
-class ModelBase(ABC):
+class TransportBase(ABC):
     model: str
     type: str
 
@@ -133,10 +133,10 @@ class ModelBase(ABC):
         raise self.__not_implemented_error("inspect")
 
 
-class Model(ModelBase):
-    """Model super class"""
+class Transport(TransportBase):
+    """Transport super class"""
 
-    type: str = "Model"
+    type: str = "Transport"
 
     def __init__(self, model: str, model_store_path: str):
         self.model = model
@@ -365,7 +365,7 @@ class Model(ModelBase):
                 volume = populate_volume_from_image(self, os.path.basename(output_filename))
                 mount_cmd = f"--mount=type=volume,src={volume},dst={MNT_DIR},readonly"
             else:
-                raise NotImplementedError(f"No compatible oci mount method for {self.engine.args.engine}")
+                raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
             self.engine.add([mount_cmd])
             return None
 

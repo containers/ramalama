@@ -42,7 +42,7 @@ done
 # in the table in ramalama.1.md. ramalama-remote is not a ramalama subcommand,
 # so it is excluded here.
 for md in $(ls -1 *-*.1.md | grep -v remote);do
-    desc=$(grep -E -A1 '^#* NAME' $md|tail -1|sed -e 's/^ramalama[^ ]\+ - //')
+    desc=$(grep -E -A1 '^#* NAME' $md|tail -1|sed -E -e 's/^ramalama[^ ]+ - //')
 
     # ramalama.1.md has a two-column table; ramalama-*.1.md all have three.
     parent=$(echo $md | sed -e 's/^\(.*\)-.*$/\1.1.md/')
