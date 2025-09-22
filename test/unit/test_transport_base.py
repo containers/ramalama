@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from ramalama.command.factory import assemble_command
 from ramalama.common import MNT_DIR
 from ramalama.transports.base import Transport, compute_serving_port
 from ramalama.transports.oci import OCI
@@ -246,7 +247,12 @@ class TestMLXRuntime:
             dryrun=True,  # use dryrun to avoid file system checks
         )
 
+<<<<<<< HEAD:test/unit/test_model.py
         model = Transport("test-model", "/tmp/store")
+=======
+        model = Transport(args.MODEL, args.store)
+        cmd = assemble_command(args)
+>>>>>>> d6768c55 (next):test/unit/test_transport_base.py
 
         with patch.object(model, 'get_container_name', return_value="test-container"):
             with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
