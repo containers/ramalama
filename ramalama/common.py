@@ -39,7 +39,7 @@ RAG_CONTENT = f"{MNT_DIR}/vector.db"
 
 MIN_VRAM_BYTES = 1073741824  # 1GiB
 
-SPLIT_MODEL_PATH_RE = r'(.*)/([^/]*)-00001-of-(\d{5})\.gguf'
+SPLIT_MODEL_PATH_RE = r'(.*?)(?:/)?([^/]*)-00001-of-(\d{5})\.gguf'
 
 
 def is_split_file_model(model_path):

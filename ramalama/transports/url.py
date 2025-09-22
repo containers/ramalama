@@ -84,12 +84,14 @@ class URL(Transport):
             return files
 
         path_part = match[1]
+        if path_part:
+            path_part += '/'
         filename_base = match[2]
         total_parts = int(match[3])
 
         for i in range(1, total_parts + 1):
             file_name = f"{filename_base}-{i:05d}-of-{total_parts:05d}.gguf"
-            url = f"{self.type}://{path_part}/{file_name}"
+            url = f"{self.type}://{path_part}{file_name}"
             files.append(
                 SnapshotFile(
                     url=url,
