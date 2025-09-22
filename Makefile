@@ -208,7 +208,17 @@ detailed-cov-tests: requires-tox
 .PHONY: e2e-tests
 e2e-tests: requires-tox
 	# This makefile target runs the new e2e-tests pytest based
-	tox -e e2e
+	tox -q -e e2e
+
+.PHONY: e2e-tests-nocontainer
+e2e-tests-nocontainer: requires-tox
+	# This makefile target runs the new e2e-tests pytest based
+	tox -q -e e2e -- --no-container
+
+.PHONY: e2e-tests-docker
+e2e-tests-docker: requires-tox
+	# This makefile target runs the new e2e-tests pytest based
+	tox -q -e e2e -- --container-engine=docker
 
 .PHONY: end-to-end-tests
 end-to-end-tests: validate bats bats-nocontainer ci
