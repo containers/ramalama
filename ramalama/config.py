@@ -67,6 +67,7 @@ class RamalamaSettings:
 @dataclass
 class BaseConfig:
     api: str = "none"
+    api_key: str = None
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
     container: bool = None  # type: ignore
     ctx_size: int = 0

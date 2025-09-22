@@ -37,6 +37,11 @@ DEFAULT_STORE_PATTERN = re.compile(
     re.MULTILINE,
 )
 
+DEFAULT_API_KEY_PATTERN = re.compile(
+    r"--api-key API_KEY\s+.*\(default: (?P<api_key>.+)\)",
+    re.MULTILINE,
+)
+
 
 @pytest.fixture()
 def default_storage_path():
@@ -327,3 +332,34 @@ def test_help_rm_message_without_arguments():
         r"Error: one MODEL or --all must be specified",
         exc_info.value.output.decode("utf-8"),
     )
+
+
+@pytest.mark.e2e
+def test_default_api_key():
+    import random
+    import string
+
+    # Generate a random API key similar to bats safename function
+    api_key = f"e_t1-{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}"
+
+    # Test 1: With RAMALAMA_API_KEY environment variable, it should show as default
+    result = check_output(
+        ["ramalama", "chat", "--help"], env={"RAMALAMA_API_KEY": api_key, "RAMALAMA_CONFIG": "/dev/null"}
+    )
+    match = f"default: {api_key}" in result
+    assert match, f"API key from environment should show as (default: {api_key})"
+
+    # Test 2: Environment variable takes precedence over config file
+    config_api_key = f"config_key_{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}"
+    config = f"""
+    [ramalama]
+    api_key = "{config_api_key}"
+    """
+
+    with RamalamaExecWorkspace(config=config, env_vars={"RAMALAMA_API_KEY": api_key}) as ctx:
+        result = ctx.check_output(["ramalama", "chat", "--help"])
+        match = f"default: {api_key}" in result
+        assert (
+            match
+        ), f"Environment variable should override config file: expected \
+        {api_key}"

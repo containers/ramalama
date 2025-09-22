@@ -239,4 +239,23 @@ EOF
     is "$output" "Error: one MODEL or --all must be specified"  "Verify at least one argument"
 }
 
+@test "ramalama verify default api_key" {
+    API_KEY=e_$(safename)
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+api_key="${API_KEY}"
+EOF
+
+
+    RAMALAMA_CONFIG=${conf} run_ramalama chat --help
+    is "$output" ".*default:.*${API_KEY}"  "Verify default api_key from ramalama.conf"
+
+    RAMALAMA_API_KEY=${API_KEY} RAMALAMA_CONFIG=/dev/null run_ramalama chat --help
+    is "$output" ".*default:.*${API_KEY}"  "Verify default api_key from environment is set"
+
+    RAMALAMA_API_KEY=${API_KEY} RAMALAMA_CONFIG=${conf} run_ramalama chat --help
+    is "$output" ".*default:.*${API_KEY}"  "Verify default api_key from environment is set"
+}
+
 # vim: filetype=sh
