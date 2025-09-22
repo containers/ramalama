@@ -1,0 +1,58 @@
+schema_version: "1.0.0"
+commands:
+  - name: serve
+    inference_engine:
+      name: "mlx server"
+      binary: "mlx_lm.server"
+      options:
+        - name: "--model"
+          description: "The AI model to run"
+          value: "{{ model.model_path }}"
+        - name: "--temp"
+          description: "Temperature"
+          value: "{{ args.temp }}"
+        - name: "--seed"
+          description: "Seed the global PRNG"
+          value: "{{ args.seed }}"
+        - name: "--max-tokens"
+          description: "Size of the prompt context"
+          value: "{{ args.ctx_size }}"
+        - name: "--host"
+          description: "IP address for the AI model server to listen on"
+          value: "{{ args.host }}"
+        - name: "--port"
+          description: "Port for the AI model server to listen on"
+          value: "{{ args.port }}"
+        # Special case:
+        # Pass arbitrary runtime arguments to mlx server
+        - name: ""
+          description: "Arbitrary runtime arguments for mlx server"
+          value: "{{ args.runtime_args }}"
+  - name: run
+    inference_engine:
+      name: "mlx serve with chat"
+      binary: "mlx_lm.server"
+      options:
+        - name: "--model"
+          description: "The AI model to run"
+          value: "{{ model.model_path }}"
+        - name: "--temp"
+          description: "Temperature"
+          value: "{{ args.temp }}"
+        - name: "--seed"
+          description: "Seed the global PRNG"
+          value: "{{ args.seed }}"
+        - name: "--max-tokens"
+          description: "Size of the prompt context"
+          value: "{{ args.ctx_size }}"
+        - name: "--host"
+          description: "IP address for the AI model server to listen on"
+          value: "{{ args.host }}"
+        - name: "--port"
+          description: "Port for the AI model server to listen on"
+          value: "{{ args.port }}"
+        # Special case:
+        # Pass arbitrary runtime arguments to mlx server
+        - name: ""
+          description: "Arbitrary runtime arguments for mlx server"
+          value: "{{ args.runtime_args }}"
