@@ -137,40 +137,6 @@ def test_compute_serving_port(
 class TestMLXRuntime:
     """Test MLX runtime functionality"""
 
-    def test_mlx_serve_args(self):
-        """Test that MLX serve generates correct arguments"""
-        args = Namespace(
-            port="8080",
-            host="127.0.0.1",
-            context=2048,
-            temp="0.8",
-            runtime_args=["--verbose"],
-            container=False,
-            generate=False,
-            dryrun=True,
-        )
-
-        model = Transport("test-model", "/tmp/store")
-
-        exec_args = model.mlx_serve(args)
-
-        expected_args = [
-            "mlx_lm.server",
-            "--model",
-            "/path/to/model",
-            "--temp",
-            "0.8",
-            "--max-tokens",
-            "2048",
-            "--verbose",
-            "--port",
-            "8080",
-            "--host",
-            "127.0.0.1",
-        ]
-
-        assert exec_args == expected_args
-
     @patch('ramalama.transports.base.platform.system')
     @patch('ramalama.transports.base.platform.machine')
     def test_mlx_validation_container_no_error(self, mock_machine, mock_system):
@@ -215,17 +181,13 @@ class TestMLXRuntime:
 
     @patch('ramalama.transports.base.platform.system')
     @patch('ramalama.transports.base.platform.machine')
-    @patch('ramalama.transports.base.compute_serving_port')
     @patch('ramalama.transports.base.os.fork')
     @patch('ramalama.chat.chat')
     @patch('socket.socket')
-    def test_mlx_run_uses_server_client_model(
-        self, mock_socket_class, mock_chat, mock_fork, mock_compute_port, mock_machine, mock_system
-    ):
+    def test_mlx_run_uses_server_client_model(self, mock_socket_class, mock_chat, mock_fork, mock_machine, mock_system):
         """Test that MLX runtime uses server-client model in run method"""
         mock_system.return_value = "Darwin"
         mock_machine.return_value = "arm64"
-        mock_compute_port.return_value = "8080"
         mock_fork.return_value = 123  # Parent process
 
         # Mock socket to simulate successful connection (server ready)
@@ -237,6 +199,7 @@ class TestMLXRuntime:
 
         # Add all required arguments for the run method
         args = Namespace(
+            subcommand="run",
             runtime="mlx",
             container=False,
             privileged=False,
@@ -245,21 +208,17 @@ class TestMLXRuntime:
             ARGS=None,  # No prompt arguments
             pull="missing",  # Required for get_model_path
             dryrun=True,  # use dryrun to avoid file system checks
+            store="/tmp/store",
+            port="8080",
+            engine="podman",
         )
 
-<<<<<<< HEAD:test/unit/test_model.py
-        model = Transport("test-model", "/tmp/store")
-=======
         model = Transport(args.MODEL, args.store)
         cmd = assemble_command(args)
->>>>>>> d6768c55 (next):test/unit/test_transport_base.py
 
         with patch.object(model, 'get_container_name', return_value="test-container"):
             with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
-                model.run(args)
-
-        # Verify that compute_serving_port was called
-        mock_compute_port.assert_called_once()
+                model.run(args, cmd)
 
         # Verify that fork was called (indicating server-client model)
         mock_fork.assert_called_once()
@@ -271,39 +230,6 @@ class TestMLXRuntime:
         # MLX runtime should include /v1 in the URL
         assert args.url == "http://127.0.0.1:8080/v1"
         assert args.pid2kill == 123
-
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
-    def test_mlx_build_exec_args_includes_server_subcommand(self, mock_machine, mock_system):
-        """Test that MLX build_exec_args correctly handles server subcommand"""
-        mock_system.return_value = "Darwin"
-        mock_machine.return_value = "arm64"
-
-        args = Namespace(
-            temp="0.7", seed=42, context=1024, runtime_args=["--verbose"], container=False, generate=False, dryrun=True
-        )
-
-        model = Transport("test-model", "/tmp/store")
-
-        # Test that server subcommand is supported
-        exec_args = model._build_mlx_exec_args("server", args, ["--port", "8080"])
-
-        expected_args = [
-            "mlx_lm.server",
-            "--model",
-            "/path/to/model",
-            "--temp",
-            "0.7",
-            "--seed",
-            "42",
-            "--max-tokens",
-            "1024",
-            "--verbose",
-            "--port",
-            "8080",
-        ]
-
-        assert exec_args == expected_args
 
     @patch('ramalama.transports.base.platform.system')
     @patch('ramalama.transports.base.platform.machine')
