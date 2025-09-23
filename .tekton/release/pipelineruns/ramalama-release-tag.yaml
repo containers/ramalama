@@ -13,6 +13,7 @@ metadata:
   labels:
     appstudio.openshift.io/application: ramalama
     pipelines.appstudio.openshift.io/type: release
+    pac.test.appstudio.openshift.io/event-type: push
   name: ramalama-release-tag
   namespace: ramalama-tenant
 spec:
@@ -25,4 +26,4 @@ spec:
     pipeline: 6h
     finally: 15m
   taskRunTemplate:
-    serviceAccountName: appstudio-pipeline
+    serviceAccountName: konflux-integration-runner
