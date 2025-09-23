@@ -1,7 +1,6 @@
 import os
 import platform
 import random
-import shlex
 import socket
 import subprocess
 import sys
@@ -14,8 +13,6 @@ from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
     accel_image,
-    check_metal,
-    check_nvidia,
     exec_cmd,
     genname,
     is_split_file_model,
@@ -25,7 +22,6 @@ from ramalama.common import (
 )
 from ramalama.compose import Compose
 from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
-from ramalama.console import should_colorize
 from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.logger import logger
@@ -38,7 +34,6 @@ from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.store import ModelStore
 from ramalama.quadlet import Quadlet
 from ramalama.rag import rag_image
-from ramalama.version import version
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
 
@@ -113,7 +108,7 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("bench")
 
     @abstractmethod
-    def run(self, args):
+    def run(self, args, server_cmd: list[str]):
         raise self.__not_implemented_error("run")
 
     @abstractmethod
@@ -121,7 +116,7 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("perplexity")
 
     @abstractmethod
-    def serve(self, args):
+    def serve(self, args, cmd: list[str]):
         raise self.__not_implemented_error("serve")
 
     @abstractmethod
@@ -391,11 +386,10 @@ class Transport(TransportBase):
         exec_args = self.build_exec_args_bench(args)
         self.execute_command(exec_args, args)
 
-    def run(self, args):
+    def run(self, args, server_cmd: list[str]):
         # The Run command will first launch a daemonized service
         # and run chat to communicate with it.
 
-        args.port = compute_serving_port(args, quiet=not args.debug)
         if args.container:
             args.name = self.get_container_name(args)
 
@@ -405,18 +399,18 @@ class Transport(TransportBase):
         pid = os.fork()
         if pid == 0:
             # Child process - start the server
-            self._start_server(args)
+            self._start_server(args, server_cmd)
             return 0
         else:
             # Parent process - connect to server and start chat
             return self._connect_and_chat(args, pid)
 
-    def _start_server(self, args):
+    def _start_server(self, args, cmd: list[str]):
         """Start the server in the child process."""
         args.host = CONFIG.host
         args.generate = ""
         args.detach = True
-        self.serve(args, True)
+        self.serve(args, cmd)
 
     def _connect_and_chat(self, args, server_pid):
         """Connect to the server and start chat in the parent process."""
@@ -513,39 +507,6 @@ class Transport(TransportBase):
         except ProcessLookupError:
             pass
 
-    def _build_mlx_exec_args(self, subcommand: str, args, extra: Optional[list[str]] = None) -> list[str]:
-        """Return the command-line *exec_args* for ``mlx_lm`` *subcommand*.
-        Parameters
-        ----------
-        subcommand:
-            Should just be ``"server"``
-        args:
-            Parsed CLI *args* namespace.
-        extra:
-            Optional list of extra arguments to append verbatim.
-        """
-        exec_args = [
-            "mlx_lm.server",
-            "--model",
-            shlex.quote(self._get_entry_model_path(args.container, args.generate, args.dryrun)),
-        ]
-
-        if getattr(args, "temp", None):
-            exec_args += ["--temp", str(args.temp)]
-
-        if getattr(args, "seed", None):
-            exec_args += ["--seed", str(args.seed)]
-
-        if getattr(args, "context", None):
-            exec_args += ["--max-tokens", str(args.context)]
-
-        exec_args += getattr(args, "runtime_args", [])
-
-        if extra:
-            exec_args += extra
-
-        return exec_args
-
     def perplexity(self, args):
         self.ensure_model_exists(args)
         exec_args = self.build_exec_args_perplexity(args)
@@ -620,129 +581,6 @@ class Transport(TransportBase):
 
         raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
 
-    def vllm_serve(self, args):
-        exec_args = [
-            "--model",
-            self._get_entry_model_path(args.container, args.generate, args.dryrun),
-            "--port",
-            args.port,
-            "--max-sequence-length",
-            f"{args.context}",
-        ]
-        exec_args += args.runtime_args
-        return exec_args
-
-    def llama_serve(self, args):
-        exec_args = ["llama-server"]
-        draft_model_path = None
-        if self.draft_model:
-            draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
-            draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
-
-        exec_args += [
-            "--port",
-            args.port,
-            "--model",
-            self._get_entry_model_path(args.container, args.generate, args.dryrun),
-            "--no-warmup",
-        ]
-        if not args.thinking:
-            exec_args += ["--reasoning-budget", "0"]
-        mmproj_path = self._get_mmproj_path(args.container, args.generate, args.dryrun)
-        if mmproj_path is not None:
-            exec_args += ["--mmproj", mmproj_path]
-        else:
-            exec_args += ["--jinja"]
-
-            chat_template_path = self._get_chat_template_path(args.container, args.generate, args.dryrun)
-            if chat_template_path is not None:
-                exec_args += ["--chat-template-file", chat_template_path]
-
-        if should_colorize():
-            exec_args += ["--log-colors", "on"]
-
-        exec_args += [
-            "--alias",
-            self.model,
-            "--temp",
-            f"{args.temp}",
-            "--cache-reuse",
-            f"{args.cache_reuse}",
-        ]
-        if args.context > 0:
-            exec_args += ["--ctx-size", f"{args.context}"]
-
-        exec_args += args.runtime_args
-
-        if draft_model_path:
-            exec_args += ['--model_draft', draft_model_path]
-
-        # Placeholder for clustering, it might be kept for override
-        rpc_nodes = os.getenv("RAMALAMA_LLAMACPP_RPC_NODES")
-        if rpc_nodes:
-            exec_args += ["--rpc", rpc_nodes]
-
-        if args.debug:
-            exec_args += ["-v"]
-
-        if getattr(args, "webui", "") == "off":
-            exec_args.extend(["--no-webui"])
-
-        if check_nvidia() or check_metal(args):
-            exec_args.extend(["--flash-attn", "on"])
-        return exec_args
-
-    def mlx_serve(self, args):
-        extra = ["--port", str(args.port), "--host", args.host]
-        return self._build_mlx_exec_args("server", args, extra)
-
-    def build_exec_args_serve(self, args):
-        if args.runtime == "vllm":
-            exec_args = self.vllm_serve(args)
-        elif args.runtime == "mlx":
-            exec_args = self.mlx_serve(args)
-        else:
-            exec_args = self.llama_serve(args)
-
-        if args.seed:
-            exec_args += ["--seed", args.seed]
-
-        return exec_args
-
-    def handle_runtime(self, args, exec_args):
-        set_accel_env_vars()
-
-        if args.runtime == "vllm":
-            vllm_max_model_len = 2048
-            if args.context:
-                vllm_max_model_len = args.context
-
-            exec_args.extend(
-                [
-                    "--max_model_len",
-                    str(vllm_max_model_len),
-                    "--served-model-name",
-                    self.model_name,
-                ]
-            )
-
-            if getattr(args, 'runtime_args', None):
-                exec_args.extend(args.runtime_args)
-        elif args.runtime == "mlx":
-            # MLX uses the exec_args from mlx_serve
-            pass
-        else:
-            gpu_args = self.gpu_args(args=args)
-            if gpu_args is not None:
-                exec_args.extend(gpu_args)
-
-            if args.container:
-                exec_args.extend(["--host", "0.0.0.0"])
-            else:
-                exec_args.extend(["--host", args.host])
-
-        return exec_args
-
     def generate_container_config(self, args, exec_args):
         # Get the blob paths (src) and mounted paths (dest)
         model_src_path = self._get_entry_model_path(False, False, args.dryrun)
@@ -804,27 +642,23 @@ class Transport(TransportBase):
                 )
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
-    def serve(self, args, quiet=False):
+    def serve(self, args, cmd: list[str]):
         self.ensure_model_exists(args)
-
-        args.port = compute_serving_port(args, quiet=quiet or args.generate)
-
-        exec_args = self.build_exec_args_serve(args)
-        exec_args = self.handle_runtime(args, exec_args)
+        set_accel_env_vars()
 
         if args.generate:
-            self.generate_container_config(args, exec_args)
+            self.generate_container_config(args, cmd)
             return
 
         # Add rag chatbot
         if getattr(args, "rag", None):
-            exec_args = [
+            cmd = [
                 "bash",
                 "-c",
-                f"nohup {' '.join(exec_args)} &> /tmp/llama-server.log & rag_framework run /rag/vector.db",
+                f"nohup {' '.join(cmd)} &> /tmp/llama-server.log & rag_framework run /rag/vector.db",
             ]
 
-        self.execute_command(exec_args, args)
+        self.execute_command(cmd, args)
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
         quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
@@ -893,15 +727,6 @@ class Transport(TransportBase):
         # Write messages to stderr
         perror(f"Downloading {model_name} ...")
         perror(f"Trying to pull {model_name} ...")
-
-
-def distinfo_volume():
-    dist_info = "ramalama-%s.dist-info" % version()
-    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), dist_info)
-    if not os.path.exists(path):
-        return ""
-
-    return f"-v{path}:/usr/share/ramalama/{dist_info}:ro"
 
 
 def compute_ports() -> list:

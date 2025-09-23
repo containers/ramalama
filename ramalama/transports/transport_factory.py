@@ -154,16 +154,3 @@ def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
     if transport is None:
         transport = CONFIG.transport
     return TransportFactory(name, args, transport=transport).create()
-
-
-def Serve(name, args) -> None:
-    model = New(name, args)
-    try:
-        model.serve(args)
-    except KeyError as e:
-        try:
-            args.quiet = True
-            model = TransportFactory(name, args, ignore_stderr=True).create_oci()
-            model.serve(args)
-        except Exception:
-            raise e

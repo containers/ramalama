@@ -24,6 +24,7 @@ except Exception:
 import ramalama.chat as chat
 from ramalama import engine
 from ramalama.chat import default_prefix
+from ramalama.command.factory import CommandFactory
 from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import CONFIG, coerce_to_bool, load_file_config
 from ramalama.endian import EndianMismatchError
@@ -38,6 +39,7 @@ from ramalama.transports.base import (
     NoGGUFModelFileFound,
     NoRefFileFound,
     SafetensorModelNotSupported,
+    compute_serving_port,
     trim_model_name,
 )
 from ramalama.transports.transport_factory import New, TransportFactory
@@ -1046,10 +1048,16 @@ def run_cli(args):
         args.network = 'bridge'
         args.generate = None
 
+    cmd_factory = CommandFactory(get_inference_spec_files(), get_inference_schema_files())
     try:
+        # detect available port and update arguments
+        args.port = compute_serving_port(args)
+
         model = New(args.MODEL, args)
         model.ensure_model_exists(args)
-        model.serve(args, quiet=True) if args.rag else model.run(args)
+        if args.rag:
+            return model.serve(args, cmd_factory.create(args))
+        model.run(args, cmd_factory.create(args))
 
     except KeyError as e:
         logger.debug(e)
@@ -1058,7 +1066,9 @@ def run_cli(args):
             oci_model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
             oci_model.ensure_model_exists(args)
 
-            oci_model.serve(args, quiet=True) if args.rag else oci_model.run(args)
+            if args.rag:
+                return oci_model.serve(args, cmd_factory.create(args))
+            oci_model.run(args, cmd_factory.create(args))
         except Exception as exc:
             raise e from exc
 
@@ -1094,14 +1104,18 @@ def serve_cli(args):
         stack = Stack(args)
         return stack.serve()
 
+    cmd_factory = CommandFactory(get_inference_spec_files(), get_inference_schema_files())
     try:
+        # detect available port and update arguments
+        args.port = compute_serving_port(args)
+
         model = New(args.MODEL, args)
-        model.serve(args)
+        model.serve(args, cmd_factory.create(args))
     except KeyError as e:
         try:
             args.quiet = True
             model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-            model.serve(args)
+            model.serve(args, cmd_factory.create(args))
         except Exception:
             raise e
 
