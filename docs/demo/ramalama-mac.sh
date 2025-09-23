@@ -19,9 +19,9 @@ bold=$(tput bold)
 cyan=$(tput setaf 6)
 reset=$(tput sgr0)
 
-# Allow overriding browser (default: firefox)
-BROWSER="${BROWSER:-firefox}"
-
+# Allow overriding browser (default: firefox
+# On Mac, we need to use open -a Firefox to open Firefox
+ BROWSER="${BROWSER:-open -a Firefox}"
 echo_color() {
     echo "${cyan}$1${reset}"
 }
@@ -65,7 +65,7 @@ pull() {
     echo ""
 
     echo_color "RamaLama List all AI Models in local store"
-    exec_color "ramalama ls | grep --color smollm:135m"
+    exec_color "ramalama ls | grep --color smollm"
     echo ""
 
     echo_color "Show RamaLama container images"
@@ -84,8 +84,8 @@ run() {
     echo ""
     exec_color "ramalama --dryrun run granite | grep --color -- --cap-drop.*privileges"
     echo ""
-    exec_color "ramalama --dryrun run granite | grep --color -- --network.*none"
-    echo ""
+    # exec_color "ramalama --dryrun run granite | grep --color -- --network.*none"
+    # echo ""
 
     echo_color "run granite via RamaLama run"
     exec_color "ramalama run --ngl 0 granite"
@@ -117,7 +117,7 @@ serve() {
     echo ""
 
     echo_color "Serve granite via RamaLama model service"
-    exec_color "ramalama serve --port 8085 --api llama-stack --name granite-service -d granite"
+    exec_color "ramalama serve --port 8085 --api llama-stack --name granite-service -d granite &"
     echo ""
     
     echo_color "Waiting for the model service to come up"
@@ -125,7 +125,8 @@ serve() {
     echo ""
 
     echo_color "Inference against the model using llama-stack API"
-    exec_color "printf \"\n\"; curl --no-progress-meter http://localhost:8085/v1/openai/v1/chat/completions -H \"Content-Type: application/json\" -d '{ \"model\": \"granite3.1-dense\", \"messages\": [{\"role\": \"user\", \"content\": \"Tell me a joke\"}], \"stream\": false }' | grep -Po '(?<=\"content\":\")[^\"]*' | head -1"
+    # We adjust the curl command for macos
+    exec_color "printf '\n'; curl --no-progress-meter http://localhost:8085/v1/openai/v1/chat/completions -H 'Content-Type: application/json' -d '{ \"model\": \"granite3.1-dense\", \"messages\": [{\"role\": \"user\", \"content\": \"Tell me a joke\"}], \"stream\": false }' | json_pp | grep content"
     echo ""
 
     echo_color "Stop the ramalama container"
@@ -199,6 +200,34 @@ multi-modal() {
     clear
 }
 
+rag (){
+    echo_color "Create a rag database and use it with a LLM"
+    exec_color "echo Brian loves cheese > test.md"
+    exec_color "ramalama rag test.md test:latest"  
+    exec_color "ramalama run llama3.2 --rag test:latest"
+    # We need to load the podbook image from the desktop
+    # exec_color "podman load -i ../Desktop/podbook.tar"
+
+    # We need this timer so the port is cleared out from the previous run
+    # This is a workaround a fix is needed in the future
+    time sleep 5
+    # Uncomment if you have the podbook image locally
+    # exec_color "ramalama run llama3.2 --rag podbook:latest"
+    read -r -p "--> clear"
+    clear
+}
+
+mcp (){
+    echo_color "Start MCP server and use it with a LLM"
+    # Need to add gemini api key in gemini.env in main directory 
+    source ../gemini.env
+    exec_color "ramalama run phi4 --mcp https://www.context-awesome.com/api/mcp"
+    # Use Prompt What are the best resources for authoring technical books
+    exec_color "ramalama chat --url https://generativelanguage.googleapis.com/v1beta/openai --model gemini-2.5-flash --mcp https://www.context-awesome.com/api/mcp"
+    read -r -p "--> clear"
+    clear
+}
+
 if [[ $# -eq 0 ]]; then
     # No argument: runs the whole demo script
     setup
@@ -215,7 +244,11 @@ if [[ $# -eq 0 ]]; then
 
     quadlet
 
-    multi-modal
+    mcp
+
+    rag
+    # Disable multi-modal for macos for now needs work
+    # multi-modal
 
 else
     # Runs only the called function as an argument
