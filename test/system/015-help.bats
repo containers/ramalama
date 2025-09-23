@@ -162,11 +162,11 @@ EOF
     conf=$RAMALAMA_TMPDIR/ramalama.conf
     cat >$conf <<EOF
 [ramalama]
-runtime="vllm"
+runtime="mlx"
 EOF
 
     RAMALAMA_CONFIG=${conf} run_ramalama --help
-    is "$output" ".*default: vllm"  "Verify default runtime from ramalama.conf"
+    is "$output" ".*default: mlx"  "Verify default runtime from ramalama.conf"
 }
 
 @test "ramalama verify default store" {
