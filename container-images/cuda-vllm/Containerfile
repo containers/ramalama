@@ -15,5 +15,7 @@ WORKDIR /
 # Final runtime image
 FROM quay.io/ramalama/cuda:latest
 
+COPY --from=builder /usr/local/cuda/ /usr/local/cuda/
 COPY --from=builder /opt /opt
 
+RUN dnf install -y gcc gcc-c++ numactl && pip3.11 install --no-cache-dir ninja && dnf clean all

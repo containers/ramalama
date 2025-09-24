@@ -5,6 +5,7 @@ install_deps() {
     dnf install -y git wget ca-certificates gcc gcc-c++ libSM libXext \
       mesa-libGL jq lsof vim numactl
     if is_rhel_based; then
+      add_stream_repo "BaseOS"
       add_stream_repo "AppStream"
       dnf install -y numactl-devel
       rm_non_ubi_repos
