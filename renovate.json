@@ -13,11 +13,11 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "container-images\/rocm\/amdgpu\\.repo"
+      "managerFilePatterns": [
+        "/container-images/rocm/amdgpu\\.repo/"
       ],
       "matchStrings": [
-          "baseurl=https:\/\/repo\\.radeon\\.com\/amdgpu\/(?<currentValue>.*)\/rhel\/(.*)"
+        "baseurl=https://repo\\.radeon\\.com/amdgpu/(?<currentValue>.*)/rhel/(.*)"
       ],
       "datasourceTemplate": "custom.amdgpu",
       "versioningTemplate": "semver",
@@ -25,11 +25,11 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "container-images\/rocm\/rocm\\.repo"
+      "managerFilePatterns": [
+        "/container-images/rocm/rocm\\.repo/"
       ],
       "matchStrings": [
-          "baseurl=https:\/\/repo\\.radeon\\.com\/rocm\/rhel9\/(?<currentValue>.*)\/main"
+        "baseurl=https://repo\\.radeon\\.com/rocm/rhel9/(?<currentValue>.*)/main"
       ],
       "datasourceTemplate": "custom.rocm",
       "versioningTemplate": "semver",
@@ -37,11 +37,11 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "ramalama\/model\\.py"
+      "managerFilePatterns": [
+        "/ramalama/model\\.py/"
       ],
       "matchStrings": [
-          "return \"(?<depName>.*):(?<currentValue>.*)\""
+        "return \"(?<depName>.*):(?<currentValue>.*)\""
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "regex:rhoai-(?<major>\\d+).(?<minor>\\d+)-rocm$",
@@ -49,11 +49,11 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "ramalama\/model\\.py"
+      "managerFilePatterns": [
+        "/ramalama/model\\.py/"
       ],
       "matchStrings": [
-          "return \"(?<depName>.*):(?<currentValue>.*)\""
+        "return \"(?<depName>.*):(?<currentValue>.*)\""
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "regex:rhoai-(?<major>\\d+).(?<minor>\\d+)-cuda$",
@@ -80,7 +80,10 @@
       ]
     },
     {
-      "matchDatasources": ["custom.amdgpu", "custom.rocm"],
+      "matchDatasources": [
+        "custom.amdgpu",
+        "custom.rocm"
+      ],
       "groupName": "amdgpu-rocm"
     }
   ]
