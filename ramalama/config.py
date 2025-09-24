@@ -107,6 +107,7 @@ class BaseConfig:
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
+    vllm_python_path: str = "/opt/venv/bin/python3"
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
