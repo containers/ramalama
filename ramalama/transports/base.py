@@ -395,7 +395,6 @@ class Transport(TransportBase):
 
         args.noout = not args.debug
 
-        self.ensure_model_exists(args)
         pid = os.fork()
         if pid == 0:
             # Child process - start the server
@@ -643,7 +642,6 @@ class Transport(TransportBase):
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
     def serve(self, args, cmd: list[str]):
-        self.ensure_model_exists(args)
         set_accel_env_vars()
 
         if args.generate:
