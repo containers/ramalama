@@ -56,6 +56,7 @@ class Quadlet:
         quadlet_file.add("Container", "AddDevice", "-/dev/accel")
         quadlet_file.add("Container", "AddDevice", "-/dev/dri")
         quadlet_file.add("Container", "AddDevice", "-/dev/kfd")
+        quadlet_file.add("Container", "AddDevice", "nvidia.com/gpu=all")
         quadlet_file.add("Container", "Image", f"{self.image}")
         quadlet_file.add("Container", "RunInit", "true")
         quadlet_file.add("Container", "Environment", "HOME=/tmp")
