@@ -1003,8 +1003,9 @@ def chat_parser(subparsers):
     parser.add_argument(
         "--api-key",
         type=str,
-        default=os.getenv("API_KEY"),
-        help="OpenAI-compatible API key. Can also be set via the API_KEY environment variable.",
+        default=CONFIG.api_key,
+        help="""OpenAI-compatible API key.
+        Can also be set in ramalama.conf or via the RAMALAMA_API_KEY environment variable.""",
     )
     chat_run_options(parser)
     parser.add_argument(
