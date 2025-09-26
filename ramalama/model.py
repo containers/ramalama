@@ -622,14 +622,14 @@ class Model(ModelBase):
 
     def vllm_serve(self, args):
         exec_args = [
+            CONFIG.vllm_python_path,
+            "-m",
+            "vllm.entrypoints.openai.api_server",
             "--model",
             self._get_entry_model_path(args.container, args.generate, args.dryrun),
             "--port",
             args.port,
-            "--max-sequence-length",
-            f"{args.context}",
         ]
-        exec_args += args.runtime_args
         return exec_args
 
     def llama_serve(self, args):
