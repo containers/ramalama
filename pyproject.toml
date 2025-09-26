@@ -12,6 +12,7 @@ keywords = ["ramalama", "llama", "AI"]
 dependencies = [
   "argcomplete",
   "pyyaml",
+  "jsonschema",
 ]
 maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
@@ -35,12 +36,14 @@ dev = [
     "wheel~=0.45.0",
     "mypy",
     "pyyaml",
+    "jsonschema",
     "tox"
 ]
 
 cov = [
     "pytest-cov",
     "pyyaml",
+    "jsonschema",
 ]
 
 cov-detailed = [
@@ -50,6 +53,7 @@ cov-detailed = [
     "pytest-json",
     "pytest-html",
     "pyyaml",
+    "jsonschema",
 ]
 
 [project.urls]
@@ -131,6 +135,10 @@ include = ["ramalama", "ramalama.*"]
 
 [tool.setuptools.data-files]
 "share/ramalama" = ["shortnames/shortnames.conf", "docs/ramalama.conf"]
+"share/ramalama/inference" = [
+  "inference-spec/schema/*.json",
+  "inference-spec/engines/*",
+]
 "share/man/man1" = ["docs/*.1"]
 "share/man/man5" = ["docs/*.5"]
 "share/man/man7" = ["docs/*.7"]
