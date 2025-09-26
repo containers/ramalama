@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -82,3 +83,9 @@ def check_output(*args, **kwargs):
 def check_call(*args, **kwargs):
     with RamalamaExecWorkspace() as ctx:
         return ctx.check_call(*args, **kwargs)
+
+
+def get_ramalama_subcommands():
+    result = check_output(["ramalama", "help"])
+    match = re.search(r"\npositional arguments:\n\s+{(?P<subcommands>[\w,]*)}", result, re.DOTALL)
+    return match.group("subcommands").split(",") if match else []
