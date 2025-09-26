@@ -1,4 +1,0 @@
-[Volume]
-Driver=image
-Image=rag:latest-rag.image
-
