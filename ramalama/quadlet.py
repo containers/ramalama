@@ -163,15 +163,15 @@ class Quadlet:
         if not getattr(self.args, "rag", None):
             return files
 
-        rag_volume_file_name = f"{self.rag_name}.volume"
+        rag_volume_file_name = f"{self.rag_name.replace(':', '-')}.volume"
         print(f"Generating quadlet file: {rag_volume_file_name} ")
 
         volume_file = UnitFile(rag_volume_file_name)
         volume_file.add("Volume", "Driver", "image")
-        volume_file.add("Volume", "Image", f"{self.rag_name}.image")
+        volume_file.add("Volume", "Image", f"{self.rag_name.replace(':', '-')}.image")
         files.append(volume_file)
 
-        files.append(self._gen_image(self.rag_name, self.rag))
+        files.append(self._gen_image(self.rag_name.replace(':', '-'), self.rag))
 
         quadlet_file.add("Container", "Mount", f"type=image,source={self.rag},destination={RAG_DIR},readwrite=false")
         return files
