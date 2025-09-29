@@ -472,8 +472,10 @@ def check_intel() -> Literal["intel"] | None:
         b"0x7dd5",
         b"0x7d55",
     )
-    # Check to see if any of the device ids in intel_gpus are in the device id of the i915 driver
-    for fp in sorted(glob.glob('/sys/bus/pci/drivers/i915/*/device')):
+    # Check to see if any of the device ids in intel_gpus are in the device id of the i915 / xe driver
+    for fp in sorted(
+        [*glob.glob('/sys/bus/pci/drivers/i915/*/device'), *glob.glob('/sys/bus/pci/drivers/xe/*/device')]
+    ):
         with open(fp, 'rb') as file:
             content = file.read()
             for gpu_id in intel_gpus:
