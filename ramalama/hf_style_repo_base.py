@@ -276,6 +276,8 @@ class HFStyleRepoModel(Transport, ABC):
                 raise KeyError(f"Failed to pull model: {str(e)}")
 
             # Create temporary directory for downloading via CLI
+            # Ensure the base store path exists before creating the temp directory inside it
+            os.makedirs(self.model_store.base_path, exist_ok=True)
             with tempfile.TemporaryDirectory(prefix="tmp_hfcli_", dir=self.model_store.base_path) as tempdir:
                 model = f"{organization}/{name}"
                 conman_args = self.get_cli_download_args(tempdir, model)
