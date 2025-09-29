@@ -11,7 +11,7 @@ function skip_if_not_apple_silicon() {
 }
 
 function skip_if_no_mlx() {
-    if ! python3 -c "import mlx_lm" 2>/dev/null; then
+    if ! uv tool list | grep -q '^mlx-lm'; then
         skip "MLX runtime requires mlx-lm package to be installed"
     fi
 }
@@ -99,7 +99,8 @@ function skip_if_no_mlx() {
     is "$status" "0" "MLX serve should work"
     # Should use python -m mlx_lm.server
     is "$output" ".*mlx_lm.server.*" "should use MLX server command"
-    is "$output" ".*--port.*8080.*" "should include default port"
+    # Accept any port in the default range 8080-8090
+    is "$output" ".*--port.*80[89][0-9].*" "should include default-range port"
 }
 
 @test "ramalama --runtime=mlx --dryrun serve with custom port" {

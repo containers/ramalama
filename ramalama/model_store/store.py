@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
 import ramalama.model_store.go2jinja as go2jinja
-from ramalama.common import perror, sanitize_filename, verify_checksum
+from ramalama.common import MNT_DIR, perror, sanitize_filename, verify_checksum
 from ramalama.endian import EndianMismatchError, get_system_endianness
 from ramalama.logger import logger
 from ramalama.model_inspect.gguf_parser import GGUFInfoParser, GGUFModelInfo
@@ -111,7 +111,12 @@ class ModelStore:
         if snapshot_files != []:
             ref_file.files = []
         for file in snapshot_files:
-            ref_file.files.append(StoreFile(file.hash, file.name, map_to_store_file_type(file.type)))
+            ftype = (
+                StoreFileType.SAFETENSOR_MODEL
+                if file.name.endswith(".safetensors")
+                else map_to_store_file_type(file.type)
+            )
+            ref_file.files.append(StoreFile(file.hash, file.name, ftype))
 
         ref_file.write_to_file()
 
@@ -126,6 +131,42 @@ class ModelStore:
     def get_snapshot_directory_from_tag(self, model_tag: str) -> str:
         return os.path.join(self.snapshots_directory, self.get_snapshot_hash(model_tag))
 
+    def resolve_model_argument(
+        self,
+        model_tag: str,
+        prefer_directory_for_non_gguf: bool,
+        use_mounted_directory: bool,
+    ) -> Optional[str]:
+        """
+        Compute a model argument path based on store contents.
+
+        If prefer_directory_for_non_gguf is True and the repository contains
+        safetensors but no GGUF files, return the repository directory path:
+        - Inside container or for generated configs: MNT_DIR
+        - On the host: snapshot directory for the model tag
+
+        Returns None if the directory fallback is not applicable, so callers
+        can choose their standard GGUF entry path resolution.
+        """
+        if not prefer_directory_for_non_gguf:
+            return None
+
+        ref_file = self.get_ref_file(model_tag)
+        if ref_file is None:
+            return None
+
+        has_gguf = bool(ref_file.model_files)
+        has_safetensors = any(
+            file.type == StoreFileType.SAFETENSOR_MODEL or file.name.endswith(".safetensors") for file in ref_file.files
+        )
+
+        if not has_gguf and has_safetensors:
+            if use_mounted_directory:
+                return MNT_DIR
+            return self.get_snapshot_directory_from_tag(model_tag)
+
+        return None
+
     def get_snapshot_directory(self, hash: str) -> str:
         return os.path.join(self.snapshots_directory, hash)
 
@@ -134,6 +175,17 @@ class ModelStore:
 
     def get_blob_file_path(self, file_hash: str) -> str:
         return os.path.join(self.blobs_directory, sanitize_filename(file_hash))
+
+    def get_safetensor_blob_path(self, model_tag: str, requested_filename: str) -> Optional[str]:
+        ref_file = self.get_ref_file(model_tag)
+        if ref_file is None:
+            return None
+        safetensor_files = list(getattr(ref_file, "safetensor_model_files", []))
+        if not safetensor_files:
+            return None
+        matched = next((f for f in safetensor_files if f.name == requested_filename), None)
+        chosen = matched if matched is not None else safetensor_files[0]
+        return self.get_blob_file_path(chosen.hash)
 
     def get_blob_file_path_by_name(self, tag_hash: str, filename: str) -> str:
         return str(Path(self.get_snapshot_file_path(tag_hash, filename)).resolve())
@@ -178,7 +230,12 @@ class ModelStore:
         if ref_file is None:
             ref_file = RefJSONFile(snapshot_hash, self.get_ref_file_path(model_tag), [])
             for file in snapshot_files:
-                ref_file.files.append(StoreFile(file.hash, file.name, map_to_store_file_type(file.type)))
+                ftype = (
+                    StoreFileType.SAFETENSOR_MODEL
+                    if file.name.endswith(".safetensors")
+                    else map_to_store_file_type(file.type)
+                )
+                ref_file.files.append(StoreFile(file.hash, file.name, ftype))
 
             ref_file.write_to_file()
 
@@ -224,6 +281,8 @@ class ModelStore:
 
     def _try_convert_existing_chat_template(self, model_tag: str, snapshot_hash: str) -> bool:
         ref_file = self.get_ref_file(model_tag)
+        if ref_file is None:
+            return False
 
         for file in ref_file.chat_templates:
             chat_template_file_path = self.get_blob_file_path(file.hash)
@@ -244,6 +303,8 @@ class ModelStore:
 
             return True
 
+        return False
+
     def _ensure_chat_template(self, model_tag: str, snapshot_hash: str):
 
         # Give preference to a chat template that has been specified in the file list
@@ -251,7 +312,10 @@ class ModelStore:
         if self._try_convert_existing_chat_template(model_tag, snapshot_hash):
             return
 
-        models = self.get_ref_file(model_tag).model_files
+        ref = self.get_ref_file(model_tag)
+        if ref is None:
+            return
+        models = ref.model_files
         if not models:
             return
 
@@ -350,9 +414,16 @@ class ModelStore:
         existing_file_hashes = {f.hash for f in ref_file.files}
         for new_snapshot_file in new_snapshot_files:
             if new_snapshot_file.hash not in existing_file_hashes:
+                ftype = (
+                    StoreFileType.SAFETENSOR_MODEL
+                    if new_snapshot_file.name.endswith(".safetensors")
+                    else map_to_store_file_type(new_snapshot_file.type)
+                )
                 ref_file.files.append(
                     StoreFile(
-                        new_snapshot_file.hash, new_snapshot_file.name, map_to_store_file_type(new_snapshot_file.type)
+                        new_snapshot_file.hash,
+                        new_snapshot_file.name,
+                        ftype,
                     )
                 )
         ref_file.write_to_file()
