@@ -13,6 +13,7 @@ dependencies = [
   "argcomplete",
   "pyyaml",
   "jsonschema",
+  "jinja2",
 ]
 maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
@@ -37,6 +38,7 @@ dev = [
     "mypy",
     "pyyaml",
     "jsonschema",
+    "jinja2",
     "tox"
 ]
 
@@ -44,6 +46,7 @@ cov = [
     "pytest-cov",
     "pyyaml",
     "jsonschema",
+    "jinja2",
 ]
 
 cov-detailed = [
@@ -54,6 +57,7 @@ cov-detailed = [
     "pytest-html",
     "pyyaml",
     "jsonschema",
+    "jinja2",
 ]
 
 [project.urls]

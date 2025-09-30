@@ -1,6 +1,6 @@
 import argparse
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -59,26 +59,6 @@ def test_ramalama_args_context(args_dict: dict[str, Any]):
             ), f"Field '{ctx_field}' expected to be '{expected_value}', but got '{ctx_value}'"
         else:
             assert ctx_value is None, f"Field '{ctx_field}' expected to be None in args context"
-
-
-@patch("ramalama.command.context.check_metal")
-@patch("ramalama.command.context.check_nvidia")
-@patch("ramalama.command.context.should_colorize")
-@patch("os.getenv")
-def test_ramalama_func_context(getenv_mock, should_colorize_mock, check_nvidia_mock, check_metal_mock):
-    ctx = context.RamalamaFuncContext(True)
-
-    ctx.get_rpc_nodes()
-    getenv_mock.assert_called_with("RAMALAMA_LLAMACPP_RPC_NODES", None)
-
-    ctx.should_colorize()
-    should_colorize_mock.assert_called_once()
-
-    ctx.check_nvidia()
-    check_nvidia_mock.assert_called_once()
-
-    ctx.check_metal()
-    check_metal_mock.assert_called_once_with(argparse.Namespace(**{"container": True}))
 
 
 @pytest.mark.parametrize(

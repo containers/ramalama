@@ -82,30 +82,24 @@ class RamalamaModelContext:
         return ""
 
 
-class RamalamaFuncContext:
+class RamalamaHostContext:
 
-    def __init__(self, is_container: bool):
+    def __init__(
+        self, is_container: bool, uses_nvidia: bool, uses_metal: bool, should_colorize: bool, rpc_nodes: Optional[str]
+    ):
         self.is_container = is_container
-
-    def check_nvidia(self) -> bool:
-        return check_nvidia() is not True
-
-    def check_metal(self) -> bool:
-        return check_metal(argparse.Namespace(**{"container": self.is_container}))
-
-    def should_colorize(self) -> bool:
-        return should_colorize()
-
-    def get_rpc_nodes(self) -> Optional[str]:
-        return os.getenv("RAMALAMA_LLAMACPP_RPC_NODES", None)
+        self.uses_nvidia = uses_nvidia
+        self.uses_metal = uses_metal
+        self.should_colorize = should_colorize
+        self.rpc_nodes = rpc_nodes
 
 
 class RamalamaCommandContext:
 
-    def __init__(self, args: RamalamaArgsContext, model: RamalamaModelContext, func: RamalamaFuncContext):
+    def __init__(self, args: RamalamaArgsContext, model: RamalamaModelContext, host: RamalamaHostContext):
         self.args = args
         self.model = model
-        self.func = func
+        self.host = host
 
     @staticmethod
     def from_argparse(cli_args: argparse.Namespace) -> "RamalamaCommandContext":
@@ -114,5 +108,11 @@ class RamalamaCommandContext:
         dry_run = getattr(cli_args, "dryrun", False)
         is_container = getattr(cli_args, "container", True)
         model = RamalamaModelContext(New(cli_args.MODEL, cli_args), is_container, should_generate, dry_run)
-        func = RamalamaFuncContext(is_container)
-        return RamalamaCommandContext(args, model, func)
+        host = RamalamaHostContext(
+            is_container,
+            check_nvidia() is None,
+            check_metal(argparse.Namespace(**{"container": is_container})),
+            should_colorize(),
+            os.getenv("RAMALAMA_LLAMACPP_RPC_NODES", None),
+        )
+        return RamalamaCommandContext(args, model, host)

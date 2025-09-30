@@ -2,14 +2,14 @@ import argparse
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from ramalama.command.context import (
     RamalamaArgsContext,
     RamalamaCommandContext,
-    RamalamaFuncContext,
+    RamalamaHostContext,
     RamalamaModelContext,
 )
 from ramalama.command.error import InvalidInferenceEngineSpecError
@@ -98,26 +98,12 @@ class FactoryInput:
         ),
     ],
 )
-@patch("ramalama.command.context.check_metal")
-@patch("ramalama.command.context.check_nvidia")
-@patch("ramalama.command.context.should_colorize")
-@patch("os.getenv")
 def test_command_factory(
-    getenv_mock,
-    should_colorize_mock,
-    check_nvidia_mock,
-    check_metal_mock,
     input: FactoryInput,
     expected_cmd: str,
     spec_files: dict[str, Path],
     schema_files: dict[str, Path],
 ):
-    def getenv_mock_side_effect(key, default=None):
-        if key == "RAMALAMA_LLAMACPP_RPC_NODES":
-            return ""
-
-    getenv_mock.side_effect = getenv_mock_side_effect
-
     cli_args = input.cli_args.__dict__
 
     model = New(cli_args["MODEL"], argparse.Namespace(**cli_args))
@@ -140,7 +126,7 @@ def test_command_factory(
         should_generate=cli_args["generate"],
         dry_run=cli_args["dry_run"],
     )
-    func_ctx = RamalamaFuncContext(cli_args["container"])
+    func_ctx = RamalamaHostContext(cli_args["container"], True, True, True, None)
     arg_ctx = RamalamaArgsContext.from_argparse(argparse.Namespace(**cli_args))
     ctx = RamalamaCommandContext(arg_ctx, model_ctx, func_ctx)
 

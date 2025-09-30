@@ -1,13 +1,19 @@
 import argparse
+import ast
 import json
 from pathlib import Path
 from typing import Any
 
+import jinja2
 import jsonschema
 import yaml
 
 from ramalama.command import context, error, schema
 from ramalama.config import get_inference_schema_files, get_inference_spec_files
+
+
+def is_truthy(resolved_stmt: str) -> bool:
+    return resolved_stmt not in ["None", "False", "", "[]", "{}"]
 
 
 class CommandFactory:
@@ -49,7 +55,7 @@ class CommandFactory:
 
         cmd = [engine.binary]
         for option in engine.options:
-            should_add = option.condition is None or all([CommandFactory.eval_stmt(option.condition, ctx)])
+            should_add = option.condition is None or is_truthy(CommandFactory.eval_stmt(option.condition, ctx))
             if not should_add:
                 continue
 
@@ -57,14 +63,16 @@ class CommandFactory:
                 cmd.append(option.name)
                 continue
 
-            if value := CommandFactory.eval_stmt(option.value, ctx):
+            value = CommandFactory.eval_stmt(option.value, ctx)
+            if is_truthy(value):
                 if option.name:
                     cmd.append(option.name)
 
-                if isinstance(value, list):
-                    cmd.extend(str(v) for v in value)
+                if value.startswith("[") and value.endswith("]"):
+                    cmd.extend(str(v) for v in ast.literal_eval(value))
                 else:
                     cmd.append(str(value))
+
         return cmd
 
     @staticmethod
@@ -72,21 +80,12 @@ class CommandFactory:
         if not (stmt.startswith("{{") and stmt.endswith("}}")):
             return stmt
 
-        # Prepare statement for further evaluation in the given context
-        stmt = stmt.lstrip("{{").rstrip("}}").strip()
-
-        # Setting the globals builtins to None to limit the usable
-        # variables and functions for eval()
-        return eval(
-            stmt,
-            {
-                "__builtins__": None,
-            },
+        return jinja2.Template(stmt).render(
             {
                 "args": ctx.args,
                 "model": ctx.model,
-                "func": ctx.func,
-            },
+                "host": ctx.host,
+            }
         )
 
     @staticmethod

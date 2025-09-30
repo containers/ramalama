@@ -56,7 +56,7 @@ commands:
         - name: "--flash-attn"
           description: "Set Flash Attention use"
           value: "on"
-          if: "{{ func.check_nvidia() or func.check_metal() }}"
+          if: "{{ host.uses_nvidia or host.uses_metal }}"
         - name: "-ngl"
           description: "Number of layers to offload to the GPU if available"
           value: "{{ 999 if args.ngl < 0 else args.ngl }}"
@@ -76,10 +76,10 @@ commands:
         - name: "--log-colors"
           description: "Add color to the logs"
           value: "{{ 'on' }}"
-          if: "{{ func.should_colorize() }}"
+          if: "{{ host.should_colorize }}"
         - name: "--rpc"
           description: "Comma separated list of RPC servers"
-          value: "{{ func.get_rpc_nodes() }}"
+          value: "{{ host.rpc_nodes }}"
         # Special case:
         # Pass arbitrary runtime arguments to llama-server
         - name: ""

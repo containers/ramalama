@@ -33,12 +33,14 @@ BuildRequires:    podman
 BuildRequires:    python3-devel
 BuildRequires:    python3-jsonschema
 BuildRequires:    python3-pytest
+BuildRequires:    python3-jinja2
 
 Provides: python3-ramalama = %{version}-%{release}
 Obsoletes: python3-ramalama < 0.12.3-1
 
 Requires: podman
 Requires: python3-jsonschema
+Requires: python3-jinja2
 
 %description
 %summary
