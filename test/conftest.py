@@ -50,7 +50,7 @@ def container_engine(request):
     return ramalama_container_engine
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def test_model():
     # Use different models for little-endian (e.g. x86_64, aarch64) and
     # big-endian (e.g. s390x) architectures.
