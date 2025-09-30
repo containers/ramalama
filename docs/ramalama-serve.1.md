@@ -142,6 +142,13 @@ Accelerated images:
 pass --group-add keep-groups to podman (default: False)
 If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
 
+#### **--max-tokens**=*integer*
+Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
+This parameter is mapped to the appropriate runtime-specific parameter:
+- llama.cpp: `-n` parameter
+- MLX: `--max-tokens` parameter
+- vLLM: `--max-tokens` parameter
+
 #### **--model-draft**
 
 A draft model is a smaller, faster model that helps accelerate the decoding
