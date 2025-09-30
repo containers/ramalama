@@ -376,7 +376,7 @@ def is_healthy(args, timeout=3):
         model_names = [m["name"] for m in body["models"]]
         # The transport is not included in the model name returned by the endpoint
         model_name = args.MODEL.split("://")[-1]
-        if model_name not in model_names:
+        if not any(model_name in name for name in model_names):
             logger.debug(f'Container {args.name} does not include "{model_name}" in the model list: {model_names}')
             return False
         logger.debug(f"Container {args.name} is healthy")
