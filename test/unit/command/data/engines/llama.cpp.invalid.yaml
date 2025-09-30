@@ -1,0 +1,5 @@
+schema_version: "1.0.0"
+commands:
+  - name: serve
+    inference_engine:
+      name: "llama-server"

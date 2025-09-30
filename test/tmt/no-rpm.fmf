@@ -21,7 +21,9 @@ require:
     - python3-argcomplete
     - python3-huggingface-hub
     - shellcheck
+    - python3-jsonschema
     - python3-pyyaml
+    - python3-jinja2
 
 /gpu_info:
     summary: Display GPU info

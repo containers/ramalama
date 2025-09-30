@@ -133,7 +133,7 @@ function skip_if_no_mlx() {
     if is_apple_silicon; then
         skip "This test only runs on non-Apple Silicon systems"
     fi
-    
+
     run_ramalama 22 --runtime=mlx serve ${MODEL}
     is "$output" ".*MLX.*Apple Silicon.*" "should show Apple Silicon requirement error"
 }

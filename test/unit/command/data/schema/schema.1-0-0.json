@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RamaLama schema for inference engines",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "inference_engine"],
+        "properties": {
+          "name": { 
+            "type": "string",
+            "enum": ["serve", "run", "perplexity", "bench"]
+          },
+          "inference_engine": {
+            "type": "object",
+            "required": ["name", "binary", "options"],
+            "properties": {
+              "name": { "type": "string" },
+              "binary": { "type": "string" },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "description"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "value": { "type": "string" },
+                    "required": { "type": "boolean" },
+                    "if": { "type": "string" }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["schema_version", "commands"],
+  "additionalProperties": false
+}

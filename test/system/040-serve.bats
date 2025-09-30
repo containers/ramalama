@@ -166,6 +166,8 @@ verify_begin=".*run --rm"
     port1=8100
     port2=8200
 
+    run_ramalama pull $model
+
     run_ramalama stop --all
 
     run_ramalama serve -p ${port1} --detach ${model}
@@ -210,7 +212,7 @@ verify_begin=".*run --rm"
 
     run cat $quadlet
     is "$output" ".*PublishPort=0.0.0.0:1234:1234" "PublishPort should match"
-    is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
+    is "$output" ".*Exec=.*llama-server --host 0.0.0.0 --port 1234 --model .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*$model_file" "Mount line should be correct"
 
     HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet $model
@@ -228,7 +230,7 @@ verify_begin=".*run --rm"
 
     run cat $quadlet
     is "$output" ".*PublishPort=0.0.0.0:1234:1234" "PublishPort should match"
-    is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
+    is "$output" ".*Exec=.*llama-server --host 0.0.0.0 --port 1234 --model .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*$model_file" "Mount line should be correct"
     is "$output" ".*key0=value0.*" "added unit should be correct"
 
@@ -269,7 +271,7 @@ verify_begin=".*run --rm"
 	run cat $name.container
 	is "$output" ".*PublishPort=0.0.0.0:1234:1234" "PublishPort should match"
 	is "$output" ".*ContainerName=${name}" "Quadlet should have ContainerName field"
-	is "$output" ".*Exec=.*llama-server --port 1234 --model .*" "Exec line should be correct"
+	is "$output" ".*Exec=.*llama-server --host 0.0.0.0 --port 1234 --model .*" "Exec line should be correct"
 	is "$output" ".*Mount=type=image,source=${ociimage},destination=/mnt/models,subpath=/models,readwrite=false" "Volume line should be correct"
 
 	if is_container; then
