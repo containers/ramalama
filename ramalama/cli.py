@@ -879,6 +879,15 @@ If GPU device on host is accessible to via group access, this option leaks the u
         help="name of container in which the Model will be run",
         completer=suppressCompleter,
     )
+    if command in ["run", "perplexity", "serve"]:
+        parser.add_argument(
+            "--max-tokens",
+            dest="max_tokens",
+            type=int,
+            default=CONFIG.max_tokens,
+            help="maximum number of tokens to generate (0 = unlimited)",
+            completer=suppressCompleter,
+        )
     add_network_argument(parser, dflt=None)
     parser.add_argument(
         "--ngl",
