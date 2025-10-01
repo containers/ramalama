@@ -1,5 +1,7 @@
 from functools import singledispatchmethod
+
 from jinja2.meta import find_undeclared_variables
+
 from ramalama.model_store import go2jinja
 
 
