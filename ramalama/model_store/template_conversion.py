@@ -99,5 +99,4 @@ def identify_template_style(template_str: str) -> TemplateStyle:
 
 def convert_template(template_str: str, target_style: BaseStyle = Styles.openai) -> str:
     template_style = identify_template_style(template_str)
-    result = template_style.convert(target_style)
-    return result
+    return template_style.convert(target_style)

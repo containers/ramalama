@@ -93,7 +93,7 @@ class ServeResponse:
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
-class StopServeRequestDict:
+class StopServeRequestDict(TypedDict):
     model_name: str
 
 
