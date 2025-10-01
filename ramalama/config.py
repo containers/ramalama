@@ -19,8 +19,8 @@ SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx"]
 COLOR_OPTIONS: TypeAlias = Literal["auto", "always", "never"]
 
 DEFAULT_CONFIG_DIRS = [
-    "/usr/share/ramalama",
-    "/usr/local/share/ramalama",
+    f"{sys.prefix}/share/ramalama",
+    f"{sys.prefix}/local/share/ramalama",
     "/etc/ramalama",
     os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama")),
 ]
