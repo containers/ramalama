@@ -429,7 +429,8 @@ def list_files_by_modification(args):
 
 def bench_cli(args):
     model = New(args.MODEL, args)
-    model.bench(args)
+    model.ensure_model_exists(args)
+    model.bench(args, assemble_command(args))
 
 
 def add_network_argument(parser, dflt="none"):

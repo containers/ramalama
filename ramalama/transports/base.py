@@ -104,7 +104,7 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("rm")
 
     @abstractmethod
-    def bench(self, args):
+    def bench(self, args, cmd: list[str]):
         raise self.__not_implemented_error("bench")
 
     @abstractmethod
@@ -381,10 +381,9 @@ class Transport(TransportBase):
                 [f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro{self.engine.relabel()}"]
             )
 
-    def bench(self, args):
-        self.ensure_model_exists(args)
-        exec_args = self.build_exec_args_bench(args)
-        self.execute_command(exec_args, args)
+    def bench(self, args, cmd: list[str]):
+        set_accel_env_vars()
+        self.execute_command(cmd, args)
 
     def run(self, args, server_cmd: list[str]):
         # The Run command will first launch a daemonized service
@@ -524,21 +523,6 @@ class Transport(TransportBase):
             raise ValueError(f"{args.MODEL} does not exists")
 
         self.pull(args)
-
-    def build_exec_args_bench(self, args):
-        if getattr(args, "runtime", None) == "mlx":
-            raise NotImplementedError("Benchmarking is not supported by the MLX runtime.")
-
-        # Default llama.cpp benchmarking
-        exec_args = ["llama-bench"]
-        set_accel_env_vars()
-        gpu_args = self.gpu_args(args=args)
-        if gpu_args is not None:
-            exec_args.extend(gpu_args)
-
-        exec_args += ["-m", self._get_entry_model_path(args.container, False, args.dryrun)]
-
-        return exec_args
 
     def validate_args(self, args):
         # MLX validation
