@@ -26,13 +26,15 @@ def extract_title_and_description(content, filename):
 
     # Generate title from filename pattern
     base_name = os.path.basename(filename)
+    title = None
+
     if base_name == 'ramalama.1.md':
-        title = "ramalama"  # Base command page
-    if base_name.startswith('ramalama-') and base_name.endswith('.1.md'):
+        title = 'ramalama'  # Base command page
+    elif base_name.startswith('ramalama-') and base_name.endswith('.1.md'):
         # Command: ramalama-chat.1.md -> chat (just the subcommand name)
         command = base_name.replace('ramalama-', '').replace('.1.md', '')
         title = command
-    if base_name.startswith('ramalama-') and base_name.endswith('.7.md'):
+    elif base_name.startswith('ramalama-') and base_name.endswith('.7.md'):
         # Platform guide: ramalama-cuda.7.md -> CUDA Setup
         platform = base_name.replace('ramalama-', '').replace('.7.md', '')
 
@@ -42,7 +44,7 @@ def extract_title_and_description(content, filename):
             platform = platform.upper()
 
         title = f"{platform} Setup"
-    if base_name.endswith('.5.md'):
+    elif base_name.endswith('.5.md'):
         # Config files with custom titles
         if base_name == 'ramalama.conf.5.md':
             title = 'Configuration File'
@@ -51,8 +53,9 @@ def extract_title_and_description(content, filename):
         else:
             # Fallback for other .5.md files
             title = base_name.replace('.5.md', '')
-    else:
-        # Fallback
+
+    if title is None:
+        # Fallback for any other file types
         title = base_name.replace('.md', '').replace('-', ' ')
 
     # Find description from NAME section
@@ -105,7 +108,7 @@ def detect_code_language(content):
     return 'text'
 
 
-def convert_markdown_to_mdx(content, filename):
+def convert_markdown_to_mdx(content, filename, current_output_path, output_map):
     """Convert manpage markdown to MDX format"""
 
     # Extract title and description
@@ -118,8 +121,13 @@ def convert_markdown_to_mdx(content, filename):
 
     content = '\n'.join(lines)
 
-    # Convert NAME section
-    content = re.sub(r'## NAME\n([^\n]+)', '', content, flags=re.MULTILINE)
+    # Remove NAME section (handles both H1 and H2 variants)
+    content = re.sub(
+        r'^#{1,2}\s+NAME\s*\n(?:.*?)(?=^#{1,6}\s|\Z)',
+        '',
+        content,
+        flags=re.MULTILINE | re.DOTALL,
+    )
 
     # Convert SYNOPSIS to proper heading
     content = re.sub(r'## SYNOPSIS', '## Synopsis', content)
@@ -151,6 +159,8 @@ def convert_markdown_to_mdx(content, filename):
     content = re.sub(r'\*\*\[([^\]]+)\]\(([^)]+)\)\*\*', r'[\1](\2)', content)
 
     # Convert internal manpage links to docsite links
+    current_dir = current_output_path.parent
+
     def convert_link(match):
         text = match.group(1)
         link = match.group(2)
@@ -159,38 +169,24 @@ def convert_markdown_to_mdx(content, filename):
         if link.startswith(('http://', 'https://')):
             return f'[{text}]({link})'
 
-        # All files are now in subdirectories, so use relative paths appropriately
-        if filename.endswith('.1.md'):
-            # From commands/ramalama/ directory
-            base_path = "../../"
-        elif filename.endswith('.5.md'):
-            # From configuration/ directory
-            base_path = "../"
-        elif filename.endswith('.7.md'):
-            # From platform-guides/ directory
-            base_path = "../"
-        else:
-            base_path = "./"
+        base_link = os.path.basename(link)
+        target_rel_path = output_map.get(base_link)
 
-        if link.endswith('.1.md'):
-            # Command reference
-            command_name = link.replace('ramalama-', '').replace('.1.md', '')
-            if command_name == 'ramalama':
-                if filename == 'ramalama.1.md':
-                    return f'[{text}](#)'  # Self-reference
-                else:
-                    return f'[{text}](/docs/commands/ramalama/)'  # Link to ramalama category index
-            return f'[{text}]({base_path}commands/ramalama/{command_name})'
-        if link.endswith('.5.md'):
-            # Configuration file
-            config_name = link.replace('ramalama.', '').replace('.5.md', '')
-            return f'[{text}]({base_path}configuration/{config_name})'
-        if link.endswith('.7.md'):
-            # Platform guide
-            guide_name = link.replace('ramalama-', '').replace('.7.md', '')
-            return f'[{text}]({base_path}platform-guides/{guide_name})'
+        if not target_rel_path:
+            return f'[{text}]({link})'
 
-        return f'[{text}]({link})'
+        target_path = target_rel_path
+
+        if target_path == current_output_path:
+            return f'[{text}](#)'  # Self-reference
+
+        if target_path == Path('commands/ramalama/ramalama.mdx'):
+            return f'[{text}](/docs/commands/ramalama/)'
+
+        # Use absolute doc URL (prefix with /docs)
+        target_route = '/docs/' + target_path.with_suffix('').as_posix()
+
+        return f'[{text}]({target_route})'
 
     content = re.sub(r'\[([^\]]+)\]\(([^)]+\.md)\)', convert_link, content)
 
@@ -324,30 +320,29 @@ def main():
 
     print(f"\nFound {len(manpage_files)} manpage files to convert")
 
+    manpage_entries = []
     for input_file in manpage_files:
         filename = os.path.basename(input_file)
+        output_filename = get_output_filename(filename)
+        _, subdir = get_category_info(filename)
+        relative_output_path = Path(subdir) / output_filename
+        manpage_entries.append((input_file, filename, relative_output_path))
+
+    output_map = {filename: relative_path for _, filename, relative_path in manpage_entries}
+
+    for input_file, filename, relative_output_path in manpage_entries:
         print(f"Converting {filename}...")
 
-        # Convert all files (overwriting existing ones)
-
-        # Read input file
         with open(input_file, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # Convert to MDX
-        mdx_content = convert_markdown_to_mdx(content, filename)
+        mdx_content = convert_markdown_to_mdx(content, filename, relative_output_path, output_map)
 
-        # Determine output directory and filename
-        output_filename = get_output_filename(filename)
-
-        # All manpage files go to their category directories
-        category, subdir = get_category_info(filename)
-        output_dir = docsite_docs_dir / subdir
-        output_path = output_dir / output_filename
-        # Create output directory if it doesn't exist
+        output_dir = (docsite_docs_dir / relative_output_path).parent
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Write output file
+        output_path = docsite_docs_dir / relative_output_path
+
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(mdx_content)
 

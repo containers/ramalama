@@ -1,11 +1,11 @@
 ---
-title: ramalama pull.1
+title: pull
 description: pull AI Models from Model registries to local storage
 # This file is auto-generated from manpages. Do not edit manually.
 # Source: ramalama-pull.1.md
 ---
 
-# ramalama pull.1
+# pull
 
 ## Synopsis
 **ramalama pull** [*options*] *model*
@@ -23,6 +23,9 @@ Print usage message
 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
+
+#### **--verify**=*true*
+verify the model after pull, disable to allow pulling of models with different endianness
 
 ## See Also
 [ramalama(1)](/docs/commands/ramalama/)
