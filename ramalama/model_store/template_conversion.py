@@ -1,5 +1,5 @@
 from functools import singledispatchmethod
-
+from jinja2.meta import find_undeclared_variables
 from ramalama.model_store import go2jinja
 
 
@@ -83,7 +83,7 @@ class OllamaTemplateStyle(TemplateStyle):
     @convert.register
     def _(self, target_style: OpenAIStyle) -> str:
         template = go2jinja.go_to_jinja(self.template)
-        if "messages" not in template or "for message in messages" not in template:
+        if "messages" not in find_undeclared_variables(template):
             template = wrap_template_with_messages_loop(template)
         return template
 

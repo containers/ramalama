@@ -25,6 +25,8 @@ from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
 from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.logger import logger
+from ramalama.common import check_nvidia, check_metal
+from ramalama.console import should_colorize
 from ramalama.model_inspect.base_info import ModelInfoBase
 from ramalama.model_inspect.gguf_info import GGUFModelInfo
 from ramalama.model_inspect.gguf_parser import GGUFInfoParser
@@ -298,16 +300,14 @@ class Transport(TransportBase):
         if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
             self.engine.add(["-i"])
 
-        self.engine.add(
-            [
-                "--label",
-                "ai.ramalama",
-                "--name",
-                name,
-                "--env=HOME=/tmp",
-                "--init",
-            ]
-        )
+        self.engine.add([
+            "--label",
+            "ai.ramalama",
+            "--name",
+            name,
+            "--env=HOME=/tmp",
+            "--init",
+        ])
 
     def setup_container(self, args):
         name = self.get_container_name(args)
@@ -357,9 +357,9 @@ class Transport(TransportBase):
 
         if self.draft_model:
             draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
-            self.engine.add(
-                [f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro{self.engine.relabel()}"]
-            )
+            self.engine.add([
+                f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro{self.engine.relabel()}"
+            ])
 
     def bench(self, args, cmd: list[str]):
         set_accel_env_vars()
@@ -625,14 +625,12 @@ class Transport(TransportBase):
             if args.context:
                 vllm_max_model_len = args.context
 
-            exec_args.extend(
-                [
-                    "--max_model_len",
-                    str(vllm_max_model_len),
-                    "--served-model-name",
-                    self.model_name,
-                ]
-            )
+            exec_args.extend([
+                "--max_model_len",
+                str(vllm_max_model_len),
+                "--served-model-name",
+                self.model_name,
+            ])
 
             if getattr(args, 'runtime_args', None):
                 exec_args.extend(args.runtime_args)
