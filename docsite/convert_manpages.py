@@ -30,20 +30,6 @@ def extract_title_and_description(content, filename):
 
     if base_name == 'ramalama.1.md':
         title = 'ramalama'  # Base command page
-    elif base_name.startswith('ramalama-') and base_name.endswith('.1.md'):
-        # Command: ramalama-chat.1.md -> chat (just the subcommand name)
-        command = base_name.replace('ramalama-', '').replace('.1.md', '')
-        title = command
-    elif base_name.startswith('ramalama-') and base_name.endswith('.7.md'):
-        # Platform guide: ramalama-cuda.7.md -> CUDA Setup
-        platform = base_name.replace('ramalama-', '').replace('.7.md', '')
-
-        if platform == 'macos':
-            platform = 'macOS'
-        else:
-            platform = platform.upper()
-
-        title = f"{platform} Setup"
     elif base_name.endswith('.5.md'):
         # Config files with custom titles
         if base_name == 'ramalama.conf.5.md':
@@ -157,9 +143,6 @@ def convert_markdown_to_mdx(content, filename, current_output_path, output_map):
 
     # Convert bold markdown references like **[ramalama(1)](ramalama.1.md)** to links
     content = re.sub(r'\*\*\[([^\]]+)\]\(([^)]+)\)\*\*', r'[\1](\2)', content)
-
-    # Convert internal manpage links to docsite links
-    current_dir = current_output_path.parent
 
     def convert_link(match):
         text = match.group(1)
