@@ -1,6 +1,6 @@
 from functools import singledispatchmethod
 
-from jinja2.meta import find_undeclared_variables
+from jinja2 import Environment, meta
 
 from ramalama.model_store import go2jinja
 
@@ -77,6 +77,13 @@ def wrap_template_with_messages_loop(jinja_template: str) -> str:
     return f"{{% for message in messages %}}{wrapped}{{% endfor %}}{final_assistant_output}"
 
 
+def get_jinja_variables(template: str) -> set[str]:
+    """Returns all variables associated with a jinja template except those explicitly set in the template"""
+    env = Environment()
+    ast = env.parse(template)
+    return meta.find_undeclared_variables(ast)
+
+
 class OllamaTemplateStyle(TemplateStyle):
     @singledispatchmethod
     def convert(self, target_style: BaseStyle):
@@ -85,7 +92,7 @@ class OllamaTemplateStyle(TemplateStyle):
     @convert.register
     def _(self, target_style: OpenAIStyle) -> str:
         template = go2jinja.go_to_jinja(self.template)
-        if "messages" not in find_undeclared_variables(template):
+        if "messages" not in get_jinja_variables(template):
             template = wrap_template_with_messages_loop(template)
         return template
 
