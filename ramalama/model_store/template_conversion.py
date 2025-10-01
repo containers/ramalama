@@ -1,45 +1,9 @@
 from functools import singledispatchmethod
 
+from hypothesis import target
 from jinja2 import Environment, meta
 
 from ramalama.model_store import go2jinja
-
-
-class BaseStyle:
-    pass
-
-
-class OpenAIStyle(BaseStyle):
-    pass
-
-
-class OllamaStyle(BaseStyle):
-    pass
-
-
-class Styles:
-    openai = OpenAIStyle()
-    ollama = OllamaStyle()
-
-
-class TemplateStyle:
-    def __init__(self, template: str):
-        self.template = template
-
-    def convert(self, target_style: BaseStyle) -> str:
-        raise Exception(
-            f"No supported conversion method {self.__class__.__name__} and {target_style.__class__.__name__} templates"
-        )
-
-
-class OpenAITemplateStyle(TemplateStyle):
-    @singledispatchmethod
-    def convert(self, target_style: BaseStyle):
-        super().convert(target_style)
-
-    @convert.register
-    def _(self, target_style: OpenAIStyle) -> str:
-        return self.template
 
 
 def wrap_template_with_messages_loop(jinja_template: str) -> str:
@@ -84,7 +48,52 @@ def get_jinja_variables(template: str) -> set[str]:
     return meta.find_undeclared_variables(ast)
 
 
+class BaseStyle:
+    pass
+
+
+class OpenAIStyle(BaseStyle):
+    pass
+
+
+class OllamaStyle(BaseStyle):
+    pass
+
+
+class Styles:
+    openai = OpenAIStyle()
+    ollama = OllamaStyle()
+
+
+class TemplateStyle:
+    style: BaseStyle = BaseStyle()
+
+    def __init__(self, template: str):
+        self.template = template
+
+    def convert(self, target_style: BaseStyle) -> str:
+        raise Exception(
+            f"No supported conversion method {self.__class__.__name__} and {target_style.__class__.__name__} templates"
+        )
+
+
+class OpenAITemplateStyle(TemplateStyle):
+    style = OpenAIStyle()
+
+    @singledispatchmethod
+    def convert(self, target_style: BaseStyle):
+        super().convert(target_style)
+
+    @convert.register
+    def _(self, target_style: OpenAIStyle) -> str:
+        if "messages" not in get_jinja_variables(self.template):
+            return wrap_template_with_messages_loop(self.template)
+        return self.template
+
+
 class OllamaTemplateStyle(TemplateStyle):
+    style = OllamaStyle()
+
     @singledispatchmethod
     def convert(self, target_style: BaseStyle):
         super().convert(target_style)
@@ -104,6 +113,23 @@ def identify_template_style(template_str: str) -> TemplateStyle:
         return OpenAITemplateStyle(template_str)
 
 
-def convert_template(template_str: str, target_style: BaseStyle = Styles.openai) -> str:
+def convert_template(template_str: str, target_style: BaseStyle) -> str:
     template_style = identify_template_style(template_str)
     return template_style.convert(target_style)
+
+
+class StyleHandler:
+    def __init__(self, target_template_style: OpenAITemplateStyle):
+        self.target_template_style = target_template_style
+
+    def get_template_style(self, template: str) -> TemplateStyle:
+        return identify_template_style(template)
+
+    def needs_conversion(self, template_style: TemplateStyle) -> bool:
+        return isinstance(template_style, self.target_template_style)
+
+    def convert_template(self, template_style: TemplateStyle) -> str:
+        return template_style.convert(self.target_style)
+
+
+DEFAULT_STYLE_HANDLER = StyleHandler(target_template_style=OpenAITemplateStyle)
