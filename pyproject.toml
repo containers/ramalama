@@ -8,7 +8,19 @@ dynamic = ["version"]
 description = "RamaLama is a command line tool for working with AI LLM models."
 readme = "README.md"
 requires-python = ">=3.10"
-keywords = ["ramalama", "llama", "AI"]
+keywords = [
+  "ramalama",
+  "llama",
+  "ai",
+  "llm",
+  "large-language-model",
+  "inference",
+  "containers",
+  "podman",
+  "docker",
+  "gpu",
+  "rag",
+]
 dependencies = [
   "argcomplete",
   "pyyaml",
@@ -18,6 +30,24 @@ dependencies = [
 maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
    { name="Eric Curtin", email = "ecurtin@redhat.com" },
+]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: System Administrators",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Utilities",
 ]
 
 [project.license]
@@ -62,9 +92,13 @@ cov-detailed = [
 
 [project.urls]
 Homepage = "https://github.com/containers/ramalama"
-Documentation = "https://github.com/containers/ramalama/tree/main/docs"
+Documentation = "https://docs.ramalama.com/"
 Repository = "https://github.com/containers/ramalama"
 Issues = "https://github.com/containers/ramalama/issues"
+Blog = "https://blog.ramalama.com"
+Discussions = "https://github.com/containers/ramalama/discussions"
+Discord = "https://discord.gg/MkCXuTRBUn"
+Matrix = "https://matrix.to/#/#ramalama:fedoraproject.org"
 
 [project.scripts]
 ramalama = "ramalama.cli:main"
@@ -72,6 +106,9 @@ ramalama = "ramalama.cli:main"
 [tool.setuptools]
 include-package-data = true
 license-files = ["LICENSE"]
+
+[tool.setuptools.package-data]
+"ramalama" = ["py.typed"]
 
 [tool.setuptools.dynamic]
 version = {attr = "ramalama.version.version"}
