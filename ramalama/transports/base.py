@@ -313,26 +313,6 @@ class Transport(TransportBase):
         name = self.get_container_name(args)
         self.base(args, name)
 
-    def gpu_args(self, args, runner=False):
-        gpu_args = []
-        if args.ngl < 0:
-            args.ngl = 999
-
-        if runner:
-            gpu_args += ["--ngl"]  # double dash
-        else:
-            gpu_args += ["-ngl"]  # single dash
-
-        gpu_args += [f'{args.ngl}']
-
-        if self.draft_model:
-            # Use the same arg as ngl to reduce configuration space
-            gpu_args += ["-ngld", f'{args.ngl}']
-
-        gpu_args += ["--threads", f"{args.threads}"]
-
-        return gpu_args
-
     def exec_model_in_container(self, cmd_args, args):
         if not args.container:
             return False
