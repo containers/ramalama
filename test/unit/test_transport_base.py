@@ -231,34 +231,6 @@ class TestMLXRuntime:
         assert args.url == "http://127.0.0.1:8080/v1"
         assert args.pid2kill == 123
 
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
-    def test_mlx_benchmarking_not_supported(self, mock_machine, mock_system):
-        """Test that MLX runtime raises NotImplementedError for benchmarking"""
-        mock_system.return_value = "Darwin"
-        mock_machine.return_value = "arm64"
-
-        args = Namespace(runtime="mlx", MODEL="test-model", container=False, generate=False, dryrun=True)
-
-        model = Transport("test-model", "/tmp/store")
-
-        with pytest.raises(NotImplementedError, match="Benchmarking is not supported by the MLX runtime"):
-            model.build_exec_args_bench(args)
-
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
-    def test_mlx_perplexity_not_supported(self, mock_machine, mock_system):
-        """Test that MLX runtime raises NotImplementedError for perplexity"""
-        mock_system.return_value = "Darwin"
-        mock_machine.return_value = "arm64"
-
-        args = Namespace(runtime="mlx", MODEL="test-model", container=False, generate=False, dryrun=True)
-
-        model = Transport("test-model", "/tmp/store")
-
-        with pytest.raises(NotImplementedError, match="Perplexity calculation is not supported by the MLX runtime"):
-            model.build_exec_args_perplexity(args)
-
 
 class TestOCIModelSetupMounts:
     """Test the OCI model setup_mounts functionality that was refactored"""

@@ -104,7 +104,7 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("rm")
 
     @abstractmethod
-    def bench(self, args):
+    def bench(self, args, cmd: list[str]):
         raise self.__not_implemented_error("bench")
 
     @abstractmethod
@@ -112,7 +112,7 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("run")
 
     @abstractmethod
-    def perplexity(self, args):
+    def perplexity(self, args, cmd: list[str]):
         raise self.__not_implemented_error("perplexity")
 
     @abstractmethod
@@ -313,26 +313,6 @@ class Transport(TransportBase):
         name = self.get_container_name(args)
         self.base(args, name)
 
-    def gpu_args(self, args, runner=False):
-        gpu_args = []
-        if args.ngl < 0:
-            args.ngl = 999
-
-        if runner:
-            gpu_args += ["--ngl"]  # double dash
-        else:
-            gpu_args += ["-ngl"]  # single dash
-
-        gpu_args += [f'{args.ngl}']
-
-        if self.draft_model:
-            # Use the same arg as ngl to reduce configuration space
-            gpu_args += ["-ngld", f'{args.ngl}']
-
-        gpu_args += ["--threads", f"{args.threads}"]
-
-        return gpu_args
-
     def exec_model_in_container(self, cmd_args, args):
         if not args.container:
             return False
@@ -381,10 +361,9 @@ class Transport(TransportBase):
                 [f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro{self.engine.relabel()}"]
             )
 
-    def bench(self, args):
-        self.ensure_model_exists(args)
-        exec_args = self.build_exec_args_bench(args)
-        self.execute_command(exec_args, args)
+    def bench(self, args, cmd: list[str]):
+        set_accel_env_vars()
+        self.execute_command(cmd, args)
 
     def run(self, args, server_cmd: list[str]):
         # The Run command will first launch a daemonized service
@@ -506,25 +485,9 @@ class Transport(TransportBase):
         except ProcessLookupError:
             pass
 
-    def perplexity(self, args):
-        self.ensure_model_exists(args)
-        exec_args = self.build_exec_args_perplexity(args)
-        self.execute_command(exec_args, args)
-
-    def build_exec_args_perplexity(self, args):
-        if getattr(args, "runtime", None) == "mlx":
-            raise NotImplementedError("Perplexity calculation is not supported by the MLX runtime.")
-
-        # Default llama.cpp perplexity calculation
-        exec_args = ["llama-perplexity"]
+    def perplexity(self, args, cmd: list[str]):
         set_accel_env_vars()
-        gpu_args = self.gpu_args(args=args)
-        if gpu_args is not None:
-            exec_args.extend(gpu_args)
-
-        exec_args += ["-m", self._get_entry_model_path(args.container, False, args.dryrun)]
-
-        return exec_args
+        self.execute_command(cmd, args)
 
     def exists(self) -> bool:
         _, _, all = self.model_store.get_cached_files(self.model_tag)
@@ -540,21 +503,6 @@ class Transport(TransportBase):
             raise ValueError(f"{args.MODEL} does not exists")
 
         self.pull(args)
-
-    def build_exec_args_bench(self, args):
-        if getattr(args, "runtime", None) == "mlx":
-            raise NotImplementedError("Benchmarking is not supported by the MLX runtime.")
-
-        # Default llama.cpp benchmarking
-        exec_args = ["llama-bench"]
-        set_accel_env_vars()
-        gpu_args = self.gpu_args(args=args)
-        if gpu_args is not None:
-            exec_args.extend(gpu_args)
-
-        exec_args += ["-m", self._get_entry_model_path(args.container, False, args.dryrun)]
-
-        return exec_args
 
     def validate_args(self, args):
         # MLX validation
