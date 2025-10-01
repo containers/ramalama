@@ -1392,7 +1392,8 @@ def perplexity_parser(subparsers):
 
 def perplexity_cli(args):
     model = New(args.MODEL, args)
-    model.perplexity(args)
+    model.ensure_model_exists(args)
+    model.perplexity(args, assemble_command(args))
 
 
 def inspect_parser(subparsers):

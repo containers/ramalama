@@ -174,3 +174,20 @@ commands:
         - name: ""
           description: "Arbitrary runtime arguments for llama-server"
           value: "{{ args.runtime_args }}"
+  - name: perplexity
+    inference_engine:
+      name: "llama-perplexity"
+      binary: "llama-perplexity"
+      options:
+        - name: "--model"
+          description: "The AI model to run"
+          value: "{{ model.model_path }}"
+        - name: "-ngl"
+          description: "Number of layers to offload to the GPU if available"
+          value: "{{ 999 if args.ngl < 0 else args.ngl }}"
+        - name: "-ngld"
+          description: "Number of layers to offload to the GPU if available"
+          value: "{{ None if not args.model_draft else 999 if args.ngl < 0 else args.ngl }}"
+        - name: "--threads"
+          description: "Number of Threads to use during generation"
+          value: "{{ args.threads }}"

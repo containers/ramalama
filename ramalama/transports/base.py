@@ -112,7 +112,7 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("run")
 
     @abstractmethod
-    def perplexity(self, args):
+    def perplexity(self, args, cmd: list[str]):
         raise self.__not_implemented_error("perplexity")
 
     @abstractmethod
@@ -506,25 +506,9 @@ class Transport(TransportBase):
         except ProcessLookupError:
             pass
 
-    def perplexity(self, args):
-        self.ensure_model_exists(args)
-        exec_args = self.build_exec_args_perplexity(args)
-        self.execute_command(exec_args, args)
-
-    def build_exec_args_perplexity(self, args):
-        if getattr(args, "runtime", None) == "mlx":
-            raise NotImplementedError("Perplexity calculation is not supported by the MLX runtime.")
-
-        # Default llama.cpp perplexity calculation
-        exec_args = ["llama-perplexity"]
+    def perplexity(self, args, cmd: list[str]):
         set_accel_env_vars()
-        gpu_args = self.gpu_args(args=args)
-        if gpu_args is not None:
-            exec_args.extend(gpu_args)
-
-        exec_args += ["-m", self._get_entry_model_path(args.container, False, args.dryrun)]
-
-        return exec_args
+        self.execute_command(cmd, args)
 
     def exists(self) -> bool:
         _, _, all = self.model_store.get_cached_files(self.model_tag)
