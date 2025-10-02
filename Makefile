@@ -102,9 +102,14 @@ build_multi_arch:
 install-docs: docs
 	make -C docs install
 
-.PHONY: docs
-docs:
-	make -C docs
+.PHONY: docs docs-manpages docsite-docs
+docs: docs-manpages docsite-docs
+
+docs-manpages:
+	$(MAKE) -C docs
+
+docsite-docs:
+	$(MAKE) -C docsite convert
 
 .PHONY: lint
 lint:
