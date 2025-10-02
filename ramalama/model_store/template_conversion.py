@@ -5,6 +5,14 @@ from jinja2 import Environment, meta
 from ramalama.model_store import go2jinja
 
 
+class TemplateConversionError(Exception):
+    pass
+
+
+class TemplateIdentificationError(Exception):
+    pass
+
+
 def wrap_template_with_messages_loop(jinja_template: str) -> str:
     """
     Wrap a flat-variable Jinja template with OpenAI messages loop.
@@ -104,15 +112,21 @@ class OllamaTemplateStyle(TemplateStyle):
 
 
 def identify_template_style(template_str: str) -> TemplateStyle:
-    if go2jinja.is_go_template(template_str):
-        return OllamaTemplateStyle(template_str)
-    else:
-        return OpenAITemplateStyle(template_str)
+    try:
+        if go2jinja.is_go_template(template_str):
+            return OllamaTemplateStyle(template_str)
+        else:
+            return OpenAITemplateStyle(template_str)
+    except Exception as e:
+        raise TemplateIdentificationError("template identication failed") from e
 
 
 def convert_template(template_str: str, target_style: BaseStyle) -> str:
     template_style = identify_template_style(template_str)
-    return template_style.convert(target_style)
+    try:
+        return template_style.convert(target_style)
+    except Exception as e:
+        raise TemplateConversionError("template conversion failed") from e
 
 
 class StyleHandler:

@@ -19,7 +19,11 @@ from ramalama.model_store.snapshot_file import (
     SnapshotFileType,
     validate_snapshot_files,
 )
-from ramalama.model_store.template_conversion import DEFAULT_STYLE_HANDLER
+from ramalama.model_store.template_conversion import (
+    DEFAULT_STYLE_HANDLER,
+    TemplateConversionError,
+    TemplateIdentificationError,
+)
 
 
 def map_to_store_file_type(snapshot_type: SnapshotFileType) -> StoreFileType:
@@ -230,14 +234,18 @@ class ModelStore:
             with open(chat_template_file_path, "r") as template_file:
                 chat_template = template_file.read()
 
-            template_style = DEFAULT_STYLE_HANDLER.get_template_style(chat_template)
+            try:
+                template_style = DEFAULT_STYLE_HANDLER.get_template_style(chat_template)
+            except TemplateIdentificationError:
+                continue
+
             if not DEFAULT_STYLE_HANDLER.needs_conversion(template_style):
                 return True
 
             try:
                 normalized_template = DEFAULT_STYLE_HANDLER.convert_template(template_style)
-            except Exception:
-                return False
+            except TemplateConversionError:
+                continue
 
             files = [LocalSnapshotFile(normalized_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
             self.update_snapshot(model_tag, snapshot_hash, files)
