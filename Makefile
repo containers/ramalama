@@ -10,7 +10,9 @@ PATH := $(PATH):$(HOME)/.local/bin
 MYPIP ?= pip
 IMAGE ?= ramalama
 PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" --exclude-dir={.venv,venv,.tox} $(PROJECT_DIR) || true)
+EXCLUDE_DIRS := .venv venv .tox
+EXCLUDE_OPTS := $(addprefix --exclude-dir=,$(EXCLUDE_DIRS))
+PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" $(EXCLUDE_OPTS) $(PROJECT_DIR) || true)
 BATS_IMAGE ?= localhost/bats:latest
 
 default: help
@@ -109,7 +111,7 @@ lint:
 ifneq (,$(wildcard /usr/bin/python3))
 	/usr/bin/python3 -m compileall -q -x '\.venv' .
 endif
-	! grep -ri --exclude-dir ".venv" --exclude-dir "*/.venv" "#\!/usr/bin/python3" .
+	! grep -ri $(EXCLUDE_OPTS) "#\!/usr/bin/python3" .
 	flake8 $(PROJECT_DIR) $(PYTHON_SCRIPTS)
 	shellcheck *.sh */*.sh */*/*.sh
 
