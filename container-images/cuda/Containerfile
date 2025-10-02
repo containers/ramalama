@@ -15,6 +15,14 @@ COPY --from=builder /tmp/install /usr
 # Workaround for CUDA libraries not in the ld path in base container
 RUN echo "/usr/local/cuda-12.8/compat" > /etc/ld.so.conf.d/99_cuda_compat.conf && ldconfig
 
+COPY ./container-images/scripts/lib.sh /run/lib.sh
+RUN sh -e -c ". /run/lib.sh && \
+    dnf_install_epel && \
+    add_stream_repo AppStream && \
+    add_stream_repo BaseOS && \
+    add_stream_repo CRB && \
+    dnf install -y vulkan vulkan-tools mesa-libEGL libXext && \
+    rm_non_ubi_repos"
 RUN dnf install -y python3.11 python3.11-pip python3.11-devel && \
     dnf -y clean all && \
     ln -sf /usr/bin/python3.11 /usr/bin/python3
