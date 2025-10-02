@@ -1,6 +1,5 @@
 from functools import singledispatchmethod
 
-from hypothesis import target
 from jinja2 import Environment, meta
 
 from ramalama.model_store import go2jinja
@@ -86,8 +85,6 @@ class OpenAITemplateStyle(TemplateStyle):
 
     @convert.register
     def _(self, target_style: OpenAIStyle) -> str:
-        if "messages" not in get_jinja_variables(self.template):
-            return wrap_template_with_messages_loop(self.template)
         return self.template
 
 
