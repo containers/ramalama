@@ -236,7 +236,8 @@ class ModelStore:
 
             try:
                 template_style = DEFAULT_STYLE_HANDLER.get_template_style(chat_template)
-            except TemplateIdentificationError:
+            except TemplateIdentificationError as e:
+                logger.debug(f"Failed to identify template style: {e}")
                 continue
 
             if not DEFAULT_STYLE_HANDLER.needs_conversion(template_style):
@@ -244,7 +245,8 @@ class ModelStore:
 
             try:
                 normalized_template = DEFAULT_STYLE_HANDLER.convert_template(template_style)
-            except TemplateConversionError:
+            except TemplateConversionError as e:
+                logger.debug(f"Failed to convert template: {e}")
                 continue
 
             files = [LocalSnapshotFile(normalized_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
