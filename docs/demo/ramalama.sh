@@ -19,9 +19,9 @@ bold=$(tput bold)
 cyan=$(tput setaf 6)
 reset=$(tput sgr0)
 
-# Allow overriding browser (default: firefox)
+# Allow overriding browser (default: firefox
+# On Mac, we need to use open -a Firefox to open Firefox
 BROWSER="${BROWSER:-firefox}"
-
 echo_color() {
     echo "${cyan}$1${reset}"
 }
@@ -65,7 +65,7 @@ pull() {
     echo ""
 
     echo_color "RamaLama List all AI Models in local store"
-    exec_color "ramalama ls | grep --color smollm:135m"
+    exec_color "ramalama ls | grep --color smollm"
     echo ""
 
     echo_color "Show RamaLama container images"
@@ -84,8 +84,8 @@ run() {
     echo ""
     exec_color "ramalama --dryrun run granite | grep --color -- --cap-drop.*privileges"
     echo ""
-    exec_color "ramalama --dryrun run granite | grep --color -- --network.*none"
-    echo ""
+    # exec_color "ramalama --dryrun run granite | grep --color -- --network.*none"
+    # echo ""
 
     echo_color "run granite via RamaLama run"
     exec_color "ramalama run --ngl 0 granite"
@@ -97,7 +97,7 @@ run() {
 
 serve() {
     echo_color "Serve granite via RamaLama model service"
-    exec_color "ramalama serve --port 8080 --name granite-service -d granite"
+    exec_color "ramalama serve --port 8090 --name granite-service -d granite"
     echo ""
 
     echo_color "List RamaLama containers"
@@ -109,7 +109,7 @@ serve() {
     echo ""
 
     echo_color "Use web browser to show interaction"
-    exec_color "$BROWSER http://localhost:8080"
+    exec_color "$BROWSER http://localhost:8090"
     echo ""
 
     echo_color "Stop the ramalama container"
@@ -117,15 +117,16 @@ serve() {
     echo ""
 
     echo_color "Serve granite via RamaLama model service"
-    exec_color "ramalama serve --port 8085 --api llama-stack --name granite-service -d granite"
+    exec_color "ramalama serve --port 8085 --api llama-stack --name granite-service -d granite &"
     echo ""
     
     echo_color "Waiting for the model service to come up"
-    exec_color "timeout 25 bash -c 'until curl -s -f -o /dev/null http://localhost:8085/v1/openai/v1/models; do sleep 1; done';"
+    exec_color "timeout 5 bash -c 'until curl -s -f -o /dev/null http://localhost:8085/v1/openai/v1/models; do sleep 1; done';"
     echo ""
 
     echo_color "Inference against the model using llama-stack API"
-    exec_color "printf \"\n\"; curl --no-progress-meter http://localhost:8085/v1/openai/v1/chat/completions -H \"Content-Type: application/json\" -d '{ \"model\": \"granite3.1-dense\", \"messages\": [{\"role\": \"user\", \"content\": \"Tell me a joke\"}], \"stream\": false }' | grep -Po '(?<=\"content\":\")[^\"]*' | head -1"
+    exec_color "printf '\n'; curl --no-progress-meter http://localhost:8085/v1/openai/v1/chat/completions -H 'Content-Type: application/json' -d '{ \"model\": \"granite3.1-dense\", \"messages\": [{\"role\": \"user\", \"content\": \"Tell me a joke\"}], \"stream\": false }' | grep -oP '\"content\"\\s*:\\s*\"\\K[^\"]+'"
+
     echo ""
 
     echo_color "Stop the ramalama container"
@@ -199,6 +200,69 @@ multi-modal() {
     clear
 }
 
+mcp () {
+    echo_color "Start MCP server and use it with a LLM"
+
+    # Check if gemini.env exists
+    if [ -f ../gemini.env ]; then
+        # shellcheck disable=SC1091
+        source ../gemini.env
+        GEMINI_AVAILABLE=true
+    else
+        echo_color "Warning: ../gemini.env not found. Skipping Gemini chat."
+        GEMINI_AVAILABLE=false
+    fi
+
+    # Clone the ramalama-demo-tools repo for RAG database and MCP server
+    cd .. || return
+    git clone https://github.com/bmahabirbu/ramalama-demo-tools
+    cd ramalama-demo-tools || return
+    git pull
+
+    # Start MCP server
+    exec_color "nohup uv run mcp-test-server.py >/dev/null 2>&1 &"
+    MCP_PID=$!
+    trap 'kill "$MCP_PID" 2>/dev/null' EXIT
+
+    # Run ramalama server
+    cd ../ramalama || return
+    exec_color "ramalama run phi4 --mcp http://127.0.0.1:8000/mcp"
+    # show /tool list of tools and click 1 to show output
+    # prompt "list all the files on my desktop"
+    # prompt "what is Dan Walsh's favorite food?"
+
+    # Run ramalama chat only if gemini.env was loaded
+    if [ "$GEMINI_AVAILABLE" = true ]; then
+        exec_color "ramalama chat --url https://generativelanguage.googleapis.com/v1beta/openai --model gemini-2.5-flash --mcp http://127.0.0.1:8000/mcp"
+    fi
+
+    # Kill MCP server if still running
+    if ps -p $MCP_PID > /dev/null 2>&1; then
+        kill $MCP_PID
+    fi
+
+    read -r -p "--> clear"
+    clear
+}
+
+
+rag (){
+    echo_color "Create a rag database and use it with a LLM"
+    exec_color "echo Brian loves cheese > test.md"
+    exec_color "ramalama rag test.md test:latest"  
+    exec_color "ramalama run phi4 --rag test:latest"
+    # prompt "what food does brian like?"
+    exec_color "podman load -i ../ramalama-demo-tools/podbook.tar"
+    # # We need this timer so the port is cleared out from the previous run
+    # # This is a workaround a fix is needed in the future
+    time sleep 5
+    exec_color "ramalama run phi4 --rag podbook:latest"
+    # prompt "Who is the author of Podman in Action?"
+    # prompt "Who did the author dedicate the book to?"
+    read -r -p "--> clear"
+    clear
+}
+
 if [[ $# -eq 0 ]]; then
     # No argument: runs the whole demo script
     setup
@@ -215,7 +279,11 @@ if [[ $# -eq 0 ]]; then
 
     quadlet
 
-    multi-modal
+    mcp
+
+    rag
+    # Disable multi-modal for macos for now needs work
+    # multi-modal
 
 else
     # Runs only the called function as an argument
