@@ -10,6 +10,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import urllib.response
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -24,7 +25,7 @@ from ramalama.mcp.mcp_agent import LLMAgent
 from ramalama.mcp.mcp_client import PureMCPClient
 
 
-def res(response, color):
+def res(response: urllib.response.addinfourl, color: str) -> str:
     color_default = ""
     color_yellow = ""
     if (color == "auto" and should_colorize()) or color == "always":
@@ -300,10 +301,7 @@ class RamaLamaShell(cmd.Cmd):
         self.request_in_process = False
 
     def _make_request_data(self):
-        data = {
-            "stream": True,
-            "messages": self.conversation_history,
-        }
+        data = {"stream": True, "messages": self.conversation_history}
         if self.args.model is not None:
             data["model"] = self.args.model
 

@@ -13,6 +13,8 @@ from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
     accel_image,
+    check_metal,
+    check_nvidia,
     exec_cmd,
     genname,
     is_split_file_model,
@@ -22,6 +24,7 @@ from ramalama.common import (
 )
 from ramalama.compose import Compose
 from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
+from ramalama.console import should_colorize
 from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.logger import logger
@@ -527,6 +530,129 @@ class Transport(TransportBase):
             return
 
         raise KeyError("--nocontainer and --name options conflict. The --name option requires a container.")
+
+    def vllm_serve(self, args):
+        exec_args = [
+            "--model",
+            self._get_entry_model_path(args.container, args.generate, args.dryrun),
+            "--port",
+            args.port,
+            "--max-sequence-length",
+            f"{args.context}",
+        ]
+        exec_args += args.runtime_args
+        return exec_args
+
+    def llama_serve(self, args):
+        exec_args = ["llama-server"]
+        draft_model_path = None
+        if self.draft_model:
+            draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
+            draft_model_path = MNT_FILE_DRAFT if args.container or args.generate else draft_model
+
+        exec_args += [
+            "--port",
+            args.port,
+            "--model",
+            self._get_entry_model_path(args.container, args.generate, args.dryrun),
+            "--no-warmup",
+        ]
+        if not args.thinking:
+            exec_args += ["--reasoning-budget", "0"]
+        mmproj_path = self._get_mmproj_path(args.container, args.generate, args.dryrun)
+        if mmproj_path is not None:
+            exec_args += ["--mmproj", mmproj_path]
+        else:
+            exec_args += ["--jinja"]
+
+            chat_template_path = self._get_chat_template_path(args.container, args.generate, args.dryrun)
+            if chat_template_path is not None:
+                exec_args += ["--chat-template-file", chat_template_path]
+
+        if should_colorize():
+            exec_args += ["--log-colors", "on"]
+
+        exec_args += [
+            "--alias",
+            self.model,
+            "--temp",
+            f"{args.temp}",
+            "--cache-reuse",
+            f"{args.cache_reuse}",
+        ]
+        if args.context > 0:
+            exec_args += ["--ctx-size", f"{args.context}"]
+
+        exec_args += args.runtime_args
+
+        if draft_model_path:
+            exec_args += ['--model_draft', draft_model_path]
+
+        # Placeholder for clustering, it might be kept for override
+        rpc_nodes = os.getenv("RAMALAMA_LLAMACPP_RPC_NODES")
+        if rpc_nodes:
+            exec_args += ["--rpc", rpc_nodes]
+
+        if args.debug:
+            exec_args += ["-v"]
+
+        if getattr(args, "webui", "") == "off":
+            exec_args.extend(["--no-webui"])
+
+        if check_nvidia() or check_metal(args):
+            exec_args.extend(["--flash-attn", "on"])
+        return exec_args
+
+    def mlx_serve(self, args):
+        extra = ["--port", str(args.port), "--host", args.host]
+        return self._build_mlx_exec_args("server", args, extra)
+
+    def build_exec_args_serve(self, args):
+        if args.runtime == "vllm":
+            exec_args = self.vllm_serve(args)
+        elif args.runtime == "mlx":
+            exec_args = self.mlx_serve(args)
+        else:
+            exec_args = self.llama_serve(args)
+
+        if args.seed:
+            exec_args += ["--seed", args.seed]
+
+        return exec_args
+
+    def handle_runtime(self, args, exec_args):
+        set_accel_env_vars()
+
+        if args.runtime == "vllm":
+            vllm_max_model_len = 2048
+            if args.context:
+                vllm_max_model_len = args.context
+
+            exec_args.extend(
+                [
+                    "--max_model_len",
+                    str(vllm_max_model_len),
+                    "--served-model-name",
+                    self.model_name,
+                ]
+            )
+
+            if getattr(args, 'runtime_args', None):
+                exec_args.extend(args.runtime_args)
+        elif args.runtime == "mlx":
+            # MLX uses the exec_args from mlx_serve
+            pass
+        else:
+            gpu_args = self.gpu_args(args=args)
+            if gpu_args is not None:
+                exec_args.extend(gpu_args)
+
+            if args.container:
+                exec_args.extend(["--host", "0.0.0.0"])
+            else:
+                exec_args.extend(["--host", args.host])
+
+        return exec_args
 
     def generate_container_config(self, args, exec_args):
         # Get the blob paths (src) and mounted paths (dest)

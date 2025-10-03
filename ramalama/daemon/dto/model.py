@@ -1,5 +1,15 @@
 import json
 from dataclasses import dataclass
+from typing import TypedDict
+
+
+class ModelDetailsResponseDict(TypedDict):
+    parent_model: str
+    format: str
+    family: str
+    families: list[str]
+    parameter_size: str
+    quantization_level: str
 
 
 @dataclass
@@ -10,7 +20,7 @@ class ModelDetailsResponse:
     quantization_level: str
     families: list[str]
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> ModelDetailsResponseDict:
         return {
             "parent_model": "",
             "format": self.format,
@@ -24,9 +34,21 @@ class ModelDetailsResponse:
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
+class ModelResponseDict(TypedDict):
+    name: str
+    organization: str
+    tag: str
+    source: str
+    model: str
+    modified_at: str
+    size: int
+    is_partial: bool
+    digest: str
+    details: ModelDetailsResponseDict
+
+
 @dataclass
 class ModelResponse:
-
     name: str
     organization: str
     tag: str
@@ -38,7 +60,7 @@ class ModelResponse:
     digest: str
     details: ModelDetailsResponse
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> ModelResponseDict:
         return {
             "name": self.name,
             "organization": self.organization,
@@ -56,7 +78,11 @@ class ModelResponse:
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
-def model_list_to_dict(models: list[ModelResponse]) -> list[dict]:
+class ModelResponseListDict(TypedDict):
+    models: list[ModelResponseDict]
+
+
+def model_list_to_dict(models: list[ModelResponse]) -> ModelResponseListDict:
     return {"models": [model.to_dict() for model in models]}
 
 
@@ -64,9 +90,7 @@ def model_list_serialize(models: list[ModelResponse]) -> str:
     return json.dumps(model_list_to_dict(models), indent=4, sort_keys=True)
 
 
-@dataclass
-class RunningModelResponse:
-
+class RunningModelResponseDict(TypedDict):
     id: str
     name: str
     organization: str
@@ -78,7 +102,21 @@ class RunningModelResponse:
     digest: str
     cmd: str
 
-    def to_dict(self) -> dict:
+
+@dataclass
+class RunningModelResponse:
+    id: str
+    name: str
+    organization: str
+    tag: str
+    source: str
+    model: str
+    expires_at: str
+    size_vram: int
+    digest: str
+    cmd: str
+
+    def to_dict(self) -> RunningModelResponseDict:
         return {
             "id": self.id,
             "name": self.name,
@@ -96,7 +134,11 @@ class RunningModelResponse:
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
-def running_model_list_to_dict(models: list[RunningModelResponse]) -> list[dict]:
+class RunningModelListDict(TypedDict):
+    models: list[RunningModelResponseDict]
+
+
+def running_model_list_to_dict(models: list[RunningModelResponse]) -> RunningModelListDict:
     return {"models": [model.to_dict() for model in models]}
 
 
