@@ -10,40 +10,42 @@ from ramalama.transports.transport_factory import CLASS_MODEL_TYPES, New
 class RamalamaArgsContext:
 
     def __init__(self):
-        self.host: Optional[str] = None
-        self.port: Optional[int] = None
-        self.thinking: Optional[bool] = None
-        self.ctx_size: Optional[int] = None
         self.cache_reuse: Optional[int] = None
-        self.temp: Optional[float] = None
-        self.debug: Optional[bool] = None
-        self.webui: Optional[bool] = None
-        self.ngl: Optional[int] = None
-        self.threads: Optional[int] = None
-        self.logfile: Optional[str] = None
         self.container: Optional[bool] = None
+        self.ctx_size: Optional[int] = None
+        self.debug: Optional[bool] = None
+        self.host: Optional[str] = None
+        self.logfile: Optional[str] = None
+        self.max_tokens: Optional[int] = None
         self.model_draft: Optional[str] = None
-        self.seed: Optional[int] = None
+        self.ngl: Optional[int] = None
+        self.port: Optional[int] = None
         self.runtime_args: Optional[str] = None
+        self.seed: Optional[int] = None
+        self.temp: Optional[float] = None
+        self.thinking: Optional[bool] = None
+        self.threads: Optional[int] = None
+        self.webui: Optional[bool] = None
 
     @staticmethod
     def from_argparse(args: argparse.Namespace) -> "RamalamaArgsContext":
         ctx = RamalamaArgsContext()
-        ctx.host = getattr(args, "host", None)
-        ctx.port = getattr(args, "port", None)
-        ctx.thinking = getattr(args, "thinking", None)
-        ctx.ctx_size = getattr(args, "context", None)
-        ctx.temp = getattr(args, "temp", None)
-        ctx.debug = getattr(args, "debug", None)
-        ctx.webui = getattr(args, "webui", None)
-        ctx.ngl = getattr(args, "ngl", None)
-        ctx.threads = getattr(args, "threads", None)
-        ctx.logfile = getattr(args, "logfile", None)
-        ctx.container = getattr(args, "container", None)
-        ctx.model_draft = getattr(args, "model_draft", None)
-        ctx.seed = getattr(args, "seed", None)
-        ctx.runtime_args = getattr(args, "runtime_args", None)
         ctx.cache_reuse = getattr(args, "cache_reuse", None)
+        ctx.container = getattr(args, "container", None)
+        ctx.ctx_size = getattr(args, "context", None)
+        ctx.debug = getattr(args, "debug", None)
+        ctx.host = getattr(args, "host", None)
+        ctx.logfile = getattr(args, "logfile", None)
+        ctx.max_tokens = getattr(args, "max_tokens", None)
+        ctx.model_draft = getattr(args, "model_draft", None)
+        ctx.ngl = getattr(args, "ngl", None)
+        ctx.port = getattr(args, "port", None)
+        ctx.runtime_args = getattr(args, "runtime_args", None)
+        ctx.seed = getattr(args, "seed", None)
+        ctx.temp = getattr(args, "temp", None)
+        ctx.thinking = getattr(args, "thinking", None)
+        ctx.threads = getattr(args, "threads", None)
+        ctx.webui = getattr(args, "webui", None)
         return ctx
 
 

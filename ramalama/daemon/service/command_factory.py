@@ -38,6 +38,9 @@ class CommandFactory:
         if "temp" not in self.request_args:
             self.request_args["temp"] = CONFIG.temp
 
+        if "max_tokens" not in self.request_args:
+            self.request_args["max_tokens"] = CONFIG.max_tokens
+
         if "ngl" not in self.request_args:
             self.request_args["ngl"] = CONFIG.ngl
 
@@ -104,7 +107,7 @@ class CommandFactory:
         if self.request_args.get("webui") == "off":
             cmd.extend(["--no-webui"])
 
-        if check_nvidia() or check_metal(SimpleNamespace({"container": False})):
+        if check_nvidia() or check_metal(SimpleNamespace(container=False)):
             cmd.extend(["--flash-attn", "on"])
 
         # gpu arguments
@@ -114,5 +117,10 @@ class CommandFactory:
         cmd.extend(["-ngl", f"{ngl}"])
         threads = self.request_args.get("threads")
         cmd.extend(["--threads", str(threads)])
+
+        # Add max tokens parameter for llama.cpp
+        max_tokens = self.request_args.get("max_tokens", 0)
+        if max_tokens > 0:
+            cmd.extend(["-n", str(max_tokens)])
 
         return cmd
