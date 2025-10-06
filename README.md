@@ -26,11 +26,11 @@
 </p>
 
 
-<h3 align="center">
+<!-- <h3 align="center">
   <a href="https://docs.ramalama.com/">Docs</a> &bull;
   <a href="https://github.com/containers/ramalama/discussions" title="Community Page">Discussion</a> &bull;
   <a href="https://blog.ramalama.com" title="RamaLama Blog">Blog</a>
-</h3>
+</h3> -->
 
 
 
@@ -185,6 +185,7 @@ RamaLama supports multiple AI model registries types called transports.
 | ModelScope               | [`modelscope.cn`](https://www.modelscope.cn)         |
 | Ollama                   | [`ollama.com`](https://www.ollama.com)               |
 | OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)   |
+| RamaLama Labs Container Registry                      | [`ramalama.com`](https://registry.ramalama.com/projects/ramalama) |
 |                          |Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), [`Pulp`](https://pulpproject.org), and [`Artifactory`](https://jfrog.com/artifactory/)|
 
 ### Default Transport
@@ -198,7 +199,7 @@ How to change transports.
 
 Use the RAMALAMA_TRANSPORT environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
-Individual model transports can be modified when specifying a model via the `huggingface://`, `oci://`, `modelscope://`, or `ollama://` prefix.
+Individual model transports can be modified when specifying a model via the `huggingface://`, `oci://`, `modelscope://`, `ollama://`, or `rlcr://` prefix.
 
 Example:
 ```

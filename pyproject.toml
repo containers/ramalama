@@ -91,10 +91,8 @@ cov-detailed = [
 
 [project.urls]
 Homepage = "https://github.com/containers/ramalama"
-Documentation = "https://docs.ramalama.com/"
 Repository = "https://github.com/containers/ramalama"
 Issues = "https://github.com/containers/ramalama/issues"
-Blog = "https://blog.ramalama.com"
 Discussions = "https://github.com/containers/ramalama/discussions"
 Discord = "https://discord.gg/MkCXuTRBUn"
 Matrix = "https://matrix.to/#/#ramalama:fedoraproject.org"
