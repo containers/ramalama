@@ -304,7 +304,8 @@ class RamaLamaShell(cmd.Cmd):
             "stream": True,
             "messages": self.conversation_history,
         }
-        if self.args.model is not None:
+        # For MLX runtime, omit explicit model to allow server default ("default_model")
+        if getattr(self.args, "runtime", None) != "mlx" and self.args.model is not None:
             data["model"] = self.args.model
 
         json_data = json.dumps(data).encode("utf-8")

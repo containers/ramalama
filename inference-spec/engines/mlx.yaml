@@ -17,6 +17,7 @@ commands:
         - name: "--max-tokens"
           description: "Size of the prompt context"
           value: "{{ args.ctx_size }}"
+          if: "{{ (args.ctx_size or 0) > 0 }}"
         - name: "--host"
           description: "IP address for the AI model server to listen on"
           value: "{{ args.host }}"

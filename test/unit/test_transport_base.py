@@ -227,7 +227,7 @@ class TestMLXRuntime:
         mock_chat.assert_called_once()
 
         # Verify args were set up correctly for server-client model
-        # MLX runtime should include /v1 in the URL
+        # MLX runtime uses OpenAI-compatible endpoints under /v1
         assert args.url == "http://127.0.0.1:8080/v1"
         assert args.pid2kill == 123
 

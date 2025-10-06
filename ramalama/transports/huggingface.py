@@ -206,7 +206,7 @@ class Huggingface(HFStyleRepoModel):
 
         for cache_dir in default_hf_caches:
             snapshot_path, cache_path = self._fetch_snapshot_path(cache_dir, namespace, repo)
-            if not snapshot_path or not os.path.exists(snapshot_path):
+            if not snapshot_path or not cache_path or not os.path.exists(snapshot_path):
                 continue
 
             file_path = os.path.join(snapshot_path, self.filename)
@@ -248,35 +248,48 @@ class Huggingface(HFStyleRepoModel):
         cache_dir = os.path.join(tempdir, ".cache", "huggingface", "download")
         files: list[HuggingfaceCLIFile] = []
         snapshot_hash = ""
-        for entry in os.listdir(tempdir):
-            entry_path = os.path.join(tempdir, entry)
-            if os.path.isdir(entry_path) or entry == ".gitattributes":
-                continue
-            sha256 = ""
-            metadata_path = os.path.join(cache_dir, f"{entry}.metadata")
-            if not os.path.exists(metadata_path):
-                continue
-            with open(metadata_path) as metafile:
-                lines = metafile.readlines()
-                if len(lines) < 2:
-                    continue
-                sha256 = f"sha256:{lines[1].strip()}"
-            if sha256 == "sha256:":
-                continue
-            if entry.lower() == "readme.md":
-                snapshot_hash = sha256
-                continue
 
-            hf_file = HuggingfaceCLIFile(
-                url=entry_path,
-                header={},
-                hash=sha256,
-                type=SnapshotFileType.Other,
-                name=entry,
-            )
-            # try to identify the model file in the pulled repo
-            if entry.endswith(".gguf"):
-                hf_file.type = SnapshotFileType.Model
-            files.append(hf_file)
+        for root, _, filenames in os.walk(tempdir):
+            for filename in filenames:
+                if filename == ".gitattributes":
+                    continue
+
+                entry_path = os.path.join(root, filename)
+                rel_name = os.path.relpath(entry_path, start=tempdir)
+
+                # Skip files inside the .cache directory itself
+                if rel_name.startswith(".cache/"):
+                    continue
+
+                sha256 = ""
+                metadata_path = os.path.join(cache_dir, f"{rel_name}.metadata")
+                if not os.path.exists(metadata_path):
+                    continue
+                with open(metadata_path) as metafile:
+                    lines = metafile.readlines()
+                    if len(lines) < 2:
+                        continue
+                    sha256 = f"sha256:{lines[1].strip()}"
+                if sha256 == "sha256:":
+                    continue
+
+                if os.path.basename(rel_name).lower() == "readme.md":
+                    snapshot_hash = sha256
+                    continue
+
+                hf_file = HuggingfaceCLIFile(
+                    url=entry_path,
+                    header={},
+                    hash=sha256,
+                    type=SnapshotFileType.Other,
+                    name=rel_name,
+                )
+                # try to identify the model file in the pulled repo
+                if rel_name.endswith(".gguf"):
+                    hf_file.type = SnapshotFileType.Model
+                elif rel_name.endswith(".safetensors"):
+                    # Track safetensors as Other at snapshot layer; store layer will refine type
+                    hf_file.type = SnapshotFileType.Other
+                files.append(hf_file)
 
         return snapshot_hash, files
