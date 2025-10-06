@@ -111,7 +111,12 @@ class ModelStore:
         if snapshot_files != []:
             ref_file.files = []
         for file in snapshot_files:
-            ref_file.files.append(StoreFile(file.hash, file.name, map_to_store_file_type(file.type)))
+            ftype = (
+                StoreFileType.SAFETENSOR_MODEL
+                if file.name.endswith(".safetensors")
+                else map_to_store_file_type(file.type)
+            )
+            ref_file.files.append(StoreFile(file.hash, file.name, ftype))
 
         ref_file.write_to_file()
 
@@ -134,6 +139,17 @@ class ModelStore:
 
     def get_blob_file_path(self, file_hash: str) -> str:
         return os.path.join(self.blobs_directory, sanitize_filename(file_hash))
+
+    def get_safetensor_blob_path(self, model_tag: str, requested_filename: str) -> Optional[str]:
+        ref_file = self.get_ref_file(model_tag)
+        if ref_file is None:
+            return None
+        safetensor_files = list(getattr(ref_file, "safetensor_model_files", []))
+        if not safetensor_files:
+            return None
+        matched = next((f for f in safetensor_files if f.name == requested_filename), None)
+        chosen = matched if matched is not None else safetensor_files[0]
+        return self.get_blob_file_path(chosen.hash)
 
     def get_blob_file_path_by_name(self, tag_hash: str, filename: str) -> str:
         return str(Path(self.get_snapshot_file_path(tag_hash, filename)).resolve())
@@ -178,7 +194,12 @@ class ModelStore:
         if ref_file is None:
             ref_file = RefJSONFile(snapshot_hash, self.get_ref_file_path(model_tag), [])
             for file in snapshot_files:
-                ref_file.files.append(StoreFile(file.hash, file.name, map_to_store_file_type(file.type)))
+                ftype = (
+                    StoreFileType.SAFETENSOR_MODEL
+                    if file.name.endswith(".safetensors")
+                    else map_to_store_file_type(file.type)
+                )
+                ref_file.files.append(StoreFile(file.hash, file.name, ftype))
 
             ref_file.write_to_file()
 
@@ -224,6 +245,8 @@ class ModelStore:
 
     def _try_convert_existing_chat_template(self, model_tag: str, snapshot_hash: str) -> bool:
         ref_file = self.get_ref_file(model_tag)
+        if ref_file is None:
+            return False
 
         for file in ref_file.chat_templates:
             chat_template_file_path = self.get_blob_file_path(file.hash)
@@ -244,6 +267,8 @@ class ModelStore:
 
             return True
 
+        return False
+
     def _ensure_chat_template(self, model_tag: str, snapshot_hash: str):
 
         # Give preference to a chat template that has been specified in the file list
@@ -251,7 +276,10 @@ class ModelStore:
         if self._try_convert_existing_chat_template(model_tag, snapshot_hash):
             return
 
-        models = self.get_ref_file(model_tag).model_files
+        ref = self.get_ref_file(model_tag)
+        if ref is None:
+            return
+        models = ref.model_files
         if not models:
             return
 
@@ -350,9 +378,16 @@ class ModelStore:
         existing_file_hashes = {f.hash for f in ref_file.files}
         for new_snapshot_file in new_snapshot_files:
             if new_snapshot_file.hash not in existing_file_hashes:
+                ftype = (
+                    StoreFileType.SAFETENSOR_MODEL
+                    if new_snapshot_file.name.endswith(".safetensors")
+                    else map_to_store_file_type(new_snapshot_file.type)
+                )
                 ref_file.files.append(
                     StoreFile(
-                        new_snapshot_file.hash, new_snapshot_file.name, map_to_store_file_type(new_snapshot_file.type)
+                        new_snapshot_file.hash,
+                        new_snapshot_file.name,
+                        ftype,
                     )
                 )
         ref_file.write_to_file()

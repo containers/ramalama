@@ -208,9 +208,18 @@ class Transport(TransportBase):
         ref_file = self.model_store.get_ref_file(self.model_tag)
         if ref_file is None:
             raise NoRefFileFound(self.model)
+
+        is_selected_safetensor = self.filename.endswith(".safetensors")
+        has_gguf = bool(ref_file.model_files)
+        has_safetensors_only = not has_gguf and bool(getattr(ref_file, "safetensor_model_files", []))
+        if is_selected_safetensor or has_safetensors_only:
+            return (
+                os.path.join(MNT_DIR)
+                if (use_container or should_generate)
+                else self.model_store.get_snapshot_directory_from_tag(self.model_tag)
+            )
+
         if not ref_file.model_files:
-            if any(file.name.endswith(".safetensors") for file in ref_file.files):
-                raise SafetensorModelNotSupported()
             raise NoGGUFModelFileFound()
 
         # Use the first model file
@@ -226,6 +235,17 @@ class Transport(TransportBase):
         if use_container or should_generate:
             return os.path.join(MNT_DIR, model_file.name)
         return self.model_store.get_blob_file_path(model_file.hash)
+
+    def _get_inspect_model_path(self, dry_run: bool) -> str:
+        """Return a concrete file path for inspection.
+        Prefer the safetensor blob if available; otherwise use the entry path.
+        """
+        if dry_run:
+            return "/path/to/model"
+        if self.model_type == 'oci':
+            return self._get_entry_model_path(False, False, dry_run)
+        safetensor_blob = self.model_store.get_safetensor_blob_path(self.model_tag, self.filename)
+        return safetensor_blob or self._get_entry_model_path(False, False, dry_run)
 
     def _get_mmproj_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[str]:
         """
@@ -642,7 +662,7 @@ class Transport(TransportBase):
     ) -> None:
         model_name = self.filename
         model_registry = self.type.lower()
-        model_path = self._get_entry_model_path(False, False, dryrun)
+        model_path = self._get_inspect_model_path(dryrun)
 
         if GGUFInfoParser.is_model_gguf(model_path):
             if not show_all_metadata and get_field == "":

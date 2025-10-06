@@ -261,10 +261,17 @@ def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_co
 
 @pytest.mark.e2e
 def test_run_model_with_prompt(shared_ctx_with_models, test_model):
+    import platform
+
     ctx = shared_ctx_with_models
-    ctx.check_call(
-        ["ramalama", "run", "--temp", "0", test_model, "What is the first line of the declaration of independence?"]
-    )
+
+    run_cmd = ["ramalama", "run", "--temp", "0"]
+    if platform.system() == "Darwin":
+        # Reduce context size and limit output for faster macOS testing
+        run_cmd.extend(["-c", "512", "--runtime-args='-n 15'"])
+
+    run_cmd.extend([test_model, "What is the first line of the declaration of independence?"])
+    ctx.check_call(run_cmd)
 
 
 @pytest.mark.e2e
