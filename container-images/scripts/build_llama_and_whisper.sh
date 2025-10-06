@@ -73,9 +73,10 @@ dnf_install_s390_ppc64le() {
 dnf_install_mesa() {
   if [ "${ID}" = "fedora" ]; then
     dnf copr enable -y slp/mesa-libkrun-vulkan
-    dnf install -y mesa-vulkan-drivers-25.0.7-101.fc42 virglrenderer \
-      "${vulkan_rpms[@]}"
-    dnf versionlock add mesa-vulkan-drivers-25.0.7-101.fc42
+    dnf install -y mesa-vulkan-drivers-25.2.3-101.fc42 virglrenderer \
+	"${vulkan_rpms[@]}"
+    dnf versionlock add mesa-vulkan-drivers-25.2.3-101.fc42
+
   elif [ "${ID}" = "openEuler" ]; then
     dnf install -y mesa-vulkan-drivers virglrenderer "${vulkan_rpms[@]}"
   else # virglrenderer not available on RHEL or EPEL
@@ -239,7 +240,7 @@ configure_common_flags() {
 }
 
 clone_and_build_whisper_cpp() {
-  local DEFAULT_WHISPER_COMMIT="7745fcf32846006128f16de429cfe1677c963b30"
+  local DEFAULT_WHISPER_COMMIT="c8223a8548ad64435266e551385fc51aca9ee8ab"
   local whisper_cpp_commit="${WHISPER_CPP_PULL_REF:-$DEFAULT_WHISPER_COMMIT}"
   local whisper_flags=("${common_flags[@]}")
   whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
@@ -258,7 +259,7 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local DEFAULT_LLAMA_CPP_COMMIT="b0d52998b962bd2681c34bf52af993af79f178b8"
+  local DEFAULT_LLAMA_CPP_COMMIT="a23b9bdbd3b64ce172f9962249f432d01aea7437"
   local llama_cpp_commit="${LLAMA_CPP_PULL_REF:-$DEFAULT_LLAMA_CPP_COMMIT}"
   local install_prefix
   install_prefix=$(set_install_prefix)
