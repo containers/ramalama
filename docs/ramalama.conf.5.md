@@ -124,6 +124,11 @@ specified vllm model runtime.
 Pass `--group-add keep-groups` to podman, when using podman.
 In some cases this is needed to access the gpu from a rootless container
 
+**max_tokens**=0
+
+Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
+This parameter is mapped to the appropriate runtime-specific parameter when executing models.
+
 **ngl**=-1
 
 number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)

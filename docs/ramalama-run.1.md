@@ -98,6 +98,13 @@ If GPU device on host system is accessible to user via group access, this option
 #### **--keepalive**
 duration to keep a model loaded (e.g. 5m)
 
+#### **--max-tokens**=*integer*
+Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
+This parameter is mapped to the appropriate runtime-specific parameter:
+- llama.cpp: `-n` parameter
+- MLX: `--max-tokens` parameter
+- vLLM: `--max-tokens` parameter
+
 #### **--mcp**=SERVER_URL
 MCP (Model Context Protocol) servers to use for enhanced tool calling capabilities.
 Can be specified multiple times to connect to multiple MCP servers.
