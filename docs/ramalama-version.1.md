@@ -18,9 +18,9 @@ Print usage message
 
 ```
 $ ramalama version
-ramalama version 0.12.3
+ramalama version 0.12.4
 $ ramalama -q version
-0.12.3
+0.12.4
 >
 ```
 ## SEE ALSO
