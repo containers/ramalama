@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 
 import ramalama.annotations as annotations
-from ramalama.common import exec_cmd, perror, run_cmd
+from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd
 from ramalama.oci_tools import engine_supports_manifest_attributes
 from ramalama.transports.base import Transport
 
@@ -21,9 +21,9 @@ class OCI(Transport):
 
         if not conman:
             raise ValueError("RamaLama OCI Images requires a container engine")
-
         self.conman = conman
         self.ignore_stderr = ignore_stderr
+        self.artifact = self.is_artifact()
 
     def login(self, args):
         conman_args = [self.conman, "login"]
@@ -63,6 +63,11 @@ class OCI(Transport):
         # Generate the containerfile content
         # Keep this in sync with docs/ramalama-oci.5.md !
         is_car = args.type == "car"
+        is_raw = args.type == "raw"
+        if args.type == "artifact":
+            raise TypeError("artifact handling should not generate containerfiles.")
+        if not is_car and not is_raw:
+            raise ValueError(f"argument --type: invalid choice: '{args.type}' (choose from artifact,  car, raw)")
         has_gguf = getattr(args, 'gguf', None) is not None
         content = ""
 
@@ -162,6 +167,51 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         ]
         run_cmd(cmd_args)
 
+    def _rm_artifact(self, ignore) -> None:
+        rm_cmd = [
+            self.conman,
+            "artifact",
+            "rm",
+            self.model,
+        ]
+        if ignore:
+            rm_cmd.extend("--ignore")
+        rm_cmd.append(self.model)
+
+        run_cmd(
+            rm_cmd,
+            ignore_all=True,
+        )
+
+    def _add_artifact(self, create, name, path, file_name) -> None:
+        cmd = [
+            self.conman,
+            "artifact",
+            "add",
+            "--annotation",
+            f"org.opencontainers.image.title={file_name}",
+        ]
+        if create:
+            cmd.extend(["--replace", "--type", annotations.ArtifactTypeModelManifest])
+        else:
+            cmd.extend(["--append"])
+
+        cmd.extend([self.model, path])
+        run_cmd(
+            cmd,
+            ignore_stderr=True,
+        )
+
+    def _create_artifact(self, source_model, target, args) -> None:
+        model_name = source_model.model_name
+        ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
+        name = ref_file.model_files[0].name if ref_file.model_files else model_name
+        create = True
+        for file in ref_file.files:
+            blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+            self._add_artifact(create, name, blob_file_path, file.name)
+            create = False
+
     def _create_manifest_without_attributes(self, target, imageid, args):
         # Create manifest list for target with imageid
         cmd_args = [
@@ -204,11 +254,15 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
         run_cmd(cmd_args, stdout=None)
 
     def _convert(self, source_model, args):
-        perror(f"Converting {source_model.model_store.base_path} to {self.model_store.base_path} ...")
         try:
             run_cmd([self.conman, "manifest", "rm", self.model], ignore_stderr=True, stdout=None)
         except subprocess.CalledProcessError:
             pass
+        if args.type == "artifact":
+            perror(f"Creating Artifact {self.model} ...")
+            self._create_artifact(source_model, self.model, args)
+            return
+
         perror(f"Building {self.model} ...")
         imageid = self.build(source_model, args)
         try:
@@ -228,8 +282,13 @@ Tagging build instead"""
         target = self.model
         source = source_model.model
 
-        perror(f"Pushing {self.model} ...")
         conman_args = [self.conman, "push"]
+        type = "image"
+        if args.type == "artifact":
+            type = args.type
+            conman_args.insert(1, "artifact")
+
+        perror(f"Pushing {type} {self.model} ...")
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
         if str(args.tlsverify).lower() == "false":
@@ -240,8 +299,14 @@ Tagging build instead"""
         try:
             run_cmd(conman_args)
         except subprocess.CalledProcessError as e:
-            perror(f"Failed to push OCI {target} : {e}")
-            raise e
+            try:
+                if args.type != "artifact":
+                    perror(f"Pushing artifact {self.model} ...")
+                    conman_args.insert(1, "artifact")
+                    run_cmd(conman_args)
+            except subprocess.CalledProcessError:
+                perror(f"Failed to push OCI {target} : {e}")
+                raise e
 
     def pull(self, args):
         if not args.engine:
@@ -268,8 +333,11 @@ Tagging build instead"""
             conman_args = [self.conman, "manifest", "rm", self.model]
             run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
         except subprocess.CalledProcessError:
-            conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
-            run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
+            try:
+                conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
+                run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
+            except subprocess.CalledProcessError:
+                self._rm_artifact(args.ignore)
 
     def exists(self) -> bool:
         if self.conman is None:
@@ -280,4 +348,66 @@ Tagging build instead"""
             run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
             return True
         except Exception:
-            return False
+            conman_args = [self.conman, "artifact", "inspect", self.model]
+            try:
+                run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
+                return True
+            except Exception:
+                return False
+
+    def _inspect(
+        self,
+        show_all: bool = False,
+        show_all_metadata: bool = False,
+        get_field: str = "",
+        as_json: bool = False,
+        dryrun: bool = False,
+    ) -> (str, str):
+        out = super().get_inspect(show_all, show_all_metadata, get_field, dryrun)
+        conman_args = [self.conman, "image", "inspect", self.model]
+        type = "Image"
+        try:
+            out += run_cmd(conman_args, ignore_stderr=True).stdout.decode('utf-8').strip()
+        except Exception as e:
+            conman_args = [self.conman, "artifact", "inspect", self.model]
+            try:
+                out += run_cmd(conman_args, ignore_stderr=True).stdout.decode('utf-8').strip()
+                type = "Artifact"
+            except Exception:
+                raise e
+
+        return out, type
+
+    def artifact_name(self) -> str:
+        conman_args = [
+            self.conman,
+            "artifact",
+            "inspect",
+            "--format",
+            '{{index  .Manifest.Annotations "org.opencontainers.image.title" }}',
+            self.model,
+        ]
+
+        return run_cmd(conman_args, ignore_stderr=True).stdout.decode('utf-8').strip()
+
+    def inspect(
+        self,
+        show_all: bool = False,
+        show_all_metadata: bool = False,
+        get_field: str = "",
+        as_json: bool = False,
+        dryrun: bool = False,
+    ) -> None:
+        out, type = self._inspect(show_all, show_all_metadata, get_field, as_json, dryrun)
+        print(f"OCI {type}")
+        print(out)
+
+    def is_artifact(self) -> bool:
+        _, type = self._inspect()
+        return type == "Artifact"
+
+    def mount_cmd(self):
+        if self.artifact:
+            return f"--mount=type=artifact,src={self.model},destination={MNT_DIR}"
+        else:
+            return f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"
