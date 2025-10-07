@@ -165,6 +165,12 @@ class Engine:
     def add(self, newargs):
         self.exec_args += newargs
 
+    def add_args(self, *args: tuple[str]) -> None:
+        self.add(args)
+
+    def add_volume(self, src: str, dest: str, *, opts="ro"):
+        self.add_args("-v", f"{src}:{dest}:{opts}{self.relabel()}")
+
     def dryrun(self):
         dry_run(self.exec_args)
 

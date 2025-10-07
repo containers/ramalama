@@ -150,7 +150,7 @@ EOF
     skip_if_darwin
     skip_if_docker
     run_ramalama --dryrun run --rag quay.io/ramalama/rag --pull=never tiny
-    is "$output" ".*quay.io/ramalama/.*-rag:"
+    is "$output" ".*quay.io/ramalama/rag"
 
     run_ramalama --dryrun run --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/rag --pull=never tiny
     is "$output" ".*quay.io/ramalama/ramalama:1.0"

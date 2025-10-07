@@ -2,19 +2,33 @@ import os
 import shutil
 import subprocess
 import tempfile
-from urllib.parse import urlparse
 
-from ramalama.common import get_accel_env_vars, perror, run_cmd, set_accel_env_vars
+from ramalama.command.factory import assemble_command
+from ramalama.common import accel_image, perror, run_cmd, set_accel_env_vars
+from ramalama.config import Config
 from ramalama.engine import Engine
 from ramalama.logger import logger
 
 INPUT_DIR = "/docs"
 
 
+class VectorDBEngine(Engine):
+    """Generate a RAG vector database from source content."""
+
+    def __init__(self, args):
+        super().__init__(args)
+
+    def add_input(self, path: str) -> None:
+        if os.path.exists(path):
+            fpath = os.path.realpath(path)
+            input_name = os.path.basename(fpath)
+            self.add_volume(fpath, f"{INPUT_DIR}/{input_name}")
+        else:
+            raise ValueError(f"{path} does not exist")
+
+
 class Rag:
-    model: str = ""
     target: str = ""
-    urls: list[str] = []
 
     def __init__(self, target: str):
         if not target.islower():
@@ -60,67 +74,31 @@ COPY {src} /vector.db
         )
         return imageid
 
-    def _handle_paths(self, path: str):
-        """Adds a volume mount if path exists, otherwise add URL."""
-        parsed = urlparse(path)
-        if parsed.scheme in ["file", ""] and parsed.netloc == "":
-            if os.path.exists(parsed.path):
-                fpath = os.path.realpath(parsed.path.rstrip("/"))
-                input_name = os.path.basename(fpath)
-                self.engine.add(["-v", f"{fpath}:{INPUT_DIR}/{input_name}:ro,z"])
-            else:
-                raise ValueError(f"{path} does not exist")
-            return
-        self.urls.append(path)
-
     def generate(self, args):
         args.nocapdrop = True
+        args.inputdir = INPUT_DIR
         if not args.container:
             raise KeyError("rag command requires a container. Can not be run with --nocontainer option.")
         if not args.engine or args.engine == "":
             raise KeyError("rag command requires a container. Can not be run without a container engine.")
-        self.engine = Engine(args)
+        self.engine = VectorDBEngine(args)
 
-        tmpdir = "."
-        if not os.access(tmpdir, os.W_OK):
-            tmpdir = "/tmp"
-
-        for path in args.PATH:
-            self._handle_paths(path)
-
-        # If user specifies path, then don't use it
+        for path in args.PATHS:
+            self.engine.add_input(path)
 
         target_is_oci = self.target.startswith("oci://") or (
             not self.target.startswith("file://") and self.target[0] not in {".", "/"}
         )
         if target_is_oci:
-            ragdb = tempfile.TemporaryDirectory(dir=tmpdir, prefix='RamaLama_rag_')
+            ragdb = tempfile.TemporaryDirectory(prefix="RamaLama_rag_")
             dbdir = os.path.join(ragdb.name, "vectordb")
+            os.makedirs(dbdir)
         else:
             dbdir = self.target
 
-        os.makedirs(dbdir, exist_ok=True)
-        self.engine.add(["-v", f"{dbdir}:/output:z"])
-        for k, v in get_accel_env_vars().items():
-            # Special case for Cuda
-            if k == "CUDA_VISIBLE_DEVICES":
-                if os.path.basename(args.engine) == "docker":
-                    self.engine.add(["--gpus", "all"])
-                else:
-                    # newer Podman versions support --gpus=all, but < 5.0 do not
-                    self.engine.add(["--device", "nvidia.com/gpu=all"])
-            elif k == "MUSA_VISIBLE_DEVICES":
-                self.exec_args += ["--env", "MTHREADS_VISIBLE_DEVICES=all"]
-
-            self.engine.add(["-e", f"{k}={v}"])
-
-        image = args.image if getattr(args, "image_override", False) else rag_image(args.image)
-        self.engine.add([image])
-        self.engine.add(["doc2rag", "--format", args.format, "/output", INPUT_DIR])
-        if args.ocr:
-            self.engine.add(["--ocr"])
-        if len(self.urls) > 0:
-            self.engine.add(self.urls)
+        self.engine.add_volume(f"{dbdir}", "/output", opts="rw")
+        self.engine.add_args(args.image)
+        self.engine.add_args(*assemble_command(args))
         if args.dryrun:
             self.engine.dryrun()
             return
@@ -135,9 +113,5 @@ COPY {src} /vector.db
                 shutil.rmtree(ragdb.name, ignore_errors=True)
 
 
-def rag_image(image: str) -> str:
-    imagespec = image.split(":")
-    rag_image = f"{imagespec[0]}-rag"
-    if len(imagespec) > 1:
-        rag_image = f"{rag_image}:{imagespec[1]}"
-    return rag_image
+def rag_image(config: Config) -> str:
+    return accel_image(config, images=config.rag_images, conf_key="rag_image")

@@ -33,7 +33,6 @@ from ramalama.model_inspect.safetensor_parser import SafetensorInfoParser
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.store import ModelStore
 from ramalama.quadlet import Quadlet
-from ramalama.rag import rag_image
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
 
@@ -302,10 +301,6 @@ class Transport(TransportBase):
         return genname()
 
     def base(self, args, name):
-        # force accel_image to use -rag version. Drop TAG if it exists
-        # so that accel_image will add -rag to the image specification.
-        if getattr(args, "rag", None) and not getattr(args, "image_override", False):
-            args.image = rag_image(args.image)
         if self.type == "Ollama":
             args.UNRESOLVED_MODEL = args.MODEL
             args.MODEL = self.resolve_model()

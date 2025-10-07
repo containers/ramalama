@@ -8,7 +8,9 @@ import sys
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
+from textwrap import dedent
 from typing import get_args
+from urllib.parse import urlparse
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
@@ -585,6 +587,7 @@ def info_cli(args):
             "Engines": {spec: str(path) for spec, path in get_inference_spec_files().items()},
             "Schema": {schema: str(path) for schema, path in get_inference_schema_files().items()},
         },
+        "RagImage": rag_image(CONFIG),
         "Selinux": CONFIG.selinux,
         "Shortnames": {
             "Files": shortnames.paths,
@@ -727,7 +730,7 @@ def convert_cli(args):
     model = TransportFactory(tgt, args).create_oci()
 
     source_model = _get_source_model(args)
-    args.carimage = rag_image(accel_image(CONFIG))
+    args.carimage = rag_image(CONFIG)
     model.convert(source_model, args)
 
 
@@ -1285,6 +1288,18 @@ def version_parser(subparsers):
     parser.set_defaults(func=print_version)
 
 
+class AddPathOrUrl(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, [])
+        namespace.urls = []
+        for value in values:
+            parsed = urlparse(value)
+            if parsed.scheme in ["file", ""] and parsed.netloc == "":
+                getattr(namespace, self.dest).append(parsed.path.rstrip("/"))
+            else:
+                namespace.urls.append(value)
+
+
 def rag_parser(subparsers):
     parser = subparsers.add_parser(
         "rag",
@@ -1307,8 +1322,8 @@ def rag_parser(subparsers):
     )
     parser.add_argument(
         "--image",
-        default=accel_image(CONFIG),
-        help="OCI container image to run with the specified AI model",
+        default=rag_image(CONFIG),
+        help="Image to use for generating RAG data",
         action=OverrideDefaultAction,
         completer=local_images,
     )
@@ -1336,11 +1351,14 @@ If GPU device on host is accessible to via group access, this option leaks the u
         help="Enable SELinux container separation",
     )
     parser.add_argument(
-        "PATH",
-        nargs="*",
-        help="""\
-Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
-formatted files to be processed""",
+        "PATHS",
+        nargs="+",
+        help=dedent(
+            """
+        Files/URLs/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
+        formatted files to be processed"""
+        ),
+        action=AddPathOrUrl,
     )
     parser.add_argument(
         "DESTINATION", help="Path or OCI Image name to contain processed rag data", completer=suppressCompleter

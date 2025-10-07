@@ -118,3 +118,23 @@ commands:
       name: "llama-bench"
       binary: "llama-bench"
       options: *bench_perplexity_options
+  - name: rag
+    inference_engine:
+      name: "rag"
+      binary: "doc2rag"
+      options:
+        - name: "--format"
+          description: "Output format for RAG data"
+          value: "{{ args.format }}"
+        - name: "--ocr"
+          description: "Enable embedded image text extraction from PDF"
+          if: "{{ args.ocr }}"
+        - name: "/output"
+          description: "Destination directory for RAG data"
+        - name: ""
+          description: "Directory containing input files for processing"
+          value: "{{ args.inputdir }}"
+          if: "{{ args.paths }}"
+        - name: ""
+          description: "URLs to process"
+          value: "{{ args.urls }}"

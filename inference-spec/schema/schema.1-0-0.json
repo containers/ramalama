@@ -15,7 +15,7 @@
         "properties": {
           "name": { 
             "type": "string",
-            "enum": ["serve", "run", "perplexity", "bench"]
+            "enum": ["serve", "run", "perplexity", "bench", "rag"]
           },
           "inference_engine": {
             "type": "object",

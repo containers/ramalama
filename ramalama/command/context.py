@@ -49,6 +49,26 @@ class RamalamaArgsContext:
         return ctx
 
 
+class RamalamaRagGenArgsContext:
+
+    def __init__(self):
+        self.format: str | None = None
+        self.ocr: bool | None = None
+        self.inputdir: str | None = None
+        self.paths: list[str] | None = None
+        self.urls: list[str] | None = None
+
+    @staticmethod
+    def from_argparse(args: argparse.Namespace) -> "RamalamaRagGenArgsContext":
+        ctx = RamalamaRagGenArgsContext()
+        ctx.format = getattr(args, "format", None)
+        ctx.ocr = getattr(args, "ocr", None)
+        ctx.inputdir = getattr(args, "inputdir", None)
+        ctx.paths = getattr(args, "PATHS", None)
+        ctx.urls = getattr(args, "urls", None)
+        return ctx
+
+
 class RamalamaModelContext:
 
     def __init__(self, model: CLASS_MODEL_TYPES, is_container: bool, should_generate: bool, dry_run: bool):
@@ -105,11 +125,17 @@ class RamalamaCommandContext:
 
     @staticmethod
     def from_argparse(cli_args: argparse.Namespace) -> "RamalamaCommandContext":
-        args = RamalamaArgsContext.from_argparse(cli_args)
+        if cli_args.subcommand == "rag":
+            args = RamalamaRagGenArgsContext.from_argparse(cli_args)
+        else:
+            args = RamalamaArgsContext.from_argparse(cli_args)
         should_generate = getattr(cli_args, "generate", None) is not None
         dry_run = getattr(cli_args, "dryrun", False)
         is_container = getattr(cli_args, "container", True)
-        model = RamalamaModelContext(New(cli_args.MODEL, cli_args), is_container, should_generate, dry_run)
+        if hasattr(cli_args, "MODEL"):
+            model = RamalamaModelContext(New(cli_args.MODEL, cli_args), is_container, should_generate, dry_run)
+        else:
+            model = None
         host = RamalamaHostContext(
             is_container,
             check_nvidia() is None,
