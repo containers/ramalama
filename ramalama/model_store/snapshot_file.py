@@ -8,10 +8,11 @@ from ramalama.logger import logger
 
 
 class SnapshotFileType(IntEnum):
-    Model = 1
+    GGUFModel = 1
     ChatTemplate = 2
     Other = 3
     Mmproj = 4
+    SafetensorModel = 5
 
 
 class SnapshotFile:

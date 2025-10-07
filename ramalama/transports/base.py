@@ -209,28 +209,23 @@ class Transport(TransportBase):
         if ref_file is None:
             raise NoRefFileFound(self.model)
 
-        is_selected_safetensor = self.filename.endswith(".safetensors")
-        has_gguf = bool(ref_file.model_files)
-        has_safetensors_only = not has_gguf and bool(getattr(ref_file, "safetensor_model_files", []))
-        if is_selected_safetensor or has_safetensors_only:
-            return (
-                os.path.join(MNT_DIR)
-                if (use_container or should_generate)
-                else self.model_store.get_snapshot_directory_from_tag(self.model_tag)
-            )
-
-        if not ref_file.model_files:
+        gguf_files = ref_file.model_files
+        safetensor_files = ref_file.safetensor_model_files
+        if safetensor_files:
+            if use_container or should_generate:
+                return MNT_DIR
+            return self.model_store.get_snapshot_directory_from_tag(self.model_tag)
+        elif not gguf_files:
             raise NoGGUFModelFileFound()
 
         # Use the first model file
+        model_file = gguf_files[0]
         if is_split_file_model(self.model_name):
             # Find model file with index 1 for split models
-            index_models = [file for file in ref_file.model_files if "-00001-of-" in file.name]
+            index_models = [file for file in gguf_files if "-00001-of-" in file.name]
             if len(index_models) != 1:
                 raise Exception(f"Found multiple index 1 gguf models: {index_models}")
             model_file = index_models[0]
-        else:
-            model_file = ref_file.model_files[0]
 
         if use_container or should_generate:
             return os.path.join(MNT_DIR, model_file.name)
