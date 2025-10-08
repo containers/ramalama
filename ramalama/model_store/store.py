@@ -172,6 +172,16 @@ class ModelStore:
         if ref_file is None:
             return ("", cached_files, False)
 
+        # TODO: Remove in following releases
+        # Temporary migration of .safetensors model files which were previously stored as OTHER
+        should_write = False
+        for file in ref_file.files:
+            if file.name.endswith(".safetensors") and file.type != StoreFileType.SAFETENSOR_MODEL:
+                file.type = StoreFileType.SAFETENSOR_MODEL
+                should_write = True
+        if should_write:
+            ref_file.write_to_file()
+
         for file in ref_file.files:
             path = self.get_blob_file_path(file.hash)
             if os.path.exists(path):
