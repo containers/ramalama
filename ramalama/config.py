@@ -34,7 +34,7 @@ def get_default_engine() -> SUPPORTED_ENGINES | None:
     if available("podman"):
         return "podman"
 
-    return "docker" if available("docker") and sys.platform != "darwin" else None
+    return "docker" if available("docker") else None
 
 
 def get_default_store() -> str:
