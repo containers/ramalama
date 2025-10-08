@@ -6,7 +6,6 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
-import ramalama.model_store.go2jinja as go2jinja
 from ramalama.common import perror, sanitize_filename, verify_checksum
 from ramalama.endian import EndianMismatchError, get_system_endianness
 from ramalama.logger import logger
