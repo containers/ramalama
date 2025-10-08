@@ -374,8 +374,9 @@ def is_healthy(args, timeout=3):
             logger.debug(f"Container {args.name} does not include a model list in the response")
             return False
         model_names = [m["name"] for m in body["models"]]
-        # The transport is not included in the model name returned by the endpoint
+        # The transport and tag is not included in the model name returned by the endpoint
         model_name = args.MODEL.split("://")[-1]
+        model_name = model_name.split(":")[0]
         if not any(model_name in name for name in model_names):
             logger.debug(f'Container {args.name} does not include "{model_name}" in the model list: {model_names}')
             return False
