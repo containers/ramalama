@@ -173,7 +173,7 @@ class TestGetDefaultEngine:
     def test_get_default_engine_with_docker_available_osx(self):
         with patch("ramalama.config.available", side_effect=lambda x: x == "docker"):
             with patch("sys.platform", "darwin"):
-                assert get_default_engine() is "docker"
+                assert get_default_engine() == "docker"
 
     def test_get_default_engine_with_docker_available_linux(self):
         with patch("ramalama.config.available", side_effect=lambda x: x == "docker"):
