@@ -176,9 +176,12 @@ class Config(LayeredMixin, BaseConfig):
 
     def _finalize_engine(self: "Config"):
         """
-        Finalizes the detected engine
+        Finalizes engine selection, with special handling for Podman on macOS.
+
+        If Podman is detected on macOS without a configured machine, it falls back on docker availability.
         """
-        if self.engine is not None and os.path.basename(self.engine) == "podman" and sys.platform == "darwin":
+        is_podman = self.engine is not None and os.path.basename(self.engine) == "podman"
+        if is_podman and sys.platform == "darwin":
             run_with_podman_engine = apple_vm(self.engine, self)
             if not run_with_podman_engine and not self.is_set("engine"):
                 self.engine = "docker" if available("docker") else None
