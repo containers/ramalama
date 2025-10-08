@@ -39,6 +39,7 @@ class TransportFactory:
 
         self.pruned_model = self.prune_model_input()
         self.draft_model = None
+
         if getattr(args, 'model_draft', None):
             dm_args = copy.deepcopy(args)
             dm_args.model_draft = None

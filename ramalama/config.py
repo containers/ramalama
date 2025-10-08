@@ -4,8 +4,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
-
-from ramalama.common import available
+from functools import cached_property
+from ramalama.common import available, apple_vm
 from ramalama.layered_config import LayeredMixin
 from ramalama.toml_parser import TOMLParser
 
@@ -170,7 +170,18 @@ class Config(LayeredMixin, BaseConfig):
     Mixins should be inherited first.
     """
 
-    pass
+    def __post_init__(self):
+        self._finalize_engine()
+        super().__post_init__()
+
+    def _finalize_engine(self: "Config"):
+        """
+        Finalizes the detected engine
+        """
+        if self.engine is not None and os.path.basename(self.engine) == "podman" and sys.platform == "darwin":
+            run_with_podman_engine = apple_vm(self.engine, self)
+            if not run_with_podman_engine and not self.is_set("engine"):
+                self.engine = "docker" if available("docker") else None
 
 
 def load_file_config() -> dict[str, Any]:
