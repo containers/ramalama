@@ -2,10 +2,11 @@ import json
 import os
 import sys
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
-from functools import cached_property
-from ramalama.common import available, apple_vm
+
+from ramalama.common import apple_vm, available
 from ramalama.layered_config import LayeredMixin
 from ramalama.toml_parser import TOMLParser
 
