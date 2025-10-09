@@ -64,11 +64,21 @@ def get_jinja_variables(template: str) -> set[str]:
     return meta.find_undeclared_variables(ast)
 
 
+def is_openai_jinja(template: str):
+    return "messages" in get_jinja_variables(template)
+
+
+def ensure_jinja_openai_compatibility(template: str) -> str:
+    if "messages" not in get_jinja_variables(template):
+        template = wrap_template_with_messages_loop(template)
+
+    return template
+
+
 def convert_go_to_jinja(template_str: str) -> str:
     try:
         template = go2jinja.go_to_jinja(template_str)
-        if "messages" not in get_jinja_variables(template):
-            template = wrap_template_with_messages_loop(template)
+        template = ensure_jinja_openai_compatibility(template)
     except Exception as e:
         raise TemplateConversionError from e
     return template

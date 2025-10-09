@@ -20,7 +20,12 @@ from ramalama.model_store.snapshot_file import (
     SnapshotFileType,
     validate_snapshot_files,
 )
-from ramalama.model_store.template_conversion import TemplateConversionError, convert_go_to_jinja
+from ramalama.model_store.template_conversion import (
+    TemplateConversionError,
+    convert_go_to_jinja,
+    ensure_jinja_openai_compatibility,
+    is_openai_jinja,
+)
 
 
 def map_to_store_file_type(snapshot_type: SnapshotFileType) -> StoreFileType:
@@ -255,13 +260,16 @@ class ModelStore:
                 chat_template = template_file.read()
 
             if not go2jinja.is_go_template(chat_template):
-                return True
-
-            try:
-                normalized_template = convert_go_to_jinja(chat_template)
-            except TemplateConversionError as e:
-                logger.debug(f"Failed to convert template: {e}")
-                continue
+                if is_openai_jinja(chat_template):
+                    return True
+                else:
+                    normalized_template = ensure_jinja_openai_compatibility(chat_template)
+            else:
+                try:
+                    normalized_template = convert_go_to_jinja(chat_template)
+                except TemplateConversionError as e:
+                    logger.debug(f"Failed to convert template: {e}")
+                    continue
 
             files = [LocalSnapshotFile(normalized_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
             self.update_snapshot(model_tag, snapshot_hash, files)
