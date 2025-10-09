@@ -156,7 +156,7 @@ class Engine:
             # Added temp read write because vector database requires write access even if nothing is written
             self.exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db,rw=true{self.relabel()}")
         else:
-            self.exec_args.append(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true{self.relabel()}")
+            self.exec_args.append(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
 
     def handle_podman_specifics(self):
         if getattr(self.args, "podman_keep_groups", None):
