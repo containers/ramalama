@@ -181,14 +181,13 @@ class TestGetDefaultEngine:
                 assert get_default_engine() == "docker"
 
     def test_default_engine_falls_back_to_docker_when_podman_machine_missing(self):
-        with patch("ramalama.config.available", side_effect=lambda binary: binary in {"podman", "docker"}), patch(
-            "ramalama.config.apple_vm", return_value=False
-        ), patch("ramalama.config.load_file_config", return_value={}), patch(
-            "ramalama.config.load_env_config", return_value={}
-        ), patch(
-            "ramalama.config.os.path.exists", return_value=False
-        ), patch(
-            "ramalama.config.sys.platform", "darwin"
+        with (
+            patch("ramalama.config.available", side_effect=lambda binary: binary in {"podman", "docker"}),
+            patch("ramalama.config.apple_vm", return_value=False),
+            patch("ramalama.config.load_file_config", return_value={}),
+            patch("ramalama.config.load_env_config", return_value={}),
+            patch("ramalama.config.os.path.exists", return_value=False),
+            patch("ramalama.config.sys.platform", "darwin"),
         ):
             cfg = default_config()
 
