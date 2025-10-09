@@ -6,6 +6,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
+from ramalama.model_store import go2jinja
 from ramalama.common import perror, sanitize_filename, verify_checksum
 from ramalama.endian import EndianMismatchError, get_system_endianness
 from ramalama.logger import logger
@@ -19,11 +20,7 @@ from ramalama.model_store.snapshot_file import (
     SnapshotFileType,
     validate_snapshot_files,
 )
-from ramalama.model_store.template_conversion import (
-    DEFAULT_STYLE_HANDLER,
-    TemplateConversionError,
-    TemplateIdentificationError,
-)
+from ramalama.model_store.template_conversion import TemplateConversionError, convert_go_to_jinja
 
 
 def map_to_store_file_type(snapshot_type: SnapshotFileType) -> StoreFileType:
@@ -257,17 +254,11 @@ class ModelStore:
             with open(chat_template_file_path, "r") as template_file:
                 chat_template = template_file.read()
 
-            try:
-                template_style = DEFAULT_STYLE_HANDLER.get_template_style(chat_template)
-            except TemplateIdentificationError as e:
-                logger.debug(f"Failed to identify template style: {e}")
-                continue
-
-            if not DEFAULT_STYLE_HANDLER.needs_conversion(template_style):
+            if not go2jinja.is_go_template(chat_template):
                 return True
 
             try:
-                normalized_template = DEFAULT_STYLE_HANDLER.convert_template(template_style)
+                normalized_template = convert_go_to_jinja(chat_template)
             except TemplateConversionError as e:
                 logger.debug(f"Failed to convert template: {e}")
                 continue
@@ -302,8 +293,7 @@ class ModelStore:
         if tmpl is None:
             return
 
-        template_style = DEFAULT_STYLE_HANDLER.get_template_style(tmpl)
-        needs_conversion = DEFAULT_STYLE_HANDLER.needs_conversion(template_style)
+        needs_conversion = not go2jinja.is_go_template(tmpl)
 
         # Only jinja templates are usable for the supported backends, therefore don't mark file as
         # chat template if it is a Go Template (ollama-specific)
@@ -316,7 +306,7 @@ class ModelStore:
         ]
         if needs_conversion:
             try:
-                desired_template = DEFAULT_STYLE_HANDLER.convert_template(template_style=template_style)
+                desired_template = convert_go_to_jinja(tmpl)
                 files.append(
                     LocalSnapshotFile(desired_template, "chat_template_converted", SnapshotFileType.ChatTemplate)
                 )

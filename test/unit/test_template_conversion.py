@@ -1,4 +1,11 @@
-from ramalama.model_store.template_conversion import wrap_template_with_messages_loop
+import pytest
+
+from ramalama.model_store import go2jinja
+from ramalama.model_store.template_conversion import (
+    TemplateConversionError,
+    convert_go_to_jinja,
+    wrap_template_with_messages_loop,
+)
 
 
 class TestWrapTemplateWithMessagesLoop:
@@ -65,7 +72,6 @@ class TestWrapTemplateWithMessagesLoop:
 
         result = wrap_template_with_messages_loop(input_template)
 
-        # Should split at the LAST <|assistant|>
         expected = """{% for message in messages %}{% if message.role == 'system' %}<|system|>
 {{ message.content }}<|end|>
 {% endif %}<|assistant|>middle<|end|>{% if message.role == 'user' %}<|user|>
@@ -174,3 +180,39 @@ class TestWrapTemplateWithMessagesLoop:
         )
 
         assert result == expected
+
+
+class TestConvertGoToJinja:
+    def test_converts_and_wraps_go_template(self):
+        go_template = """{{- if .System }}<|system|>
+{{ .System }}<|end|>
+{{- end }}{{- if .Prompt }}<|user|>
+{{ .Prompt }}<|end|>
+{{- end }}<|assistant|>
+{{ .Response }}<|end|>"""
+
+        converted = convert_go_to_jinja(go_template)
+        expected = wrap_template_with_messages_loop(go2jinja.go_to_jinja(go_template))
+
+        assert converted == expected
+
+    def test_reuses_existing_messages_variable(self, monkeypatch):
+        jinja_with_messages = "{% for message in messages %}{{ message.content }}{% endfor %}"
+
+        def fake_go_to_jinja(_template: str) -> str:
+            return jinja_with_messages
+
+        monkeypatch.setattr(go2jinja, "go_to_jinja", fake_go_to_jinja)
+
+        result = convert_go_to_jinja("ignored")
+
+        assert result == jinja_with_messages
+
+    def test_convert_go_to_jinja_raises_template_conversion_error(self, monkeypatch):
+        def boom(_template: str) -> str:
+            raise RuntimeError("failed")
+
+        monkeypatch.setattr(go2jinja, "go_to_jinja", boom)
+
+        with pytest.raises(TemplateConversionError):
+            convert_go_to_jinja("ignored")
