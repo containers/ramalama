@@ -8,10 +8,11 @@ from ramalama.logger import logger
 
 
 class SnapshotFileType(IntEnum):
-    Model = 1
+    GGUFModel = 1
     ChatTemplate = 2
     Other = 3
     Mmproj = 4
+    SafetensorModel = 5
 
 
 class SnapshotFile:
@@ -85,12 +86,20 @@ class LocalSnapshotFile(SnapshotFile):
 def validate_snapshot_files(snapshot_files: Sequence[SnapshotFile]):
     chat_template_files = []
     mmproj_files = []
+    gguf_files = []
+    safetensor_files = []
     for file in snapshot_files:
         if file.type == SnapshotFileType.ChatTemplate:
             chat_template_files.append(file)
         if file.type == SnapshotFileType.Mmproj:
             mmproj_files.append(file)
+        if file.type == SnapshotFileType.GGUFModel:
+            gguf_files.append(file)
+        if file.type == SnapshotFileType.SafetensorModel:
+            safetensor_files.append(file)
 
+    if len(gguf_files) > 1 and len(safetensor_files) > 1:
+        raise ValueError("Snapshot must contain only .gguf or .safetensors model files. Found both.")
     if len(chat_template_files) > 1:
         raise ValueError(f"Only one chat template supported, got {len(chat_template_files)}: {chat_template_files}")
     if len(mmproj_files) > 1:

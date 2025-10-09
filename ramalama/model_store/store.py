@@ -23,15 +23,13 @@ from ramalama.model_store.snapshot_file import (
 
 
 def map_to_store_file_type(snapshot_type: SnapshotFileType) -> StoreFileType:
-    ftype = StoreFileType.OTHER
-    if snapshot_type == SnapshotFileType.Model:
-        ftype = StoreFileType.GGUF_MODEL
-    if snapshot_type == SnapshotFileType.ChatTemplate:
-        ftype = StoreFileType.CHAT_TEMPLATE
-    if snapshot_type == SnapshotFileType.Mmproj:
-        ftype = StoreFileType.MMPROJ
-
-    return ftype
+    mapping = {
+        SnapshotFileType.GGUFModel: StoreFileType.GGUF_MODEL,
+        SnapshotFileType.ChatTemplate: StoreFileType.CHAT_TEMPLATE,
+        SnapshotFileType.Mmproj: StoreFileType.MMPROJ,
+        SnapshotFileType.SafetensorModel: StoreFileType.SAFETENSOR_MODEL,
+    }
+    return mapping.get(snapshot_type, StoreFileType.OTHER)
 
 
 class ModelStore:
@@ -111,12 +109,7 @@ class ModelStore:
         if snapshot_files != []:
             ref_file.files = []
         for file in snapshot_files:
-            ftype = (
-                StoreFileType.SAFETENSOR_MODEL
-                if file.name.endswith(".safetensors")
-                else map_to_store_file_type(file.type)
-            )
-            ref_file.files.append(StoreFile(file.hash, file.name, ftype))
+            ref_file.files.append(StoreFile(file.hash, file.name, map_to_store_file_type(file.type)))
 
         ref_file.write_to_file()
 
@@ -144,7 +137,7 @@ class ModelStore:
         ref_file = self.get_ref_file(model_tag)
         if ref_file is None:
             return None
-        safetensor_files = list(getattr(ref_file, "safetensor_model_files", []))
+        safetensor_files = ref_file.safetensor_model_files
         if not safetensor_files:
             return None
         matched = next((f for f in safetensor_files if f.name == requested_filename), None)
@@ -179,6 +172,16 @@ class ModelStore:
         if ref_file is None:
             return ("", cached_files, False)
 
+        # TODO: Remove in following releases
+        # Temporary migration of .safetensors model files which were previously stored as OTHER
+        should_write = False
+        for file in ref_file.files:
+            if file.name.endswith(".safetensors") and file.type != StoreFileType.SAFETENSOR_MODEL:
+                file.type = StoreFileType.SAFETENSOR_MODEL
+                should_write = True
+        if should_write:
+            ref_file.write_to_file()
+
         for file in ref_file.files:
             path = self.get_blob_file_path(file.hash)
             if os.path.exists(path):
@@ -194,12 +197,7 @@ class ModelStore:
         if ref_file is None:
             ref_file = RefJSONFile(snapshot_hash, self.get_ref_file_path(model_tag), [])
             for file in snapshot_files:
-                ftype = (
-                    StoreFileType.SAFETENSOR_MODEL
-                    if file.name.endswith(".safetensors")
-                    else map_to_store_file_type(file.type)
-                )
-                ref_file.files.append(StoreFile(file.hash, file.name, ftype))
+                ref_file.files.append(StoreFile(file.hash, file.name, map_to_store_file_type(file.type)))
 
             ref_file.write_to_file()
 
@@ -378,16 +376,11 @@ class ModelStore:
         existing_file_hashes = {f.hash for f in ref_file.files}
         for new_snapshot_file in new_snapshot_files:
             if new_snapshot_file.hash not in existing_file_hashes:
-                ftype = (
-                    StoreFileType.SAFETENSOR_MODEL
-                    if new_snapshot_file.name.endswith(".safetensors")
-                    else map_to_store_file_type(new_snapshot_file.type)
-                )
                 ref_file.files.append(
                     StoreFile(
                         new_snapshot_file.hash,
                         new_snapshot_file.name,
-                        ftype,
+                        map_to_store_file_type(new_snapshot_file.type),
                     )
                 )
         ref_file.write_to_file()

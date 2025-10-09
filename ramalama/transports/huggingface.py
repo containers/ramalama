@@ -286,10 +286,9 @@ class Huggingface(HFStyleRepoModel):
                 )
                 # try to identify the model file in the pulled repo
                 if rel_name.endswith(".gguf"):
-                    hf_file.type = SnapshotFileType.Model
+                    hf_file.type = SnapshotFileType.GGUFModel
                 elif rel_name.endswith(".safetensors"):
-                    # Track safetensors as Other at snapshot layer; store layer will refine type
-                    hf_file.type = SnapshotFileType.Other
+                    hf_file.type = SnapshotFileType.SafetensorModel
                 files.append(hf_file)
 
         return snapshot_hash, files

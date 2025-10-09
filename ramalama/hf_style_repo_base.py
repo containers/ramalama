@@ -131,7 +131,7 @@ class HFStyleRepository(ABC):
             url=f"{self.blob_url}/{self.model_filename}",
             header=self.headers,
             hash=self.model_hash,
-            type=SnapshotFileType.Model,
+            type=SnapshotFileType.GGUFModel,
             name=self.model_filename,
             should_show_progress=True,
             should_verify_checksum=True,

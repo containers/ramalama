@@ -94,7 +94,7 @@ class OllamaRepository:
             url=f"{self.blob_url}/{model_digest}",
             header=self.headers,
             hash=model_digest,
-            type=SnapshotFileType.Model,
+            type=SnapshotFileType.GGUFModel,
             name=self.name,
             should_show_progress=True,
             should_verify_checksum=True,
