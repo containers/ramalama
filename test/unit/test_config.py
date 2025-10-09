@@ -148,7 +148,6 @@ def test_cfg_container_not_set():
 
 
 class TestGetDefaultEngine:
-
     def test_get_default_engine_with_toolboxenv(self):
         with patch("os.getenv", return_value=None):
             with patch("os.path.exists", side_effect=lambda x: x == "/run/.toolboxenv"):
@@ -174,12 +173,26 @@ class TestGetDefaultEngine:
     def test_get_default_engine_with_docker_available_osx(self):
         with patch("ramalama.config.available", side_effect=lambda x: x == "docker"):
             with patch("sys.platform", "darwin"):
-                assert get_default_engine() is None
+                assert get_default_engine() == "docker"
 
     def test_get_default_engine_with_docker_available_linux(self):
         with patch("ramalama.config.available", side_effect=lambda x: x == "docker"):
             with patch("sys.platform", "linux"):
                 assert get_default_engine() == "docker"
+
+    def test_default_engine_falls_back_to_docker_when_podman_machine_missing(self):
+        with (
+            patch("ramalama.config.available", side_effect=lambda binary: binary in {"podman", "docker"}),
+            patch("ramalama.config.apple_vm", return_value=False),
+            patch("ramalama.config.load_file_config", return_value={}),
+            patch("ramalama.config.load_env_config", return_value={}),
+            patch("ramalama.config.os.path.exists", return_value=False),
+            patch("ramalama.config.sys.platform", "darwin"),
+        ):
+            cfg = default_config()
+
+        assert cfg.engine == "docker"
+        assert cfg.is_set("engine") is False
 
 
 class TestLoadEnvConfig:

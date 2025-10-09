@@ -47,7 +47,6 @@ from ramalama.version import print_version, version
 
 shortnames = Shortnames()
 
-
 GENERATE_OPTIONS = ["quadlet", "kube", "quadlet/kube", "compose"]
 
 
