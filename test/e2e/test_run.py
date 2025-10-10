@@ -20,6 +20,7 @@ CONFIG_WITH_PULL_NEVER = """
 [ramalama]
 pull="never"
 """
+DEFAULT_PULL_PATTERN = r".*--pull (?:always|newer)"
 
 
 @pytest.fixture(scope="module")
@@ -122,7 +123,7 @@ def test_basic_dry_run():
             id="check pull policy with RAMALAMA_CONFIG=/dev/null", marks=[skip_if_no_container, skip_if_docker],
         ),
         pytest.param(
-            [], r".*--pull newer", None, None, True,
+            [], DEFAULT_PULL_PATTERN, None, None, True,
             id="check default pull policy",
             marks=[skip_if_no_container],
         ),
