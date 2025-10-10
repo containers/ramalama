@@ -90,28 +90,22 @@ def test_extract_model_identifiers(model_input: str, expected_name: str, expecte
     "inputPort,expectedRandomizedResult,expectedRandomPortsAvl,expectedOutput,expectedErr",
     [
         ("", [], [None], "8999", IOError),
+        (None, [], [None], "8080", IOError),
         ("8999", [], [None], "8999", None),
         ("8080", [8080, 8087, 8085, 8086, 8084, 8090, 8088, 8089, 8082, 8081, 8083], [None], "8080", None),
         (
             "8080",
             [8080, 8088, 8090, 8084, 8081, 8087, 8085, 8089, 8082, 8086, 8083],
             [OSError, None],
-            "8088",
+            "8080",
             None,
         ),
         (
-            "8080",
+            "8085",
             [8080, 8090, 8082, 8084, 8088, 8089, 8087, 8081, 8083, 8086, 8085],
             [OSError, OSError, None],
-            "8082",
+            "8085",
             None,
-        ),
-        (
-            "8080",
-            [8080, 8085, 8090, 8081, 8084, 8088, 8086, 8087, 8083, 8082, 8089],
-            [OSError, OSError, OSError, OSError, OSError, OSError, OSError, OSError, OSError, OSError, OSError],
-            "0",
-            IOError,
         ),
     ],
 )

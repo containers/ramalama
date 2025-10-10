@@ -21,7 +21,7 @@ from ramalama.common import (
     set_accel_env_vars,
 )
 from ramalama.compose import Compose
-from ramalama.config import CONFIG, DEFAULT_PORT, DEFAULT_PORT_RANGE
+from ramalama.config import CONFIG, DEFAULT_PORT_RANGE
 from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.logger import logger
@@ -717,7 +717,7 @@ def get_available_port_if_any() -> int:
 
 def compute_serving_port(args, quiet=False) -> str:
     # user probably specified a custom port, don't override the choice
-    if getattr(args, "port", "") not in ["", str(DEFAULT_PORT)]:
+    if getattr(args, "port", None):
         target_port = args.port
     else:
         # otherwise compute a random serving port in the range
