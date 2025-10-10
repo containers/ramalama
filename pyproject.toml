@@ -65,28 +65,25 @@ dev = [
     "pytest~=8.3",
     "wheel~=0.45.0",
     "mypy",
-    "pyyaml",
-    "jsonschema",
-    "jinja2",
     "tox"
 ]
 
 cov = [
+    "ramalama[dev]",
     "pytest-cov",
-    "pyyaml",
-    "jsonschema",
-    "jinja2",
 ]
 
 cov-detailed = [
-    "pytest-cov",
+    "ramalama[cov]",
     "pytest-func-cov",
     "pytest-report",
     "pytest-json",
     "pytest-html",
-    "pyyaml",
-    "jsonschema",
-    "jinja2",
+]
+
+[dependency-groups]
+dev = [
+    "ramalama[cov-detailed]",
 ]
 
 [project.urls]
