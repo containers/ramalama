@@ -89,6 +89,13 @@ cov-detailed = [
     "jinja2",
 ]
 
+[dependency-groups]
+dev = [
+    "ramalama[dev]",
+    "ramalama[cov]",
+    "ramalama[cov-detailed]",
+]
+
 [project.urls]
 Homepage = "https://github.com/containers/ramalama"
 Repository = "https://github.com/containers/ramalama"
