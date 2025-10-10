@@ -92,17 +92,28 @@ class URL(Transport):
         for i in range(1, total_parts + 1):
             file_name = f"{filename_base}-{i:05d}-of-{total_parts:05d}.gguf"
             url = f"{self.type}://{path_part}{file_name}"
-            files.append(
-                SnapshotFile(
-                    url=url,
-                    header={},
-                    hash=snapshot_hash,
-                    type=SnapshotFileType.GGUFModel,
-                    name=file_name,
-                    should_show_progress=True,
-                    required=True,
+            if self.type == "file":
+                files.append(
+                    LocalModelFile(
+                        url=f"{path_part}{file_name}",
+                        header={},
+                        model_file_hash=generate_sha256(file_name),
+                        name=file_name,
+                        required=True,
+                    )
                 )
-            )
+            else:
+                files.append(
+                    SnapshotFile(
+                        url=url,
+                        header={},
+                        hash=generate_sha256(file_name),
+                        type=SnapshotFileType.GGUFModel,
+                        name=file_name,
+                        should_show_progress=True,
+                        required=True,
+                    )
+                )
 
         return files
 
@@ -114,6 +125,11 @@ class URL(Transport):
 
         files: list[SnapshotFile] = []
         snapshot_hash = generate_sha256(name)
+        if is_split_file_model(self.model):
+            files = self._assemble_split_file_list(snapshot_hash)
+            self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
+            return
+
         if self.type == "file":
             files.append(
                 LocalModelFile(
@@ -124,11 +140,6 @@ class URL(Transport):
                     required=True,
                 )
             )
-            self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
-            return
-
-        if is_split_file_model(self.model):
-            files = self._assemble_split_file_list(snapshot_hash)
             self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
             return
 
