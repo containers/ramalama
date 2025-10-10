@@ -1,6 +1,12 @@
+import os
+
 import pytest
 
+from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.model_store.reffile import RefJSONFile, StoreFile, StoreFileType
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType, validate_snapshot_files
+from ramalama.model_store.store import ModelStore
+from ramalama.model_store.template_conversion import wrap_template_with_messages_loop
 
 chat_template = SnapshotFile(name="chat-template", hash="", header={}, type=SnapshotFileType.ChatTemplate, url="")
 gguf_model_file = SnapshotFile(name="model", hash="", header={}, type=SnapshotFileType.GGUFModel, url="")
@@ -25,3 +31,54 @@ def test_model_factory_create(input: list[SnapshotFile], expect_error: bool):
             validate_snapshot_files(input)
     else:
         validate_snapshot_files(input)
+
+
+def test_try_convert_existing_chat_template_converts_flat_jinja(tmp_path, monkeypatch):
+    base_path = tmp_path
+    global_store = GlobalModelStore(str(base_path))
+    model_store = ModelStore(global_store, model_name="sample", model_type="file", model_organization="org")
+    model_store.ensure_directory_setup()
+
+    model_tag = "latest"
+    snapshot_hash = "snap123"
+    chat_hash = "chat123"
+    chat_filename = "chat_template"
+
+    ref_path = model_store.get_ref_file_path(model_tag)
+    os.makedirs(os.path.dirname(ref_path), exist_ok=True)
+    ref = RefJSONFile(
+        hash=snapshot_hash,
+        path=ref_path,
+        files=[StoreFile(chat_hash, chat_filename, StoreFileType.CHAT_TEMPLATE)],
+    )
+    ref.write_to_file()
+
+    blob_path = model_store.get_blob_file_path(chat_hash)
+    os.makedirs(os.path.dirname(blob_path), exist_ok=True)
+    original_template = """{% if system %}<|system|>
+{{ system }}<|end|>
+{% endif %}{% if prompt %}<|user|>
+{{ prompt }}<|end|>
+{% endif %}"""
+    with open(blob_path, "w") as chat_file:
+        chat_file.write(original_template)
+
+    captured = {}
+
+    def fake_update_snapshot(model_tag_arg, snapshot_hash_arg, files):
+        captured["model_tag"] = model_tag_arg
+        captured["snapshot_hash"] = snapshot_hash_arg
+        captured["files"] = files
+        return True
+
+    monkeypatch.setattr(model_store, "update_snapshot", fake_update_snapshot)
+
+    converted = model_store._try_convert_existing_chat_template(model_tag, snapshot_hash)
+
+    assert converted is True
+    assert captured["model_tag"] == model_tag
+    assert captured["snapshot_hash"] == snapshot_hash
+    assert len(captured["files"]) == 1
+    converted_file = captured["files"][0]
+    assert converted_file.type == SnapshotFileType.ChatTemplate
+    assert converted_file.content == wrap_template_with_messages_loop(original_template)

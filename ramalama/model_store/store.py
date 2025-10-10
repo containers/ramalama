@@ -6,11 +6,11 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
-import ramalama.model_store.go2jinja as go2jinja
 from ramalama.common import perror, sanitize_filename, verify_checksum
 from ramalama.endian import EndianMismatchError, get_system_endianness
 from ramalama.logger import logger
 from ramalama.model_inspect.gguf_parser import GGUFInfoParser, GGUFModelInfo
+from ramalama.model_store import go2jinja
 from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.reffile import RefJSONFile, StoreFile, StoreFileType, migrate_reffile_to_refjsonfile
@@ -19,6 +19,12 @@ from ramalama.model_store.snapshot_file import (
     SnapshotFile,
     SnapshotFileType,
     validate_snapshot_files,
+)
+from ramalama.model_store.template_conversion import (
+    TemplateConversionError,
+    convert_go_to_jinja,
+    ensure_jinja_openai_compatibility,
+    is_openai_jinja,
 )
 
 
@@ -252,23 +258,24 @@ class ModelStore:
                 chat_template = template_file.read()
 
             if not go2jinja.is_go_template(chat_template):
-                return True
-
-            try:
-                jinja_template = go2jinja.go_to_jinja(chat_template)
-            except Exception as ex:
-                logger.debug(f"Failed to convert Go Template to Jinja: {ex}")
-                return False
+                if is_openai_jinja(chat_template):
+                    return True
+                else:
+                    normalized_template = ensure_jinja_openai_compatibility(chat_template)
             else:
-                files = [LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
-                self.update_snapshot(model_tag, snapshot_hash, files)
+                try:
+                    normalized_template = convert_go_to_jinja(chat_template)
+                except TemplateConversionError as e:
+                    logger.debug(f"Failed to convert template: {e}")
+                    continue
 
+            files = [LocalSnapshotFile(normalized_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
+            self.update_snapshot(model_tag, snapshot_hash, files)
             return True
 
         return False
 
     def _ensure_chat_template(self, model_tag: str, snapshot_hash: str):
-
         # Give preference to a chat template that has been specified in the file list
         # If it succeeds, then return. Otherwise continue and try to extract from model file
         if self._try_convert_existing_chat_template(model_tag, snapshot_hash):
@@ -292,7 +299,7 @@ class ModelStore:
         if tmpl is None:
             return
 
-        is_go_template = go2jinja.is_go_template(tmpl)
+        needs_conversion = not go2jinja.is_go_template(tmpl)
 
         # Only jinja templates are usable for the supported backends, therefore don't mark file as
         # chat template if it is a Go Template (ollama-specific)
@@ -300,14 +307,14 @@ class ModelStore:
             LocalSnapshotFile(
                 tmpl,
                 "chat_template_extracted",
-                SnapshotFileType.Other if is_go_template else SnapshotFileType.ChatTemplate,
+                SnapshotFileType.Other if needs_conversion else SnapshotFileType.ChatTemplate,
             )
         ]
-        if is_go_template:
+        if needs_conversion:
             try:
-                jinja_template = go2jinja.go_to_jinja(tmpl)
+                desired_template = convert_go_to_jinja(tmpl)
                 files.append(
-                    LocalSnapshotFile(jinja_template, "chat_template_converted", SnapshotFileType.ChatTemplate)
+                    LocalSnapshotFile(desired_template, "chat_template_converted", SnapshotFileType.ChatTemplate)
                 )
             except Exception as ex:
                 logger.debug(f"Failed to convert Go Template to Jinja: {ex}")
