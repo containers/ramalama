@@ -47,8 +47,9 @@ def get_default_store() -> str:
 def get_inference_spec_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
-    # Add relative spec dir path for development
-    default_inference_spec_dirs = ["./inference-spec/engines/"]
+    ramalama_root = Path(__file__).parent.parent
+    development_spec_dir = ramalama_root / "inference-spec" / "engines"
+    default_inference_spec_dirs = [str(development_spec_dir)]
     default_inference_spec_dirs.extend([os.path.join(conf_dir, "inference") for conf_dir in DEFAULT_CONFIG_DIRS])
     for spec_dir in default_inference_spec_dirs:
         if not os.path.exists(spec_dir):
@@ -70,8 +71,9 @@ def get_inference_spec_files() -> dict[str, Path]:
 def get_inference_schema_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
-    # Add relative schema dir path for development
-    default_inference_schema_dirs = ["./inference-spec/schema/"]
+    ramalama_root = Path(__file__).parent.parent
+    development_schema_dir = ramalama_root / "inference-spec" / "schema"
+    default_inference_schema_dirs = [str(development_schema_dir)]
     default_inference_schema_dirs.extend([os.path.join(conf_dir, "inference") for conf_dir in DEFAULT_CONFIG_DIRS])
     for schema_dir in default_inference_schema_dirs:
         if not os.path.exists(schema_dir):
