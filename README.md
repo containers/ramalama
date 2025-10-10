@@ -793,7 +793,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 - <details>
     <summary>
-        Log in to ollama registry
+        Log in to Ollama registry
     </summary>
     <br>
 
@@ -832,7 +832,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 - <details>
     <summary>
-        Log out from ollama repository
+        Log out from Ollama registry
     </summary>
     <br>
 
@@ -874,7 +874,7 @@ $ cat /usr/share/ramalama/shortnames.conf
     </summary>
     <br>
 
-    You can `pull` a model using the `pull` command. By default, it pulls from the Ollama registry.
+    You can `pull` a model using the `pull` command. By default, it pulls from the <a href="https://ollama.com/library">Ollama registry</a>.
     ```
     $ ramalama pull granite3-moe
     ```
@@ -953,7 +953,7 @@ This command uses a specific container image containing the docling tool to conv
 
 - <details>
     <summary>
-        Run a chatbot on a model using the run command. By default, it pulls from the Ollama registry.
+        Run a chatbot on a model using the run command. By default, it pulls from the <a href="https://ollama.com/library">Ollama registry</a>.
     </summary>
     <br>
 
