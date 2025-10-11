@@ -61,7 +61,7 @@ dev = [
     "flake8~=7.0",
     "huggingface_hub~=0.35.0",
     "hypothesis>=6.135.26",
-    "isort~=6.0",
+    "isort~=7.0",
     "pytest~=8.3",
     "wheel~=0.45.0",
     "mypy",
