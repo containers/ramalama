@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:42
+FROM quay.io/fedora/fedora:43
 
 ARG RAMALAMA_STACK_VERSION=0.2.5
 
