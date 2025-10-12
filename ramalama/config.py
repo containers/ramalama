@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
 
+from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import apple_vm, available
 from ramalama.layered_config import LayeredMixin
 from ramalama.toml_parser import TOMLParser
@@ -161,6 +162,7 @@ class BaseConfig:
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
         self.image = self.image if self.image is not None else self.default_image
+        self.pull = normalize_pull_arg(self.pull, self.engine)
 
 
 class Config(LayeredMixin, BaseConfig):

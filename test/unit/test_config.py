@@ -3,7 +3,14 @@ from unittest.mock import patch
 
 import pytest
 
-from ramalama.config import DEFAULT_PORT, default_config, get_default_engine, get_default_store, load_env_config
+from ramalama.config import (
+    DEFAULT_PORT,
+    BaseConfig,
+    default_config,
+    get_default_engine,
+    get_default_store,
+    load_env_config,
+)
 
 
 def test_correct_config_defaults(monkeypatch):
@@ -26,7 +33,7 @@ def test_correct_config_defaults(monkeypatch):
     assert cfg.ngl == -1
     assert cfg.threads == -1
     assert cfg.port == str(DEFAULT_PORT)
-    assert cfg.pull == "newer"
+    assert cfg.pull in ["newer", "always"]  # depends on engine
     assert cfg.runtime == "llama.cpp"
     assert cfg.store == get_default_store()
     assert cfg.temp == "0.8"
@@ -61,6 +68,16 @@ def test_config_defaults_not_set(monkeypatch):
     assert cfg.is_set("transport") is False
     assert cfg.is_set("ocr") is False
     assert cfg.is_set("verify") is False
+
+
+def test_base_config_normalizes_pull_for_docker():
+    config = BaseConfig(engine="docker", pull="newer")
+    assert config.pull == "always"
+
+
+def test_base_config_preserves_pull_for_non_docker():
+    config = BaseConfig(engine="podman", pull="newer")
+    assert config.pull == "newer"
 
 
 def test_file_config_overrides_defaults():
