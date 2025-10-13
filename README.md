@@ -141,13 +141,13 @@ The MLX runtime provides optimized inference for Apple Silicon Macs. MLX require
 - macOS operating system
 - Apple Silicon hardware (M1, M2, M3, or later)
 - Usage with `--nocontainer` option (containers are not supported)
-- The `mlx-lm` Python package installed on the host system
+- The `mlx-lm` uv package installed on the host system as a uv tool
 
-To install and run Phi-4 on MLX, use either `uv` or `pip`:
+To install and run Phi-4 on MLX, use `uv`:
 ```bash
-uv pip install mlx-lm
-# or pip:
-pip install mlx-lm
+uv tool install mlx-lm
+# or upgrade to the latest version:
+uv tool upgrade mlx-lm
 
 ramalama --runtime=mlx serve hf://mlx-community/Unsloth-Phi-4-4bit
 ```

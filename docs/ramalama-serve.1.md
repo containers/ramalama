@@ -558,13 +558,13 @@ The MLX runtime is designed for Apple Silicon Macs and provides optimized perfor
 - **Operating System**: macOS only
 - **Hardware**: Apple Silicon (M1, M2, M3, or later)
 - **Container Mode**: MLX requires `--nocontainer` as it cannot run inside containers
-- **Dependencies**: Requires `mlx-lm` package to be installed on the host system
+- **Dependencies**: The `mlx-lm` uv package installed on the host system as a uv tool
 
-To install MLX dependencies, use either `uv` or `pip`:
+To install MLX dependencies, use `uv`:
 ```bash
-uv pip install mlx-lm
-# or pip:
-pip install mlx-lm
+uv tool install mlx-lm
+# or upgrade to the latest version:
+uv tool upgrade mlx-lm
 ```
 
 Example usage:
