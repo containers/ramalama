@@ -20,10 +20,10 @@ SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx"]
 COLOR_OPTIONS: TypeAlias = Literal["auto", "always", "never"]
 
 DEFAULT_CONFIG_DIRS = [
-    f"{sys.prefix}/share/ramalama",
-    f"{sys.prefix}/local/share/ramalama",
-    "/etc/ramalama",
-    os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama")),
+    Path(f"{sys.prefix}/share/ramalama"),
+    Path(f"{sys.prefix}/local/share/ramalama"),
+    Path("/etc/ramalama"),
+    Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
 ]
 
 
@@ -45,15 +45,18 @@ def get_default_store() -> str:
     return os.path.expanduser("~/.local/share/ramalama")
 
 
+def get_all_inference_spec_dirs(subdir: str) -> list[Path]:
+    ramalama_root = Path(__file__).parent.parent
+    development_spec_dir = ramalama_root / "inference-spec" / subdir
+    all_dirs = [development_spec_dir, *[conf_dir / "inference" for conf_dir in DEFAULT_CONFIG_DIRS]]
+
+    return [d for d in all_dirs if d.exists()]
+
+
 def get_inference_spec_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
-    # Add relative spec dir path for development
-    default_inference_spec_dirs = ["./inference-spec/engines/"]
-    default_inference_spec_dirs.extend([os.path.join(conf_dir, "inference") for conf_dir in DEFAULT_CONFIG_DIRS])
-    for spec_dir in default_inference_spec_dirs:
-        if not os.path.exists(spec_dir):
-            continue
+    for spec_dir in get_all_inference_spec_dirs("engines"):
 
         # Give preference to .yaml, then .json spec files
         file_extensions = ["*.yaml", "*.yml", "*.json"]
@@ -71,12 +74,7 @@ def get_inference_spec_files() -> dict[str, Path]:
 def get_inference_schema_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
-    # Add relative schema dir path for development
-    default_inference_schema_dirs = ["./inference-spec/schema/"]
-    default_inference_schema_dirs.extend([os.path.join(conf_dir, "inference") for conf_dir in DEFAULT_CONFIG_DIRS])
-    for schema_dir in default_inference_schema_dirs:
-        if not os.path.exists(schema_dir):
-            continue
+    for schema_dir in get_all_inference_spec_dirs("schema"):
 
         for spec_file in sorted(Path(schema_dir).glob("schema.*.json")):
             file = Path(spec_file)
