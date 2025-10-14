@@ -143,7 +143,7 @@ The MLX runtime provides optimized inference for Apple Silicon Macs. MLX require
 - Usage with `--nocontainer` option (containers are not supported)
 - The `mlx-lm` uv package installed on the host system as a uv tool
 
-To install and run Phi-4 on MLX, use `uv`:
+To install and run Phi-4 on MLX, use `uv`. If `uv` is not installed, you can install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`:
 ```bash
 uv tool install mlx-lm
 # or upgrade to the latest version:
