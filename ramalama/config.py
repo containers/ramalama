@@ -23,6 +23,7 @@ DEFAULT_CONFIG_DIRS = [
     Path(f"{sys.prefix}/share/ramalama"),
     Path(f"{sys.prefix}/local/share/ramalama"),
     Path("/etc/ramalama"),
+    Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
     Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
 ]
 
