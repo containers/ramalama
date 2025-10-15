@@ -106,7 +106,7 @@ class RamalamaCommandContext:
     @staticmethod
     def from_argparse(cli_args: argparse.Namespace) -> "RamalamaCommandContext":
         args = RamalamaArgsContext.from_argparse(cli_args)
-        should_generate = hasattr(cli_args, "generate")
+        should_generate = getattr(cli_args, "generate", None) is not None
         dry_run = getattr(cli_args, "dryrun", False)
         is_container = getattr(cli_args, "container", True)
         model = RamalamaModelContext(New(cli_args.MODEL, cli_args), is_container, should_generate, dry_run)
