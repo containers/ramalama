@@ -54,7 +54,7 @@ text = "MIT"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
+    # "pytest>=7.0",
     "argcomplete~=3.0",
     "black~=25.0",
     "codespell~=2.0",
@@ -120,7 +120,7 @@ line_length = 120
 skip = [".venv", "venv", ".tox"]
 
 [tool.codespell]
-skip = ["build", "ramalama.egg-info", "logos", ".git", "venv", ".venv", ".tox"]
+skip = ["build", "ramalama.egg-info", "logos", ".git", "venv", ".venv", ".tox", ".pixi"]
 dictionary = ".codespelldict"
 ignore-words-list = [
   "assertin",
@@ -147,7 +147,8 @@ exclude = [
   "/dist",
   "/docs",
   "/hack",
-  "/venv"
+  "/venv",
+  "/.pixi"
 ]
 
 [tool.ruff.format]
@@ -228,3 +229,21 @@ commands = [
     { replace = "posargs", extend = true },
   ],
 ]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+ramalama = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default", features = [] }
+cov = { features = ["cov"], solve-group = "default" }
+cov-detailed = { features = ["cov-detailed"], solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+
+[tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+tox = ">=4.30.2,<5"

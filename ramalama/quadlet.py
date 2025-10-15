@@ -2,7 +2,7 @@ import os
 import shlex
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, get_accel_env_vars
+from ramalama.common import MNT_DIR, RAG_DIR, get_accel, get_accel_env_vars
 from ramalama.file import UnitFile
 
 
@@ -56,6 +56,8 @@ class Quadlet:
         quadlet_file.add("Container", "AddDevice", "-/dev/accel")
         quadlet_file.add("Container", "AddDevice", "-/dev/dri")
         quadlet_file.add("Container", "AddDevice", "-/dev/kfd")
+        if get_accel() == "cuda":
+            quadlet_file.add("Container", "AddDevice", "nvidia.com/gpu=all")
         quadlet_file.add("Container", "Image", f"{self.image}")
         quadlet_file.add("Container", "RunInit", "true")
         quadlet_file.add("Container", "Environment", "HOME=/tmp")

@@ -31,7 +31,6 @@ class Args:
 
 
 class Input:
-
     def __init__(
         self,
         model_name: str = "",
@@ -47,6 +46,7 @@ class Input:
         image: str = "",
         args: Args = Args(),
         exec_args: list = [],
+        accel_type: str = "cuda",
     ):
         self.model_name = model_name
         self.model_src_blob = model_src_blob
@@ -61,6 +61,7 @@ class Input:
         self.image = image
         self.args = args
         self.exec_args = exec_args
+        self.accel_type = accel_type
 
 
 DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
@@ -103,6 +104,7 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
                 model_dest_name="tinyllama",
                 image="testimage",
                 args=Args(port="2020", host="127.0.0.1"),
+                accel_type="intel",
             ),
             DATA_PATH / "localhost",
         ),
@@ -215,6 +217,7 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
 
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
     monkeypatch.setattr(Quadlet, "_gen_env", lambda self, quadlet_file: None)
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: input.accel_type)
 
     for file in Quadlet(
         input.model_name,
@@ -224,7 +227,6 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
         input.args,
         input.exec_args,
     ).generate():
-
         assert file.filename in expected_files
 
         with io.StringIO() as sio:
