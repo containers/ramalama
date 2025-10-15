@@ -65,18 +65,18 @@ def test_try_convert_existing_chat_template_converts_flat_jinja(tmp_path, monkey
 
     captured = {}
 
-    def fake_update_snapshot(model_tag_arg, snapshot_hash_arg, files):
-        captured["model_tag"] = model_tag_arg
+    def fake_update_snapshot(ref_file_arg, snapshot_hash_arg, files):
+        captured["ref_file"] = ref_file_arg
         captured["snapshot_hash"] = snapshot_hash_arg
         captured["files"] = files
         return True
 
-    monkeypatch.setattr(model_store, "update_snapshot", fake_update_snapshot)
+    monkeypatch.setattr(model_store, "_update_snapshot", fake_update_snapshot)
 
-    converted = model_store._try_convert_existing_chat_template(model_tag, snapshot_hash)
+    converted = model_store._try_convert_existing_chat_template(ref, snapshot_hash)
 
     assert converted is True
-    assert captured["model_tag"] == model_tag
+    assert captured["ref_file"] == ref
     assert captured["snapshot_hash"] == snapshot_hash
     assert len(captured["files"]) == 1
     converted_file = captured["files"][0]
