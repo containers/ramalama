@@ -4,7 +4,7 @@ load helpers
 
 # bats test_tags=distro-integration
 
-@test "ramalama dryrun" {
+@test "ramalama rag dryrun" {
     skip_if_nocontainer
     HTTPS_FILE=https://github.com/containers/ramalama/blob/main/README.md
     run_ramalama --dryrun rag $HTTPS_FILE quay.io/ramalama/myrag:1.2
@@ -12,6 +12,8 @@ load helpers
     assert "$output" !~ ".*--network none" "Expected to not use network"
     run_ramalama --dryrun rag --format json $HTTPS_FILE quay.io/ramalama/myrag:1.2
     is "$output" ".*doc2rag --format json /output $HTTPS_FILE " "Expected to --format json option"
+    run_ramalama --dryrun rag --format milvus $HTTPS_FILE quay.io/ramalama/myrag:1.2
+    is "$output" ".*doc2rag --format milvus /output $HTTPS_FILE " "Expected to see --format milvus option"
 
     FILE=README.md
     run_ramalama --dryrun rag $FILE quay.io/ramalama/myrag:1.2
@@ -42,7 +44,9 @@ load helpers
     is "$output" "Error: invalid reference format: repository name 'quay.io/ramalama/MYRAG:1.2' must be lowercase"
 
     run_ramalama rag README.md https://github.com/containers/ramalama/blob/main/README.md https://github.com/containers/podman/blob/main/README.md quay.io/ramalama/myrag:1.2
+}
 
+@test "ramalama run --rag" {
     run_ramalama --dryrun run --rag quay.io/ramalama/myrag:1.2 ollama://smollm:135m
     is "$output" ".*quay.io/ramalama/.*-rag.*" "Expected to use -rag image"
     if not_docker; then
