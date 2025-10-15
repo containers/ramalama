@@ -2,7 +2,7 @@ import os
 import shlex
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, get_accel_env_vars, get_accel
+from ramalama.common import MNT_DIR, RAG_DIR, get_accel, get_accel_env_vars
 from ramalama.file import UnitFile
 
 

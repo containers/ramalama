@@ -6,7 +6,6 @@ from typing import Optional
 import pytest
 
 from ramalama.quadlet import Quadlet
-import ramalama.common
 
 
 class Args:
