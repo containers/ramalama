@@ -7,10 +7,6 @@ description: Configuration file reference
 
 # Configuration File
 
-# NAME
-ramalama.conf - These configuration files specifies default
-configuration options and command-line flags for RamaLama.
-
 # DESCRIPTION
 RamaLama reads all ramalama.conf files, if they exists
 and modify the defaults for running RamaLama on the host. ramalama.conf uses
@@ -71,6 +67,10 @@ The ramalama table contains settings to configure and manage the OCI runtime.
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.
 Options: llama-stack, none
 
+**api_key**=""
+
+OpenAI-compatible API key. Can also be set via the RAMALAMA_API_KEY environment variable.
+
 **carimage**="registry.access.redhat.com/ubi10-micro:latest"
 
 OCI model car image
@@ -125,6 +125,11 @@ specified vllm model runtime.
 
 Pass `--group-add keep-groups` to podman, when using podman.
 In some cases this is needed to access the gpu from a rootless container
+
+**max_tokens**=0
+
+Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
+This parameter is mapped to the appropriate runtime-specific parameter when executing models.
 
 **ngl**=-1
 

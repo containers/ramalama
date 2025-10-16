@@ -1,11 +1,11 @@
 ---
-title: ramalama serve.1
+title: serve
 description: serve REST API on specified AI Model
 # This file is auto-generated from manpages. Do not edit manually.
 # Source: ramalama-serve.1.md
 ---
 
-# ramalama serve.1
+# serve
 
 ## Synopsis
 **ramalama serve** [*options*] _model_
@@ -106,6 +106,7 @@ Generate specified configuration format for running the AI Model as a service
 | quadlet      | Podman supported container definition for running AI Model under systemd |
 | kube         | Kubernetes YAML definition for running the AI Model as a service         |
 | quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
+| compose      | Compose YAML definition for running the AI Model as a service            |
 
 Optionally, an output directory for the generated files can be specified by
 appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
@@ -121,7 +122,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table above for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.12.1 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.13.0 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -142,6 +143,13 @@ Accelerated images:
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)
 If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
+
+#### **--max-tokens**=*integer*
+Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
+This parameter is mapped to the appropriate runtime-specific parameter:
+- llama.cpp: `-n` parameter
+- MLX: `--max-tokens` parameter
+- vLLM: `--max-tokens` parameter
 
 #### **--model-draft**
 
@@ -402,6 +410,30 @@ spec:
 	name: dri
 ```
 
+### Generate Compose file
+```bash
+$ ramalama serve --name=my-smollm-server --port 1234 --generate=compose smollm:135m
+Generating Compose YAML file: docker-compose.yaml
+$ cat docker-compose.yaml
+version: '3.8'
+services:
+  my-smollm-server:
+    image: quay.io/ramalama/ramalama:latest
+    container_name: my-smollm-server
+    command: ramalama serve --host 0.0.0.0 --port 1234 smollm:135m
+    ports:
+      - "1234:1234"
+    volumes:
+      - ~/.local/share/ramalama/models/smollm-135m-instruct:/mnt/models/model.file:ro
+    environment:
+      - HOME=/tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+      - label=disable
+```
+
 ### Generate a Llama Stack Kubernetes YAML file named MyLamaStack
 ```bash
 $ ramalama serve --api llama-stack --name MyLamaStack --generate=kube oci://quay.io/rhatdan/granite:latest
@@ -520,7 +552,7 @@ WantedBy=multi-user.target default.target
 
 ## NVIDIA CUDA Support
 
-See [ramalama-cuda(7)](../../platform-guides/cuda) for setting up the host Linux system for CUDA support.
+See [ramalama-cuda(7)](/docs/platform-guides/cuda) for setting up the host Linux system for CUDA support.
 
 ## MLX Support
 
@@ -529,13 +561,13 @@ The MLX runtime is designed for Apple Silicon Macs and provides optimized perfor
 - **Operating System**: macOS only
 - **Hardware**: Apple Silicon (M1, M2, M3, or later)
 - **Container Mode**: MLX requires `--nocontainer` as it cannot run inside containers
-- **Dependencies**: Requires `mlx-lm` package to be installed on the host system
+- **Dependencies**: The `mlx-lm` uv package installed on the host system as a uv tool
 
-To install MLX dependencies, use either `uv` or `pip`:
+To install MLX dependencies, use `uv`:
 ```bash
-uv pip install mlx-lm
-# or pip:
-pip install mlx-lm
+uv tool install mlx-lm
+# or upgrade to the latest version:
+uv tool upgrade mlx-lm
 ```
 
 Example usage:
@@ -544,7 +576,7 @@ ramalama --runtime=mlx serve hf://mlx-community/Unsloth-Phi-4-4bit
 ```
 
 ## See Also
-[ramalama(1)](/docs/commands/ramalama/), [ramalama-stop(1)](../../commands/ramalama/stop), **quadlet(1)**, **systemctl(1)**, **podman(1)**, **podman-ps(1)**, [ramalama-cuda(7)](../../platform-guides/cuda)
+[ramalama(1)](/docs/commands/ramalama/), [ramalama-stop(1)](/docs/commands/ramalama/stop), **quadlet(1)**, **systemctl(1)**, **podman(1)**, **podman-ps(1)**, [ramalama-cuda(7)](/docs/platform-guides/cuda)
 
 ---
 
