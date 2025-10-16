@@ -1,11 +1,11 @@
 ---
-title: ramalama perplexity.1
+title: perplexity
 description: calculate the perplexity value of an AI Model
 # This file is auto-generated from manpages. Do not edit manually.
 # Source: ramalama-perplexity.1.md
 ---
 
-# ramalama perplexity.1
+# perplexity
 
 ## Synopsis
 **ramalama perplexity** [*options*] *model* [arg ...]
@@ -66,7 +66,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.12.1 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.13.0 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -87,6 +87,13 @@ Accelerated images:
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)
 If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
+
+#### **--max-tokens**=*integer*
+Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
+This parameter is mapped to the appropriate runtime-specific parameter:
+- llama.cpp: `-n` parameter
+- MLX: `--max-tokens` parameter
+- vLLM: `--max-tokens` parameter
 
 #### **--name**, **-n**
 name of the container to run the Model in

@@ -1,11 +1,11 @@
 ---
-title: ramalama rag.1
+title: rag
 description: generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image
 # This file is auto-generated from manpages. Do not edit manually.
 # Source: ramalama-rag.1.md
 ---
 
-# ramalama rag.1
+# rag
 
 ## Synopsis
 **ramalama rag** [options] [path ...] image
@@ -56,7 +56,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama-rag`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.12.1 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.13.0 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells

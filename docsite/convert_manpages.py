@@ -30,6 +30,12 @@ def extract_title_and_description(content, filename):
 
     if base_name == 'ramalama.1.md':
         title = 'ramalama'  # Base command page
+    elif base_name.startswith('ramalama-') and base_name.endswith('.1.md'):
+        # Command pages: ramalama-chat.1.md -> chat
+        title = base_name.replace('ramalama-', '').replace('.1.md', '')
+    elif base_name.endswith('.7.md'):
+        # Platform guides: ramalama-cuda.7.md -> CUDA Support
+        title = base_name.replace('ramalama-', '').replace('.7.md', '')
     elif base_name.endswith('.5.md'):
         # Config files with custom titles
         if base_name == 'ramalama.conf.5.md':
