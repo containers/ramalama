@@ -21,6 +21,8 @@ class CommandFactory:
 
         if self.runtime == "vllm":
             exec_args = self._build_vllm_serve_command()
+        elif self.runtime == "whisper.cpp":
+            exec_args = self._build_whisper_serve_command()
         elif self.runtime == "mlx":
             exec_args = self._build_mlx_serve_command()
         else:
@@ -70,6 +72,63 @@ class CommandFactory:
 
     def _build_llama_serve_command(self) -> list[str]:
         cmd = ["llama-server", "--host", "0.0.0.0", "--port", f"{self.assigned_port}", "--log-file", self.log_path]
+        cmd += [
+            "--model",
+            self.model._get_entry_model_path(False, False, False),
+            "--no-warmup",
+        ]
+
+        if self.request_args.get("thinking"):
+            cmd += ["--reasoning-budget", "0"]
+
+        mmproj_path = self.model._get_mmproj_path(False, False, False)
+        if mmproj_path:
+            cmd += ["--mmproj", mmproj_path]
+        else:
+            cmd += ["--jinja"]
+
+            chat_template_path = self.model._get_chat_template_path(False, False, False)
+            if chat_template_path:
+                cmd += ["--chat-template-file", chat_template_path]
+
+        cmd += [
+            "--alias",
+            self.model.model_name,
+            "--ctx-size",
+            f"{self.request_args.get('ctx_size')}",
+            "--temp",
+            f"{self.request_args.get('temp')}",
+            "--cache-reuse",
+            "256",
+        ]
+        cmd += self.request_args.get("runtime_args")
+
+        if self.request_args.get("debug"):
+            cmd += ["-v"]
+
+        if self.request_args.get("webui") == "off":
+            cmd.extend(["--no-webui"])
+
+        if check_nvidia() or check_metal(SimpleNamespace(container=False)):
+            cmd.extend(["--flash-attn", "on"])
+
+        # gpu arguments
+        ngl = self.request_args.get("ngl")
+        if ngl < 0:
+            ngl = 999
+        cmd.extend(["-ngl", f"{ngl}"])
+        threads = self.request_args.get("threads")
+        cmd.extend(["--threads", str(threads)])
+
+        # Add max tokens parameter for llama.cpp
+        max_tokens = self.request_args.get("max_tokens", 0)
+        if max_tokens > 0:
+            cmd.extend(["-n", str(max_tokens)])
+
+        return cmd
+
+    def _build_whisper_serve_command(self) -> list[str]:
+        cmd = ["whisper-server", "--host", "0.0.0.0", "--port", f"{self.assigned_port}", "--log-file", self.log_path]
         cmd += [
             "--model",
             self.model._get_entry_model_path(False, False, False),
