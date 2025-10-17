@@ -243,7 +243,7 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         "--runtime",
         default=CONFIG.runtime,
         choices=get_args(SUPPORTED_RUNTIMES),
-        help="specify the runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx'",
+        help="specify the runtime to use; valid options are 'llama.cpp', 'vllm', 'mlx', and 'whisper.cpp'",
     )
     parser.add_argument(
         "--store",
