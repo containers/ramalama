@@ -165,7 +165,7 @@ class RefJSONFile:
     path: str
     files: list[StoreFile]
 
-    version: str = "v1.0"
+    version: str = "v1.0.1"
 
     def to_json(self) -> str:
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=2)
