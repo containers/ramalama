@@ -1,3 +1,4 @@
+import os
 import subprocess
 import tempfile
 import warnings
@@ -6,6 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from ramalama.arg_types import StoreArgs
+from ramalama.transports.oci_artifact import download_oci_artifact
 from ramalama.transports.rlcr import RamalamaContainerRegistry, find_model_file_in_image
 
 
@@ -24,6 +26,14 @@ def args():
     with tempfile.TemporaryDirectory() as tmpdir:
         args_obj = StoreArgs(store=tmpdir, engine="podman", container=True)
         args_obj.dryrun = False  # Add dryrun attribute dynamically
+        args_obj.quiet = False
+        args_obj.tlsverify = True
+        args_obj.authfile = None
+        args_obj.username = None
+        args_obj.password = None
+        args_obj.passwordstdin = False
+        args_obj.REGISTRY = None
+        args_obj.verify = True
         yield args_obj
 
 
@@ -129,3 +139,90 @@ class TestRLCRIntegration:
             model=input_model, model_store_path="/tmp", conman="podman", ignore_stderr=False
         )
         assert rlcr.model == expected_path
+
+
+class TestRLCRArtifactFallback:
+    def test_pull_falls_back_to_artifact(self, rlcr_model, args):
+        args.quiet = False
+
+        def run_cmd_side_effect(cmd, *cmd_args, **cmd_kwargs):
+            if len(cmd) >= 2 and cmd[1] == "pull":
+                raise subprocess.CalledProcessError(125, cmd)
+            mock_result = Mock()
+            mock_result.stdout.decode.return_value = ""
+            return mock_result
+
+        with patch('ramalama.transports.oci.run_cmd', side_effect=run_cmd_side_effect):
+            with patch('ramalama.transports.rlcr.download_oci_artifact', return_value=True) as mock_download:
+                rlcr_model.pull(args)
+                mock_download.assert_called_once()
+
+    def test_pull_re_raises_when_artifact_download_fails(self, rlcr_model, args):
+        def run_cmd_side_effect(cmd, *cmd_args, **cmd_kwargs):
+            if len(cmd) >= 2 and cmd[1] == "pull":
+                raise subprocess.CalledProcessError(125, cmd)
+            mock_result = Mock()
+            mock_result.stdout.decode.return_value = ""
+            return mock_result
+
+        with patch('ramalama.transports.oci.run_cmd', side_effect=run_cmd_side_effect):
+            with patch('ramalama.transports.rlcr.download_oci_artifact', return_value=False):
+                with pytest.raises(subprocess.CalledProcessError):
+                    rlcr_model.pull(args)
+
+
+class TestOCIArtifactDownload:
+    def test_download_oci_artifact_creates_snapshot(self, rlcr_model, args):
+        args.verify = False  # skip model verification for synthetic data
+        store = rlcr_model.model_store
+        digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+
+        class FakeClient:
+            def __init__(self, registry, repository, reference, verify_tls, username, password):
+                self.registry = registry
+                self.repository = repository
+                self.reference = reference
+
+            def get_manifest(self):
+                manifest = {
+                    "artifactType": "application/vnd.ramalama.model.gguf",
+                    "blobs": [
+                        {
+                            "mediaType": "application/octet-stream",
+                            "digest": digest,
+                            "size": 4,
+                            "annotations": {"org.opencontainers.image.title": "model.gguf"},
+                        }
+                    ],
+                }
+                return manifest, "sha256:feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface"
+
+            def download_blob(self, blob_digest, dest_path):
+                assert blob_digest == digest
+                data = b"test"
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                with open(dest_path, "wb") as fh:
+                    fh.write(data)
+
+        with patch('ramalama.transports.oci_artifact.OCIRegistryClient', FakeClient):
+            result = download_oci_artifact(
+                registry="rlcr.io",
+                reference="ramalama/gemma3-270m:gguf",
+                model_store=store,
+                model_tag=rlcr_model.model_tag,
+                args=args,
+            )
+
+        assert result is True
+        ref = store.get_ref_file(rlcr_model.model_tag)
+        assert ref is not None
+        model_files = ref.model_files
+        assert model_files
+        assert model_files[0].name == "model.gguf"
+
+        new_model = RamalamaContainerRegistry(
+            model="gemma3-270m", model_store_path=args.store, conman="podman", ignore_stderr=False
+        )
+        assert new_model.exists()
+        assert new_model._artifact_downloaded is True
+        assert new_model._get_entry_model_path(True, False, False) == "/mnt/models/gemma-3-270m-it-Q6_K.gguf"
