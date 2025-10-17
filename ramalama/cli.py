@@ -704,6 +704,28 @@ def convert_parser(subparsers):
     )
     add_network_argument(parser)
     parser.add_argument(
+        "--rag-image",
+        default=rag_image(CONFIG),
+        help="Image to use for conversion to GGUF",
+        action=OverrideDefaultAction,
+        completer=local_images,
+    )
+    parser.add_argument(
+        "--image",
+        default=accel_image(CONFIG),
+        help="Image to use for quantization",
+        action=OverrideDefaultAction,
+        completer=local_images,
+    )
+    parser.add_argument(
+        "--pull",
+        dest="pull",
+        type=str,
+        default=CONFIG.pull,
+        choices=["always", "missing", "never", "newer"],
+        help="pull image policy",
+    )
+    parser.add_argument(
         "--type",
         default="raw",
         choices=["car", "raw"],
@@ -730,7 +752,6 @@ def convert_cli(args):
     model = TransportFactory(tgt, args).create_oci()
 
     source_model = _get_source_model(args)
-    args.carimage = rag_image(CONFIG)
     model.convert(source_model, args)
 
 

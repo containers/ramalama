@@ -1,7 +1,3 @@
-FROM quay.io/ramalama/ramalama-rag:latest AS builder
-RUN mkdir -p /models; cd /models; ln -s aimodel/aimodel model.file
-
-FROM scratch
-COPY --from=builder /models /models
-COPY sha256-cfe21da457a108815d015dff95bed59c34a6f170fde7e4f99fa0c3f809251df3 /models/aimodel/aimodel
-LABEL org.containers.type=ai.image.model.raw
+FROM registry.access.redhat.com/ubi10-micro:latest AS build
+COPY sha256-cfe21da457a108815d015dff95bed59c34a6f170fde7e4f99fa0c3f809251df3 /data/models/aimodel/aimodel
+RUN ln -s aimodel/aimodel /data/models/model.file

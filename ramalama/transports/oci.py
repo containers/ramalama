@@ -1,9 +1,13 @@
+import copy
 import os
+import shutil
 import subprocess
 import tempfile
+from textwrap import dedent
 
 import ramalama.annotations as annotations
-from ramalama.common import exec_cmd, perror, run_cmd
+from ramalama.common import exec_cmd, perror, run_cmd, set_accel_env_vars
+from ramalama.engine import BuildEngine, Engine, dry_run
 from ramalama.oci_tools import engine_supports_manifest_attributes
 from ramalama.transports.base import Transport
 
@@ -59,98 +63,106 @@ class OCI(Transport):
         reference_dir = reference.replace(":", "/")
         return registry, reference, reference_dir
 
+    def _convert_to_gguf(self, outdir, source_model, args):
+        with tempfile.TemporaryDirectory(prefix="RamaLama_convert_src_") as srcdir:
+            ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
+            for file in ref_file.files:
+                blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+                shutil.copyfile(blob_file_path, os.path.join(srcdir, file.name))
+            engine = Engine(args)
+            engine.add_volume(srcdir, "/model")
+            engine.add_volume(outdir.name, "/output", opts="rw")
+            args.model = source_model
+            engine.add_args(args.rag_image)
+            # import here to avoid circular references
+            from ramalama.command.factory import assemble_command
+
+            engine.add_args(*assemble_command(args))
+            if args.dryrun:
+                engine.dryrun()
+            else:
+                engine.run()
+        return self._quantize(source_model, args, outdir.name)
+
+    def _quantize(self, source_model, args, model_dir):
+        engine = Engine(args)
+        engine.add_volume(model_dir, "/model", opts="rw")
+        engine.add_args(args.image)
+        # import here to avoid circular references
+        from ramalama.command.factory import assemble_command
+
+        args = copy.copy(args)
+        args.subcommand = "quantize"
+        engine.add_args(*assemble_command(args))
+        if args.dryrun:
+            engine.dryrun()
+        else:
+            engine.run()
+        return f"{source_model.model_name}-{args.gguf}.gguf"
+
+    def build_image(self, cfile, contextdir, args):
+        if args.type == "car":
+            parent = args.carimage
+            label = ociimage_car
+        else:
+            parent = "scratch"
+            label = ociimage_raw
+        footer = dedent(
+            f"""
+            FROM {parent}
+            LABEL {label}
+            COPY --from=build /data/ /
+            """
+        ).strip()
+        full_cfile = cfile + "\n\n" + footer + "\n"
+        if args.debug:
+            perror(f"Containerfile: \n{full_cfile}")
+        engine = BuildEngine(args)
+        return engine.build_containerfile(full_cfile, contextdir)
+
+    def _gguf_containerfile(self, model_file_name, args):
+        return dedent(
+            f"""
+            FROM {args.carimage} AS build
+            COPY {model_file_name} /data/models/{model_file_name}
+            RUN ln -s {model_file_name} /data/models/model.file
+            """
+        ).strip()
+
     def _generate_containerfile(self, source_model, args):
         # Generate the containerfile content
         # Keep this in sync with docs/ramalama-oci.5.md !
-        is_car = args.type == "car"
-        has_gguf = getattr(args, 'gguf', None) is not None
-        content = ""
+        content = [f"FROM {args.carimage} AS build"]
 
         model_name = source_model.model_name
         ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
 
-        if is_car:
-            content += f"FROM {args.carimage}\n"
-        else:
-            content += f"FROM {args.carimage} AS builder\n"
+        for file in ref_file.files:
+            blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+            blob_file_path = os.path.relpath(blob_file_path, source_model.model_store.blobs_directory)
+            content.append(f"COPY {blob_file_path} /data/models/{model_name}/{file.name}")
+        name = ref_file.model_files[0].name if ref_file.model_files else model_name
+        content.append(f"RUN ln -s {model_name}/{name} /data/models/model.file")
 
-        if has_gguf:
-            content += (
-                f"RUN mkdir -p /models/{model_name}; cd /models; ln -s {model_name}-{args.gguf}.gguf model.file\n"
-            )
-            for file in ref_file.files:
-                blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
-                blob_file_path = os.path.relpath(blob_file_path, source_model.model_store.blobs_directory)
-                content += f"COPY {blob_file_path} /models/{model_name}/{file.name}\n"
-            content += f"""
-RUN convert_hf_to_gguf.py --outfile /{model_name}-f16.gguf /models/{model_name}
-RUN llama-quantize /{model_name}-f16.gguf /models/{model_name}-{args.gguf}.gguf {args.gguf}
-RUN ln -s /models/{model_name}-{args.gguf}.gguf model.file
-RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
-"""
-        else:
-            name = ref_file.model_files[0].name if ref_file.model_files else model_name
-            content += f"""RUN mkdir -p /models; cd /models; ln -s {model_name}/{name} model.file\n"""
-
-        if not is_car:
-            content += "\nFROM scratch\n"
-            content += "COPY --from=builder /models /models\n"
-
-            if has_gguf:
-                content += (
-                    f"COPY --from=builder /models/{model_name}-{args.gguf}.gguf /models/{model_name}-{args.gguf}.gguf\n"
-                )
-            else:
-                for file in ref_file.files:
-                    blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
-                    blob_file_path = os.path.relpath(blob_file_path, source_model.model_store.blobs_directory)
-                    content += f"COPY {blob_file_path} /models/{model_name}/{file.name}\n"
-        elif not has_gguf:
-            for file in ref_file.files:
-                blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
-                blob_file_path = os.path.relpath(blob_file_path, source_model.model_store.blobs_directory)
-                content += f"COPY {blob_file_path} /models/{model_name}/{file.name}\n"
-
-        content += f"LABEL {ociimage_car if is_car else ociimage_raw}\n"
-
-        return content
+        return "\n".join(content)
 
     def build(self, source_model, args):
-        # use blobs directory as context since paths in Containerfile are relative to it
-        contextdir = source_model.model_store.blobs_directory
-        content = self._generate_containerfile(source_model, args)
-        if args.debug:
-            perror(f"Containerfile: \n{content}")
-        containerfile = tempfile.NamedTemporaryFile(prefix='RamaLama_Containerfile_', delete=False)
-
-        # Open the file for writing.
-        with open(containerfile.name, 'w') as c:
-            c.write(content)
-            c.flush()
-
-        # ensure base image is available
-        run_cmd([self.conman, "pull", args.carimage])
-
-        build_cmd = [
-            self.conman,
-            "build",
-            "--no-cache",
-            "--network=none",
-            "-q",
-            "-f",
-            containerfile.name,
-        ]
-        if os.path.basename(self.conman) == "podman":
-            build_cmd += ["--layers=false"]
-        build_cmd += [contextdir]
-        imageid = (
-            run_cmd(
-                build_cmd,
-            )
-            .stdout.decode("utf-8")
-            .strip()
-        )
-        return imageid
+        gguf_dir = None
+        if getattr(args, "gguf", None):
+            perror("Converting to gguf ...")
+            gguf_dir = tempfile.TemporaryDirectory(prefix="RamaLama_convert_", delete=False)
+            contextdir = gguf_dir.name
+            model_file_name = self._convert_to_gguf(gguf_dir, source_model, args)
+            content = self._gguf_containerfile(model_file_name, args)
+        else:
+            # use blobs directory as context since paths in Containerfile are relative to it
+            contextdir = source_model.model_store.blobs_directory
+            content = self._generate_containerfile(source_model, args)
+        try:
+            return self.build_image(content, contextdir, args)
+        finally:
+            if gguf_dir:
+                gguf_dir.cleanup()
 
     def tag(self, imageid, target, args):
         # Tag imageid with target
@@ -160,7 +172,10 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             imageid,
             target,
         ]
-        run_cmd(cmd_args)
+        if args.dryrun:
+            dry_run(cmd_args)
+        else:
+            run_cmd(cmd_args)
 
     def _create_manifest_without_attributes(self, target, imageid, args):
         # Create manifest list for target with imageid
@@ -171,7 +186,10 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             target,
             imageid,
         ]
-        run_cmd(cmd_args)
+        if args.dryrun:
+            dry_run(cmd_args)
+        else:
+            run_cmd(cmd_args)
 
     def _create_manifest(self, target, imageid, args):
         if not engine_supports_manifest_attributes(args.engine):
@@ -185,7 +203,10 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             target,
             imageid,
         ]
-        run_cmd(cmd_args)
+        if args.dryrun:
+            dry_run(cmd_args)
+        else:
+            run_cmd(cmd_args)
 
         # Annotate manifest list
         cmd_args = [
@@ -195,22 +216,35 @@ RUN rm -rf /{model_name}-f16.gguf /models/{model_name}
             "--annotation",
             f"{annotations.AnnotationModel}=true",
             "--annotation",
-            "org.containers.type=''",
+            ociimage_car if args.type == "car" else ociimage_raw,
             "--annotation",
-            f"{annotations.AnnotationTitle}=args.SOURCE",
+            f"{annotations.AnnotationTitle}={args.SOURCE}",
             target,
             imageid,
         ]
-        run_cmd(cmd_args, stdout=None)
+        if args.dryrun:
+            dry_run(cmd_args)
+        else:
+            run_cmd(cmd_args, stdout=None)
 
     def _convert(self, source_model, args):
-        perror(f"Converting {source_model.model_store.base_path} to {self.model_store.base_path} ...")
+        set_accel_env_vars()
+        perror(
+            f"Converting {source_model.model_store.model_name} ({source_model.model_store.model_type}) to "
+            f"{self.model_store.model_name} ({self.model_store.model_type}) ..."
+        )
         try:
-            run_cmd([self.conman, "manifest", "rm", self.model], ignore_stderr=True, stdout=None)
+            rm_cmd = [self.conman, "manifest", "rm", self.model]
+            if args.dryrun:
+                dry_run(rm_cmd)
+            else:
+                run_cmd(rm_cmd, ignore_stderr=True, stdout=None)
         except subprocess.CalledProcessError:
             pass
         perror(f"Building {self.model} ...")
         imageid = self.build(source_model, args)
+        if args.dryrun:
+            imageid = "a1b2c3d4e5f6"
         try:
             self._create_manifest(self.model, imageid, args)
         except subprocess.CalledProcessError as e:

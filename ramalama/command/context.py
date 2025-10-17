@@ -15,6 +15,7 @@ class RamalamaArgsContext:
         self.ctx_size: Optional[int] = None
         self.debug: Optional[bool] = None
         self.host: Optional[str] = None
+        self.gguf: Optional[str] = None
         self.logfile: Optional[str] = None
         self.max_tokens: Optional[int] = None
         self.model_draft: Optional[str] = None
@@ -35,6 +36,7 @@ class RamalamaArgsContext:
         ctx.ctx_size = getattr(args, "context", None)
         ctx.debug = getattr(args, "debug", None)
         ctx.host = getattr(args, "host", None)
+        ctx.gguf = getattr(args, "gguf", None)
         ctx.logfile = getattr(args, "logfile", None)
         ctx.max_tokens = getattr(args, "max_tokens", None)
         ctx.model_draft = getattr(args, "model_draft", None)
@@ -134,6 +136,8 @@ class RamalamaCommandContext:
         is_container = getattr(cli_args, "container", True)
         if hasattr(cli_args, "MODEL"):
             model = RamalamaModelContext(New(cli_args.MODEL, cli_args), is_container, should_generate, dry_run)
+        elif hasattr(cli_args, "model"):
+            model = cli_args.model
         else:
             model = None
         host = RamalamaHostContext(

@@ -247,6 +247,9 @@ class BuildEngine(BaseEngine):
         if tag:
             self.add_args("-t", tag)
         self.add_args("-f", cfile, context)
+        if self.args.dryrun:
+            self.dryrun()
+            return None
         return self.run_process().stdout.strip()
 
     def build_containerfile(self, content: str, context: str, /, *, tag: str | None = None):

@@ -23,8 +23,21 @@ https://github.com/ggml-org/llama.cpp/blob/master/tools/quantize/README.md
 #### **--help**, **-h**
 Print usage message
 
+#### **--image**=IMAGE
+Image to use for model quantization when converting to GGUF format (when the `--gguf` option has been specified). The image must have the
+`llama-quantize` executable available on the `PATH`. Defaults to the appropriate `ramalama` image based on available accelerators. If no
+accelerators are available, the current `quay.io/ramalama/ramalama` image will be used.
+
 #### **--network**=*none*
 sets the configuration for network namespaces when handling RUN instructions
+
+#### **--pull**=*policy*
+Pull image policy. The default is **missing**.
+
+#### **--rag-image**=IMAGE
+Image to use when converting to GGUF format (when then `--gguf` option has been specified). The image must have the `convert_hf_to_gguf.py` script
+executable and available in the `PATH`. The script is available from the `llama.cpp` GitHub repo. Defaults to the current
+`quay.io/ramalama/ramalama-rag` image.
 
 #### **--type**=*raw* | *car*
 
@@ -52,7 +65,7 @@ Successfully tagged quay.io/rhatdan/tiny:latest
 
 Generate and run an oci model with a quantized GGUF converted from Safetensors.
 ```
-$ ramalama --image quay.io/ramalama/ramalama-rag convert --gguf Q4_K_M hf://ibm-granite/granite-3.2-2b-instruct oci://quay.io/kugupta/granite-3.2-q4-k-m:latest
+$ ramalama convert --gguf Q4_K_M hf://ibm-granite/granite-3.2-2b-instruct oci://quay.io/kugupta/granite-3.2-q4-k-m:latest
 Converting /Users/kugupta/.local/share/ramalama/models/huggingface/ibm-granite/granite-3.2-2b-instruct to quay.io/kugupta/granite-3.2-q4-k-m:latest...
 Building quay.io/kugupta/granite-3.2-q4-k-m:latest...
 $ ramalama run oci://quay.io/kugupta/granite-3.2-q4-k-m:latest

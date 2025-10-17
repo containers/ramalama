@@ -50,3 +50,14 @@ commands:
         - name: ""
           description: "URLs to process"
           value: "{{ args.urls }}"
+  - name: convert
+    inference_engine:
+      name: "convert hf to gguf"
+      binary: "convert_hf_to_gguf.py"
+      options:
+        - name: "--outfile"
+          description: "Output file for the converted model"
+          value: "/output/{{ model.model_name }}.gguf"
+        - name: ""
+          description: "Path to the model to convert"
+          value: "/model"
