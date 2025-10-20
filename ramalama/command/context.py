@@ -73,6 +73,24 @@ class RamalamaRagGenArgsContext:
         return ctx
 
 
+class RamalamaRagArgsContext:
+
+    def __init__(self):
+        self.debug: bool | None = None
+        self.port: str | None = None
+        self.model_host: str | None = None
+        self.model_port: str | None = None
+
+    @staticmethod
+    def from_argparse(args: argparse.Namespace) -> "RamalamaRagArgsContext":
+        ctx = RamalamaRagArgsContext()
+        ctx.debug = getattr(args, "debug", None)
+        ctx.port = getattr(args, "port", None)
+        ctx.model_host = getattr(args, "model_host", None)
+        ctx.model_port = getattr(args, "model_port", None)
+        return ctx
+
+
 class RamalamaModelContext:
 
     def __init__(self, model: CLASS_MODEL_TYPES, is_container: bool, should_generate: bool, dry_run: bool):
@@ -131,6 +149,8 @@ class RamalamaCommandContext:
     def from_argparse(cli_args: argparse.Namespace) -> "RamalamaCommandContext":
         if cli_args.subcommand == "rag":
             args = RamalamaRagGenArgsContext.from_argparse(cli_args)
+        elif cli_args.subcommand == "run --rag":
+            args = RamalamaRagArgsContext.from_argparse(cli_args)
         else:
             args = RamalamaArgsContext.from_argparse(cli_args)
         should_generate = getattr(cli_args, "generate", None) is not None

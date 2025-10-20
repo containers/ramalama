@@ -152,7 +152,6 @@ class Engine(BaseEngine):
         self.add_device_options()
         self.add_env_options()
         self.add_port_option()
-        self.add_rag()
         self.add_tty_option()
 
     def base_args(self) -> None:
@@ -188,17 +187,6 @@ class Engine(BaseEngine):
             self.add_args("--privileged")
         else:
             super().add_privileged_options()
-
-    def add_rag(self):
-        if not getattr(self.args, "rag", None):
-            return
-
-        if os.path.exists(self.args.rag):
-            rag = os.path.realpath(self.args.rag)
-            # Added temp read write because vector database requires write access even if nothing is written
-            self.exec_args.append(f"--mount=type=bind,source={rag},destination=/rag/vector.db,rw=true{self.relabel()}")
-        else:
-            self.exec_args.append(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
 
     def use_tty(self) -> bool:
         if not sys.stdin.isatty():

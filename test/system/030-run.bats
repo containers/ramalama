@@ -141,8 +141,8 @@ EOF
     run_ramalama pull tiny
     run_ramalama 22 run --image bogus --pull=never tiny
     is "$output" ".*Error: bogus: image not known"
-    run_ramalama 125 run --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
-    is "$output" ".*Error: bogus1: image not known"
+    run_ramalama 22 run --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
+    is "$output" ".*Error: quay.io/ramalama/rag: image not know"
 }
 
 @test "ramalama run with rag" {

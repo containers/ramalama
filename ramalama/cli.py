@@ -1,4 +1,5 @@
 import argparse
+import copy
 import errno
 import json
 import os
@@ -41,7 +42,7 @@ from ramalama.endian import EndianMismatchError
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
-from ramalama.rag import Rag, rag_image
+from ramalama.rag import INPUT_DIR, Rag, RagTransport, rag_image
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack
 from ramalama.transports.base import (
@@ -978,9 +979,16 @@ If GPU device on host is accessible to via group access, this option leaks the u
         choices=["always", "missing", "never", "newer"],
         help='pull image policy',
     )
-    if command in ["serve"]:
+    if command in ["run", "serve"]:
         parser.add_argument(
             "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
+        )
+        parser.add_argument(
+            "--rag-image",
+            default=rag_image(CONFIG),
+            help="OCI container image to run with the specified RAG data",
+            action=OverrideDefaultAction,
+            completer=local_images,
         )
     if command in ["perplexity", "run", "serve"]:
         parser.add_argument(
@@ -1056,7 +1064,6 @@ def chat_run_options(parser):
         help='possible values are "never", "always" and "auto".',
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
-    parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
     parser.add_argument("--mcp", nargs="*", help="MCP servers to use for the chat")
 
 
@@ -1078,6 +1085,7 @@ def chat_parser(subparsers):
     )
     parser.add_argument("--url", type=str, default="http://127.0.0.1:8080/v1", help="the url to send requests to")
     parser.add_argument("--model", "-m", type=str, completer=local_models, help="model for inferencing")
+    parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
     )
@@ -1101,36 +1109,43 @@ def run_parser(subparsers):
 
 
 def run_cli(args):
-    if args.rag:
-        _get_rag(args)
-        # Passing default args for serve (added network bridge for internet access)
-        args.port = CONFIG.port
-        args.host = CONFIG.host
-        args.network = 'bridge'
-        args.generate = None
-
     try:
         # detect available port and update arguments
         args.port = compute_serving_port(args)
 
         model = New(args.MODEL, args)
         model.ensure_model_exists(args)
-        if args.rag:
-            return model.serve(args, assemble_command(args))
-        model.run(args, assemble_command(args))
-
     except KeyError as e:
         logger.debug(e)
         try:
             args.quiet = True
-            oci_model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-            oci_model.ensure_model_exists(args)
-
-            if args.rag:
-                return oci_model.serve(args, assemble_command(args))
-            oci_model.run(args, assemble_command(args))
+            model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
+            model.ensure_model_exists(args)
         except Exception as exc:
             raise e from exc
+
+    if args.rag:
+        if not args.container:
+            raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
+        args.noout = True
+        rag_args = copy.copy(args)
+        rag_args.subcommand = "run --rag"
+        rag_args.image = args.rag_image
+        if args.engine == "podman":
+            rag_args.model_host = "host.containers.internal"
+        else:
+            rag_args.model_host = f"host.{args.engine}.internal"
+        rag_args.model_port = args.port
+        del rag_args.port
+        rag_args.port = compute_serving_port(rag_args, exclude=[args.port])
+        model = RagTransport(
+            model,
+            rag_args,
+            assemble_command(rag_args),
+            not os.path.exists(args.rag),
+        )
+
+    model.run(args, assemble_command(args))
 
 
 def serve_parser(subparsers):
@@ -1140,22 +1155,9 @@ def serve_parser(subparsers):
     parser.set_defaults(func=serve_cli)
 
 
-def _get_rag(args):
-    if os.path.exists(args.rag):
-        return
-    if args.pull == "never" or args.dryrun:
-        return
-    model = New(args.rag, args=args, transport="oci")
-    if not model.exists():
-        model.pull(args)
-
-
 def serve_cli(args):
     if not args.container:
         args.detach = False
-
-    if args.rag:
-        _get_rag(args)
 
     if args.api == "llama-stack":
         if not args.container:
@@ -1396,7 +1398,8 @@ If GPU device on host is accessible to via group access, this option leaks the u
 
 def rag_cli(args):
     rag = Rag(args.DESTINATION)
-    rag.generate(args)
+    args.inputdir = INPUT_DIR
+    rag.generate(args, assemble_command(args))
 
 
 def rm_parser(subparsers):

@@ -141,6 +141,29 @@ commands:
         - name: ""
           description: "URLs to process"
           value: "{{ args.urls }}"
+  - name: run --rag
+    inference_engine:
+      name: "RAG proxy with chat"
+      binary: "rag_framework"
+      options:
+        - name: "--debug"
+          description: "Enable debug logging"
+          if: "{{ args.debug }}"
+        - name: ""
+          description: "Serve argument"
+          value: "serve"
+        - name: "--port"
+          description: "Port for the RAG proxy to listen on"
+          value: "{{ args.port }}"
+        - name: "--model-host"
+          description: "The URL where the LLM is available"
+          value: "{{ args.model_host }}"
+        - name: "--model-port"
+          description: "The port where the LLM is available"
+          value: "{{ args.model_port }}"
+        - name: ""
+          description: "Path to the RAG vector database"
+          value: "/rag/vector.db"
   - name: convert
     inference_engine:
       name: "convert hf to gguf"
