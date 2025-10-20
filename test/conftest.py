@@ -70,8 +70,6 @@ skip_if_gh_actions_darwin = pytest.mark.skipif(
     reason="GitHub Actions Darwin has not container support",
 )
 
-skip_if_no_huggingface_cli = pytest.mark.skipif(
-    shutil.which("huggingface-cli") is None, reason="huggingface-cli not installed"
-)
+skip_if_no_huggingface_cli = pytest.mark.skipif(shutil.which("hf") is None, reason="hf cli not installed")
 
 skip_if_no_llama_bench = pytest.mark.skipif(shutil.which("llama-bench") is None, reason="llama-bench not installed")
