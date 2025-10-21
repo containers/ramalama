@@ -31,12 +31,9 @@ spec:
     - linux-d160-c8xlarge/amd64
   - name: dockerfile
     value: container-images/common/Containerfile.rag
-  - name: parent-image
-    value: quay.io/redhat-user-workloads/ramalama-tenant/intel-gpu:on-pr-{{revision}}
   - name: build-args
     value:
-    - PARENT=quay.io/redhat-user-workloads/ramalama-tenant/intel-gpu:on-pr-{{revision}}
-    - GPU=cpu
+    - TORCH_BACKEND=xpu
   pipelineRef:
     name: pull-request-pipeline
   timeouts:
