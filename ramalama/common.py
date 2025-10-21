@@ -429,6 +429,10 @@ def check_ascend() -> Literal["cann"] | None:
 
 
 def check_rocm_amd() -> Literal["hip"] | None:
+    if is_arm():
+        # ROCm is not available for arm64, use Vulkan instead
+        return None
+
     gpu_num = 0
     gpu_bytes = 0
     for i, (np, props) in enumerate(amdkfd.gpus()):
@@ -455,6 +459,10 @@ def check_rocm_amd() -> Literal["hip"] | None:
         return "hip"
 
     return None
+
+
+def is_arm() -> bool:
+    return platform.machine() in ('arm64', 'aarch64')
 
 
 def check_intel() -> Literal["intel"] | None:
