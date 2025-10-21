@@ -17,14 +17,24 @@ show this help message and exit
 
 ## FIELDS
 
+The `Accelerator` field indicates the accelerator type for the machine.
+
+The `Config` field shows the list of paths to RamaLama configuration files used. 
+
 The `Engine` field indicates the OCI container engine used to launch the container in which to run the AI Model
 
 The `Image` field indicates the default container image in which to run the AI Model
 
-The `Runtime` field indicates which backend engine is used to execute the AI model:
+The `Inference` field lists the currently used inference engine as well as a list of available engine specification and schema files used for model inference. 
+For example:
 
-    - `llama.cpp`: Uses the llama.cpp library for model execution
-    - `vllm`: Uses the vLLM library for model execution
+    - `llama.cpp`
+    - `vllm`
+    - `mlx`
+
+The `Selinux` field indicates if SELinux is activated or not.
+
+The `Shortnames` field shows the used list of configuration files specifying AI Model short names as well as the merged list of shortnames.
 
 The `Store` field indicates the directory path where RamaLama stores its persistent data, including downloaded models, configuration files, and cached data. By default, this is located in the user's local share directory.
 
@@ -43,7 +53,17 @@ $ ramalama info
         "Name": ""
     },
     "Image": "quay.io/ramalama/cuda:0.7",
-    "Runtime": "llama.cpp",
+    "Inference": {
+        "Default": "llama.cpp",
+        "Engines": {
+            "llama.cpp": "/usr/share/ramalama/inference-spec/engines/llama.cpp.yaml",
+            "mlx": "/usr/share/ramalama/inference-spec/engines/mlx.yaml",
+            "vllm": "/usr/share/ramalama/inference-spec/engines/vllm.yaml"
+        },
+        "Schema": {
+            "1-0-0": "/usr/share/ramalama/inference-spec/schema/schema.1-0-0.json"
+        }
+    },
     "Shortnames": {
         "Names": {
             "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
@@ -94,7 +114,7 @@ $ ramalama info
             "/home/dwalsh/.config/ramalama/shortnames.conf",
         ]
     },
-    "Store": "/home/dwalsh/.local/share/ramalama",
+    "Store": "/usr/share/ramalama",
     "UseContainer": true,
     "Version": "0.7.5"
 }
@@ -251,7 +271,7 @@ $ ramalama info
                 },
                 "graphDriverName": "overlay",
                 "graphOptions": {},
-                "graphRoot": "/home/dwalsh/.local/share/containers/storage",
+                "graphRoot": "/usr/share/containers/storage",
                 "graphRootAllocated": 2046687182848,
                 "graphRootUsed": 399990419456,
                 "graphStatus": {
@@ -268,7 +288,7 @@ $ ramalama info
                 },
                 "runRoot": "/run/user/3267/containers",
                 "transientStore": false,
-                "volumePath": "/home/dwalsh/.local/share/containers/storage/volumes"
+                "volumePath": "/usr/share/containers/storage/volumes"
             },
             "version": {
                 "APIVersion": "5.4.2",
@@ -285,7 +305,17 @@ $ ramalama info
         "Name": "podman"
     },
     "Image": "quay.io/ramalama/cuda:0.7",
-    "Runtime": "llama.cpp",
+    "Inference": {
+        "Default": "llama.cpp",
+        "Engines": {
+            "llama.cpp": "/usr/share/ramalama/inference-spec/engines/llama.cpp.yaml",
+            "mlx": "/usr/share/ramalama/inference-spec/engines/mlx.yaml",
+            "vllm": "/usr/share/ramalama/inference-spec/engines/vllm.yaml"
+        },
+        "Schema": {
+            "1-0-0": "/usr/share/ramalama/inference-spec/schema/schema.1-0-0.json"
+        }
+    },
     "Shortnames": {
         "Names": {
             "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
@@ -336,7 +366,7 @@ $ ramalama info
             "/home/dwalsh/.config/ramalama/shortnames.conf",
         ]
     },
-    "Store": "/home/dwalsh/.local/share/ramalama",
+    "Store": "/usr/share/ramalama",
     "UseContainer": true,
     "Version": "0.7.5"
 }

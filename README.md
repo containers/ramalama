@@ -361,7 +361,17 @@ $ cat /usr/share/ramalama/shortnames.conf
         "Name": ""
         },
         "Image": "quay.io/ramalama/cuda:0.7",
-        "Runtime": "llama.cpp",
+        "Inference": {
+            "Default": "llama.cpp",
+            "Engines": {
+                "llama.cpp": "/usr/share/ramalama/inference-spec/engines/llama.cpp.yaml",
+                "mlx": "/usr/share/ramalama/inference-spec/engines/mlx.yaml",
+                "vllm": "/usr/share/ramalama/inference-spec/engines/vllm.yaml"
+            },
+            "Schema": {
+                "1-0-0": "/usr/share/ramalama/inference-spec/schema/schema.1-0-0.json"
+            }
+        },
         "Shortnames": {
         "Names": {
             "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
@@ -412,7 +422,7 @@ $ cat /usr/share/ramalama/shortnames.conf
             "/home/dwalsh/.config/ramalama/shortnames.conf",
         ]
         },
-        "Store": "/home/dwalsh/.local/share/ramalama",
+        "Store": "/usr/share/ramalama",
         "UseContainer": true,
         "Version": "0.7.5"
     }
@@ -578,7 +588,7 @@ $ cat /usr/share/ramalama/shortnames.conf
             },
             "graphDriverName": "overlay",
             "graphOptions": {},
-            "graphRoot": "/home/dwalsh/.local/share/containers/storage",
+            "graphRoot": "/usr/share/containers/storage",
             "graphRootAllocated": 2046687182848,
             "graphRootUsed": 399990419456,
             "graphStatus": {
@@ -595,7 +605,7 @@ $ cat /usr/share/ramalama/shortnames.conf
             },
             "runRoot": "/run/user/3267/containers",
             "transientStore": false,
-            "volumePath": "/home/dwalsh/.local/share/containers/storage/volumes"
+            "volumePath": "/usr/share/containers/storage/volumes"
             },
             "version": {
             "APIVersion": "5.4.2",
@@ -612,58 +622,68 @@ $ cat /usr/share/ramalama/shortnames.conf
         "Name": "podman"
         },
         "Image": "quay.io/ramalama/cuda:0.7",
-        "Runtime": "llama.cpp",
+        "Inference": {
+            "Default": "llama.cpp",
+            "Engines": {
+                "llama.cpp": "/usr/share/ramalama/inference-spec/engines/llama.cpp.yaml",
+                "mlx": "/usr/share/ramalama/inference-spec/engines/mlx.yaml",
+                "vllm": "/usr/share/ramalama/inference-spec/engines/vllm.yaml"
+            },
+            "Schema": {
+                "1-0-0": "/usr/share/ramalama/inference-spec/schema/schema.1-0-0.json"
+            }
+        },
         "Shortnames": {
-        "Names": {
-            "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
-            "deepseek": "ollama://deepseek-r1",
-            "dragon": "huggingface://llmware/dragon-mistral-7b-v0/dragon-mistral-7b-q4_k_m.gguf",
-            "gemma3": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
-            "gemma3:12b": "hf://bartowski/google_gemma-3-12b-it-GGUF/google_gemma-3-12b-it-IQ2_M.gguf",
-            "gemma3:1b": "hf://bartowski/google_gemma-3-1b-it-GGUF/google_gemma-3-1b-it-IQ2_M.gguf",
-            "gemma3:27b": "hf://bartowski/google_gemma-3-27b-it-GGUF/google_gemma-3-27b-it-IQ2_M.gguf",
-            "gemma3:4b": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
-            "granite": "ollama://granite3.1-dense",
-            "granite-code": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
-            "granite-code:20b": "hf://ibm-granite/granite-20b-code-base-8k-GGUF/granite-20b-code-base.Q4_K_M.gguf",
-            "granite-code:34b": "hf://ibm-granite/granite-34b-code-base-8k-GGUF/granite-34b-code-base.Q4_K_M.gguf",
-            "granite-code:3b": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
-            "granite-code:8b": "hf://ibm-granite/granite-8b-code-base-4k-GGUF/granite-8b-code-base.Q4_K_M.gguf",
-            "granite-lab-7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-            "granite-lab-8b": "huggingface://ibm-granite/granite-8b-code-base-GGUF/granite-8b-code-base.Q4_K_M.gguf",
-            "granite-lab:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-            "granite:2b": "ollama://granite3.1-dense:2b",
-            "granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-            "granite:8b": "ollama://granite3.1-dense:8b",
-            "hermes": "huggingface://NousResearch/Hermes-2-Pro-Mistral-7B-GGUF/Hermes-2-Pro-Mistral-7B.Q4_K_M.gguf",
-            "ibm/granite": "ollama://granite3.1-dense:8b",
-            "ibm/granite:2b": "ollama://granite3.1-dense:2b",
-            "ibm/granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
-            "ibm/granite:8b": "ollama://granite3.1-dense:8b",
-            "merlinite": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-            "merlinite-lab-7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-            "merlinite-lab:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-            "merlinite:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
-            "mistral": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
-            "mistral:7b": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
-            "mistral:7b-v1": "huggingface://TheBloke/Mistral-7B-Instruct-v0.1-GGUF/mistral-7b-instruct-v0.1.Q5_K_M.gguf",
-            "mistral:7b-v2": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
-            "mistral:7b-v3": "huggingface://MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF/Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
-            "mistral_code_16k": "huggingface://TheBloke/Mistral-7B-Code-16K-qlora-GGUF/mistral-7b-code-16k-qlora.Q4_K_M.gguf",
-            "mistral_codealpaca": "huggingface://TheBloke/Mistral-7B-codealpaca-lora-GGUF/mistral-7b-codealpaca-lora.Q4_K_M.gguf",
-            "mixtao": "huggingface://MaziyarPanahi/MixTAO-7Bx2-MoE-Instruct-v7.0-GGUF/MixTAO-7Bx2-MoE-Instruct-v7.0.Q4_K_M.gguf",
-            "openchat": "huggingface://TheBloke/openchat-3.5-0106-GGUF/openchat-3.5-0106.Q4_K_M.gguf",
-            "openorca": "huggingface://TheBloke/Mistral-7B-OpenOrca-GGUF/mistral-7b-openorca.Q4_K_M.gguf",
-            "phi2": "huggingface://MaziyarPanahi/phi-2-GGUF/phi-2.Q4_K_M.gguf",
-            "smollm:135m": "ollama://smollm:135m",
-            "tiny": "ollama://tinyllama"
+            "Names": {
+                "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
+                "deepseek": "ollama://deepseek-r1",
+                "dragon": "huggingface://llmware/dragon-mistral-7b-v0/dragon-mistral-7b-q4_k_m.gguf",
+                "gemma3": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
+                "gemma3:12b": "hf://bartowski/google_gemma-3-12b-it-GGUF/google_gemma-3-12b-it-IQ2_M.gguf",
+                "gemma3:1b": "hf://bartowski/google_gemma-3-1b-it-GGUF/google_gemma-3-1b-it-IQ2_M.gguf",
+                "gemma3:27b": "hf://bartowski/google_gemma-3-27b-it-GGUF/google_gemma-3-27b-it-IQ2_M.gguf",
+                "gemma3:4b": "hf://bartowski/google_gemma-3-4b-it-GGUF/google_gemma-3-4b-it-IQ2_M.gguf",
+                "granite": "ollama://granite3.1-dense",
+                "granite-code": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
+                "granite-code:20b": "hf://ibm-granite/granite-20b-code-base-8k-GGUF/granite-20b-code-base.Q4_K_M.gguf",
+                "granite-code:34b": "hf://ibm-granite/granite-34b-code-base-8k-GGUF/granite-34b-code-base.Q4_K_M.gguf",
+                "granite-code:3b": "hf://ibm-granite/granite-3b-code-base-2k-GGUF/granite-3b-code-base.Q4_K_M.gguf",
+                "granite-code:8b": "hf://ibm-granite/granite-8b-code-base-4k-GGUF/granite-8b-code-base.Q4_K_M.gguf",
+                "granite-lab-7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+                "granite-lab-8b": "huggingface://ibm-granite/granite-8b-code-base-GGUF/granite-8b-code-base.Q4_K_M.gguf",
+                "granite-lab:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+                "granite:2b": "ollama://granite3.1-dense:2b",
+                "granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+                "granite:8b": "ollama://granite3.1-dense:8b",
+                "hermes": "huggingface://NousResearch/Hermes-2-Pro-Mistral-7B-GGUF/Hermes-2-Pro-Mistral-7B.Q4_K_M.gguf",
+                "ibm/granite": "ollama://granite3.1-dense:8b",
+                "ibm/granite:2b": "ollama://granite3.1-dense:2b",
+                "ibm/granite:7b": "huggingface://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+                "ibm/granite:8b": "ollama://granite3.1-dense:8b",
+                "merlinite": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+                "merlinite-lab-7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+                "merlinite-lab:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+                "merlinite:7b": "huggingface://instructlab/merlinite-7b-lab-GGUF/merlinite-7b-lab-Q4_K_M.gguf",
+                "mistral": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+                "mistral:7b": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+                "mistral:7b-v1": "huggingface://TheBloke/Mistral-7B-Instruct-v0.1-GGUF/mistral-7b-instruct-v0.1.Q5_K_M.gguf",
+                "mistral:7b-v2": "huggingface://TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+                "mistral:7b-v3": "huggingface://MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF/Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
+                "mistral_code_16k": "huggingface://TheBloke/Mistral-7B-Code-16K-qlora-GGUF/mistral-7b-code-16k-qlora.Q4_K_M.gguf",
+                "mistral_codealpaca": "huggingface://TheBloke/Mistral-7B-codealpaca-lora-GGUF/mistral-7b-codealpaca-lora.Q4_K_M.gguf",
+                "mixtao": "huggingface://MaziyarPanahi/MixTAO-7Bx2-MoE-Instruct-v7.0-GGUF/MixTAO-7Bx2-MoE-Instruct-v7.0.Q4_K_M.gguf",
+                "openchat": "huggingface://TheBloke/openchat-3.5-0106-GGUF/openchat-3.5-0106.Q4_K_M.gguf",
+                "openorca": "huggingface://TheBloke/Mistral-7B-OpenOrca-GGUF/mistral-7b-openorca.Q4_K_M.gguf",
+                "phi2": "huggingface://MaziyarPanahi/phi-2-GGUF/phi-2.Q4_K_M.gguf",
+                "smollm:135m": "ollama://smollm:135m",
+                "tiny": "ollama://tinyllama"
+            },
+            "Files": [
+                "/usr/share/ramalama/shortnames.conf",
+                "/home/dwalsh/.config/ramalama/shortnames.conf",
+            ]
         },
-        "Files": [
-            "/usr/share/ramalama/shortnames.conf",
-            "/home/dwalsh/.config/ramalama/shortnames.conf",
-        ]
-        },
-        "Store": "/home/dwalsh/.local/share/ramalama",
+        "Store": "/usr/share/ramalama",
         "UseContainer": true,
         "Version": "0.7.5"
     }

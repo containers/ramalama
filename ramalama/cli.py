@@ -10,8 +10,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import get_args
 
-from ramalama.config import COLOR_OPTIONS, SUPPORTED_ENGINES, SUPPORTED_RUNTIMES
-
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
     import argcomplete
@@ -27,7 +25,16 @@ from ramalama.chat import default_prefix
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
 from ramalama.common import accel_image, get_accel, perror
-from ramalama.config import CONFIG, coerce_to_bool, load_file_config
+from ramalama.config import (
+    COLOR_OPTIONS,
+    CONFIG,
+    SUPPORTED_ENGINES,
+    SUPPORTED_RUNTIMES,
+    coerce_to_bool,
+    get_inference_schema_files,
+    get_inference_spec_files,
+    load_file_config,
+)
 from ramalama.endian import EndianMismatchError
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
@@ -555,25 +562,29 @@ def _list_models(args):
 
 def info_cli(args):
     info = {
+        "Accelerator": get_accel(),
         "Config": load_file_config(),
         "Engine": {
             "Name": args.engine,
         },
         "Image": accel_image(CONFIG),
-        "Runtime": args.runtime,
+        "Inference": {
+            "Default": args.runtime,
+            "Engines": {spec: str(path) for spec, path in get_inference_spec_files().items()},
+            "Schema": {schema: str(path) for schema, path in get_inference_schema_files().items()},
+        },
         "Selinux": CONFIG.selinux,
+        "Shortnames": {
+            "Files": shortnames.paths,
+            "Names": shortnames.shortnames,
+        },
         "Store": args.store,
         "UseContainer": args.container,
         "Version": version(),
     }
-    info["Shortnames"] = {
-        "Files": shortnames.paths,
-        "Names": shortnames.shortnames,
-    }
     if args.engine and len(args.engine) > 0:
         info["Engine"]["Info"] = engine.info(args)
 
-    info["Accelerator"] = get_accel()
     print(json.dumps(info, sort_keys=True, indent=4))
 
 

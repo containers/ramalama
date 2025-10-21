@@ -46,7 +46,17 @@ $ ramalama info
         "Name": ""
     },
     "Image": "quay.io/ramalama/cuda:0.7",
-    "Runtime": "llama.cpp",
+    "Inference": {
+        "Default": "llama.cpp",
+        "Engines": {
+            "llama.cpp": "/usr/share/ramalama/inference-spec/engines/llama.cpp.yaml",
+            "mlx": "/usr/share/ramalama/inference-spec/engines/mlx.yaml",
+            "vllm": "/usr/share/ramalama/inference-spec/engines/vllm.yaml"
+        },
+        "Schema": {
+            "1-0-0": "/usr/share/ramalama/inference-spec/schema/schema.1-0-0.json"
+        }
+    },
     "Shortnames": {
         "Names": {
             "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
@@ -97,7 +107,7 @@ $ ramalama info
             "/home/dwalsh/.config/ramalama/shortnames.conf",
         ]
     },
-    "Store": "/home/dwalsh/.local/share/ramalama",
+    "Store": "/usr/share/ramalama",
     "UseContainer": true,
     "Version": "0.7.5"
 }
@@ -254,7 +264,7 @@ $ ramalama info
                 },
                 "graphDriverName": "overlay",
                 "graphOptions": {},
-                "graphRoot": "/home/dwalsh/.local/share/containers/storage",
+                "graphRoot": "/usr/share/containers/storage",
                 "graphRootAllocated": 2046687182848,
                 "graphRootUsed": 399990419456,
                 "graphStatus": {
@@ -271,7 +281,7 @@ $ ramalama info
                 },
                 "runRoot": "/run/user/3267/containers",
                 "transientStore": false,
-                "volumePath": "/home/dwalsh/.local/share/containers/storage/volumes"
+                "volumePath": "/usr/share/containers/storage/volumes"
             },
             "version": {
                 "APIVersion": "5.4.2",
@@ -288,7 +298,17 @@ $ ramalama info
         "Name": "podman"
     },
     "Image": "quay.io/ramalama/cuda:0.7",
-    "Runtime": "llama.cpp",
+    "Inference": {
+        "Default": "llama.cpp",
+        "Engines": {
+            "llama.cpp": "/usr/share/ramalama/inference-spec/engines/llama.cpp.yaml",
+            "mlx": "/usr/share/ramalama/inference-spec/engines/mlx.yaml",
+            "vllm": "/usr/share/ramalama/inference-spec/engines/vllm.yaml"
+        },
+        "Schema": {
+            "1-0-0": "/usr/share/ramalama/inference-spec/schema/schema.1-0-0.json"
+        }
+    },
     "Shortnames": {
         "Names": {
             "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
@@ -339,7 +359,7 @@ $ ramalama info
             "/home/dwalsh/.config/ramalama/shortnames.conf",
         ]
     },
-    "Store": "/home/dwalsh/.local/share/ramalama",
+    "Store": "/usr/share/ramalama",
     "UseContainer": true,
     "Version": "0.7.5"
 }

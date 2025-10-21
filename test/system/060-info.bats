@@ -24,7 +24,6 @@ load helpers
     # FIXME Engine  (podman|docker|'')
     tests="
 Image   | "quay.io/ramalama/.*"
-Runtime | "llama.cpp"
 Version | "${version}"
 Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)
 "
@@ -46,7 +45,6 @@ Store   | \\\("${HOME}/.local/share/ramalama"\\\|"/var/lib/ramalama"\\\)
     tests="
 Engine.Name | $engine
 Image   | $image
-Runtime | $runtime
 Store   | $(pwd)/$store
 "
 
