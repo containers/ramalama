@@ -28,6 +28,7 @@ from ramalama.common import accel_image, get_accel, perror
 from ramalama.config import (
     COLOR_OPTIONS,
     CONFIG,
+    GGUF_QUANTIZATION_MODES,
     SUPPORTED_ENGINES,
     SUPPORTED_RUNTIMES,
     coerce_to_bool,
@@ -671,21 +672,11 @@ def convert_parser(subparsers):
     )
     parser.add_argument(
         "--gguf",
-        choices=[
-            "Q2_K",
-            "Q3_K_S",
-            "Q3_K_M",
-            "Q3_K_L",
-            "Q4_0",
-            "Q4_K_S",
-            "Q4_K_M",
-            "Q5_0",
-            "Q5_K_S",
-            "Q5_K_M",
-            "Q6_K",
-            "Q8_0",
-        ],
-        help="GGUF quantization format",
+        choices=get_args(GGUF_QUANTIZATION_MODES),
+        nargs="?",
+        const=CONFIG.gguf_quantization_mode,  # Used if --gguf is provided without value
+        default=None,  # Used if --gguf is not provided
+        help=f"GGUF quantization format. If specified without value, {CONFIG.gguf_quantization_mode} is used.",
     )
     add_network_argument(parser)
     parser.add_argument(

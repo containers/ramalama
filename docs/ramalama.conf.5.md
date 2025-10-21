@@ -98,6 +98,11 @@ Run RamaLama using the specified container engine.
 Valid options are: Podman and Docker
 This field can be overridden by the RAMALAMA_CONTAINER_ENGINE environment variable.
 
+**#gguf_quantization_mode**="Q4_K_M"
+
+The quantization mode used when creating OCI formatted AI Models.
+Available options: Q2_K, Q3_K_S, Q3_K_M, Q3_K_L, Q4_0, Q4_K_S, Q4_K_M, Q5_0, Q5_K_S, Q5_K_M, Q6_K, Q8_0.
+
 **host**="0.0.0.0"
 
 IP address for llama.cpp to listen on.

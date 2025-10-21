@@ -18,6 +18,21 @@ DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
 SUPPORTED_ENGINES: TypeAlias = Literal["podman", "docker"]
 SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx"]
 COLOR_OPTIONS: TypeAlias = Literal["auto", "always", "never"]
+GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
+    "Q2_K",
+    "Q3_K_S",
+    "Q3_K_M",
+    "Q3_K_L",
+    "Q4_0",
+    "Q4_K_S",
+    "Q4_K_M",
+    "Q5_0",
+    "Q5_K_S",
+    "Q5_K_M",
+    "Q6_K",
+    "Q8_0",
+]
+DEFAULT_GGUF_QUANTIZATION_MODE = "Q4_K_M"
 
 DEFAULT_CONFIG_DIRS = [
     Path(f"{sys.prefix}/share/ramalama"),
@@ -157,6 +172,7 @@ class BaseConfig:
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
+    gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
