@@ -1,15 +1,16 @@
 import os
-import shutil
 import subprocess
 import tempfile
 from enum import StrEnum
+from functools import partial
 from textwrap import dedent
 
 from ramalama.chat import ChatOperationalArgs
 from ramalama.common import accel_image, perror, set_accel_env_vars
 from ramalama.config import Config
-from ramalama.engine import BuildEngine, Engine
+from ramalama.engine import BuildEngine, Engine, is_healthy, wait_for_healthy
 from ramalama.transports.base import Transport
+from ramalama.transports.oci import OCI
 
 INPUT_DIR = "/docs"
 
@@ -90,7 +91,7 @@ class Rag:
             raise e
         finally:
             if self.oci:
-                shutil.rmtree(ragdb.name, ignore_errors=True)
+                ragdb.cleanup()
 
 
 def rag_image(config: Config) -> str:
@@ -125,20 +126,24 @@ class RagEngine(Engine):
             self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
 
 
-class RagTransport(Transport):
+class RagTransport(OCI):
     """Run a RAG proxy, dispatching to a backend LLM"""
 
     type: str = "Model+RAG"
 
-    def __init__(self, imodel: Transport, args, cmd: list[str], is_image: bool):
-        super().__init__(args.rag, args.store)
+    def __init__(self, imodel: Transport, cmd: list[str], args):
+        super().__init__(args.rag, args.store, args.engine)
         self.imodel = imodel
-        self.args = args
-        self.cmd = cmd
-        if is_image:
-            self.kind = RagSource.IMAGE
-        else:
+        self.model_cmd = cmd
+        if os.path.exists(args.rag):
             self.kind = RagSource.DB
+        else:
+            self.kind = RagSource.IMAGE
+
+    def exists(self) -> bool:
+        if self.kind is RagSource.DB:
+            return os.path.exists(self.model)
+        return super().exists()
 
     def new_engine(self, args):
         return RagEngine(args, sourcetype=self.kind)
@@ -147,23 +152,33 @@ class RagTransport(Transport):
         pass
 
     def chat_operational_args(self, args):
-        return ChatOperationalArgs(name=args.model_name)
+        return ChatOperationalArgs(name=args.model_args.name)
 
     def _handle_container_chat(self, args, pid):
         # Clear args.rag so RamaLamaShell doesn't treat it as local data for RAG context
-        self.args.rag = None
+        args.rag = None
         super()._handle_container_chat(args, pid)
 
+    def _start_model(self, args, cmd: list[str]):
+        pid = self.imodel._fork_and_serve(args, self.model_cmd)
+        if pid:
+            _, status = os.waitpid(pid, 0)
+            if status != 0:
+                raise subprocess.CalledProcessError(
+                    os.waitstatus_to_exitcode(status),
+                    " ".join(cmd),
+                )
+        return pid
+
+    def serve(self, args, cmd: list[str]):
+        pid = self._start_model(args.model_args, cmd)
+        if pid:
+            super().serve(args, cmd)
+
     def run(self, args, cmd: list[str]):
-        self.model_args = args
-        self.args.model_pid = self.imodel._fork_and_serve(args, cmd)
-        self.args.model_name = self.imodel.get_container_name(args)
-        if self.args.model_pid:
-            if self.args.dryrun:
-                # Avoid race condition in tests
-                os.waitpid(self.args.model_pid, 0)
-            super().run(self.args, self.cmd)
+        args.model_args.name = self.imodel.get_container_name(args.model_args)
+        super().run(args, cmd)
 
     def wait_for_healthy(self, args):
-        self.imodel.wait_for_healthy(self.model_args)
-        super().wait_for_healthy(self.args)
+        self.imodel.wait_for_healthy(args.model_args)
+        wait_for_healthy(args, partial(is_healthy, model_name=f"{self.imodel.model_name}+rag"))

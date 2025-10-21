@@ -425,7 +425,7 @@ def add_labels(args, add_label):
             add_label(f"{label_prefix}={value}")
 
 
-def is_healthy(args, timeout=3):
+def is_healthy(args, timeout: int = 3, model_name: str | None = None):
     """Check if the response from the container indicates a healthy status."""
     conn = None
     try:
@@ -446,9 +446,10 @@ def is_healthy(args, timeout=3):
             logger.debug(f"Container {args.name} does not include a model list in the response")
             return False
         model_names = [m["name"] for m in body["models"]]
-        # The transport and tag is not included in the model name returned by the endpoint
-        model_name = args.MODEL.split("://")[-1]
-        model_name = model_name.split(":")[0]
+        if not model_name:
+            # The transport and tag is not included in the model name returned by the endpoint
+            model_name = args.MODEL.split("://")[-1]
+            model_name = model_name.split(":")[0]
         if not any(model_name in name for name in model_names):
             logger.debug(f'Container {args.name} does not include "{model_name}" in the model list: {model_names}')
             return False

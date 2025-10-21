@@ -214,6 +214,10 @@ Specify path to Retrieval-Augmented Generation (RAG) database or an OCI Image co
 
 Note: RAG support requires AI Models be run within containers, --nocontainer not supported. Docker does not support image mounting, meaning Podman support required.
 
+#### **--rag-image**=
+The image to use to process the RAG database specified by the `--rag` option. The image must contain the `/usr/bin/rag_framework` executable, which
+will create a proxy which embellishes client requests with RAG data before passing them on to the LLM, and returns the responses.
+
 #### **--runtime-args**="*args*"
 Add *args* to the runtime (llama.cpp or vllm) invocation.
 

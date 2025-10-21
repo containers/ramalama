@@ -149,7 +149,7 @@ class RamalamaCommandContext:
     def from_argparse(cli_args: argparse.Namespace) -> "RamalamaCommandContext":
         if cli_args.subcommand == "rag":
             args = RamalamaRagGenArgsContext.from_argparse(cli_args)
-        elif cli_args.subcommand == "run --rag":
+        elif cli_args.subcommand in ("run --rag", "serve --rag"):
             args = RamalamaRagArgsContext.from_argparse(cli_args)
         else:
             args = RamalamaArgsContext.from_argparse(cli_args)

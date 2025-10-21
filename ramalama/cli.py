@@ -1092,6 +1092,27 @@ def chat_parser(subparsers):
     parser.set_defaults(func=chat.chat)
 
 
+def _rag_args(args):
+    args.noout = not args.debug
+    rag_args = copy.copy(args)
+    rag_args.subcommand = f"{args.subcommand} --rag"
+    rag_args.MODEL = args.rag
+    rag_args.image = args.rag_image
+    if args.engine == "podman":
+        rag_args.model_host = "host.containers.internal"
+    else:
+        rag_args.model_host = f"host.{args.engine}.internal"
+    # If --name was specified, use it for the RAG proxy
+    args.name = None
+    # If --port was specified, use it for the RAG proxy, and
+    # select a random port for the model
+    args.port = None
+    rag_args.model_port = args.port = compute_serving_port(args, exclude=[rag_args.port])
+    rag_args.model_args = args
+    rag_args.generate = ""
+    return rag_args
+
+
 def run_parser(subparsers):
     parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
     runtime_options(parser, "run")
@@ -1127,23 +1148,9 @@ def run_cli(args):
     if args.rag:
         if not args.container:
             raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
-        args.noout = True
-        rag_args = copy.copy(args)
-        rag_args.subcommand = "run --rag"
-        rag_args.image = args.rag_image
-        if args.engine == "podman":
-            rag_args.model_host = "host.containers.internal"
-        else:
-            rag_args.model_host = f"host.{args.engine}.internal"
-        rag_args.model_port = args.port
-        del rag_args.port
-        rag_args.port = compute_serving_port(rag_args, exclude=[args.port])
-        model = RagTransport(
-            model,
-            rag_args,
-            assemble_command(rag_args),
-            not os.path.exists(args.rag),
-        )
+        args = _rag_args(args)
+        model = RagTransport(model, assemble_command(args.model_args), args)
+        model.ensure_model_exists(args)
 
     model.run(args, assemble_command(args))
 
@@ -1172,15 +1179,22 @@ def serve_cli(args):
 
         model = New(args.MODEL, args)
         model.ensure_model_exists(args)
-        model.serve(args, assemble_command(args))
     except KeyError as e:
         try:
             args.quiet = True
             model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
             model.ensure_model_exists(args)
-            model.serve(args, assemble_command(args))
         except Exception:
             raise e
+
+    if args.rag:
+        if not args.container:
+            raise ValueError("ramalama serve --rag cannot be run with the --nocontainer option.")
+        args = _rag_args(args)
+        model = RagTransport(model, assemble_command(args.model_args), args)
+        model.ensure_model_exists(args)
+
+    model.serve(args, assemble_command(args))
 
 
 def stop_parser(subparsers):
