@@ -16,7 +16,7 @@ DEFAULT_PORT: int = DEFAULT_PORT_RANGE[0]
 DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
 DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
 SUPPORTED_ENGINES: TypeAlias = Literal["podman", "docker"]
-SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx"]
+SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx", "whisper.cpp"]
 COLOR_OPTIONS: TypeAlias = Literal["auto", "always", "never"]
 
 DEFAULT_CONFIG_DIRS = [
@@ -136,6 +136,7 @@ class BaseConfig:
             "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
             "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
             "VLLM": "registry.redhat.io/rhelai1/ramalama-vllm",
+            "WHISPER": "ghcr.io/ggml-org/whisper.cpp",
         }
     )
     keep_groups: bool = False

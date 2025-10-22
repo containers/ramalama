@@ -1,0 +1,60 @@
+schema_version: "1.0.0"
+commands:
+  - name: serve
+    inference_engine:
+      name: "whisper-server"
+      binary: "whisper-server"
+      options: &serve_run_options
+        - name: "--host"
+          description: "IP address for the AI model server to listen on"
+          value: "{{ '0.0.0.0' if args.container else args.host }}"
+        - name: "--port"
+          description: "Port for the AI model server to listen on"
+          value: "{{ args.port }}"
+        - name: "--model"
+          description: "The AI model to run"
+          value: "{{ model.model_path }}"
+        - name: "--debug-mode"
+          description: "Enable debug logs"
+          if: "{{ args.debug }}"
+        - name: "--flash-attn"
+          description: "Set Flash Attention use"
+          value: "on"
+          if: "{{ host.uses_nvidia or host.uses_metal }}"
+        - name: "--convert"
+          description: "Automatically convert audio files to WAV"
+          if: "{{ args.convert }}"
+        - name: "--threads"
+          description: "Number of Threads to use during generation"
+          value: "{{ args.threads }}"
+        - name: "--processors"
+          description: "Number of Processors to use during generation"
+          value: "{{ args.processors }}"
+        - name: "--print-colors"
+          description: "Add color to the logs"
+          value: "{{ 'on' }}"
+          if: "{{ host.should_colorize }}"
+        # Special case:
+        # Pass arbitrary runtime arguments to whisper-server
+        - name: ""
+          description: "Arbitrary runtime arguments for whisper-server"
+          value: "{{ args.runtime_args }}"
+  - name: run
+    inference_engine:
+      name: "whisper-server with chat"
+      binary: "whisper-cli"
+      options: *serve_run_options
+  - name: bench
+    inference_engine:
+      name: "whisper-bench"
+      binary: "whisper-bench"
+      options:
+        - name: "--model"
+          description: "The AI model to run"
+          value: "{{ model.model_path }}"
+        - name: "--threads"
+          description: "Number of Threads to use during generation"
+          value: "{{ args.threads }}"
+        - name: "--processors"
+          description: "Number of Processors to use during generation"
+          value: "{{ args.processors }}"
