@@ -14,6 +14,8 @@ load helpers
     is "$output" ".*doc2rag --format json /output $HTTPS_FILE " "Expected to --format json option"
     run_ramalama --dryrun rag --format milvus $HTTPS_FILE quay.io/ramalama/myrag:1.2
     is "$output" ".*doc2rag --format milvus /output $HTTPS_FILE " "Expected to see --format milvus option"
+    run_ramalama --debug --dryrun rag $HTTPS_FILE quay.io/ramalama/myrag:1.2
+    is "$output" ".*doc2rag --debug" "Expected to run doc2rag with --debug"
 
     FILE=README.md
     run_ramalama --dryrun rag $FILE quay.io/ramalama/myrag:1.2

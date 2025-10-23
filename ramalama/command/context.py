@@ -54,6 +54,7 @@ class RamalamaArgsContext:
 class RamalamaRagGenArgsContext:
 
     def __init__(self):
+        self.debug: bool | None = None
         self.format: str | None = None
         self.ocr: bool | None = None
         self.inputdir: str | None = None
@@ -63,6 +64,7 @@ class RamalamaRagGenArgsContext:
     @staticmethod
     def from_argparse(args: argparse.Namespace) -> "RamalamaRagGenArgsContext":
         ctx = RamalamaRagGenArgsContext()
+        ctx.debug = getattr(args, "debug", None)
         ctx.format = getattr(args, "format", None)
         ctx.ocr = getattr(args, "ocr", None)
         ctx.inputdir = getattr(args, "inputdir", None)

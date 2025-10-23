@@ -23,7 +23,7 @@ from fastapi.responses import StreamingResponse
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from pydantic import BaseModel, Field
-from pymilvus import AnnSearchRequest, MilvusClient, RRFRanker  # type: ignore
+from pymilvus import AnnSearchRequest, AsyncMilvusClient, RRFRanker  # type: ignore
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -107,7 +107,6 @@ def eprint(e, exit_code):
 
 
 async def request(host: str, port: int, path: str, timeout: int = 10):
-
     async with aiohttp.ClientSession(
         f"http://{host}:{port}",
         timeout=aiohttp.ClientTimeout(total=timeout),
@@ -142,12 +141,12 @@ async def wait_for_llama_server(host: str, port: int, timeout: int = 10):
 
 class qdrant:
     def __init__(self, vector_path):
-        self.client = qdrant_client.QdrantClient(path=vector_path)
-        self.client.set_model(EMBED_MODEL)
-        self.client.set_sparse_model(SPARSE_MODEL)
+        self.client = qdrant_client.AsyncQdrantClient(path=vector_path)
+        self.client.set_model(EMBED_MODEL, local_files_only=True)
+        self.client.set_sparse_model(SPARSE_MODEL, local_files_only=True)
 
-    def query(self, prompt):
-        results = self.client.query(
+    async def query(self, prompt):
+        results = await self.client.query(
             collection_name="rag",
             query_text=prompt,
             limit=20,
@@ -157,11 +156,11 @@ class qdrant:
 
 class milvus:
     def __init__(self, vector_path):
-        self.milvus_client = MilvusClient(uri=os.path.join(vector_path, "milvus.db"))
-        self.dmodel = TextEmbedding(model_name=EMBED_MODEL)
-        self.smodel = SparseTextEmbedding(model_name=SPARSE_MODEL)
+        self.milvus_client = AsyncMilvusClient(uri=os.path.join(vector_path, "milvus.db"))
+        self.dmodel = TextEmbedding(model_name=EMBED_MODEL, local_files_only=True)
+        self.smodel = SparseTextEmbedding(model_name=SPARSE_MODEL, local_files_only=True)
 
-    def query(self, prompt):
+    async def query(self, prompt):
         dense_embedding = next(self.dmodel.embed([prompt]))
         sparse_embedding = next(self.smodel.embed([prompt])).as_dict()
 
@@ -187,7 +186,7 @@ class milvus:
 
         ranker = RRFRanker(100)
 
-        results = self.milvus_client.hybrid_search(
+        results = await self.milvus_client.hybrid_search(
             collection_name=COLLECTION_NAME,
             reqs=reqs,
             ranker=ranker,
@@ -199,7 +198,7 @@ class milvus:
 
 class OpenAICompatibleRagService:
     def __init__(self, vector_path, model_host, model_port):
-        self.reranker = TextCrossEncoder(model_name=RANK_MODEL)
+        self.reranker = TextCrossEncoder(model_name=RANK_MODEL, local_files_only=True)
 
         if self.is_milvus(vector_path):
             # setup milvus
@@ -223,10 +222,10 @@ class OpenAICompatibleRagService:
         context_messages = messages[-6:]
         return "\n".join([f"{msg.role}: {msg.content}" for msg in context_messages])
 
-    def _perform_rag_lookup(self, query: str) -> str:
+    async def _perform_rag_lookup(self, query: str) -> str:
         """Perform RAG vector search and reranking"""
         # Vector search
-        results = self.vectordb.query(query)
+        results = await self.vectordb.query(query)
 
         # Rerank and select top 5
         reranked_context = " ".join(
@@ -235,7 +234,7 @@ class OpenAICompatibleRagService:
         )
         return reranked_context.strip()
 
-    def _build_rag_enhanced_messages(self, messages: list[ChatMessage]) -> list[dict]:
+    async def _build_rag_enhanced_messages(self, messages: list[ChatMessage]) -> list[dict]:
         """Build messages with RAG context for the LLM"""
         if not messages:
             return []
@@ -246,7 +245,7 @@ class OpenAICompatibleRagService:
             return [{"role": msg.role, "content": msg.content} for msg in messages]
 
         # Perform RAG lookup
-        rag_context = self._perform_rag_lookup(latest_message.content)
+        rag_context = await self._perform_rag_lookup(latest_message.content)
         conversation_history = self._extract_conversation_context(messages[:-1])
 
         # Enhanced system prompt with RAG context
@@ -283,7 +282,7 @@ class OpenAICompatibleRagService:
         created = int(time.time())
 
         # Build RAG-enhanced messages
-        enhanced_messages = self._build_rag_enhanced_messages(request.messages)
+        enhanced_messages = await self._build_rag_enhanced_messages(request.messages)
 
         if request.stream:
             return await self._stream_completion(completion_id, created, request, enhanced_messages)
@@ -393,8 +392,8 @@ def initialize_rag_service() -> OpenAICompatibleRagService:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     args = get_args()
-    await wait_for_llama_server(args.model_host, args.model_port)
     initialize_rag_service()
+    await wait_for_llama_server(args.model_host, args.model_port)
     yield
 
 

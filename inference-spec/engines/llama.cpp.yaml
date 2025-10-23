@@ -123,6 +123,9 @@ commands:
       name: "rag"
       binary: "doc2rag"
       options:
+        - name: "--debug"
+          description: "Enable debug logging"
+          if: "{{ args.debug }}"
         - name: "--format"
           description: "Output format for RAG data"
           value: "{{ args.format }}"
