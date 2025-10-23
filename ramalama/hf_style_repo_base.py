@@ -186,7 +186,7 @@ class HFStyleRepoModel(Transport, ABC):
 
     @abstractmethod
     def get_cli_command(self):
-        """Return the CLI command name (e.g., 'huggingface-cli', 'modelscope')"""
+        """Return the CLI command name (e.g., 'hf', 'modelscope')"""
         pass
 
     @abstractmethod

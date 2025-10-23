@@ -268,10 +268,10 @@ function is_apple_silicon() {
     fi
 }
 
-function skip_if_no_hf-cli(){
-    if ! command -v huggingface-cli 2>&1 >/dev/null
+function skip_if_no_hf_cli(){
+    if ! command -v hf 2>&1 >/dev/null
     then
-        skip "Not supported without huggingface-cli"
+        skip "Not supported without hf client"
     fi
 }
 

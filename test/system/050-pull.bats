@@ -77,7 +77,7 @@ load setup_suite
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
     run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
-    skip_if_no_hf-cli
+    skip_if_no_hf_cli
     run_ramalama pull hf://HuggingFaceTB/SmolLM-135M
     run_ramalama list
     is "$output" ".*HuggingFaceTB/SmolLM-135M" "image was actually pulled locally"
@@ -118,9 +118,9 @@ load setup_suite
 }
 
 # bats test_tags=distro-integration
-@test "ramalama pull huggingface-cli cache" {
-    skip_if_no_hf-cli
-    huggingface-cli download Felladrin/gguf-smollm-360M-instruct-add-basics smollm-360M-instruct-add-basics.IQ2_XXS.gguf
+@test "ramalama pull hf cli cache" {
+    skip_if_no_hf_cli
+    hf download Felladrin/gguf-smollm-360M-instruct-add-basics smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
     run_ramalama pull hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
     run_ramalama list

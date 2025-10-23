@@ -25,9 +25,9 @@ sudo dnf install python3-huggingface-hub
 """
 
 
-def is_huggingface_cli_available():
+def is_hf_cli_available():
     """Check if huggingface-cli is available on the system."""
-    return available("huggingface-cli")
+    return available("hf")
 
 
 def huggingface_token():
@@ -150,10 +150,10 @@ class Huggingface(HFStyleRepoModel):
         super().__init__(model, model_store_path)
 
         self.type = "huggingface"
-        self.hf_cli_available = is_huggingface_cli_available()
+        self.hf_cli_available = is_hf_cli_available()
 
     def get_cli_command(self):
-        return "huggingface-cli"
+        return "hf"
 
     def get_missing_message(self):
         return missing_huggingface
@@ -177,7 +177,7 @@ class Huggingface(HFStyleRepoModel):
             return HuggingfaceRepository(name, organization, tag)
 
     def get_cli_download_args(self, directory_path, model):
-        return ["huggingface-cli", "download", "--local-dir", directory_path, model]
+        return ["hf", "download", "--local-dir", directory_path, model]
 
     def extract_model_identifiers(self):
         model_name, model_tag, model_organization = super().extract_model_identifiers()
@@ -230,7 +230,7 @@ class Huggingface(HFStyleRepoModel):
             raise NotImplementedError(self.get_missing_message())
         proc = run_cmd(
             [
-                "huggingface-cli",
+                "hf",
                 "upload",
                 "--repo-type",
                 "model",

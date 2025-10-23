@@ -54,7 +54,7 @@ Login to huggingface registry
 $ export RAMALAMA_TRANSPORT=huggingface
 $ ramalama login --token=XYZ
 ```
-Logging in to Hugging Face requires the `huggingface-cli` tool. For installation and usage instructions, see the documentation of the Hugging Face command line interface: [*https://huggingface.co/docs/huggingface_hub/en/guides/cli*](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
+Logging in to Hugging Face requires the `hf` tool. For installation and usage instructions, see the documentation of the Hugging Face command line interface: [*https://huggingface.co/docs/huggingface_hub/en/guides/cli*](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
 
 Login to ModelScope registry
 ```
