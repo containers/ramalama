@@ -82,6 +82,10 @@ commands:
         - name: "--rpc"
           description: "Comma separated list of RPC servers"
           value: "{{ host.rpc_nodes }}"
+        - name: "-n"
+          description: "Maximum number of tokens to generate (0 = unlimited)"
+          value: "{{ args.max_tokens }}"
+          if: "{{ args.max_tokens > 0 }}"
         # Special case:
         # Pass arbitrary runtime arguments to llama-server
         - name: ""
