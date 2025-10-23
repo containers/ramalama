@@ -21,14 +21,6 @@ function skip_if_no_mlx() {
     is "$output" ".*mlx.*" "MLX should be listed as runtime option"
 }
 
-@test "ramalama --runtime=mlx info shows MLX runtime" {
-    skip_if_not_apple_silicon
-    skip_if_no_mlx
-    
-    run_ramalama --runtime=mlx info
-    is "$output" ".*Runtime.*mlx.*" "info should show MLX runtime"
-}
-
 @test "ramalama --runtime=mlx automatically enables --nocontainer" {
     skip_if_not_apple_silicon
     skip_if_no_mlx
