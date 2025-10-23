@@ -3,6 +3,8 @@ import json
 from datetime import datetime, timedelta
 
 from ramalama.arg_types import StoreArgs
+from ramalama.cli import parse_args_from_cmd
+from ramalama.command.factory import assemble_command
 from ramalama.common import generate_sha256
 from ramalama.config import CONFIG
 from ramalama.daemon.dto.model import ModelDetailsResponse, ModelResponse, model_list_to_dict
@@ -10,7 +12,6 @@ from ramalama.daemon.dto.serve import ServeRequest, ServeResponse, StopServeRequ
 from ramalama.daemon.handler.base import APIHandler
 from ramalama.daemon.handler.proxy import ModelProxyHandler
 from ramalama.daemon.logging import DEFAULT_LOG_DIR, logger
-from ramalama.daemon.service.command_factory import CommandFactory
 from ramalama.daemon.service.model_runner import ManagedModel, ModelRunner, generate_model_id
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.transports.transport_factory import TransportFactory
@@ -118,11 +119,19 @@ class DaemonAPIHandler(APIHandler):
             StoreArgs(store=self.model_store_path, engine=None, container=False),
             transport=CONFIG.transport,
         ).create()
-        log_path = f"{DEFAULT_LOG_DIR}/{model.model_organization}_{model.model_name}_{model.model_tag}.log"
-        cmd = CommandFactory(model, serve_request.runtime, port, log_path, serve_request.exec_args).build()
 
-        logger.info(f"Starting model runner for {serve_request.model_name} with command: {cmd}")
-        managed_model = ManagedModel(model, cmd, port, timedelta(seconds=30))
+        # Use the RamaLama CLI parser to get a namespace with all variables and their
+        # default values, which is then used to assemble the final inference engine command
+        ramalama_cmd = ["ramalama", "--runtime", serve_request.runtime, "serve", model, "--port", port]
+        for arg, val in serve_request.exec_args.items():
+            ramalama_cmd.extend([arg, val])
+        args = parse_args_from_cmd(ramalama_cmd)
+        # always log to file at the model-specific location
+        args.logfile = f"{DEFAULT_LOG_DIR}/{model.model_organization}_{model.model_name}_{model.model_tag}.log"
+        inference_engine_command = assemble_command(args)
+
+        logger.info(f"Starting model runner for {serve_request.model_name} with command: {inference_engine_command}")
+        managed_model = ManagedModel(model, inference_engine_command, port, timedelta(seconds=30))
         serve_path = ModelProxyHandler.build_proxy_path(model)
         self.model_runner.add_model(managed_model)
         self.model_runner.start_model(managed_model.id, serve_path)

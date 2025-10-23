@@ -170,6 +170,18 @@ def init_cli():
     return parser, args
 
 
+def parse_args_from_cmd(cmd: list[str]) -> argparse.Namespace:
+    """Parse arguments based on a command string"""
+    # Need to know if we're running with --dryrun or --generate before adding the subcommands,
+    # otherwise calls to accel_image() when setting option defaults will cause unnecessary image pulls.
+    if any(arg in ("--dryrun", "--dry-run", "--generate") or arg.startswith("--generate=") for arg in sys.argv[1:]):
+        CONFIG.dryrun = True
+    parser = get_parser()
+    args = parser.parse_args(cmd)
+    post_parse_setup(args)
+    return args
+
+
 def get_description():
     """Return the description of the RamaLama tool."""
     return """\

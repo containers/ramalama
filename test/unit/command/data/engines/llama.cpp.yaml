@@ -82,6 +82,10 @@ commands:
         - name: "--rpc"
           description: "Comma separated list of RPC servers"
           value: "{{ host.rpc_nodes }}"
+        - name: "-n"
+          description: "Maximum number of tokens to generate (0 = unlimited)"
+          value: "{{ args.max_tokens }}"
+          if: "{{ args.max_tokens > 0 }}"
         # Special case:
         # Pass arbitrary runtime arguments to llama-server
         - name: ""
@@ -92,3 +96,25 @@ commands:
       name: "llama-server with chat"
       binary: "llama-server"
       options: *serve_run_options
+  - name: perplexity
+    inference_engine:
+      name: "llama-perplexity"
+      binary: "llama-perplexity"
+      options: &bench_perplexity_options
+        - name: "--model"
+          description: "The AI model to run"
+          value: "{{ model.model_path }}"
+        - name: "-ngl"
+          description: "Number of layers to offload to the GPU if available"
+          value: "{{ 999 if args.ngl < 0 else args.ngl }}"
+        - name: "-ngld"
+          description: "Number of layers to offload to the GPU if available"
+          value: "{{ None if not args.model_draft else 999 if args.ngl < 0 else args.ngl }}"
+        - name: "--threads"
+          description: "Number of Threads to use during generation"
+          value: "{{ args.threads }}"
+  - name: bench
+    inference_engine:
+      name: "llama-bench"
+      binary: "llama-bench"
+      options: *bench_perplexity_options
