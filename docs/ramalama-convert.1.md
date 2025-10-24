@@ -26,14 +26,15 @@ Print usage message
 #### **--network**=*none*
 sets the configuration for network namespaces when handling RUN instructions
 
-#### **--type**=*raw* | *car*
+#### **--type**="artifact" | *raw* | *car*
 
-type of OCI Model Image to convert.
+Convert the MODEL to the specified OCI Object
 
-| Type | Description                                                   |
-| ---- | ------------------------------------------------------------- |
-| car  | Includes base image with the model stored in a /models subdir |
-| raw  | Only the model and a link file model.file to it stored at /   |
+| Type     | Description                                                   |
+| -------- | ------------------------------------------------------------- |
+| artifact | Store AI Models as artifacts                                  |
+| car      | Traditional OCI image including base image with the model stored in a /models subdir |
+| raw      | Traditional OCI image including only the model and a link file `model.file` pointed at it stored at /   |
 
 ## EXAMPLE
 

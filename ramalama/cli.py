@@ -693,11 +693,12 @@ def convert_parser(subparsers):
     add_network_argument(parser)
     parser.add_argument(
         "--type",
-        default="raw",
-        choices=["car", "raw"],
+        default=CONFIG.convert_type,
+        choices=["artifact", "car", "raw"],
         help="""\
 type of OCI Model Image to push.
 
+Model "artifact" is an OCI artifact.
 Model "car" includes base image with the model stored in a /models subdir.
 Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
@@ -737,11 +738,12 @@ def push_parser(subparsers):
     add_network_argument(parser)
     parser.add_argument(
         "--type",
-        default="raw",
-        choices=["car", "raw"],
+        default=CONFIG.convert_type,
+        choices=["artifact", "car", "raw"],
         help="""\
 type of OCI Model Image to push.
 
+Model "artifact" is an OCI artifact.
 Model "car" includes base image with the model stored in a /models subdir.
 Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
@@ -769,13 +771,15 @@ def _get_source_model(args):
 
 
 def push_cli(args):
-    source_model = _get_source_model(args)
     target = args.SOURCE
     if args.TARGET:
+        source_model = _get_source_model(args)
         target = shortnames.resolve(args.TARGET)
         if not target:
             target = args.TARGET
     target_model = New(target, args)
+    if not args.TARGET:
+        source_model = target_model
 
     try:
         target_model.push(source_model, args)
@@ -1367,7 +1371,11 @@ def _rm_model(models, args):
 
         try:
             m = New(model, args)
-            m.remove(args)
+            # Don't ignore missing so that we attempt OCI as well.
+            newargs = args
+            newargs.ignore = False
+            m.remove(newargs)
+            continue
         except KeyError as e:
             for prefix in MODEL_TYPES:
                 if model.startswith(prefix + "://"):
@@ -1377,11 +1385,10 @@ def _rm_model(models, args):
                 # attempt to remove as a container image
                 m = TransportFactory(model, args, ignore_stderr=True).create_oci()
                 m.remove(args)
-                return
+                continue
             except Exception:
-                pass
-            if not args.ignore:
-                raise e
+                if not args.ignore:
+                    raise e
 
 
 def rm_cli(args):
