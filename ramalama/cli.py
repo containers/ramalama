@@ -304,6 +304,8 @@ def configure_subcommands(parser):
     stop_parser(subparsers)
     version_parser(subparsers)
     daemon_parser(subparsers)
+    export_parser(subparsers)
+    import_parser(subparsers)
 
 
 def parse_arguments(parser):
@@ -1309,6 +1311,39 @@ def daemon_run_cli(args):
     from ramalama.daemon.daemon import run
 
     run(host=args.host, port=int(args.port), model_store_path=args.store)
+
+
+def export_parser(subparsers):
+    parser: ArgumentParserWithDefaults = subparsers.add_parser("export", help="export the model store as tarball")
+    parser.add_argument(
+        "--output",
+        default="/var/tmp/",
+        help="output directory to place the tarball",
+    )
+    parser.add_argument(
+        "--filename",
+        default="ramalama.tar.gz",
+        help="name of the tarball",
+    )
+    parser.set_defaults(func=export_cli)
+
+
+def export_cli(args):
+    GlobalModelStore(args.store).tar_export(Path(args.output), args.filename)
+
+
+def import_parser(subparsers):
+    parser: ArgumentParserWithDefaults = subparsers.add_parser("import", help="import a model store tarball")
+    parser.add_argument(
+        "--input",
+        help="path to the model store tarball to import",
+        required=True,
+    )
+    parser.set_defaults(func=import_cli)
+
+
+def import_cli(args):
+    GlobalModelStore(args.store).tar_import(Path(args.input))
 
 
 def version_parser(subparsers):
