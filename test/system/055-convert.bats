@@ -17,6 +17,20 @@ load helpers
    fi
 }
 
+@test "ramalama convert default quantization mode" {
+    run_ramalama convert --help
+    is "$output" ".*GGUF quantization format. If specified without value, Q4_K_M is used.*"
+
+    conf=$RAMALAMA_TMPDIR/ramalama.conf
+    cat >$conf <<EOF
+[ramalama]
+gguf_quantization_mode="Q5_0"
+EOF
+
+    RAMALAMA_CONFIG=${conf} run_ramalama convert --help
+    is "$output" ".*GGUF quantization format. If specified without value, Q5_0 is used.*"
+}
+
 @test "ramalama convert file to image" {
     skip_if_nocontainer
     # Requires the -rag images which are not available on these arches yet
