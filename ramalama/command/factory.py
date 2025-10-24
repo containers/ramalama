@@ -77,7 +77,7 @@ class CommandFactory:
 
     @staticmethod
     def eval_stmt(stmt: str, ctx: context.RamalamaCommandContext) -> Any:
-        if not (stmt.startswith("{{") and stmt.endswith("}}")):
+        if not ("{{" in stmt and "}}" in stmt):
             return stmt
 
         return jinja2.Template(stmt).render(

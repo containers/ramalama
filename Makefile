@@ -176,10 +176,10 @@ bats-image:
 	podman inspect $(BATS_IMAGE) &> /dev/null || \
 		podman build -t $(BATS_IMAGE) -f container-images/bats/Containerfile .
 
-bats-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
+bats-in-container e2e-tests-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
 
 %-in-container: bats-image
-	podman run -it --rm \
+	podman run --rm \
 		--userns=keep-id:size=200000 \
 		--security-opt label=disable \
 		--security-opt=mask=/sys/bus/pci/drivers/i915 \
@@ -237,6 +237,11 @@ test: tests
 
 .PHONY: tests
 tests: unit-tests end-to-end-tests
+
+.PHONY: rag-requirements
+rag-requirements:
+	touch container-images/common/requirements-rag.in
+	make -C container-images/common rag-requirements
 
 .PHONY: clean
 clean:

@@ -1,117 +1,53 @@
 #!/bin/bash
 
-available() {
-  command -v "$1" >/dev/null
+install_pkgs() {
+    local pkgs=("git-core" "libglvnd-glx")
+
+    if [ "$backend" = "cu128" ]; then
+        pkgs+=("python3.12" "python3.12-devel" "libcudnn9-devel-cuda-12" "libcusparselt0" "cuda-cupti-12-*")
+        ln -sf python3.12 /usr/bin/python3
+    elif [ "$backend" = "rocm6.3" ]; then
+        pkgs+=("python3" "python3-devel" "uv" "rocm-core" "hipblas" "rocblas" "rocm-hip")
+    elif [ "$backend" = "xpu" ]; then
+        pkgs+=("python3" "python3-devel" "uv" "oneapi-level-zero" "intel-level-zero")
+    elif [ "$backend" = "cpu" ]; then
+        pkgs+=("python3" "python3-devel" "uv")
+    else
+        echo "Unsupported torch backend: $backend"
+        exit 1
+    fi
+
+    dnf -y --nodocs --setopt=install_weak_deps=false install "${pkgs[@]}"
+    dnf -y clean all
 }
 
-python_version() {
-  pyversion=$(python3 --version)
-  # $2 is empty when no Python is installed, so just install python3
-  if [ -n "$pyversion" ]; then
-      string="$pyversion
-Python 3.10"
-      if [ "$string" == "$(sort --version-sort <<< "$string")" ]; then
-	  echo "python3.11"
-	  return
-      fi
-  fi
-
-  echo "python3"
-}
-
-version_greater() {
-    string="$1
-$2"
-    [ "$string" != "$(sort --version-sort <<< "$string")" ]
-}
-
-update_python() {
-    if available dnf; then
-        dnf update -y --allowerasing --nobest
-        dnf install -y "${python}" "${python}-pip" "${python}-devel" "${pkgs[@]}"
-        if [[ "${python}" == "python3.11" ]]; then
-            ln -sf /usr/bin/python3.11 /usr/bin/python3
-        fi
-        rm -rf /usr/local/python3.10
-    elif available apt-get; then
-        apt-get update
-        apt-get install -y "${python}" "${python}-pip" "${python}-dev" "${pkgs[@]}"
+install_requirements() {
+    if [ "$backend" = "cu128" ]; then
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        # shellcheck disable=SC1091
+        source /root/.local/bin/env
+    fi
+    uv venv "$VIRTUAL_ENV"
+    if [ -f "/var/tmp/requirements-rag-$backend-$(uname -m).txt" ]; then
+        uv pip sync "/var/tmp/requirements-rag-$backend-$(uname -m).txt"
+    else
+        uv pip sync "/var/tmp/requirements-rag-$backend.txt"
     fi
 }
 
-docling() {
-    case $1 in
-        cuda)
-            PYTORCH_DIR="cu128"
-            ;;
-        rocm)
-            PYTORCH_DIR="rocm6.3"
-            ;;
-        *)
-            PYTORCH_DIR="cpu"
-            ;;
-    esac
-    ${python} -m pip install docling docling-core accelerate --extra-index-url "https://download.pytorch.org/whl/$PYTORCH_DIR"
-    # Preloads models (assumes its installed from container_build.sh)
-    doc2rag load
-}
-
-rag() {
-    ${python} -m pip install wheel qdrant_client pymilvus fastembed openai fastapi uvicorn
-    rag_framework load
-}
-
-to_gguf() {
-    ${python} -m pip install "numpy~=1.26.4" "sentencepiece~=0.2.1" "transformers>=4.45.1,<5.0.0" \
-              "git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py" \
-              "protobuf>=5.27.2,<6.0.0" "mistral-common>=1.8.3"
+load_models() {
+    uv run rag_framework load
+    uv run doc2rag load
 }
 
 main() {
     set -exu -o pipefail
+    local backend="${1-cpu}"
 
-    # shellcheck disable=SC1091
-    source /etc/os-release
-
-    # caching in a container build is unhelpful, and can cause errors
-    export PIP_NO_CACHE_DIR=1
-
-    local arch
-    arch="$(uname -m)"
-    local gpu="${1-cpu}"
-    local python
-    python=$(python_version)
-    local pkgs
-    if available dnf; then
-        pkgs=("git-core" "gcc" "gcc-c++" "cmake" "libglvnd-glx")
-    else
-        pkgs=("git" "gcc" "g++" "cmake" "libgl1" "libglib2.0-0")
-    fi
-    if [ "${gpu}" = "cuda" ]; then
-        pkgs+=("libcudnn9-devel-cuda-12" "libcusparselt0" "cuda-cupti-12-*")
-    fi
-
-    update_python
-    to_gguf
-
-    # Temporarily disable build for s390x
-    if [[ "$arch" != "s390x" ]]; then
-        rag
-        docling "${gpu}"
-    else
-        echo "skipping rag and docling build for s390x architecture: build temporarily disabled."
-    fi
-
-    if available dnf; then
-        dnf -y clean all
-        rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9* /root/.cache \
-        /root/buildinfo
-    elif available apt-get; then
-        apt-get clean
-        rm -rf /var/lib/apt/lists/*
-    fi
+    install_pkgs
+    install_requirements
+    load_models
     ldconfig
 }
 
 main "$@"
-

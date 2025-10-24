@@ -10,7 +10,7 @@ FROM quay.io/fedora/fedora:42
 COPY --from=builder /tmp/install/ /usr/
 COPY container-images/intel-gpu/oneAPI.repo /etc/yum.repos.d/
 
-RUN dnf install -y procps-ng python3 python3-pip python3-devel \
+RUN dnf install -y procps-ng intel-oneapi-runtime-mkl intel-oneapi-mkl-sycl-dft \
       intel-level-zero oneapi-level-zero intel-compute-runtime libcurl lspci \
       clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core \
       intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl gawk && \
@@ -18,15 +18,6 @@ RUN dnf install -y procps-ng python3 python3-pip python3-devel \
     chown 0:0 /etc/group && \
     chmod g=u /etc/passwd /etc/group /home
 
-RUN useradd llama-user -u 10000 -d /home/llama-user -s /bin/bash && \
-    groupmod -a -U llama-user render && \
-    groupmod -a -U llama-user video && \
-    chown llama-user:llama-user -R /home/llama-user
-
-USER 10000
-
 COPY --chmod=755 container-images/intel-gpu/entrypoint.sh /usr/bin
 
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
-
-CMD [ "tail", "-f", "/dev/null" ]

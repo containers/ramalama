@@ -17,6 +17,7 @@ Python 3.10"
 
 dnf_install_intel_gpu() {
   local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel"
+    "intel-oneapi-mkl-devel" "intel-oneapi-mkl-sycl-distributed-dft-devel"
     "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero"
     "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
   dnf install -y "${intel_rpms[@]}"

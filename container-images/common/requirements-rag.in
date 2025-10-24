@@ -1,0 +1,24 @@
+# requirements for convert_hf_to_gguf.py
+git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py
+mistral-common
+numpy
+protobuf
+sentencepiece
+torch
+transformers
+
+# requirements for rag_framework
+aiodns
+aiohttp
+fastapi
+fastembed
+openai[aiohttp]
+pydantic
+pymilvus[milvus_lite]
+qdrant_client
+uvicorn
+
+# requirements for doc2rag
+accelerate
+docling
+docling-core

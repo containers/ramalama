@@ -15,6 +15,7 @@ class RamalamaArgsContext:
         self.ctx_size: Optional[int] = None
         self.debug: Optional[bool] = None
         self.host: Optional[str] = None
+        self.gguf: Optional[str] = None
         self.logfile: Optional[str] = None
         self.max_tokens: Optional[int] = None
         self.model_draft: Optional[str] = None
@@ -35,6 +36,7 @@ class RamalamaArgsContext:
         ctx.ctx_size = getattr(args, "context", None)
         ctx.debug = getattr(args, "debug", None)
         ctx.host = getattr(args, "host", None)
+        ctx.gguf = getattr(args, "gguf", None)
         ctx.logfile = getattr(args, "logfile", None)
         ctx.max_tokens = getattr(args, "max_tokens", None)
         ctx.model_draft = getattr(args, "model_draft", None)
@@ -46,6 +48,46 @@ class RamalamaArgsContext:
         ctx.thinking = getattr(args, "thinking", None)
         ctx.threads = getattr(args, "threads", None)
         ctx.webui = getattr(args, "webui", None)
+        return ctx
+
+
+class RamalamaRagGenArgsContext:
+
+    def __init__(self):
+        self.debug: bool | None = None
+        self.format: str | None = None
+        self.ocr: bool | None = None
+        self.inputdir: str | None = None
+        self.paths: list[str] | None = None
+        self.urls: list[str] | None = None
+
+    @staticmethod
+    def from_argparse(args: argparse.Namespace) -> "RamalamaRagGenArgsContext":
+        ctx = RamalamaRagGenArgsContext()
+        ctx.debug = getattr(args, "debug", None)
+        ctx.format = getattr(args, "format", None)
+        ctx.ocr = getattr(args, "ocr", None)
+        ctx.inputdir = getattr(args, "inputdir", None)
+        ctx.paths = getattr(args, "PATHS", None)
+        ctx.urls = getattr(args, "urls", None)
+        return ctx
+
+
+class RamalamaRagArgsContext:
+
+    def __init__(self):
+        self.debug: bool | None = None
+        self.port: str | None = None
+        self.model_host: str | None = None
+        self.model_port: str | None = None
+
+    @staticmethod
+    def from_argparse(args: argparse.Namespace) -> "RamalamaRagArgsContext":
+        ctx = RamalamaRagArgsContext()
+        ctx.debug = getattr(args, "debug", None)
+        ctx.port = getattr(args, "port", None)
+        ctx.model_host = getattr(args, "model_host", None)
+        ctx.model_port = getattr(args, "model_port", None)
         return ctx
 
 
@@ -105,11 +147,21 @@ class RamalamaCommandContext:
 
     @staticmethod
     def from_argparse(cli_args: argparse.Namespace) -> "RamalamaCommandContext":
-        args = RamalamaArgsContext.from_argparse(cli_args)
+        if cli_args.subcommand == "rag":
+            args = RamalamaRagGenArgsContext.from_argparse(cli_args)
+        elif cli_args.subcommand in ("run --rag", "serve --rag"):
+            args = RamalamaRagArgsContext.from_argparse(cli_args)
+        else:
+            args = RamalamaArgsContext.from_argparse(cli_args)
         should_generate = getattr(cli_args, "generate", None) is not None
         dry_run = getattr(cli_args, "dryrun", False)
         is_container = getattr(cli_args, "container", True)
-        model = RamalamaModelContext(New(cli_args.MODEL, cli_args), is_container, should_generate, dry_run)
+        if hasattr(cli_args, "MODEL"):
+            model = RamalamaModelContext(New(cli_args.MODEL, cli_args), is_container, should_generate, dry_run)
+        elif hasattr(cli_args, "model"):
+            model = cli_args.model
+        else:
+            model = None
         host = RamalamaHostContext(
             is_container,
             check_nvidia() is None,

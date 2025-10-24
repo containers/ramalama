@@ -1,8 +1,23 @@
-ARG PARENT
+ARG PARENT=quay.io/fedora/fedora:42
 FROM $PARENT
 
-ARG GPU
+ARG TORCH_BACKEND=cpu
 
-USER root
-RUN /usr/bin/build_rag.sh "$GPU"
-ENTRYPOINT []
+ENV VIRTUAL_ENV="/opt/venv" \
+    PATH="/opt/venv/bin:$PATH" \
+    UV_NO_CACHE=1 \
+    UV_TORCH_BACKEND=$TORCH_BACKEND \
+    HF_HOME=/var/cache/huggingface \
+    FASTEMBED_CACHE_PATH=/var/cache/fastembed
+
+COPY container-images/scripts/build_rag.sh \
+     container-images/scripts/doc2rag \
+     container-images/scripts/rag_framework \
+     /usr/bin/
+RUN curl -fsSL -o /usr/bin/convert_hf_to_gguf.py \
+    https://github.com/ggml-org/llama.cpp/raw/refs/heads/master/convert_hf_to_gguf.py && \
+    chmod 755 /usr/bin/convert_hf_to_gguf.py
+COPY container-images/common/requirements-rag-$TORCH_BACKEND* \
+     /var/tmp/
+
+RUN build_rag.sh $TORCH_BACKEND

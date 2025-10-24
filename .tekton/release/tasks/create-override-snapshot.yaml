@@ -252,7 +252,7 @@ spec:
 
           @property
           def is_allowed_event(self):
-              return self.event_type in ("push", "incoming")
+              return self.event_type in ("push", "incoming", "pull_request")
 
           @property
           def valid(self):

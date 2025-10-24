@@ -161,6 +161,10 @@ Pull image policy. The default is **missing**.
 #### **--rag**=
 Specify path to Retrieval-Augmented Generation (RAG) database or an OCI Image containing a RAG database
 
+#### **--rag-image**=
+The image to use to process the RAG database specified by the `--rag` option. The image must contain the `/usr/bin/rag_framework` executable, which
+will create a proxy which embellishes client requests with RAG data before passing them on to the LLM, and returns the responses.
+
 #### **--runtime-args**="*args*"
 Add *args* to the runtime (llama.cpp or vllm) invocation.
 

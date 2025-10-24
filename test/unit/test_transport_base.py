@@ -6,7 +6,8 @@ import pytest
 
 from ramalama.command.factory import assemble_command
 from ramalama.common import MNT_DIR
-from ramalama.transports.base import Transport, compute_serving_port
+from ramalama.config import DEFAULT_PORT, DEFAULT_PORT_RANGE
+from ramalama.transports.base import Transport, compute_ports, compute_serving_port
 from ramalama.transports.oci import OCI
 from ramalama.transports.transport_factory import TransportFactory
 
@@ -84,6 +85,32 @@ def test_extract_model_identifiers(model_input: str, expected_name: str, expecte
     assert name == expected_name
     assert tag == expected_tag
     assert orga == expected_orga
+
+
+def test_compute_ports():
+    res = compute_ports()
+    assert type(res) is list
+    assert len(res) == (DEFAULT_PORT_RANGE[1] + 1 - DEFAULT_PORT_RANGE[0])
+    for port in range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1):
+        assert port in res
+
+
+@pytest.mark.parametrize(
+    "exclude,count,first",
+    [
+        (None, 11, DEFAULT_PORT),
+        ([], 11, DEFAULT_PORT),
+        ([str(DEFAULT_PORT)], 10, DEFAULT_PORT + 1),
+        ([str(DEFAULT_PORT), str(DEFAULT_PORT + 1)], 9, DEFAULT_PORT + 2),
+        (list(map(str, range(*DEFAULT_PORT_RANGE))), 1, DEFAULT_PORT_RANGE[1]),
+    ],
+)
+def test_compute_ports_exclude(exclude: list, count: int, first: int):
+    res = compute_ports(exclude=exclude)
+    assert len(res) == count
+    assert res[0] == first
+    for port in exclude or []:
+        assert port not in res
 
 
 @pytest.mark.parametrize(
