@@ -141,6 +141,8 @@ The default can be overridden in the ramalama.conf file.
 | [ramalama-containers(1)](ramalama-containers.1.md)|list all RamaLama containers|
 | [ramalama-convert(1)](ramalama-convert.1.md)      |convert AI Models from local storage to OCI Image|
 | [ramalama-daemon(1)](ramalama-daemon.1.md)        |run a RamaLama REST server|
+| [ramalama-export(1)](ramalama-export.1.md)        |export all AI Models to a tarball|
+| [ramalama-import(1)](ramalama-import.1.md)        |import an tarball of AI Models|
 | [ramalama-info(1)](ramalama-info.1.md)            |display RamaLama configuration information|
 | [ramalama-inspect(1)](ramalama-inspect.1.md)      |inspect the specified AI Model|
 | [ramalama-list(1)](ramalama-list.1.md)            |list all downloaded AI Models|

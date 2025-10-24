@@ -1,4 +1,6 @@
 import os
+import pathlib
+import tarfile
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List
@@ -97,3 +99,27 @@ class GlobalModelStore:
     #    3. for empty folders -> delete
     def cleanup(self):
         pass
+
+    def tar_export(self, output_directory: pathlib.Path, tar_name: str):
+        if not output_directory.exists():
+            raise FileNotFoundError(f"Directory not found: '{output_directory.as_posix()}'")
+        if not output_directory.is_dir():
+            raise NotADirectoryError(f"Output path '{output_directory}' not a directory")
+
+        target_path = os.path.join(output_directory.as_posix(), tar_name)
+        print(f"Exporting store '{self.path}' to '{target_path}'")
+        with tarfile.open(target_path, "w:gz") as tar:
+            for entry in os.listdir(self.path):
+                p = pathlib.Path(os.path.join(self.path), entry)
+                if not p.is_dir():
+                    continue
+                print(f"   Processing '{p.as_posix()}'...")
+                tar.add(p, arcname=os.path.basename(p))
+
+    def tar_import(self, tarball_path: pathlib.Path):
+        if not tarball_path.exists():
+            raise FileNotFoundError(f"tarball not found: '{tarball_path.as_posix()}'")
+
+        print(f"Importing '{tarball_path.as_posix()}' into '{self.path}")
+        with tarfile.open(tarball_path, "r:gz") as tar:
+            tar.extractall(self.path)
