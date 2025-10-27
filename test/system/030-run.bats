@@ -24,6 +24,7 @@ EOF
 	is "$output" ".*--cache-reuse 256" "verify cache-reuse is being set"
 	assert "$output" !~ ".*--ctx-size" "assert ctx-size is not show by default"
 	assert "$output" !~ ".*--seed" "assert seed does not show by default"
+	run_ramalama -q --dryrun run ${MODEL} < /dev/null
 	assert "$output" !~ ".*-t -i" "assert -t -i not present without tty"
 
 	run_ramalama -q --dryrun run ${MODEL} "what's up doc?"
