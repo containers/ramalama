@@ -138,18 +138,18 @@ EOF
 @test "ramalama run --image bogus" {
     skip_if_nocontainer
     skip_if_darwin
-    skip_if_docker
     run_ramalama pull tiny
     run_ramalama 22 run --image bogus --pull=never tiny
-    is "$output" ".*Error: bogus: image not known"
+    is "$output" "\(Error: bogus: image not known\|docker: Error response from daemon: No such image: bogus:latest\)"
+    is "$output" ".*Error: Failed to serve model TinyLlama-1.1B-Chat-v1.0-GGUF, for ramalama run command"
     run_ramalama 22 run --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
-    is "$output" ".*Error: quay.io/ramalama/rag: image not know"
+    is "$output" "\(Error: quay.io/ramalama/rag: image not known\|Error response from daemon: No such image: quay.io/ramalama/rag:latest\)"
+    is "$output" ".*Error: quay.io/ramalama/rag does not exist"
 }
 
 @test "ramalama run with rag" {
     skip_if_nocontainer
     skip_if_darwin
-    skip_if_docker
     run_ramalama --dryrun run --rag quay.io/ramalama/rag --pull=never tiny
     is "$output" ".*quay.io/ramalama/rag"
 
