@@ -135,7 +135,7 @@ def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
         raise
 
 
-def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_all=False, encoding=None):
+def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_all=False, encoding=None, env=None):
     """
     Run the given command arguments.
 
@@ -151,6 +151,7 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     logger.debug(f"Working directory: {cwd}")
     logger.debug(f"Ignore stderr: {ignore_stderr}")
     logger.debug(f"Ignore all: {ignore_all}")
+    logger.debug(f"env: {env}")
 
     serr = None
     if ignore_all or ignore_stderr:
@@ -160,7 +161,10 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     if ignore_all:
         sout = subprocess.DEVNULL
 
-    result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr, encoding=encoding)
+    if env:
+        env = os.environ | env
+
+    result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr, encoding=encoding, env=env)
     logger.debug(f"Command finished with return code: {result.returncode}")
 
     return result
