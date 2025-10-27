@@ -20,6 +20,7 @@ class VectorDBEngine(Engine):
 
     def __init__(self, args):
         super().__init__(args)
+        self.add_user()
 
     def add_input(self, path: str) -> None:
         if os.path.exists(path):
@@ -28,6 +29,13 @@ class VectorDBEngine(Engine):
             self.add_volume(fpath, f"{INPUT_DIR}/{input_name}")
         else:
             raise ValueError(f"{path} does not exist")
+
+    def add_user(self):
+        if self.use_docker:
+            # Run the command in the container with the same uid as the current user.
+            # Otherwise the files written to the tempdir will be owned by root and
+            # they will not be readable by the subsequent "docker build".
+            self.add_args("--user", str(os.geteuid()))
 
 
 class Rag:

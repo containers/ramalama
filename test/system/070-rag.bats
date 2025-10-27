@@ -10,6 +10,11 @@ load helpers
     run_ramalama --dryrun rag $HTTPS_FILE quay.io/ramalama/myrag:1.2
     is "$output" ".*doc2rag --format qdrant /output $HTTPS_FILE " "Expected to see https command"
     assert "$output" !~ ".*--network none" "Expected to not use network"
+    if not_docker; then
+        assert "$output" !~ ".*--user.*" "Expected no --user option"
+    else
+        assert "$output" =~ ".*--user.*" "Expected --user option"
+    fi
     run_ramalama --dryrun rag --format json $HTTPS_FILE quay.io/ramalama/myrag:1.2
     is "$output" ".*doc2rag --format json /output $HTTPS_FILE " "Expected to --format json option"
     run_ramalama --dryrun rag --format milvus $HTTPS_FILE quay.io/ramalama/myrag:1.2
@@ -39,7 +44,6 @@ load helpers
 
 @test "ramalama rag" {
     skip_if_nocontainer
-    skip_if_docker
     run_ramalama 22 -q rag bogus quay.io/ramalama/myrag:1.2
     is "$output" "Error: bogus does not exist" "Expected failure"
 
@@ -78,7 +82,6 @@ load helpers
 
 @test "ramalama rag README.md" {
     skip_if_nocontainer
-    skip_if_docker
     skip_if_ppc64le
     skip_if_s390x
     run_ramalama rag README.md https://github.com/containers/ramalama/blob/main/README.md https://github.com/containers/podman/blob/main/README.md quay.io/ramalama/myrag:1.2
