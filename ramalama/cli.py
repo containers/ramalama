@@ -719,11 +719,12 @@ def convert_parser(subparsers):
     )
     parser.add_argument(
         "--type",
-        default="raw",
-        choices=["car", "raw"],
+        default=CONFIG.convert_type,
+        choices=["artifact", "car", "raw"],
         help="""\
 type of OCI Model Image to push.
 
+Model "artifact" stores the AI Model as an OCI Artifact.
 Model "car" includes base image with the model stored in a /models subdir.
 Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
@@ -762,11 +763,12 @@ def push_parser(subparsers):
     add_network_argument(parser)
     parser.add_argument(
         "--type",
-        default="raw",
-        choices=["car", "raw"],
+        default=CONFIG.convert_type,
+        choices=["artifact", "car", "raw"],
         help="""\
 type of OCI Model Image to push.
 
+Model "artifact" stores the AI Model as an OCI Artifact.
 Model "car" includes base image with the model stored in a /models subdir.
 Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
@@ -1424,7 +1426,7 @@ def _rm_model(models, args):
         try:
             m = New(model, args)
             m.remove(args)
-        except KeyError as e:
+        except (KeyError, subprocess.CalledProcessError) as e:
             for prefix in MODEL_TYPES:
                 if model.startswith(prefix + "://"):
                     if not args.ignore:
