@@ -673,30 +673,36 @@ AccelImageArgs: TypeAlias = (
 )
 
 
-def accel_image(config: Config) -> str:
+def accel_image(config: Config, images: dict[str, str] = None, conf_key: str = "image") -> str:
     """
     Selects and the appropriate image based on config, arguments, environment.
+    "images" is a mapping of environment variable names to image names. If not specified, the
+    mapping from default config will be used.
+    "conf_key" is the configuration key that holds the configured value of the selected image.
+    If not specified, it defaults to "image".
     """
     # User provided an image via config
-    if config.is_set("image"):
-        return tagged_image(config.image)
+    if config.is_set(conf_key):
+        return tagged_image(getattr(config, conf_key))
+
+    if not images:
+        images = config.images
 
     if config.runtime == "vllm":
         return config.images["VLLM"]
 
     set_gpu_type_env_vars()
-    gpu_type = next(iter(get_gpu_type_env_vars()), None)
+    gpu_type = next(iter(get_gpu_type_env_vars()), "")
 
     # Get image based on detected GPU type
-    image = config.images.get(gpu_type or "", config.default_image)  # the or "" is just to keep mypy happy
+    image = images.get(gpu_type, getattr(config, f"default_{conf_key}"))
 
     # If the image from the config is specified by tag or digest, return it unmodified
     if ":" in image:
         return image
 
     # Special handling for CUDA images based on version - only if the image is the default CUDA image
-    cuda_image = config.images.get("CUDA_VISIBLE_DEVICES")
-    if image == cuda_image:
+    if conf_key == "image" and image == images.get("CUDA_VISIBLE_DEVICES"):
         try:
             image = select_cuda_image(config)
         except NotImplementedError as e:

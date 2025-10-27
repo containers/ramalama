@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 import pytest
 
@@ -13,7 +13,10 @@ from ramalama.transports.url import URL
 
 class Args:
     def __init__(
-        self, type: str = "raw", gguf: Optional[str] = None, carimage: str = "quay.io/ramalama/ramalama-rag:latest"
+        self,
+        type: str = "raw",
+        gguf: str | None = None,
+        carimage: str = "registry.access.redhat.com/ubi10-micro:latest",
     ):
         self.type = type
         self.carimage = carimage
@@ -154,4 +157,4 @@ def test__generate_containerfile(input: Input, expected_file_path: Path, monkeyp
 
     file = oci._generate_containerfile(input.source_model, input.args)
     with open(expected_file_path, "r") as expected_file:
-        assert file == expected_file.read()
+        assert file == expected_file.read().strip()

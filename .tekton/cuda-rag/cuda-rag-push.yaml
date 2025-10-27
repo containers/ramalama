@@ -25,12 +25,10 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/cuda-rag:{{revision}}
   - name: dockerfile
     value: container-images/common/Containerfile.rag
-  - name: parent-image
-    value: quay.io/redhat-user-workloads/ramalama-tenant/cuda:{{revision}}
   - name: build-args
     value:
-    - PARENT=quay.io/redhat-user-workloads/ramalama-tenant/cuda:{{revision}}
-    - GPU=cuda
+    - PARENT=docker.io/nvidia/cuda:12.8.1-devel-ubi9
+    - TORCH_BACKEND=cu128
   pipelineRef:
     name: push-pipeline
   timeouts:

@@ -33,7 +33,6 @@ from ramalama.model_inspect.safetensor_parser import SafetensorInfoParser
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.store import ModelStore
 from ramalama.quadlet import Quadlet
-from ramalama.rag import rag_image
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
 
@@ -301,15 +300,14 @@ class Transport(TransportBase):
 
         return genname()
 
+    def new_engine(self, args):
+        return Engine(args)
+
     def base(self, args, name):
-        # force accel_image to use -rag version. Drop TAG if it exists
-        # so that accel_image will add -rag to the image specification.
-        if getattr(args, "rag", None) and not getattr(args, "image_override", False):
-            args.image = rag_image(args.image)
         if self.type == "Ollama":
             args.UNRESOLVED_MODEL = args.MODEL
             args.MODEL = self.resolve_model()
-        self.engine = Engine(args)
+        self.engine = self.new_engine(args)
         if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
             self.engine.add(["-i"])
 
@@ -384,19 +382,20 @@ class Transport(TransportBase):
         # The Run command will first launch a daemonized service
         # and run chat to communicate with it.
 
-        if args.container:
-            args.name = self.get_container_name(args)
-
         args.noout = not args.debug
 
+        pid = self._fork_and_serve(args, server_cmd)
+        if pid:
+            return self._connect_and_chat(args, pid)
+
+    def _fork_and_serve(self, args, cmd: list[str]):
+        if args.container:
+            args.name = self.get_container_name(args)
         pid = os.fork()
         if pid == 0:
             # Child process - start the server
-            self._start_server(args, server_cmd)
-            return 0
-        else:
-            # Parent process - connect to server and start chat
-            return self._connect_and_chat(args, pid)
+            self._start_server(args, cmd)
+        return pid
 
     def _start_server(self, args, cmd: list[str]):
         """Start the server in the child process."""
@@ -407,9 +406,8 @@ class Transport(TransportBase):
 
     def _connect_and_chat(self, args, server_pid):
         """Connect to the server and start chat in the parent process."""
-        args.url = f"http://127.0.0.1:{args.port}"
+        args.url = f"http://127.0.0.1:{args.port}/v1"
         if getattr(args, "runtime", None) == "mlx":
-            args.url += "/v1"
             args.prefix = "🍏 > "
         args.pid2kill = ""
 
@@ -422,6 +420,12 @@ class Transport(TransportBase):
             chat.chat(args)
             return 0
 
+    def chat_operational_args(self, args):
+        return None
+
+    def wait_for_healthy(self, args):
+        wait_for_healthy(args, is_healthy)
+
     def _handle_container_chat(self, args, server_pid):
         """Handle chat for container-based execution."""
         _, status = os.waitpid(server_pid, 0)
@@ -430,7 +434,7 @@ class Transport(TransportBase):
 
         if not args.dryrun:
             try:
-                wait_for_healthy(args, is_healthy)
+                self.wait_for_healthy(args)
             except subprocess.TimeoutExpired as e:
                 logger.error(f"Failed to serve model {self.model_name}, for ramalama run command")
                 logger.error(f"{e}: logs: {e.output}")
@@ -439,7 +443,7 @@ class Transport(TransportBase):
         args.ignore = getattr(args, "dryrun", False)
         for i in range(6):
             try:
-                chat.chat(args)
+                chat.chat(args, self.chat_operational_args(args))
                 break
             except Exception as e:
                 if i >= 5:
@@ -515,7 +519,7 @@ class Transport(TransportBase):
             return
 
         if args.pull == "never":
-            raise ValueError(f"{args.MODEL} does not exists")
+            raise ValueError(f"{args.MODEL} does not exist")
 
         self.pull(args)
 
@@ -611,14 +615,6 @@ class Transport(TransportBase):
             self.generate_container_config(args, cmd)
             return
 
-        # Add rag chatbot
-        if getattr(args, "rag", None):
-            cmd = [
-                "bash",
-                "-c",
-                f"nohup {' '.join(cmd)} &> /tmp/llama-server.log & rag_framework run /rag/vector.db",
-            ]
-
         self.execute_command(cmd, args)
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
@@ -690,17 +686,17 @@ class Transport(TransportBase):
         perror(f"Trying to pull {model_name} ...")
 
 
-def compute_ports() -> list:
-    first_port = DEFAULT_PORT_RANGE[0]
-    last_port = DEFAULT_PORT_RANGE[1]
-    ports = list(range(first_port + 1, last_port + 1))
+def compute_ports(exclude: list[str] | None = None) -> list[int]:
+    exclude = exclude and set(map(int, exclude)) or set()
+    ports = list(sorted(set(range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1)) - exclude))
+    first_port = ports.pop(0)
     random.shuffle(ports)
     # try always the first port before the randomized others
     return [first_port] + ports
 
 
-def get_available_port_if_any() -> int:
-    ports = compute_ports()
+def get_available_port_if_any(exclude: list[str] | None = None) -> int:
+    ports = compute_ports(exclude=exclude)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         chosen_port = 0
         for target_port in ports:
@@ -715,13 +711,13 @@ def get_available_port_if_any() -> int:
         return chosen_port
 
 
-def compute_serving_port(args, quiet=False) -> str:
+def compute_serving_port(args, quiet: bool = False, exclude: list[str] | None = None) -> str:
     # user probably specified a custom port, don't override the choice
     if getattr(args, "port", None):
         target_port = args.port
     else:
         # otherwise compute a random serving port in the range
-        target_port = get_available_port_if_any()
+        target_port = get_available_port_if_any(exclude=exclude)
 
     if target_port == 0:
         raise IOError("no available port could be detected. Please ensure you have enough free ports.")

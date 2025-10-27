@@ -17,7 +17,7 @@ from ramalama.arg_types import ChatArgsType
 from ramalama.common import perror
 from ramalama.config import CONFIG
 from ramalama.console import EMOJI, should_colorize
-from ramalama.engine import dry_run, stop_container
+from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
 from ramalama.mcp.mcp_agent import LLMAgent
@@ -304,6 +304,10 @@ class RamaLamaShell(cmd.Cmd):
             "stream": True,
             "messages": self.conversation_history,
         }
+        if getattr(self.args, "temp", None):
+            data["temperature"] = float(self.args.temp)
+        if getattr(self.args, "max_tokens", None):
+            data["max_completion_tokens"] = self.args.max_tokens
         # For MLX runtime, omit explicit model to allow server default ("default_model")
         if getattr(self.args, "runtime", None) != "mlx" and self.args.model is not None:
             data["model"] = self.args.model
@@ -379,6 +383,8 @@ class RamaLamaShell(cmd.Cmd):
             args = copy.copy(self.args)
             args.ignore = True
             stop_container(args, self.args.name)
+            if extra_name := self.operational_args.name:
+                stop_container(args, extra_name)
 
     def loop(self):
         while True:
@@ -406,9 +412,9 @@ def alarm_handler(signum, frame):
     raise TimeoutException()
 
 
-def chat(args: ChatArgsType, operational_args: ChatOperationalArgs = ChatOperationalArgs()):
+def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None):
     if args.dryrun:
-        prompt = dry_run(args.ARGS)
+        prompt = " ".join(args.ARGS)
         print(f"\nramalama chat --color {args.color} --prefix  \"{args.prefix}\" --url {args.url} {prompt}")
         return
     if getattr(args, "keepalive", False):

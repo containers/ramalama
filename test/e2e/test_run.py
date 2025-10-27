@@ -304,8 +304,8 @@ def test_run_keepalive(shared_ctx_with_models, test_model):
                 "never",
                 "tiny",
             ],
-            125,
-            r".*Error: bogus1: image not known",
+            22,
+            r".*Error: quay.io/ramalama/testrag: image not known",
             id="non-existing-image-with-rag",
         ),
     ],
@@ -332,3 +332,6 @@ def test_run_with_rag():
             + ["--image", "quay.io/ramalama/ramalama:1.0", "--rag", "quay.io/ramalama/rag", "--pull", "never", "tiny"]
         )
         assert re.search(r".*quay.io/ramalama/ramalama:1.0", result_b)
+
+        result_c = ctx.check_output(["ramalama", "--debug", "--dryrun", "run", "--rag", "quay.io/ramalama/rag", "tiny"])
+        assert re.search(r".*rag_framework --debug serve", result_c)

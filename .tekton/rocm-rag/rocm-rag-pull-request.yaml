@@ -28,15 +28,12 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-d160-m7-8xlarge/amd64
+    - linux-d160-c8xlarge/amd64
   - name: dockerfile
     value: container-images/common/Containerfile.rag
-  - name: parent-image
-    value: quay.io/redhat-user-workloads/ramalama-tenant/rocm:on-pr-{{revision}}
   - name: build-args
     value:
-    - PARENT=quay.io/redhat-user-workloads/ramalama-tenant/rocm:on-pr-{{revision}}
-    - GPU=rocm
+    - TORCH_BACKEND=rocm6.3
   pipelineRef:
     name: pull-request-pipeline
   timeouts:

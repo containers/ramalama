@@ -25,12 +25,6 @@ spec:
     value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama-rag:{{revision}}
   - name: dockerfile
     value: container-images/common/Containerfile.rag
-  - name: parent-image
-    value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama:{{revision}}
-  - name: build-args
-    value:
-    - PARENT=quay.io/redhat-user-workloads/ramalama-tenant/ramalama:{{revision}}
-    - GPU=cpu
   pipelineRef:
     name: push-pipeline
   timeouts:

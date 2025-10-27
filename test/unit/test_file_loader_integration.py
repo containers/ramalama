@@ -253,19 +253,17 @@ class TestFileUploadChatIntegration:
             mock_args.ARGS = ["Please analyze:"]
             mock_args.dryrun = True
 
-            with patch('ramalama.chat.dry_run') as mock_dry_run:
-                with patch('builtins.print') as mock_print:
-                    chat(mock_args)
+            with patch('builtins.print') as mock_print:
+                chat(mock_args)
 
-                    # dry_run should only be called with ARGS, not the file content
-                    mock_dry_run.assert_called_once()
-                    call_args = ' '.join(mock_dry_run.call_args[0][0])
-                    assert call_args == "Please analyze:"
-                    # File content should not be in the dry_run call
-                    assert "Test content" not in call_args
-                    assert f"<!--start_document {tmp_file.name}-->" not in call_args
-
-                    mock_print.assert_called()
+                # print should only be called with ARGS, not the file content
+                mock_print.assert_called_once()
+                assert len(mock_print.call_args.args) == 1
+                call_args = mock_print.call_args.args[0]
+                assert call_args.endswith("Please analyze:")
+                # File content should not be in the dry_run call
+                assert "Test content" not in call_args
+                assert f"<!--start_document {tmp_file.name}-->" not in call_args
 
 
 class TestImageUploadChatIntegration:
