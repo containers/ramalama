@@ -27,8 +27,8 @@ def list_manifests(args: EngineArgType):
         "manifest=true",
         "--format",
         (
-            '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}",        "size":{{ .VirtualSize'
-            ' }}, "ID":"{{ .ID }}"},'
+            '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}",'
+            '"size":{{ .VirtualSize }}, "ID":"{{ .ID }}"},'
         ),
     ]
     output = run_cmd(conman_args).stdout.decode("utf-8").strip()
@@ -91,7 +91,7 @@ def list_models(args: EngineArgType):
         "--format",
         formatLine,
     ]
-    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+    output = run_cmd(conman_args, env={"TZ": "UTC"}).stdout.decode("utf-8").strip()
     if output == "":
         return []
 
