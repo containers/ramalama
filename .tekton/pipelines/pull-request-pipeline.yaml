@@ -132,6 +132,10 @@ spec:
       value: $(params.output-image).git
     - name: ociArtifactExpiresAfter
       value: $(params.image-expires-after)
+    - name: depth
+      value: "50"
+    - name: mergeTargetBranch
+      value: "true"
     runAfter:
     - init
     taskRef:
