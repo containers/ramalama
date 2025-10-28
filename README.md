@@ -834,7 +834,7 @@ $ cat /usr/share/ramalama/shortnames.conf
     $ ramalama login --token=XYZ
     ```
 
-    Logging in to Hugging Face requires the `huggingface-cli tool`. For installation and usage instructions, see the documentation of the [Hugging Face command line interface](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
+    Logging in to Hugging Face requires the `hf tool`. For installation and usage instructions, see the documentation of the [Hugging Face command line interface](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
 </details>
 
 ### [`ramalama-logout`](https://github.com/containers/ramalama/blob/main/docs/ramalama-logout.1.md)
