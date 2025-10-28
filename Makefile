@@ -10,7 +10,7 @@ PATH := $(PATH):$(HOME)/.local/bin
 MYPIP ?= pip
 IMAGE ?= ramalama
 PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-EXCLUDE_DIRS := .venv venv .tox
+EXCLUDE_DIRS := .venv venv .tox build
 EXCLUDE_OPTS := $(addprefix --exclude-dir=,$(EXCLUDE_DIRS))
 PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" $(EXCLUDE_OPTS) $(PROJECT_DIR) || true)
 BATS_IMAGE ?= localhost/bats:latest
@@ -146,8 +146,12 @@ ifeq ($(OS),Linux)
 	hack/xref-helpmsgs-manpages
 endif
 
+.PHONY: type-check
+type-check:
+	mypy $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test $(PROJECT_DIR)
+
 .PHONY: validate
-validate: codespell lint check-format man-check
+validate: codespell lint check-format man-check type-check
 
 .PHONY: pypi-build
 pypi-build:   clean
