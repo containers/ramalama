@@ -389,7 +389,7 @@ You can contribute by:
 
 * **Social Media:** Create tutorials, walkthroughs, or short posts.
 
-* **Workshops and Videos:** Organize or participate in events where others can learn to use RamaLama.
+* **Workshops:** Organize or participate in events where others can learn to use RamaLama.
 
 * **Case Studies:** Share production use cases that demonstrate RamaLama in action.
 
