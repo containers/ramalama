@@ -1,5 +1,8 @@
 #!/bin/bash
 
+DEFAULT_LLAMA_CPP_COMMIT="b52edd25586fabb70f0c21b274473b307cf14499"
+DEFAULT_WHISPER_COMMIT="c62adfbd1ecdaea9e295c72d672992514a2d887c"
+
 python_version() {
   local pyversion
   pyversion=$(python3 --version)
@@ -241,7 +244,6 @@ configure_common_flags() {
 }
 
 clone_and_build_whisper_cpp() {
-  local DEFAULT_WHISPER_COMMIT="4979e04f5dcaccb36057e059bbaed8a2f5288315"
   local whisper_cpp_commit="${WHISPER_CPP_PULL_REF:-$DEFAULT_WHISPER_COMMIT}"
   local whisper_flags=("${common_flags[@]}")
   whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
@@ -260,7 +262,6 @@ clone_and_build_whisper_cpp() {
 }
 
 clone_and_build_llama_cpp() {
-  local DEFAULT_LLAMA_CPP_COMMIT="3d4e86bbeb15f487d6da6174ba6191b7c212cc25"
   local llama_cpp_commit="${LLAMA_CPP_PULL_REF:-$DEFAULT_LLAMA_CPP_COMMIT}"
   local install_prefix
   install_prefix=$(set_install_prefix)
