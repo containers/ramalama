@@ -379,19 +379,15 @@ if possible.](#communications).
 
 ## Speaking and Advocacy
 
-Contributions to RamaLama aren’t limited to code! We encourage community members to share their RamaLama experiences. 
+Contributions to RamaLama aren't limited to code! We encourage community members to share their RamaLama experiences. 
 
 You can contribute by:
 
-* **Conference Talks and Meetups:** Present RamaLama at conferences, or meetups.
-
-* **Blog Posts and Articles:** Write about how you’re using RamaLama, implementation tips, or lessons learned.
-
-* **Social Media:** Create tutorials, walkthroughs, or short posts.
-
-* **Workshops:** Organize or participate in events where others can learn to use RamaLama.
-
-* **Case Studies:** Share production use cases that demonstrate RamaLama in action.
+* Conference Talks and Meetups: Present RamaLama at conferences or meetups.
+* Blog Posts and Articles: Write about how you're using RamaLama, implementation tips, or lessons learned.
+* Social Media: Create tutorials, walkthroughs, or short posts.
+* Workshops: Organize or participate in events where others can learn to use RamaLama.
+* Case Studies: Share production use cases that demonstrate RamaLama in action.
 
 These activities help grow the RamaLama community, inspire new contributors, and make the project more visible and approachable for everyone.
 
