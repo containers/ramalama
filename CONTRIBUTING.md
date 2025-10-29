@@ -10,6 +10,7 @@ Below summarizes the processes that we follow.
 * [Working On Issues](#working-on-issues)
 * [Contributing To RamaLama](#contributing-to-ramalama-1)
 * [Submitting Pull Requests](#submitting-pull-requests)
+* [Speaking and Advocacy](#speaking-and-advocacy)
 * [Communications](#communications)
 * [Code of Conduct](#code-of-conduct)
 
@@ -375,6 +376,20 @@ or persistently faulty condition.  This risks additional bugs being introduced
 and further complication of necessary corrective measures.  Most likely people
 are aware and working on this, but it doesn't hurt [to confirm and/or try and help
 if possible.](#communications).
+
+## Speaking and Advocacy
+
+Contributions to RamaLama aren't limited to code! We encourage community members to share their RamaLama experiences. 
+
+You can contribute by:
+
+* Conference Talks and Meetups: Present RamaLama at conferences or meetups.
+* Blog Posts and Articles: Write about how you're using RamaLama, implementation tips, or lessons learned.
+* Social Media: Create tutorials, walkthroughs, or short posts.
+* Workshops: Organize or participate in events where others can learn to use RamaLama.
+* Case Studies: Share production use cases that demonstrate RamaLama in action.
+
+These activities help grow the RamaLama community, inspire new contributors, and make the project more visible and approachable for everyone.
 
 ## Communications
 
