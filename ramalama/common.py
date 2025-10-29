@@ -24,6 +24,8 @@ from ramalama.logger import logger
 from ramalama.version import version
 
 if TYPE_CHECKING:
+    from argparse import Namespace
+
     from ramalama.arg_types import SUPPORTED_ENGINES, ContainerArgType
     from ramalama.config import Config
     from ramalama.transports.base import Transport
@@ -170,7 +172,7 @@ def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_
     return result
 
 
-def populate_volume_from_image(model: Transport, output_filename: str, src_model_dir: str = "models"):
+def populate_volume_from_image(model: Transport, args: Namespace, output_filename: str, src_model_dir: str = "models"):
     """Builds a Docker-compatible mount string that mirrors Podman image mounts for model assets.
 
     This function requires the model
@@ -181,17 +183,17 @@ def populate_volume_from_image(model: Transport, output_filename: str, src_model
     src = f"src-{vol_hash}"
 
     # Ensure volume exists
-    run_cmd([model.conman, "volume", "create", volume], ignore_stderr=True)
+    run_cmd([args.engine, "volume", "create", volume], ignore_stderr=True)
 
     # Fresh source container to export from
-    run_cmd([model.conman, "rm", "-f", src], ignore_stderr=True)
-    run_cmd([model.conman, "create", "--name", src, model.model])
+    run_cmd([args.engine, "rm", "-f", src], ignore_stderr=True)
+    run_cmd([args.engine, "create", "--name", src, model.model])
 
     try:
         # Stream whole rootfs -> extract only models/<basename>
-        export_cmd = [model.conman, "export", src]
+        export_cmd = [args.engine, "export", src]
         untar_cmd = [
-            model.conman,
+            args.engine,
             "run",
             "--rm",
             "-i",
@@ -213,13 +215,13 @@ def populate_volume_from_image(model: Transport, output_filename: str, src_model
             subprocess.Popen(export_cmd, stdout=subprocess.PIPE) as p_out,
             subprocess.Popen(untar_cmd, stdin=p_out.stdout) as p_in,
         ):
-            p_out.stdout.close()
+            p_out.stdout.close()  # type: ignore
             rc_in = p_in.wait()
             rc_out = p_out.wait()
             if rc_in != 0 or rc_out != 0:
                 raise subprocess.CalledProcessError(rc_in or rc_out, untar_cmd if rc_in else export_cmd)
     finally:
-        run_cmd([model.conman, "rm", "-f", src], ignore_stderr=True)
+        run_cmd([args.engine, "rm", "-f", src], ignore_stderr=True)
 
     return volume
 
@@ -673,7 +675,7 @@ AccelImageArgs: TypeAlias = (
 )
 
 
-def accel_image(config: Config, images: dict[str, str] = None, conf_key: str = "image") -> str:
+def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: str = "image") -> str:
     """
     Selects and the appropriate image based on config, arguments, environment.
     "images" is a mapping of environment variable names to image names. If not specified, the

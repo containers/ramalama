@@ -350,7 +350,7 @@ class Transport(TransportBase):
                 mount_cmd = f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"
             elif self.engine.use_docker:
                 output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
-                volume = populate_volume_from_image(self, os.path.basename(output_filename))
+                volume = populate_volume_from_image(self, args, os.path.basename(output_filename))
                 mount_cmd = f"--mount=type=volume,src={volume},dst={MNT_DIR},readonly"
             else:
                 raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
