@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -56,7 +57,7 @@ class ModelResponse:
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
-def model_list_to_dict(models: list[ModelResponse]) -> list[dict]:
+def model_list_to_dict(models: list[ModelResponse]) -> dict[str, list[dict[str, Any]]]:
     return {"models": [model.to_dict() for model in models]}
 
 
@@ -96,7 +97,7 @@ class RunningModelResponse:
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
-def running_model_list_to_dict(models: list[RunningModelResponse]) -> list[dict]:
+def running_model_list_to_dict(models: list[RunningModelResponse]) -> dict[str, list[dict[str, Any]]]:
     return {"models": [model.to_dict() for model in models]}
 
 

@@ -150,6 +150,7 @@ class Transport(TransportBase):
         self._model_store: Optional[ModelStore] = None
 
         self.default_image = accel_image(CONFIG)
+        self.draft_model: Transport | None = None
 
     def extract_model_identifiers(self):
         model_name = self.model
@@ -687,8 +688,8 @@ class Transport(TransportBase):
 
 
 def compute_ports(exclude: list[str] | None = None) -> list[int]:
-    exclude = exclude and set(map(int, exclude)) or set()
-    ports = list(sorted(set(range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1)) - exclude))
+    excluded = exclude and set(map(int, exclude)) or set()
+    ports = list(sorted(set(range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1)) - excluded))
     first_port = ports.pop(0)
     random.shuffle(ports)
     # try always the first port before the randomized others

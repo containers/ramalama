@@ -61,7 +61,7 @@ class DaemonAPIHandler(APIHandler):
         arg_show_all = True
 
         collected_models = []
-        for model, model_files in (
+        for model_name, model_files in (
             GlobalModelStore(self.model_store_path).list_models(arg_engine, arg_show_container).items()
         ):
             local_timezone = datetime.now().astimezone().tzinfo
@@ -77,7 +77,7 @@ class DaemonAPIHandler(APIHandler):
                 last_modified = max(file.modified, last_modified)
 
             model = TransportFactory(
-                model, StoreArgs(engine=arg_engine, container=arg_show_container, store=self.model_store_path)
+                model_name, StoreArgs(engine=arg_engine, container=arg_show_container, store=self.model_store_path)
             ).create()
             full_model_name = f"{model.model_type}://{model.model_organization}/{model.model_name}:{model.model_tag}"
             #
@@ -122,7 +122,7 @@ class DaemonAPIHandler(APIHandler):
 
         # Use the RamaLama CLI parser to get a namespace with all variables and their
         # default values, which is then used to assemble the final inference engine command
-        ramalama_cmd = ["ramalama", "--runtime", serve_request.runtime, "serve", model, "--port", port]
+        ramalama_cmd = ["ramalama", "--runtime", serve_request.runtime, "serve", model.model_name, "--port", str(port)]
         for arg, val in serve_request.exec_args.items():
             ramalama_cmd.extend([arg, val])
         args = parse_args_from_cmd(ramalama_cmd)
@@ -155,7 +155,7 @@ class DaemonAPIHandler(APIHandler):
             transport=CONFIG.transport,
         ).create()
 
-        mid = generate_model_id(model.model_name, model.model_tag, model.model_organization)
+        mid = generate_model_id(model)
         self.model_runner.stop_model(mid)
 
         handler.send_response(200)

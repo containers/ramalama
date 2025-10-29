@@ -33,7 +33,7 @@ GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q6_K",
     "Q8_0",
 ]
-DEFAULT_GGUF_QUANTIZATION_MODE = "Q4_K_M"
+DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"
 
 DEFAULT_CONFIG_DIRS = [
     Path(f"{sys.prefix}/share/ramalama"),
@@ -131,7 +131,7 @@ class RamalamaSettings:
 @dataclass
 class BaseConfig:
     api: str = "none"
-    api_key: str = None
+    api_key: str | None = None
     cache_reuse: int = 256
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
     container: bool = None  # type: ignore

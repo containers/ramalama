@@ -1211,7 +1211,7 @@ def stop_container(args):
         engine.stop_container(args, i)
 
 
-def daemon_parser(subparsers):
+def daemon_parser(subparsers) -> None:
     parser: ArgumentParserWithDefaults = subparsers.add_parser("daemon", help="daemon operations")
     parser.set_defaults(func=lambda _: parser.print_help())
 
@@ -1500,7 +1500,7 @@ def inspect_cli(args):
     model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)
 
 
-def main():
+def main() -> None:
     def eprint(e, exit_code):
         perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)
@@ -1519,7 +1519,7 @@ def main():
         if not args.subcommand:
             parser.print_usage()
             perror("ramalama: requires a subcommand")
-            return 0
+            return
 
         args.func(args)
     except urllib.error.HTTPError as e:

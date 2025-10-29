@@ -1,4 +1,4 @@
-import json
+from json import dumps
 from typing import Any, Dict, Optional, Union
 
 from ramalama.endian import GGUFEndian
@@ -15,7 +15,7 @@ class GGUFModelMetadata:
 
     def serialize(self, json: bool = False) -> str:
         if json:
-            return json.dumps(self.data, sort_keys=True, indent=4)
+            return dumps(self.data, sort_keys=True, indent=4)
 
         ret = ""
         for key, value in sorted(self.data.items()):
@@ -86,9 +86,9 @@ class GGUFModelInfo(ModelInfoBase):
 
     def to_json(self, all: bool = False) -> str:
         if all:
-            return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+            return dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
         d = {k: v for k, v in self.__dict__.items() if k != "Metadata" and k != "Tensors"}
         d["Metadata"] = len(self.Metadata.data)
         d["Tensors"] = len(self.Tensors)
-        return json.dumps(d, sort_keys=True, indent=4)
+        return dumps(d, sort_keys=True, indent=4)

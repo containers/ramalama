@@ -76,7 +76,7 @@ class ModelProxyHandler(APIHandler):
             length = int(headers['Content-Length'])
             data = handler.rfile.read(length)
 
-        logger.debug(f"Forwarding request -X {method} {target_url}\nHEADER: {headers} \nDATA: {data}")
+        logger.debug(f"Forwarding request -X {method} {target_url}\nHEADER: {headers} \nDATA: {data!r}")
 
         request = urllib.request.Request(target_url, data=data, headers=dict(headers), method=method)
         with urllib.request.urlopen(request) as response:

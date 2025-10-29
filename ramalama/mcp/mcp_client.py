@@ -5,7 +5,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 logging.basicConfig(level=logging.INFO)
 
@@ -59,7 +59,10 @@ class PureMCPClient:
                 if content_type.startswith("text/event-stream"):
                     return self._parse_sse_stream(response)
                 else:
-                    return self._validate_response(json.loads(response.read().decode("utf-8")), message["id"])
+                    return self._validate_response(
+                        json.loads(response.read().decode("utf-8")),
+                        cast(int, message["id"]),
+                    )
 
         except urllib.error.HTTPError as e:
             error_body = e.read().decode('utf-8') if e.fp else "No error body"

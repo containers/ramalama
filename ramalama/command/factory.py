@@ -41,7 +41,7 @@ class CommandFactory:
         try:
             CommandFactory.validate_spec(spec_data, schema_data)
         except Exception as ex:
-            raise error.InvalidInferenceEngineSpecError(spec_file, str(ex)) from ex
+            raise error.InvalidInferenceEngineSpecError(str(spec_file), str(ex)) from ex
 
         spec = schema.CommandSpecV1.from_dict(spec_data, command)
         if spec is None:

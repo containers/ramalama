@@ -41,8 +41,8 @@ def find_model_file_in_image(conman: str, model: str) -> str | None:
 
 
 class RamalamaContainerRegistry(OCI):
-    def __init__(self, *args, model: str, **kwargs):
-        super().__init__(*args, model=f"rlcr.io/ramalama/{model}", **kwargs)
+    def __init__(self, model: str, *args, **kwargs):
+        super().__init__(f"rlcr.io/ramalama/{model}", *args, **kwargs)
         self._model_type = 'oci'
 
     def _get_entry_model_path(self, *args, **kwargs) -> str:

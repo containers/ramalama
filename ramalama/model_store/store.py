@@ -278,15 +278,15 @@ class ModelStore:
         # Give preference to the embedded chat template as it's most likely to be
         # compatible with llama.cpp
 
-        def get_embedded_template():
+        def get_embedded_template() -> str | None:
             models = ref_file.model_files
             if not models:
-                return
+                return None
 
             # Only the first model file is considered for chat template extraction
             model_file_path = self.get_blob_file_path(models[0].hash)
             if not GGUFInfoParser.is_model_gguf(model_file_path):
-                return
+                return None
 
             # Parse model, first and second parameter are irrelevant here
             info: GGUFModelInfo = GGUFInfoParser.parse("model", "registry", model_file_path)

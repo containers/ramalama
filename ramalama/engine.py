@@ -118,7 +118,7 @@ class BaseEngine(ABC):
     def add(self, newargs):
         self.exec_args += newargs
 
-    def add_args(self, *args: tuple[str]) -> None:
+    def add_args(self, *args: str) -> None:
         self.add(args)
 
     def add_volume(self, src: str, dest: str, *, opts="ro"):
@@ -237,7 +237,7 @@ class BuildEngine(BaseEngine):
         self.add_args("-f", cfile, context)
         if self.args.dryrun:
             self.dryrun()
-            return None
+            return ""
         return self.run_process().stdout.strip()
 
     def build_containerfile(self, content: str, context: str, /, *, tag: str | None = None):
