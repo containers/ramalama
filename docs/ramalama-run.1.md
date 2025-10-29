@@ -129,6 +129,9 @@ use. Using this option RamaLama will override these defaults.
 On Nvidia based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
 
+#### **--port**, **-p**=*port*
+Port for AI Model server to listen on (default: 8080)
+
 #### **--prefix**
 Prefix for the user prompt (default: 🦭 > )
 
@@ -211,6 +214,12 @@ ramalama run granite
 Run command with local downloaded model for 10 minutes
 ```
 ramalama run --keepalive 10m file:///tmp/mymodel
+>
+```
+
+Run command with a custom port to allow multiple models running simultaneously
+```
+ramalama run --port 8081 granite
 >
 ```
 

@@ -92,7 +92,7 @@ def parse_port_option(option: str) -> str:
     port = int(option)
     if port <= 0 or port >= 65535:
         raise ValueError(f"Invalid port '{port}'")
-    return str(port)
+    return option
 
 
 class OverrideDefaultAction(argparse.Action):
@@ -950,12 +950,13 @@ If GPU device on host is accessible to via group access, this option leaks the u
         help="override the default OCI runtime used to launch the container",
         completer=suppressCompleter,
     )
-    if command == "serve":
+    if command in ["run", "serve"]:
         parser.add_argument(
             "-p",
             "--port",
             type=parse_port_option,
             default=CONFIG.port,
+            action=OverrideDefaultAction,
             help="port for AI Model server to listen on",
             completer=suppressCompleter,
         )

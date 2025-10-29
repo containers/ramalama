@@ -137,9 +137,17 @@ def test_compute_ports_exclude(exclude: list, count: int, first: int):
     ],
 )
 def test_compute_serving_port(
-    inputPort: str, expectedRandomizedResult: list, expectedRandomPortsAvl: list, expectedOutput: str, expectedErr
+    inputPort: str,
+    expectedRandomizedResult: list,
+    expectedRandomPortsAvl: list,
+    expectedOutput: str,
+    expectedErr,
 ):
     args = Namespace(port=inputPort, debug=False, api="")
+    # Set port_override if user specified a port (not empty or None)
+    if inputPort and inputPort != "":
+        args.port_override = True
+
     mock_socket = socket.socket
     mock_socket.bind = MagicMock(side_effect=expectedRandomPortsAvl)
     mock_compute_ports = Mock(return_value=expectedRandomizedResult)

@@ -714,7 +714,7 @@ def get_available_port_if_any(exclude: list[str] | None = None) -> int:
 
 def compute_serving_port(args, quiet: bool = False, exclude: list[str] | None = None) -> str:
     # user probably specified a custom port, don't override the choice
-    if getattr(args, "port", None):
+    if hasattr(args, 'port_override'):
         target_port = args.port
     else:
         # otherwise compute a random serving port in the range
