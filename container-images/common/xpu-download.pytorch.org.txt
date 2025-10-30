@@ -1,0 +1,63 @@
+# This file is generated from xpu.txt by split-reqs.awk, do not modify manually.
+# Includes dependencies retrieved from https://download.pytorch.org/whl/xpu
+
+--index-url https://download.pytorch.org/whl/xpu
+
+pytorch-triton-xpu==3.5.0 \
+    --hash=sha256:013d9dd5d6479bd22983161f462e61c8dbe1d82e6730624a7a8d5945507eaa61 \
+    --hash=sha256:0b06dfbb7ec5e52f1d3a19f59b0e8cd9190cb53a7f9f2b31cdb359ae467fe49b \
+    --hash=sha256:0d24c1716088f2764d0d24c64227732195b6a42706c3c5fc89eeb4904bfa0818 \
+    --hash=sha256:25f4673254d82c97f4475122a3c56fdb2f0f7a1b62a88e2373a9452a0c03ace6 \
+    --hash=sha256:2caf8138695f6abb023ecd02031a2611ba1bf8fff2f19802567cb2fadefe9e87 \
+    --hash=sha256:3db1f86fd6587c5b4c8ee9611dc0f8cae6c848a24ab7b54aac03f0afb853a538 \
+    --hash=sha256:5f4bf283a9f3c163e7bf30aa18feaae65157213ba4236c198e3d5ebadc237ea4 \
+    --hash=sha256:74f00689800e2fe4e75b5db26ace8084eaa44e6df9a30e2ad65ddb89abf5a152 \
+    --hash=sha256:78e28bb14d081a75f0a6d2d8332eaedf1fcd4a944d391eacec3f38ba2665d14c \
+    --hash=sha256:97337a47425f1963a723475bd61037460e84ba01db4f87a1d662c3718ff6c47e \
+    --hash=sha256:afc8cabfbf7ed51fd278d1e0f88d6afc157b0201bad4b99d681e4d542f9e66d4 \
+    --hash=sha256:b81702270aafb6d6b1d7c609fefef21d0193549805f5ac3ebaf1e1f1563f094b \
+    --hash=sha256:c169a1de14c19673b17c751290d467fa282fc90fa5da4314b2e5cdab1f553146 \
+    --hash=sha256:c83ab007311d9cfb6e809ee5a4587d99a9eef4be720b90da4f1aaa68b45139a0 \
+    --hash=sha256:debf75348da8e8c7166b4d4a9b91d1508bb8d6581e339f79f7604b2e6746bacd \
+    --hash=sha256:f74d59b0233a35f1ecbd4d612faf1d3ee545c1a37058d077ab047404db07ac25
+    # via torch
+    # from https://download.pytorch.org/whl/xpu
+torch==2.9.0+xpu \
+    --hash=sha256:06d71590f6decb56fc5c3dac8e3a0a6c2f5c5e942023791de5d19d96d67e51f3 \
+    --hash=sha256:18cad93aaff76a01ce73aef6935ece7cfc03344b905592ec731446c44d44592b \
+    --hash=sha256:28587a48328bd9670ab280f97d87345e5cb64ba4ec39a3ad9fadeaef2bc5002a \
+    --hash=sha256:2f73e4d75b93912eb868238bbd2e0742eb5b3f4f3e64b94a39a231a5c0f59838 \
+    --hash=sha256:376bae584d89980b8e59934d248c38d5fa3b7d4687a4df1a19f4bc1d23dcc8c1 \
+    --hash=sha256:47cc68f631f65bd9c84924d052cd04dec7531023caa85e80345e9c94611c887d \
+    --hash=sha256:4ad7c4c3c1dc8d878a86e8c0fc25974f67c217736d888faf40cc3f36c271f851 \
+    --hash=sha256:579929cdc10a76800ead41289cac191ea36d1b16f5f501d3fc25607d4375cd83 \
+    --hash=sha256:5afbe860ce991825a36b75706a523601087e414b77598ef0d9d3d565741c277d \
+    --hash=sha256:607fe419c32d6e8e0556f745742e7cff1d0babce51f54be890e0c1422359c442 \
+    --hash=sha256:98d6a06dd7fb185874367b18bd609f05f16fdce4142a5980ca94461949965cd2 \
+    --hash=sha256:c8d59a7aa864d92c9d90e175dce48e4932e2fbc94fee10dd3b6a530432e15909 \
+    --hash=sha256:d56c44ab4818aba57e5c7b628f422d014e0d507427170a771c5be85e308b0bc6 \
+    --hash=sha256:e237b36dc3907135ccaa9716f7c40984ba80161c5e80b9ad1a52bd01c141b77c
+    # via
+    #   -r requirements-rag.in
+    #   accelerate
+    #   docling-ibm-models
+    #   safetensors
+    #   torchvision
+    # from https://download.pytorch.org/whl/xpu
+torchvision==0.24.0+xpu \
+    --hash=sha256:044fa36ef4b6b43edcd490b75c853fa4b3eb033c2bded29f8fbcf27734713c67 \
+    --hash=sha256:19c7da8ca767d593e13a88a12bb08d06e34a673f6f26c2f9c191d60e81c02953 \
+    --hash=sha256:20c0818cb484f1e46eb2580f5b907f65aa61911565b67eb607f118f096c1318f \
+    --hash=sha256:33a1f6cfe93f7220b192eef95cde634d3c7b38052869b676aa8ee2c4a62ebc89 \
+    --hash=sha256:3f06d358ae65c5965ddbdce6e63cf181eb67184660acf388967d2cd8c9ecf662 \
+    --hash=sha256:4b91e4bec1d740a6211f02578a79888550b73f3a4e1383035f8f6d72f587212c \
+    --hash=sha256:6a5194bc736089606342d48a3f6822829b167617e9495d91d753dd1bd46fda18 \
+    --hash=sha256:88239e73ca37254bec84f29cd5887e10ff712de7edbbda3fbb3609cd6190d99e \
+    --hash=sha256:9bb0d1421c544ac8e2eca5b47daacaf54706dc9139c003aa5e77ee5f355c5931 \
+    --hash=sha256:bcc33a125e11033994c5aaf636920a4175bea2427a3453f385e13d01b1b80e4f \
+    --hash=sha256:cbfae2b79b7549fd368c2462fc8e94f8f26cc450782ee72138e908077c09a519 \
+    --hash=sha256:da47a3ce2bb7f0301a31124668b5908f9b9e92d6241443de15a310ef9632fd83 \
+    --hash=sha256:ebccf79a7be82cec3705fcde85899ce3018f1c12ab472497ba2b3636a731e584 \
+    --hash=sha256:f90c13df545b42fe51d352ae5d5fa67727a79d7d3e5776ea16234aad6bc6fd8c
+    # via docling-ibm-models
+    # from https://download.pytorch.org/whl/xpu
