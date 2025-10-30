@@ -927,7 +927,7 @@ $ cat /usr/share/ramalama/shortnames.conf
     </summary>
     <br>
 
-This command uses a specific container image containing the docling tool to convert the specified content into a RAG vector database. If the image does not exist locally, RamaLama will pull the image down and launch a container to process the data.
+    This command uses a specific container image containing the docling tool to convert the specified content into a RAG vector database. If the image does not exist locally, RamaLama will pull the image down and launch a container to process the data.
 
     **Positional arguments:**
 
@@ -936,11 +936,17 @@ This command uses a specific container image containing the docling tool to conv
     IMAGE OCI Image name to contain processed rag data
 
     ```
-    ./bin/ramalama rag ./README.md https://github.com/containers/podman/blob/main/README.md quay.io/rhatdan/myrag
+    ramalama rag ./README.md https://github.com/containers/podman/blob/main/README.md quay.io/ramalama/myrag
     100% |███████████████████████████████████████████████████████|  114.00 KB/    0.00 B 922.89 KB/s   59m 59s
     Building quay.io/ramalama/myrag...
     adding vectordb...
     c857ebc65c641084b34e39b740fdb6a2d9d2d97be320e6aa9439ed0ab8780fe0
+    ```
+
+    The image can then be used with:
+
+    ```
+    ramalama run --rag quay.io/ramalama/myrag instructlab/merlinite-7b-lab
     ```
 </details>
 
