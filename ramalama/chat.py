@@ -107,12 +107,12 @@ class RamaLamaShell(cmd.Cmd):
         self.prompt = args.prefix
         self.url = f"{args.url}/chat/completions"
         self.prep_rag_message()
-        self.mcp_agent = None
+        self.mcp_agent: LLMAgent | None = None
         self.initialize_mcp()
 
         self.operational_args = operational_args
 
-        self.content = []
+        self.content: list[str] = []
 
     def prep_rag_message(self):
         if (context := self.args.rag) is None:
@@ -181,6 +181,7 @@ class RamaLamaShell(cmd.Cmd):
     def _handle_mcp_request(self, content: str) -> str:
         """Handle a request using MCP tools (multi-tool capable, automatic)."""
         try:
+            assert self.mcp_agent
             # Automatic tool selection and argument generation
             results = self.mcp_agent.execute_task(content, manual=False, stream=True)
 
@@ -414,12 +415,13 @@ def alarm_handler(signum, frame):
 
 def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None):
     if args.dryrun:
+        assert args.ARGS is not None
         prompt = " ".join(args.ARGS)
         print(f"\nramalama chat --color {args.color} --prefix  \"{args.prefix}\" --url {args.url} {prompt}")
         return
     if getattr(args, "keepalive", False):
         signal.signal(signal.SIGALRM, alarm_handler)
-        signal.alarm(convert_to_seconds(args.keepalive))
+        signal.alarm(convert_to_seconds(args.keepalive))  # type: ignore
 
     list_models = getattr(args, "list", False)
     if list_models:

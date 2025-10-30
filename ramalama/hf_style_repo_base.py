@@ -90,6 +90,7 @@ class HFStyleRepository(ABC):
         files = []
         if self.model_filename not in cached_files:
             files.append(self.model_file())
+        assert self.model_filename
         if is_split_file_model(self.model_filename):
             # If the model is split, we need to add all parts
             match = re.match(SPLIT_MODEL_PATH_RE, self.model_filename)
@@ -127,6 +128,8 @@ class HFStyleRepository(ABC):
         return files
 
     def model_file(self) -> SnapshotFile:
+        assert self.model_filename
+        assert self.model_hash
         return SnapshotFile(
             url=f"{self.blob_url}/{self.model_filename}",
             header=self.headers,
@@ -138,6 +141,8 @@ class HFStyleRepository(ABC):
         )
 
     def mmproj_file(self) -> SnapshotFile:
+        assert self.model_filename
+        assert self.model_hash
         return SnapshotFile(
             url=f"{self.blob_url}/{self.mmproj_filename}",
             header=self.headers,

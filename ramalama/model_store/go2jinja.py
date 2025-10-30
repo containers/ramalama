@@ -29,7 +29,7 @@ class Node:
     end: int
     content: str
 
-    type: NodeType
+    type: NodeType | None
 
     prev: Optional["Node"]
     next: Optional["Node"]
@@ -206,7 +206,7 @@ def detect_node_type(stmt: str) -> Optional[NodeType]:
 def parse_go_template(content: str) -> list[Node]:
     root_nodes: list[Node] = []
 
-    prev_expr_node: Node = None
+    prev_expr_node: Node | None = None
     current_scope_nodes: list[Node] = []
     start_pos = content.find(GO_SYMBOL_OPEN_BRACKETS)
     end_pos = 0
@@ -329,8 +329,8 @@ def go_to_jinja(content: str) -> str:
     if not is_go_template(content):
         return ""
 
-    loop_vars = []
-    loop_index_vars = []
+    loop_vars: list[str] = []
+    loop_index_vars: list[str] = []
 
     def transform_go_var_to_jinja(var: str, check_loop_vars: bool = True) -> str:
         var = var.lstrip("$.").lower()
@@ -366,7 +366,7 @@ def go_to_jinja(content: str) -> str:
             if not pipeline.isspace():
                 pipeline = pipeline.lstrip().rstrip()
 
-            longest_match: FunctionType = None
+            longest_match: FunctionType | None = None
             for ft in FUNCTION_MAPPING.keys():
                 if pipeline.startswith(ft.value):
                     if longest_match is None or len(ft.value) > len(longest_match.value):
@@ -462,13 +462,13 @@ def go_to_jinja(content: str) -> str:
             if m is None:
                 return ""
 
-            if node.open_scope_node.type in [NodeType.IF, NodeType.ELIF, NodeType.ELSE]:
+            if node.open_scope_node and node.open_scope_node.type in [NodeType.IF, NodeType.ELIF, NodeType.ELSE]:
                 return (
                     node.content[: m.start(1)].replace(GO_SYMBOL_OPEN_BRACKETS, JINJA_SYMBOL_OPEN_BRACKETS)
                     + "endif"
                     + node.content[m.end(1) :].replace(GO_SYMBOL_CLOSE_BRACKETS, JINJA_SYMBOL_CLOSE_BRACKETS)
                 )
-            elif node.open_scope_node.type == NodeType.RANGE:
+            elif node.open_scope_node and node.open_scope_node.type == NodeType.RANGE:
                 loop_vars.pop()
                 if loop_index_vars:
                     loop_index_vars.pop()

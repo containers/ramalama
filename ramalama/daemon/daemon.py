@@ -48,7 +48,7 @@ class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         self, host: str, port: int, model_store_path: str, idle_check_interval: timedelta, bind_and_activate=True
     ):
         # Do not pass a RequestHandlerClass here, we will create a custom handler in finish_request
-        super().__init__((host, port), None, bind_and_activate)
+        super().__init__((host, port), None, bind_and_activate)  # type: ignore
 
         self.model_store_path: str = model_store_path
         self.model_runner: ModelRunner = ModelRunner()

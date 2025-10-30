@@ -65,6 +65,8 @@ dev = [
     "pytest~=8.3",
     "wheel~=0.45.0",
     "mypy",
+    "types-PyYAML",
+    "types-jsonschema",
     "tox"
 ]
 

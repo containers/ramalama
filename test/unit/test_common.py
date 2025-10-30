@@ -417,7 +417,7 @@ class TestPopulateVolumeFromImage:
 
         mock_popen.side_effect = [mock_export_proc, mock_tar_proc]
 
-        result = populate_volume_from_image(mock_model, output_filename)
+        result = populate_volume_from_image(mock_model, Mock(engine="docker"), output_filename)
 
         assert result.startswith("ramalama-models-")
 
@@ -445,7 +445,7 @@ class TestPopulateVolumeFromImage:
         mock_popen.side_effect = [mock_export_proc, mock_tar_proc]
 
         with pytest.raises(subprocess.CalledProcessError):
-            populate_volume_from_image(mock_model, output_filename)
+            populate_volume_from_image(mock_model, Mock(engine="docker"), output_filename)
 
     @patch('subprocess.Popen')
     @patch('ramalama.common.run_cmd')
@@ -468,7 +468,7 @@ class TestPopulateVolumeFromImage:
         mock_popen.side_effect = [mock_export_proc, mock_tar_proc]
 
         with pytest.raises(subprocess.CalledProcessError):
-            populate_volume_from_image(mock_model, output_filename)
+            populate_volume_from_image(mock_model, Mock(engine="docker"), output_filename)
 
     def test_volume_name_generation(self, mock_model):
         """Test that volume names are generated consistently based on model hash"""
@@ -485,5 +485,5 @@ class TestPopulateVolumeFromImage:
             mock_proc.__exit__ = Mock(return_value=None)
             mock_popen.return_value = mock_proc
 
-            result = populate_volume_from_image(mock_model, "test.gguf")
+            result = populate_volume_from_image(mock_model, Mock(engine="docker"), "test.gguf")
             assert result == expected_volume

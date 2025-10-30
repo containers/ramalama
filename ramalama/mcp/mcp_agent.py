@@ -17,7 +17,11 @@ class LLMAgent:
     """An LLM-powered agent that can make multiple tool calls to accomplish tasks."""
 
     def __init__(
-        self, clients: List[PureMCPClient], llm_base_url: str = "http://localhost:8080", model: str = None, args=None
+        self,
+        clients: List[PureMCPClient],
+        llm_base_url: str = "http://localhost:8080",
+        model: str | None = None,
+        args=None,
     ):
         self.clients = clients if isinstance(clients, list) else [clients]
         self.llm_base_url = llm_base_url.rstrip('/')
@@ -78,7 +82,7 @@ class LLMAgent:
             print(f"  {i}. {name}")
             print(f"     Inputs: {inputs_str}\n")
 
-    def should_use_tools(self, content: str, conversation_history: list = None) -> bool:
+    def should_use_tools(self, content: str, conversation_history: list[dict[str, str]] | None = None) -> bool:
         """Determine if the request should be handled by tools using LLM."""
         tools_context = "Available tools:\n"
         for i, tool in enumerate(self.available_tools, 1):
@@ -115,7 +119,7 @@ Should this request use the available tools?"""
             },
         ]
         response = self._call_llm(messages)
-        return response and response.upper().strip() == "YES"
+        return response is not None and response.upper().strip() == "YES"
 
     def _call_llm(self, messages: List[Dict[str, str]], console_stream: bool = False) -> str | None:
         """
@@ -172,7 +176,7 @@ Should this request use the available tools?"""
                         logging.debug("LLM call failed (attempt %d/%d), retrying: %s", attempt + 1, max_retries, e)
                         time.sleep(retry_delay)
                         retry_delay *= 2  # Exponential backoff
-
+            return ""
         elif console_stream:
             try:
                 with urllib.request.urlopen(request, timeout=30) as response:
@@ -202,7 +206,7 @@ Should this request use the available tools?"""
 
     def _get_tool_arguments_manual(self, tool: dict) -> dict:
         """Prompt user based on inputSchema."""
-        args = {}
+        args: dict[Any, Any] = {}
         input_props = tool.get("inputSchema", {}).get("properties", {})
         required_fields = tool.get("inputSchema", {}).get("required", [])
 
@@ -272,9 +276,10 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
         ]
 
         if stream:
-            return self._call_llm(messages, console_stream=True) or {}
+            self._call_llm(messages, console_stream=True)
+            return {}
         else:
-            response = self._call_llm(messages, console_stream=False)
+            response = self._call_llm(messages, console_stream=False) or ""
             try:
                 # Extract JSON from markdown code blocks if present
                 json_str = response.strip()
@@ -285,7 +290,7 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
 
                 args = json.loads(json_str)
                 # Convert types based on schema
-                converted_args = {}
+                converted_args: dict[Any, Any] = {}
                 for k, v in args.items():
                     if k in tool_inputs:
                         param_type = tool_inputs[k].get('type', 'string')
@@ -306,7 +311,7 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
                 logging.warning("LLM failed to produce valid JSON for tool arguments: %s", response)
                 return {}
 
-    def execute_task(self, task: str, manual: bool = False, stream: bool = False) -> str:
+    def execute_task(self, task: str, manual: bool = False, stream: bool = False) -> str | None:
         """Execute one or more relevant tools for a task and combine results."""
         if not self.available_tools:
             return "No tools available."
@@ -351,7 +356,7 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
         combined_output = "\n\n".join(tool_outputs)
         return self._result(task, combined_output, stream)
 
-    def execute_specific_tool(self, task: str, tool_name: str, manual: bool = False) -> str:
+    def execute_specific_tool(self, task: str, tool_name: str, manual: bool = False) -> str | None:
         """Execute a specific tool by name."""
         if not self.available_tools:
             return "No tools available."
@@ -411,7 +416,9 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
             {"role": "user", "content": f"Task: {task}\n\n{tools_context}"},
         ]
 
-        response = self._call_llm(messages).strip()
+        response = self._call_llm(messages)
+        if response:
+            response = response.strip()
         if not response or response.upper() == "NONE":
             return []
 
@@ -431,9 +438,9 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
             {"role": "user", "content": f"Task: {task}\n\nTool result:\n{content}\n\nIs this task complete?"},
         ]
         response = self._call_llm(messages)
-        return response and response.upper().strip() == "YES"
+        return response is not None and response.upper().strip() == "YES"
 
-    def _result(self, task: str, content: str, stream: bool = False) -> str:
+    def _result(self, task: str, content: str, stream: bool = False) -> str | None:
         """Format the tool result into a user-friendly response."""
         messages = [
             {

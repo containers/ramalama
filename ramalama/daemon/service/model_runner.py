@@ -47,7 +47,7 @@ class ManagedModel:
 
 class ModelRunner:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._models: dict[str, ManagedModel] = {}
         self._serve_path_model_id_map: dict[str, str] = {}
 

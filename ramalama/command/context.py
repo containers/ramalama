@@ -9,7 +9,7 @@ from ramalama.transports.transport_factory import CLASS_MODEL_TYPES, New
 
 class RamalamaArgsContext:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.cache_reuse: Optional[int] = None
         self.container: Optional[bool] = None
         self.ctx_size: Optional[int] = None
@@ -53,7 +53,7 @@ class RamalamaArgsContext:
 
 class RamalamaRagGenArgsContext:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.debug: bool | None = None
         self.format: str | None = None
         self.ocr: bool | None = None
@@ -75,7 +75,7 @@ class RamalamaRagGenArgsContext:
 
 class RamalamaRagArgsContext:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.debug: bool | None = None
         self.port: str | None = None
         self.model_host: str | None = None
@@ -121,7 +121,8 @@ class RamalamaModelContext:
 
     @property
     def draft_model_path(self) -> str:
-        if hasattr(self.model, "draft_model"):
+        if getattr(self.model, "draft_model", None):
+            assert self.model.draft_model
             return self.model.draft_model._get_entry_model_path(self.is_container, self.should_generate, self.dry_run)
         return ""
 
@@ -140,13 +141,19 @@ class RamalamaHostContext:
 
 class RamalamaCommandContext:
 
-    def __init__(self, args: RamalamaArgsContext, model: RamalamaModelContext, host: RamalamaHostContext):
+    def __init__(
+        self,
+        args: RamalamaArgsContext | RamalamaRagGenArgsContext | RamalamaRagArgsContext,
+        model: RamalamaModelContext | None,
+        host: RamalamaHostContext,
+    ):
         self.args = args
         self.model = model
         self.host = host
 
     @staticmethod
     def from_argparse(cli_args: argparse.Namespace) -> "RamalamaCommandContext":
+        args: RamalamaArgsContext | RamalamaRagGenArgsContext | RamalamaRagArgsContext
         if cli_args.subcommand == "rag":
             args = RamalamaRagGenArgsContext.from_argparse(cli_args)
         elif cli_args.subcommand in ("run --rag", "serve --rag"):

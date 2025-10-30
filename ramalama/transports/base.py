@@ -150,6 +150,7 @@ class Transport(TransportBase):
         self._model_store: Optional[ModelStore] = None
 
         self.default_image = accel_image(CONFIG)
+        self.draft_model: Transport | None = None
 
     def extract_model_identifiers(self):
         model_name = self.model
@@ -350,7 +351,7 @@ class Transport(TransportBase):
                 mount_cmd = f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"
             elif self.engine.use_docker:
                 output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
-                volume = populate_volume_from_image(self, os.path.basename(output_filename))
+                volume = populate_volume_from_image(self, args, os.path.basename(output_filename))
                 mount_cmd = f"--mount=type=volume,src={volume},dst={MNT_DIR},readonly"
             else:
                 raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
@@ -687,8 +688,8 @@ class Transport(TransportBase):
 
 
 def compute_ports(exclude: list[str] | None = None) -> list[int]:
-    exclude = exclude and set(map(int, exclude)) or set()
-    ports = list(sorted(set(range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1)) - exclude))
+    excluded = exclude and set(map(int, exclude)) or set()
+    ports = list(sorted(set(range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1)) - excluded))
     first_port = ports.pop(0)
     random.shuffle(ports)
     # try always the first port before the randomized others

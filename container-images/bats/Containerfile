@@ -1,17 +1,17 @@
 FROM quay.io/fedora/fedora:42
 
 ENV HOME=/tmp \
-    XDG_RUNTIME_DIR=/tmp
+    XDG_RUNTIME_DIR=/tmp \
+    PIP_NO_CACHE_DIR=1
 WORKDIR /src
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
 RUN dnf -y --setopt=install_weak_deps=false install \
     make bats jq iproute podman openssl httpd-tools diffutils \
-    python3-huggingface-hub \
     $([ $(uname -m) == "x86_64" ] && echo ollama) \
     # for validate and unit-tests
-    black codespell shellcheck \
-    python3-flake8 python3-isort python3-pip python3-pytest python3-pyyaml python3-jsonschema python3-jinja2 \
+    shellcheck \
+    python3 python3-pip \
     perl-Clone perl-FindBin && \
     dnf -y clean all
 RUN rpm --restore shadow-utils
@@ -19,5 +19,6 @@ RUN rpm --restore shadow-utils
 COPY container-images/bats/entrypoint.sh /usr/bin
 COPY container-images/bats/containers.conf /etc/containers
 COPY . /src
+RUN make install-requirements
 RUN chmod -R a+rw /src
 RUN chmod a+rw /etc/subuid /etc/subgid

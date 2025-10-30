@@ -36,6 +36,7 @@ class APIHandler(ABC):
     def _handle_get_running_models(self, handler: http.server.SimpleHTTPRequestHandler):
         models: list[RunningModelResponse] = []
         for _, m in self.model_runner.managed_models.items():
+            assert m.expiration_date
             full_model_name = (
                 f"{m.model.model_type}://{m.model.model_organization}/{m.model.model_name}:{m.model.model_tag}"
             )

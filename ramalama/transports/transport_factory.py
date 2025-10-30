@@ -42,8 +42,8 @@ class TransportFactory:
 
         if getattr(args, 'model_draft', None):
             dm_args = copy.deepcopy(args)
-            dm_args.model_draft = None
-            self.draft_model = TransportFactory(args.model_draft, dm_args, ignore_stderr=True).create()
+            dm_args.model_draft = None  # type: ignore
+            self.draft_model = TransportFactory(args.model_draft, dm_args, ignore_stderr=True).create()  # type: ignore
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
         for prefix in ["huggingface://", "hf://", "hf.co/"]:
