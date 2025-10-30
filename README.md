@@ -57,7 +57,7 @@ RamaLama eliminates the need to configure the host system by instead pulling a c
 ### Install on Fedora
 RamaLama is available in [Fedora](https://fedoraproject.org/) and later. To install it, run:
 ```
-sudo dnf install python3-ramalama
+sudo dnf install ramalama
 ```
 
 ### Install via PyPI
