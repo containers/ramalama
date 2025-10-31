@@ -31,6 +31,21 @@ spec:
   - name: build-args
     value:
     - TORCH_BACKEND=xpu
+  - name: prefetch-input
+    value: >-
+      {
+        "type": "pip",
+        "requirements_files": [
+          "container-images/common/xpu-pypi.org.txt",
+          "container-images/common/xpu-download.pytorch.org.txt"
+        ],
+        "requirements_build_files": [
+          "container-images/common/build.txt"
+        ],
+        "binary": {
+          "packages": ":all:"
+        }
+      }
   pipelineRef:
     name: push-pipeline
   timeouts:

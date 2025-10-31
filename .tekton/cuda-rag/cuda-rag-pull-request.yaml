@@ -32,6 +32,23 @@ spec:
     value:
     - PARENT=docker.io/nvidia/cuda:12.8.1-devel-ubi9
     - TORCH_BACKEND=cu128
+  - name: prefetch-input
+    value: >-
+      {
+        "type": "pip",
+        "requirements_files": [
+          "container-images/common/cu128-pypi.org.txt",
+          "container-images/common/cu128-download.pytorch.org.txt",
+          "container-images/common/cu128-aarch64-pypi.org.txt",
+          "container-images/common/cu128-aarch64-download.pytorch.org.txt"
+        ],
+        "requirements_build_files": [
+          "container-images/common/build-cuda.txt"
+        ],
+        "binary": {
+          "packages": ":all:"
+        }
+      }
   pipelineRef:
     name: pull-request-pipeline
   timeouts:

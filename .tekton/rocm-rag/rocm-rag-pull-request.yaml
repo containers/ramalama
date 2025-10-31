@@ -34,6 +34,21 @@ spec:
   - name: build-args
     value:
     - TORCH_BACKEND=rocm6.3
+  - name: prefetch-input
+    value: >-
+      {
+        "type": "pip",
+        "requirements_files": [
+          "container-images/common/rocm6.3-pypi.org.txt",
+          "container-images/common/rocm6.3-download.pytorch.org.txt"
+        ],
+        "requirements_build_files": [
+          "container-images/common/build.txt"
+        ],
+        "binary": {
+          "packages": ":all:"
+        }
+      }
   pipelineRef:
     name: pull-request-pipeline
   timeouts:
