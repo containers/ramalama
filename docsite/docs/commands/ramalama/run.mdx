@@ -77,7 +77,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.13.0 of RamaLama pulls an image with a `:0.12` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.14.0 of RamaLama pulls an image with a `:0.14` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -133,6 +133,9 @@ use. Using this option RamaLama will override these defaults.
 On Nvidia based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
 
+#### **--port**, **-p**=*port*
+Port for AI Model server to listen on (default: 8080)
+
 #### **--prefix**
 Prefix for the user prompt (default: 🦭 > )
 
@@ -164,6 +167,10 @@ Pull image policy. The default is **missing**.
 
 #### **--rag**=
 Specify path to Retrieval-Augmented Generation (RAG) database or an OCI Image containing a RAG database
+
+#### **--rag-image**=
+The image to use to process the RAG database specified by the `--rag` option. The image must contain the `/usr/bin/rag_framework` executable, which
+will create a proxy which embellishes client requests with RAG data before passing them on to the LLM, and returns the responses.
 
 #### **--runtime-args**="*args*"
 Add *args* to the runtime (llama.cpp or vllm) invocation.
@@ -211,6 +218,12 @@ ramalama run granite
 Run command with local downloaded model for 10 minutes
 ```text
 ramalama run --keepalive 10m file:///tmp/mymodel
+>
+```
+
+Run command with a custom port to allow multiple models running simultaneously
+```text
+ramalama run --port 8081 granite
 >
 ```
 

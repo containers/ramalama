@@ -20,14 +20,24 @@ show this help message and exit
 
 ## FIELDS
 
+The `Accelerator` field indicates the accelerator type for the machine.
+
+The `Config` field shows the list of paths to RamaLama configuration files used. 
+
 The `Engine` field indicates the OCI container engine used to launch the container in which to run the AI Model
 
 The `Image` field indicates the default container image in which to run the AI Model
 
-The `Runtime` field indicates which backend engine is used to execute the AI model:
+The `Inference` field lists the currently used inference engine as well as a list of available engine specification and schema files used for model inference. 
+For example:
 
-    - `llama.cpp`: Uses the llama.cpp library for model execution
-    - `vllm`: Uses the vLLM library for model execution
+    - `llama.cpp`
+    - `vllm`
+    - `mlx`
+
+The `Selinux` field indicates if SELinux is activated or not.
+
+The `Shortnames` field shows the used list of configuration files specifying AI Model short names as well as the merged list of shortnames.
 
 The `Store` field indicates the directory path where RamaLama stores its persistent data, including downloaded models, configuration files, and cached data. By default, this is located in the user's local share directory.
 
