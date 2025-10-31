@@ -77,10 +77,9 @@ dnf_install_s390_ppc64le() {
 dnf_install_mesa() {
   if [ "${ID}" = "fedora" ]; then
     dnf copr enable -y slp/mesa-libkrun-vulkan
-    dnf install -y mesa-vulkan-drivers-25.2.3-101.fc42 virglrenderer \
-	"${vulkan_rpms[@]}"
-    dnf versionlock add mesa-vulkan-drivers-25.2.3-101.fc42
-
+    dnf install -y mesa-vulkan-drivers-25.2.3-101.fc43 virglrenderer \
+      "${vulkan_rpms[@]}"
+    dnf versionlock add mesa-vulkan-drivers-25.2.3-101.fc43
   elif [ "${ID}" = "openEuler" ]; then
     dnf install -y mesa-vulkan-drivers virglrenderer "${vulkan_rpms[@]}"
   else # virglrenderer not available on RHEL or EPEL
