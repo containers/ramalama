@@ -292,4 +292,4 @@ def default_config(env: Mapping[str, str] | None = None) -> Config:
 
 CONFIG = default_config()
 DEFAULT_PORT: int = int(CONFIG.port)
-DEFAULT_PORT_RANGE: tuple[int, int] = (DEFAULT_PORT, DEFAULT_PORT + 10)
+DEFAULT_PORT_RANGE: tuple[int, int] = (DEFAULT_PORT, DEFAULT_PORT + 100)

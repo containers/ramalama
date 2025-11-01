@@ -152,7 +152,8 @@ is based on the container engine used.
 
 **port**="8080"
 
-Specify default port for services to listen on
+Specify initial port for a range of 101 ports for services to listen on.
+If this port is unavailable, another free port from this range will be selected.
 
 **pull**="newer"
 
