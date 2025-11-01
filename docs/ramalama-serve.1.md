@@ -53,7 +53,7 @@ Section, key and value are required and must be separated by colons.
 
 #### **--api**=**llama-stack** | none**
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
-The default can be overridden in the ramalama.conf file.
+The default can be overridden in the `ramalama.conf` file.
 
 #### **--authfile**=*password*
 Path of the authentication file for OCI registries
@@ -122,7 +122,7 @@ images based on the accelerator it discovers. For example:
 The default image tag is based on the minor version of the RamaLama package.
 Version 0.14.0 of RamaLama pulls an image with a `:0.14` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
-The default can be overridden in the ramalama.conf file or via the
+The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
 RamaLama to use the `quay.io/ramalama/aiimage:1.2` image.
 
@@ -182,7 +182,9 @@ On Nvidia based GPU systems, RamaLama defaults to using the
 
 #### **--port**, **-p**
 port for AI Model server to listen on. It must be available. If not specified,
-the serving port will be 8080 if available, otherwise a free port in 8081-8090 range.
+a free port in the 8080-8180 range is selected, starting with 8080.
+
+The default can be overridden in the `ramalama.conf` file.
 
 #### **--privileged**
 By default, RamaLama containers are unprivileged (=false) and cannot, for
@@ -577,7 +579,7 @@ ramalama --runtime=mlx serve hf://mlx-community/Unsloth-Phi-4-4bit
 ```
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman(1)**, **podman-ps(1)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman(1)**, **podman-ps(1)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**, **[ramalama.conf(5)](ramalama.conf.5.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
