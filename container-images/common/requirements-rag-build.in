@@ -1,0 +1,2 @@
+# requirements for building gguf from source
+poetry-core

@@ -1,0 +1,55 @@
+# This file is generated from cu128.txt by split-reqs.awk, do not modify manually.
+# Includes dependencies retrieved from https://download.pytorch.org/whl/cu128
+
+--index-url https://download.pytorch.org/whl/cu128
+
+torch==2.9.0+cu128 \
+    --hash=sha256:26effd07b9ee31c2db8988860317ba74361967bb4f9228af5a56907215cc27b5 \
+    --hash=sha256:397bfff20d46d22692726ca3450f9194a687244fce8fc01b755bf29d715485ee \
+    --hash=sha256:4b51281e08ec36cd6748c71ac32fa1e45d30090b1c3fdf99ebb30776437734b7 \
+    --hash=sha256:4d76f71345af47f022c7fa55edd0c1810d01af89dcb9edcfdfafe3d2a0f7a6b8 \
+    --hash=sha256:55a2184ed89f2120bc1e2c887ee98e5280dee48bc330e9dfe296aa135a370f7d \
+    --hash=sha256:6848715fc906574eb2c0975f56771663344eef7b9a717816b50dede616a3d4fb \
+    --hash=sha256:758978c4f0895fd76dd6a434c9157f7d70e8c2fea0bab452322f8b2252fe2e85 \
+    --hash=sha256:816540286fce245a8af3904a194a83af9c9292ad7452eb79160b7a3b1cefb7e3 \
+    --hash=sha256:87c62d3b95f1a2270bd116dbd47dc515c0b2035076fbb4a03b4365ea289e89c4 \
+    --hash=sha256:8ce575fb71b878f5016df0a8a438c7c28f7f4be270af4119b5ad9ab62b0e470a \
+    --hash=sha256:97def0087f8ef171b9002ea500baffdd440c7bdd559c23c38bbf8781b67e9364 \
+    --hash=sha256:9cba9f0fa2e1b70fffdcec1235a1bb727cbff7e7b118ba111b2b7f984b7087e2 \
+    --hash=sha256:c97dc47a1f64745d439dd9471a96d216b728d528011029b4f9ae780e985529e0 \
+    --hash=sha256:dacbfc19608e60f78975c47d605c7d39b81afdf1983e93e94c17f60646b131e0 \
+    --hash=sha256:dc6f6c6e7d7eed20c687fc189754a6ea6bf2da9c64eff59fd6753b80ed4bca05 \
+    --hash=sha256:e1765625084e320f1eb2f4eb5fd9d14d39d08d7a1880c10a307ce5de20831d27 \
+    --hash=sha256:e97c264478c9fc48f91832749d960f1e349aeb214224ebe65fb09435dd64c59a \
+    --hash=sha256:edadd510a59951323ca24a53b8fe55d179b9a90237f0f55aae07f8ebc07dd052 \
+    --hash=sha256:eedef2e65d48c7dc9bb03f92c2a62bdae904382fc5c2773de3de41dce5ffd80a \
+    --hash=sha256:ef5939ebcacfe3d4f70774941e79a7c7e23f7918d7d3242428c8f48cc7440c0a \
+    --hash=sha256:f11dae3d2534d985144f5b87d5f15d3d7219f63870c91d82e049fbb12779b3aa
+    # via
+    #   -r requirements-rag.in
+    #   accelerate
+    #   docling-ibm-models
+    #   safetensors
+    #   torchvision
+    # from https://download.pytorch.org/whl/cu128
+torchvision==0.24.0+cu128 \
+    --hash=sha256:0783b511e3e5a7821480254768fc3a1193726f9cc0373aac41c28cf934ef63f0 \
+    --hash=sha256:09a5767d186efe6a065e3a430865143d519bcd88a0d9b14e7865902e61b1aa69 \
+    --hash=sha256:0d9d7b17273af5937403fa53aa59886cd1daf5bd6aea42e4c3cbba454fa2ebed \
+    --hash=sha256:0e485d987a1606c942a3e4a867cdd3f77991ddb5b561bae08f70314b7093a331 \
+    --hash=sha256:1aa36ac00106e1381c38348611a1ec0eebe942570ebaf0490f026b061dfc212c \
+    --hash=sha256:2c341ebb8ccaa6e7767c0fa1f1442a6935691de92c003d98ed5f47c84f8439cb \
+    --hash=sha256:5936229aef4146491492356fdd138705a9b4b608566bdbfda3c406ed729853e2 \
+    --hash=sha256:8af994ac56868f939fb1314eb99f5282951c9a12aae34b9dde00a78e42e59d21 \
+    --hash=sha256:b1db7ff3dcbfb414944a8db727c28c983ed1330dff08157cf9acb5f2b402b79d \
+    --hash=sha256:c42d51e5fd12c22c31c296c98f95eb6af675d37cebd203df256bebe0a77ecc83 \
+    --hash=sha256:d594f61269cab0524a1e6f5f9e7e5cb26e4e0bed8ba059f64fd4acdf7cd76d53 \
+    --hash=sha256:e505bd83ee10edb94523d0b805a08f50b8862b58d2cc6f02d14cd4e7ef9302bc \
+    --hash=sha256:f82cd941bc36033ebdb2974c83caa2913cc37e6567fe97cdd69f5a568ff182c8 \
+    --hash=sha256:ff1c9be01024e6d419aa2551d2c604cec99cb867d39841ee66338fd60981a398
+    # via docling-ibm-models
+    # from https://download.pytorch.org/whl/cu128
+triton==3.5.0 \
+    --hash=sha256:76f8651a5e38c2a7da6fa2b2e41cbc00a5a32cb52bf3f520113fe90b723a310d
+    # via torch
+    # from https://download.pytorch.org/whl/cu128

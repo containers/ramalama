@@ -28,6 +28,23 @@ spec:
     value: 5d
   - name: dockerfile
     value: container-images/common/Containerfile.rag
+  - name: prefetch-input
+    value: >-
+      {
+        "type": "pip",
+        "requirements_files": [
+          "container-images/common/cpu-pypi.org.txt",
+          "container-images/common/cpu-download.pytorch.org.txt",
+          "container-images/common/cpu-aarch64-pypi.org.txt",
+          "container-images/common/cpu-aarch64-download.pytorch.org.txt"
+        ],
+        "requirements_build_files": [
+          "container-images/common/build.txt"
+        ],
+        "binary": {
+          "packages": ":all:"
+        }
+      }
   pipelineRef:
     name: pull-request-pipeline
   timeouts:
