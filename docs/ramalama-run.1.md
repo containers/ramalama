@@ -29,7 +29,7 @@ URL support means if a model is on a web site or even on your local system, you 
 
 #### **--api**=**llama-stack** | none**
 unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
-The default can be overridden in the ramalama.conf file.
+The default can be overridden in the `ramalama.conf` file.
 
 #### **--authfile**=*password*
 path of the authentication file for OCI registries
@@ -75,7 +75,7 @@ images based on the accelerator it discovers. For example:
 The default image tag is based on the minor version of the RamaLama package.
 Version 0.14.0 of RamaLama pulls an image with a `:0.14` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
-The default can be overridden in the ramalama.conf file or via the
+The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
 RamaLama to use the `quay.io/ramalama/aiimage:1.2` image.
 
@@ -131,6 +131,8 @@ On Nvidia based GPU systems, RamaLama defaults to using the
 
 #### **--port**, **-p**=*port*
 Port for AI Model server to listen on (default: 8080)
+
+The default can be overridden in the `ramalama.conf` file.
 
 #### **--prefix**
 Prefix for the user prompt (default: 🦭 > )
@@ -254,7 +256,7 @@ $ ramalama run granite
 See **[ramalama-cuda(7)](ramalama-cuda.7.md)** for setting up the host Linux system for CUDA support.
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**, **[ramalama.conf(5)](ramalama.conf.5.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

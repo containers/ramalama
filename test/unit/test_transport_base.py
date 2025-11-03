@@ -98,10 +98,10 @@ def test_compute_ports():
 @pytest.mark.parametrize(
     "exclude,count,first",
     [
-        (None, 11, DEFAULT_PORT),
-        ([], 11, DEFAULT_PORT),
-        ([str(DEFAULT_PORT)], 10, DEFAULT_PORT + 1),
-        ([str(DEFAULT_PORT), str(DEFAULT_PORT + 1)], 9, DEFAULT_PORT + 2),
+        (None, 101, DEFAULT_PORT),
+        ([], 101, DEFAULT_PORT),
+        ([str(DEFAULT_PORT)], 100, DEFAULT_PORT + 1),
+        ([str(DEFAULT_PORT), str(DEFAULT_PORT + 1)], 99, DEFAULT_PORT + 2),
         (list(map(str, range(*DEFAULT_PORT_RANGE))), 1, DEFAULT_PORT_RANGE[1]),
     ],
 )
