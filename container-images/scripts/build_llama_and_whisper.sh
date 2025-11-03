@@ -308,6 +308,9 @@ add_common_flags() {
     elif [ "$uname_m" = "s390x" ] || [ "$uname_m" = "ppc64le" ]; then
       common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
     fi
+    if [ "$uname_m" = "s390x" ]; then
+      common_flags+=("-DARCH_FLAGS=-march=z15")
+    fi
     ;;
   esac
 }
