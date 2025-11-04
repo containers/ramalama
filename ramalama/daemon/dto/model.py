@@ -78,6 +78,7 @@ class RunningModelResponse:
     size_vram: int
     digest: str
     cmd: str
+    serve_path: str
 
     def to_dict(self) -> dict:
         return {
@@ -91,6 +92,7 @@ class RunningModelResponse:
             "size_vram": self.size_vram,
             "digest": self.digest,
             "cmd": self.cmd,
+            "serve_path": self.serve_path,
         }
 
     def serialize(self) -> str:

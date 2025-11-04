@@ -55,3 +55,7 @@ class Shortnames:
 
     def resolve(self, model) -> str | None:
         return self.shortnames.get(model, model)
+
+    def get_shortname_for(self, resolved_model: str) -> str | None:
+        reverse = {value: key for key, value in self.shortnames.items()}
+        return reverse.get(resolved_model)

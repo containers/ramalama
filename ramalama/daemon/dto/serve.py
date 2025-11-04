@@ -1,7 +1,6 @@
 import json
 from dataclasses import dataclass
 
-from ramalama.config import BaseConfig
 from ramalama.daemon.dto.errors import MissingArgumentError
 
 
@@ -10,17 +9,13 @@ class ServeRequest:
 
     model_name: str
     runtime: str
-    exec_args: dict[str, str]
+    exec_args: list[str]
 
     def to_dict(self) -> dict:
         return {
             "model_name": self.model_name,
             "runtime": self.runtime,
-            "exec_args": dict(
-                [
-                    (key, value) for key, value in self.exec_args.items() if type(value) is str
-                ]  # Filter out non-string values
-            ),
+            "exec_args": [entry for entry in self.exec_args],
         }
 
     def serialize(self) -> str:
@@ -38,27 +33,7 @@ class ServeRequest:
         if not runtime:
             raise MissingArgumentError("runtime")
 
-        base_exec_args = BaseConfig().__dict__
-        exec_args_input = data_dict.get("exec_args", {})
-        # merge missing args to args from base config
-        exec_args = {
-            **base_exec_args,
-            **{
-                "runtime_args": [],
-                "debug": False,
-            },
-        }
-        # overwrite with input args
-        exec_args = {**exec_args, **exec_args_input}
-        # overwrite certain values which do not make sense in this context
-        exec_args = {
-            **exec_args,
-            **{
-                "container": False,
-                "generate": False,
-                "dryrun": False,
-            },
-        }
+        exec_args = data_dict.get("exec_args", [])
 
         return ServeRequest(
             model_name=model_name,

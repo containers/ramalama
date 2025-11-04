@@ -4,7 +4,7 @@ import urllib.error
 
 from ramalama.daemon.handler.daemon import DaemonAPIHandler
 from ramalama.daemon.handler.proxy import ModelProxyHandler
-from ramalama.daemon.logging import logger
+from ramalama.daemon.logger import logger
 from ramalama.daemon.service.model_runner import ModelRunner
 
 

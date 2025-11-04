@@ -132,6 +132,10 @@ The default can be overridden in the ramalama.conf file.
 store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
 The default can be overridden in the ramalama.conf file.
 
+#### **--use-daemon**
+Feature flag to enable using the RamaLama daemon as backend for [ramalama-serve(1)](ramalama-serve.1.md) and [ramalama-run(1)](ramalama-run.1.md).
+
+
 ## COMMANDS
 
 | Command                                           | Description                                                |

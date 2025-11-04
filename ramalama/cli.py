@@ -38,6 +38,7 @@ from ramalama.config import (
     get_inference_spec_files,
     load_file_config,
 )
+from ramalama.daemon_stub import DaemonStub, run_daemon
 from ramalama.endian import EndianMismatchError
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
@@ -216,6 +217,7 @@ def create_argument_parser(description: str):
         prog="ramalama",
         description=description,
         formatter_class=argparse.RawTextHelpFormatter,
+        exit_on_error=False,
     )
     configure_arguments(parser)
     return parser
@@ -275,6 +277,21 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     parser.add_argument(
         "--noout",
         help=argparse.SUPPRESS,
+    )
+
+    # Feature flags
+    parser.add_argument(
+        "--use-daemon",
+        dest="use_daemon",
+        default=False,
+        action="store_true",
+        help="Feature Flag: Enable using the daemon as backend by default",
+    )
+    parser.add_argument(
+        "--daemon-name",
+        dest="daemon_name",
+        help="Requires --use-daemon. Specifies the name of the daemon either for creation or further use.",
+        completer=suppressCompleter,
     )
 
 
@@ -506,7 +523,14 @@ def containers_parser(subparsers):
 
 
 def list_containers(args):
-    containers = engine.containers(args)
+    label = engine.LABEL_CONTAINER_RAMALAMA
+
+    # Feature Flag:
+    # Use daemon backend when feature flag is given
+    if args.use_daemon:
+        label = engine.LABEL_CONTAINER_RAMALAMA_DAEMON
+
+    containers = engine.containers(args, label)
     if len(containers) == 0:
         return
     print("\n".join(containers))
@@ -1133,6 +1157,14 @@ def run_cli(args):
         except Exception as exc:
             raise e from exc
 
+    # Feature Flag:
+    # Use daemon backend when feature flag is given
+    if args.use_daemon:
+        stub = DaemonStub(shortnames, args, sys.argv)
+        serve_path = stub.serve_model(getattr(args, "daemon_name"))
+        stub.chat(serve_path)
+        return
+
     if args.rag:
         if not args.container:
             raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
@@ -1151,6 +1183,15 @@ def serve_parser(subparsers):
 
 
 def serve_cli(args):
+
+    # Feature Flag:
+    # Use daemon backend when feature flag is given
+    if args.use_daemon:
+        stub = DaemonStub(shortnames, args, sys.argv)
+        serve_path = stub.serve_model(getattr(args, "daemon_name"))
+        stub.wait_for_model(serve_path)
+        return
+
     if not args.container:
         args.detach = False
 
@@ -1265,47 +1306,11 @@ def daemon_parser(subparsers) -> None:
 
 
 def daemon_start_cli(args):
-    from ramalama.common import exec_cmd
-
-    daemon_cmd = []
-    daemon_model_store_dir = args.store
-    is_daemon_in_container = args.container and args.engine in get_args(SUPPORTED_ENGINES)
-
-    if is_daemon_in_container:
-        # If run inside a container, map the model store to the container internal directory
-        daemon_model_store_dir = "/ramalama/models"
-
-        daemon_cmd += [
-            args.engine,
-            "run",
-            "--pull",
-            args.pull,
-            "-d",
-            "-p",
-            f"{args.port}:8080",
-            "-v",
-            f"{args.store}:{daemon_model_store_dir}",
-            args.image,
-        ]
-
-    daemon_cmd += [
-        "ramalama",
-        "--store",
-        daemon_model_store_dir,
-        "daemon",
-        "run",
-        "--port",
-        "8080" if is_daemon_in_container else args.port,
-        "--host",
-        CONFIG.host if is_daemon_in_container else args.host,
-    ]
-    exec_cmd(daemon_cmd)
+    DaemonStub(shortnames, args, sys.argv).start_daemon()
 
 
 def daemon_run_cli(args):
-    from ramalama.daemon.daemon import run
-
-    run(host=args.host, port=int(args.port), model_store_path=args.store)
+    run_daemon(args)
 
 
 def version_parser(subparsers):
