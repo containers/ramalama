@@ -239,10 +239,18 @@ class HFStyleRepoModel(Transport, ABC):
         """Collect files from CLI download"""
         pass
 
+    def get_login_args(self):
+        """Return the login subcommand arguments. Can be overridden for different CLI structures."""
+        return ["login"]
+
+    def get_logout_args(self):
+        """Return the logout subcommand arguments. Can be overridden for different CLI structures."""
+        return ["logout"]
+
     def login(self, args):
         if not available(self.get_cli_command()):
             raise NotImplementedError(self.get_missing_message())
-        conman_args = [self.get_cli_command(), "login"]
+        conman_args = [self.get_cli_command()] + self.get_login_args()
         if args.token:
             conman_args.extend(["--token", args.token])
         self.exec(conman_args, args)
@@ -250,7 +258,7 @@ class HFStyleRepoModel(Transport, ABC):
     def logout(self, args):
         if not available(self.get_cli_command()):
             raise NotImplementedError(self.get_missing_message())
-        conman_args = [self.get_cli_command(), "logout"]
+        conman_args = [self.get_cli_command()] + self.get_logout_args()
         if args.token:
             conman_args.extend(["--token", args.token])
         self.exec(conman_args, args)
