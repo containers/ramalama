@@ -155,6 +155,14 @@ class Huggingface(HFStyleRepoModel):
     def get_cli_command(self):
         return "hf"
 
+    def get_login_args(self):
+        """HuggingFace CLI uses 'hf auth login' instead of 'hf login'"""
+        return ["auth", "login"]
+
+    def get_logout_args(self):
+        """HuggingFace CLI uses 'hf auth logout' instead of 'hf logout'"""
+        return ["auth", "logout"]
+
     def get_missing_message(self):
         return missing_huggingface
 
