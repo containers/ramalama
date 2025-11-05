@@ -1211,7 +1211,7 @@ and
 [PRs](https://github.com/containers/ramalama/pulls)
 tracking system.
 
-### Community / Develop Meetups
+### Community / Developer Meetups
 
 We host a public community and developer meetup on Discord every other week to discuss project direction and provide an open forum for users to get help, ask questions, and showcase new features.
 
