@@ -16,7 +16,7 @@ load setup_suite
     run_ramalama rm ollama://tinyllama
     run_ramalama pull https://ollama.com/library/smollm:135m
     run_ramalama list
-    is "$output" ".*https://ollama.com/library/smollm:135m" "image was actually pulled locally"
+    is "$output" ".*ollama://library/smollm:135m" "image was pulled from ollama"
 
     RAMALAMA_TRANSPORT=ollama run_ramalama pull smollm:360m
     run_ramalama pull ollama://smollm:360m
@@ -43,7 +43,7 @@ load setup_suite
     ollama pull smollm:135m
     run_ramalama pull https://ollama.com/library/smollm:135m
     run_ramalama list
-    is "$output" ".*https://ollama.com/library/smollm:135m" "image was actually pulled locally from ollama cache"
+    is "$output" ".*ollama://library/smollm:135m" "image was actually pulled locally from ollama cache"
 
     ollama pull smollm:360m
     RAMALAMA_TRANSPORT=ollama run_ramalama pull smollm:360m
