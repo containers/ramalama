@@ -226,10 +226,6 @@ def populate_volume_from_image(model: Transport, args: Namespace, output_filenam
     return volume
 
 
-def find_working_directory():
-    return os.path.dirname(__file__)
-
-
 def generate_sha256(to_hash: str, with_sha_prefix: bool = True) -> str:
     """
     Generates a sha256 for a string.

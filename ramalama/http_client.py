@@ -7,7 +7,7 @@ import time
 import urllib.request
 
 import ramalama.console as console
-from ramalama.common import perror, verify_checksum
+from ramalama.common import perror
 from ramalama.file import File
 from ramalama.logger import logger
 
@@ -226,27 +226,3 @@ def download_file(url: str, dest_path: str, headers: dict[str, str] | None = Non
             raise ConnectionError(error_message)
 
         time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
-
-
-def download_and_verify(url: str, target_path: str, max_retries: int = 2):
-    """
-    Downloads a file from a given URL and verifies its checksum.
-    If the checksum does not match, it retries the download.
-    Args:
-        url (str): The URL to download from.
-        target_path (str): The path to save the downloaded file.
-        max_retries (int): Maximum number of retries for download.
-    Raises:
-        ValueError: If checksum verification fails after multiple attempts.
-    """
-
-    for attempt in range(max_retries):
-        download_file(url, target_path, headers={}, show_progress=True)
-        if verify_checksum(target_path):
-            break
-        console.warning(
-            f"Checksum mismatch for {target_path}, retrying download ... (Attempt {attempt + 1}/{max_retries})"
-        )
-        os.remove(target_path)
-    else:
-        raise ValueError(f"Checksum verification failed for {target_path} after multiple attempts")

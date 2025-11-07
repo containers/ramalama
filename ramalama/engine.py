@@ -79,9 +79,6 @@ class BaseEngine(ABC):
             self.add_args("--cap-drop=all")
             self.add_args("--security-opt=no-new-privileges")
 
-    def cap_add(self, cap):
-        self.exec_args += ["--cap-add", cap]
-
     def add_device_options(self):
         request_no_device = getattr(self.args, "device", None) == ['none']
         if request_no_device:
@@ -417,21 +414,6 @@ def stop_container(args, name, remove=False):
                 return
             else:
                 raise
-
-
-def container_connection(args, name, port):
-    if not name:
-        raise ValueError("must specify a container name")
-    if not port:
-        raise ValueError("must specify a port to check")
-
-    conman = str(args.engine) if args.engine is not None else None
-    if conman == "" or conman is None:
-        raise ValueError("no container manager (Podman, Docker) found")
-
-    conman_args = [conman, "port", name, port]
-    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-    return "" if output == "" else output.split(">")[-1].strip()
 
 
 def add_labels(args, add_label):

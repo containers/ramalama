@@ -50,19 +50,6 @@ class OCI(Transport):
         conman_args.append(self.model)
         return exec_cmd(conman_args)
 
-    def _target_decompose(self, model):
-        # Remove the prefix and extract target details
-        try:
-            registry, reference = model.split("/", 1)
-        except Exception:
-            raise KeyError(
-                "You must specify a registry for the model in the form "
-                f"'oci://registry.acme.org/ns/repo:tag', got instead: {self.model}"
-            )
-
-        reference_dir = reference.replace(":", "/")
-        return registry, reference, reference_dir
-
     def _convert_to_gguf(self, outdir, source_model, args):
         with tempfile.TemporaryDirectory(prefix="RamaLama_convert_src_") as srcdir:
             ref_file = source_model.model_store.get_ref_file(source_model.model_tag)

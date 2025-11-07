@@ -118,31 +118,6 @@ class HuggingfaceRepositoryModel(HuggingfaceRepository):
             self.headers['Authorization'] = f"Bearer {token}"
 
 
-def get_repo_info(repo_name):
-    # Docs on API call:
-    # https://huggingface.co/docs/hub/en/api#get-apimodelsrepoid-or-apimodelsrepoidrevisionrevision
-    repo_info_url = f"https://huggingface.co/api/models/{repo_name}"
-    logger.debug(f"Fetching repo info from {repo_info_url}")
-    with urllib.request.urlopen(repo_info_url) as response:
-        if response.getcode() == 200:
-            repo_info = response.read().decode('utf-8')
-            return json.loads(repo_info)
-        else:
-            perror("Huggingface repo information pull failed")
-            raise KeyError(f"Response error code from repo info pull: {response.getcode()}")
-    return None
-
-
-def handle_repo_info(repo_name, repo_info, runtime):
-    if "safetensors" in repo_info and runtime == "llama.cpp":
-        perror(
-            "\nllama.cpp does not support running safetensor models, "
-            "please use a/convert to the GGUF format using:\n"
-            f"- https://huggingface.co/models?other=base_model:quantized:{repo_name} \n"
-            "- https://huggingface.co/spaces/ggml-org/gguf-my-repo"
-        )
-
-
 class Huggingface(HFStyleRepoModel):
     REGISTRY_URL = "https://huggingface.co/v2/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"

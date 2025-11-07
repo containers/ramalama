@@ -8,7 +8,6 @@ import subprocess
 import sys
 import urllib.error
 from datetime import datetime, timezone
-from pathlib import Path
 from textwrap import dedent
 from typing import get_args
 from urllib.parse import urlparse
@@ -459,24 +458,6 @@ def human_duration(d):
     return "1 year" if d < 63072000 else f"{d // 31536000} years"
 
 
-def list_files_by_modification(args):
-    paths = Path().rglob("*")
-    models = []
-    for path in paths:
-        if str(path).startswith("file/"):
-            if not os.path.exists(str(path)):
-                path = str(path).replace("file/", "file:///")
-                perror(f"{path} does not exist")
-                continue
-        if os.path.exists(path):
-            models.append(path)
-        else:
-            perror(f"Broken symlink found in: {args.store}/models/{path} \nAttempting removal")
-            New(str(path).replace("/", "://", 1), args).remove(args)
-
-    return sorted(models, key=lambda p: os.path.getmtime(p), reverse=True)
-
-
 def bench_cli(args):
     model = New(args.MODEL, args)
     model.ensure_model_exists(args)
@@ -553,18 +534,6 @@ def human_readable_size(size):
         size /= 1024
 
     return f"{size} PB"
-
-
-def get_size(path):
-    if os.path.isdir(path):
-        size = 0
-        for dirpath, _, filenames in os.walk(path, followlinks=True):
-            for file in filenames:
-                filepath = os.path.join(dirpath, file)
-                if not os.path.islink(filepath):
-                    size += os.path.getsize(filepath)
-        return size
-    return os.path.getsize(path)
 
 
 def _list_models_from_store(args):

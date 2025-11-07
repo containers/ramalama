@@ -425,21 +425,6 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
         chosen = [name.strip().lower() for name in response.split(",")]
         return [t for t in self.available_tools if t["name"].lower() in chosen]
 
-    def _is_task_complete(self, task: str, content: str) -> bool:
-        """Check if the task is complete based on the tool result."""
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful assistant that determines if a task has been completed successfully. "
-                    "Respond ONLY with YES or NO."
-                ),
-            },
-            {"role": "user", "content": f"Task: {task}\n\nTool result:\n{content}\n\nIs this task complete?"},
-        ]
-        response = self._call_llm(messages)
-        return response is not None and response.upper().strip() == "YES"
-
     def _result(self, task: str, content: str, stream: bool = False) -> str | None:
         """Format the tool result into a user-friendly response."""
         messages = [
