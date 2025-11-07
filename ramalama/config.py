@@ -134,6 +134,7 @@ class BaseConfig:
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
     container: bool = None  # type: ignore
     ctx_size: int = 0
+    convert_type: Literal["artifact", "car", "raw"] = "raw"
     default_image: str = DEFAULT_IMAGE
     default_rag_image: str = DEFAULT_RAG_IMAGE
     dryrun: bool = False

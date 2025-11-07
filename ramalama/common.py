@@ -287,7 +287,7 @@ def verify_checksum(filename: str) -> bool:
 
 
 def genname():
-    return "ramalama_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
+    return "ramalama-" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
 def engine_version(engine: SUPPORTED_ENGINES) -> str:
