@@ -25,7 +25,15 @@
               python3Packages.buildPythonPackage ({
                 name = "ramalama";
                 src = ./.;
-                dependencies = [ (llama-cpp.override llamaCppOverrides) ];
+                pyproject = true;
+                build-system = with python3Packages; [ setuptools ];
+                dependencies = with python3Packages; [
+                  argcomplete
+                  pyyaml
+                  jsonschema
+                  jinja2
+                  (llama-cpp.override llamaCppOverrides)
+                ];
                 nativeBuildInputs =
                   (with pkgs; [ codespell shellcheck isort bats jq apacheHttpd ]) ++
                   (with pkgs.python3Packages; [ flake8 black pytest ]);
@@ -52,7 +60,7 @@
         default = ramalama.${system}.package;
       });
 
-      apps = forAllSystems (system :{
+      apps = forAllSystems (system: {
         ramalama = ramalama.${system}.app;
         default = ramalama.${system}.app;
       });
