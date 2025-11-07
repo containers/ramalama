@@ -38,7 +38,7 @@ class Shortnames:
         return s.strip("'\"")
 
     def resolve(self, model) -> str | None:
-        return self.shortnames.get(model)
+        return self.shortnames.get(model, model)
 
     def create_shortname_file(self) -> str:
         shortnamefile = tempfile.NamedTemporaryFile(prefix='RamaLama_shortname_', delete=False)

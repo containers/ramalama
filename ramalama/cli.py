@@ -133,8 +133,6 @@ def available_metadata(prefix, parsed_args, **kwargs):
         # shotnames resolution has not been applied for auto-completion
         # Therefore it needs to be done explicitly here in order to support it
         resolved_model = shortnames.resolve(parsed_args.MODEL)
-        if not resolved_model:
-            resolved_model = parsed_args.MODEL
 
         metadata = New(resolved_model, parsed_args).inspect_metadata()
         return [field for field in metadata.keys() if field.startswith(parsed_args.get)]
@@ -313,12 +311,38 @@ def parse_arguments(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
+
+    def map_https_to_transport(input: str) -> str | None:
+        if input.startswith("https://") or input.startswith("http://"):
+            url = urlparse(input)
+            # detect if the whole repo is defined or a specific file
+            if url.path.count("/") != 2:
+                return input
+            if url.hostname in ["hf.co", "huggingface.co"]:
+                return f"hf:/{url.path}"
+            if url.hostname in ["ollama.com"]:
+                return f"ollama:/{url.path}"
+        return input
+
+    # Resolve the model input
+    # First, map https:// inputs to ollama or huggingface based on url domain
+    # Then resolve the input based on the available shortname list
     if getattr(args, "MODEL", None):
-        if args.subcommand != "rm":
-            resolved_model = shortnames.resolve(args.MODEL)
-            if resolved_model:
-                args.UNRESOLVED_MODEL = args.MODEL
-                args.MODEL = resolved_model
+        if isinstance(args.MODEL, str):
+            args.INITIAL_MODEL = args.MODEL
+            args.MODEL = map_https_to_transport(args.MODEL)
+
+            args.UNRESOLVED_MODEL = args.MODEL
+            args.MODEL = shortnames.resolve(args.MODEL)
+
+        if isinstance(args.MODEL, list):
+            args.INITIAL_MODEL = [m for m in args.MODEL]
+            for i in range(len(args.MODEL)):
+                args.MODEL[i] = map_https_to_transport(args.MODEL[i])
+
+            args.UNRESOLVED_MODEL = [m for m in args.MODEL]
+            for i in range(len(args.MODEL)):
+                args.MODEL[i] = shortnames.resolve(args.MODEL[i])
 
         # TODO: This is a hack. Once we have more typing in place these special cases
         # _should_ be removed.
@@ -738,8 +762,6 @@ def convert_cli(args):
 
     target = args.TARGET
     tgt = shortnames.resolve(target)
-    if not tgt:
-        tgt = target
 
     model = TransportFactory(tgt, args).create_oci()
 
@@ -783,8 +805,6 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
 
 def _get_source_model(args):
     src = shortnames.resolve(args.SOURCE)
-    if not src:
-        src = args.SOURCE
     smodel = New(src, args)
     if smodel.type == "OCI":
         raise ValueError(f"converting from an OCI based image {src} is not supported")
@@ -798,8 +818,6 @@ def push_cli(args):
     target = args.SOURCE
     if args.TARGET:
         target = shortnames.resolve(args.TARGET)
-        if not target:
-            target = args.TARGET
     target_model = New(target, args)
 
     try:
@@ -1418,9 +1436,7 @@ def rm_parser(subparsers):
 
 def _rm_model(models, args):
     for model in models:
-        resolved_model = shortnames.resolve(model)
-        if resolved_model:
-            model = resolved_model
+        model = shortnames.resolve(model)
 
         try:
             m = New(model, args)
