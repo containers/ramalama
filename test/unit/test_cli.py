@@ -1,9 +1,10 @@
 import sys
+from argparse import Namespace
 from unittest import mock
 
 import pytest
 
-from ramalama.cli import ParsedGenerateInput, parse_generate_option
+from ramalama.cli import ParsedGenerateInput, parse_generate_option, post_parse_setup
 from ramalama.transports.base import NoGGUFModelFileFound, SafetensorModelNotSupported
 
 
@@ -175,3 +176,62 @@ def test_pull_verify(monkeypatch, option, value):
     parser, args = init_cli()
     assert hasattr(args, "verify")
     assert args.verify == value
+
+
+@pytest.mark.parametrize(
+    "input_args, expected_initial, expected_unresolved, expected_resolved",
+    [
+        (
+            Namespace(MODEL="https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v0.6/blob/main/ggml-model-q4_0.gguf"),
+            "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v0.6/blob/main/ggml-model-q4_0.gguf",
+            "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v0.6/blob/main/ggml-model-q4_0.gguf",
+            "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v0.6/blob/main/ggml-model-q4_0.gguf",
+        ),
+        (
+            Namespace(MODEL="https://hf.co/mlx-community/Kimi-Linear-48B-A3B-Instruct-4bit"),
+            "https://hf.co/mlx-community/Kimi-Linear-48B-A3B-Instruct-4bit",
+            "hf://mlx-community/Kimi-Linear-48B-A3B-Instruct-4bit",
+            "hf://mlx-community/Kimi-Linear-48B-A3B-Instruct-4bit",
+        ),
+        (
+            Namespace(MODEL="https://ollama.com/library/smollm:135m"),
+            "https://ollama.com/library/smollm:135m",
+            "ollama://library/smollm:135m",
+            "ollama://library/smollm:135m",
+        ),
+        (Namespace(MODEL="tinyllama"), "tinyllama", "tinyllama", "hf://TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"),
+        (
+            Namespace(
+                MODEL=[
+                    "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v0.6/blob/main/ggml-model-q4_0.gguf",
+                    "https://hf.co/mlx-community/Kimi-Linear-48B-A3B-Instruct-4bit",
+                ]
+            ),
+            [
+                "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v0.6/blob/main/ggml-model-q4_0.gguf",
+                "https://hf.co/mlx-community/Kimi-Linear-48B-A3B-Instruct-4bit",
+            ],
+            [
+                "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v0.6/blob/main/ggml-model-q4_0.gguf",
+                "hf://mlx-community/Kimi-Linear-48B-A3B-Instruct-4bit",
+            ],
+            [
+                "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v0.6/blob/main/ggml-model-q4_0.gguf",
+                "hf://mlx-community/Kimi-Linear-48B-A3B-Instruct-4bit",
+            ],
+        ),
+    ],
+)
+def test_post_parse_setup_model_input(
+    input_args: Namespace, expected_initial: str, expected_unresolved: str, expected_resolved: str
+):
+    input_args.debug = False
+    post_parse_setup(input_args)
+
+    assert hasattr(input_args, "INITIAL_MODEL"), "parsed arguments should always have INITIAL_MODEL field"
+    assert hasattr(input_args, "UNRESOLVED_MODEL"), "parsed arguments should always have RESOLVED_MODEL field"
+
+    assert input_args.INITIAL_MODEL == expected_initial
+    assert input_args.UNRESOLVED_MODEL == expected_unresolved
+    assert input_args.MODEL == expected_resolved
+    assert input_args.model == input_args.MODEL
