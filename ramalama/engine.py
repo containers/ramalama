@@ -14,6 +14,7 @@ import ramalama.common
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
+from ramalama.config import CONFIG
 from ramalama.logger import logger
 from ramalama.path_utils import normalize_host_path_for_container
 
@@ -442,6 +443,10 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
         conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
         if args.debug:
             conn.set_debuglevel(1)
+        if CONFIG.runtime == 'vllm':
+            conn.request("GET", "/ping")
+            vllm_ping_resp = conn.getresponse()
+            return vllm_ping_resp.status == 200
         conn.request("GET", "/health")
         health_resp = conn.getresponse()
         health_resp.read()
@@ -479,8 +484,10 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
             conn.close()
 
 
-def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=20):
+def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     """Waits for a container to become healthy by polling its endpoint."""
+    if timeout is None:
+        timeout = 180 if CONFIG.runtime == "vllm" else 20
     logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()
 
