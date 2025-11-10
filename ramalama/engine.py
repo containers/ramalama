@@ -155,7 +155,12 @@ class Engine(BaseEngine):
         self.add_tty_option()
 
     def base_args(self) -> None:
-        self.add_args("run", "--rm")
+        # For run command, do not use --rm to auto-remove container on exit
+        subcommand = getattr(self.args, "subcommand", "")
+        if subcommand == "run":
+            self.add_args("run")
+        else:
+            self.add_args("run", "--rm")
 
     def add_name(self, name: str) -> None:
         self.add_args("--name", name)
@@ -358,7 +363,7 @@ def logs(args, name, ignore_stderr=False):
     return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
 
 
-def stop_container(args, name):
+def stop_container(args, name, remove=False):
     if not name:
         raise ValueError("must specify a container name")
     conman = str(args.engine) if args.engine is not None else None
@@ -395,6 +400,23 @@ def stop_container(args, name):
             return
         else:
             raise
+
+    # Remove the container if requested and not a pod (pods are already removed above)
+    if remove and pod == "":
+        conman_args = [conman, "rm"]
+        if args.ignore:
+            if conman == "podman":
+                conman_args += ["--ignore"]
+            else:
+                ignore_stderr = True
+        conman_args += [name]
+        try:
+            run_cmd(conman_args, ignore_stderr=ignore_stderr)
+        except subprocess.CalledProcessError:
+            if args.ignore and conman == "docker":
+                return
+            else:
+                raise
 
 
 def container_connection(args, name, port):
