@@ -13,12 +13,15 @@ def configure_logger(verbosity="WARNING") -> None:
         lvl = typing.cast(int, getattr(logging, verbosity))
 
     logger.setLevel(lvl)
+    logger.propagate = False
 
     fmt = "%(asctime)s - %(levelname)s - %(message)s"
     datefmt = "%Y-%m-%d %H:%M:%S"
     formatter = logging.Formatter(fmt, datefmt)
 
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setLevel(lvl)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    if not logger.handlers:
+        logger.addHandler(logging.StreamHandler(sys.stderr))
+
+    for handler in logger.handlers:
+        handler.setLevel(lvl)
+        handler.setFormatter(formatter)
