@@ -244,7 +244,7 @@ tests: unit-tests end-to-end-tests
 
 .PHONY: rag-requirements
 rag-requirements:
-	touch container-images/common/requirements-rag.in
+	touch container-images/common/*.in
 	make -C container-images/common rag-requirements
 
 .PHONY: clean
