@@ -89,3 +89,12 @@ def get_ramalama_subcommands():
     result = check_output(["ramalama", "help"])
     match = re.search(r"\npositional arguments:\n\s+{(?P<subcommands>[\w,]*)}", result, re.DOTALL)
     return match.group("subcommands").split(",") if match else []
+
+
+def get_full_model_name(model_name):
+    models = {
+        "smollm:135m": "hf://HuggingFaceTB/smollm-135M-instruct-v0.2-Q8_0-GGUF",
+        "stories-be:260k": "hf://taronaeo/tinyllamas-BE/stories260K-be.gguf",
+    }
+
+    return models[model_name].split("/")[-1]
