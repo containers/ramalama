@@ -112,7 +112,6 @@ version = {attr = "ramalama.version.version"}
 [tool.black]
 line-length = 120
 skip-string-normalization = true
-preview = true
 target-version = ["py310", "py311", "py312", "py313"]
 extend-exclude = "(.history|build|dist|docs|hack)"
 
