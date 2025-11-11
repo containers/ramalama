@@ -13,7 +13,7 @@ import pytest
 from ramalama.version import version as ramalama_version
 
 DEFAULT_IMAGE_PATTERN = re.compile(
-    r"--image IMAGE\s+(?P<help_msg>[\w\s]+) \(default: (?P<image>[^:]+):(?P<image_tag>[^)]+)",
+    r"--image IMAGE\s+(?P<help_msg>[\w\s]+)\s\(default:\s+(?P<image>[^:]+):(?P<image_tag>[^)]+)",
     re.MULTILINE,
 )
 
@@ -88,11 +88,14 @@ def test_help_output(subcommand):
 def test_default_image(command):
     result = check_output(["ramalama", command, "--help"])
     match = DEFAULT_IMAGE_PATTERN.search(result.replace("\n", ""))
-    remove_whitespaces = str.maketrans("", "", string.whitespace)
 
-    assert match.group("help_msg").strip() == "OCI container image to run with the specified AI model"
-    assert match.group("image").translate(remove_whitespaces).startswith("quay.io/ramalama/")
-    assert match.group("image_tag") == "latest" or ramalama_version().startswith(match.group("image_tag"))
+    assert match
+    help_msg = match.group("help_msg")
+    assert " ".join(help_msg.split()) == "OCI container image to run with the specified AI model"
+    image = match.group("image").strip()
+    assert image.startswith("quay.io/ramalama/")
+    image_tag = match.group("image_tag").strip()
+    assert image_tag == "latest" or ramalama_version().startswith(image_tag)
 
 
 @pytest.mark.e2e
