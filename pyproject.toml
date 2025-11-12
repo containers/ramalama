@@ -62,7 +62,7 @@ dev = [
     "huggingface_hub~=1.1.2",
     "hypothesis>=6.135.26",
     "isort~=7.0",
-    "pytest~=8.3",
+    "pytest~=9.0",
     "wheel~=0.45.0",
     "mypy",
     "types-PyYAML",
