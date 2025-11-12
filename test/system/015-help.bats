@@ -133,6 +133,7 @@ EOF
 }
 
 @test "ramalama verify default engine" {
+    skip_if_docker
     engine=e_$(safename)
     RAMALAMA_CONTAINER_ENGINE=${engine} run_ramalama --help
     is "$output" ".*default: ${engine}"  "Verify default engine from environment variable"
@@ -170,7 +171,7 @@ EOF
 }
 
 @test "ramalama verify default store" {
-    store=e_$(safename)
+    store=/e_$(safename)
     run_ramalama --help
     if is_rootless; then
         is "$output" ".*default: ${HOME}/.local/share/ramalama"  "Verify default store"
@@ -187,7 +188,7 @@ EOF
     RAMALAMA_CONFIG=${conf} run_ramalama --help
     is "$output" ".*default: ${store}"  "Verify default store from ramalama.conf"
 
-    store1=e_$(safename)
+    store1=/e_$(safename)
     RAMALAMA_CONFIG=${conf} run_ramalama --store=${store1} --help
     is "$output" ".*default: ${store1}"  "Verify default store from ramalama.conf"
 }
