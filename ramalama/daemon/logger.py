@@ -19,9 +19,6 @@ logger = logging.getLogger("ramalama-daemon")
 
 
 def configure_logger(lvl: LogLevel = LogLevel.WARNING, log_file: str = DEFAULT_LOG_DIR) -> None:
-    if logger.hasHandlers():
-        return
-
     logger.setLevel(lvl)
 
     fmt = "%(asctime)s - %(levelname)s - %(message)s"

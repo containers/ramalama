@@ -14,6 +14,9 @@ import ramalama.common
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.logger import logger
 
+LABEL_CONTAINER_RAMALAMA = "ai.ramalama"
+LABEL_CONTAINER_RAMALAMA_DAEMON = "ai.ramalama.daemon"
+
 
 class BaseEngine(ABC):
     """General-purpose engine for running podman or docker commands"""
@@ -288,12 +291,12 @@ def images(args):
         raise (e)
 
 
-def containers(args):
+def containers(args, label: str = LABEL_CONTAINER_RAMALAMA):
     conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "ps", "-a", "--filter", "label=ai.ramalama"]
+    conman_args = [conman, "ps", "-a", "--filter", f"label={label}"]
     if getattr(args, "noheading", False):
         if conman == "docker" and not args.format:
             # implement --noheading by using --format
@@ -304,7 +307,7 @@ def containers(args):
     if getattr(args, "notrunc", False):
         conman_args += ["--no-trunc"]
 
-    if args.format:
+    if getattr(args, "format", None):
         conman_args += [f"--format={args.format}"]
 
     try:

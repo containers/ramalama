@@ -11,9 +11,10 @@ from ramalama.daemon.dto.model import ModelDetailsResponse, ModelResponse, model
 from ramalama.daemon.dto.serve import ServeRequest, ServeResponse, StopServeRequest
 from ramalama.daemon.handler.base import APIHandler
 from ramalama.daemon.handler.proxy import ModelProxyHandler
-from ramalama.daemon.logging import DEFAULT_LOG_DIR, logger
+from ramalama.daemon.logger import DEFAULT_LOG_DIR, logger
 from ramalama.daemon.service.model_runner import ManagedModel, ModelRunner, generate_model_id
 from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.shortnames import Shortnames
 from ramalama.transports.transport_factory import TransportFactory
 
 
@@ -24,8 +25,12 @@ class DaemonAPIHandler(APIHandler):
         super().__init__(model_runner)
 
         self.model_store_path = model_store_path
+        self.shortnames = Shortnames()
 
     def handle_get(self, handler: http.server.SimpleHTTPRequestHandler):
+        if handler.path.startswith(f"{DaemonAPIHandler.PATH_PREFIX}/health"):
+            self._handle_get_health(handler)
+            return
         if handler.path.startswith(f"{DaemonAPIHandler.PATH_PREFIX}/tags"):
             self._handle_get_tags(handler)
             return
@@ -53,6 +58,10 @@ class DaemonAPIHandler(APIHandler):
 
     def handle_delete(self, handler: http.server.SimpleHTTPRequestHandler):
         pass
+
+    def _handle_get_health(self, handler: http.server.SimpleHTTPRequestHandler):
+        handler.send_response(204)
+        handler.end_headers()
 
     def _handle_get_tags(self, handler: http.server.SimpleHTTPRequestHandler):
         # get args for querying
@@ -114,6 +123,7 @@ class DaemonAPIHandler(APIHandler):
         logger.debug(f"Received serve request: {serve_request.serialize()}")
 
         port = self.model_runner.next_available_port()
+
         model = TransportFactory(
             serve_request.model_name,
             StoreArgs(store=self.model_store_path, engine=None, container=False),
@@ -122,25 +132,42 @@ class DaemonAPIHandler(APIHandler):
 
         # Use the RamaLama CLI parser to get a namespace with all variables and their
         # default values, which is then used to assemble the final inference engine command
-        ramalama_cmd = ["ramalama", "--runtime", serve_request.runtime, "serve", model.model_name, "--port", str(port)]
-        for arg, val in serve_request.exec_args.items():
-            ramalama_cmd.extend([arg, val])
-        args = parse_args_from_cmd(ramalama_cmd)
-        # always log to file at the model-specific location
-        args.logfile = f"{DEFAULT_LOG_DIR}/{model.model_organization}_{model.model_name}_{model.model_tag}.log"
-        inference_engine_command = assemble_command(args)
+        try:
+            ramalama_cmd = [
+                "--runtime",
+                serve_request.runtime,
+                "--store",
+                self.model_store_path,
+                "serve",
+                serve_request.model_name,
+                "--port",
+                str(port),
+            ]
+            for entry in serve_request.exec_args:
+                ramalama_cmd.append(str(entry))
+            logger.info(f"command: {ramalama_cmd}")
+            args = parse_args_from_cmd(ramalama_cmd)
+            # always log to file at the model-specific location
+            args.logfile = f"{DEFAULT_LOG_DIR}/{model.model_organization}_{model.model_name}_{model.model_tag}.log"
+            inference_engine_command = assemble_command(args)
+            logger.info(
+                f"Starting model runner for {serve_request.model_name} with command: {inference_engine_command}"
+            )
+            managed_model = ManagedModel(model, inference_engine_command, port, timedelta(seconds=30))
+            serve_path = ModelProxyHandler.build_proxy_path(model)
+            self.model_runner.add_model(managed_model)
+            self.model_runner.start_model(managed_model.id, serve_path)
+            logger.info(f"Started model on {serve_path}")
 
-        logger.info(f"Starting model runner for {serve_request.model_name} with command: {inference_engine_command}")
-        managed_model = ManagedModel(model, inference_engine_command, port, timedelta(seconds=30))
-        serve_path = ModelProxyHandler.build_proxy_path(model)
-        self.model_runner.add_model(managed_model)
-        self.model_runner.start_model(managed_model.id, serve_path)
-
-        handler.send_response(200)
-        handler.send_header("Content-Type", "application/json")
-        handler.end_headers()
-        handler.wfile.write(json.dumps(ServeResponse(managed_model.id, serve_path).to_dict(), indent=4).encode("utf-8"))
-        handler.wfile.flush()
+            handler.send_response(200)
+            handler.send_header("Content-Type", "application/json")
+            handler.end_headers()
+            handler.wfile.write(
+                json.dumps(ServeResponse(managed_model.id, serve_path).to_dict(), indent=4).encode("utf-8")
+            )
+            handler.wfile.flush()
+        except Exception as ex:
+            logger.error(f"{ex}")
 
     def _handle_post_stop(self, handler: http.server.SimpleHTTPRequestHandler):
         content_length = int(handler.headers["Content-Length"])

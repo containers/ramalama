@@ -3,14 +3,14 @@ import urllib.parse
 import urllib.request
 
 from ramalama.daemon.handler.base import APIHandler
-from ramalama.daemon.logging import logger
+from ramalama.daemon.logger import logger
 from ramalama.daemon.service.model_runner import ModelRunner
 from ramalama.transports.transport_factory import CLASS_MODEL_TYPES
 
 
 class ModelProxyHandler(APIHandler):
 
-    PATH_PREFIX = "/model"
+    PATH_PREFIX = "/models"
 
     def __init__(self, model_runner: ModelRunner):
         super().__init__(model_runner)
@@ -43,31 +43,24 @@ class ModelProxyHandler(APIHandler):
 
     def _forward_request(self, handler: http.server.SimpleHTTPRequestHandler, is_referred: bool = False):
 
+        requested_model = None
         forward_path = ""
-        proxy_path = ""
-        if is_referred:
-            logger.debug("request is referred")
-            if "Referer" not in handler.headers:
-                msg = "Something went wrong, no referer header found"
-                logger.error(msg)
-                handler.send_error(500, msg)
-                return
-            proxy_path = urllib.parse.urlparse(handler.headers["Referer"]).path
-            forward_path = handler.path.replace("/".join(proxy_path.split("/")[:-1]), "", 1)
-        else:
-            logger.debug("request is not referred")
-            proxy_path = handler.path
-            forward_path = handler.path.replace(proxy_path, "", 1)
+        for path, model in self.model_runner.served_models.items():
+            if path in handler.path:
+                requested_model = model
+                forward_path = handler.path.replace(path, "")
+                if forward_path == "":
+                    forward_path = "/"
+                continue
 
-        model = self.model_runner.served_models.get(proxy_path, None)
-        if model is None:
-            msg = f"No model for path '{proxy_path}' found"
+        if requested_model is None:
+            msg = f"No model for path '{handler.path}' found"
             logger.error(msg)
             handler.send_error(404, msg)
             return
-        model.update_expiration_date()
+        requested_model.update_expiration_date()
 
-        target_url = f"http://127.0.0.1:{model.port}{forward_path}"
+        target_url = f"http://127.0.0.1:{requested_model.port}{forward_path}"
         method = handler.command
         headers = handler.headers
         data = None
@@ -95,6 +88,9 @@ class ModelProxyHandler(APIHandler):
             for key, value in response.getheaders():
                 if key.lower() in hop_by_hop_headers:
                     continue
+                if key in ["Access-Control-Allow-Origin", "Cross-Origin-Embedder-Policy", "Cross-Origin-Opener-Policy"]:
+                    continue
+
                 handler.send_header(key, value)
 
             handler.end_headers()

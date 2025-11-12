@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from ramalama.common import generate_sha256
+from ramalama.daemon.logger import logger
 from ramalama.transports.transport_factory import CLASS_MODEL_TYPES
 
 
@@ -100,4 +101,9 @@ class ModelRunner:
 
     def stop(self):
         for id in list(self._models.keys()):
-            self.stop_model(id)
+            m = self._models[id]
+            try:
+                logger.info(f"Stopping model runner for {m.model.model_organization}/{m.model.model_name}...")
+                self.stop_model(id)
+            except Exception as e:
+                logger.error(f"Error stopping model runner for {m.model.model_organization}/{m.model.model_name}: {e}")

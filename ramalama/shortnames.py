@@ -40,6 +40,10 @@ class Shortnames:
     def resolve(self, model) -> str | None:
         return self.shortnames.get(model, model)
 
+    def get_shortname_for(self, resolved_model: str) -> str | None:
+        reverse = {value: key for key, value in self.shortnames.items()}
+        return reverse.get(resolved_model)
+
     def create_shortname_file(self) -> str:
         shortnamefile = tempfile.NamedTemporaryFile(prefix='RamaLama_shortname_', delete=False)
         # Open the file for writing.

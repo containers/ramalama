@@ -22,7 +22,7 @@ from ramalama.common import (
 )
 from ramalama.compose import Compose
 from ramalama.config import CONFIG, DEFAULT_PORT_RANGE
-from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
+from ramalama.engine import LABEL_CONTAINER_RAMALAMA, Engine, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.logger import logger
 from ramalama.model_inspect.base_info import ModelInfoBase
@@ -315,7 +315,7 @@ class Transport(TransportBase):
         self.engine.add(
             [
                 "--label",
-                "ai.ramalama",
+                LABEL_CONTAINER_RAMALAMA,
                 "--name",
                 name,
                 "--env=HOME=/tmp",

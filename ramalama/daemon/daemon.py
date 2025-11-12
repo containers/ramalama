@@ -7,7 +7,7 @@ import threading
 from datetime import datetime, timedelta
 
 from ramalama.daemon.handler.ramalama import RamalamaHandler
-from ramalama.daemon.logging import LogLevel, configure_logger, logger
+from ramalama.daemon.logger import LogLevel, configure_logger, logger
 from ramalama.daemon.service.model_runner import ModelRunner
 
 
@@ -61,26 +61,22 @@ class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
     def check_model_expiration(self):
         curr_time = datetime.now()
-        for name, m in self.model_runner.managed_models.items():
+
+        for id in list(self.model_runner.managed_models.keys()):
+            m = self.model_runner.managed_models[id]
             if m.expiration_date > curr_time:
                 continue
 
             try:
-                logger.info(f"Stopping expired model '{name}'...")
+                logger.info(f"Stopping expired model '{m.model.model_organization}/{m.model.model_name}'...")
                 self.model_runner.stop_model(m.id)
             except Exception as e:
-                logger.error(f"Failed to stop expired model '{name}': {e}")
+                logger.error(f"Failed to stop expired model '{m.model.model_organization}/{m.model.model_name}': {e}")
 
     def shutdown(self):
         logger.info("Shutting down ramalama daemon...")
 
-        for name, managed_model in self.model_runner.managed_models.items():
-            try:
-                logger.info(f"Stopping model runner {name}...")
-                self.model_runner.stop_model(managed_model.id)
-            except Exception as e:
-                logger.error(f"Error stopping model runner {name}: {e}")
-
+        self.model_runner.stop()
         super().shutdown()
 
 

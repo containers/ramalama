@@ -286,8 +286,8 @@ def verify_checksum(filename: str) -> bool:
     return sha256_hash.hexdigest() == expected_checksum
 
 
-def genname():
-    return "ramalama_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
+def genname(prefix: str = "ramalama"):
+    return prefix + "_" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
 def engine_version(engine: SUPPORTED_ENGINES) -> str:
