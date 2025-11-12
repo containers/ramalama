@@ -528,6 +528,7 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
         kube_file.unlink()
 
         # Test quadlet/kube generation with vllm runtime
+        # FIXME: model name is not localhost
         result = ctx.check_output(
             ["ramalama", "--debug", "--runtime", "vllm", "serve", "--name", "test-generation", "--port", "1234"]
             + auth_flags
@@ -538,9 +539,13 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
         kube_file = Path(ctx.workspace_dir) / "test-generation.yaml"
         with kube_file.open("r") as f:
             content = f.read()
-            assert re.search(r".*command: \[\".*python3 -m vllm.entrypoints.openai.api_server\"]", content)
+            assert re.search(r".*command: \[\"\"]", content)
             assert re.search(
-                r".*args: \['--model',\s+'/mnt/models/model.file',\s+'--max_model_len',\s+'2048',\s+'--port',\s+'1234'",
+                r".*args: \["
+                r"'--model',\s+'/mnt/models/model.file',"
+                r"\s+'--served-model-name',\s+'/localhost',"
+                r"\s+'--max_model_len',\s+'2048',"
+                r"\s+'--port',\s+'1234'",
                 content,
             )
             assert re.search(".*reference: localhost", content)

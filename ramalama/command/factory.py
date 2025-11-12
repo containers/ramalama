@@ -53,7 +53,12 @@ class CommandFactory:
     def resolve_cmd(spec: schema.CommandSpecV1, ctx: context.RamalamaCommandContext) -> list[str]:
         engine = spec.command.engine
 
-        cmd = [engine.binary]
+        cmd = []
+        # FIXME: binary should be a string array to work with nocontainer
+        binary = CommandFactory.eval_stmt(engine.binary, ctx)
+        if is_truthy(binary):
+            cmd += binary.split(" ")
+
         for option in engine.options:
             should_add = option.condition is None or is_truthy(CommandFactory.eval_stmt(option.condition, ctx))
             if not should_add:

@@ -1,3 +1,4 @@
+import copy
 import os
 import platform
 import random
@@ -510,15 +511,19 @@ class Transport(TransportBase):
         if getattr(args, "runtime", None) == "mlx":
             args.prefix = "🍏 > "
 
+        # Model name in the chat request must match RamalamaModelContext.alias()
+        chat_args = copy.deepcopy(args)
+        chat_args.model = f"{self.model_organization}/{self.model_name}"
+
         if args.container:
-            return self._handle_container_chat(args, server_process)
+            return self._handle_container_chat(chat_args, server_process)
         else:
             # Store the Popen object for monitoring
-            args.server_process = server_process
+            chat_args.server_process = server_process
 
-            if getattr(args, "runtime", None) == "mlx":
-                return self._handle_mlx_chat(args)
-            chat.chat(args)
+            if getattr(chat_args, "runtime", None) == "mlx":
+                return self._handle_mlx_chat(chat_args)
+            chat.chat(chat_args)
             return 0
 
     def chat_operational_args(self, args) -> "ChatOperationalArgs | None":

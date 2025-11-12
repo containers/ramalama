@@ -491,12 +491,18 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()
 
+    n = 0
     while time.time() - start_time < timeout:
         try:
+            if not args.debug:
+                perror('\r' + n * '.', end='', flush=True)
             if health_func(args):
+                if not args.debug:
+                    perror('\r' + n * ' ' + '\r', end='', flush=True)
                 return
         except (ConnectionError, HTTPException, UnicodeDecodeError, json.JSONDecodeError) as e:
             logger.debug(f"Health check of container {args.name} failed, retrying... Error: {e}")
+            n += 1
         time.sleep(1)
 
     raise subprocess.TimeoutExpired(
