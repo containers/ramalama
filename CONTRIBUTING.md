@@ -183,6 +183,12 @@ They are intended to validate RamaLama builds before they are shipped by distrib
 
 The system tests are located in the `test/system/` directory.
 
+### End-to-End Tests
+
+The end-to-end tests are written in Python using the pytest framework.
+They are intended to validate RamaLama from a user's perspective.
+Full details on running the e2e tests can be found in the [README](test/e2e/README.md) for the e2e tests.
+
 ## Documentation
 
 Make sure to update the documentation if needed.
@@ -379,7 +385,7 @@ if possible.](#communications).
 
 ## Speaking and Advocacy
 
-Contributions to RamaLama aren't limited to code! We encourage community members to share their RamaLama experiences. 
+Contributions to RamaLama aren't limited to code! We encourage community members to share their RamaLama experiences.
 
 You can contribute by:
 
