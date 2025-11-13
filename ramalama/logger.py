@@ -1,18 +1,34 @@
 import logging
 import sys
-import typing
+
+from ramalama.daemon.logging import LogLevel
 
 logger = logging.getLogger("ramalama")
 
 
-def configure_logger(verbosity="WARNING") -> None:
+def _coerce_log_level(level: LogLevel | str | int) -> LogLevel:
+    if isinstance(level, LogLevel):
+        return level
+    if isinstance(level, str):
+        try:
+            return LogLevel[level.upper()]
+        except KeyError as exc:
+            raise ValueError(f"Unsupported log level: {level}") from exc
+    if isinstance(level, int):
+        try:
+            return LogLevel(level)
+        except ValueError as exc:
+            raise ValueError(f"Unsupported log level value: {level}") from exc
+    raise TypeError(f"Cannot coerce {level!r} to LogLevel")
+
+
+def configure_logger(level: LogLevel | str = LogLevel.WARNING) -> None:
     global logger
 
-    lvl = logging.WARNING
-    if verbosity in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
-        lvl = typing.cast(int, getattr(logging, verbosity))
+    resolved_level = _coerce_log_level(level)
+    lvl_value = int(resolved_level)
 
-    logger.setLevel(lvl)
+    logger.setLevel(lvl_value)
     logger.propagate = False
 
     fmt = "%(asctime)s - %(levelname)s - %(message)s"
@@ -23,5 +39,5 @@ def configure_logger(verbosity="WARNING") -> None:
         logger.addHandler(logging.StreamHandler(sys.stderr))
 
     for handler in logger.handlers:
-        handler.setLevel(lvl)
+        handler.setLevel(lvl_value)
         handler.setFormatter(formatter)

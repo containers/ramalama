@@ -7,6 +7,7 @@ from typing import Any, Literal, Mapping, TypeAlias
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import apple_vm, available
+from ramalama.daemon.logging import LogLevel
 from ramalama.layered_config import LayeredMixin
 from ramalama.toml_parser import TOMLParser
 
@@ -72,7 +73,6 @@ def get_inference_spec_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
     for spec_dir in get_all_inference_spec_dirs("engines"):
-
         # Give preference to .yaml, then .json spec files
         file_extensions = ["*.yaml", "*.yml", "*.json"]
         for file_extension in file_extensions:
@@ -90,7 +90,6 @@ def get_inference_schema_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
     for schema_dir in get_all_inference_spec_dirs("schema"):
-
         for spec_file in sorted(Path(schema_dir).glob("schema.*.json")):
             file = Path(spec_file)
             version = file.name.replace("schema.", "").replace(".json", "")
@@ -109,6 +108,22 @@ def coerce_to_bool(value: Any) -> bool:
         elif val in {"off", "false", "0", "no", "n"}:
             return False
     raise ValueError(f"Cannot coerce {value!r} to bool")
+
+
+def _coerce_log_level(level: str | LogLevel | int) -> LogLevel:
+    if isinstance(level, LogLevel):
+        return level
+    if isinstance(level, str):
+        try:
+            return LogLevel[level.upper()]
+        except KeyError as exc:
+            raise ValueError(f"Unsupported log level: {level}") from exc
+    if isinstance(level, int):
+        try:
+            return LogLevel(level)
+        except ValueError as exc:
+            raise ValueError(f"Unsupported log level value: {level}") from exc
+    raise TypeError(f"Cannot coerce {level!r} to LogLevel")
 
 
 @dataclass
@@ -187,11 +202,13 @@ class BaseConfig:
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
+    log_level: LogLevel | None = None
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
         self.image = self.image if self.image is not None else self.default_image
         self.pull = normalize_pull_arg(self.pull, self.engine)
+        self.log_level = self.log_level if not self.log_level else _coerce_log_level(self.log_level)
 
 
 class Config(LayeredMixin, BaseConfig):
@@ -226,6 +243,8 @@ def load_file_config() -> dict[str, Any]:
         config = parser.parse_file(config_path)
         config = config.get("ramalama", {})
         config['settings'] = {'config_files': [config_path]}
+        if log_level := config.get("log_level"):
+            config["log_level"] = _coerce_log_level(log_level)
         return config
 
     config = {}
@@ -245,6 +264,9 @@ def load_file_config() -> dict[str, Any]:
     if config:
         config = config.get('ramalama', {})
         config['settings'] = {'config_files': config_paths}
+        if log_level := config.get("log_level"):
+            config["log_level"] = _coerce_log_level(log_level)
+
     return config
 
 
@@ -288,6 +310,10 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     for key in ['threads', 'ctx_size', 'ngl']:
         if key in config:
             config[key] = int(config[key])
+
+    if log_level := config.get("log_level"):
+        config["log_level"] = _coerce_log_level(log_level)
+
     return config
 
 
