@@ -128,10 +128,9 @@ class RagEngine(Engine):
     def add_rag(self):
         if self.sourcetype is RagSource.DB:
             rag = os.path.realpath(self.args.rag)
-            # Added temp read write because vector database requires write access even if nothing is written
-            self.add_args(f"--mount=type=bind,source={rag},destination=/rag/vector.db,rw=true{self.relabel()}")
+            self.add_args(f"--mount=type=bind,source={rag},destination=/rag/vector.db{self.relabel()}")
         else:
-            self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
+            self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag")
 
 
 class RagTransport(OCI):
