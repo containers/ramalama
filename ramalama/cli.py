@@ -39,8 +39,8 @@ from ramalama.config import (
     get_inference_spec_files,
     load_file_config,
 )
-from ramalama.daemon.logging import LogLevel
 from ramalama.endian import EndianMismatchError
+from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore

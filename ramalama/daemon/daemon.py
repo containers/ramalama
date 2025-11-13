@@ -8,8 +8,9 @@ from datetime import datetime, timedelta
 
 from ramalama.config import CONFIG
 from ramalama.daemon.handler.ramalama import RamalamaHandler
-from ramalama.daemon.logging import LogLevel, configure_logger, logger
+from ramalama.daemon.logging import configure_logger, logger
 from ramalama.daemon.service.model_runner import ModelRunner
+from ramalama.log_levels import LogLevel
 
 
 class ShutdownHandler:

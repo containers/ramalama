@@ -7,8 +7,8 @@ from typing import Any, Literal, Mapping, TypeAlias
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import apple_vm, available
-from ramalama.daemon.logging import LogLevel
 from ramalama.layered_config import LayeredMixin
+from ramalama.log_levels import LogLevel, coerce_log_level
 from ramalama.toml_parser import TOMLParser
 
 PathStr: TypeAlias = str
@@ -110,22 +110,6 @@ def coerce_to_bool(value: Any) -> bool:
     raise ValueError(f"Cannot coerce {value!r} to bool")
 
 
-def _coerce_log_level(level: str | LogLevel | int) -> LogLevel:
-    if isinstance(level, LogLevel):
-        return level
-    if isinstance(level, str):
-        try:
-            return LogLevel[level.upper()]
-        except KeyError as exc:
-            raise ValueError(f"Unsupported log level: {level}") from exc
-    if isinstance(level, int):
-        try:
-            return LogLevel(level)
-        except ValueError as exc:
-            raise ValueError(f"Unsupported log level value: {level}") from exc
-    raise TypeError(f"Cannot coerce {level!r} to LogLevel")
-
-
 @dataclass
 class UserConfig:
     no_missing_gpu_prompt: bool = False
@@ -208,7 +192,7 @@ class BaseConfig:
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
         self.image = self.image if self.image is not None else self.default_image
         self.pull = normalize_pull_arg(self.pull, self.engine)
-        self.log_level = self.log_level if not self.log_level else _coerce_log_level(self.log_level)
+        self.log_level = coerce_log_level(self.log_level) if self.log_level is not None else self.log_level
 
 
 class Config(LayeredMixin, BaseConfig):
@@ -244,7 +228,7 @@ def load_file_config() -> dict[str, Any]:
         config = config.get("ramalama", {})
         config['settings'] = {'config_files': [config_path]}
         if log_level := config.get("log_level"):
-            config["log_level"] = _coerce_log_level(log_level)
+            config["log_level"] = coerce_log_level(log_level)
         return config
 
     config = {}
@@ -265,7 +249,7 @@ def load_file_config() -> dict[str, Any]:
         config = config.get('ramalama', {})
         config['settings'] = {'config_files': config_paths}
         if log_level := config.get("log_level"):
-            config["log_level"] = _coerce_log_level(log_level)
+            config["log_level"] = coerce_log_level(log_level)
 
     return config
 
@@ -312,7 +296,7 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
             config[key] = int(config[key])
 
     if log_level := config.get("log_level"):
-        config["log_level"] = _coerce_log_level(log_level)
+        config["log_level"] = coerce_log_level(log_level)
 
     return config
 

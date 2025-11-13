@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 from ramalama.cli import ParsedGenerateInput, parse_generate_option, post_parse_setup
-from ramalama.daemon.logging import LogLevel
+from ramalama.log_levels import LogLevel
 from ramalama.transports.base import NoGGUFModelFileFound, SafetensorModelNotSupported
 
 

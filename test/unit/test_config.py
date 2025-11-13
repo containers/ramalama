@@ -11,7 +11,7 @@ from ramalama.config import (
     get_default_store,
     load_env_config,
 )
-from ramalama.daemon.logging import LogLevel
+from ramalama.log_levels import LogLevel
 
 
 def test_correct_config_defaults(monkeypatch):
