@@ -1519,6 +1519,11 @@ def inspect_cli(args):
 
 def main() -> None:
     def eprint(e, exit_code):
+        try:
+            if args.debug:
+                logger.exception(e)
+        except Exception:
+            pass
         perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)
 
