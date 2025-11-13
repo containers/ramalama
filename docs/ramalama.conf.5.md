@@ -211,3 +211,15 @@ The default -1, uses the default of the underlying implementation
 Specify the default transport to be used for pulling and pushing of AI Models.
 Options: oci, ollama, huggingface.
 RAMALAMA_TRANSPORT environment variable overrides this field.
+
+`[[ramalama.http_client]]`
+
+Http client configuration
+
+**max_retries**=5
+
+The maximum number of times to retry a failed download
+
+**max_retry_delay**=30
+
+The maximum delay between retry attempts in seconds

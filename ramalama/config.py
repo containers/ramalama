@@ -199,6 +199,20 @@ class RamalamaRagImages(RamalamaImageConfig):
 
 
 @dataclass
+class HTTPClientConfig:
+    max_retries: int = 5
+    max_retry_delay: int = 30
+
+    def __post_init__(self):
+        self.max_retries = int(self.max_retries)
+        if self.max_retries < 0:
+            raise ValueError(f"http_client.max_retries must be non-negative: {self.max_retries}")
+        self.max_retry_delay = int(self.max_retry_delay)
+        if self.max_retry_delay < 0:
+            raise ValueError(f"http_client.max_retry_delay must be non-negative: {self.max_retry_delay}")
+
+
+@dataclass
 class BaseConfig:
     api: str = "none"
     api_key: str | None = None
@@ -237,6 +251,7 @@ class BaseConfig:
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
+    http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
