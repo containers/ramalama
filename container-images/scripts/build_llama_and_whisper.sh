@@ -40,6 +40,14 @@ dnf_install_asahi() {
 }
 
 dnf_install_cuda() {
+  if is_rhel_based; then
+    dnf_install_epel
+    add_stream_repo "AppStream"
+    add_stream_repo "BaseOS"
+    add_stream_repo "CRB"
+  fi
+
+  dnf install -y "${vulkan_rpms[@]}"
   dnf install -y gcc-toolset-12
   # shellcheck disable=SC1091
   . /opt/rh/gcc-toolset-12/enable
@@ -226,7 +234,7 @@ configure_common_flags() {
     common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201}")
     ;;
   cuda)
-    common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined" "-DCMAKE_CUDA_FLAGS=\"-U__ARM_NEON -U__ARM_NEON__\"")
+    common_flags+=("-DGGML_VULKAN=1" "-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined" "-DCMAKE_CUDA_FLAGS=\"-U__ARM_NEON -U__ARM_NEON__\"")
     ;;
   vulkan | asahi)
     common_flags+=("-DGGML_VULKAN=1")
