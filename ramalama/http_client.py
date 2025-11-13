@@ -231,5 +231,5 @@ def download_file(url: str, dest_path: str, headers: dict[str, str] | None = Non
             raise ConnectionError(error_message)
 
         time.sleep(
-            min(CONFIG.http_client.max_retry_delay, 2**retries * 0.1)
+            min(CONFIG.http_client.max_retry_delay, 2 ** (retries - 1) * 0.1)
         )  # Exponential backoff (0.1s, 0.2s, 0.4s... max_retry_delay)
