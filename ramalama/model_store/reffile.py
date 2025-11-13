@@ -204,7 +204,7 @@ class RefJSONFile:
 
             ref_version = data["version"]
             ref_hash = data["hash"]
-            ref_path = data["path"]
+            ref_path = path
             ref_files = []
             for file in data["files"]:
                 file_hash = file["hash"]
@@ -212,9 +212,14 @@ class RefJSONFile:
                 file_type = StoreFileType.from_str(file["type"])
                 ref_files.append(StoreFile(file_hash, file_name, file_type))
 
-            return RefJSONFile(
+            ref_file = RefJSONFile(
                 version=ref_version,
                 hash=ref_hash,
                 path=ref_path,
                 files=ref_files,
             )
+            # ref file has moved
+            if ref_file.path != data["path"]:
+                logger.debug(f"Updating ref file path to '{ref_file.path}'")
+                ref_file.write_to_file()
+            return ref_file
