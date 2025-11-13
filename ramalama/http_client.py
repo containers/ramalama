@@ -8,6 +8,7 @@ import urllib.request
 
 import ramalama.console as console
 from ramalama.common import perror, verify_checksum
+from ramalama.config import CONFIG
 from ramalama.file import File
 from ramalama.logger import logger
 
@@ -174,10 +175,10 @@ def download_file(url: str, dest_path: str, headers: dict[str, str] | None = Non
         show_progress = False
 
     http_client = HttpClient()
-    max_retries = 5  # Stop after 5 failures
+    max_retries = CONFIG.http_client.max_retries
     retries = 0
 
-    while retries < max_retries:
+    while retries <= max_retries:
         try:
             # Initialize HTTP client for the request
             http_client.init(url=url, headers=headers, output_file=dest_path, show_progress=show_progress)
@@ -212,7 +213,7 @@ def download_file(url: str, dest_path: str, headers: dict[str, str] | None = Non
             console.error(f"Unexpected error: {str(e)}")
             raise e
 
-        if retries >= max_retries:
+        if retries > max_retries:
             error_message = (
                 "\nDownload failed after multiple attempts.\n"
                 "Possible causes:\n"
@@ -222,7 +223,9 @@ def download_file(url: str, dest_path: str, headers: dict[str, str] | None = Non
             )
             raise ConnectionError(error_message)
 
-        time.sleep(2**retries * 0.1)  # Exponential backoff (0.1s, 0.2s, 0.4s...)
+        time.sleep(
+            min(CONFIG.http_client.max_retry_delay, 2**retries * 0.1)
+        )  # Exponential backoff (0.1s, 0.2s, 0.4s... max_retry_delay)
 
 
 def download_and_verify(url: str, target_path: str, max_retries: int = 2):
