@@ -220,6 +220,6 @@ class RefJSONFile:
             )
             # ref file has moved
             if ref_file.path != data["path"]:
-                logger.debug(f"Updating ref file path to '{ ref_file.path }'")
+                logger.debug(f"Updating ref file path to '{ref_file.path}'")
                 ref_file.write_to_file()
             return ref_file
