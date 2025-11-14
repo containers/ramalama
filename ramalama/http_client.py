@@ -10,6 +10,10 @@ import ramalama.console as console
 from ramalama.common import perror, verify_checksum
 from ramalama.file import File
 from ramalama.logger import logger
+from ramalama.proxy_support import setup_proxy_support
+
+# Setup proxy support on module import
+setup_proxy_support()
 
 HTTP_NOT_FOUND = 404
 HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already downloaded)
