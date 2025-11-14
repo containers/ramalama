@@ -31,15 +31,18 @@ class HttpClient:
             response_str.append(self.response.read().decode('utf-8'))
         else:
             out = File()
-            if not out.open(output_file_partial, "ab"):
-                raise IOError("Failed to open file")
+            try:
+                if not out.open(output_file_partial, "ab"):
+                    raise IOError("Failed to open file")
 
-            if out.lock():
-                raise IOError("Failed to exclusively lock file")
+                if out.lock():
+                    raise IOError("Failed to exclusively lock file")
 
-            self.now_downloaded = 0
-            self.start_time = time.time()
-            self.perform_download(out.file, show_progress)
+                self.now_downloaded = 0
+                self.start_time = time.time()
+                self.perform_download(out.file, show_progress)
+            finally:
+                del out  # Ensure file is closed before rename
 
         if output_file:
             os.rename(output_file_partial, output_file)
