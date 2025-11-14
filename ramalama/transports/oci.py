@@ -251,7 +251,8 @@ class OCI(Transport):
             perror(
                 f"""\
 Failed to create manifest for OCI {self.model} : {e}
-Tagging build instead"""
+Tagging build instead
+                """
             )
             self.tag(imageid, self.model, args)
 

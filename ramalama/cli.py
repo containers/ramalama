@@ -1552,6 +1552,8 @@ def main() -> None:
         eprint(e, errno.EINVAL)
     except NotImplementedError as e:
         eprint(e, errno.ENOSYS)
+    except subprocess.TimeoutExpired as e:
+        eprint(e, errno.ETIMEDOUT)
     except subprocess.CalledProcessError as e:
         eprint(e, e.returncode)
     except EndianMismatchError:

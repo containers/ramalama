@@ -26,16 +26,22 @@ class TestEngine(unittest.TestCase):
         engine = Engine(self.base_args)
         self.assertEqual(engine.use_podman, True)
         self.assertEqual(engine.use_docker, False)
-        self.assertIn("--rm", engine.exec_args)
 
     def test_add_container_labels(self):
         args = Namespace(**vars(self.base_args), MODEL="test-model", port="8080", subcommand="run")
         engine = Engine(args)
         exec_args = engine.exec_args
+        self.assertNotIn("--rm", exec_args)
         self.assertIn("--label", exec_args)
         self.assertIn("ai.ramalama.model=test-model", exec_args)
         self.assertIn("ai.ramalama.port=8080", exec_args)
         self.assertIn("ai.ramalama.command=run", exec_args)
+
+    def test_serve_rm(self):
+        args = Namespace(**vars(self.base_args), MODEL="test-model", port="8080", subcommand="serve")
+        engine = Engine(args)
+        exec_args = engine.exec_args
+        self.assertIn("--rm", exec_args)
 
     @patch('os.access')
     @patch('ramalama.engine.check_nvidia')

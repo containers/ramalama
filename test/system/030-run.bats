@@ -16,7 +16,7 @@ EOF
     if is_container; then
 	run_ramalama info
 	conman=$(jq -r .Engine.Name <<< $output)
-	verify_begin="${conman} run --rm"
+	verify_begin="${conman} run"
 
 	run_ramalama -q --dryrun run ${MODEL}
 	is "$output" "${verify_begin}.*"
@@ -127,7 +127,7 @@ EOF
 }
 
 @test "ramalama run with prompt" {
-    run_ramalama run --runtime-args='-n 25' --temp 0 $(test_model ${MODEL}) "What is the first line of the declaration of independence?"
+    run_ramalama run --runtime-args='-n 25' --temp 0 $(test_model ${MODEL}) "Who is the primary writer of the declaration of independence?"
 }
 
 @test "ramalama run --keepalive" {
