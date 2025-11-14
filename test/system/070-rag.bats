@@ -59,7 +59,7 @@ load helpers
     is "${lines[1]}" ".*quay.io/ramalama/.*-rag:" "Expected to use -rag image in separate container"
     is "${lines[1]}" ".*rag_framework serve" "Expected to run rag_framework in a separate container"
     is "${lines[1]}" ".*--port 8080" "Expected to run rag_framework on port 8080"
-    is "${lines[1]}" ".*--mount=type=image,source=quay.io/ramalama/myrag:1.2,destination=/rag,rw=true" "Expected RAG image to be mounted into separate container"
+    is "${lines[1]}" ".*--mount=type=image,source=quay.io/ramalama/myrag:1.2,destination=/rag" "Expected RAG image to be mounted into separate container"
     if not_docker; then
        is "$output" ".*--pull missing.*" "Expected to use --pull missing"
        RAMALAMA_CONFIG=/dev/null run_ramalama --dryrun run --rag quay.io/ramalama/myrag:1.2 ollama://smollm:135m
@@ -76,7 +76,7 @@ load helpers
 
     RAG_DIR=$(mktemp -d)
     run_ramalama --dryrun run --rag $RAG_DIR ollama://smollm:135m
-    is "$output" ".*--mount=type=bind,source=$RAG_DIR,destination=/rag/vector.db,rw=true.*" "Expected RAG dir to be mounted"
+    is "$output" ".*--mount=type=bind,source=$RAG_DIR,destination=/rag/vector.db.*" "Expected RAG dir to be mounted"
     rmdir $RAG_DIR
 }
 

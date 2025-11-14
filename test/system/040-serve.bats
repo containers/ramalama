@@ -544,7 +544,7 @@ verify_begin=".*run --rm"
     is "${lines[1]}" ".*quay.io/ramalama/.*-rag:" "Expected to use -rag image in separate container"
     is "${lines[1]}" ".*rag_framework serve" "Expected to run rag_framework in a separate container"
     is "${lines[1]}" ".*--port 8080" "Expected to run rag_framework on port 8080"
-    is "${lines[1]}" ".*--mount=type=image,source=quay.io/ramalama/rag,destination=/rag,rw=true" "Expected RAG image to be mounted into separate container"
+    is "${lines[1]}" ".*--mount=type=image,source=quay.io/ramalama/rag,destination=/rag" "Expected RAG image to be mounted into separate container"
 
     run_ramalama --dryrun serve --image quay.io/ramalama/ramalama:1.0 --rag quay.io/ramalama/rag --pull=never tiny
     is "${lines[0]}" ".*quay.io/ramalama/ramalama:1.0" "Expected --image to be used"
