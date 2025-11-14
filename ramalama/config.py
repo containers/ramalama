@@ -33,13 +33,38 @@ GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
 ]
 DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"
 
-DEFAULT_CONFIG_DIRS = [
-    Path(f"{sys.prefix}/share/ramalama"),
-    Path(f"{sys.prefix}/local/share/ramalama"),
-    Path("/etc/ramalama"),
-    Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
-    Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
-]
+
+def _get_default_config_dirs() -> list[Path]:
+    """Get platform-appropriate config directories."""
+    dirs = [
+        Path(f"{sys.prefix}/share/ramalama"),
+        Path(f"{sys.prefix}/local/share/ramalama"),
+    ]
+
+    if os.name == 'nt':
+        # Windows-specific paths using APPDATA and LOCALAPPDATA
+        appdata = os.getenv("APPDATA", os.path.expanduser("~/AppData/Roaming"))
+        localappdata = os.getenv("LOCALAPPDATA", os.path.expanduser("~/AppData/Local"))
+        dirs.extend(
+            [
+                Path(os.path.join(localappdata, "ramalama")),
+                Path(os.path.join(appdata, "ramalama")),
+            ]
+        )
+    else:
+        # Unix-specific paths
+        dirs.extend(
+            [
+                Path("/etc/ramalama"),
+                Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
+                Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
+            ]
+        )
+
+    return dirs
+
+
+DEFAULT_CONFIG_DIRS = _get_default_config_dirs()
 
 
 def get_default_engine() -> SUPPORTED_ENGINES | None:
@@ -54,7 +79,8 @@ def get_default_engine() -> SUPPORTED_ENGINES | None:
 
 
 def get_default_store() -> str:
-    if os.geteuid() == 0:
+    # Check if running as root (Unix only)
+    if hasattr(os, 'geteuid') and os.geteuid() == 0:
         return "/var/lib/ramalama"
 
     return os.path.expanduser("~/.local/share/ramalama")

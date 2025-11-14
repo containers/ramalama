@@ -7,6 +7,7 @@ from typing import Optional
 from ramalama.common import available, perror
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
 from ramalama.ollama_repo_utils import fetch_manifest_data
+from ramalama.path_utils import create_file_link
 from ramalama.transports.base import Transport
 
 
@@ -14,9 +15,8 @@ def in_existing_cache(model_name, model_tag):
     if not available("ollama"):
         return None
     default_ollama_caches = [
-        os.path.join(os.environ['HOME'], '.ollama/models'),
+        os.path.expanduser('~/.ollama/models'),
         '/usr/share/ollama/.ollama/models',
-        'C:\\Users\\%username%\\.ollama\\models',
     ]
 
     for cache_dir in default_ollama_caches:
@@ -190,9 +190,10 @@ class Ollama(Transport):
         model_hash = ollama_repo.get_model_hash(manifest)
         self.model_store.new_snapshot(tag, model_hash, files, verify=getattr(args, "verify", True))
 
-        # If a model has been downloaded via ollama cli, only create symlink in the snapshots directory
+        # If a model has been downloaded via ollama cli, only create link in the snapshots directory
         if is_model_in_ollama_cache:
             if not args.quiet:
                 perror(f"Using cached ollama://{name}{tag} ...")
             snapshot_model_path = self.model_store.get_snapshot_file_path(model_hash, self.model_store.model_name)
-            os.symlink(ollama_cache_path, snapshot_model_path)
+            # Use cross-platform file linking (hardlink/symlink/copy)
+            create_file_link(ollama_cache_path, snapshot_model_path)

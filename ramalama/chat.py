@@ -381,9 +381,22 @@ class RamaLamaShell(cmd.Cmd):
             return
 
         if getattr(self.args, "pid2kill", False):
-            os.kill(self.args.pid2kill, signal.SIGINT)
-            os.kill(self.args.pid2kill, signal.SIGTERM)
-            os.kill(self.args.pid2kill, signal.SIGKILL)
+            # Send signals to terminate process
+            # On Windows, only SIGTERM and SIGINT are supported
+            try:
+                os.kill(self.args.pid2kill, signal.SIGINT)
+            except (ProcessLookupError, AttributeError):
+                pass
+            try:
+                os.kill(self.args.pid2kill, signal.SIGTERM)
+            except (ProcessLookupError, AttributeError):
+                pass
+            # SIGKILL doesn't exist on Windows, use SIGTERM instead
+            if hasattr(signal, 'SIGKILL'):
+                try:
+                    os.kill(self.args.pid2kill, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
         elif getattr(self.args, "name", None):
             args = copy.copy(self.args)
             args.ignore = True
@@ -420,6 +433,7 @@ class TimeoutException(Exception):
 def alarm_handler(signum, frame):
     """
     Signal handler for SIGALRM. Raises TimeoutException when invoked.
+    Note: SIGALRM is Unix-only and not available on Windows.
     """
     raise TimeoutException()
 
@@ -591,7 +605,8 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
         prompt = " ".join(args.ARGS)
         print(f"\nramalama chat --color {args.color} --prefix  \"{args.prefix}\" --url {args.url} {prompt}")
         return
-    if getattr(args, "keepalive", False):
+    # SIGALRM is Unix-only, skip keepalive timeout handling on Windows
+    if getattr(args, "keepalive", False) and hasattr(signal, 'SIGALRM'):
         signal.signal(signal.SIGALRM, alarm_handler)
         signal.alarm(convert_to_seconds(args.keepalive))  # type: ignore
 
@@ -631,7 +646,6 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
     if server_exited_event:
         operational_args.server_exited_event = server_exited_event
 
-    successful_exit = True
     try:
         shell = RamaLamaShell(args, operational_args)
         if shell.handle_args(monitor_thread):
@@ -645,7 +659,7 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
             return
         # Check if this was caused by server exit
         if server_exited_event and server_exited_event.is_set():
-            successful_exit = False  # Server/container exited unexpectedly
+            # Server/container exited unexpectedly
             perror("\n" + "=" * 60)
             _report_server_exit(exit_info)
             perror("=" * 60)
@@ -660,16 +674,13 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
         # Stop the monitoring thread if it was started
         if monitor_thread:
             _stop_server_monitor(monitor_thread)
-        # Reset the alarm to 0 to cancel any pending alarms
-        signal.alarm(0)
-
-    # Only clean up resources on successful exit
-    # If server/container crashed, leave it for log inspection
-    if successful_exit:
-        try:
-            shell.kills()
-        except Exception as e:
-            logger.warning(f"Failed to clean up resources: {e}")
+        # Reset the alarm to 0 to cancel any pending alarms (Unix only)
+        if hasattr(signal, 'alarm'):
+            signal.alarm(0)
+    try:
+        shell.kills()
+    except Exception as e:
+        logger.warning(f"Failed to clean up resources: {e}")
 
 
 UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}

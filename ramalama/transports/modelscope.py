@@ -9,6 +9,7 @@ from ramalama.hf_style_repo_base import (
     fetch_checksum_from_api_base,
 )
 from ramalama.model_store.snapshot_file import SnapshotFileType
+from ramalama.path_utils import create_file_link
 
 missing_modelscope = """This operation requires modelscope which is not available.
 
@@ -109,7 +110,8 @@ class ModelScope(HFStyleRepoModel):
             if not os.path.exists(file_path):
                 continue
 
-            os.symlink(file_path, target_path)
+            # Use cross-platform file linking (hardlink/symlink/copy)
+            create_file_link(file_path, target_path)
             return True
         return False
 
