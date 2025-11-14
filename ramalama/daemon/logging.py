@@ -1,18 +1,9 @@
 import logging
 import os
-import typing
-from enum import IntEnum
+
+from ramalama.log_levels import LogLevel
 
 DEFAULT_LOG_DIR = "/var/tmp"
-
-
-class LogLevel(IntEnum):
-    DEBUG = typing.cast(int, getattr(logging, "DEBUG"))
-    INFO = typing.cast(int, getattr(logging, "INFO"))
-    WARNING = typing.cast(int, getattr(logging, "WARNING"))
-    ERROR = typing.cast(int, getattr(logging, "ERROR"))
-    CRITICAL = typing.cast(int, getattr(logging, "CRITICAL"))
-
 
 # Global logger
 logger = logging.getLogger("ramalama-daemon")

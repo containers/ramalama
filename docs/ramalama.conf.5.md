@@ -129,6 +129,12 @@ specified vllm model runtime.
 Pass `--group-add keep-groups` to podman, when using podman.
 In some cases this is needed to access the gpu from a rootless container
 
+**log_level**="WARNING"
+
+Set the default RamaLama CLI logging level. Accepted values are DEBUG, INFO, WARNING, ERROR, and CRITICAL.
+This can also be configured via the `RAMALAMA_LOG_LEVEL` environment variable. The `--debug` flag still
+forces DEBUG regardless of this setting.
+
 **max_tokens**=0
 
 Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).

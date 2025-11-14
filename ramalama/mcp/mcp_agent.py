@@ -7,10 +7,11 @@ import urllib.error
 import urllib.request
 from typing import Any, Dict, List
 
+from ramalama.config import CONFIG
 from ramalama.logger import logger
 from ramalama.mcp.mcp_client import PureMCPClient
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=CONFIG.log_level or logging.INFO)
 
 
 class LLMAgent:

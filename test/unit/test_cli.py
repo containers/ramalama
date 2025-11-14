@@ -1,10 +1,12 @@
 import sys
 from argparse import Namespace
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
 
 from ramalama.cli import ParsedGenerateInput, parse_generate_option, post_parse_setup
+from ramalama.log_levels import LogLevel
 from ramalama.transports.base import NoGGUFModelFileFound, SafetensorModelNotSupported
 
 
@@ -176,6 +178,37 @@ def test_pull_verify(monkeypatch, option, value):
     parser, args = init_cli()
     assert hasattr(args, "verify")
     assert args.verify == value
+
+
+def _run_post_parse_with_config(monkeypatch, config_level, debug):
+    import ramalama.cli as cli
+
+    recorded_levels: list[LogLevel] = []
+
+    def fake_configure(level):
+        recorded_levels.append(level)
+
+    monkeypatch.setattr(cli, "CONFIG", SimpleNamespace(log_level=config_level))
+    monkeypatch.setattr(cli, "configure_logger", fake_configure)
+
+    args = Namespace(debug=debug)
+    cli.post_parse_setup(args)
+    return recorded_levels
+
+
+def test_post_parse_setup_uses_debug_level(monkeypatch):
+    levels = _run_post_parse_with_config(monkeypatch, LogLevel.INFO, True)
+    assert levels == [LogLevel.DEBUG]
+
+
+def test_post_parse_setup_uses_config_log_level(monkeypatch):
+    levels = _run_post_parse_with_config(monkeypatch, LogLevel.INFO, False)
+    assert levels == [LogLevel.INFO]
+
+
+def test_post_parse_setup_defaults_to_warning(monkeypatch):
+    levels = _run_post_parse_with_config(monkeypatch, None, False)
+    assert levels == [LogLevel.WARNING]
 
 
 @pytest.mark.parametrize(
