@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>RamaLama</title>
+    <organization>com.github.containers</organization>
+    <domains enable_localSystem="true"/>
+    <options customize="never" require-scripts="false"/>
+    <welcome file="welcome.html"/>
+    <readme file="readme.html"/>
+    <license file="LICENSE"/>
+    <conclusion file="conclusion.html"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.github.containers.ramalama"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.github.containers.ramalama" visible="false">
+        <pkg-ref id="com.github.containers.ramalama"/>
+    </choice>
+    <pkg-ref id="com.github.containers.ramalama" version="{{VERSION}}" onConclusion="none">{{PKG_NAME}}</pkg-ref>
+</installer-gui-script>

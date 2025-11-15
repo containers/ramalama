@@ -1,0 +1,110 @@
+name: Build macOS Installer
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to checkout (branch, tag, or commit SHA)'
+        required: false
+        type: string
+        default: 'main'
+      tag_name:
+        description: 'Tag name for release upload (e.g., v0.1.0)'
+        required: false
+        type: string
+        default: ''
+      upload_to_release:
+        description: 'Upload to specified release tag'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build-macos-pkg:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || '' }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install pyinstaller
+          pip3 install -e .
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(cd ramalama && python3 -c "import version; print(version.version())")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "RamaLama version: $VERSION"
+
+      - name: Build macOS package
+        run: |
+          ./scripts/build_macos_pkg.sh
+
+      - name: Find built package
+        id: find_pkg
+        run: |
+          PKG_FILE=$(find build/macos-pkg -name "RamaLama-*-macOS-Installer.pkg" | head -n 1)
+          echo "pkg_file=$PKG_FILE" >> $GITHUB_OUTPUT
+          echo "pkg_name=$(basename $PKG_FILE)" >> $GITHUB_OUTPUT
+          echo "Found package: $PKG_FILE"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: ${{ steps.find_pkg.outputs.pkg_file }}
+          retention-days: 30
+
+      - name: Calculate SHA256
+        id: sha256
+        run: |
+          SHA256=$(shasum -a 256 "${{ steps.find_pkg.outputs.pkg_file }}" | cut -d' ' -f1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "SHA256: $SHA256"
+          echo "$SHA256  ${{ steps.find_pkg.outputs.pkg_name }}" > "${{ steps.find_pkg.outputs.pkg_file }}.sha256"
+
+      - name: Upload SHA256 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer-sha256
+          path: ${{ steps.find_pkg.outputs.pkg_file }}.sha256
+          retention-days: 30
+
+      - name: Upload to release
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_release == 'true')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ steps.find_pkg.outputs.pkg_file }}
+            ${{ steps.find_pkg.outputs.pkg_file }}.sha256
+          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.tag_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## macOS Installer Build Complete! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: ${{ steps.find_pkg.outputs.pkg_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **SHA256**: ${{ steps.sha256.outputs.sha256 }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# Download and install" >> $GITHUB_STEP_SUMMARY
+          echo "curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.version }}/${{ steps.find_pkg.outputs.pkg_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "sudo installer -pkg ${{ steps.find_pkg.outputs.pkg_name }} -target /" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
