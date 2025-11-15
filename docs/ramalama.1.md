@@ -175,6 +175,10 @@ although the recommended way is to use the ramalama.conf file.
 
 | ENV Name                  | Description                                |
 | ------------------------- | ------------------------------------------ |
+| ALL_PROXY, all_proxy      | proxy URL for all protocols (HTTP, HTTPS, FTP). Supports HTTP/HTTPS and SOCKS (socks4://, socks5://, socks5h://) proxies |
+| HTTP_PROXY, http_proxy    | proxy URL for HTTP connections             |
+| HTTPS_PROXY, https_proxy  | proxy URL for HTTPS connections            |
+| NO_PROXY, no_proxy        | comma-separated list of hosts to bypass proxy (e.g., localhost,127.0.0.1,.local) |
 | RAMALAMA_CONFIG           | specific configuration file to be used     |
 | RAMALAMA_CONTAINER_ENGINE | container engine (Podman/Docker) to use    |
 | RAMALAMA_FORCE_EMOJI      | define whether `ramalama run` uses EMOJI   |

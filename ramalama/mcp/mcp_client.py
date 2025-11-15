@@ -7,7 +7,12 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, Optional, cast
 
+from ramalama.proxy_support import setup_proxy_support
+
 logging.basicConfig(level=logging.INFO)
+
+# Setup proxy support on module import
+setup_proxy_support()
 
 
 class PureMCPClient:

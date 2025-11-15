@@ -24,6 +24,10 @@ from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
 from ramalama.mcp.mcp_agent import LLMAgent
 from ramalama.mcp.mcp_client import PureMCPClient
+from ramalama.proxy_support import setup_proxy_support
+
+# Setup proxy support on module import
+setup_proxy_support()
 
 
 def res(response, color):

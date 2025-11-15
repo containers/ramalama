@@ -26,6 +26,7 @@ dependencies = [
   "pyyaml",
   "jsonschema",
   "jinja2",
+  "PySocks",
 ]
 maintainers = [
    { name="Dan Walsh", email = "dwalsh@redhat.com" },
