@@ -183,6 +183,24 @@ They are intended to validate RamaLama builds before they are shipped by distrib
 
 The system tests are located in the `test/system/` directory.
 
+### E2E Tests
+
+The E2E (end-to-end) tests are Python-based tests using pytest that validate RamaLama's functionality across different platforms and container engines.
+
+The E2E tests are located in the `test/e2e/` directory and can be run with:
+```bash
+make e2e-tests                    # Run with Podman (default)
+make e2e-tests-docker             # Run with Docker
+make e2e-tests-nocontainer        # Run in no-container mode
+```
+
+**Platform Coverage:**
+- **Linux**: Tests run with Podman and Docker
+- **macOS**: Tests run in no-container mode with native llama.cpp
+- **Windows**: Tests run with Podman on Windows
+
+The Windows E2E tests run automatically on pull requests that modify relevant code and validate that RamaLama works correctly on Windows with Podman installed.
+
 ## Documentation
 
 Make sure to update the documentation if needed.
