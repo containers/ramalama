@@ -72,6 +72,19 @@ Install RamaLama by running:
 curl -fsSL https://ramalama.ai/install.sh | bash
 ```
 
+### Install on Windows
+RamaLama supports Windows with Docker Desktop or Podman Desktop:
+```powershell
+pip install ramalama
+```
+
+**Requirements:**
+- Python 3.10 or later
+- Docker Desktop or Podman Desktop with WSL2 backend
+- For GPU support, see [NVIDIA GPU Setup for WSL2](docs/readme/wsl2-docker-cuda.md)
+
+**Note:** Windows support requires running containers via Docker/Podman. The model store uses hardlinks (no admin required) or falls back to file copies if hardlinks are unavailable.
+
 ## Accelerated images
 
 | Accelerator                       | Image                      |
@@ -114,6 +127,7 @@ RamaLama then pulls AI Models from model registries, starting a chatbot or REST 
 | Intel ARC GPUs (Linux)             | &check; See note below      |
 | Intel GPUs (vulkan / Linux)        | &check;                     |
 | Moore Threads GPU (musa / Linux)   | &check; See note below      |
+| Windows (with Docker/Podman)       | &check; Requires WSL2       |
 
 ### Nvidia GPUs
 On systems with NVIDIA GPUs, see [ramalama-cuda](docs/ramalama-cuda.7.md) documentation for the correct host system configuration.

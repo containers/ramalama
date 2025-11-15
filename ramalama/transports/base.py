@@ -32,6 +32,7 @@ from ramalama.model_inspect.safetensor_info import SafetensorModelInfo
 from ramalama.model_inspect.safetensor_parser import SafetensorInfoParser
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.store import ModelStore
+from ramalama.path_utils import get_container_mount_path
 from ramalama.quadlet import Quadlet
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
@@ -201,7 +202,7 @@ class Transport(TransportBase):
 
         if self.model_type == 'oci':
             if use_container or should_generate:
-                return os.path.join(MNT_DIR, 'model.file')
+                return f"{MNT_DIR}/model.file"
             else:
                 return f"oci://{self.model}"
 
@@ -228,7 +229,7 @@ class Transport(TransportBase):
             model_file = index_models[0]
 
         if use_container or should_generate:
-            return os.path.join(MNT_DIR, model_file.name)
+            return f"{MNT_DIR}/{model_file.name}"
         return self.model_store.get_blob_file_path(model_file.hash)
 
     def _get_inspect_model_path(self, dry_run: bool) -> str:
@@ -263,7 +264,7 @@ class Transport(TransportBase):
         # Use the first mmproj file
         mmproj_file = ref_file.mmproj_files[0]
         if use_container or should_generate:
-            return os.path.join(MNT_DIR, mmproj_file.name)
+            return f"{MNT_DIR}/{mmproj_file.name}"
         return self.model_store.get_blob_file_path(mmproj_file.hash)
 
     def _get_chat_template_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[str]:
@@ -287,7 +288,7 @@ class Transport(TransportBase):
         # Use the last chat template file (may have been go template converted to jinja)
         chat_template_file = ref_file.chat_templates[-1]
         if use_container or should_generate:
-            return os.path.join(MNT_DIR, chat_template_file.name)
+            return f"{MNT_DIR}/{chat_template_file.name}"
         return self.model_store.get_blob_file_path(chat_template_file.hash)
 
     def remove(self, args):
@@ -366,14 +367,20 @@ class Transport(TransportBase):
         # mount all files into container with file name instead of hash
         for file in ref_file.files:
             blob_path = self.model_store.get_blob_file_path(file.hash)
-            mount_path = os.path.join(MNT_DIR, file.name)
-            self.engine.add([f"--mount=type=bind,src={blob_path},destination={mount_path},ro{self.engine.relabel()}"])
+            # Convert path to container-friendly format (handles Windows path conversion)
+            container_blob_path = get_container_mount_path(blob_path)
+            mount_path = f"{MNT_DIR}/{file.name}"
+            self.engine.add(
+                [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
+            )
 
         if self.draft_model:
             draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
-            self.engine.add(
-                [f"--mount=type=bind,src={draft_model},destination={MNT_FILE_DRAFT},ro{self.engine.relabel()}"]
-            )
+            # Convert path to container-friendly format (handles Windows path conversion)
+            container_draft_model = get_container_mount_path(draft_model)
+            mount_opts = f"--mount=type=bind,src={container_draft_model},destination={MNT_FILE_DRAFT}"
+            mount_opts += f",ro{self.engine.relabel()}"
+            self.engine.add([mount_opts])
 
     def bench(self, args, cmd: list[str]):
         set_accel_env_vars()
@@ -499,9 +506,22 @@ class Transport(TransportBase):
         import signal
 
         try:
+            # Try graceful termination first
             os.kill(pid, signal.SIGTERM)
             time.sleep(1)  # Give it time to terminate gracefully
-            os.kill(pid, signal.SIGKILL)
+
+            # Force kill if still running (SIGKILL is Unix-only)
+            if hasattr(signal, 'SIGKILL'):
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            else:
+                # On Windows, send SIGTERM again as fallback
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
         except ProcessLookupError:
             pass
 

@@ -9,6 +9,7 @@ from ramalama.chat import ChatOperationalArgs
 from ramalama.common import accel_image, perror, set_accel_env_vars
 from ramalama.config import Config
 from ramalama.engine import BuildEngine, Engine, is_healthy, wait_for_healthy
+from ramalama.path_utils import get_container_mount_path
 from ramalama.transports.base import Transport
 from ramalama.transports.oci import OCI
 
@@ -35,7 +36,9 @@ class VectorDBEngine(Engine):
             # Run the command in the container with the same uid as the current user.
             # Otherwise the files written to the tempdir will be owned by root and
             # they will not be readable by the subsequent "docker build".
-            self.add_args("--user", str(os.geteuid()))
+            # Note: geteuid() doesn't exist on Windows, but this is only needed on Unix
+            if hasattr(os, 'geteuid'):
+                self.add_args("--user", str(os.geteuid()))
 
 
 class Rag:
@@ -127,7 +130,9 @@ class RagEngine(Engine):
 
     def add_rag(self):
         if self.sourcetype is RagSource.DB:
-            rag = os.path.realpath(self.args.rag)
+            # Convert to container-friendly path format (handles Windows path conversion)
+            rag = get_container_mount_path(self.args.rag)
+            # Added temp read write because vector database requires write access even if nothing is written
             self.add_args(f"--mount=type=bind,source={rag},destination=/rag/vector.db{self.relabel()}")
         else:
             self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag")

@@ -14,8 +14,11 @@ from ramalama.daemon.service.model_runner import ModelRunner
 class ShutdownHandler:
     def __init__(self, server: "RamalamaServer") -> None:
         self.server = server
+        self.idle_check_timer = None
 
     def handle_kill(self, signum, frame):
+        if self.idle_check_timer:
+            self.idle_check_timer.cancel()
         self.server.shutdown()
 
     def handle_alarm(self, signum, frame):
@@ -26,20 +29,44 @@ class ShutdownHandler:
             self.server.shutdown()
             return
 
-        # register alarm again for next check
-        signal.alarm(self.server.idle_check_interval.seconds)
+        # register alarm again for next check (Unix only)
+        if hasattr(signal, 'alarm'):
+            signal.alarm(self.server.idle_check_interval.seconds)
 
     def __enter__(self):
         signal.signal(signal.SIGINT, self.handle_kill)
         signal.signal(signal.SIGTERM, self.handle_kill)
 
-        # set initial idle check to 300s == 5min to prevent service from stopping
-        # right afer being started
-        signal.signal(signal.SIGALRM, self.handle_alarm)
-        signal.alarm(300)
+        # SIGALRM is Unix-only, use threading.Timer on Windows as fallback
+        if hasattr(signal, 'SIGALRM'):
+            # set initial idle check to 300s == 5min to prevent service from stopping
+            # right after being started
+            signal.signal(signal.SIGALRM, self.handle_alarm)
+            signal.alarm(300)
+        else:
+            # On Windows, use a background thread for idle checks
+            self._start_idle_check_thread()
+
+    def _start_idle_check_thread(self, interval_seconds=300):
+        """Start a background thread for idle checking on Windows (no SIGALRM support)."""
+
+        def check_and_reschedule():
+            self.server.check_model_expiration()
+            if not self.server.model_runner.managed_models:
+                self.server.shutdown()
+                return
+            # Schedule next check
+            self.idle_check_timer = threading.Timer(self.server.idle_check_interval.seconds, check_and_reschedule)
+            self.idle_check_timer.daemon = True
+            self.idle_check_timer.start()
+
+        self.idle_check_timer = threading.Timer(interval_seconds, check_and_reschedule)
+        self.idle_check_timer.daemon = True
+        self.idle_check_timer.start()
 
     def __exit__(self, type, value, traceback):
-        pass
+        if self.idle_check_timer:
+            self.idle_check_timer.cancel()
 
 
 class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

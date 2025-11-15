@@ -12,6 +12,7 @@ from ramalama.hf_style_repo_base import (
 )
 from ramalama.logger import logger
 from ramalama.model_store.snapshot_file import SnapshotFileType
+from ramalama.path_utils import create_file_link
 
 missing_huggingface = """This operation requires huggingface-cli which is not available.
 
@@ -229,7 +230,8 @@ class Huggingface(HFStyleRepoModel):
             if str(blob_file) != str(sha256_checksum):
                 continue
 
-            os.symlink(blob_path, target_path)
+            # Use cross-platform file linking (hardlink/symlink/copy)
+            create_file_link(str(blob_path), target_path)
             return True
         return False
 

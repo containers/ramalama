@@ -26,6 +26,7 @@ from ramalama.model_store.template_conversion import (
     ensure_jinja_openai_compatibility,
     is_openai_jinja,
 )
+from ramalama.path_utils import create_file_link
 
 
 def map_to_store_file_type(snapshot_type: SnapshotFileType) -> StoreFileType:
@@ -220,9 +221,8 @@ class ModelStore:
     ):
         for file in snapshot_files:
             dest_path = self.get_blob_file_path(file.hash)
-            blob_relative_path = ""
             try:
-                blob_relative_path = file.download(dest_path, self.get_snapshot_directory(snapshot_hash))
+                file.download(dest_path, self.get_snapshot_directory(snapshot_hash))
             except urllib.error.HTTPError as ex:
                 if file.required:
                     raise ex
@@ -240,12 +240,10 @@ class ModelStore:
                         raise ValueError(f"Checksum verification failed for blob {dest_path}")
 
             link_path = self.get_snapshot_file_path(snapshot_hash, file.name)
-            os.makedirs(os.path.dirname(link_path), exist_ok=True)
-            try:
-                os.symlink(blob_relative_path, link_path)
-            except FileExistsError:
-                os.unlink(link_path)
-                os.symlink(blob_relative_path, link_path)
+
+            blob_absolute_path = self.get_blob_file_path(file.hash)
+            # Use cross-platform file linking (hardlink/symlink/copy)
+            create_file_link(blob_absolute_path, link_path)
 
         # save updated ref file
         ref_file.write_to_file()

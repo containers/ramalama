@@ -1,7 +1,13 @@
 # The following code is inspired from: https://github.com/ericcurtin/lm-pull/blob/main/lm-pull.py
 
-import fcntl
 import os
+import sys
+
+# Import platform-specific locking mechanisms
+if sys.platform == 'win32':
+    import msvcrt
+else:
+    import fcntl
 
 
 class File:
@@ -17,8 +23,13 @@ class File:
         if self.file:
             self.fd = self.file.fileno()
             try:
-                fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
+                if sys.platform == 'win32':
+                    # Windows file locking using msvcrt
+                    msvcrt.locking(self.fd, msvcrt.LK_NBLCK, 1)
+                else:
+                    # Unix file locking using fcntl
+                    fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except (BlockingIOError, OSError):
                 self.fd = -1
                 return 1
 
@@ -26,7 +37,15 @@ class File:
 
     def __del__(self):
         if self.fd >= 0:
-            fcntl.flock(self.fd, fcntl.LOCK_UN)
+            try:
+                if sys.platform == 'win32':
+                    # Unlock on Windows
+                    msvcrt.locking(self.fd, msvcrt.LK_UNLCK, 1)
+                else:
+                    # Unlock on Unix
+                    fcntl.flock(self.fd, fcntl.LOCK_UN)
+            except OSError:
+                pass  # File may already be closed
 
         if self.file:
             self.file.close()
