@@ -207,84 +207,18 @@ pkgbuild \
     --install-location "/" \
     "$PKG_OUTPUT"
 
-# Create distribution XML for product archive
-cat > "$BUILD_DIR/distribution.xml" << EOF
-<?xml version="1.0" encoding="utf-8"?>
-<installer-gui-script minSpecVersion="1">
-    <title>RamaLama</title>
-    <organization>com.github.containers</organization>
-    <domains enable_localSystem="true"/>
-    <options customize="never" require-scripts="false"/>
-    <welcome file="welcome.html"/>
-    <readme file="readme.html"/>
-    <license file="LICENSE"/>
-    <conclusion file="conclusion.html"/>
-    <choices-outline>
-        <line choice="default">
-            <line choice="com.github.containers.ramalama"/>
-        </line>
-    </choices-outline>
-    <choice id="default"/>
-    <choice id="com.github.containers.ramalama" visible="false">
-        <pkg-ref id="com.github.containers.ramalama"/>
-    </choice>
-    <pkg-ref id="com.github.containers.ramalama" version="$VERSION" onConclusion="none">$PKG_NAME</pkg-ref>
-</installer-gui-script>
-EOF
+# Copy installer resource files from templates
+echo "Preparing installer resources..."
+TEMPLATE_DIR="$SCRIPT_DIR/macos-installer"
 
-# Create welcome message
-cat > "$BUILD_DIR/welcome.html" << 'EOF'
-<!DOCTYPE html>
-<html>
-<head><title>Welcome to RamaLama</title></head>
-<body>
-<h1>Welcome to RamaLama Installer</h1>
-<p>This installer will install RamaLama, a command-line tool for working with AI LLM models.</p>
-<p>RamaLama makes working with AI models simple and straightforward.</p>
-</body>
-</html>
-EOF
+# Process distribution XML template - replace placeholders
+sed "s/{{VERSION}}/$VERSION/g; s/{{PKG_NAME}}/$PKG_NAME/g" \
+    "$TEMPLATE_DIR/distribution.xml.template" > "$BUILD_DIR/distribution.xml"
 
-# Create readme
-cat > "$BUILD_DIR/readme.html" << 'EOF'
-<!DOCTYPE html>
-<html>
-<head><title>RamaLama Information</title></head>
-<body>
-<h1>About RamaLama</h1>
-<p>RamaLama is a command-line tool that facilitates local management and serving of AI Models.</p>
-<h2>Requirements</h2>
-<ul>
-    <li>macOS 10.15 or later</li>
-    <li>Podman or Docker (recommended)</li>
-</ul>
-<h2>After Installation</h2>
-<p>Run <code>ramalama --help</code> to get started.</p>
-<p>For more information, visit: https://github.com/containers/ramalama</p>
-</body>
-</html>
-EOF
-
-# Create conclusion
-cat > "$BUILD_DIR/conclusion.html" << 'EOF'
-<!DOCTYPE html>
-<html>
-<head><title>Installation Complete</title></head>
-<body>
-<h1>Installation Complete!</h1>
-<p>RamaLama has been successfully installed.</p>
-<h2>Next Steps:</h2>
-<ol>
-    <li>Restart your terminal or run: <code>source ~/.zshrc</code></li>
-    <li>Verify installation: <code>ramalama --version</code></li>
-    <li>Get help: <code>ramalama --help</code></li>
-    <li>Pull a model: <code>ramalama pull tinyllama</code></li>
-    <li>Run a chatbot: <code>ramalama run tinyllama</code></li>
-</ol>
-<p>Documentation: https://github.com/containers/ramalama</p>
-</body>
-</html>
-EOF
+# Copy HTML files
+cp "$TEMPLATE_DIR/welcome.html" "$BUILD_DIR/welcome.html"
+cp "$TEMPLATE_DIR/readme.html" "$BUILD_DIR/readme.html"
+cp "$TEMPLATE_DIR/conclusion.html" "$BUILD_DIR/conclusion.html"
 
 # Copy LICENSE
 cp "$PROJECT_ROOT/LICENSE" "$BUILD_DIR/"
