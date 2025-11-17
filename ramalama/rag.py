@@ -132,10 +132,16 @@ class RagEngine(Engine):
         if self.sourcetype is RagSource.DB:
             # Convert to container-friendly path format (handles Windows path conversion)
             rag = get_container_mount_path(self.args.rag)
-            # Added temp read write because vector database requires write access even if nothing is written
+            # Read-write is the default behavior for bind mounts in both Docker and Podman
             self.add_args(f"--mount=type=bind,source={rag},destination=/rag/vector.db{self.relabel()}")
         else:
-            self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag")
+            # Image mounts default to read-only in Podman, so we need rw=true for write access
+            # Docker does not support type=image mounts
+            if self.use_podman:
+                self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
+            else:
+                # Docker falls back to using volumes or other mechanisms
+                self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag")
 
 
 class RagTransport(OCI):
