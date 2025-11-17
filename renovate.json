@@ -87,7 +87,7 @@
       "groupName": "amdgpu-rocm"
     },
     {
-      "matchPaths": [
+      "matchFileNames": [
         "docsite/**"
       ],
       "matchUpdateTypes": [
