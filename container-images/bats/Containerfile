@@ -7,7 +7,7 @@ WORKDIR /src
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
 RUN dnf -y --setopt=install_weak_deps=false install \
-    make bats jq iproute podman openssl httpd-tools diffutils \
+    make bats jq iproute podman openssl httpd-tools diffutils procps-ng \
     $([ $(uname -m) == "x86_64" ] && echo ollama) \
     # for validate and unit-tests
     shellcheck \
