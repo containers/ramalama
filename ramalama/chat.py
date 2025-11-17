@@ -115,6 +115,7 @@ class RamaLamaShell(cmd.Cmd):
         self.initialize_mcp()
 
         self.content: list[str] = []
+        self.message_count = 0  # Track messages for summarization
 
     def prep_rag_message(self):
         if (context := self.args.rag) is None:
@@ -123,6 +124,104 @@ class RamaLamaShell(cmd.Cmd):
         builder = OpanAIChatAPIMessageBuilder()
         messages = builder.load(context)
         self.conversation_history.extend(messages)
+
+    def _summarize_conversation(self):
+        """Summarize the conversation history to prevent context growth."""
+        if len(self.conversation_history) < 4:
+            # Need at least a few messages to summarize
+            return
+
+        # Keep the first message (system/RAG context) and last 2 messages
+        # Summarize everything in between
+        first_msg = self.conversation_history[0]
+        messages_to_summarize = self.conversation_history[1:-2]
+        recent_msgs = self.conversation_history[-2:]
+
+        if not messages_to_summarize:
+            return
+
+        # Create a summarization prompt
+        conversation_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages_to_summarize])
+
+        summary_prompt = {
+            "role": "user",
+            "content": (
+                f"Please provide a concise summary of the following conversation, "
+                f"preserving key information and context:\n\n{conversation_text}\n\n"
+                f"Provide only the summary, without any preamble."
+            ),
+        }
+
+        # Make API call to get summary
+        # Provide user feedback during summarization
+        print("\nSummarizing conversation to reduce context size...", flush=True)
+        try:
+            req = self._make_api_request([summary_prompt], stream=False)
+
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read())
+                summary = result['choices'][0]['message']['content']
+
+                # Rebuild conversation history with summary
+                new_history = []
+                if first_msg:
+                    new_history.append(first_msg)
+
+                # Add summary as a system message
+                new_history.append({"role": "system", "content": f"Previous conversation summary: {summary}"})
+
+                # Add recent messages
+                new_history.extend(recent_msgs)
+
+                self.conversation_history = new_history
+                logger.debug(f"Summarized conversation: {len(messages_to_summarize)} messages -> 1 summary")
+
+        except (urllib.error.URLError, json.JSONDecodeError, KeyError, IndexError) as e:
+            logger.warning(f"Failed to summarize conversation: {e}")
+            # On failure, just keep the conversation as-is
+        finally:
+            # Clear the "Summarizing..." message
+            print("\r" + " " * 60 + "\r", end="", flush=True)
+
+    def _check_and_summarize(self):
+        """Check if conversation needs summarization and trigger it."""
+        summarize_after = getattr(self.args, "summarize_after", 0)
+        if summarize_after > 0:
+            self.message_count += 2  # user + assistant messages
+            if self.message_count >= summarize_after:
+                self._summarize_conversation()
+                self.message_count = 0  # Reset counter after summarization
+
+    def _make_api_request(self, messages, stream=True):
+        """Make an API request with the given messages.
+
+        Args:
+            messages: List of message dicts to send
+            stream: Whether to stream the response
+
+        Returns:
+            urllib.request.Request object
+        """
+        data = {
+            "stream": stream,
+            "messages": messages,
+        }
+        if getattr(self.args, "model", None):
+            data["model"] = self.args.model
+        if getattr(self.args, "temp", None):
+            data["temperature"] = float(self.args.temp)
+        if stream and getattr(self.args, "max_tokens", None):
+            data["max_completion_tokens"] = self.args.max_tokens
+
+        headers = add_api_key(self.args)
+        headers["Content-Type"] = "application/json"
+
+        return urllib.request.Request(
+            self.url,
+            data=json.dumps(data).encode('utf-8'),
+            headers=headers,
+            method="POST",
+        )
 
     def initialize_mcp(self):
         """Initialize MCP servers if specified."""
@@ -295,6 +394,7 @@ class RamaLamaShell(cmd.Cmd):
                     print(response)
                 self.conversation_history.append({"role": "user", "content": content})
                 self.conversation_history.append({"role": "assistant", "content": response})
+                self._check_and_summarize()
             return False
 
         self.conversation_history.append({"role": "user", "content": content})
@@ -303,6 +403,7 @@ class RamaLamaShell(cmd.Cmd):
         if response:
             self.conversation_history.append({"role": "assistant", "content": response})
         self.request_in_process = False
+        self._check_and_summarize()
 
     def _make_request_data(self):
         data = {

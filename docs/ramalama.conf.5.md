@@ -180,6 +180,13 @@ SELinux container separation enforcement
 
 Store AI Models in the specified directory
 
+**summarize_after**=4
+
+Automatically summarize conversation history after N messages to prevent context growth.
+When enabled, ramalama will periodically condense older messages into a summary,
+keeping only recent messages and the summary. This prevents the context from growing
+indefinitely during long chat sessions. Set to 0 to disable (default: 4).
+
 **temp**="0.8"
 Temperature of the response from the AI Model
 llama.cpp explains this as:
