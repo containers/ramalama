@@ -85,6 +85,18 @@
         "custom.rocm"
       ],
       "groupName": "amdgpu-rocm"
+    },
+    {
+      "matchPaths": [
+        "docsite/**"
+      ],
+      "matchUpdateTypes": [
+        "lockFileMaintenance"
+      ],
+      "groupName": "docsite lockfile maintenance",
+      "schedule": [
+        "before 9am on Monday"
+      ]
     }
   ]
 }
