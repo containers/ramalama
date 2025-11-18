@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 # All imports first
+import asyncio
 import logging
 import os
-import socket
 import sys
 import textwrap
 import time
@@ -116,27 +116,31 @@ async def request(host: str, port: int, path: str, timeout: int = 10):
             return resp, data
 
 
-async def wait_for_llama_server(host: str, port: int, timeout: int = 10):
-    end_time = time.monotonic() + timeout
-    first_attempt = True
+async def wait_for_llama_server(host: str, port: int, total_timeout: int = 120, print_interval: int = 5):
+    end_time = time.monotonic() + total_timeout
+    last_print = 0
+    request_timeout = 1  # Timeout per individual HTTP request
 
     while time.monotonic() < end_time:
         try:
-            resp, data = await request(host, port, "/health", timeout=timeout)
+            resp, data = await request(host, port, "/health", timeout=request_timeout)
             if resp.status == 200:
                 return True
-            elif first_attempt:
+
+            now = time.monotonic()
+            if now - last_print >= print_interval:
                 print(f"Server at {host}:{port} is running but not ready (status={resp.status}), retrying...")
-                first_attempt = False
-        except OSError:
-            if first_attempt:
-                print(f"No server responding at {host}:{port}, retrying for up to {timeout} seconds...")
-                first_attempt = False
-        except socket.gaierror:
-            print(f"Cannot resolve host '{host}'", file=sys.stderr)
-            sys.exit(1)
-    print(f"Error: llama-server at {host}:{port} did not become ready after {timeout} seconds.")
-    sys.exit(1)
+                last_print = now
+
+        except Exception as e:
+            now = time.monotonic()
+            if now - last_print >= print_interval:
+                print(f"Error connecting to {host}:{port}: {e}, retrying...")
+                last_print = now
+
+        await asyncio.sleep(1)
+
+    raise TimeoutError(f"LLaMA server at {host}:{port} did not become ready after {total_timeout} seconds.")
 
 
 class qdrant:
@@ -393,7 +397,7 @@ def initialize_rag_service() -> OpenAICompatibleRagService:
 async def lifespan(app: FastAPI):
     args = get_args()
     initialize_rag_service()
-    await wait_for_llama_server(args.model_host, args.model_port)
+    await wait_for_llama_server(args.model_host, args.model_port, total_timeout=120)
     yield
 
 
