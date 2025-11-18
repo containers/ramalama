@@ -132,7 +132,7 @@ class RagEngine(Engine):
         if self.sourcetype is RagSource.DB:
             # Convert to container-friendly path format (handles Windows path conversion)
             rag = get_container_mount_path(self.args.rag)
-            # Read-write is the default behavior for bind mounts in both Docker and Podman
+            # Read-write is the default behaviour for bind mounts in both Docker and Podman
             self.add_args(f"--mount=type=bind,source={rag},destination=/rag/vector.db{self.relabel()}")
         else:
             # Image mounts default to read-only in Podman, so we need rw=true for write access
