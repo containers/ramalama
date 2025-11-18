@@ -1,11 +1,11 @@
 FROM quay.io/fedora/fedora:43
 
-COPY container-images/stable-diffusion/entrypoint.sh /usr/bin/entrypoint.sh
-COPY container-images/scripts/build_stable_diffusion.sh /tmp/
+COPY --chmod=755 container-images/stable-diffusion/entrypoint.sh /usr/bin/entrypoint.sh
+COPY container-images/scripts/build_stable_diffusion.sh /src/
 
-WORKDIR /tmp
-RUN /tmp/build_stable_diffusion.sh stable-diffusion && \
-    chmod +x /usr/bin/entrypoint.sh
+WORKDIR /src/
+RUN ./build_stable_diffusion.sh
+WORKDIR /
 
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
-CMD ["sd"] 
+CMD ["sd"]

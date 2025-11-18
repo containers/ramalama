@@ -3,21 +3,6 @@
 DEFAULT_LLAMA_CPP_COMMIT="b52edd25586fabb70f0c21b274473b307cf14499"
 DEFAULT_WHISPER_COMMIT="c62adfbd1ecdaea9e295c72d672992514a2d887c"
 
-python_version() {
-  local pyversion
-  pyversion=$(python3 --version)
-  # $2 is empty when no Python is installed, so just install python3
-  if [ -n "$pyversion" ]; then
-    local pystr="$pyversion
-Python 3.10"
-    if [ "$pystr" == "$(sort --version-sort <<<"$pystr")" ]; then
-      echo "python3.11"
-      return
-    fi
-  fi
-  echo "python3"
-}
-
 dnf_install_intel_gpu() {
   local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel"
     "intel-oneapi-mkl-devel" "intel-oneapi-mkl-sycl-distributed-dft-devel"
@@ -110,9 +95,8 @@ dnf_install_ffmpeg() {
 
 dnf_install() {
   local rpm_exclude_list="selinux-policy,container-selinux"
-  local rpm_list=("${PYTHON}" "${PYTHON}-pip"
-    "python3-argcomplete" "python3-dnf-plugin-versionlock"
-    "${PYTHON}-devel" "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
+  local rpm_list=("python3-dnf-plugin-versionlock"
+    "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
     "dnf-plugins-core" "libcurl-devel" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools"
     "spirv-tools" "glslc" "glslang")
@@ -121,9 +105,6 @@ dnf_install() {
     dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
   else
     dnf install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
-  fi
-  if [[ "${PYTHON}" == "python3.11" ]]; then
-    ln -sf /usr/bin/python3.11 /usr/bin/python3
   fi
   if [ "$containerfile" = "ramalama" ]; then
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
@@ -273,25 +254,6 @@ clone_and_build_llama_cpp() {
   fi
 }
 
-install_ramalama() {
-  if [ -e "pyproject.toml" ]; then
-    $PYTHON -m pip install . --prefix="$1"
-  fi
-}
-
-install_entrypoints() {
-  if [ -e "container-images" ]; then
-    install -d "$install_prefix"/bin
-    install -m 755 \
-      container-images/scripts/llama-server.sh \
-      container-images/scripts/whisper-server.sh \
-      container-images/scripts/build_rag.sh \
-      container-images/scripts/doc2rag \
-      container-images/scripts/rag_framework \
-      "$install_prefix"/bin
-  fi
-}
-
 cleanup() {
   available dnf && dnf_remove
   rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
@@ -319,11 +281,9 @@ main() {
   source /etc/os-release
 
   set -ex -o pipefail
-  export PYTHON
-  PYTHON=$(python_version)
 
   # shellcheck disable=SC1091
-  source container-images/scripts/lib.sh
+  source "$(dirname "$0")/lib.sh"
 
   local containerfile=${1-""}
   local install_prefix
@@ -334,11 +294,7 @@ main() {
   configure_common_flags
   common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=${install_prefix}")
   available dnf && dnf_install
-  if [ -n "$containerfile" ]; then
-    install_ramalama "${install_prefix}"
-  fi
 
-  install_entrypoints
   setup_build_env
   if [ "$uname_m" != "s390x" ]; then
     clone_and_build_whisper_cpp

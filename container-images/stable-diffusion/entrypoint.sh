@@ -5,4 +5,4 @@ if [ $# -eq 0 ]; then
     exec sd
 else
     exec "$@"
-fi 
+fi
