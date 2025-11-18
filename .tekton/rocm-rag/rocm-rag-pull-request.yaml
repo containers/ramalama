@@ -9,7 +9,16 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: >-
-      event == "pull_request" && target_branch == "main" && body.action != "ready_for_review"
+      event == "pull_request" && target_branch == "main" && body.action != "ready_for_review" &&
+      (
+        "container-images/common/Containerfile.rag".pathChanged() ||
+        "container-images/common/requirements-rag-rocm6.3.txt".pathChanged() ||
+        "container-images/scripts/build_rag.sh".pathChanged() ||
+        "container-images/scripts/doc2rag".pathChanged() ||
+        "container-images/scripts/rag_framework".pathChanged() ||
+        ".tekton/pipelines/pull-request-pipeline.yaml".pathChanged() ||
+        ".tekton/rocm-rag/rocm-rag-pull-request.yaml".pathChanged()
+      )
   labels:
     appstudio.openshift.io/application: ramalama
     appstudio.openshift.io/component: rocm-rag
