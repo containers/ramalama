@@ -1,9 +1,8 @@
 FROM quay.io/fedora/fedora:43
 
-COPY . /src/ramalama
-WORKDIR /src/ramalama
-RUN container-images/scripts/build_llama_and_whisper.sh rocm
+COPY container-images/scripts/build_llama_and_whisper.sh \
+     container-images/scripts/lib.sh \
+     /src/
+WORKDIR /src/
+RUN ./build_llama_and_whisper.sh rocm
 WORKDIR /
-
-ENV WHISPER_CPP_SHA=${WHISPER_CPP_SHA}
-ENV LLAMA_CPP_SHA=${LLAMA_CPP_SHA}

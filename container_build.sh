@@ -68,7 +68,7 @@ add_entrypoint() {
     fi
     tag=$tag-$3
     containerfile="container-images/common/Containerfile.entrypoint"
-    build_args=("--build-arg" "PARENT=$2" "--build-arg" "ENTRYPOINT=/usr/bin/${3}.sh")
+    build_args=("--build-arg" "PARENT=$2" "--build-arg" "ENTRYPOINT=${3}.sh")
     echo "$1 build ${nocache} ${build_args[*]} -t $tag -f ${containerfile} ."
     eval "$1 build ${nocache} ${build_args[*]} -t $tag -f ${containerfile} ."
 }

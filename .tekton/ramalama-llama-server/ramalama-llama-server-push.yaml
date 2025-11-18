@@ -30,7 +30,7 @@ spec:
   - name: build-args
     value:
     - PARENT=quay.io/redhat-user-workloads/ramalama-tenant/ramalama:{{revision}}
-    - ENTRYPOINT=/usr/bin/llama-server.sh
+    - ENTRYPOINT=llama-server.sh
   pipelineRef:
     name: push-pipeline
   timeouts:
