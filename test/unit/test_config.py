@@ -6,6 +6,7 @@ import pytest
 from ramalama.config import (
     DEFAULT_PORT,
     BaseConfig,
+    RamalamaImages,
     default_config,
     get_default_engine,
     get_default_store,
@@ -27,7 +28,7 @@ def test_correct_config_defaults(monkeypatch):
     assert cfg.env == []
     assert cfg.host == "0.0.0.0"
     assert cfg.image == cfg.default_image
-    assert isinstance(cfg.images, dict)
+    assert isinstance(cfg.images, RamalamaImages)
     assert cfg.api == "none"
     assert cfg.keep_groups is False
     assert cfg.ngl == -1
@@ -524,6 +525,7 @@ class TestConfigIntegration:
             assert cfg.threads == 8
             assert cfg.user.no_missing_gpu_prompt is True
             assert cfg.images["CUDA_VISIBLE_DEVICES"] == "env/cuda:latest"
+            assert cfg.images["HIP_VISIBLE_DEVICES"] == "quay.io/ramalama/rocm"
 
     def test_config_multiple_env_layers(self):
         """Test that multiple environment variable layers work correctly."""
@@ -627,11 +629,13 @@ class TestConfigIntegration:
             assert cfg.user.no_missing_gpu_prompt is True
 
             # Deep merged images
-            expected_images = {
-                "CUDA_VISIBLE_DEVICES": "custom/cuda:latest",  # from env
-                "INTEL_VISIBLE_DEVICES": "custom/intel:latest",  # from env
-                "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm:latest",  # from file config
-            }
+            expected_images = RamalamaImages(
+                **{
+                    "CUDA_VISIBLE_DEVICES": "custom/cuda:latest",  # from env
+                    "INTEL_VISIBLE_DEVICES": "custom/intel:latest",  # from env
+                    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm:latest",  # from file config
+                }
+            )
             assert cfg.images == expected_images
 
     def test_config_is_set_behavior(self):

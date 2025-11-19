@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
 
@@ -153,6 +153,52 @@ class RamalamaSettings:
 
 
 @dataclass
+class RamalamaImageConfig:
+    def get(self, key: str, default: str | None = None) -> Any:
+        return asdict(self).get(key, default)
+
+    def __getitem__(self, key: str) -> Any:
+        return asdict(self)[key]
+
+    def __setitem__(self, key: str, value: Any):
+        setattr(self, key, value)
+
+    def __contains__(self, key: str) -> bool:
+        return key in asdict(self)
+
+    def __iter__(self):
+        return iter(asdict(self))
+
+    def __len__(self) -> int:
+        return len(asdict(self))
+
+
+@dataclass
+class RamalamaImages(RamalamaImageConfig):
+    ASAHI_VISIBLE_DEVICES: str = "quay.io/ramalama/asahi"
+    ASCEND_VISIBLE_DEVICES: str = "quay.io/ramalama/cann"
+    CUDA_VISIBLE_DEVICES: str = "quay.io/ramalama/cuda"
+    GGML_VK_VISIBLE_DEVICES: str = "quay.io/ramalama/ramalama"
+    HIP_VISIBLE_DEVICES: str = "quay.io/ramalama/rocm"
+    INTEL_VISIBLE_DEVICES: str = "quay.io/ramalama/intel-gpu"
+    MUSA_VISIBLE_DEVICES: str = "quay.io/ramalama/musa"
+    VLLM_ASAHI_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
+    VLLM_ASCEND_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
+    VLLM_CUDA_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
+    VLLM_GGML_VK_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
+    VLLM_HIP_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
+    VLLM_INTEL_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
+    VLLM_MUSA_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
+
+
+@dataclass
+class RamalamaRagImages(RamalamaImageConfig):
+    CUDA_VISIBLE_DEVICES: str = "quay.io/ramalama/cuda-rag"
+    HIP_VISIBLE_DEVICES: str = "quay.io/ramalama/rocm-rag"
+    INTEL_VISIBLE_DEVICES: str = "quay.io/ramalama/intel-gpu-rag"
+
+
+@dataclass
 class BaseConfig:
     api: str = "none"
     api_key: str | None = None
@@ -167,32 +213,9 @@ class BaseConfig:
     env: list[str] = field(default_factory=list)
     host: str = "0.0.0.0"
     image: str = None  # type: ignore
-    images: dict[str, str] = field(
-        default_factory=lambda: {
-            "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
-            "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
-            "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
-            "GGML_VK_VISIBLE_DEVICES": "quay.io/ramalama/ramalama",
-            "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
-            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
-            "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
-            "VLLM_ASAHI_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai",
-            "VLLM_ASCEND_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai",
-            "VLLM_CUDA_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai",
-            "VLLM_GGML_VK_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai",
-            "VLLM_HIP_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai",
-            "VLLM_INTEL_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai",
-            "VLLM_MUSA_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai",
-        }
-    )
+    images: RamalamaImages = field(default_factory=RamalamaImages)
     rag_image: str | None = None
-    rag_images: dict[str, str] = field(
-        default_factory=lambda: {
-            "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda-rag",
-            "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm-rag",
-            "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu-rag",
-        }
-    )
+    rag_images: RamalamaRagImages = field(default_factory=RamalamaRagImages)
     keep_groups: bool = False
     max_tokens: int = 0
     ngl: int = -1
