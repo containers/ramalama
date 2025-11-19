@@ -15,10 +15,6 @@ spec:
     description: The type of Snapshot that is being tested.
   - name: release-tags
     description: A space-separated list of tags that should be applied to the release
-  - name: sync
-    description: >-
-      True if all components are built from the same git commit. False if components
-      are built from different commits.
   - name: bats-image
     description: URI of the bats image included in the snapshot
   - name: ramalama-image
@@ -57,8 +53,6 @@ spec:
       value: $(results.snapshot-type.path)
     - name: RESULTS_RELEASE_TAGS_PATH
       value: $(results.release-tags.path)
-    - name: RESULTS_SYNC_PATH
-      value: $(results.sync.path)
     - name: RESULTS_BATS_IMAGE_PATH
       value: $(results.bats-image.path)
     - name: RESULTS_RAMALAMA_IMAGE_PATH
@@ -82,14 +76,8 @@ spec:
       echo
       echo -n "$RELEASE_TAGS" | tee "$RESULTS_RELEASE_TAGS_PATH"
       echo
-      jq -j '[.components[] | .source.git.revision] | unique | length == 1' <<< "$SNAPSHOT" | tee "$RESULTS_SYNC_PATH"
-      echo
       component_image() {
-        TAGSEP=":"
-        if [ "$EVENT_TYPE" == "pull_request" ] || [[ "$EVENT_TYPE" == *-comment ]]; then
-          TAGSEP+="on-pr-"
-        fi
-        jq -j --arg name "$1" --arg tagsep "$TAGSEP" '.components[] | select(.name == $name) | [(.containerImage | split("@")[0]), .source.git.revision] | join($tagsep)' <<< "$SNAPSHOT"
+        jq -j --arg name "$1" '.components[] | select(.name == $name) | .containerImage' <<< "$SNAPSHOT"
       }
       component_image bats | tee "$RESULTS_BATS_IMAGE_PATH"
       echo
