@@ -23,6 +23,14 @@ Can also be set via the RAMALAMA_API_KEY environment variable.
 Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)
 
+#### **--context-strategy**=*strategy*
+Strategy for managing context when the limit is reached. Options:
+- **observation_masking** (default): Fast context management that keeps recent messages and masks older ones with brief notes
+- **llm_summarizer**: Uses the LLM to create intelligent summaries of conversation history
+- **truncation**: Let llama.cpp handle context via --context-shift
+- **clear**: Only clears server cache, keeps full conversation history
+- **none**: Do nothing, let server handle context errors
+
 #### **--help**, **-h**
 Show this help message and exit
 
@@ -42,6 +50,12 @@ Prefix for the user prompt (default: 🦭 > )
 
 #### **--rag**=path
 A file or directory of files to be loaded and provided as local context in the chat history.
+
+#### **--server-timeout**=*seconds*
+Timeout in seconds for server API queries such as context size and health checks (default: 2.0).
+
+#### **--summarization-timeout**=*seconds*
+Timeout in seconds for LLM summarization requests. Only used with `--context-strategy llm_summarizer` (default: 30.0).
 
 #### **--summarize-after**=*N*
 Automatically summarize conversation history after N messages to prevent context growth.
