@@ -161,6 +161,10 @@ spec:
       value: $(params.output-image).prefetch
     - name: ociArtifactExpiresAfter
       value: $(params.image-expires-after)
+    - name: config-file-content
+      value: |
+        ---
+        requests_timeout: 3600
     runAfter:
     - clone-repository
     taskRef:

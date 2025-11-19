@@ -1,0 +1,41 @@
+# This file is generated from rocm6.3.txt by split-reqs.awk, do not modify manually.
+# Includes dependencies retrieved from https://download.pytorch.org/whl/rocm6.3
+
+--index-url https://download.pytorch.org/whl/rocm6.3
+
+pytorch-triton-rocm==3.5.0 \
+    --hash=sha256:041415bbb4f11f0bbad13a39374cd5e0b9b74a5c0864ef8f58c38b635689123d \
+    --hash=sha256:0922f3ed8cd09f7d7f3a62138808efc9cdf9c9ee2913e00786e948b10f091fb0 \
+    --hash=sha256:af67c42a8022fc4de3ddb707a201bd0cd49a41ca761bf3da0537b3e127e5b4d0 \
+    --hash=sha256:b3a209621d0433367c489e8dce90ebc4c7c9e3bfe1c2b7adc928344f8290d5f5 \
+    --hash=sha256:b3d4624a662e0dfad60d679166047840415e16ed62df93ac9f8d3685dc9869d7 \
+    --hash=sha256:bd2fab6dfb077dfc11fb581c5d33a0ee2d43ea13415530d095d1d5326d85d8b2 \
+    --hash=sha256:cdf579cf1982ade33011e5eafe0f741a2bfa1560075b23412e41b681d1fb8ca4 \
+    --hash=sha256:f2ea8cb272afcdb8b08a85eb947ed01d0921a56b26aee8648c6d1de1aaf4db08
+    # via torch
+    # from https://download.pytorch.org/whl/rocm6.3
+torch==2.9.0+rocm6.3 \
+    --hash=sha256:50ec9d22638262a0cf167c23f18f20a2cddeb08b61bd8c9eaebc2a795a2cbe0c \
+    --hash=sha256:6e38e5fcca261ef4c36741726bfa165499dc9ed1870c7452ad21165109a01eee \
+    --hash=sha256:830dd98d7d89952ecc57c68eea70b24cc02c0ced4249aef3f54cc7b16fd66e27 \
+    --hash=sha256:8eaa26ff2c3781ee9864aff5fea808ddf07c86de687d98fae57ecd7d5bf7b9ce \
+    --hash=sha256:93e2498f75ffa2e3e82f5b4123a7ba9f8887f6b2e9460f8302dd5ad183a53b55 \
+    --hash=sha256:f2fff1a1b0e3802f1a7634a949ed2e8ff6350d8d928915a0b27b4516d0b03041 \
+    --hash=sha256:fdb91c56b790ff0e7b0634759714400fbc00a0ae9be107ef15950bd0f8e50e7f
+    # via
+    #   -r requirements-rag.in
+    #   accelerate
+    #   docling-ibm-models
+    #   safetensors
+    #   torchvision
+    # from https://download.pytorch.org/whl/rocm6.3
+torchvision==0.24.0+rocm6.3 \
+    --hash=sha256:6214331a95b4c4ec150fc725130a8242b5d3bc03cae929a878daec751514bb42 \
+    --hash=sha256:958b64809b2c0bc5e1f71105c36fcafd858fef532c09c94dc586d4a120aa762a \
+    --hash=sha256:a15be2b666ed9b2ec045e10bc02832fab95ab313a89f610b88c39a44095f67a0 \
+    --hash=sha256:b498392e233368d5e43bd83c4a3772efd418eef5560cafb74a25c8269b6acc65 \
+    --hash=sha256:bc7f9eb670f8a9e13bae3cd2450ef6ef11e8bd3784f26a4b02b5f2741ded7459 \
+    --hash=sha256:df8ecb3fe12910e57fc5950d043264484c7bbe53fc45014d530c1e22916072de \
+    --hash=sha256:fbc3f6b726ef42be4ee7a5aea31bd620417b35f5d7961317ba5ddb9a253add7d
+    # via docling-ibm-models
+    # from https://download.pytorch.org/whl/rocm6.3
