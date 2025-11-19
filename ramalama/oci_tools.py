@@ -12,7 +12,6 @@ ocilabeltype = "org.containers.type"
 
 def convert_from_human_readable_size(input) -> float:
     sizes = [("KB", 1024), ("MB", 1024**2), ("GB", 1024**3), ("TB", 1024**4), ("B", 1)]
-    input = input.lower()
     for unit, size in sizes:
         if input.endswith(unit) or input.endswith(unit.lower()):
             return float(input[: -len(unit)]) * size
@@ -21,9 +20,6 @@ def convert_from_human_readable_size(input) -> float:
 
 
 def list_artifacts(args: EngineArgType):
-    if args.engine is None:
-        raise ValueError("Cannot list artifacts without a provided engine like podman or docker.")
-
     if args.engine == "docker":
         return []
 
@@ -39,11 +35,8 @@ def list_artifacts(args: EngineArgType):
             "ID":"{{ .Digest }}"},'
         ),
     ]
-    try:
-        if (output := run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()) == "":
-            return []
-    except subprocess.CalledProcessError as e:
-        logger.debug(e)
+    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+    if output == "":
         return []
 
     artifacts = json.loads(f"[{output[:-1]}]")
@@ -182,7 +175,6 @@ def list_models(args: EngineArgType):
 
     models += list_manifests(args)
     models += list_artifacts(args)
-
     for model in models:
         # Convert to ISO 8601 format
         parsed_date = datetime.fromisoformat(

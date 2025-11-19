@@ -654,13 +654,11 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append(
-            {
-                "name": f"{model} (partial)" if is_partially_downloaded else model,
-                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-                "size": size_sum,
-            }
-        )
+        ret.append({
+            "name": f"{model} (partial)" if is_partially_downloaded else model,
+            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+            "size": size_sum,
+        })
 
     # sort the listed models according to the desired order
     ret.sort(key=lambda entry: entry[args.sort], reverse=args.order == "desc")
@@ -897,6 +895,8 @@ def push_cli(args):
     source_model = _get_source_model(args, transport=transport)
 
     if args.TARGET:
+        if source_model.type == "OCI":
+            raise ValueError(f"converting from an OCI based image {args.SOURCE} is not supported")
         target = shortnames.resolve(args.TARGET)
     target_model = New(target, args)
 
@@ -1568,12 +1568,7 @@ def _rm_model(models, args):
 
         try:
             m = New(model, args)
-            if m.remove(args):
-                continue
-            # Failed to remove and might be OCI so attempt to remove OCI
-            if args.ignore:
-                _rm_oci_model(model, args)
-                continue
+            m.remove(args)
         except (KeyError, subprocess.CalledProcessError) as e:
             for prefix in MODEL_TYPES:
                 if model.startswith(prefix + "://"):
