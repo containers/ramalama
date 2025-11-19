@@ -113,6 +113,7 @@ def test_default_endpoint(chatargs):
 @given(
     st.builds(
         ChatSubArgs,
+        prefix=st.sampled_from(['> ', '🦙 > ', '🦭 > ', '🐋 > ']),
         url=st.sampled_from(['https://test.com', 'test.com']),
     )
 )
