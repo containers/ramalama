@@ -206,6 +206,7 @@ class BaseConfig:
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
     stack_image: str = DEFAULT_STACK_IMAGE
     store: str = field(default_factory=get_default_store)
+    summarize_after: int = 4
     temp: str = "0.8"
     thinking: bool = True
     threads: int = -1
@@ -311,7 +312,7 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
         if key in config:
             config[key] = coerce_to_bool(config[key])
 
-    for key in ['threads', 'ctx_size', 'ngl']:
+    for key in ['threads', 'ctx_size', 'ngl', 'summarize_after']:
         if key in config:
             config[key] = int(config[key])
     return config

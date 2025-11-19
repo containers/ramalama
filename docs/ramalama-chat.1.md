@@ -43,6 +43,12 @@ Prefix for the user prompt (default: 🦭 > )
 #### **--rag**=path
 A file or directory of files to be loaded and provided as local context in the chat history.
 
+#### **--summarize-after**=*N*
+Automatically summarize conversation history after N messages to prevent context growth.
+When enabled, ramalama will periodically condense older messages into a summary,
+keeping only recent messages and the summary. This prevents the context from growing
+indefinitely during long chat sessions. Set to 0 to disable (default: 4).
+
 #### **--url**=URL
 The host to send requests to (default: http://127.0.0.1:8080)
 

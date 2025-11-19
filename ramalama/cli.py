@@ -1075,6 +1075,13 @@ def chat_run_options(parser):
     )
     parser.add_argument("--prefix", type=str, help="prefix for the user prompt", default=default_prefix())
     parser.add_argument("--mcp", nargs="*", help="MCP servers to use for the chat")
+    parser.add_argument(
+        "--summarize-after",
+        type=int,
+        default=CONFIG.summarize_after,
+        metavar="N",
+        help="automatically summarize conversation history after N messages to prevent context growth (0=disabled)",
+    )
 
 
 def chat_parser(subparsers):
