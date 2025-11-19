@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
     from ramalama.arg_types import SUPPORTED_ENGINES, ContainerArgType
-    from ramalama.config import Config
+    from ramalama.config import Config, RamalamaImageConfig
     from ramalama.transports.base import Transport
 
 MNT_DIR = "/mnt/models"
@@ -675,7 +675,7 @@ AccelImageArgs: TypeAlias = (
 )
 
 
-def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: str = "image") -> str:
+def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_key: str = "image") -> str:
     """
     Selects and the appropriate image based on config, arguments, environment.
     "images" is a mapping of environment variable names to image names. If not specified, the
