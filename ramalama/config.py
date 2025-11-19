@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
 
@@ -154,23 +154,23 @@ class RamalamaSettings:
 
 @dataclass
 class RamalamaImageConfig:
-    def get(self, key: str, default: str | None = None) -> Any:
-        return asdict(self).get(key, default)
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
 
     def __getitem__(self, key: str) -> Any:
-        return asdict(self)[key]
+        return getattr(self, key)
 
     def __setitem__(self, key: str, value: Any):
         setattr(self, key, value)
 
     def __contains__(self, key: str) -> bool:
-        return key in asdict(self)
+        return key in {f.name for f in fields(self)}
 
     def __iter__(self):
-        return iter(asdict(self))
+        return iter(f.name for f in fields(self))
 
     def __len__(self) -> int:
-        return len(asdict(self))
+        return len(fields(self))
 
 
 @dataclass
