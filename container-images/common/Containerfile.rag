@@ -1,4 +1,4 @@
-ARG PARENT=quay.io/fedora/fedora:42
+ARG PARENT=quay.io/fedora/fedora:43
 FROM $PARENT
 
 ARG TORCH_BACKEND=cpu
@@ -6,6 +6,7 @@ ARG TORCH_BACKEND=cpu
 ENV VIRTUAL_ENV="/opt/venv" \
     PATH="/opt/venv/bin:$PATH" \
     UV_NO_CACHE=1 \
+    UV_NO_MANAGED_PYTHON=1 \
     UV_TORCH_BACKEND=$TORCH_BACKEND \
     HF_HOME=/var/cache/huggingface \
     FASTEMBED_CACHE_PATH=/var/cache/fastembed
@@ -14,10 +15,9 @@ COPY container-images/scripts/build_rag.sh \
      container-images/scripts/doc2rag \
      container-images/scripts/rag_framework \
      /usr/bin/
-RUN curl -fsSL -o /usr/bin/convert_hf_to_gguf.py \
-    # Keep the tag below in sync with the tag used for ggml in requirements-rag.in
-    https://github.com/ggml-org/llama.cpp/raw/refs/tags/b6900/convert_hf_to_gguf.py && \
-    chmod 755 /usr/bin/convert_hf_to_gguf.py
+# Keep the tag below in sync with the tag used for ggml in requirements-rag.in
+ADD --chmod=755 https://github.com/ggml-org/llama.cpp/raw/refs/tags/b6900/convert_hf_to_gguf.py \
+    /usr/bin/
 COPY container-images/common/requirements-rag-$TORCH_BACKEND* \
      /var/tmp/
 
