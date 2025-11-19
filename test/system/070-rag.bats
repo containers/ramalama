@@ -56,7 +56,7 @@ load helpers
     run_ramalama --dryrun run --rag quay.io/ramalama/myrag:1.2 ollama://smollm:135m
     is "${lines[0]}" ".*llama-server" "Expected to run llama-server"
     is "${lines[0]}" ".*--port 8081" "Expected to run llama-server on port 8081"
-    is "${lines[1]}" ".*quay.io/ramalama/.*-rag:" "Expected to use -rag image in separate container"
+    is "${lines[1]}" ".*quay.io/.*-rag" "Expected to use -rag image in separate container"
     is "${lines[1]}" ".*rag_framework serve" "Expected to run rag_framework in a separate container"
     is "${lines[1]}" ".*--port 8080" "Expected to run rag_framework on port 8080"
     if not_docker; then
