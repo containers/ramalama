@@ -1094,6 +1094,24 @@ def chat_run_options(parser):
         metavar="N",
         help="automatically summarize conversation history after N messages to prevent context growth (0=disabled)",
     )
+    parser.add_argument(
+        "--context-strategy",
+        action="store_true",
+        default=False,
+        help="enable LLM-based summarization for managing context when limit is reached",
+    )
+    parser.add_argument(
+        "--server-timeout",
+        type=float,
+        default=2.0,
+        help="timeout in seconds for server API queries (context size, health checks)",
+    )
+    parser.add_argument(
+        "--summarization-timeout",
+        type=float,
+        default=30.0,
+        help="timeout in seconds for LLM summarization requests (only used with --context-strategy)",
+    )
 
 
 def chat_parser(subparsers):
