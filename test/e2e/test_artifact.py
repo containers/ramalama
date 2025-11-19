@@ -13,28 +13,18 @@ import re
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
 from test.conftest import skip_if_docker, skip_if_no_container, skip_if_podman_too_old, skip_if_windows
+import re
+from pathlib import Path
+from subprocess import STDOUT, CalledProcessError
+from test.conftest import skip_if_docker, skip_if_no_container
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 import pytest
 
 
-def path_to_uri(path):
-    """Convert a Path object to a file:// URI, handling Windows paths correctly."""
-    if platform.system() == "Windows":
-        # On Windows, convert backslashes to forward slashes and ensure proper file:// format
-        path_str = str(path).replace("\\", "/")
-        # Windows paths need an extra slash: file:///C:/path
-        if len(path_str) > 1 and path_str[1] == ':':
-            return f"file:///{path_str}"
-        return f"file://{path_str}"
-    else:
-        return f"file://{path}"
-
-
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
 def test_list_command():
     """Test that ramalama list command works"""
     with RamalamaExecWorkspace() as ctx:
@@ -47,7 +37,6 @@ def test_list_command():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
 def test_list_json_output():
     """Test that ramalama list --json returns valid JSON"""
     with RamalamaExecWorkspace() as ctx:
@@ -61,7 +50,6 @@ def test_list_json_output():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_podman_too_old
 def test_convert_error_invalid_type():
     """Test that invalid convert type is rejected"""
     with RamalamaExecWorkspace() as ctx:
@@ -70,7 +58,7 @@ def test_convert_error_invalid_type():
 
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(
-                ["ramalama", "convert", "--type", "invalid_type", path_to_uri(test_file), "test:latest"], stderr=STDOUT
+                ["ramalama", "convert", "--type", "invalid_type", f"file://{test_file}", "test:latest"], stderr=STDOUT
             )
 
         assert exc_info.value.returncode == 2
@@ -80,7 +68,6 @@ def test_convert_error_invalid_type():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_podman_too_old
 def test_convert_error_missing_source():
     """Test that convert with missing source is rejected"""
     with RamalamaExecWorkspace() as ctx:
@@ -98,7 +85,6 @@ def test_convert_error_missing_source():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_podman_too_old
 def test_convert_nocontainer_error():
     """Test that convert with --nocontainer is rejected"""
     with RamalamaExecWorkspace() as ctx:
@@ -107,7 +93,7 @@ def test_convert_nocontainer_error():
 
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(
-                ["ramalama", "--nocontainer", "convert", "--type", "raw", path_to_uri(test_file), "test:latest"],
+                ["ramalama", "--nocontainer", "convert", "--type", "raw", f"file://{test_file}", "test:latest"],
                 stderr=STDOUT,
             )
 
@@ -121,7 +107,6 @@ def test_convert_nocontainer_error():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
 def test_rm_nonexistent():
     """Test removing nonexistent model (should handle gracefully)"""
     with RamalamaExecWorkspace() as ctx:
@@ -137,7 +122,6 @@ def test_rm_nonexistent():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
 def test_info_command_output():
     """Test that info command returns valid JSON with expected fields"""
     result = check_output(["ramalama", "info"])
@@ -155,7 +139,6 @@ def test_info_command_output():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_podman_too_old
 def test_convert_help_shows_types():
     """Test that convert --help shows the available types"""
     result = check_output(["ramalama", "convert", "--help"])
@@ -170,7 +153,6 @@ def test_convert_help_shows_types():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_podman_too_old
 def test_push_help_shows_types():
     """Test that push --help shows the available types"""
     result = check_output(["ramalama", "push", "--help"])
@@ -185,7 +167,6 @@ def test_push_help_shows_types():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_podman_too_old
 def test_convert_types_in_help():
     """Test that both convert and push commands show type options"""
     convert_help = check_output(["ramalama", "convert", "--help"])
@@ -201,7 +182,6 @@ def test_convert_types_in_help():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
 def test_version_command():
     """Test that version command works"""
     result = check_output(["ramalama", "version"])
@@ -211,7 +191,6 @@ def test_version_command():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_podman_too_old
 def test_config_with_convert_type():
     """Test that config file can specify convert_type"""
     config = """
@@ -231,7 +210,6 @@ def test_config_with_convert_type():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_podman_too_old
 def test_help_command():
     """Test that help command works and shows subcommands"""
     result = check_output(["ramalama", "help"])
@@ -246,7 +224,6 @@ def test_help_command():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
 def test_convert_command_exists():
     """Test that convert command exists and shows help"""
     result = check_output(["ramalama", "convert", "--help"])
@@ -260,7 +237,6 @@ def test_convert_command_exists():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
 def test_push_command_exists():
     """Test that push command exists and shows help"""
     result = check_output(["ramalama", "push", "--help"])
@@ -276,8 +252,6 @@ def test_push_command_exists():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
-@skip_if_windows
 def test_artifact_lifecycle_basic():
     """Test complete artifact lifecycle: create, list, remove"""
     with RamalamaExecWorkspace() as ctx:
@@ -288,7 +262,7 @@ def test_artifact_lifecycle_basic():
         artifact_name = "test-artifact-lifecycle:latest"
 
         # Step 1: Convert to artifact (using raw type which should work)
-        ctx.check_call(["ramalama", "convert", "--type", "raw", path_to_uri(test_file), artifact_name])
+        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file}", artifact_name])
 
         # Step 2: Verify it appears in list
         result = ctx.check_output(["ramalama", "list"])
@@ -318,8 +292,6 @@ def test_artifact_lifecycle_basic():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
-@skip_if_windows
 def test_artifact_multiple_types():
     """Test creating artifacts with different types (raw and car)"""
     with RamalamaExecWorkspace() as ctx:
@@ -330,10 +302,10 @@ def test_artifact_multiple_types():
         test_file2.write_text("Model 2 content")
 
         # Create raw type artifact
-        ctx.check_call(["ramalama", "convert", "--type", "raw", path_to_uri(test_file1), "test-raw-artifact-unique:v1"])
+        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file1}", "test-raw-artifact-unique:v1"])
 
         # Create car type artifact
-        ctx.check_call(["ramalama", "convert", "--type", "car", path_to_uri(test_file2), "test-car-artifact-unique:v1"])
+        ctx.check_call(["ramalama", "convert", "--type", "car", f"file://{test_file2}", "test-car-artifact-unique:v1"])
 
         # Verify both appear in list using JSON (more reliable)
         json_result = ctx.check_output(["ramalama", "list", "--json"])
@@ -358,8 +330,6 @@ def test_artifact_multiple_types():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
-@skip_if_windows
 def test_artifact_list_json_with_size():
     """Test that artifact in JSON list has correct size information"""
     with RamalamaExecWorkspace() as ctx:
@@ -371,7 +341,7 @@ def test_artifact_list_json_with_size():
         artifact_name = "test-sized-artifact-unique:v1"
 
         # Convert to artifact
-        ctx.check_call(["ramalama", "convert", "--type", "raw", path_to_uri(test_file), artifact_name])
+        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file}", artifact_name])
 
         # Get JSON output
         json_result = ctx.check_output(["ramalama", "list", "--json"])
@@ -398,8 +368,6 @@ def test_artifact_list_json_with_size():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
-@skip_if_windows
 def test_artifact_rm_multiple():
     """Test removing multiple artifacts one at a time"""
     with RamalamaExecWorkspace() as ctx:
@@ -413,7 +381,7 @@ def test_artifact_rm_multiple():
             artifacts.append(artifact_name)
 
             # Convert to artifact
-            ctx.check_call(["ramalama", "convert", "--type", "raw", path_to_uri(test_file), artifact_name])
+            ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file}", artifact_name])
 
         # Verify all appear in list using JSON
         json_result = ctx.check_output(["ramalama", "list", "--json"])
@@ -431,16 +399,14 @@ def test_artifact_rm_multiple():
         models_after = json.loads(json_result_after)
         for model in models_after:
             for i in range(3):
-                assert f"test-multi-rm-unique-{i}" not in model.get(
-                    "name", ""
-                ), f"Artifact test-multi-rm-unique-{i} still present after removal"
+                assert f"test-multi-rm-unique-{i}" not in model.get("name", ""), (
+                    f"Artifact test-multi-rm-unique-{i} still present after removal"
+                )
 
 
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
-@skip_if_windows
 def test_artifact_with_different_tags():
     """Test creating artifacts with different tags"""
     with RamalamaExecWorkspace() as ctx:
@@ -450,9 +416,14 @@ def test_artifact_with_different_tags():
         # Create artifacts with different tags
         tags = ["v1.0", "v2.0", "latest"]
         for tag in tags:
-            ctx.check_call(
-                ["ramalama", "convert", "--type", "raw", path_to_uri(test_file), f"test-tagged-artifact:{tag}"]
-            )
+            ctx.check_call([
+                "ramalama",
+                "convert",
+                "--type",
+                "raw",
+                f"file://{test_file}",
+                f"test-tagged-artifact:{tag}",
+            ])
 
         # Verify all tags appear in list
         result = ctx.check_output(["ramalama", "list"])
@@ -471,8 +442,6 @@ def test_artifact_with_different_tags():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
-@skip_if_windows
 def test_artifact_list_empty_after_cleanup():
     """Test that list is clean after removing all artifacts"""
     with RamalamaExecWorkspace() as ctx:
@@ -482,7 +451,7 @@ def test_artifact_list_empty_after_cleanup():
         artifact_name = "test-temp-artifact:latest"
 
         # Create artifact
-        ctx.check_call(["ramalama", "convert", "--type", "raw", path_to_uri(test_file), artifact_name])
+        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file}", artifact_name])
 
         # Verify it exists
         result_before = ctx.check_output(["ramalama", "list"])
@@ -505,8 +474,6 @@ def test_artifact_list_empty_after_cleanup():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
-@skip_if_windows
 def test_artifact_with_config_default_type():
     """Test that config convert_type is used when type not specified"""
     config = """
@@ -522,7 +489,7 @@ def test_artifact_with_config_default_type():
         artifact_name = "test-config-default:latest"
 
         # Convert without specifying --type (should use config default)
-        ctx.check_call(["ramalama", "convert", path_to_uri(test_file), artifact_name])
+        ctx.check_call(["ramalama", "convert", f"file://{test_file}", artifact_name])
 
         # Verify it was created
         result = ctx.check_output(["ramalama", "list"])
@@ -535,8 +502,6 @@ def test_artifact_with_config_default_type():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_docker
-@skip_if_podman_too_old
-@skip_if_windows
 def test_artifact_overwrite_same_name():
     """Test that converting to same name overwrites/updates"""
     with RamalamaExecWorkspace() as ctx:
@@ -548,7 +513,7 @@ def test_artifact_overwrite_same_name():
         artifact_name = "test-overwrite-artifact:latest"
 
         # Create first version
-        ctx.check_call(["ramalama", "convert", "--type", "raw", path_to_uri(test_file1), artifact_name])
+        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file1}", artifact_name])
 
         # Get size of first version
         json_result1 = ctx.check_output(["ramalama", "list", "--json"])
@@ -561,7 +526,7 @@ def test_artifact_overwrite_same_name():
         assert size1 is not None
 
         # Create second version with same name
-        ctx.check_call(["ramalama", "convert", "--type", "raw", path_to_uri(test_file2), artifact_name])
+        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file2}", artifact_name])
 
         # Verify only one artifact with this name exists
         result = ctx.check_output(["ramalama", "list"])

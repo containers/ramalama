@@ -166,13 +166,13 @@ class Quadlet:
             quadlet_file.add(
                 "Container",
                 "Mount",
-                f"type=artifact,source={self.ai_image},destination={MNT_DIR}",
+                f"type=artifact,source={self.src_model_path},destination={MNT_DIR}",
             )
         else:
             quadlet_file.add(
                 "Container",
                 "Mount",
-                f"type=image,source={self.ai_image},destination={MNT_DIR},subpath=/models,readwrite=false",
+                f"type=image,source={self.src_model_path},destination={MNT_DIR},subpath=/models,readwrite=false",
             )
         return files
 

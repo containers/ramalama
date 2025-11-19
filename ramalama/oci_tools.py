@@ -1,7 +1,7 @@
 import json
-import subprocess
 from datetime import datetime
 from typing import TypedDict
+import subprocess
 
 import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
@@ -56,10 +56,12 @@ def list_artifacts(args: EngineArgType):
         "artifact",
         "ls",
         "--format",
-        ('{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
+        (
+            '{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
             "created":"{{ .CreatedAt }}", \
             "size":"{{ .Size }}", \
-            "ID":"{{ .Digest }}"},'),
+            "ID":"{{ .Digest }}"},'
+        ),
     ]
     try:
         if (output := run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()) == "":
@@ -88,13 +90,11 @@ def list_artifacts(args: EngineArgType):
             continue
         if inspect["Manifest"]['artifactType'] != annotations.ArtifactTypeModelManifest:
             continue
-        models.append(
-            {
-                "name": artifact["name"],
-                "modified": parse_datetime(artifact["created"]),
-                "size": convert_from_human_readable_size(artifact["size"]),
-            }
-        )
+        models.append({
+            "name": artifact["name"],
+            "modified": parse_datetime(artifact["created"]),
+            "size": convert_from_human_readable_size(artifact["size"]),
+        })
     return models
 
 
@@ -153,13 +153,11 @@ def list_manifests(args: EngineArgType) -> list[ListModelResponse]:
         if 'annotations' not in img:
             continue
         if annotations.AnnotationModel in img['annotations']:
-            models.append(
-                {
-                    "name": manifest["name"],
-                    "modified": parse_datetime(manifest["modified"]),
-                    "size": manifest["size"],
-                }
-            )
+            models.append({
+                "name": manifest["name"],
+                "modified": parse_datetime(manifest["modified"]),
+                "size": manifest["size"],
+            })
     return models
 
 
@@ -205,15 +203,6 @@ def list_images(args: EngineArgType) -> list[ListModelResponse]:
             image_id, size = line.split(maxsplit=1)
             size_by_id[image_id] = size
 
-        return [
-            {
-                "name": m["name"],
-                "modified": parse_datetime(m["modified"]),
-                "size": int(size_by_id[m["id"]]),
-            }
-            for m in raw
-        ]
-
     return [
         {
             "name": m["name"],
@@ -232,5 +221,4 @@ def list_models(args: EngineArgType) -> list[ListModelResponse]:
     models = list_images(args)
     models.extend(list_manifests(args))
     models.extend(list_artifacts(args))
-
     return models

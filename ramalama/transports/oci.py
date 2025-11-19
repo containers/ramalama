@@ -8,7 +8,11 @@ from textwrap import dedent
 from typing import Tuple
 
 import ramalama.annotations as annotations
+<<<<<<< HEAD
 from ramalama.common import MNT_DIR, engine_version, exec_cmd, perror, run_cmd, set_accel_env_vars
+=======
+from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd, set_accel_env_vars
+>>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
 from ramalama.engine import BuildEngine, Engine, dry_run
 from ramalama.oci_tools import engine_supports_manifest_attributes
 from ramalama.transports.base import NoRefFileFound, Transport
@@ -33,6 +37,7 @@ class OCI(Transport):
             raise ValueError("RamaLama OCI Images requires a container engine")
         self.conman = conman
         self.ignore_stderr = ignore_stderr
+        self.artifact = self.is_artifact()
 
     def login(self, args):
         conman_args = [self.conman, "login"]
@@ -170,7 +175,11 @@ class OCI(Transport):
         else:
             run_cmd(cmd_args)
 
+<<<<<<< HEAD
     def _rm_artifact(self, ignore):
+=======
+    def _rm_artifact(self, ignore) -> None:
+>>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         rm_cmd = [
             self.conman,
             "artifact",
@@ -194,9 +203,13 @@ class OCI(Transport):
             f"org.opencontainers.image.title={file_name}",
         ]
         if create:
+<<<<<<< HEAD
             if self.conman == "podman" and engine_version("podman") >= "5.7.0":
                 cmd.append("--replace")
             cmd.extend(["--type", annotations.ArtifactTypeModelManifest])
+=======
+            cmd.extend(["--replace", "--type", annotations.ArtifactTypeModelManifest])
+>>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         else:
             cmd.extend(["--append"])
 
@@ -304,6 +317,10 @@ Tagging build instead
     def push(self, source_model, args):
         target = self.model
         source = source_model.model
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         conman_args = [self.conman, "push"]
         type = "image"
         if args.type == "artifact":
@@ -347,7 +364,11 @@ Tagging build instead
         conman_args.extend([self.model])
         run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
 
+<<<<<<< HEAD
     def remove(self, args) -> bool:
+=======
+    def remove(self, args):
+>>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         if self.conman is None:
             raise NotImplementedError("OCI Images require a container engine")
 
@@ -363,7 +384,10 @@ Tagging build instead
                     self._rm_artifact(args.ignore)
                 except subprocess.CalledProcessError:
                     raise KeyError(f"Model '{self.model}' not found")
+<<<<<<< HEAD
         return True
+=======
+>>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
 
     def exists(self) -> bool:
         if self.conman is None:
@@ -388,8 +412,13 @@ Tagging build instead
         get_field: str = "",
         as_json: bool = False,
         dryrun: bool = False,
+<<<<<<< HEAD
     ) -> Tuple[str, str]:
         out = super().inspect(show_all, show_all_metadata, get_field, dryrun, as_json)
+=======
+    ) -> (str, str):
+        out = super().get_inspect(show_all, show_all_metadata, get_field, dryrun, as_json=as_json)
+>>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         if as_json:
             out_data = json.loads(out)
         else:
@@ -411,7 +440,12 @@ Tagging build instead
                 if as_json:
                     out_data.update(json.loads(inspect_output))
                 oci_type = "Artifact"
+<<<<<<< HEAD
             except Exception:
+=======
+            except Exception as f:
+                print(f)
+>>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
                 raise e
 
         if as_json:
@@ -447,7 +481,11 @@ Tagging build instead
     def is_artifact(self) -> bool:
         try:
             _, oci_type = self._inspect()
+<<<<<<< HEAD
         except (NoRefFileFound, subprocess.CalledProcessError):
+=======
+        except subprocess.CalledProcessError:
+>>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
             return False
         return oci_type == "Artifact"
 
