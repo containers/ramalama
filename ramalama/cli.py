@@ -1053,6 +1053,14 @@ def chat_run_options(parser):
         metavar="N",
         help="automatically summarize conversation history after N messages to prevent context growth (0=disabled)",
     )
+    parser.add_argument(
+        "--context-strategy",
+        choices=["observation_masking", "llm_summarizer"],
+        default="observation_masking",
+        help="strategy for managing context when limit is reached: "
+        "observation_masking (fast, keeps recent messages) or "
+        "llm_summarizer (uses LLM to create summaries)",
+    )
 
 
 def chat_parser(subparsers):
