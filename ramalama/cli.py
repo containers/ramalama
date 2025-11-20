@@ -712,11 +712,12 @@ def convert_parser(subparsers):
     )
     parser.add_argument(
         "--type",
-        default="raw",
-        choices=["car", "raw"],
+        default=CONFIG.convert_type,
+        choices=["artifact", "car", "raw"],
         help="""\
 type of OCI Model Image to push.
 
+Model "artifact" stores the AI Model as an OCI Artifact.
 Model "car" includes base image with the model stored in a /models subdir.
 Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
@@ -753,11 +754,12 @@ def push_parser(subparsers):
     add_network_argument(parser)
     parser.add_argument(
         "--type",
-        default="raw",
-        choices=["car", "raw"],
+        default=CONFIG.convert_type,
+        choices=["artifact", "car", "raw"],
         help="""\
 type of OCI Model Image to push.
 
+Model "artifact" stores the AI Model as an OCI Artifact.
 Model "car" includes base image with the model stored in a /models subdir.
 Model "raw" contains the model and a link file model.file to it stored at /.""",
     )
@@ -772,9 +774,9 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
     parser.set_defaults(func=push_cli)
 
 
-def _get_source_model(args):
+def _get_source_model(args, transport=None):
     src = shortnames.resolve(args.SOURCE)
-    smodel = New(src, args)
+    smodel = New(src, args, transport=transport)
     if smodel.type == "OCI":
         raise ValueError(f"converting from an OCI based image {src} is not supported")
     if not smodel.exists() and not args.dryrun:
@@ -783,9 +785,15 @@ def _get_source_model(args):
 
 
 def push_cli(args):
-    source_model = _get_source_model(args)
     target = args.SOURCE
+    transport = None
+    if not args.TARGET:
+        transport = "oci"
+    source_model = _get_source_model(args, transport=transport)
+
     if args.TARGET:
+        if source_model.type == "OCI":
+            raise ValueError(f"converting from an OCI based image {args.SOURCE} is not supported")
         target = shortnames.resolve(args.TARGET)
     target_model = New(target, args)
 
@@ -1167,9 +1175,14 @@ def serve_cli(args):
         model.ensure_model_exists(args)
     except KeyError as e:
         try:
+            if "://" in args.MODEL:
+                raise e
             args.quiet = True
             model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
             model.ensure_model_exists(args)
+            # Since this is a OCI model, prepend oci://
+            args.MODEL = f"oci://{args.MODEL}"
+
         except Exception:
             raise e
 
@@ -1417,7 +1430,7 @@ def _rm_model(models, args):
         try:
             m = New(model, args)
             m.remove(args)
-        except KeyError as e:
+        except (KeyError, subprocess.CalledProcessError) as e:
             for prefix in MODEL_TYPES:
                 if model.startswith(prefix + "://"):
                     if not args.ignore:

@@ -8,7 +8,66 @@ from ramalama.common import engine_version, run_cmd
 ocilabeltype = "org.containers.type"
 
 
-def engine_supports_manifest_attributes(engine):
+def convert_from_human_readable_size(input) -> float:
+    sizes = [("KB", 1024), ("MB", 1024**2), ("GB", 1024**3), ("TB", 1024**4), ("B", 1)]
+    for unit, size in sizes:
+        if input.endswith(unit) or input.endswith(unit.lower()):
+            return float(input[: -len(unit)]) * size
+
+    return float(input)
+
+
+def list_artifacts(args: EngineArgType):
+    if args.engine == "docker":
+        return []
+
+    conman_args = [
+        args.engine,
+        "artifact",
+        "ls",
+        "--format",
+        (
+            '{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
+            "created":"{{ .CreatedAt }}", \
+            "size":"{{ .Size }}", \
+            "ID":"{{ .Digest }}"},'
+        ),
+    ]
+    output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+    if output == "":
+        return []
+
+    artifacts = json.loads(f"[{output[:-1]}]")
+    models = []
+    for artifact in artifacts:
+        conman_args = [
+            args.engine,
+            "artifact",
+            "inspect",
+            artifact["ID"],
+        ]
+        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+
+        if output == "":
+            continue
+        inspect = json.loads(output)
+        if "Manifest" not in inspect:
+            continue
+        if "artifactType" not in inspect["Manifest"]:
+            continue
+        if inspect["Manifest"]['artifactType'] != annotations.ArtifactTypeModelManifest:
+            continue
+        models += [
+            {
+                "name": artifact["name"],
+                "modified": artifact["created"],
+                "size": convert_from_human_readable_size(artifact["size"]),
+            }
+        ]
+    return models
+
+
+def engine_supports_manifest_attributes(engine) -> bool:
     if not engine or engine == "" or engine == "docker":
         return False
     if engine == "podman" and engine_version(engine) < "5":
@@ -91,26 +150,26 @@ def list_models(args: EngineArgType):
         "--format",
         formatLine,
     ]
+    models = []
     output = run_cmd(conman_args, env={"TZ": "UTC"}).stdout.decode("utf-8").strip()
-    if output == "":
-        return []
+    if output != "":
+        models += json.loads(f"[{output[:-1]}]")
+        # exclude dangling images having no tag (i.e. <none>:<none>)
+        models = [model for model in models if model["name"] != "oci://<none>:<none>"]
 
-    models = json.loads(f"[{output[:-1]}]")
-    # exclude dangling images having no tag (i.e. <none>:<none>)
-    models = [model for model in models if model["name"] != "oci://<none>:<none>"]
-
-    # Grab the size from the inspect command
-    if conman == "docker":
-        # grab the size from the inspect command
-        for model in models:
-            conman_args = [conman, "image", "inspect", model["id"], "--format", "{{.Size}}"]
-            output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-            # convert the number value from the string output
-            model["size"] = int(output)
-            # drop the id from the model
-            del model["id"]
+        # Grab the size from the inspect command
+        if conman == "docker":
+            # grab the size from the inspect command
+            for model in models:
+                conman_args = [conman, "image", "inspect", model["id"], "--format", "{{.Size}}"]
+                output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+                # convert the number value from the string output
+                model["size"] = int(output)
+                # drop the id from the model
+                del model["id"]
 
     models += list_manifests(args)
+    models += list_artifacts(args)
     for model in models:
         # Convert to ISO 8601 format
         parsed_date = datetime.fromisoformat(

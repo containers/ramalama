@@ -84,6 +84,18 @@ Min chunk size to attempt reusing from the cache via KV shifting
 Run RamaLama in the default container.
 RAMALAMA_IN_CONTAINER environment variable overrides this field.
 
+#convert_type = "raw"
+
+Convert the MODEL to the specified OCI Object
+Options: artifact, car, raw
+
+| Type     | Description                                                   |
+| -------- | ------------------------------------------------------------- |
+| artifact | Store AI Models as artifacts                                  |
+| car      | Traditional OCI image including base image with the model stored in a /models subdir |
+| raw      | Traditional OCI image including only the model and a link file `model.file` pointed at it stored at /   |
+
+
 **ctx_size**=0
 
 Size of the prompt context (0 = loaded from model)
