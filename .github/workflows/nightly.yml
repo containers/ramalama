@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout ramalama
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Free Disk Space Linux
         shell: bash
@@ -65,7 +65,7 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Checkout ramalama
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install end-to-end test requirements
         shell: bash
@@ -82,7 +82,7 @@ jobs:
     needs: [linux, macos]
     steps:
         - name: Checkout ramalama
-          uses: actions/checkout@v5
+          uses: actions/checkout@v6
 
         - name: Upgrade to podman 5
           run: |
