@@ -9,10 +9,28 @@
 - Add Docker handling: lacks `artifact` mount type, so mirror the RLCR pattern—HTTP artifact download into model store, then bind-mount local blobs—plus document behavior when engine == docker.
 - Favor clean abstractions over backward compatibility; rework existing flows to fit the spec-driven, strategy-based design rather than layering shims.
 
-Plan outline:
-- Spec data model (CNAI-only): define manifest/config/layer classes enforcing CNAI media types (`artifactType`/config), with annotation helpers. Tests: parse/serialize round-trips; reject wrong media types; accept minimal valid manifest; round-trip `org.opencontainers.image.title`.
-- Capability probe + selection: detect Podman >= 5.7 with `podman artifact` support; distinguish Docker; cache per run; support CLI/config override (`auto` | `podman-artifact` | `podman-image` | `http-bind`). Tests: version gates, Docker path, override honored, auto order Podman artifact -> Podman image -> HTTP.
-- Strategy implementations (common interface: pull/exists/mount_cmd/list_entry): Podman artifact (uses podman artifact add/pull/inspect + artifact mount, spec-validated), Podman image fallback (raw/car image mount), HTTP download/bind (registry client using spec validation, bind blobs). Tests: mount generation; manifest validation; download to blobs + bind mounts; normalized list entries.
-- Transport integration + listing: wire selection into OCI/RLCR; mount generation for run/quadlet/kube follows strategy; `list` merges Podman artifacts and HTTP-cached artifacts; drop legacy media types. Tests: run paths choose correct mounts per engine/probe; RLCR HTTP fallback; list shows artifacts/images consistently.
-- Overrides/errors/docs: expose override knobs; clear errors on incompatible overrides (e.g., podman-artifact on Docker); document Docker behavior (download+bind). Tests: override error paths; forced paths respected.
-- E2E: Podman artifact lifecycle; Docker fallback via HTTP+bind; override scenarios; docs/config defaults updated for CNAI media types and strategy behavior.
+Plan outline (detailed implementation stages):
+- Stage 1: Spec data model (CNAI-only)
+  - Define manifest/config/layer classes enforcing CNAI media types (`artifactType=application/vnd.cnai.model.manifest.v1+json`, config media type, acceptable layer media types) with annotation helpers (e.g., `org.opencontainers.image.title`).
+  - Tests: parse/serialize round-trips; reject wrong media types or missing config; accept minimal valid manifest; round-trip annotations.
+- Stage 2: Capability probe + selection
+  - Probe engine: Podman version >= 5.7 and `podman artifact` available → artifact-capable; Docker → no artifact mount; cache per run.
+  - Add CLI/config/env override (`auto` | `podman-artifact` | `podman-image` | `http-bind`); auto order = Podman artifact → Podman image → HTTP.
+  - Tests: version gates; Docker path chosen; overrides honored (and error when incompatible).
+- Stage 3: Strategy implementations (common interface: `pull`, `exists`, `mount_cmd`/mount spec, `list_entry`)
+  - Podman artifact strategy: uses `podman artifact add/pull/inspect`, mounts via `--mount=type=artifact`, validates manifests via spec model.
+  - Podman image fallback: raw/car image build/pull, mount as image (subPath=/models).
+  - HTTP download/bind: registry client fetching CNAI artifacts into model store (reuse spec validation), run via bind-mounted blobs (mirrors RLCR/Docker path).
+  - Tests: mount generation correct per strategy; manifest validation enforcement; HTTP path downloads and produces bind mounts; list entries normalized.
+- Stage 4: Transport integration + listing
+  - Wire strategy selection into OCI and RLCR transports; ensure run/quadlet/kube mount generation uses chosen strategy; remove legacy Ramalama media types.
+  - Merge listings from Podman artifacts and HTTP-cached artifacts; dedupe with images; use spec parser for normalization.
+  - Tests: run chooses correct mounts per engine/probe; RLCR fallback still works; `list` shows artifacts/images consistently.
+- Stage 5: Overrides/errors/docs
+  - Expose override knobs; fail fast with clear error on incompatible overrides (e.g., forcing podman-artifact on Docker).
+  - Document Docker behavior (download+bind), default CNAI media types, strategy behavior.
+  - Tests: override error paths; forced strategies respected.
+- Stage 6: E2E coverage
+  - Podman artifact lifecycle (convert/push/list/rm) using artifact mount.
+  - Docker fallback via HTTP+bind (no artifact mount).
+  - Override scenarios (auto vs forced). Update docs/config defaults accordingly.
