@@ -82,6 +82,7 @@ class ChatCompletionResponse(BaseModel):
 class Delta(BaseModel):
     role: str | None = None
     content: str | None = None
+    reasoning_content: str | None = None
 
 
 class StreamChoice(BaseModel):
@@ -349,16 +350,26 @@ class OpenAICompatibleRagService:
             )
 
             async for chunk in response:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
+                if chunk.choices and (delta := chunk.choices[0].delta):
+                    # Use getattr to safely access optional attributes
+                    content = getattr(delta, 'content', None)
+                    reasoning_content = getattr(delta, 'reasoning_content', None)
 
-                    stream_chunk = ChatCompletionStreamResponse(
-                        id=completion_id,
-                        created=created,
-                        model=request.model,
-                        choices=[StreamChoice(index=0, delta=Delta(content=content), finish_reason=None)],
-                    )
-                    yield f"data: {stream_chunk.model_dump_json()}\n\n"
+                    # Only send chunk if there's actual content or reasoning
+                    if content is not None or reasoning_content is not None:
+                        stream_chunk = ChatCompletionStreamResponse(
+                            id=completion_id,
+                            created=created,
+                            model=request.model,
+                            choices=[
+                                StreamChoice(
+                                    index=0,
+                                    delta=Delta(content=content, reasoning_content=reasoning_content),
+                                    finish_reason=None,
+                                )
+                            ],
+                        )
+                        yield f"data: {stream_chunk.model_dump_json()}\n\n"
 
                 # Handle finish reason
                 if chunk.choices and chunk.choices[0].finish_reason:
