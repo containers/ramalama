@@ -102,7 +102,7 @@ def apple_vm(engine: SUPPORTED_ENGINES, config: Config | None = None) -> bool:
             result = handle_provider(machine, config)
             if result is not None:
                 return result
-    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+    except (subprocess.CalledProcessError, json.JSONDecodeError, FileNotFoundError) as e:
         logger.warning(f"Failed to list and parse podman machines: {e}")
     return False
 

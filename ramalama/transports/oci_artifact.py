@@ -1,19 +1,19 @@
-import base64
 import hashlib
 import json
 import os
-import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Iterable, Optional, Tuple
 from tempfile import TemporaryFile
+from typing import Any
+from collections.abc import Iterable
+
 from ramalama.common import perror, sanitize_filename
 from ramalama.logger import logger
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
 
 OCI_ARTIFACT_MEDIA_TYPES = {
-    "application/vnd.ramalama.model.gguf",
+    "application/vnd.cnai.model.manifest.v1+json",
 }
 
 MANIFEST_ACCEPT_HEADERS = [
@@ -37,7 +37,7 @@ def get_snapshot_file_type(name: str, media_type: str) -> SnapshotFileType:
     return SnapshotFileType.Other
 
 
-def _split_reference(reference: str) -> Tuple[str, str]:
+def _split_reference(reference: str) -> tuple[str, str]:
     if "@" in reference:
         repository, ref = reference.split("@", 1)
         return repository, ref
@@ -84,6 +84,9 @@ class OCIRegistryClient:
         registry: str,
         repository: str,
         reference: str,
+        verify_tls: bool = True,
+        username: str | None = None,
+        password: str | None = None,
     ):
         self.registry = registry
         self.repository = repository
@@ -211,7 +214,14 @@ def download_oci_artifact(
 ) -> bool:
     repository, ref = _split_reference(reference)
 
-    client = OCIRegistryClient(registry, repository, ref)
+    client = OCIRegistryClient(
+        registry,
+        repository,
+        ref,
+        verify_tls=getattr(args, "tlsverify", True),
+        username=getattr(args, "username", None),
+        password=getattr(args, "password", None),
+    )
 
     try:
         manifest, manifest_digest = client.get_manifest()

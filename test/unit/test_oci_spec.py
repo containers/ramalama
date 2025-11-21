@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from ramalama import oci_spec
 from ramalama.annotations import AnnotationTitle
+from ramalama.artifacts import spec as oci_spec
 
 
 def _valid_manifest():
@@ -66,4 +66,3 @@ def test_reject_wrong_config_media_type():
     manifest_dict["config"]["mediaType"] = "application/vnd.oci.image.config.v1+json"
     with pytest.raises(ValueError):
         oci_spec.Manifest.from_dict(manifest_dict)
-
