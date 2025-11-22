@@ -12,6 +12,7 @@ from ramalama.config import (
     get_default_store,
     load_env_config,
 )
+from ramalama.log_levels import LogLevel
 
 
 def test_correct_config_defaults(monkeypatch):
@@ -163,6 +164,31 @@ def test_cfg_container_not_set():
         with patch("ramalama.config.load_env_config", return_value={}):
             assert cfg.is_set("container") is False
             assert cfg.container is (cfg.engine is not None)
+
+
+def test_base_config_accepts_none_log_level():
+    cfg = BaseConfig(engine=None)
+    assert cfg.log_level is None
+
+
+def test_base_config_coerces_log_level_strings():
+    cfg = BaseConfig(engine=None, log_level="info")
+    assert cfg.log_level == LogLevel.INFO
+
+
+def test_load_env_config_coerces_log_level():
+    cfg = load_env_config({"RAMALAMA_LOG_LEVEL": "debug"})
+    assert cfg["log_level"] == LogLevel.DEBUG
+
+
+@pytest.mark.xfail(raises=ValueError)
+def test_load_env_config_invalid_log_level_raises():
+    load_env_config({"RAMALAMA_LOG_LEVEL": "notalevel"})
+
+
+@pytest.mark.xfail(raises=ValueError)
+def test_load_env_config_invalid_log_level_case_raises():
+    load_env_config({"RAMALAMA_LOG_LEVEL": "InVaLiD"})
 
 
 class TestGetDefaultEngine:

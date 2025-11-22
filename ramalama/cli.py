@@ -39,6 +39,7 @@ from ramalama.config import (
     load_file_config,
 )
 from ramalama.endian import EndianMismatchError
+from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
@@ -369,7 +370,8 @@ def post_parse_setup(args):
     if hasattr(args, 'pull'):
         args.pull = normalize_pull_arg(args.pull, getattr(args, 'engine', None))
 
-    configure_logger("DEBUG" if args.debug else "WARNING")
+    log_level = LogLevel.DEBUG if args.debug else (CONFIG.log_level or LogLevel.WARNING)
+    configure_logger(log_level)
 
 
 def login_parser(subparsers):
