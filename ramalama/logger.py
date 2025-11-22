@@ -1,18 +1,18 @@
 import logging
 import sys
-import typing
+
+from ramalama.log_levels import LogLevel, coerce_log_level
 
 logger = logging.getLogger("ramalama")
 
 
-def configure_logger(verbosity="WARNING") -> None:
+def configure_logger(level: LogLevel | str | int = LogLevel.WARNING) -> None:
     global logger
 
-    lvl = logging.WARNING
-    if verbosity in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
-        lvl = typing.cast(int, getattr(logging, verbosity))
+    resolved_level = coerce_log_level(level)
+    lvl_value = int(resolved_level)
 
-    logger.setLevel(lvl)
+    logger.setLevel(lvl_value)
     logger.propagate = False
 
     fmt = "%(asctime)s - %(levelname)s - %(message)s"
@@ -23,5 +23,5 @@ def configure_logger(verbosity="WARNING") -> None:
         logger.addHandler(logging.StreamHandler(sys.stderr))
 
     for handler in logger.handlers:
-        handler.setLevel(lvl)
+        handler.setLevel(lvl_value)
         handler.setFormatter(formatter)

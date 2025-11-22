@@ -6,9 +6,11 @@ import socketserver
 import threading
 from datetime import datetime, timedelta
 
+from ramalama.config import CONFIG
 from ramalama.daemon.handler.ramalama import RamalamaHandler
-from ramalama.daemon.logging import LogLevel, configure_logger, logger
+from ramalama.daemon.logging import configure_logger, logger
 from ramalama.daemon.service.model_runner import ModelRunner
+from ramalama.log_levels import LogLevel
 
 
 class ShutdownHandler:
@@ -70,7 +72,6 @@ class ShutdownHandler:
 
 
 class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-
     def __init__(
         self, host: str, port: int, model_store_path: str, idle_check_interval: timedelta, bind_and_activate=True
     ):
@@ -121,7 +122,7 @@ def parse_args():
 
 
 def run(host: str = "0.0.0.0", port: int = 8080, model_store_path: str = "/models"):
-    configure_logger(LogLevel.DEBUG)
+    configure_logger(CONFIG.log_level or LogLevel.DEBUG)
     logger.debug(f"Starting Ramalama daemon on {host}:{port}...")
     with RamalamaServer(host, port, model_store_path, timedelta(seconds=10)) as httpd:
         with ShutdownHandler(httpd):

@@ -8,6 +8,7 @@ from typing import Any, Literal, Mapping, TypeAlias
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import apple_vm, available
 from ramalama.layered_config import LayeredMixin
+from ramalama.log_levels import LogLevel, coerce_log_level
 from ramalama.toml_parser import TOMLParser
 
 PathStr: TypeAlias = str
@@ -252,11 +253,13 @@ class BaseConfig:
     verify: bool = True
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
     http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
+    log_level: LogLevel | None = None
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
         self.image = self.image if self.image is not None else self.default_image
         self.pull = normalize_pull_arg(self.pull, self.engine)
+        self.log_level = coerce_log_level(self.log_level) if self.log_level is not None else self.log_level
 
 
 class Config(LayeredMixin, BaseConfig):
@@ -291,6 +294,8 @@ def load_file_config() -> dict[str, Any]:
         config = parser.parse_file(config_path)
         config = config.get("ramalama", {})
         config['settings'] = {'config_files': [config_path]}
+        if log_level := config.get("log_level"):
+            config["log_level"] = coerce_log_level(log_level)
         return config
 
     config = {}
@@ -310,6 +315,8 @@ def load_file_config() -> dict[str, Any]:
     if config:
         config = config.get('ramalama', {})
         config['settings'] = {'config_files': config_paths}
+        if log_level := config.get("log_level"):
+            config["log_level"] = coerce_log_level(log_level)
     return config
 
 
@@ -353,6 +360,8 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     for key in ['threads', 'ctx_size', 'ngl', 'summarize_after']:
         if key in config:
             config[key] = int(config[key])
+    if log_level := config.get("log_level"):
+        config["log_level"] = coerce_log_level(log_level)
     return config
 
 
