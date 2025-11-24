@@ -1,0 +1,176 @@
+name: Approve Command
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  approve:
+    name: Handle /approve command
+    # Only run on pull request comments with /approve command
+    if: github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+      issues: write
+
+    steps:
+      - name: Check /approve command and PR status
+        id: check_command
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              // Check if comment contains /approve command (as a standalone command)
+              const comment = context.payload.comment.body.trim();
+              const approvePattern = /^\/approve\s*$/m;
+              const hasApproveCommand = approvePattern.test(comment);
+
+              core.setOutput('has_approve_command', hasApproveCommand);
+
+              if (!hasApproveCommand) {
+                core.info('Comment does not contain /approve command');
+                return false;
+              }
+
+              // Check if PR is open
+              const pr_number = context.payload.issue.number;
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr_number
+              });
+
+              const isOpen = pr.state === 'open';
+              core.setOutput('pr_is_open', isOpen);
+
+              if (!isOpen) {
+                core.info(`PR #${pr_number} is not open (state: ${pr.state})`);
+              }
+
+              return hasApproveCommand && isOpen;
+            } catch (error) {
+              core.setFailed(`Error checking command and PR status: ${error.message}`);
+              return false;
+            }
+
+      - name: Check if commenter has write access
+        if: steps.check_command.outputs.has_approve_command == 'true' && steps.check_command.outputs.pr_is_open == 'true'
+        id: check_access
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: context.payload.comment.user.login
+              });
+
+              const hasAccess = ['admin', 'write', 'maintain'].includes(permission.permission);
+              core.setOutput('has_access', hasAccess);
+
+              if (!hasAccess) {
+                core.info(`User ${context.payload.comment.user.login} does not have sufficient permissions (${permission.permission})`);
+              }
+
+              return hasAccess;
+            } catch (error) {
+              core.setFailed(`Error checking permissions: ${error.message}`);
+              return false;
+            }
+
+      - name: React to comment
+        if: steps.check_access.outputs.has_access == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+      - name: Approve PR
+        if: steps.check_access.outputs.has_access == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const pr_number = context.payload.issue.number;
+
+              // Check if the user has already approved
+              const { data: reviews } = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr_number
+              });
+
+              // Find all reviews by the user
+              const userReviews = reviews.filter(
+                review => review.user.login === context.payload.comment.user.login
+              );
+
+              // Get the latest review by the user (by submitted_at)
+              const latestReview = userReviews.sort(
+                (a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)
+              )[0];
+
+              // Only block approval if the latest review is APPROVED and not DISMISSED
+              const existingApproval = latestReview && latestReview.state === 'APPROVED';
+
+              if (existingApproval) {
+                core.info(`User ${context.payload.comment.user.login} has already approved this PR`);
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr_number,
+                  body: '✅ You have already approved this PR.'
+                });
+                return;
+              }
+
+              // Create approval review
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr_number,
+                event: 'APPROVE',
+                body: 'Approved via /approve command'
+              });
+
+              core.info(`PR #${pr_number} approved by ${context.payload.comment.user.login}`);
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr_number,
+                body: `✅ PR approved by @${context.payload.comment.user.login} via /approve command`
+              });
+            } catch (error) {
+              core.setFailed(`Failed to approve PR: ${error.message}`);
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                body: `❌ Failed to approve PR: ${error.message}`
+              });
+            }
+
+      - name: Notify insufficient permissions
+        if: |
+          steps.check_command.outputs.has_approve_command == 'true' &&
+          steps.check_command.outputs.pr_is_open == 'true' &&
+          steps.check_access.outputs.has_access != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `❌ @${context.payload.comment.user.login} does not have sufficient permissions to approve PRs. Only maintainers and collaborators with write access can use the /approve command.`
+            });
