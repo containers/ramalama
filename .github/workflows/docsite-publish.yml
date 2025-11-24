@@ -1,0 +1,71 @@
+name: Publish Docsite
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'docsite/**'
+      - '.github/workflows/docsite-publish.yml'
+  workflow_dispatch:
+
+env:
+  TARGET_REPO: "containers/ramalama.github.io"
+  TARGET_BRANCH: "main"
+  TARGET_DIR: "public/docs"
+  TARGET_WORKDIR: "ramalama.github.io"
+  PUBLISH_TOKEN: ${{ secrets.DOCSITE_PUBLISH_TOKEN }}
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout RamaLama
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: docsite/package-lock.json
+
+      - name: Build docsite (install, convert, build)
+        run: make -C docsite all
+
+      - name: Ensure publish configuration is set
+        run: |
+          if [ -z "$TARGET_REPO" ]; then
+            echo '::error::Set the TARGET_REPO environment variable (e.g. owner/marketing-site).'
+            exit 1
+          fi
+          if [ -z "$PUBLISH_TOKEN" ]; then
+            echo '::error::Add the PUBLISH_TOKEN secret with a PAT that can push to the marketing site repository.'
+            exit 1
+          fi
+
+      - name: Checkout marketing site repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_REPO }}
+          token: ${{ env.PUBLISH_TOKEN }}
+          path: ${{ env.TARGET_WORKDIR }}
+          ref: ${{ env.TARGET_BRANCH }}
+
+      - name: Sync built documentation into marketing site
+        run: |
+          mkdir -p "${TARGET_WORKDIR}/${TARGET_DIR}"
+          rsync -a --delete docsite/build/ "${TARGET_WORKDIR}/${TARGET_DIR}/"
+
+      - name: Commit and push updates
+        run: |
+          cd "${TARGET_WORKDIR}"
+          if git status --short "${TARGET_DIR}" | grep .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add "${TARGET_DIR}"
+            git commit -m "Docs: sync from ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
+            git push origin "$TARGET_BRANCH"
+          else
+            echo "No docsite changes to publish."
+          fi
