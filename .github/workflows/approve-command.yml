@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Check /approve command and PR status
         id: check_command
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             try {
@@ -58,7 +58,7 @@ jobs:
       - name: Check if commenter has write access
         if: steps.check_command.outputs.has_approve_command == 'true' && steps.check_command.outputs.pr_is_open == 'true'
         id: check_access
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             try {
@@ -83,7 +83,7 @@ jobs:
 
       - name: React to comment
         if: steps.check_access.outputs.has_access == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.reactions.createForIssueComment({
@@ -95,7 +95,7 @@ jobs:
 
       - name: Approve PR
         if: steps.check_access.outputs.has_access == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             try {
@@ -165,7 +165,7 @@ jobs:
           steps.check_command.outputs.has_approve_command == 'true' &&
           steps.check_command.outputs.pr_is_open == 'true' &&
           steps.check_access.outputs.has_access != 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.issues.createComment({
