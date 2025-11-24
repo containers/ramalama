@@ -54,6 +54,14 @@ RamaLama eliminates the need to configure the host system by instead pulling a c
 <br>
 
 ## Install
+### Install on macOS (Self-Contained Installer)
+Download the self-contained macOS installer that includes Python and all dependencies:
+
+1. Download the latest `.pkg` installer from [Releases](https://github.com/containers/ramalama/releases)
+2. Double-click to install, or run: `sudo installer -pkg RamaLama-*-macOS-Installer.pkg -target /`
+
+See [macOS Installation Guide](docs/MACOS_INSTALL.md) for detailed instructions.
+
 ### Install on Fedora
 RamaLama is available in [Fedora](https://fedoraproject.org/) and later. To install it, run:
 ```
