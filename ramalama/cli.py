@@ -23,7 +23,7 @@ except Exception:
 
 import ramalama.chat as chat
 from ramalama import engine
-from ramalama.chat import default_prefix
+from ramalama.chat_utils import default_prefix
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
 from ramalama.common import accel_image, get_accel, perror
@@ -45,6 +45,7 @@ from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.rag import INPUT_DIR, Rag, RagTransport, rag_image
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack
+from ramalama.transports.api import APITransport
 from ramalama.transports.base import (
     MODEL_TYPES,
     NoGGUFModelFileFound,
@@ -1131,6 +1132,11 @@ def run_cli(args):
         except Exception as exc:
             raise e from exc
 
+    is_api_transport = isinstance(model, APITransport)
+
+    if args.rag and is_api_transport:
+        raise ValueError("ramalama run --rag is not supported for hosted API transports.")
+
     if args.rag:
         if not args.container:
             raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
@@ -1138,7 +1144,11 @@ def run_cli(args):
         model = RagTransport(model, assemble_command(args.model_args), args)
         model.ensure_model_exists(args)
 
-    model.run(args, assemble_command(args))
+    server_cmd: list[str] = []
+    if not isinstance(model, APITransport):
+        server_cmd = assemble_command(args)
+
+    model.run(args, server_cmd)
 
 
 def serve_parser(subparsers):
@@ -1172,6 +1182,9 @@ def serve_cli(args):
             model.ensure_model_exists(args)
         except Exception:
             raise e
+
+    if isinstance(model, APITransport):
+        raise ValueError("ramalama serve is not supported for hosted API transports.")
 
     if args.rag:
         if not args.container:

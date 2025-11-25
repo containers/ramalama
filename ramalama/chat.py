@@ -14,12 +14,15 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from typing import Sequence
 from datetime import timedelta
 
 from ramalama.arg_types import ChatArgsType
+from ramalama.chat_providers import ChatProvider, ChatRequestOptions, OpenAIChatProvider
+from ramalama.chat_utils import ChatMessage, add_api_key, stream_response
 from ramalama.common import perror
 from ramalama.config import CONFIG
-from ramalama.console import EMOJI, should_colorize
+from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
@@ -29,69 +32,6 @@ from ramalama.proxy_support import setup_proxy_support
 
 # Setup proxy support on module import
 setup_proxy_support()
-
-
-def res(response, color):
-    color_default = ""
-    color_yellow = ""
-    if (color == "auto" and should_colorize()) or color == "always":
-        color_default = "\033[0m"
-        color_yellow = "\033[33m"
-
-    print("\r", end="")
-    assistant_response = ""
-    for line in response:
-        line = line.decode("utf-8").strip()
-        if line.startswith("data: {"):
-            choice = ""
-
-            json_line = json.loads(line[len("data: ") :])
-            if "choices" in json_line and json_line["choices"]:
-                choice = json_line["choices"][0]["delta"]
-            if "content" in choice:
-                choice = choice["content"]
-            else:
-                continue
-
-            if choice:
-                print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
-                assistant_response += choice
-
-    print("")
-    return assistant_response
-
-
-def default_prefix():
-    if not EMOJI:
-        return "> "
-
-    if CONFIG.prefix:
-        return CONFIG.prefix
-
-    engine = CONFIG.engine
-
-    if engine:
-        if os.path.basename(engine) == "podman":
-            return "🦭 > "
-
-        if os.path.basename(engine) == "docker":
-            return "🐋 > "
-
-    return "🦙 > "
-
-
-def add_api_key(args, headers=None):
-    # static analyzers suggest for dict, this is a safer way of setting
-    # a default value, rather than using the parameter directly
-    headers = headers or {}
-    if getattr(args, "api_key", None):
-        api_key_min = 20
-        if len(args.api_key) < api_key_min:
-            perror("Warning: Provided API key is invalid.")
-
-        headers["Authorization"] = f"Bearer {args.api_key}"
-
-    return headers
 
 
 @dataclass
@@ -104,17 +44,24 @@ class ChatOperationalArgs:
 
 
 class RamaLamaShell(cmd.Cmd):
-    def __init__(self, args: ChatArgsType, operational_args: ChatOperationalArgs | None = None):
+    def __init__(
+        self,
+        args: ChatArgsType,
+        operational_args: ChatOperationalArgs | None = None,
+        provider: ChatProvider | None = None,
+    ):
         if operational_args is None:
             operational_args = ChatOperationalArgs()
 
         super().__init__()
-        self.conversation_history: list[dict] = []
+        self.conversation_history: list[ChatMessage] = []
         self.args = args
         self.operational_args = operational_args
         self.request_in_process = False
         self.prompt = args.prefix
         self.url = f"{args.url}/chat/completions"
+        self.provider = provider or OpenAIChatProvider(args.url, getattr(args, "api_key", None))
+        add_api_key(self.args)
         self.prep_rag_message()
         self.mcp_agent: LLMAgent | None = None
         self.initialize_mcp()
@@ -146,16 +93,14 @@ class RamaLamaShell(cmd.Cmd):
             return
 
         # Create a summarization prompt
-        conversation_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages_to_summarize])
-
-        summary_prompt = {
-            "role": "user",
-            "content": (
-                f"Please provide a concise summary of the following conversation, "
+        conversation_text = "\n".join([self._format_message_for_summary(msg) for msg in messages_to_summarize])
+        summary_prompt = ChatMessage.user(
+            (
+                "Please provide a concise summary of the following conversation, "
                 f"preserving key information and context:\n\n{conversation_text}\n\n"
-                f"Provide only the summary, without any preamble."
-            ),
-        }
+                "Provide only the summary, without any preamble."
+            )
+        )
 
         # Make API call to get summary
         # Provide user feedback during summarization
@@ -168,12 +113,12 @@ class RamaLamaShell(cmd.Cmd):
                 summary = result['choices'][0]['message']['content']
 
                 # Rebuild conversation history with summary
-                new_history = []
+                new_history: list[ChatMessage] = []
                 if first_msg:
                     new_history.append(first_msg)
 
                 # Add summary as a system message
-                new_history.append({"role": "system", "content": f"Previous conversation summary: {summary}"})
+                new_history.append(ChatMessage.system(f"Previous conversation summary: {summary}"))
 
                 # Add recent messages
                 new_history.extend(recent_msgs)
@@ -197,35 +142,35 @@ class RamaLamaShell(cmd.Cmd):
                 self._summarize_conversation()
                 self.message_count = 0  # Reset counter after summarization
 
-    def _make_api_request(self, messages, stream=True):
-        """Make an API request with the given messages.
+    def _history_snapshot(self) -> list[dict[str, str]]:
+        return [
+            {"role": msg.role, "content": self._format_message_for_summary(msg)} for msg in self.conversation_history
+        ]
 
-        Args:
-            messages: List of message dicts to send
-            stream: Whether to stream the response
+    def _format_message_for_summary(self, msg: ChatMessage) -> str:
+        text_parts = [part.text for part in msg.parts if isinstance(part, TextPart)]
+        if not text_parts:
+            return msg.role
+        return f"{msg.role}: {' '.join(text_parts)}"
 
-        Returns:
-            urllib.request.Request object
-        """
-        data = {
-            "stream": stream,
-            "messages": messages,
-        }
-        if getattr(self.args, "model", None):
-            data["model"] = self.args.model
-        if getattr(self.args, "temp", None):
-            data["temperature"] = float(self.args.temp)
-        if stream and getattr(self.args, "max_tokens", None):
-            data["max_completion_tokens"] = self.args.max_tokens
+    def _make_api_request(self, messages: Sequence[ChatMessage], stream: bool = True):
+        """Create a provider request for arbitrary message lists."""
+        max_tokens = self.args.max_tokens if stream and getattr(self.args, "max_tokens", None) else None
+        options = self._build_request_options(stream=stream, max_tokens=max_tokens)
+        return self.provider.create_request(messages, options)
 
-        headers = add_api_key(self.args)
-        headers["Content-Type"] = "application/json"
+    def _resolve_model_name(self) -> str | None:
+        if getattr(self.args, "runtime", None) == "mlx":
+            return None
+        return getattr(self.args, "model", None)
 
-        return urllib.request.Request(
-            self.url,
-            data=json.dumps(data).encode('utf-8'),
-            headers=headers,
-            method="POST",
+    def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:
+        temperature = float(self.args.temp) if getattr(self.args, "temp", None) else None
+        return ChatRequestOptions(
+            model=self._resolve_model_name(),
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=stream,
         )
 
     def initialize_mcp(self):
@@ -282,7 +227,7 @@ class RamaLamaShell(cmd.Cmd):
         """Determine if the request should be handled by MCP tools."""
         if not self.mcp_agent:
             return False
-        return self.mcp_agent.should_use_tools(content, self.conversation_history)
+        return self.mcp_agent.should_use_tools(content, self._history_snapshot())
 
     def _handle_mcp_request(self, content: str) -> str:
         """Handle a request using MCP tools (multi-tool capable, automatic)."""
@@ -326,8 +271,8 @@ class RamaLamaShell(cmd.Cmd):
             print(f"\n {r['tool']} -> {r['output']}")
 
         # Save to history
-        self.conversation_history.append({"role": "user", "content": f"/tool {question}"})
-        self.conversation_history.append({"role": "assistant", "content": str(responses)})
+        self.conversation_history.append(ChatMessage.user(f"/tool {question}"))
+        self.conversation_history.append(ChatMessage.assistant(str(responses)))
 
     def _select_tools(self):
         """Interactive multi-tool selection without prompting for arguments."""
@@ -396,41 +341,26 @@ class RamaLamaShell(cmd.Cmd):
                 # If streaming, _handle_mcp_request already printed output
                 if isinstance(response, str) and response.strip():
                     print(response)
-                self.conversation_history.append({"role": "user", "content": content})
-                self.conversation_history.append({"role": "assistant", "content": response})
+                self.conversation_history.append(ChatMessage.user(content))
+                self.conversation_history.append(ChatMessage.assistant(response))
                 self._check_and_summarize()
             return False
 
-        self.conversation_history.append({"role": "user", "content": content})
+        self.conversation_history.append(ChatMessage.user(content))
         self.request_in_process = True
         response = self._req()
         if response:
-            self.conversation_history.append({"role": "assistant", "content": response})
+            self.conversation_history.append(ChatMessage.assistant(response))
         self.request_in_process = False
         self._check_and_summarize()
 
     def _make_request_data(self):
-        data = {
-            "stream": True,
-            "messages": self.conversation_history,
-        }
-        if getattr(self.args, "temp", None):
-            data["temperature"] = float(self.args.temp)
-        if getattr(self.args, "max_tokens", None):
-            data["max_completion_tokens"] = self.args.max_tokens
-        # For MLX runtime, omit explicit model to allow server default ("default_model")
-        if getattr(self.args, "runtime", None) != "mlx" and self.args.model is not None:
-            data["model"] = self.args.model
-
-        json_data = json.dumps(data).encode("utf-8")
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        headers = add_api_key(self.args, headers)
-        logger.debug("Request: URL=%s, Data=%s, Headers=%s", self.url, json_data, headers)
-        request = urllib.request.Request(self.url, data=json_data, headers=headers, method="POST")
-
+        options = self._build_request_options(
+            stream=True,
+            max_tokens=getattr(self.args, "max_tokens", None),
+        )
+        request = self.provider.create_request(self.conversation_history, options)
+        logger.debug("Request: URL=%s, Data=%s, Headers=%s", request.full_url, request.data, request.headers)
         return request
 
     def _req(self):
@@ -447,7 +377,8 @@ class RamaLamaShell(cmd.Cmd):
             try:
                 response = urllib.request.urlopen(request)
                 break
-            except Exception:
+            except Exception as e:
+                print(e.read().decode())
                 if sys.stdout.isatty():
                     perror(f"\r{c}", end="", flush=True)
 
@@ -460,7 +391,7 @@ class RamaLamaShell(cmd.Cmd):
                 i = min(i * 2, 0.1)
 
         if response:
-            return res(response, self.args.color)
+            return stream_response(response, self.args.color, self.provider)
 
         # Only show error and kill if not in initial connection phase
         if not getattr(self.args, "initial_connection", False):
@@ -741,7 +672,11 @@ def _report_server_exit(monitor):
         perror("Check server logs for more details about why the service exited.")
 
 
-def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None):
+def chat(
+    args: ChatArgsType,
+    operational_args: ChatOperationalArgs | None = None,
+    provider: ChatProvider | None = None,
+):
     if args.dryrun:
         assert args.ARGS is not None
         prompt = " ".join(args.ARGS)
@@ -791,7 +726,7 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
 
     successful_exit = True
     try:
-        shell = RamaLamaShell(args, operational_args)
+        shell = RamaLamaShell(args, operational_args, provider=provider)
         if shell.handle_args(monitor):
             return
 

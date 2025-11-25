@@ -1,8 +1,12 @@
+import os
 from dataclasses import dataclass
 from typing import Union
 
 import pytest
 
+os.environ.setdefault("RAMALAMA_CONFIG", "/dev/null")
+
+from ramalama.transports.api import APITransport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
 from ramalama.transports.oci import OCI
@@ -35,6 +39,7 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
     "input,expected,error",
     [
         (Input("", "", ""), None, KeyError),
+        (Input("openai://gpt-4o-mini", "", ""), APITransport, None),
         (Input("huggingface://granite-code", "", ""), Huggingface, None),
         (Input("hf://granite-code", "", ""), Huggingface, None),
         (Input("hf.co/granite-code", "", ""), Huggingface, None),
@@ -113,6 +118,7 @@ def test_validate_oci_model_input(input: Input, error):
 @pytest.mark.parametrize(
     "input,expected",
     [
+        (Input("openai://gpt-4o-mini", "", ""), "gpt-4o-mini"),
         (Input("huggingface://granite-code", "", ""), "granite-code"),
         (
             Input("huggingface://ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", "", ""),
