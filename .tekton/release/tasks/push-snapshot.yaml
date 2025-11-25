@@ -7,17 +7,6 @@ spec:
   params:
   - name: SNAPSHOT
     description: Information about the Snapshot to be pushed
-  - name: event-type
-    description: The type of event that triggered the pipeline
-  - name: snapshot-type
-    description: The type of snapshot that triggered the pipeline
-  - name: release-tags
-    description: A space-separated list of tags that should be applied to the release
-    default: ""
-  - name: sync
-    description: >-
-      True if all components are built from the same git commit. False if components
-      are built from different commits.
   - name: repo-prefix
     description: >-
       The prefix (usually hostname/orgname) of the destination repo to push the Snapshot components to.
@@ -37,13 +26,17 @@ spec:
     - name: SNAPSHOT
       value: $(params.SNAPSHOT)
     - name: EVENT_TYPE
-      value: $(params.event-type)
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['pac.test.appstudio.openshift.io/event-type']
     - name: SNAPSHOT_TYPE
-      value: $(params.snapshot-type)
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['test.appstudio.openshift.io/type']
     - name: RELEASE_TAGS
-      value: $(params.release-tags)
-    - name: SYNC
-      value: $(params.sync)
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.annotations['custom.appstudio.openshift.io/release-tags']
     - name: REPO_PREFIX
       value: $(params.repo-prefix)
     - name: SKIP_COMPONENTS
@@ -106,10 +99,6 @@ spec:
         exit
       elif [ "$EVENT_TYPE" != "override" ]; then
         NOTE="Skipped push of $COMPONENTS components from \"$EVENT_TYPE\" event"
-        test_output SKIPPED 0 0 0 "$NOTE"
-        exit
-      elif [ "$SYNC" != "true" ]; then
-        NOTE="Skipped push of $COMPONENTS components due to out-of-sync components"
         test_output SKIPPED 0 0 0 "$NOTE"
         exit
       fi

@@ -5,8 +5,6 @@ metadata:
 spec:
   description: |
     Test the newly-built ramalama image and layered images on all supported architectures.
-    If the tests succeed, push the images to the public repos. If the tests were triggered by
-    pushing a tag to the git repo, apply floating tags to the pushed images.
   params:
   - name: SNAPSHOT
     description: >-
@@ -31,16 +29,6 @@ spec:
   - name: git-revision
     description: Revision of the Git repository containing pipeline and task definitions
     default: main
-  - name: repo-prefix
-    description: The prefix (usually hostname/orgname) of the destination repo where the Snapshot components will be pushed
-    default: quay.io/ramalama
-  - name: skip-components
-    description: A space-separated list of components that should not be pushed
-    default: bats
-  results:
-  - name: TEST_OUTPUT
-    description: Test results in JSON format
-    value: $(tasks.push.results.TEST_OUTPUT)
   tasks:
   - name: init
     params:
@@ -85,34 +73,3 @@ spec:
         value: $(params.git-revision)
       - name: pathInRepo
         value: .tekton/integration/tasks/test-vm-cmd.yaml
-    when:
-    - input: $(tasks.init.results.sync)
-      operator: in
-      values: ["true"]
-  - name: push
-    params:
-    - name: SNAPSHOT
-      value: $(params.SNAPSHOT)
-    - name: event-type
-      value: $(tasks.init.results.event-type)
-    - name: snapshot-type
-      value: $(tasks.init.results.snapshot-type)
-    - name: release-tags
-      value: $(tasks.init.results.release-tags)
-    - name: sync
-      value: $(tasks.init.results.sync)
-    - name: repo-prefix
-      value: $(params.repo-prefix)
-    - name: skip-components
-      value: $(params.skip-components)
-    taskRef:
-      resolver: git
-      params:
-      - name: url
-        value: $(params.git-url)
-      - name: revision
-        value: $(params.git-revision)
-      - name: pathInRepo
-        value: .tekton/integration/tasks/push-snapshot.yaml
-    runAfter:
-    - test
