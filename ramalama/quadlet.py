@@ -15,6 +15,7 @@ class Quadlet:
         mmproj_path: Optional[Tuple[str, str]],
         args,
         exec_args,
+        artifact: bool
     ):
         self.src_model_path, self.dest_model_path = model_paths
         self.src_chat_template_path, self.dest_chat_template_path = (
@@ -33,6 +34,7 @@ class Quadlet:
             self.name = model_name
 
         self.args = args
+        self.artifact = artifact
         self.exec_args = exec_args
         self.image = args.image
         self.rag = ""
@@ -147,11 +149,18 @@ class Quadlet:
 
         files.append(self._gen_image(self.name, self.ai_image))
 
-        quadlet_file.add(
-            "Container",
-            "Mount",
-            f"type=image,source={self.ai_image},destination={MNT_DIR},subpath=/models,readwrite=false",
-        )
+        if self.artifact:
+            quadlet_file.add(
+                "Container",
+                "Mount",
+                f"type=artifact,source={self.src_model_path},destination={MNT_DIR}",
+            )
+        else:
+            quadlet_file.add(
+                "Container",
+                "Mount",
+                f"type=image,source={self.src_model_path},destination={MNT_DIR},subpath=/models,readwrite=false",
+            )
         return files
 
     def _gen_port(self, quadlet_file: UnitFile):
