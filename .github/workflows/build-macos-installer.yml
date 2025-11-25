@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload to release
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_release == 'true')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             ${{ steps.find_pkg.outputs.pkg_file }}
