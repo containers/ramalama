@@ -14,12 +14,12 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from typing import Sequence
 from datetime import timedelta
+from collections.abc import Sequence
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.chat_providers import ChatProvider, ChatRequestOptions, OpenAIChatProvider
-from ramalama.chat_utils import ChatMessage, add_api_key, stream_response
+from ramalama.chat_utils import ChatMessage, add_api_key, stream_response, TextPart
 from ramalama.common import perror
 from ramalama.config import CONFIG
 from ramalama.console import should_colorize
@@ -41,6 +41,51 @@ class ChatOperationalArgs:
     name: str | None = None
     keepalive: int | None = None
     monitor: "ServerMonitor | None" = None
+
+
+class Spinner:
+    def __init__(self, wait_time: float = 0.1):
+        self._stop_event: threading.Event = threading.Event()
+        self._thread: threading.Thread | None = None
+        self.wait_time = wait_time
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+        return False
+
+    def start(self) -> "Spinner":
+        if not sys.stdout.isatty():
+            return self
+
+        if self._thread is not None:
+            self.stop()
+
+        self._thread = threading.Thread(target=self._spinner_loop, daemon=True)
+        self._thread.start()
+        return self
+
+    def stop(self):
+        if self._thread is None:
+            return
+
+        self._stop_event.set()
+        self._thread.join(timeout=0.2)
+        perror("\r", end="", flush=True)
+        self._thread = None
+        self._stop_event = threading.Event()
+
+    def _spinner_loop(self):
+        frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+
+        for frame in itertools.cycle(frames):
+            if self._stop_event.is_set():
+                break
+            perror(f"\r{frame}", end="", flush=True)
+            self._stop_event.wait(self.wait_time)
 
 
 class RamaLamaShell(cmd.Cmd):
@@ -79,7 +124,7 @@ class RamaLamaShell(cmd.Cmd):
 
     def _summarize_conversation(self):
         """Summarize the conversation history to prevent context growth."""
-        if len(self.conversation_history) < 4:
+        if len(self.conversation_history) < 10:
             # Need at least a few messages to summarize
             return
 
@@ -373,29 +418,47 @@ class RamaLamaShell(cmd.Cmd):
         # Adjust timeout based on whether we're in initial connection phase
         max_timeout = 30 if getattr(self.args, "initial_connection", False) else 16
 
-        for c in itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']):
+        last_error: Exception | None = None
+
+        spinner = Spinner().start()
+
+        while True:
             try:
                 response = urllib.request.urlopen(request)
+                spinner.stop()
                 break
-            except Exception as e:
-                print(e.read().decode())
-                if sys.stdout.isatty():
-                    perror(f"\r{c}", end="", flush=True)
+            except urllib.error.HTTPError as http_err:
+                error_body = http_err.read().decode("utf-8", "ignore").strip()
+                perror(error_body)
+                message = f"HTTP {http_err.code}"
+                if error_body:
+                    message = f"{message}: {error_body}"
+                perror(f"\r{message}")
 
-                if total_time_slept > max_timeout:
-                    break
+                self.kills()
+                spinner.stop()
+                return None
+            except Exception as exc:
+                last_error = exc
 
-                total_time_slept += i
-                time.sleep(i)
+            if total_time_slept > max_timeout:
+                break
 
-                i = min(i * 2, 0.1)
+            total_time_slept += i
+            time.sleep(i)
 
+            i = min(i * 2, 0.1)
+
+        spinner.stop()
         if response:
             return stream_response(response, self.args.color, self.provider)
 
         # Only show error and kill if not in initial connection phase
         if not getattr(self.args, "initial_connection", False):
-            perror(f"\rError: could not connect to: {self.url}")
+            error_suffix = ""
+            if last_error:
+                error_suffix = f" ({last_error})"
+            perror(f"\rError: could not connect to: {self.url}{error_suffix}")
             self.kills()
         else:
             logger.debug(f"Could not connect to: {self.url}")
