@@ -81,10 +81,12 @@ class OpenAIHostedChatProvider(OpenAIChatProvider):
     def build_payload(self, messages: Sequence[ChatMessage], options: ChatRequestOptions) -> dict[str, object]:
         payload = super().build_payload(messages, options)
         max_tokens = payload.pop("max_tokens", None)
-        if max_tokens is not None:
-            payload["max_completion_tokens"] = max_tokens
 
-        if payload["max_completion_tokens"] == 0:
+        if max_tokens is not None and (max_tokens := int(max_tokens)) > 0:
+            payload.setdefault("max_completion_tokens", max_tokens)
+
+        # OpenAI doesn't accept max_completion_tokens of 0 as unlimited
+        if payload.get("max_completion_tokens") == 0:
             payload.pop("max_completion_tokens")
 
         return payload
