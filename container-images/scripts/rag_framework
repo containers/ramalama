@@ -27,6 +27,12 @@ from pymilvus import AnnSearchRequest, AsyncMilvusClient, RRFRanker  # type: ign
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
+# RAG mode constants
+RAG_MODE_STRICT = "strict"
+RAG_MODE_AUGMENT = "augment"
+VALID_RAG_MODES = {RAG_MODE_STRICT, RAG_MODE_AUGMENT}
+DEFAULT_RAG_MODE = RAG_MODE_AUGMENT
+
 # Global Vars
 EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
 SPARSE_MODEL = os.getenv("SPARSE_MODEL", "prithivida/Splade_PP_en_v1")
@@ -253,12 +259,32 @@ class OpenAICompatibleRagService:
         conversation_history = self._extract_conversation_context(messages[:-1])
 
         # Enhanced system prompt with RAG context
-        system_prompt = (
-            textwrap.dedent(
-                """
-            You are an expert software architect assistant.
-            Use the provided context and conversation history to answer questions accurately and concisely.
-            If the answer is not in the context, respond with "I don't know" - do not fabricate details.
+        # Support two RAG modes via RAG_MODE environment variable:
+        # - strict: Only answer from documents, refuse general knowledge
+        # - augment: Use documents + general knowledge (default)
+        rag_mode = os.getenv("RAG_MODE", DEFAULT_RAG_MODE).lower()
+
+        # Validate RAG_MODE and warn if invalid
+        if rag_mode not in VALID_RAG_MODES:
+            logging.warning(
+                f"Invalid RAG_MODE '{rag_mode}' specified. "
+                f"Valid modes are '{', '.join(sorted(VALID_RAG_MODES))}'. "
+                f"Defaulting to '{DEFAULT_RAG_MODE}'."
+            )
+            rag_mode = DEFAULT_RAG_MODE
+
+        if rag_mode == RAG_MODE_STRICT:
+            system_prompt = (
+                textwrap.dedent(
+                    """
+            You are a strict document-based assistant. You MUST ONLY answer
+            questions using information from the provided context.
+
+            **CRITICAL RULES:**
+            - If the answer is NOT EXPLICITLY in the context below, you MUST respond with EXACTLY: "I don't know."
+            - Do NOT use your general knowledge
+            - Do NOT make assumptions or inferences beyond what's stated
+            - Do NOT provide answers from your training data
 
             ### Conversation History:
             {0}
@@ -269,12 +295,35 @@ class OpenAICompatibleRagService:
             ### Current Question:
             {2}
 
-            Provide a helpful and accurate response based on the context above.
+            Answer ONLY from the context above, or say "I don't know."
             """
+                )
+                .strip()
+                .format(conversation_history, rag_context, latest_message.content)
             )
-            .strip()
-            .format(conversation_history, rag_context, latest_message.content)
-        )
+        else:  # augment mode (default)
+            system_prompt = (
+                textwrap.dedent(
+                    """
+            You are an expert software architect assistant.
+            Use the provided context and conversation history to answer questions accurately and concisely.
+            You may supplement with your general knowledge when helpful.
+
+            ### Conversation History:
+            {0}
+
+            ### Retrieved Context:
+            {1}
+
+            ### Current Question:
+            {2}
+
+            Provide a helpful and accurate response.
+            """
+                )
+                .strip()
+                .format(conversation_history, rag_context, latest_message.content)
+            )
 
         return [{"role": "user", "content": system_prompt}]
 

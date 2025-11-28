@@ -220,6 +220,22 @@ Note: RAG support requires AI Models be run within containers, --nocontainer not
 The image to use to process the RAG database specified by the `--rag` option. The image must contain the `/usr/bin/rag_framework` executable, which
 will create a proxy which embellishes client requests with RAG data before passing them on to the LLM, and returns the responses.
 
+#### **RAG_MODE** environment variable
+
+Controls how the RAG proxy balances document retrieval with the model's general knowledge. Set via `--env RAG_MODE=<mode>` or in the `ramalama.conf` file.
+
+| Mode    | Description |
+| ------- | ----------- |
+| strict  | Only answer from retrieved documents. Refuses to answer questions not covered by the indexed documents with "I don't know." Use for compliance, legal, or privacy-sensitive scenarios. |
+| augment | (Default) Freely combines retrieved documents with the model's general knowledge. Documents are used when relevant, general knowledge supplements when helpful. |
+
+Example:
+```
+ramalama serve --env RAG_MODE=strict --rag /path/to/db model
+```
+
+The default can be overridden in the `ramalama.conf` file with the `rag_mode` option.
+
 #### **--runtime-args**="*args*"
 Add *args* to the runtime (llama.cpp or vllm) invocation.
 

@@ -181,6 +181,17 @@ OCI container image to run with the specified AI model when using RAG content.
   GGML_VK_VISIBLE_DEVICES = "quay.io/ramalama/ramalama"
 
 
+**rag_mode**="augment"
+
+Specify the default RAG operational mode when using `ramalama serve --rag`.
+Controls how the RAG proxy balances document retrieval with the model's general knowledge.
+Options: strict, augment
+
+- **strict**: Only answer from retrieved documents. Refuses questions not covered by documents.
+- **augment**: (Default) Freely combines documents with general AI knowledge.
+
+RAG_MODE environment variable overrides this field.
+
 **runtime**="llama.cpp"
 
 Specify the AI runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx' (default: llama.cpp)
