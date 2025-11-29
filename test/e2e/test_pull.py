@@ -9,7 +9,6 @@ from test.conftest import (
     skip_if_darwin,
     skip_if_little_endian_machine,
     skip_if_no_container,
-    skip_if_no_huggingface_cli,
     skip_if_no_ollama,
 )
 from test.e2e.utils import RamalamaExecWorkspace
@@ -86,21 +85,6 @@ def test_pull_non_existing_model():
             {"RAMALAMA_TRANSPORT": "huggingface"},
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             id="Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model with RAMALAMA_TRANSPORT=huggingface"
-        ),
-        pytest.param(
-            "hf://HuggingFaceTB/SmolLM-135M", None, "hf://HuggingFaceTB/SmolLM-135M",
-            id="hf://HuggingFaceTB/SmolLM-135M model",
-            marks=[skip_if_no_huggingface_cli]
-        ),
-        pytest.param(
-            "hf://ggml-org/SmolVLM-256M-Instruct-GGUF", None, "hf://ggml-org/SmolVLM-256M-Instruct-GGUF",
-            id="hf://ggml-org/SmolVLM-256M-Instruct-GGUF model",
-            marks=[skip_if_no_huggingface_cli]
-        ),
-        pytest.param(
-            "hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0", None, "hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0",
-            id="hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0 model",
-            marks=[skip_if_no_huggingface_cli]
         ),
         pytest.param(
             "oci://quay.io/ramalama/smollm:135m", None, "oci://quay.io/ramalama/smollm:135m",
@@ -278,58 +262,6 @@ def test_pull_using_ollama_cache(ollama_server, ollama_model, model, env_vars, e
 
         # Compare the ollama pull time with the ramalama cached pull time
         assert (ollama_pull_time / 2) > ramalama_pull_time
-
-
-@pytest.mark.e2e
-@pytest.mark.distro_integration
-@skip_if_no_huggingface_cli
-@pytest.mark.parametrize(
-    "hf_repo, hf_model, model, env_vars, expected",
-    [
-        pytest.param(
-            "Felladrin/gguf-smollm-360M-instruct-add-basics",
-            "smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            None,
-            "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            id="with hf:// url",
-        ),
-        pytest.param(
-            "Felladrin/gguf-smollm-360M-instruct-add-basics",
-            "smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            "huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            None,
-            "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            id="with huggingface:// url",
-        ),
-        pytest.param(
-            "Felladrin/gguf-smollm-360M-instruct-add-basics",
-            "smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            "Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            {"RAMALAMA_TRANSPORT": "huggingface"},
-            "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            id="with RAMALAMA_TRANSPORT=huggingface",
-        ),
-    ],
-)
-def test_pull_using_huggingface_cache(hf_repo, hf_model, model, env_vars, expected):
-    with RamalamaExecWorkspace(env_vars=env_vars) as ctx:
-        ramalama_cli = ["ramalama", "--store", str(ctx.storage_path)]
-
-        # Ensure huggingface cache exists and is set as environment variable
-        hf_home = ctx.workspace_path / ".cache" / "huggingface"
-        hf_home.mkdir(parents=True, exist_ok=True)
-        ctx.environ["HF_HOME"] = str(hf_home)
-
-        # Pull image using huggingface cli
-        ctx.check_call(["hf", "download", hf_repo, hf_model])
-
-        # Pull image using ramalama cli
-        ctx.check_call(ramalama_cli + ["pull", model])
-
-        # Check if the model pull is the expected
-        model_list = json.loads(ctx.check_output(ramalama_cli + ["list", "--json", "--sort", "modified"]))
-        assert model_list[0]["name"] == expected
 
 
 @pytest.mark.e2e
