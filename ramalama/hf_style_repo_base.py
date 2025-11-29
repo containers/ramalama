@@ -1,3 +1,4 @@
+import fnmatch
 import json
 import os
 import re
@@ -80,6 +81,9 @@ class HFStyleRepository(ABC):
         self.model_hash = None
         self.mmproj_filename = None
         self.mmproj_hash = None
+        self.other_files: list[dict] = []
+        self.additional_safetensor_files: list[dict] = []
+        self.safetensors_index_file = None
         self.fetch_metadata()
 
     @abstractmethod
@@ -116,8 +120,59 @@ class HFStyleRepository(ABC):
                                 should_verify_checksum=False,
                             )
                         )
+
+        # Handle additional safetensors files (for sharded models)
+        for safetensor_file in self.additional_safetensor_files:
+            filename = safetensor_file['filename']
+            if filename not in cached_files:
+                logger.debug(f"Adding safetensors file: {filename}")
+                files.append(
+                    SnapshotFile(
+                        url=f"{self.blob_url}/{filename}",
+                        header=self.headers,
+                        hash=f"sha256:{self._fetch_checksum_for_file(filename)}",
+                        type=SnapshotFileType.SafetensorModel,
+                        name=filename,
+                        should_show_progress=True,
+                        should_verify_checksum=True,
+                    )
+                )
+
+        # Other files
+        for other_file in self.other_files:
+            filename = other_file['filename']
+            if filename not in cached_files:
+                logger.debug(f"Adding other safetensors file: {filename}")
+                files.append(
+                    SnapshotFile(
+                        url=f"{self.blob_url}/{filename}",
+                        header=self.headers,
+                        hash=f"sha256:{self._fetch_checksum_for_file(filename)}",
+                        type=SnapshotFileType.Other,
+                        name=filename,
+                        should_show_progress=False,
+                        should_verify_checksum=False,
+                    )
+                )
+
         if self.mmproj_filename and self.mmproj_filename not in cached_files:
             files.append(self.mmproj_file())
+
+        # Add safetensors index file if present
+        if self.safetensors_index_file:
+            if self.safetensors_index_file not in cached_files:
+                logger.debug(f"Adding safetensors index file: {self.safetensors_index_file}")
+                files.append(
+                    SnapshotFile(
+                        url=f"{self.blob_url}/{self.safetensors_index_file}",
+                        header=self.headers,
+                        hash=generate_sha256(f"{self.organization}/{self.name}/{self.safetensors_index_file}"),
+                        type=SnapshotFileType.Other,
+                        name=self.safetensors_index_file,
+                        required=False,
+                    )
+                )
+
         if self.FILE_NAME_CONFIG not in cached_files:
             files.append(self.config_file())
         if self.FILE_NAME_GENERATION_CONFIG not in cached_files:
@@ -127,14 +182,25 @@ class HFStyleRepository(ABC):
 
         return files
 
+    def _fetch_checksum_for_file(self, filename):
+        """Fetch checksum for a specific file. Should be overridden by subclasses."""
+        return ""
+
     def model_file(self) -> SnapshotFile:
         assert self.model_filename
         assert self.model_hash
+
+        # Determine file type based on extension
+        if fnmatch.fnmatch(self.model_filename, '*.safetensors'):
+            file_type = SnapshotFileType.SafetensorModel
+        else:
+            file_type = SnapshotFileType.GGUFModel
+
         return SnapshotFile(
             url=f"{self.blob_url}/{self.model_filename}",
             header=self.headers,
             hash=self.model_hash,
-            type=SnapshotFileType.GGUFModel,
+            type=file_type,
             name=self.model_filename,
             should_show_progress=True,
             should_verify_checksum=True,
