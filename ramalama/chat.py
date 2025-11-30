@@ -17,6 +17,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 
+from ramalama.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, resolve_provider_api_key
 from ramalama.arg_types import ChatArgsType
 from ramalama.chat_providers import ChatProvider, ChatRequestOptions, OpenAIChatProvider, OpenAIHostedChatProvider
 from ramalama.chat_utils import ChatMessage, add_api_key, stream_response
@@ -29,7 +30,6 @@ from ramalama.logger import logger
 from ramalama.mcp.mcp_agent import LLMAgent
 from ramalama.mcp.mcp_client import PureMCPClient
 from ramalama.proxy_support import setup_proxy_support
-from ramalama.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, resolve_provider_api_key
 
 # Setup proxy support on module import
 setup_proxy_support()

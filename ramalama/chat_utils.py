@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Literal, Mapping, MutableMapping, Protocol
+from typing import Any, Iterable, Literal, MutableMapping, Protocol
 
 from ramalama.common import perror
 from ramalama.config import CONFIG

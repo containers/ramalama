@@ -3,11 +3,11 @@ from collections.abc import Callable
 from typing import TypeAlias
 from urllib.parse import urlparse
 
+from ramalama.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, APIProviderSpec
 from ramalama.arg_types import StoreArgType
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
 from ramalama.transports.api import APITransport
-from ramalama.api_provider_specs import APIProviderSpec, DEFAULT_API_PROVIDER_SPECS
 from ramalama.transports.base import MODEL_TYPES, Transport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope

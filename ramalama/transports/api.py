@@ -1,14 +1,9 @@
 from __future__ import annotations
 
+from ramalama.api_provider_specs import APIProviderSpec, resolve_provider_api_key
 from ramalama.chat import chat
 from ramalama.chat_providers.openai import OpenAIHostedChatProvider
-from ramalama.config import CONFIG
 from ramalama.transports.base import TransportBase
-from ramalama.api_provider_specs import (
-    APIProviderSpec,
-    DEFAULT_API_PROVIDER_SPECS,
-    resolve_provider_api_key,
-)
 
 
 class APITransport(TransportBase):

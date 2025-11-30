@@ -1,11 +1,8 @@
-import os
 from types import SimpleNamespace
 
-os.environ.setdefault("RAMALAMA_CONFIG", "/dev/null")
-
+from ramalama.api_provider_specs import APIProviderSpec
 from ramalama.transports import api as api_module
 from ramalama.transports.api import APITransport
-from ramalama.api_provider_specs import APIProviderSpec
 
 
 def test_api_transport_run(monkeypatch):

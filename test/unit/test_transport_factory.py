@@ -1,10 +1,7 @@
-import os
 from dataclasses import dataclass
 from typing import Union
 
 import pytest
-
-os.environ.setdefault("RAMALAMA_CONFIG", "/dev/null")
 
 from ramalama.transports.api import APITransport
 from ramalama.transports.huggingface import Huggingface
