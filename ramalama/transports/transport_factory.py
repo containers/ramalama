@@ -6,8 +6,9 @@ from urllib.parse import urlparse
 from ramalama.arg_types import StoreArgType
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
-from ramalama.transports.api import APITransport, APIProviderSpec, DEFAULT_API_PROVIDER_SPECS
-from ramalama.transports.base import MODEL_TYPES
+from ramalama.transports.api import APITransport
+from ramalama.api_provider_specs import APIProviderSpec, DEFAULT_API_PROVIDER_SPECS
+from ramalama.transports.base import MODEL_TYPES, Transport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
 from ramalama.transports.oci import OCI
@@ -26,6 +27,7 @@ class TransportFactory:
         transport: str = "ollama",
         ignore_stderr: bool = False,
     ):
+
         self.model = model
         self.store_path = args.store
         self.transport = transport
@@ -40,12 +42,16 @@ class TransportFactory:
         self._create = _create
 
         self.pruned_model = self.prune_model_input()
-        self.draft_model = None
+        self.draft_model: Transport | None = None
 
-        if getattr(args, 'model_draft', None):
+        model_draft = getattr(args, "model_draft", None)
+        if model_draft:
             dm_args = copy.deepcopy(args)
             dm_args.model_draft = None  # type: ignore
-            self.draft_model = TransportFactory(args.model_draft, dm_args, ignore_stderr=True).create()  # type: ignore
+            draft_model = TransportFactory(model_draft, dm_args, ignore_stderr=True).create()
+            if not isinstance(draft_model, Transport):
+                raise ValueError("Draft models must be local transports; hosted API transports are not supported.")
+            self.draft_model = draft_model
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
         api_spec = self._match_api_provider()

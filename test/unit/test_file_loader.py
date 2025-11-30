@@ -4,7 +4,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from ramalama.chat_utils import ImageURLPart, TextPart
+from ramalama.chat_utils import ImageURLPart
 from ramalama.file_loaders.file_manager import ImageFileManager, OpanAIChatAPIMessageBuilder, TextFileManager
 from ramalama.file_loaders.file_types.base import BaseFileLoader
 from ramalama.file_loaders.file_types.image import BasicImageFileLoader
@@ -12,11 +12,11 @@ from ramalama.file_loaders.file_types.txt import TXTFileLoader
 
 
 def _text_content(message):
-    return "".join(part.text for part in message.parts if isinstance(part, TextPart))
+    return message.text or ""
 
 
 def _image_parts(message):
-    return [part for part in message.parts if isinstance(part, ImageURLPart)]
+    return [attachment for attachment in message.attachments if isinstance(attachment, ImageURLPart)]
 
 
 class TestBaseFileLoader:

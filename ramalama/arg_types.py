@@ -56,6 +56,8 @@ class ChatSubArgsType(Protocol):
     rag: str | None
     api_key: str | None
     ARGS: List[str] | None
+    max_tokens: int | None
+    temp: float | None
 
 
 ChatSubArgs = protocol_to_dataclass(ChatSubArgsType)

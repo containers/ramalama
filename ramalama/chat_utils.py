@@ -12,12 +12,6 @@ RoleType = Literal["system", "user", "assistant", "tool"]
 
 
 @dataclass(slots=True)
-class TextPart:
-    text: str
-    type: Literal["text"] = "text"
-
-
-@dataclass(slots=True)
 class ImageURLPart:
     url: str
     detail: str | None = None
@@ -32,50 +26,39 @@ class ImageBytesPart:
 
 
 @dataclass(slots=True)
-class ToolCallPart:
+class ToolCall:
+    id: str
     name: str
     arguments: dict[str, Any]
-    type: Literal["tool_call"] = "tool_call"
 
 
-@dataclass(slots=True)
-class ToolResultPart:
-    tool_call_id: str
-    content: Any
-    type: Literal["tool_result"] = "tool_result"
-
-
-@dataclass(slots=True)
-class CustomPart:
-    part_type: str
-    payload: dict[str, Any]
-    type: Literal["custom"] = "custom"
-
-
-MessagePart = TextPart | ImageURLPart | ImageBytesPart | ToolCallPart | ToolResultPart | CustomPart
+AttachmentPart = ImageURLPart | ImageBytesPart
 
 
 @dataclass(slots=True)
 class ChatMessage:
     role: RoleType
-    parts: list[MessagePart] = field(default_factory=list)
+    text: str | None = None
+    attachments: list[AttachmentPart] = field(default_factory=list)
+    tool_calls: list[ToolCall] = field(default_factory=list)
+    tool_call_id: str | None = None
     metadata: MutableMapping[str, Any] = field(default_factory=dict)
 
     @staticmethod
     def system(text: str) -> "ChatMessage":
-        return ChatMessage(role="system", parts=[TextPart(text=text)])
+        return ChatMessage(role="system", text=text)
 
     @staticmethod
     def user(text: str) -> "ChatMessage":
-        return ChatMessage(role="user", parts=[TextPart(text=text)])
+        return ChatMessage(role="user", text=text)
 
     @staticmethod
     def assistant(text: str) -> "ChatMessage":
-        return ChatMessage(role="assistant", parts=[TextPart(text=text)])
+        return ChatMessage(role="assistant", text=text)
 
     @staticmethod
     def tool(text: str) -> "ChatMessage":
-        return ChatMessage(role="tool", parts=[TextPart(text=text)])
+        return ChatMessage(role="tool", text=text)
 
 
 class StreamParser(Protocol):
@@ -134,9 +117,7 @@ def add_api_key(args, headers=None):
     return headers
 
 
-def serialize_part(part: MessagePart) -> dict[str, Any]:
-    if isinstance(part, TextPart):
-        return {"type": "text", "text": part.text}
+def serialize_part(part: AttachmentPart) -> dict[str, Any]:
     if isinstance(part, ImageURLPart):
         payload: dict[str, Any] = {"url": part.url}
         if part.detail:
@@ -144,24 +125,14 @@ def serialize_part(part: MessagePart) -> dict[str, Any]:
         return {"type": "image_url", "image_url": payload}
     if isinstance(part, ImageBytesPart):
         return {"type": "image_bytes", "image_bytes": {"data": part.data, "mime_type": part.mime_type}}
-    if isinstance(part, ToolCallPart):
-        return {"type": "tool_call", "name": part.name, "arguments": dict(part.arguments)}
-    if isinstance(part, ToolResultPart):
-        return {"type": "tool_result", "tool_call_id": part.tool_call_id, "content": part.content}
-    if isinstance(part, CustomPart):
-        return {"type": part.part_type, **dict(part.payload)}
     raise TypeError(f"Unsupported message part: {part!r}")
 
 
 __all__ = [
     "ChatMessage",
-    "MessagePart",
-    "TextPart",
+    "ToolCall",
     "ImageURLPart",
     "ImageBytesPart",
-    "ToolCallPart",
-    "ToolResultPart",
-    "CustomPart",
     "add_api_key",
     "default_prefix",
     "stream_response",

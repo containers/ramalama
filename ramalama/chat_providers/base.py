@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
-from collections.abc import Iterable, Mapping, Sequence
 from urllib import request as urllib_request
 
 from ramalama.chat_utils import ChatMessage
@@ -26,7 +26,7 @@ class ChatRequestOptions:
     temperature: float | None = None
     max_tokens: int | None = None
     stream: bool = True
-    extra: Mapping[str, Any] | None = None
+    extra: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         keys = ["model", "temperature", "max_tokens", "stream"]
@@ -40,7 +40,7 @@ class ChatStreamEvent:
     """A provider-agnostic representation of a streamed delta."""
 
     text: str | None = None
-    raw: Mapping[str, Any] | None = None
+    raw: dict[str, Any] | None = None
     done: bool = False
 
 
@@ -79,11 +79,13 @@ class ChatProvider(ABC):
         self,
         *,
         include_auth: bool = True,
-        extra: Mapping[str, str] | None = None,
+        extra: dict[str, str] | None = None,
         options: ChatRequestOptions | None = None,
     ) -> dict[str, str]:
-        headers: dict[str, str] = {"Content-Type": "application/json"}
-        headers.update(self._default_headers)
+        headers: dict[str, str] = (
+            {"Content-Type": "application/json"} | self._default_headers | self.provider_headers(options)
+        )
+
         headers.update(self.provider_headers(options))
         if include_auth:
             headers.update(self.auth_headers())
@@ -91,12 +93,10 @@ class ChatProvider(ABC):
             headers.update(extra)
         return headers
 
-    def auth_headers(self) -> Mapping[str, str]:
-        if not self.api_key:
-            return {}
-        return {"Authorization": f"Bearer {self.api_key}"}
+    def auth_headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
 
-    def serialize_payload(self, payload: Mapping[str, Any]) -> bytes:
+    def serialize_payload(self, payload: dict[str, Any]) -> bytes:
         return json.dumps(payload).encode("utf-8")
 
     def create_request(self, messages: Sequence[ChatMessage], options: ChatRequestOptions) -> urllib_request.Request:
@@ -113,17 +113,17 @@ class ChatProvider(ABC):
     # ------------------------------------------------------------------
     # Provider customization points
     # ------------------------------------------------------------------
-    def provider_headers(self, options: ChatRequestOptions | None = None) -> Mapping[str, str]:
+    def provider_headers(self, options: ChatRequestOptions | None = None) -> dict[str, str]:
         return {}
 
-    def additional_request_headers(self, options: ChatRequestOptions | None = None) -> Mapping[str, str]:
+    def additional_request_headers(self, options: ChatRequestOptions | None = None) -> dict[str, str]:
         return {}
 
     def resolve_request_path(self, options: ChatRequestOptions | None = None) -> str:
         return self.default_path
 
     @abstractmethod
-    def build_payload(self, messages: Sequence[ChatMessage], options: ChatRequestOptions) -> Mapping[str, Any]:
+    def build_payload(self, messages: Sequence[ChatMessage], options: ChatRequestOptions) -> dict[str, Any]:
         """Return the provider-specific payload."""
 
     @abstractmethod
@@ -135,9 +135,9 @@ class ChatProvider(ABC):
     # ------------------------------------------------------------------
     def raise_for_status(self, status_code: int, payload: Any | None = None) -> None:
         if status_code >= 400:
-            if isinstance(payload, Mapping) and "error" in payload:
+            if isinstance(payload, dict) and "error" in payload:
                 err = payload["error"]
-                message = str(err.get("message") or err.get("type") or err) if isinstance(err, Mapping) else str(err)
+                message = str(err.get("message") or err.get("type") or err) if isinstance(err, dict) else str(err)
             else:
                 message = "chat request failed"
 

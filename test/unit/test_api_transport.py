@@ -4,7 +4,8 @@ from types import SimpleNamespace
 os.environ.setdefault("RAMALAMA_CONFIG", "/dev/null")
 
 from ramalama.transports import api as api_module
-from ramalama.transports.api import APIProviderSpec, APITransport
+from ramalama.transports.api import APITransport
+from ramalama.api_provider_specs import APIProviderSpec
 
 
 def test_api_transport_run(monkeypatch):
@@ -54,7 +55,9 @@ def test_api_transport_falls_back_to_config_api_key(monkeypatch):
 
     monkeypatch.setattr(api_module, "chat", fake_chat)
 
-    args = SimpleNamespace(container=True, engine="podman", url="http://localhost", model=None, api_key=None, api="none")
+    args = SimpleNamespace(
+        container=True, engine="podman", url="http://localhost", model=None, api_key=None, api="none"
+    )
     transport.run(args, [])
 
     assert args.api_key == "config-secret"

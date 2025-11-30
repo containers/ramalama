@@ -5,11 +5,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ramalama.chat import RamaLamaShell, chat
-from ramalama.chat_utils import ImageURLPart, TextPart
+from ramalama.chat_utils import ImageURLPart
 
 
 def _text_content(message):
-    return "".join(part.text for part in message.parts if isinstance(part, TextPart))
+    return message.text or ""
 
 
 class TestFileUploadChatIntegration:
@@ -38,7 +38,7 @@ class TestFileUploadChatIntegration:
             assert len(shell.conversation_history) == 1
             system_message = shell.conversation_history[0]
             assert system_message.role == "system"
-            content = "".join(part.text for part in system_message.parts if hasattr(part, "text"))
+            content = system_message.text or ""
             assert "This is test content for chat input" in content
             assert f"<!--start_document {tmp_file.name}-->" in content
 
@@ -70,7 +70,7 @@ class TestFileUploadChatIntegration:
             assert len(shell.conversation_history) == 1
             system_message = shell.conversation_history[0]
             assert system_message.role == "system"
-            content = "".join(part.text for part in system_message.parts if hasattr(part, "text"))
+            content = system_message.text or ""
             assert "Text file content" in content
             assert "# Markdown Content" in content
             assert "test.txt" in content
@@ -162,7 +162,7 @@ class TestFileUploadChatIntegration:
             assert len(shell.conversation_history) == 1
             system_message = shell.conversation_history[0]
             assert system_message.role == "system"
-            text = "".join(part.text for part in system_message.parts if hasattr(part, "text"))
+            text = system_message.text or ""
             assert unicode_content in text
             assert f"<!--start_document {tmp_file.name}-->" in text
 
@@ -302,8 +302,8 @@ class TestImageUploadChatIntegration:
             assert len(shell.conversation_history) == 1
             system_message = shell.conversation_history[0]
             assert system_message.role == "system"
-            assert len(system_message.parts) == 1
-            part = system_message.parts[0]
+            assert len(system_message.attachments) == 1
+            part = system_message.attachments[0]
             assert isinstance(part, ImageURLPart)
             assert part.url.startswith("data:image/")
             assert "base64," in part.url
@@ -336,8 +336,8 @@ class TestImageUploadChatIntegration:
             assert len(shell.conversation_history) == 1
             system_message = shell.conversation_history[0]
             assert system_message.role == "system"
-            assert len(system_message.parts) == 2
-            for part in system_message.parts:
+            assert len(system_message.attachments) == 2
+            for part in system_message.attachments:
                 assert isinstance(part, ImageURLPart)
                 assert "data:image/" in part.url
                 assert "base64," in part.url
@@ -371,18 +371,18 @@ class TestImageUploadChatIntegration:
             assert len(system_messages) == 2
 
             # Determine which message is text and which is image
-            if any(isinstance(part, TextPart) for part in system_messages[0].parts):
+            if system_messages[0].attachments:
+                image_msg = system_messages[0]
+                text_msg = system_messages[1]
+            else:
                 text_msg = system_messages[0]
                 image_msg = system_messages[1]
-            else:
-                text_msg = system_messages[1]
-                image_msg = system_messages[0]
 
             text = _text_content(text_msg)
             assert "Text content" in text
             assert "readme.txt" in text
 
-            assert any(isinstance(part, ImageURLPart) for part in image_msg.parts)
+            assert any(isinstance(part, ImageURLPart) for part in image_msg.attachments)
 
     @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     @patch('urllib.request.urlopen')
@@ -436,8 +436,8 @@ class TestImageUploadChatIntegration:
             assert len(shell.conversation_history) == 1
             system_message = shell.conversation_history[0]
             assert system_message.role == "system"
-            assert len(system_message.parts) == 2
-            for part in system_message.parts:
+            assert len(system_message.attachments) == 2
+            for part in system_message.attachments:
                 assert isinstance(part, ImageURLPart)
                 assert "data:image/" in part.url
                 assert "base64," in part.url

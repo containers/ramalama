@@ -6,9 +6,8 @@ import json
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
-from ramalama.chat_utils import ChatMessage, serialize_part
-
 from ramalama.chat_providers.base import ChatProvider, ChatRequestOptions, ChatStreamEvent
+from ramalama.chat_utils import AttachmentPart, ChatMessage, ToolCall, serialize_part
 
 
 class OpenAIChatProvider(ChatProvider):
@@ -47,8 +46,8 @@ class OpenAIChatProvider(ChatProvider):
                     parsed = json.loads(payload)
                 except json.JSONDecodeError:
                     continue
-                delta = self._extract_delta(parsed)
-                if delta:
+
+                if delta := self._extract_delta(parsed):
                     events.append(ChatStreamEvent(text=delta, raw=parsed))
 
         return events
@@ -57,24 +56,54 @@ class OpenAIChatProvider(ChatProvider):
         choices = payload.get("choices")
         if not isinstance(choices, list) or not choices:
             return None
+
         choice = choices[0]
         if not isinstance(choice, Mapping):
             return None
+
         delta = choice.get("delta")
-        if isinstance(delta, Mapping):
-            content = delta.get("content")
-            if isinstance(content, str):
-                return content
+        if not isinstance(delta, Mapping):
+            return None
+
+        content = delta.get("content")
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            parts: list[str] = []
+            for entry in content:
+                if not isinstance(entry, Mapping):
+                    continue
+                entry_type = entry.get("type")
+                text_value = entry.get("text")
+                if entry_type in {"text", "output_text"} and isinstance(text_value, str):
+                    parts.append(text_value)
+            if parts:
+                return "".join(parts)
+
         return None
 
     def _serialize_message(self, message: ChatMessage) -> dict[str, Any]:
+        if message.attachments:
+            raise ValueError("Attachments are not supported by this provider.")
         payload: dict[str, Any] = {"role": message.role}
-        if message.parts:
-            payload["content"] = [serialize_part(part) for part in message.parts]
-        else:
-            payload["content"] = ""
-        payload.update(message.metadata)
+        if message.tool_calls:
+            payload["tool_calls"] = [self._serialize_tool_call(call) for call in message.tool_calls]
+        if message.tool_call_id:
+            payload["tool_call_id"] = message.tool_call_id
+        payload["content"] = message.text or ""
+        payload |= message.metadata
         return payload
+
+    def _serialize_tool_call(self, call: ToolCall) -> dict[str, Any]:
+        return {
+            "id": call.id,
+            "type": "function",
+            "function": {
+                "name": call.name,
+                "arguments": json.dumps(call.arguments, ensure_ascii=False),
+            },
+        }
 
 
 class OpenAIHostedChatProvider(OpenAIChatProvider):
@@ -90,6 +119,24 @@ class OpenAIHostedChatProvider(OpenAIChatProvider):
             payload.pop("max_completion_tokens")
 
         return payload
+
+    def _serialize_message(self, message: ChatMessage) -> dict[str, Any]:
+        payload: dict[str, Any] = {"role": message.role}
+        if message.tool_calls:
+            payload["tool_calls"] = [self._serialize_tool_call(call) for call in message.tool_calls]
+        if message.tool_call_id:
+            payload["tool_call_id"] = message.tool_call_id
+        payload["content"] = self._structured_content(message.text, message.attachments)
+        payload |= message.metadata
+        return payload
+
+    def _structured_content(self, text: str | None, attachments: list[AttachmentPart]) -> list[dict[str, Any]] | str:
+        parts: list[dict[str, Any]] = []
+        if text:
+            parts.append({"type": "text", "text": text})
+        for attachment in attachments:
+            parts.append(serialize_part(attachment))
+        return parts or ""
 
 
 __all__ = ["OpenAIChatProvider", "OpenAIHostedChatProvider"]

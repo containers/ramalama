@@ -557,11 +557,13 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append({
-            "name": f"{model} (partial)" if is_partially_downloaded else model,
-            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-            "size": size_sum,
-        })
+        ret.append(
+            {
+                "name": f"{model} (partial)" if is_partially_downloaded else model,
+                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+                "size": size_sum,
+            }
+        )
 
     return ret
 
@@ -988,7 +990,8 @@ If GPU device on host is accessible to via group access, this option leaks the u
     )
     parser.add_argument(
         "--temp",
-        default=CONFIG.temp,
+        type=float,
+        default=float(CONFIG.temp),
         help="temperature of the response from the AI model",
         completer=suppressCompleter,
     )
@@ -1074,6 +1077,19 @@ def chat_parser(subparsers):
     parser.add_argument("--model", "-m", type=str, completer=local_models, help="model for inferencing")
     parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
     parser.add_argument(
+        "--max-tokens",
+        dest="max_tokens",
+        type=int,
+        default=CONFIG.max_tokens,
+        help="maximum number of tokens to generate (0 = unlimited)",
+    )
+    parser.add_argument(
+        "--temp",
+        type=float,
+        default=float(CONFIG.temp),
+        help="temperature of the response from the AI model",
+    )
+    parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
     )
     parser.set_defaults(func=chat.chat)
@@ -1120,7 +1136,6 @@ def run_cli(args):
     try:
         # detect available port and update arguments
         args.port = compute_serving_port(args)
-
         model = New(args.MODEL, args)
         model.ensure_model_exists(args)
     except KeyError as e:

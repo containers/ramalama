@@ -1,4 +1,5 @@
-from .api import APITransport, APIProviderSpec, DEFAULT_API_PROVIDER_SPECS
+from .api import APITransport
+from ramalama.api_provider_specs import APIProviderSpec, DEFAULT_API_PROVIDER_SPECS
 from .huggingface import Huggingface, HuggingfaceRepository
 from .modelscope import ModelScope, ModelScopeRepository
 from .oci import OCI

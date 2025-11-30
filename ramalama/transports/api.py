@@ -1,29 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
-
 from ramalama.chat import chat
 from ramalama.chat_providers.openai import OpenAIHostedChatProvider
 from ramalama.config import CONFIG
 from ramalama.transports.base import TransportBase
-
-
-@dataclass(frozen=True)
-class APIProviderSpec:
-    """Connection details for a hosted chat provider."""
-
-    scheme: str
-    base_url: str
-
-
-DEFAULT_API_PROVIDER_SPECS: dict[str, APIProviderSpec] = {
-    "openai": APIProviderSpec("openai", "https://api.openai.com/v1"),
-}
-
-PROVIDER_API_KEY_RESOLVERS: dict[str, Callable[[], str | None]] = {
-    "openai": lambda: CONFIG.provider.openai_api_key,
-}
+from ramalama.api_provider_specs import (
+    APIProviderSpec,
+    DEFAULT_API_PROVIDER_SPECS,
+    resolve_provider_api_key,
+)
 
 
 class APITransport(TransportBase):
@@ -96,10 +81,7 @@ class APITransport(TransportBase):
         return
 
     def _resolve_api_key(self) -> str | None:
-        resolver = PROVIDER_API_KEY_RESOLVERS.get(self.provider.scheme)
-        if resolver:
-            return resolver()
-        return CONFIG.api_key
+        return resolve_provider_api_key(self.provider.scheme)
 
     def _build_chat_provider(self, args):
         if self.provider.scheme == "openai":

@@ -4,16 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from ramalama.chat_utils import ImageURLPart, TextPart
+from ramalama.chat_utils import ImageURLPart
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 
 
 def _text_content(message):
-    return "".join(part.text for part in message.parts if isinstance(part, TextPart))
+    return message.text or ""
 
 
 def _image_parts(message):
-    return [part for part in message.parts if isinstance(part, ImageURLPart)]
+    return [attachment for attachment in message.attachments if isinstance(attachment, ImageURLPart)]
 
 
 class TestFileUploadWithDataFiles:

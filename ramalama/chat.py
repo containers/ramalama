@@ -13,13 +13,13 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import timedelta
-from collections.abc import Sequence
 
 from ramalama.arg_types import ChatArgsType
-from ramalama.chat_providers import ChatProvider, ChatRequestOptions, OpenAIChatProvider
-from ramalama.chat_utils import ChatMessage, add_api_key, stream_response, TextPart
+from ramalama.chat_providers import ChatProvider, ChatRequestOptions, OpenAIChatProvider, OpenAIHostedChatProvider
+from ramalama.chat_utils import ChatMessage, add_api_key, stream_response
 from ramalama.common import perror
 from ramalama.config import CONFIG
 from ramalama.console import should_colorize
@@ -29,9 +29,15 @@ from ramalama.logger import logger
 from ramalama.mcp.mcp_agent import LLMAgent
 from ramalama.mcp.mcp_client import PureMCPClient
 from ramalama.proxy_support import setup_proxy_support
+from ramalama.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, resolve_provider_api_key
 
 # Setup proxy support on module import
 setup_proxy_support()
+
+
+HOSTED_PROVIDER_BUILDERS: dict[str, Callable[[str, str | None], ChatProvider]] = {
+    "openai": lambda base_url, api_key: OpenAIHostedChatProvider(base_url, api_key),
+}
 
 
 @dataclass
@@ -193,10 +199,14 @@ class RamaLamaShell(cmd.Cmd):
         ]
 
     def _format_message_for_summary(self, msg: ChatMessage) -> str:
-        text_parts = [part.text for part in msg.parts if isinstance(part, TextPart)]
-        if not text_parts:
-            return msg.role
-        return f"{msg.role}: {' '.join(text_parts)}"
+        content = msg.text or ""
+        if not content and msg.tool_calls:
+            content = f"[tool_calls: {', '.join(call.name for call in msg.tool_calls)}]"
+        if not content and msg.attachments:
+            content = "[attachments]"
+        if not content:
+            content = ""
+        return f"{msg.role}: {content}".strip()
 
     def _make_api_request(self, messages: Sequence[ChatMessage], stream: bool = True):
         """Create a provider request for arbitrary message lists."""
@@ -210,7 +220,9 @@ class RamaLamaShell(cmd.Cmd):
         return getattr(self.args, "model", None)
 
     def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:
-        temperature = float(self.args.temp) if getattr(self.args, "temp", None) else None
+        temperature = getattr(self.args, "temp", None)
+        if max_tokens is not None and max_tokens <= 0:
+            max_tokens = None
         return ChatRequestOptions(
             model=self._resolve_model_name(),
             temperature=temperature,
@@ -745,6 +757,10 @@ def chat(
         prompt = " ".join(args.ARGS)
         print(f"\nramalama chat --color {args.color} --prefix  \"{args.prefix}\" --url {args.url} {prompt}")
         return
+
+    if provider is None:
+        provider = _resolve_hosted_provider(args)
+
     # SIGALRM is Unix-only, skip keepalive timeout handling on Windows
     if getattr(args, "keepalive", False) and hasattr(signal, 'SIGALRM'):
         signal.signal(signal.SIGALRM, alarm_handler)
@@ -853,3 +869,34 @@ def convert_to_seconds(s):
     unit = UNITS[s[-1]]
     td = timedelta(**{unit: count})
     return td.seconds + 60 * 60 * 24 * td.days
+
+
+def _resolve_hosted_provider(args) -> ChatProvider | None:
+    """Configure chat to talk to hosted providers when model uses a URI scheme."""
+
+    model = getattr(args, "model", None)
+    if not model or "://" not in model:
+        return None
+
+    scheme, remainder = model.split("://", 1)
+    if not remainder:
+        raise ValueError(
+            "Hosted provider model identifiers must include a model name after the scheme, e.g. openai://gpt-4o"
+        )
+
+    spec = DEFAULT_API_PROVIDER_SPECS.get(scheme)
+    if not spec:
+        raise ValueError(f"Unsupported hosted provider scheme '{scheme}'.")
+
+    builder = HOSTED_PROVIDER_BUILDERS.get(scheme)
+    if builder is None:
+        raise ValueError(f"No hosted chat provider registered for scheme '{scheme}'.")
+
+    args.url = spec.base_url
+    if not getattr(args, "api_key", None):
+        api_key = resolve_provider_api_key(scheme)
+        if api_key:
+            args.api_key = api_key
+
+    args.model = remainder
+    return builder(spec.base_url, getattr(args, "api_key", None))
