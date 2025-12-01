@@ -8,10 +8,11 @@ ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
 RUN dnf -y --setopt=install_weak_deps=false install \
     make bats jq iproute podman openssl httpd-tools diffutils procps-ng \
+    gcc \
     $([ $(uname -m) == "x86_64" ] && echo ollama) \
     # for validate and unit-tests
     shellcheck \
-    python3 python3-pip \
+    python3 python3-devel python3-pip \
     perl-Clone perl-FindBin && \
     dnf -y clean all
 RUN rpm --restore shadow-utils
