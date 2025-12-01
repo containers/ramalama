@@ -176,20 +176,20 @@ class TestCheckNvidia:
         check_nvidia.cache_clear()
 
     @patch("ramalama.common.find_in_cdi")
-    @patch("subprocess.run")
-    def test_check_nvidia_smi_success(self, mock_run, mock_find_in_cdi):
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_smi_success(self, mock_run_cmd, mock_find_in_cdi):
         mock_find_in_cdi.return_value = (["all"], [])
-        mock_run.return_value.stdout = "0,GPU-08b3c2e8-cb7b-ea3f-7711-a042c580b3e8"
+        mock_run_cmd.return_value.stdout = "0,GPU-08b3c2e8-cb7b-ea3f-7711-a042c580b3e8"
         assert check_nvidia() == "cuda"
 
-    @patch("subprocess.run")
-    def test_check_nvidia_smi_failure(self, mock_run):
-        mock_run.side_effect = subprocess.CalledProcessError(1, "nvidia-smi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_smi_failure(self, mock_run_cmd):
+        mock_run_cmd.side_effect = subprocess.CalledProcessError(1, "nvidia-smi")
         assert check_nvidia() is None
 
-    @patch("subprocess.run")
-    def test_check_nvidia_smi_not_found(self, mock_run):
-        mock_run.side_effect = OSError("nvidia-smi not found")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_smi_not_found(self, mock_run_cmd):
+        mock_run_cmd.side_effect = OSError("nvidia-smi not found")
         assert check_nvidia() is None
 
 
