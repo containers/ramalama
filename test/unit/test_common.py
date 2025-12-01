@@ -12,6 +12,7 @@ import pytest
 from ramalama.cli import configure_subcommands, create_argument_parser
 from ramalama.common import (
     accel_image,
+    check_nvidia,
     find_in_cdi,
     get_accel,
     load_cdi_config,
@@ -168,6 +169,28 @@ def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd, mock_config
         ["podman", "machine", "list", "--format", "json", "--all-providers"], ignore_stderr=True, encoding="utf-8"
     )
     mock_handle_provider.assert_called_once_with({"Name": "myvm"}, mock_config)
+
+
+class TestCheckNvidia:
+    def setup_method(self):
+        check_nvidia.cache_clear()
+
+    @patch("ramalama.common.find_in_cdi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_smi_success(self, mock_run_cmd, mock_find_in_cdi):
+        mock_find_in_cdi.return_value = (["all"], [])
+        mock_run_cmd.return_value.stdout = "0,GPU-08b3c2e8-cb7b-ea3f-7711-a042c580b3e8"
+        assert check_nvidia() == "cuda"
+
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_smi_failure(self, mock_run_cmd):
+        mock_run_cmd.side_effect = subprocess.CalledProcessError(1, "nvidia-smi")
+        assert check_nvidia() is None
+
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_smi_not_found(self, mock_run_cmd):
+        mock_run_cmd.side_effect = OSError("nvidia-smi not found")
+        assert check_nvidia() is None
 
 
 class TestGetAccel:
