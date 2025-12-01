@@ -379,7 +379,7 @@ def check_nvidia() -> Literal["cuda"] | None:
     try:
         command = ['nvidia-smi', '--query-gpu=index,uuid', '--format=csv,noheader']
         result = run_cmd(command, encoding="utf-8")
-    except OSError:
+    except (OSError, subprocess.CalledProcessError):
         return None
 
     smi_lines = result.stdout.splitlines()
