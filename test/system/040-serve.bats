@@ -491,6 +491,9 @@ verify_begin=".*run --rm"
     model=tiny
     name=c_$(safename)
     run_ramalama pull ${model}
+    if [ -n "$RAMALAMA_STACK_IMAGE" ]; then
+        podman pull "$RAMALAMA_STACK_IMAGE"
+    fi
     run_ramalama serve -d --name=${name} --api llama-stack --dri off --port 1234 ${model}
     is "$output" ".*Llama Stack RESTAPI: http://localhost:1234" "reveal llama stack url"
     is "$output" ".*OpenAI RESTAPI: http://localhost:1234/v1/openai" "reveal openai url"
@@ -525,6 +528,10 @@ verify_begin=".*run --rm"
     is "$output" ".*hostPort: 1234" "Should container container port"
     is "$output" ".*quay.io/.*/llama-stack" "Should contain llama-stack"
     rm /tmp/$name.yaml
+
+    if [ -n "$RAMALAMA_STACK_IMAGE" ]; then
+        podman rmi "$RAMALAMA_STACK_IMAGE"
+    fi
 }
 
 @test "ramalama serve --image bogus" {
