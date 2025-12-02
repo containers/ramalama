@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from functools import singledispatch
-from typing import Any, Literal, TypedDict
+from typing import Any, TypedDict
 
 from ramalama.chat_providers.base import ChatProvider, ChatRequestOptions, ChatStreamEvent
 from ramalama.chat_utils import (
@@ -166,7 +166,8 @@ def create_responses_content(
     text: str | None, attachments: list[AttachmentPart], content_type: str
 ) -> list[dict[str, Any]] | str:
     """
-    TODO: Current structure doesn't correctly reflect document ordering (i.e. the possibility of messages interspersed with content)
+    TODO: Current structure doesn't correctly reflect document ordering
+    (i.e. the possibility of messages interspersed with content)
     """
     content: list[dict[str, Any]] = []
     if text:

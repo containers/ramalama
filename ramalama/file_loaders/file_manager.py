@@ -4,7 +4,7 @@ from string import Template
 from typing import Type
 from warnings import warn
 
-from ramalama.chat_utils import AttachmentPart, ChatMessageType, ImageURLPart, SystemMessage, UserMessage
+from ramalama.chat_utils import AttachmentPart, ChatMessageType, ImageURLPart, UserMessage
 from ramalama.file_loaders.file_types import base, image, txt
 
 

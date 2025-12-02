@@ -130,7 +130,6 @@ def serialize_part(part: AttachmentPart) -> dict[str, Any]:
 
 
 __all__ = [
-    "ChatMessage",
     "ToolCall",
     "ImageURLPart",
     "ImageBytesPart",

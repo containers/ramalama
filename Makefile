@@ -4,7 +4,11 @@ SELINUXOPT ?= $(shell test -x /usr/sbin/selinuxenabled && selinuxenabled && echo
 PREFIX ?= /usr/local
 BINDIR ?= ${PREFIX}/bin
 SHAREDIR ?= ${PREFIX}/share
-PYTHON ?= $(shell command -v python3 python|head -n1)
+# PYTHON ?= $(shell command -v python3 python|head -n1)
+ifndef PYTHON
+UV_BIN := $(shell command -v uv 2>/dev/null)
+PYTHON := $(if $(UV_BIN),uv run python3,$(shell command -v python3))
+endif
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 MYPIP ?= pip
@@ -114,7 +118,7 @@ docsite-docs:
 .PHONY: lint
 lint:
 ifneq (,$(wildcard /usr/bin/python3))
-	/usr/bin/python3 -m compileall -q -x '\.venv' .
+	${PYTHON} -m compileall -q -x '\.venv' .
 endif
 	! grep -ri $(EXCLUDE_OPTS) "#\!/usr/bin/python3" .
 	flake8 $(PROJECT_DIR) $(PYTHON_SCRIPTS)

@@ -32,24 +32,20 @@ class OpenAICompletionsProviderTests:
     def test_extracts_string_and_structured_deltas(self):
         assert self.provider._extract_delta(build_payload("hello")) == "hello"
 
-        structured = build_payload(
-            [
-                {"type": "text", "text": "hello"},
-                {"type": "output_text", "text": " world"},
-            ]
-        )
+        structured = build_payload([
+            {"type": "text", "text": "hello"},
+            {"type": "output_text", "text": " world"},
+        ])
         assert self.provider._extract_delta(structured) == "hello world"
 
     def test_streaming_handles_structured_chunks(self):
         chunk = (
             b"data: "
             + json.dumps(
-                build_payload(
-                    [
-                        {"type": "output_text", "text": "Hi"},
-                        {"type": "output_text", "text": " there"},
-                    ]
-                )
+                build_payload([
+                    {"type": "output_text", "text": "Hi"},
+                    {"type": "output_text", "text": " there"},
+                ])
             ).encode("utf-8")
             + b"\n\n"
         )
@@ -136,7 +132,8 @@ class OpenAIResponsesProviderTests:
     def test_streaming_extracts_text_from_done_events(self):
         chunk = (
             b"event: response.output_text.done\n"
-            b'data: {"type":"response.output_text.done","output":[{"content":[{"type":"output_text","text":"All done"}]}]}\n\n'
+            b'data: {"type":"response.output_text.done","output":[{"content":'
+            b'[{"type":"output_text","text":"All done"}]}]}\n\n'
         )
 
         events = list(self.provider.parse_stream_chunk(chunk))
