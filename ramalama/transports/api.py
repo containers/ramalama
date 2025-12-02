@@ -26,6 +26,23 @@ class APITransport(TransportBase):
     def model_tag(self) -> str:
         return self._model_tag
 
+    @property
+    def model_organization(self) -> str:
+        return self.provider.provider
+
+    @property
+    def model_type(self) -> str:
+        return self.type
+
+    def _get_entry_model_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> str:
+        raise NotImplementedError("Hosted API transports do not expose local model files.")
+
+    def _get_mmproj_path(self, use_container: bool, should_generate: bool, dry_run: bool):
+        return None
+
+    def _get_chat_template_path(self, use_container: bool, should_generate: bool, dry_run: bool):
+        return None
+
     def remove(self, args):
         raise NotImplementedError("Hosted API transports do not support removing remote models.")
 
