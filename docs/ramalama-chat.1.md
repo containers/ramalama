@@ -34,6 +34,9 @@ MCP (Model Context Protocol) servers to use for enhanced tool calling capabiliti
 Can be specified multiple times to connect to multiple MCP servers.
 Each server provides tools that can be automatically invoked during chat conversations.
 
+#### **--max-tokens**=*integer*
+Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
+
 #### **--model**=MODEL
 Model for inferencing (may not be required for endpoints that only serve one model)
 
@@ -42,6 +45,10 @@ Prefix for the user prompt (default: 🦭 > )
 
 #### **--rag**=path
 A file or directory of files to be loaded and provided as local context in the chat history.
+
+#### **--temp**=*float*
+Temperature of the response from the AI Model.
+Lower numbers are more deterministic, higher numbers are more creative.
 
 #### **--summarize-after**=*N*
 Automatically summarize conversation history after N messages to prevent context growth.
