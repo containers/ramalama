@@ -121,3 +121,25 @@ class OpenAIResponsesProviderTests:
         assert first_input["tool_calls"][0]["function"]["name"] == "lookup"
         assert first_input["tool_calls"][0]["function"]["arguments"] == '{"city": "NYC"}'
         assert payload["input"][1]["tool_call_id"] == "call-9"
+
+    def test_streaming_emits_done_event_for_done_marker(self):
+        events = list(self.provider.parse_stream_chunk(b"data: [DONE]\n\n"))
+
+        assert len(events) == 1
+        assert events[0].done is True
+
+    def test_streaming_ignores_invalid_json_chunks(self):
+        events = list(self.provider.parse_stream_chunk(b"data: {invalid-json\n\n"))
+
+        assert events == []
+
+    def test_streaming_extracts_text_from_done_events(self):
+        chunk = (
+            b"event: response.output_text.done\n"
+            b'data: {"type":"response.output_text.done","output":[{"content":[{"type":"output_text","text":"All done"}]}]}\n\n'
+        )
+
+        events = list(self.provider.parse_stream_chunk(chunk))
+
+        assert len(events) == 1
+        assert events[0].text == "All done"

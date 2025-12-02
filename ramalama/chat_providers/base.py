@@ -58,7 +58,7 @@ class ChatProvider(ABC):
     """Abstract base class for hosted chat providers."""
 
     provider: str = "base"
-    default_path: str = "/chat/completions"
+    default_path: str
 
     def __init__(
         self,
@@ -101,7 +101,7 @@ class ChatProvider(ABC):
     def auth_headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
 
-    def serialize_payload(self, payload: dict[str, Any]) -> bytes:
+    def serialize_payload(self, payload: Mapping[str, Any]) -> bytes:
         return json.dumps(payload).encode("utf-8")
 
     def create_request(

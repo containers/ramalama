@@ -557,13 +557,11 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append(
-            {
-                "name": f"{model} (partial)" if is_partially_downloaded else model,
-                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-                "size": size_sum,
-            }
-        )
+        ret.append({
+            "name": f"{model} (partial)" if is_partially_downloaded else model,
+            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+            "size": size_sum,
+        })
 
     return ret
 
@@ -1159,9 +1157,7 @@ def run_cli(args):
         model = RagTransport(model, assemble_command(args.model_args), args)
         model.ensure_model_exists(args)
 
-    server_cmd: list[str] = []
-    if not isinstance(model, APITransport):
-        server_cmd = assemble_command(args)
+    server_cmd = [] if isinstance(model, APITransport) else assemble_command(args)
 
     model.run(args, server_cmd)
 

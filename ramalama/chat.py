@@ -13,13 +13,13 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.chat_providers import ChatProvider, ChatRequestOptions
-from ramalama.chat_providers.openai import OpenAICompletionsChatProvider, OpenAIResponsesChatProvider
+from ramalama.chat_providers.openai import OpenAICompletionsChatProvider
 from ramalama.chat_utils import (
     AssistantMessage,
     ChatMessageType,
@@ -40,11 +40,6 @@ from ramalama.proxy_support import setup_proxy_support
 
 # Setup proxy support on module import
 setup_proxy_support()
-
-
-HOSTED_PROVIDER_BUILDERS: dict[str, Callable[[str, str | None], ChatProvider]] = {
-    "openai": lambda base_url, api_key: OpenAIResponsesChatProvider(base_url, api_key),
-}
 
 
 @dataclass
@@ -449,7 +444,6 @@ class RamaLamaShell(cmd.Cmd):
                 break
             except urllib.error.HTTPError as http_err:
                 error_body = http_err.read().decode("utf-8", "ignore").strip()
-                perror(error_body)
                 message = f"HTTP {http_err.code}"
                 if error_body:
                     message = f"{message}: {error_body}"

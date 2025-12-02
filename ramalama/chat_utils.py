@@ -71,31 +71,8 @@ class ToolMessage:
 ChatMessageType = SystemMessage | UserMessage | AssistantMessage | ToolMessage
 
 
-class ChatMessage(Protocol):
-    role: RoleType
-    text: str | None
-    metadata: dict[str, Any]
-
-    @staticmethod
-    def system(text: str = "", **kwargs: Any) -> SystemMessage:
-        return SystemMessage(text=text, **kwargs)
-
-    @staticmethod
-    def user(text: str | None = None, **kwargs: Any) -> UserMessage:
-        return UserMessage(text=text, **kwargs)
-
-    @staticmethod
-    def assistant(text: str | None = None, **kwargs: Any) -> AssistantMessage:
-        return AssistantMessage(text=text, **kwargs)
-
-    @staticmethod
-    def tool(text: str, **kwargs: Any) -> ToolMessage:
-        return ToolMessage(text=text, **kwargs)
-
-
 class StreamParser(Protocol):
-    def parse_stream_chunk(self, chunk: bytes) -> Iterable[Any]:  # pragma: no cover - protocol definition
-        ...
+    def parse_stream_chunk(self, chunk: bytes) -> Iterable[Any]: ...
 
 
 def stream_response(chunks: Iterable[bytes], color: str, provider: StreamParser) -> str:
@@ -127,9 +104,7 @@ def default_prefix() -> str:
     if CONFIG.prefix:
         return CONFIG.prefix
 
-    engine = CONFIG.engine
-
-    if engine:
+    if engine := CONFIG.engine:
         if os.path.basename(engine) == "podman":
             return "🦭 > "
 

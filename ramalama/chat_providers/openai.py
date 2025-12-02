@@ -78,6 +78,7 @@ class CompletionsPayload(TypedDict, total=False):
 
 class OpenAICompletionsChatProvider(ChatProvider):
     provider = "openai"
+    default_path = "/chat/completions"
 
     def __init__(self, base_url: str, api_key: str | None = None):
         super().__init__(base_url, api_key)

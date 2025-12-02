@@ -4,9 +4,9 @@ from typing import TypeAlias
 from urllib.parse import urlparse
 
 from ramalama.arg_types import StoreArgType
-from ramalama.chat_providers.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, APIProviderSpec
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
+from ramalama.chat_providers.api_providers import get_chat_provider
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import MODEL_TYPES, Transport
 from ramalama.transports.huggingface import Huggingface
@@ -34,7 +34,6 @@ class TransportFactory:
         self.engine = args.engine
         self.ignore_stderr = ignore_stderr
         self.container = args.container
-        self._api_provider_spec: APIProviderSpec | None = None
 
         model_cls, _create = self.detect_model_model_type()
 
@@ -54,46 +53,35 @@ class TransportFactory:
             self.draft_model = draft_model
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
-        api_spec = self._match_api_provider()
-        if api_spec:
-            self._api_provider_spec = api_spec
-            return APITransport, self.create_api_transport
-
-        for prefix in ["huggingface://", "hf://", "hf.co/"]:
-            if self.model.startswith(prefix):
+        match self.model:
+            case model if model.startswith(("huggingface://", "hf://", "hf.co/")):
                 return Huggingface, self.create_huggingface
-        for prefix in ["modelscope://", "ms://"]:
-            if self.model.startswith(prefix):
+            case model if model.startswith(("modelscope://", "ms://")):
                 return ModelScope, self.create_modelscope
-        for prefix in ["ollama://", "ollama.com/library/"]:
-            if self.model.startswith(prefix):
+            case model if model.startswith(("ollama://", "ollama.com/library/")):
                 return Ollama, self.create_ollama
-        for prefix in ["oci://", "docker://"]:
-            if self.model.startswith(prefix):
+            case model if model.startswith(("oci://", "docker://")):
                 return OCI, self.create_oci
-        if self.model.startswith("rlcr://"):
-            return RamalamaContainerRegistry, self.create_rlcr
-        for prefix in ["http://", "https://", "file://"]:
-            if self.model.startswith(prefix):
+            case model if model.startswith("rlcr://"):
+                return RamalamaContainerRegistry, self.create_rlcr
+            case model if model.startswith(("http://", "https://", "file://")):
                 return URL, self.create_url
-        if self.transport == "huggingface":
-            return Huggingface, self.create_huggingface
-        if self.transport == "modelscope":
-            return ModelScope, self.create_modelscope
-        if self.transport == "ollama":
-            return Ollama, self.create_ollama
-        if self.transport == "rlcr":
-            return RamalamaContainerRegistry, self.create_rlcr
-        if self.transport == "oci":
-            return OCI, self.create_oci
+            case model if model.startswith(("openai://")):
+                return APITransport, self.create_api_transport
+
+        match self.transport:
+            case "huggingface":
+                return Huggingface, self.create_huggingface
+            case "modelscope":
+                return ModelScope, self.create_modelscope
+            case "ollama":
+                return Ollama, self.create_ollama
+            case "rlcr":
+                return RamalamaContainerRegistry, self.create_rlcr
+            case "oci":
+                return OCI, self.create_oci
 
         raise KeyError(f'transport "{self.transport}" not supported. Must be oci, huggingface, modelscope, or ollama.')
-
-    def _match_api_provider(self) -> APIProviderSpec | None:
-        if "://" not in self.model:
-            return None
-        scheme = self.model.split("://", 1)[0]
-        return DEFAULT_API_PROVIDER_SPECS.get(scheme)
 
     def prune_model_input(self) -> str:
         # remove protocol from model input
@@ -170,9 +158,8 @@ class TransportFactory:
         return model
 
     def create_api_transport(self) -> APITransport:
-        if self._api_provider_spec is None:
-            raise ValueError("API provider specification missing during transport creation.")
-        return APITransport(self.pruned_model, self._api_provider_spec)
+        scheme = self.model.split("://", 1)[0]
+        return APITransport(self.pruned_model, provider=get_chat_provider(scheme))
 
 
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
