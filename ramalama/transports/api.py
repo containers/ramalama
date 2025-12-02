@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from ramalama.api_provider_specs import APIProviderSpec, resolve_provider_api_key
 from ramalama.chat import chat
-from ramalama.chat_providers.openai import OpenAIHostedChatProvider
+from ramalama.chat_providers.api_provider_specs import APIProviderSpec, resolve_provider_api_key
+from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
 from ramalama.transports.base import TransportBase
 
 
@@ -80,5 +80,5 @@ class APITransport(TransportBase):
 
     def _build_chat_provider(self, args):
         if self.provider.scheme == "openai":
-            return OpenAIHostedChatProvider(args.url, getattr(args, "api_key", None))
+            return OpenAIResponsesChatProvider(args.url, getattr(args, "api_key", None))
         return None

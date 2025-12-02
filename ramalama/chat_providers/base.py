@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from typing import Any
 from urllib import request as urllib_request
 
-from ramalama.chat_utils import ChatMessage
+from ramalama.chat_utils import ChatMessageType
+from ramalama.config import CONFIG
 
 
 @dataclass(slots=True)
@@ -65,6 +66,9 @@ class ChatProvider(ABC):
         api_key: str | None = None,
         default_headers: Mapping[str, str] | None = None,
     ) -> None:
+        if api_key is None:
+            api_key = CONFIG.api_key
+
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self._default_headers: dict[str, str] = dict(default_headers or {})
@@ -82,11 +86,12 @@ class ChatProvider(ABC):
         extra: dict[str, str] | None = None,
         options: ChatRequestOptions | None = None,
     ) -> dict[str, str]:
-        headers: dict[str, str] = (
-            {"Content-Type": "application/json"} | self._default_headers | self.provider_headers(options)
-        )
+        headers: dict[str, str] = {
+            "Content-Type": "application/json",
+            **self._default_headers,
+            **self.provider_headers(options),
+        }
 
-        headers.update(self.provider_headers(options))
         if include_auth:
             headers.update(self.auth_headers())
         if extra:
@@ -99,7 +104,9 @@ class ChatProvider(ABC):
     def serialize_payload(self, payload: dict[str, Any]) -> bytes:
         return json.dumps(payload).encode("utf-8")
 
-    def create_request(self, messages: Sequence[ChatMessage], options: ChatRequestOptions) -> urllib_request.Request:
+    def create_request(
+        self, messages: Sequence[ChatMessageType], options: ChatRequestOptions
+    ) -> urllib_request.Request:
         payload = self.build_payload(messages, options)
         headers = self.prepare_headers(options=options, extra=self.additional_request_headers(options))
         body = self.serialize_payload(payload)
@@ -123,7 +130,7 @@ class ChatProvider(ABC):
         return self.default_path
 
     @abstractmethod
-    def build_payload(self, messages: Sequence[ChatMessage], options: ChatRequestOptions) -> dict[str, Any]:
+    def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> dict[str, Any]:
         """Return the provider-specific payload."""
 
     @abstractmethod
@@ -151,9 +158,33 @@ class ChatProvider(ABC):
             return None
         return json.loads(body.decode("utf-8"))
 
+    def list_models(self) -> list[str]:
+        """Return available model identifiers exposed by the provider."""
+
+        request = urllib_request.Request(
+            self.build_url("/models"),
+            headers=self.prepare_headers(include_auth=True),
+            method="GET",
+        )
+        with urllib_request.urlopen(request) as response:  # type: ignore[call-arg]
+            payload = self.parse_response_body(response.read())
+
+        if not isinstance(payload, Mapping):
+            raise ChatProviderError("Invalid model list payload", payload=payload)
+
+        data = payload.get("data")
+        if not isinstance(data, list):
+            raise ChatProviderError("Invalid model list payload", payload=payload)
+
+        models: list[str] = []
+        for entry in data:
+            if isinstance(entry, Mapping) and (model_id := entry.get("id")):
+                models.append(str(model_id))
+
+        return models
+
 
 __all__ = [
-    "ChatMessage",
     "ChatProvider",
     "ChatProviderError",
     "ChatRequestOptions",

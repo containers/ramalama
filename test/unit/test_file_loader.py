@@ -278,7 +278,7 @@ class TestOpanAIChatAPIMessageBuilder:
             messages = builder.load(tmp_file.name)
 
             assert len(messages) == 1
-            assert messages[0].role == "system"
+            assert messages[0].role == "user"
             content = _text_content(messages[0])
             assert "Test content" in content
             assert f"<!--start_document {tmp_file.name}-->" in content
@@ -293,7 +293,7 @@ class TestOpanAIChatAPIMessageBuilder:
             messages = builder.load(tmp_file.name)
 
             assert len(messages) == 1
-            assert messages[0].role == "system"
+            assert messages[0].role == "user"
             image_parts = _image_parts(messages[0])
             assert len(image_parts) == 1
             assert "data:image/" in image_parts[0].url
@@ -314,10 +314,10 @@ class TestOpanAIChatAPIMessageBuilder:
 
             assert len(messages) == 2
             # First message should be text
-            assert messages[0].role == "system"
+            assert messages[0].role == "user"
             assert "Text content" in _text_content(messages[0])
             # Second message should be image
-            assert messages[1].role == "system"
+            assert messages[1].role == "user"
             assert len(_image_parts(messages[1])) == 1
 
     @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")

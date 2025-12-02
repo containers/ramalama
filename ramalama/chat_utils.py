@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import base64
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Literal, MutableMapping, Protocol
+from typing import Any, Literal, Protocol
 
-from ramalama.common import perror
 from ramalama.config import CONFIG
 from ramalama.console import EMOJI, should_colorize
 
@@ -36,29 +37,60 @@ AttachmentPart = ImageURLPart | ImageBytesPart
 
 
 @dataclass(slots=True)
-class ChatMessage:
-    role: RoleType
+class SystemMessage:
+    role: Literal["system"] = "system"
+    text: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class UserMessage:
+    role: Literal["user"] = "user"
     text: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     attachments: list[AttachmentPart] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class AssistantMessage:
+    role: Literal["assistant"] = "assistant"
+    text: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     tool_calls: list[ToolCall] = field(default_factory=list)
+    attachments: list[AttachmentPart] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class ToolMessage:
+    text: str
+    role: Literal["tool"] = "tool"
+    metadata: dict[str, Any] = field(default_factory=dict)
     tool_call_id: str | None = None
-    metadata: MutableMapping[str, Any] = field(default_factory=dict)
+
+
+ChatMessageType = SystemMessage | UserMessage | AssistantMessage | ToolMessage
+
+
+class ChatMessage(Protocol):
+    role: RoleType
+    text: str | None
+    metadata: dict[str, Any]
 
     @staticmethod
-    def system(text: str) -> "ChatMessage":
-        return ChatMessage(role="system", text=text)
+    def system(text: str = "", **kwargs: Any) -> SystemMessage:
+        return SystemMessage(text=text, **kwargs)
 
     @staticmethod
-    def user(text: str) -> "ChatMessage":
-        return ChatMessage(role="user", text=text)
+    def user(text: str | None = None, **kwargs: Any) -> UserMessage:
+        return UserMessage(text=text, **kwargs)
 
     @staticmethod
-    def assistant(text: str) -> "ChatMessage":
-        return ChatMessage(role="assistant", text=text)
+    def assistant(text: str | None = None, **kwargs: Any) -> AssistantMessage:
+        return AssistantMessage(text=text, **kwargs)
 
     @staticmethod
-    def tool(text: str) -> "ChatMessage":
-        return ChatMessage(role="tool", text=text)
+    def tool(text: str, **kwargs: Any) -> ToolMessage:
+        return ToolMessage(text=text, **kwargs)
 
 
 class StreamParser(Protocol):
@@ -107,16 +139,6 @@ def default_prefix() -> str:
     return "🦙 > "
 
 
-def add_api_key(args, headers=None):
-    headers = headers or {}
-    if getattr(args, "api_key", None):
-        api_key_min = 20
-        if len(args.api_key) < api_key_min:
-            perror("Warning: Provided API key is invalid.")
-        headers["Authorization"] = f"Bearer {args.api_key}"
-    return headers
-
-
 def serialize_part(part: AttachmentPart) -> dict[str, Any]:
     if isinstance(part, ImageURLPart):
         payload: dict[str, Any] = {"url": part.url}
@@ -124,7 +146,11 @@ def serialize_part(part: AttachmentPart) -> dict[str, Any]:
             payload["detail"] = part.detail
         return {"type": "image_url", "image_url": payload}
     if isinstance(part, ImageBytesPart):
-        return {"type": "image_bytes", "image_bytes": {"data": part.data, "mime_type": part.mime_type}}
+        return {
+            "type": "image_bytes",
+            "image_bytes": {"data": base64.b64encode(part.data).decode("ascii"), "mime_type": part.mime_type},
+        }
+
     raise TypeError(f"Unsupported message part: {part!r}")
 
 
@@ -133,7 +159,6 @@ __all__ = [
     "ToolCall",
     "ImageURLPart",
     "ImageBytesPart",
-    "add_api_key",
     "default_prefix",
     "stream_response",
     "serialize_part",

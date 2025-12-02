@@ -17,10 +17,18 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 
-from ramalama.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, resolve_provider_api_key
 from ramalama.arg_types import ChatArgsType
-from ramalama.chat_providers import ChatProvider, ChatRequestOptions, OpenAIChatProvider, OpenAIHostedChatProvider
-from ramalama.chat_utils import ChatMessage, add_api_key, stream_response
+from ramalama.chat_providers import ChatProvider, ChatRequestOptions
+from ramalama.chat_providers.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, resolve_provider_api_key
+from ramalama.chat_providers.openai import OpenAICompletionsChatProvider, OpenAIResponsesChatProvider
+from ramalama.chat_utils import (
+    AssistantMessage,
+    ChatMessageType,
+    SystemMessage,
+    ToolMessage,
+    UserMessage,
+    stream_response,
+)
 from ramalama.common import perror
 from ramalama.config import CONFIG
 from ramalama.console import should_colorize
@@ -36,7 +44,7 @@ setup_proxy_support()
 
 
 HOSTED_PROVIDER_BUILDERS: dict[str, Callable[[str, str | None], ChatProvider]] = {
-    "openai": lambda base_url, api_key: OpenAIHostedChatProvider(base_url, api_key),
+    "openai": lambda base_url, api_key: OpenAIResponsesChatProvider(base_url, api_key),
 }
 
 
@@ -105,14 +113,14 @@ class RamaLamaShell(cmd.Cmd):
             operational_args = ChatOperationalArgs()
 
         super().__init__()
-        self.conversation_history: list[ChatMessage] = []
+        self.conversation_history: list[ChatMessageType] = []
         self.args = args
         self.operational_args = operational_args
         self.request_in_process = False
         self.prompt = args.prefix
-        self.url = f"{args.url}/chat/completions"
-        self.provider = provider or OpenAIChatProvider(args.url, getattr(args, "api_key", None))
-        add_api_key(self.args)
+        self.provider = provider or OpenAICompletionsChatProvider(args.url, getattr(args, "api_key", None))
+        self.url = self.provider.build_url()
+
         self.prep_rag_message()
         self.mcp_agent: LLMAgent | None = None
         self.initialize_mcp()
@@ -145,8 +153,8 @@ class RamaLamaShell(cmd.Cmd):
 
         # Create a summarization prompt
         conversation_text = "\n".join([self._format_message_for_summary(msg) for msg in messages_to_summarize])
-        summary_prompt = ChatMessage.user(
-            (
+        summary_prompt = UserMessage(
+            text=(
                 "Please provide a concise summary of the following conversation, "
                 f"preserving key information and context:\n\n{conversation_text}\n\n"
                 "Provide only the summary, without any preamble."
@@ -164,12 +172,12 @@ class RamaLamaShell(cmd.Cmd):
                 summary = result['choices'][0]['message']['content']
 
                 # Rebuild conversation history with summary
-                new_history: list[ChatMessage] = []
+                new_history: list[ChatMessageType] = []
                 if first_msg:
                     new_history.append(first_msg)
 
                 # Add summary as a system message
-                new_history.append(ChatMessage.system(f"Previous conversation summary: {summary}"))
+                new_history.append(SystemMessage(text=f"Previous conversation summary: {summary}"))
 
                 # Add recent messages
                 new_history.extend(recent_msgs)
@@ -198,17 +206,18 @@ class RamaLamaShell(cmd.Cmd):
             {"role": msg.role, "content": self._format_message_for_summary(msg)} for msg in self.conversation_history
         ]
 
-    def _format_message_for_summary(self, msg: ChatMessage) -> str:
+    def _format_message_for_summary(self, msg: ChatMessageType) -> str:
         content = msg.text or ""
-        if not content and msg.tool_calls:
-            content = f"[tool_calls: {', '.join(call.name for call in msg.tool_calls)}]"
-        if not content and msg.attachments:
-            content = "[attachments]"
-        if not content:
-            content = ""
+        if isinstance(msg, AssistantMessage):
+            if msg.tool_calls:
+                content += f"\n[tool_calls: {', '.join(call.name for call in msg.tool_calls)}]"
+
+        if isinstance(msg, ToolMessage):
+            content = f"\n[tool_response: {msg.text}]"
+
         return f"{msg.role}: {content}".strip()
 
-    def _make_api_request(self, messages: Sequence[ChatMessage], stream: bool = True):
+    def _make_api_request(self, messages: Sequence[ChatMessageType], stream: bool = True):
         """Create a provider request for arbitrary message lists."""
         max_tokens = self.args.max_tokens if stream and getattr(self.args, "max_tokens", None) else None
         options = self._build_request_options(stream=stream, max_tokens=max_tokens)
@@ -328,8 +337,8 @@ class RamaLamaShell(cmd.Cmd):
             print(f"\n {r['tool']} -> {r['output']}")
 
         # Save to history
-        self.conversation_history.append(ChatMessage.user(f"/tool {question}"))
-        self.conversation_history.append(ChatMessage.assistant(str(responses)))
+        self.conversation_history.append(UserMessage(text=f"/tool {question}"))
+        self.conversation_history.append(AssistantMessage(text=str(responses)))
 
     def _select_tools(self):
         """Interactive multi-tool selection without prompting for arguments."""
@@ -398,16 +407,16 @@ class RamaLamaShell(cmd.Cmd):
                 # If streaming, _handle_mcp_request already printed output
                 if isinstance(response, str) and response.strip():
                     print(response)
-                self.conversation_history.append(ChatMessage.user(content))
-                self.conversation_history.append(ChatMessage.assistant(response))
+                self.conversation_history.append(UserMessage(text=content))
+                self.conversation_history.append(AssistantMessage(text=response))
                 self._check_and_summarize()
             return False
 
-        self.conversation_history.append(ChatMessage.user(content))
+        self.conversation_history.append(UserMessage(text=content))
         self.request_in_process = True
         response = self._req()
         if response:
-            self.conversation_history.append(ChatMessage.assistant(response))
+            self.conversation_history.append(AssistantMessage(text=response))
         self.request_in_process = False
         self._check_and_summarize()
 
@@ -759,7 +768,7 @@ def chat(
         return
 
     if provider is None:
-        provider = _resolve_hosted_provider(args)
+        provider = OpenAICompletionsChatProvider(args.url, getattr(args, "api_key", None))
 
     # SIGALRM is Unix-only, skip keepalive timeout handling on Windows
     if getattr(args, "keepalive", False) and hasattr(signal, 'SIGALRM'):
@@ -787,14 +796,12 @@ def chat(
     monitor.start()
     list_models = getattr(args, "list", False)
     if list_models:
-        url = f"{args.url}/models"
-        headers = add_api_key(args)
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req) as response:
-            data = json.loads(response.read())
-            ids = [model["id"] for model in data.get("data", [])]
-            for id in ids:
-                print(id)
+        for model_id in provider.list_models():
+            print(model_id)
+        monitor.stop()
+        if hasattr(signal, 'alarm'):
+            signal.alarm(0)
+        return
 
     # Ensure operational_args is initialized
     if operational_args is None:
@@ -869,34 +876,3 @@ def convert_to_seconds(s):
     unit = UNITS[s[-1]]
     td = timedelta(**{unit: count})
     return td.seconds + 60 * 60 * 24 * td.days
-
-
-def _resolve_hosted_provider(args) -> ChatProvider | None:
-    """Configure chat to talk to hosted providers when model uses a URI scheme."""
-
-    model = getattr(args, "model", None)
-    if not model or "://" not in model:
-        return None
-
-    scheme, remainder = model.split("://", 1)
-    if not remainder:
-        raise ValueError(
-            "Hosted provider model identifiers must include a model name after the scheme, e.g. openai://gpt-4o"
-        )
-
-    spec = DEFAULT_API_PROVIDER_SPECS.get(scheme)
-    if not spec:
-        raise ValueError(f"Unsupported hosted provider scheme '{scheme}'.")
-
-    builder = HOSTED_PROVIDER_BUILDERS.get(scheme)
-    if builder is None:
-        raise ValueError(f"No hosted chat provider registered for scheme '{scheme}'.")
-
-    args.url = spec.base_url
-    if not getattr(args, "api_key", None):
-        api_key = resolve_provider_api_key(scheme)
-        if api_key:
-            args.api_key = api_key
-
-    args.model = remainder
-    return builder(spec.base_url, getattr(args, "api_key", None))

@@ -14,8 +14,11 @@ class APIProviderSpec:
     base_url: str
 
 
+OpenAIProviderSpec = APIProviderSpec("openai", "https://api.openai.com/v1")
+
+
 DEFAULT_API_PROVIDER_SPECS: dict[str, APIProviderSpec] = {
-    "openai": APIProviderSpec("openai", "https://api.openai.com/v1"),
+    "openai": OpenAIProviderSpec,
 }
 
 

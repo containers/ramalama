@@ -1,20 +1,11 @@
 """Chat provider abstractions."""
 
-from .base import (
-    ChatMessage,
+from ramalama.chat_providers import openai
+from ramalama.chat_providers.base import (
     ChatProvider,
     ChatProviderError,
     ChatRequestOptions,
     ChatStreamEvent,
 )
-from .openai import OpenAIChatProvider, OpenAIHostedChatProvider
 
-__all__ = [
-    "ChatMessage",
-    "ChatProvider",
-    "ChatProviderError",
-    "ChatRequestOptions",
-    "ChatStreamEvent",
-    "OpenAIChatProvider",
-    "OpenAIHostedChatProvider",
-]
+__all__ = ["ChatProvider", "ChatProviderError", "ChatRequestOptions", "ChatStreamEvent", "openai"]

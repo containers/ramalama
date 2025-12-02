@@ -3,8 +3,8 @@ from collections.abc import Callable
 from typing import TypeAlias
 from urllib.parse import urlparse
 
-from ramalama.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, APIProviderSpec
 from ramalama.arg_types import StoreArgType
+from ramalama.chat_providers.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, APIProviderSpec
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
 from ramalama.transports.api import APITransport

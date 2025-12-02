@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
-from ramalama.api_provider_specs import APIProviderSpec
+from ramalama.chat_providers.api_provider_specs import APIProviderSpec
+from ramalama.config import CONFIG
 from ramalama.transports import api as api_module
 from ramalama.transports.api import APITransport
 
@@ -42,8 +43,8 @@ def test_api_transport_ensure_exists_mutates_args():
 def test_api_transport_falls_back_to_config_api_key(monkeypatch):
     provider = APIProviderSpec("openai", "https://api.openai.com/v1")
     transport = APITransport("gpt-4o-mini", provider)
-    monkeypatch.setattr(api_module.CONFIG.provider, "openai_api_key", "config-secret")
-    monkeypatch.setattr(api_module.CONFIG, "api_key", None)
+    monkeypatch.setattr(CONFIG.provider, "openai_api_key", "config-secret")
+    monkeypatch.setattr(CONFIG, "api_key", None)
 
     recorded: dict[str, object] = {}
 
