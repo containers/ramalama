@@ -35,7 +35,7 @@ from ramalama.model_store.store import ModelStore
 from ramalama.path_utils import get_container_mount_path
 from ramalama.quadlet import Quadlet
 
-MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
+MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr", "openai"]
 
 
 file_not_found = """\

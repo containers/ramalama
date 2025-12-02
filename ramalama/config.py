@@ -46,21 +46,17 @@ def _get_default_config_dirs() -> list[Path]:
         # Windows-specific paths using APPDATA and LOCALAPPDATA
         appdata = os.getenv("APPDATA", os.path.expanduser("~/AppData/Roaming"))
         localappdata = os.getenv("LOCALAPPDATA", os.path.expanduser("~/AppData/Local"))
-        dirs.extend(
-            [
-                Path(os.path.join(localappdata, "ramalama")),
-                Path(os.path.join(appdata, "ramalama")),
-            ]
-        )
+        dirs.extend([
+            Path(os.path.join(localappdata, "ramalama")),
+            Path(os.path.join(appdata, "ramalama")),
+        ])
     else:
         # Unix-specific paths
-        dirs.extend(
-            [
-                Path("/etc/ramalama"),
-                Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
-                Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
-            ]
-        )
+        dirs.extend([
+            Path("/etc/ramalama"),
+            Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
+            Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
+        ])
 
     return dirs
 
@@ -99,7 +95,6 @@ def get_inference_spec_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
     for spec_dir in get_all_inference_spec_dirs("engines"):
-
         # Give preference to .yaml, then .json spec files
         file_extensions = ["*.yaml", "*.yml", "*.json"]
         for file_extension in file_extensions:
@@ -117,7 +112,6 @@ def get_inference_schema_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
     for schema_dir in get_all_inference_spec_dirs("schema"):
-
         for spec_file in sorted(Path(schema_dir).glob("schema.*.json")):
             file = Path(spec_file)
             version = file.name.replace("schema.", "").replace(".json", "")
@@ -144,6 +138,11 @@ class UserConfig:
 
     def __post_init__(self):
         self.no_missing_gpu_prompt = coerce_to_bool(self.no_missing_gpu_prompt)
+
+
+@dataclass
+class ProviderConfig:
+    openai_api_key: str | None = None
 
 
 @dataclass
@@ -254,6 +253,7 @@ class BaseConfig:
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
     http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
     log_level: LogLevel | None = None
+    provider: ProviderConfig = field(default_factory=ProviderConfig)
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
