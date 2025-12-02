@@ -32,20 +32,24 @@ class OpenAICompletionsProviderTests:
     def test_extracts_string_and_structured_deltas(self):
         assert self.provider._extract_delta(build_payload("hello")) == "hello"
 
-        structured = build_payload([
-            {"type": "text", "text": "hello"},
-            {"type": "output_text", "text": " world"},
-        ])
+        structured = build_payload(
+            [
+                {"type": "text", "text": "hello"},
+                {"type": "output_text", "text": " world"},
+            ]
+        )
         assert self.provider._extract_delta(structured) == "hello world"
 
     def test_streaming_handles_structured_chunks(self):
         chunk = (
             b"data: "
             + json.dumps(
-                build_payload([
-                    {"type": "output_text", "text": "Hi"},
-                    {"type": "output_text", "text": " there"},
-                ])
+                build_payload(
+                    [
+                        {"type": "output_text", "text": "Hi"},
+                        {"type": "output_text", "text": " there"},
+                    ]
+                )
             ).encode("utf-8")
             + b"\n\n"
         )
