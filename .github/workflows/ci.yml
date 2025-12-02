@@ -295,6 +295,11 @@ jobs:
         shell: bash
         run: |
            df -h
+           # /mnt has ~ 65 GB free disk space. / is too small.
+           sudo mkdir -m a=rwx -p /mnt/runner
+           sudo mkdir -m o=rwx -p /home/runner/.local
+           sudo chown runner:runner /mnt/runner /home/runner/.local
+           sudo mount --bind /mnt/runner /home/runner/.local
            sudo apt-get update
            sudo apt-get install podman bash codespell
            uv tool install tox --with tox-uv
