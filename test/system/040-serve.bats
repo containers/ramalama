@@ -495,20 +495,25 @@ verify_begin=".*run --rm"
     is "$output" ".*Llama Stack RESTAPI: http://localhost:1234" "reveal llama stack url"
     is "$output" ".*OpenAI RESTAPI: http://localhost:1234/v1/openai" "reveal openai url"
 
-### FIXME llama-stack image is currently broken.
     # Health check: wait for service to be responsive on http://localhost:1234
-#    for i in {1..10}; do
-#    	if curl -sSf http://localhost:1234/models > /dev/null; then
-#            echo "Service is responsive on http://localhost:1234/v1/openai/models"
-#            break
-#        fi
-#        sleep 1
-#    done
-#    if ! curl -sSf http://localhost:1234/v1/openai/models > /dev/null; then
-#        echo "ERROR: Service did not become responsive on http://localhost:1234" >&2
-#        run_ramalama stop ${name}
-#        exit 1
-#    fi
+    for i in {1..10}; do
+        if curl -sSf http://localhost:1234/v1/models; then
+            echo "Service is responsive on http://localhost:1234/v1/models"
+            break
+        fi
+        sleep 10
+    done
+    if ! curl -sSf http://localhost:1234/v1/openai/v1/models; then
+        echo "ERROR: Service did not become responsive on http://localhost:1234/v1/openai/v1/models" >&2
+        podman pod logs ${name}-pod
+        run_ramalama ps
+        run_ramalama stop ${name}
+        exit 1
+    fi
+
+    run_ramalama chat --url http://localhost:1234/v1/openai/v1 --model TinyLlama-1.1B-Chat-v1.0-GGUF "What is the diameter of the Earth?"
+    is "$output" ".*diameter" "llama-stack returns a reasonable response"
+
     run_ramalama ps
     run_ramalama stop ${name}
 
