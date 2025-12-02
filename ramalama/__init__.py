@@ -1,7 +1,6 @@
 """Chat provider abstractions."""
 
-from ramalama.chat_providers import openai
-from ramalama.chat_providers import api_providers
+from ramalama.chat_providers import api_providers, openai
 from ramalama.chat_providers.base import (
     ChatProvider,
     ChatProviderError,

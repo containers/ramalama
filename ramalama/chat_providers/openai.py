@@ -5,17 +5,17 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from functools import singledispatch
-from typing import Any, TypedDict, Literal
+from typing import Any, Literal, TypedDict
 
 from ramalama.chat_providers.base import ChatProvider, ChatRequestOptions, ChatStreamEvent
 from ramalama.chat_utils import (
-    AttachmentPart,
-    serialize_part,
     AssistantMessage,
+    AttachmentPart,
     ChatMessageType,
     SystemMessage,
     ToolMessage,
     UserMessage,
+    serialize_part,
 )
 
 

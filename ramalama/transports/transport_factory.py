@@ -4,9 +4,9 @@ from typing import TypeAlias
 from urllib.parse import urlparse
 
 from ramalama.arg_types import StoreArgType
+from ramalama.chat_providers.api_providers import get_chat_provider
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
-from ramalama.chat_providers.api_providers import get_chat_provider
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import MODEL_TYPES, Transport
 from ramalama.transports.huggingface import Huggingface
