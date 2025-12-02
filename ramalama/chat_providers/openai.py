@@ -5,25 +5,32 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from functools import singledispatch
-from typing import Any
+from typing import Any, TypedDict, Literal
 
-from ramalama.chat import AssistantMessage, ChatMessageType, SystemMessage, ToolMessage, UserMessage
 from ramalama.chat_providers.base import ChatProvider, ChatRequestOptions, ChatStreamEvent
-from ramalama.chat_utils import AttachmentPart, serialize_part
+from ramalama.chat_utils import (
+    AttachmentPart,
+    serialize_part,
+    AssistantMessage,
+    ChatMessageType,
+    SystemMessage,
+    ToolMessage,
+    UserMessage,
+)
 
 
 @singledispatch
-def message_to_completions_dict(message: Any) -> dict:
+def message_to_completions_dict(message: Any) -> dict[str, Any]:
     raise ValueError(f"Undefined message type {type(message)}")
 
 
 @message_to_completions_dict.register
-def _(message: SystemMessage) -> dict:
+def _(message: SystemMessage) -> dict[str, Any]:
     return {**message.metadata, 'content': message.text or "", 'role': message.role}
 
 
 @message_to_completions_dict.register
-def _(message: ToolMessage) -> dict:
+def _(message: ToolMessage) -> dict[str, Any]:
     response = {
         **message.metadata,
         'content': message.text or "",
@@ -36,14 +43,14 @@ def _(message: ToolMessage) -> dict:
 
 
 @message_to_completions_dict.register
-def _(message: UserMessage) -> dict:
+def _(message: UserMessage) -> dict[str, Any]:
     if message.attachments:
         raise ValueError("Attachments are not supported by this provider.")
     return {**message.metadata, 'content': message.text or "", 'role': message.role}
 
 
 @message_to_completions_dict.register
-def _(message: AssistantMessage) -> dict:
+def _(message: AssistantMessage) -> dict[str, Any]:
     if message.attachments:
         raise ValueError("Attachments are not supported by this provider.")
 
@@ -61,6 +68,14 @@ def _(message: AssistantMessage) -> dict:
     return {**message.metadata, 'content': message.text or "", 'role': message.role, 'tool_calls': tool_calls}
 
 
+class CompletionsPayload(TypedDict, total=False):
+    messages: list[dict[str, Any]]
+    model: str
+    temperature: float | None
+    max_tokens: int | None
+    stream: bool
+
+
 class OpenAICompletionsChatProvider(ChatProvider):
     provider = "openai"
 
@@ -68,10 +83,16 @@ class OpenAICompletionsChatProvider(ChatProvider):
         super().__init__(base_url, api_key)
         self._stream_buffer: str = ""
 
-    def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> dict[str, object]:
-        payload: dict[str, object] = {
+    def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> CompletionsPayload:
+        if options.model is None:
+            raise ValueError("Chat options require a model value")
+
+        payload: CompletionsPayload = {
             "messages": [message_to_completions_dict(m) for m in messages],
-            **options.to_dict(),
+            "model": options.model,
+            "temperature": options.temperature,
+            "max_tokens": options.max_tokens,
+            "stream": options.stream,
         }
         return payload
 
@@ -136,7 +157,7 @@ class OpenAICompletionsChatProvider(ChatProvider):
 
 
 @singledispatch
-def message_to_responses_dict(message: Any) -> dict:
+def message_to_responses_dict(message: Any) -> dict[str, Any]:
     raise ValueError(f"Undefined message type {type(message)}")
 
 
@@ -156,12 +177,12 @@ def create_responses_content(
 
 
 @message_to_responses_dict.register
-def _(message: SystemMessage) -> dict:
+def _(message: SystemMessage) -> dict[str, Any]:
     return {**message.metadata, 'content': message.text or "", 'role': message.role}
 
 
 @message_to_responses_dict.register
-def _(message: ToolMessage) -> dict:
+def _(message: ToolMessage) -> dict[str, Any]:
     response = {
         **message.metadata,
         'content': message.text or "",
@@ -174,7 +195,7 @@ def _(message: ToolMessage) -> dict:
 
 
 @message_to_responses_dict.register
-def _(message: UserMessage) -> dict:
+def _(message: UserMessage) -> dict[str, Any]:
     return {
         **message.metadata,
         'content': create_responses_content(message.text, message.attachments, "input_text"),
@@ -183,7 +204,7 @@ def _(message: UserMessage) -> dict:
 
 
 @message_to_responses_dict.register
-def _(message: AssistantMessage) -> dict:
+def _(message: AssistantMessage) -> dict[str, Any]:
     payload: dict[str, Any] = {
         **message.metadata,
         'content': create_responses_content(message.text, message.attachments, "output_text"),
@@ -206,16 +227,33 @@ def _(message: AssistantMessage) -> dict:
     return payload
 
 
-class OpenAIResponsesChatProvider(OpenAICompletionsChatProvider):
+class ResponsesPayload(TypedDict, total=False):
+    input: list[dict[str, Any]]
+    model: str
+    temperature: float | None
+    max_completion_tokens: int
+    stream: bool
+
+
+class OpenAIResponsesChatProvider(ChatProvider):
+    provider = "openai"
     default_path: str = "/responses"
 
-    def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> dict[str, Any]:
-        payload: dict[str, Any] = {
+    def __init__(self, base_url: str, api_key: str | None = None):
+        super().__init__(base_url, api_key)
+        self._stream_buffer: str = ""
+
+    def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> ResponsesPayload:
+        if options.model is None:
+            raise ValueError("Chat options require a model value")
+
+        payload: ResponsesPayload = {
             "input": [message_to_responses_dict(m) for m in messages],
-            **options.to_dict(),
+            "model": options.model,
+            "temperature": options.temperature,
+            "stream": options.stream,
         }
 
-        payload.pop("max_tokens", None)
         if options.max_tokens is not None and options.max_tokens > 0:
             payload["max_completion_tokens"] = options.max_tokens
         return payload

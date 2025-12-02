@@ -19,7 +19,6 @@ from datetime import timedelta
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.chat_providers import ChatProvider, ChatRequestOptions
-from ramalama.chat_providers.api_provider_specs import DEFAULT_API_PROVIDER_SPECS, resolve_provider_api_key
 from ramalama.chat_providers.openai import OpenAICompletionsChatProvider, OpenAIResponsesChatProvider
 from ramalama.chat_utils import (
     AssistantMessage,

@@ -4,7 +4,7 @@ import pytest
 
 from ramalama.chat_providers.base import ChatRequestOptions
 from ramalama.chat_providers.openai import OpenAICompletionsChatProvider, OpenAIResponsesChatProvider
-from ramalama.chat_utils import ImageURLPart, UserMessage
+from ramalama.chat_utils import AssistantMessage, ImageURLPart, ToolCall, ToolMessage, UserMessage
 
 
 def build_payload(content):
@@ -65,6 +65,18 @@ class OpenAICompletionsProviderTests:
         with pytest.raises(ValueError):
             self.provider.build_payload([message], make_options())
 
+    def test_serializes_tool_calls_and_responses(self):
+        tool_call = ToolCall(id="call-1", name="lookup", arguments={"query": "weather"})
+        assistant = AssistantMessage(tool_calls=[tool_call])
+        tool_reply = ToolMessage(text="72F and sunny", tool_call_id="call-1")
+
+        payload = self.provider.build_payload([assistant, tool_reply], make_options())
+        messages = payload["messages"]
+
+        assert messages[0]["tool_calls"][0]["function"]["name"] == "lookup"
+        assert messages[0]["tool_calls"][0]["function"]["arguments"] == '{"query": "weather"}'
+        assert messages[1]["tool_call_id"] == "call-1"
+
 
 class OpenAIResponsesProviderTests:
     def setup_method(self):
@@ -84,3 +96,28 @@ class OpenAIResponsesProviderTests:
         assert serialized[1]["image_url"] == {"url": "http://img", "detail": "high"}
         assert payload["max_completion_tokens"] == 128
         assert "max_tokens" not in payload
+
+    def test_streaming_emits_delta_and_completion_events(self):
+        chunk = (
+            b"event: response.output_text.delta\n"
+            b'data: {"type":"response.output_text.delta","delta":{"text":"Hi"}}\n\n'
+            b"event: response.completed\n"
+            b'data: {"type":"response.completed"}\n\n'
+        )
+
+        events = list(self.provider.parse_stream_chunk(chunk))
+
+        assert events[0].text == "Hi"
+        assert events[1].done is True
+
+    def test_serializes_tool_calls(self):
+        tool_call = ToolCall(id="call-9", name="lookup", arguments={"city": "NYC"})
+        assistant = AssistantMessage(tool_calls=[tool_call])
+        tool_reply = ToolMessage(text="Clear skies", tool_call_id="call-9")
+
+        payload = self.provider.build_payload([assistant, tool_reply], make_options())
+        first_input = payload["input"][0]
+
+        assert first_input["tool_calls"][0]["function"]["name"] == "lookup"
+        assert first_input["tool_calls"][0]["function"]["arguments"] == '{"city": "NYC"}'
+        assert payload["input"][1]["tool_call_id"] == "call-9"

@@ -130,7 +130,7 @@ class ChatProvider(ABC):
         return self.default_path
 
     @abstractmethod
-    def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> dict[str, Any]:
+    def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> Mapping[str, Any]:
         """Return the provider-specific payload."""
 
     @abstractmethod
