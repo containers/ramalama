@@ -111,13 +111,17 @@ docs-manpages:
 docsite-docs:
 	$(MAKE) -C docsite convert
 
+ifeq (compile,$(findstring compile,$(INSIDE_EMACS)))
+FLAKE8_ARGS += --format=pylint
+endif
+
 .PHONY: lint
 lint:
 ifneq (,$(wildcard /usr/bin/python3))
 	/usr/bin/python3 -m compileall -q -x '\.venv' .
 endif
 	! grep -ri $(EXCLUDE_OPTS) "#\!/usr/bin/python3" .
-	flake8 $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	flake8 $(FLAKE8_ARGS) $(PROJECT_DIR) $(PYTHON_SCRIPTS)
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
