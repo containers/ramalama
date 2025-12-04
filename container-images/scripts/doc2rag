@@ -18,6 +18,7 @@ from pathlib import Path
 import docling
 import qdrant_client
 from docling.chunking import HybridChunker
+from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
@@ -40,8 +41,14 @@ class Converter:
 
     def __init__(self, args):
         # Docling Setup (Turn off OCR (image processing) for drastically reduced RAM usage and big speed increase)
-        pipeline_options = PdfPipelineOptions()
-        pipeline_options.do_ocr = args.ocr
+        if os.environ.get("CUDA_VISIBLE_DEVICES", "").lower() in ["", "none", "-1"]:
+            dev = AcceleratorDevice.CPU
+        else:
+            dev = AcceleratorDevice.CUDA
+        pipeline_options = PdfPipelineOptions(
+            accelerator_options=AcceleratorOptions(device=dev),
+            do_ocr=args.ocr,
+        )
         self.sources = []
         for source in args.sources:
             self.add(source)
