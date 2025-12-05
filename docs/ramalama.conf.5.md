@@ -170,9 +170,12 @@ If this port is unavailable, another free port from this range will be selected.
 
 **rag_format**="qdrant"
 
-OCI container image to run with the specified AI model when using RAG content.
+Specify the default output format for output of the `ramalama rag` command.
+Options: qdrant, json, markdown, milvus.
 
 **rag_images**="quay.io/ramalama/ramalama-rag"
+
+OCI container image to run with the specified AI model when using RAG content.
 
 `[[ramalama.rag_images]]`
   CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda-rag"
