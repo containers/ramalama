@@ -80,8 +80,8 @@ class ParsedGenerateInput:
 def parse_generate_option(option: str) -> ParsedGenerateInput:
     # default output directory is where ramalama has been started from
     generate, output_dir = option, "."
-    if generate.count(":") == 1:
-        generate, output_dir = generate.split(":")
+    if generate.count(":") > 0:
+        generate, output_dir = generate.split(":", 1)
     if output_dir == "":
         output_dir = "."
 

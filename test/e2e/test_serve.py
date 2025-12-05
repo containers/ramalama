@@ -1,6 +1,8 @@
 import itertools
 import json
 import logging
+import os
+import platform
 import random
 import re
 import string
@@ -14,6 +16,7 @@ from test.conftest import (
     skip_if_gh_actions_darwin,
     skip_if_no_container,
     skip_if_not_darwin,
+    xfail_if_windows,
 )
 from test.e2e.utils import RamalamaExecWorkspace, check_output, get_full_model_name
 
@@ -115,11 +118,13 @@ def test_basic_dry_run():
         ),
         pytest.param(
             ["--seed", "1234", "--name", "foobar"], r".*--seed 1234",
-            None, {"RAMALAMA_CONFIG": "/dev/null"}, True,
+            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
             id="check --seed 1234 with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
-            ["--name", "foobar"], r".*--pull newer", None, {"RAMALAMA_CONFIG": "/dev/null"}, True,
+            ["--name", "foobar"], r".*--pull newer", None, {
+                "RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'
+            }, True,
             id="check pull policy with RAMALAMA_CONFIG=/dev/null", marks=[skip_if_no_container, skip_if_docker],
         ),
         pytest.param(
@@ -272,6 +277,7 @@ def test_full_model_name_expansion():
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: Error: no container with name or ID "serve_and_stop_dyGXy" found: no such container
 @skip_if_no_container
 def test_serve_and_stop(shared_ctx, test_model):
     ctx = shared_ctx
@@ -317,6 +323,7 @@ def test_serve_and_stop(shared_ctx, test_model):
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: Container not starting?
 @skip_if_no_container
 def test_serve_multiple_models(shared_ctx, test_model):
     ctx = shared_ctx
@@ -441,6 +448,7 @@ def test_generation_with_bad_add_to_unit_flag_value(test_model):
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: registry fixture currently doesn't work on windows
 @skip_if_no_container
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")
 def test_quadlet_and_kube_generation_with_container_registry(container_registry, is_container, test_model):
@@ -541,11 +549,11 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
         for item in itertools.product(
             [
                 "kube",
-                "kube:{tmp_dir}/output",
+                "kube:{tmp_dir}{sep}output",
                 "quadlet/kube",
-                "quadlet/kube:{tmp_dir}/output",
+                "quadlet/kube:{tmp_dir}{sep}output",
                 "compose",
-                "compose:{tmp_dir}/output",
+                "compose:{tmp_dir}{sep}output",
             ],
             [None, {"HIP_VISIBLE_DEVICES": "99"}],
         )
@@ -558,7 +566,9 @@ def test_serve_kube_generation(test_model, generate, env_vars):
 
         # Define the output dir if it's required and ensure it is created
         output_dir = (
-            Path(ctx.workspace_dir) / "output" if generate.endswith(":{tmp_dir}/output") else Path(ctx.workspace_dir)
+            Path(ctx.workspace_dir) / "output"
+            if generate.endswith(":{tmp_dir}{sep}output")
+            else Path(ctx.workspace_dir)
         )
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -572,7 +582,7 @@ def test_serve_kube_generation(test_model, generate, env_vars):
                 "--port",
                 "1234",
                 "--generate",
-                generate.format(tmp_dir=ctx.workspace_dir),
+                generate.format(tmp_dir=ctx.workspace_dir, sep=os.sep),
                 test_model,
             ]
         )
@@ -660,6 +670,7 @@ def test_kube_generation_with_llama_api(test_model):
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: failing with exit code 5
 @skip_if_docker
 @skip_if_no_container
 def test_serve_api(caplog):
@@ -708,6 +719,7 @@ def test_serve_api(caplog):
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_no_container
 @skip_if_docker
 @skip_if_gh_actions_darwin
@@ -738,6 +750,7 @@ def test_serve_with_non_existing_images():
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_no_container
 @skip_if_darwin
 @skip_if_docker

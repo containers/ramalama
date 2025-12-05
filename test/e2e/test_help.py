@@ -3,7 +3,6 @@ import os
 import platform
 import re
 import string
-from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
 from test.conftest import skip_if_no_container
 from test.e2e.utils import RamalamaExecWorkspace, check_output, get_ramalama_subcommands
@@ -45,10 +44,11 @@ DEFAULT_API_KEY_PATTERN = re.compile(
 
 @pytest.fixture()
 def default_storage_path():
-    if os.geteuid() != 0:
-        return (Path.home() / ".local" / "share" / "ramalama").as_posix()
-    else:
+    # Check if running as root (Unix only)
+    if hasattr(os, 'geteuid') and os.geteuid() == 0:
         return "/var/lib/ramalama"
+
+    return os.path.expanduser("~/.local/share/ramalama")
 
 
 @pytest.mark.e2e
@@ -258,7 +258,7 @@ def test_default_store_variable_precedence():
 
         if platform.system() != "Darwin":
             result = ctx.check_output(["ramalama", "--store", f"{ctx.workspace_dir}/.ramalama", "info"])
-            assert json.loads(result)["Store"] == f"{ctx.workspace_dir}/.ramalama"
+            assert json.loads(result)["Store"] == os.path.join(ctx.workspace_dir, ".ramalama")
 
 
 @pytest.mark.e2e
@@ -347,7 +347,8 @@ def test_default_api_key():
 
     # Test 1: With RAMALAMA_API_KEY environment variable, it should show as default
     result = check_output(
-        ["ramalama", "chat", "--help"], env={"RAMALAMA_API_KEY": api_key, "RAMALAMA_CONFIG": "/dev/null"}
+        ["ramalama", "chat", "--help"],
+        env={"RAMALAMA_API_KEY": api_key, "RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'},
     )
     match = f"default: {api_key}" in result
     assert match, f"API key from environment should show as (default: {api_key})"
