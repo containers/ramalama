@@ -1098,6 +1098,12 @@ def _rag_args(args):
     rag_args.model_port = args.port = compute_serving_port(args, exclude=[rag_args.port])
     rag_args.model_args = args
     rag_args.generate = ""
+
+    # Add RAG_MODE from config if not already specified via --env
+    env_list = getattr(rag_args, 'env', []) or []
+    if not any(e.startswith('RAG_MODE=') for e in env_list):
+        rag_args.env = list(env_list) + [f"RAG_MODE={CONFIG.rag_mode}"]
+
     return rag_args
 
 
