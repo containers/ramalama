@@ -91,6 +91,10 @@ spec:
     default: docker
     type: string
     description: The format for the resulting image's mediaType. Valid values are oci or docker.
+  - name: enable-cache-proxy
+    default: 'false'
+    description: Enable cache proxy configuration
+    type: string
   results:
   - description: ""
     name: IMAGE_URL
@@ -113,12 +117,14 @@ spec:
       value: $(params.rebuild)
     - name: skip-checks
       value: $(params.skip-checks)
+    - name: enable-cache-proxy
+      value: $(params.enable-cache-proxy)
     taskRef:
       params:
       - name: name
         value: init
       - name: bundle
-        value: quay.io/konflux-ci/tekton-catalog/task-init:0.2@sha256:4072de81ade0a75ad1eaa5449a7ff02bba84757064549a81b48c28fab3aeca59
+        value: quay.io/konflux-ci/tekton-catalog/task-init:0.2@sha256:d6a10101f672a85da0a402177848a82fe7af439bc54451e54b0fbb1ddbeeb1f6
       - name: kind
         value: task
       resolver: bundles
@@ -143,7 +149,7 @@ spec:
       - name: name
         value: git-clone-oci-ta
       - name: bundle
-        value: quay.io/konflux-ci/tekton-catalog/task-git-clone-oci-ta:0.1@sha256:ea64f5b99202621e78ed3d74b00df5750cbf572c391e6da1956396f5945e4e11
+        value: quay.io/konflux-ci/tekton-catalog/task-git-clone-oci-ta:0.1@sha256:0a89e1a6304076525e9766f63a4cd006763d21d5aca6863281fc427537a23c6f
       - name: kind
         value: task
       resolver: bundles
@@ -229,6 +235,10 @@ spec:
       value: "true"
     - name: BUILDAH_FORMAT
       value: $(params.buildah-format)
+    - name: HTTP_PROXY
+      value: $(tasks.init.results.http-proxy)
+    - name: NO_PROXY
+      value: $(tasks.init.results.no-proxy)
     runAfter:
     - wait-for-parent-image
     - prefetch-dependencies
@@ -382,7 +392,7 @@ spec:
       - name: name
         value: clair-scan
       - name: bundle
-        value: quay.io/konflux-ci/tekton-catalog/task-clair-scan:0.3@sha256:8ec7d7b9438ace5ef3fb03a533d9440d0fd81e51c73b0dc1eb51602fb7cd044e
+        value: quay.io/konflux-ci/tekton-catalog/task-clair-scan:0.3@sha256:ee558db6af779ab162163ec88f288a5c1b2d5f70c3361f3690a474866e3bdc74
       - name: kind
         value: task
       resolver: bundles
@@ -615,7 +625,7 @@ spec:
       - name: name
         value: rpms-signature-scan
       - name: bundle
-        value: quay.io/konflux-ci/tekton-catalog/task-rpms-signature-scan:0.2@sha256:13cf619a8c24e5a565f1b3f20f6998273d3108a2866e04076b6f0dd967251af3
+        value: quay.io/konflux-ci/tekton-catalog/task-rpms-signature-scan:0.2@sha256:90c2b32ebf0a00f42c0c1d1675feb75ba71793ad1a4c22ddea7cdc71ed997a04
       - name: kind
         value: task
       resolver: bundles
