@@ -4,7 +4,16 @@ from pathlib import Path
 
 import pytest
 
+from ramalama.chat_utils import ImageURLPart
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
+
+
+def _text_content(message):
+    return message.text or ""
+
+
+def _image_parts(message):
+    return [attachment for attachment in message.attachments if isinstance(attachment, ImageURLPart)]
 
 
 class TestFileUploadWithDataFiles:
@@ -24,10 +33,11 @@ class TestFileUploadWithDataFiles:
         messages = builder.load(str(txt_file))
 
         assert len(messages) == 1
-        assert "This is a sample text file" in messages[0]["content"]
-        assert "TXTFileUpload class" in messages[0]["content"]
-        assert "Special characters like: !@#$%^&*()" in messages[0]["content"]
-        assert f"<!--start_document {txt_file}-->" in messages[0]["content"]
+        content = _text_content(messages[0])
+        assert "This is a sample text file" in content
+        assert "TXTFileUpload class" in content
+        assert "Special characters like: !@#$%^&*()" in content
+        assert f"<!--start_document {txt_file}-->" in content
 
     def test_load_single_markdown_file(self, data_dir):
         """Test loading a single markdown file from the data directory."""
@@ -37,11 +47,12 @@ class TestFileUploadWithDataFiles:
         messages = builder.load(str(md_file))
 
         assert len(messages) == 1
-        assert "# Sample Markdown File" in messages[0]["content"]
-        assert "**Bold text** and *italic text*" in messages[0]["content"]
-        assert "```python" in messages[0]["content"]
-        assert "def hello_world():" in messages[0]["content"]
-        assert f"<!--start_document {md_file}-->" in messages[0]["content"]
+        content = _text_content(messages[0])
+        assert "# Sample Markdown File" in content
+        assert "**Bold text** and *italic text*" in content
+        assert "```python" in content
+        assert "def hello_world():" in content
+        assert f"<!--start_document {md_file}-->" in content
 
     def test_load_single_json_file(self, data_dir):
         """Test loading a single JSON file from the data directory."""
@@ -51,11 +62,12 @@ class TestFileUploadWithDataFiles:
         messages = builder.load(str(json_file))
 
         assert len(messages) == 1
-        assert '"name": "test_data"' in messages[0]["content"]
-        assert '"version": "1.0.0"' in messages[0]["content"]
-        assert '"text_processing"' in messages[0]["content"]
-        assert '"supported_formats"' in messages[0]["content"]
-        assert f"<!--start_document {json_file}-->" in messages[0]["content"]
+        content = _text_content(messages[0])
+        assert '"name": "test_data"' in content
+        assert '"version": "1.0.0"' in content
+        assert '"text_processing"' in content
+        assert '"supported_formats"' in content
+        assert f"<!--start_document {json_file}-->" in content
 
     def test_load_single_yaml_file(self, data_dir):
         """Test loading a single YAML file from the data directory."""
@@ -65,12 +77,13 @@ class TestFileUploadWithDataFiles:
         messages = builder.load(str(yaml_file))
 
         assert len(messages) == 1
-        assert "name: test_config" in messages[0]["content"]
-        assert "version: 1.0.0" in messages[0]["content"]
-        assert "- text_processing" in messages[0]["content"]
-        assert "- yaml_support" in messages[0]["content"]
-        assert "deep:" in messages[0]["content"]
-        assert f"<!--start_document {yaml_file}-->" in messages[0]["content"]
+        content = _text_content(messages[0])
+        assert "name: test_config" in content
+        assert "version: 1.0.0" in content
+        assert "- text_processing" in content
+        assert "- yaml_support" in content
+        assert "deep:" in content
+        assert f"<!--start_document {yaml_file}-->" in content
 
     def test_load_single_csv_file(self, data_dir):
         """Test loading a single CSV file from the data directory."""
@@ -80,11 +93,12 @@ class TestFileUploadWithDataFiles:
         messages = builder.load(str(csv_file))
 
         assert len(messages) == 1
-        assert "name,age,city,occupation" in messages[0]["content"]
-        assert "John Doe,30,New York,Engineer" in messages[0]["content"]
-        assert "Jane Smith,25,San Francisco,Designer" in messages[0]["content"]
-        assert "Bob Johnson,35,Chicago,Manager" in messages[0]["content"]
-        assert f"<!--start_document {csv_file}-->" in messages[0]["content"]
+        content = _text_content(messages[0])
+        assert "name,age,city,occupation" in content
+        assert "John Doe,30,New York,Engineer" in content
+        assert "Jane Smith,25,San Francisco,Designer" in content
+        assert "Bob Johnson,35,Chicago,Manager" in content
+        assert f"<!--start_document {csv_file}-->" in content
 
     def test_load_single_toml_file(self, data_dir):
         """Test loading a single TOML file from the data directory."""
@@ -94,12 +108,13 @@ class TestFileUploadWithDataFiles:
         messages = builder.load(str(toml_file))
 
         assert len(messages) == 1
-        assert 'name = "test_config"' in messages[0]["content"]
-        assert 'version = "1.0.0"' in messages[0]["content"]
-        assert 'text_processing = true' in messages[0]["content"]
-        assert 'toml_support = true' in messages[0]["content"]
-        assert 'with_deep_nesting = true' in messages[0]["content"]
-        assert f"<!--start_document {toml_file}-->" in messages[0]["content"]
+        content = _text_content(messages[0])
+        assert 'name = "test_config"' in content
+        assert 'version = "1.0.0"' in content
+        assert 'text_processing = true' in content
+        assert 'toml_support = true' in content
+        assert 'with_deep_nesting = true' in content
+        assert f"<!--start_document {toml_file}-->" in content
 
     def test_load_single_shell_script(self, data_dir):
         """Test loading a single shell script from the data directory."""
@@ -109,12 +124,13 @@ class TestFileUploadWithDataFiles:
         messages = builder.load(str(sh_file))
 
         assert len(messages) == 1
-        assert "#!/bin/bash" in messages[0]["content"]
-        assert "Hello, World! This is a test script." in messages[0]["content"]
-        assert "test_function()" in messages[0]["content"]
-        assert "for i in {1..3}" in messages[0]["content"]
-        assert "Script completed successfully!" in messages[0]["content"]
-        assert f"<!--start_document {sh_file}-->" in messages[0]["content"]
+        content = _text_content(messages[0])
+        assert "#!/bin/bash" in content
+        assert "Hello, World! This is a test script." in content
+        assert "test_function()" in content
+        assert "for i in {1..3}" in content
+        assert "Script completed successfully!" in content
+        assert f"<!--start_document {sh_file}-->" in content
 
     def test_load_entire_data_directory(self, data_dir):
         """Test loading all files from the data directory."""
@@ -122,7 +138,7 @@ class TestFileUploadWithDataFiles:
         messages = builder.load(str(data_dir))
 
         assert len(messages) == 1
-        content = messages[0]["content"]
+        content = _text_content(messages[0])
         assert "This is a sample text file" in content  # sample.txt
         assert "# Sample Markdown File" in content  # sample.md
         assert '"name": "test_data"' in content  # sample.json
@@ -151,7 +167,7 @@ class TestFileUploadWithDataFiles:
         messages = builder.load(str(txt_file))
 
         assert len(messages) == 1
-        content = messages[0]["content"]
+        content = _text_content(messages[0])
         content_start = content.find('\n', content.find('<!--start_document')) + 1
         extracted_content = content[content_start:]
 
@@ -172,7 +188,7 @@ class TestFileUploadWithDataFiles:
             messages = builder.load(tmp_dir)
 
             assert len(messages) == 1
-            content = messages[0]["content"]
+            content = _text_content(messages[0])
             assert "This is a sample text file" in content  # sample.txt
             assert "# Sample Markdown File" in content  # sample.md
             assert '"name": "test_data"' in content  # sample.json
@@ -200,7 +216,7 @@ class TestFileUploadWithDataFiles:
             messages = builder.load(tmp_dir)
 
             assert len(messages) == 1
-            content = messages[0]["content"]
+            content = _text_content(messages[0])
             assert "This is a sample text file" in content
             assert "This is an unsupported file type" not in content
             assert "sample.txt" in content
@@ -226,12 +242,10 @@ class TestImageUploadWithDataFiles:
             messages = builder.load(tmp_file.name)
 
             assert len(messages) == 1
-            assert isinstance(messages[0]["content"], list)
-            assert len(messages[0]["content"]) == 1
-            assert 'image_url' in messages[0]["content"][0]
-            assert 'url' in messages[0]["content"][0]["image_url"]
-            assert "data:image/" in messages[0]["content"][0]["image_url"]["url"]
-            assert "base64," in messages[0]["content"][0]["image_url"]["url"]
+            image_parts = _image_parts(messages[0])
+            assert len(image_parts) == 1
+            assert "data:image/" in image_parts[0].url
+            assert "base64," in image_parts[0].url
 
     def test_load_multiple_image_files(self, data_dir):
         """Test loading multiple image files."""
@@ -252,12 +266,10 @@ class TestImageUploadWithDataFiles:
             messages = builder.load(tmp_dir)
 
             assert len(messages) == 1
-            assert isinstance(messages[0]["content"], list)
-            assert len(messages[0]["content"]) == 3
-            assert all('image_url' in item for item in messages[0]["content"])
-            assert all('url' in item["image_url"] for item in messages[0]["content"])
-            assert all("data:image/" in item["image_url"]["url"] for item in messages[0]["content"])
-            assert all("base64," in item["image_url"]["url"] for item in messages[0]["content"])
+            image_parts = _image_parts(messages[0])
+            assert len(image_parts) == 3
+            assert all("data:image/" in part.url for part in image_parts)
+            assert all("base64," in part.url for part in image_parts)
 
     def test_image_file_content_integrity(self, data_dir):
         """Test that image file content is preserved exactly."""
@@ -270,11 +282,11 @@ class TestImageUploadWithDataFiles:
             messages = builder.load(tmp_file.name)
 
             assert len(messages) == 1
-            assert isinstance(messages[0]["content"], list)
-            assert len(messages[0]["content"]) == 1
+            image_parts = _image_parts(messages[0])
+            assert len(image_parts) == 1
 
             # Extract base64 data from result
-            url = messages[0]["content"][0]["image_url"]["url"]
+            url = image_parts[0].url
             base64_data = url.split("base64,")[1]
             import base64
 
@@ -304,12 +316,10 @@ class TestImageUploadWithDataFiles:
             messages = builder.load(tmp_dir)
 
             assert len(messages) == 1
-            assert isinstance(messages[0]["content"], list)
-            assert len(messages[0]["content"]) == 8
-            assert all('image_url' in item for item in messages[0]["content"])
-            assert all('url' in item["image_url"] for item in messages[0]["content"])
-            assert all("data:image/" in item["image_url"]["url"] for item in messages[0]["content"])
-            assert all("base64," in item["image_url"]["url"] for item in messages[0]["content"])
+            image_parts = _image_parts(messages[0])
+            assert len(image_parts) == 8
+            assert all("data:image/" in part.url for part in image_parts)
+            assert all("base64," in part.url for part in image_parts)
 
     @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     def test_image_unsupported_file_handling(self, data_dir):
@@ -327,12 +337,10 @@ class TestImageUploadWithDataFiles:
             messages = builder.load(tmp_dir)
 
             assert len(messages) == 1
-            assert isinstance(messages[0]["content"], list)
-            assert len(messages[0]["content"]) == 1
-            assert 'image_url' in messages[0]["content"][0]
-            assert 'url' in messages[0]["content"][0]["image_url"]
-            assert "data:image/" in messages[0]["content"][0]["image_url"]["url"]
-            assert "base64," in messages[0]["content"][0]["image_url"]["url"]
+            image_parts = _image_parts(messages[0])
+            assert len(image_parts) == 1
+            assert "data:image/" in image_parts[0].url
+            assert "base64," in image_parts[0].url
 
     def test_image_case_insensitive_extensions(self, data_dir):
         """Test that image file extensions are handled case-insensitively."""
@@ -357,9 +365,7 @@ class TestImageUploadWithDataFiles:
             messages = builder.load(tmp_dir)
 
             assert len(messages) == 1
-            assert isinstance(messages[0]["content"], list)
-            assert len(messages[0]["content"]) == 8
-            assert all('image_url' in item for item in messages[0]["content"])
-            assert all('url' in item["image_url"] for item in messages[0]["content"])
-            assert all("data:image/" in item["image_url"]["url"] for item in messages[0]["content"])
-            assert all("base64," in item["image_url"]["url"] for item in messages[0]["content"])
+            image_parts = _image_parts(messages[0])
+            assert len(image_parts) == 8
+            assert all("data:image/" in part.url for part in image_parts)
+            assert all("base64," in part.url for part in image_parts)
