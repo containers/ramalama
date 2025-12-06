@@ -32,7 +32,7 @@ class TOMLParser:
         return self.data
 
     def parse_file(self, file_path):
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf8") as f:
             toml_string = f.read()
         self.parse(toml_string)
 

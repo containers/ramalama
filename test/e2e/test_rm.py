@@ -1,12 +1,14 @@
 import random
 import re
 from subprocess import STDOUT, CalledProcessError
+from test.conftest import xfail_if_windows
 from test.e2e.utils import check_output
 
 import pytest
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 def test_delete_non_existing_image():
     image_name = f"rm_random_image_{random.randint(0, 9999)}"
     with pytest.raises(CalledProcessError) as exc_info:

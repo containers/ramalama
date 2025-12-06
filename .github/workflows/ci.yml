@@ -462,6 +462,134 @@ jobs:
         run: |
           make e2e-tests-nocontainer
 
+  e2e-tests-windows:
+    name: E2E Tests (Windows with Podman)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Update WSL2
+        shell: pwsh
+        run: |
+          Write-Host "Updating WSL2..."
+          wsl --update
+          wsl --shutdown
+
+      - name: Install Podman
+        shell: pwsh
+        run: |
+          Write-Host "Installing Podman on Windows..."
+
+          # Download and install Podman
+          $podmanVersion = "5.7.0"
+          $installerUrl = "https://github.com/containers/podman/releases/download/v$podmanVersion/podman-$podmanVersion-setup.exe"
+          $installerPath = "$env:TEMP\podman-setup.exe"
+
+          Write-Host "Downloading Podman v$podmanVersion..."
+          Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath
+
+          Write-Host "Installing Podman..."
+          Start-Process -FilePath $installerPath -ArgumentList "/install", "/quiet", "/norestart" -Wait -NoNewWindow
+
+          # Add Podman to PATH for current session
+          $podmanPath = "$env:ProgramFiles" + "\RedHat\Podman"
+          $env:PATH = "$podmanPath;$env:PATH"
+          [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [EnvironmentVariableTarget]::Process)
+
+          # Update PATH for future steps
+          Add-Content -Path $env:GITHUB_PATH -Value "$podmanPath"
+
+          Write-Host "Verifying Podman installation..."
+          podman --version
+
+          Write-Host "Initializing Podman machine..."
+          podman machine init --now --rootful
+
+          # Wait for Podman to be ready
+          $maxAttempts = 30
+          $attempt = 0
+          while ($attempt -lt $maxAttempts) {
+              try {
+                  podman info | Out-Null
+                  Write-Host "Podman is ready!"
+                  break
+              }
+              catch {
+                  $attempt++
+                  Write-Host "Waiting for Podman to be ready (attempt $attempt/$maxAttempts)..."
+                  Start-Sleep -Seconds 2
+              }
+          }
+
+          if ($attempt -eq $maxAttempts) {
+              Write-Error "Podman failed to start"
+              exit 1
+          }
+
+          Write-Host "Podman info:"
+          podman info
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          Write-Host "Installing Python dependencies..."
+          uv pip install --system ".[dev]"
+          uv tool install tox --with tox-uv
+
+      - name: Run E2E tests
+        shell: pwsh
+        env:
+          RAMALAMA_CONTAINER_ENGINE: podman
+        run: |
+          Write-Host "Running E2E tests..."
+          # Add uv tools to PATH
+          $uvToolsPath = "$env:USERPROFILE\.local\bin"
+          $env:PATH = "$uvToolsPath;$env:PATH"
+
+          # Run tests
+          tox -e e2e -- --container-engine=podman -v
+
+      - name: Debug - Show Podman logs on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          Write-Host "=== Podman Machine List ==="
+          podman machine list
+
+          Write-Host "`n=== Podman System Connection List ==="
+          podman system connection list
+
+          Write-Host "`n=== Podman Info ==="
+          podman info || true
+
+          Write-Host "`n=== Podman Version ==="
+          podman version || true
+
+          Write-Host "`n=== Running Containers ==="
+          podman ps -a || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-e2e-test-results
+          path: |
+            test-results/
+            *.log
+          retention-days: 7
+
 # FIXME: ci script should be able to run on MAC.
 #      - name: Run ci
 #        shell: bash

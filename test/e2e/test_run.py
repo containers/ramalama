@@ -1,4 +1,5 @@
 import json
+import platform
 import re
 from subprocess import STDOUT, CalledProcessError
 from test.conftest import (
@@ -7,6 +8,7 @@ from test.conftest import (
     skip_if_docker,
     skip_if_gh_actions_darwin,
     skip_if_no_container,
+    xfail_if_windows,
 )
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
@@ -36,6 +38,7 @@ def shared_ctx_with_models(test_model):
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_no_container
 def test_basic_dry_run():
     ramalama_info = json.loads(check_output(["ramalama", "info"]))
@@ -49,12 +52,13 @@ def test_basic_dry_run():
     assert result.startswith(f"{conman} run")
     assert not re.search(r".*-t -i", result), "run without terminal"
 
-    result = check_output(f"echo \"Test\" | ramalama -q --dryrun run {TEST_MODEL}", shell=True)
+    result = check_output(f'echo "Test" | ramalama -q --dryrun run {TEST_MODEL}', shell=True)
     assert result.startswith(f"{conman} run")
     assert not re.search(r".*-t -i", result), "run without terminal"
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @pytest.mark.parametrize(
     "extra_params, pattern, config, env_vars, expected",
     [
@@ -90,36 +94,38 @@ def test_basic_dry_run():
         ,
         pytest.param(
             ["--net", "bridge", "--name", "foobar"], r".*--network bridge",
-            None, {"RAMALAMA_CONFIG": "/dev/null"}, True,
+            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
             id="check --net=bridge with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
             ["--name", "foobar"], f".*{TEST_MODEL_FULL_NAME}.*",
-            None, {"RAMALAMA_CONFIG": "/dev/null"}, True,
+            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
             id="check test_model with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
             ["-c", "4096", "--name", "foobar"], r".*--ctx-size 4096",
-            None, {"RAMALAMA_CONFIG": "/dev/null"}, True,
+            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
             id="check --ctx-size 4096 with RAMALAMA_CONFIG=/dev/null",  marks=skip_if_no_container,
         ),
         pytest.param(
             ["--cache-reuse", "512", "--name", "foobar"], r".*--cache-reuse 512", None,
-            {"RAMALAMA_CONFIG": "/dev/null"}, True,
+            {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
             id="check --cache-reuse with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
-            ["--name", "foobar"], r".*--temp 0.8", None, {"RAMALAMA_CONFIG": "/dev/null"}, True,
+            ["--name", "foobar"], r".*--temp 0.8", None, {
+                "RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'
+            }, True,
             id="check --temp default value is 0.8 with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
             ["--seed", "9876", "--name", "foobar"], r".*--seed 9876",
-            None, {"RAMALAMA_CONFIG": "/dev/null"}, True,
+            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
             id="check --seed 9876 with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
             ["--name", "foobar"], r".*--pull newer", None,
-            {"RAMALAMA_CONFIG": "/dev/null"}, True,
+            {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
             id="check pull policy with RAMALAMA_CONFIG=/dev/null", marks=[skip_if_no_container, skip_if_docker],
         ),
         pytest.param(
@@ -206,7 +212,11 @@ def test_basic_dry_run():
             id="check HIP_VISIBLE_DEVICES & HSA_OVERRIDE_GFX_VERSION env vars", marks=skip_if_no_container,
         ),
         pytest.param(
-            ["--device", "/dev/null", "--pull", "never"], r".*--device /dev/null .*", None, None, True,
+            [
+                "--device", "NUL" if platform.system() == "Windows" else '/dev/null',
+                "--pull", "never"
+            ],
+            r".*--device (NUL|/dev/null) .*", None, None, True,
             id="check --device=/dev/null", marks=skip_if_no_container),
         pytest.param(
             ["--device", "none", "--pull", "never"], r".*--device.*", None, None, False,
@@ -261,6 +271,7 @@ def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_co
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_darwin  # test is broken on MAC --no-container right now
 def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     import platform
@@ -277,12 +288,14 @@ def test_run_model_with_prompt(shared_ctx_with_models, test_model):
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 def test_run_keepalive(shared_ctx_with_models, test_model):
     ctx = shared_ctx_with_models
     ctx.check_call(["ramalama", "run", "--keepalive", "1s", test_model])
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_no_container
 @skip_if_docker
 @skip_if_gh_actions_darwin
@@ -320,6 +333,7 @@ def test_run_with_non_existing_images_new(shared_ctx_with_models, run_args, exit
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_no_container
 @skip_if_darwin
 @skip_if_docker

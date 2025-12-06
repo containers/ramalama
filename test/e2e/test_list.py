@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import datetime
+from test.conftest import xfail_if_windows
 from test.e2e.utils import RamalamaExecWorkspace
 
 import pytest
@@ -59,6 +60,7 @@ def test_json_output(shared_ctx):
 
 
 @pytest.mark.e2e
+@xfail_if_windows  # FIXME: Exception: Failed to remove the following models: ollama\library\smollm://:135m
 def test_all_images_removed(shared_ctx):
     shared_ctx.check_call(["ramalama", "rm", "-a"])
     result = shared_ctx.check_output(["ramalama", "list", "--noheading"])
