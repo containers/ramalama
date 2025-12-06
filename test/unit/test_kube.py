@@ -33,6 +33,7 @@ class Input:
         mmproj_file_exists: bool = False,
         args: Args = Args(),
         exec_args: list = None,
+        artifact: bool = False,
     ):
         self.model_name = model_name
         self.model_src_path = model_src_path
@@ -46,6 +47,7 @@ class Input:
         self.mmproj_file_exists = mmproj_file_exists
         self.args = args
         self.exec_args = exec_args if exec_args is not None else []
+        self.artifact = artifact
 
 
 DATA_PATH = Path(__file__).parent / "data" / "test_kube"
@@ -61,6 +63,7 @@ DATA_PATH = Path(__file__).parent / "data" / "test_kube"
                 model_dest_path="/mnt/models/model.file",
                 model_file_exists=True,
                 exec_args=["llama-server", "--model", "/mnt/models/model.file"],
+                artifact=False,
             ),
             "basic_hostpath.yaml",
         ),
@@ -72,6 +75,7 @@ DATA_PATH = Path(__file__).parent / "data" / "test_kube"
                 model_file_exists=True,
                 args=Args(port="8080"),
                 exec_args=["llama-server", "--model", "/mnt/models/model.file"],
+                artifact=False,
             ),
             "with_port.yaml",
         ),
@@ -83,6 +87,7 @@ DATA_PATH = Path(__file__).parent / "data" / "test_kube"
                 model_file_exists=True,
                 args=Args(port="8080:3000"),
                 exec_args=["llama-server", "--model", "/mnt/models/model.file"],
+                artifact=False,
             ),
             "with_port_mapping.yaml",
         ),
@@ -94,6 +99,7 @@ DATA_PATH = Path(__file__).parent / "data" / "test_kube"
                 model_file_exists=True,
                 args=Args(rag="registry.redhat.io/ubi9/ubi:latest"),
                 exec_args=["llama-server", "--model", "/mnt/models/model.file"],
+                artifact=False,
             ),
             "with_rag.yaml",
         ),
@@ -105,6 +111,7 @@ DATA_PATH = Path(__file__).parent / "data" / "test_kube"
                 model_file_exists=True,
                 args=Args(name="custom-name"),
                 exec_args=["llama-server", "--model", "/mnt/models/model.file"],
+                artifact=False,
             ),
             "with_custom_name.yaml",
         ),
@@ -118,6 +125,7 @@ DATA_PATH = Path(__file__).parent / "data" / "test_kube"
                 chat_template_dest_path="/mnt/models/chat_template",
                 chat_template_file_exists=True,
                 exec_args=["llama-server", "--model", "/mnt/models/model.file"],
+                artifact=False,
             ),
             "with_chat_template.yaml",
         ),
@@ -131,6 +139,7 @@ DATA_PATH = Path(__file__).parent / "data" / "test_kube"
                 mmproj_dest_path="/mnt/models/mmproj",
                 mmproj_file_exists=True,
                 exec_args=["llama-server", "--model", "/mnt/models/model.file"],
+                artifact=False,
             ),
             "with_mmproj.yaml",
         ),
@@ -159,10 +168,6 @@ def test_kube_generate(input: Input, expected_file_name: str, monkeypatch):
     # Mock version
     monkeypatch.setattr("ramalama.kube.version", lambda: "test-version")
 
-    # Mock genname to return predictable name
-    if not input.args.name:
-        monkeypatch.setattr("ramalama.kube.genname", lambda: "generated-name")
-
     # Create Kube instance and generate
     chat_template_paths = None
     if input.chat_template_src_path:
@@ -179,6 +184,7 @@ def test_kube_generate(input: Input, expected_file_name: str, monkeypatch):
         mmproj_paths,
         input.args,
         input.exec_args,
+        input.artifact,
     )
 
     generated_file = kube.generate()
@@ -219,7 +225,6 @@ def test_kube_no_port(monkeypatch):
     monkeypatch.setattr("os.path.exists", lambda path: False)
     monkeypatch.setattr("ramalama.kube.get_accel_env_vars", lambda: {})
     monkeypatch.setattr("ramalama.kube.version", lambda: "test-version")
-    monkeypatch.setattr("ramalama.kube.genname", lambda: "test-name")
 
     kube = Kube(
         "test-model",
@@ -228,6 +233,7 @@ def test_kube_no_port(monkeypatch):
         None,
         args,
         ["llama-server"],
+        False,
     )
 
     result = kube.generate()
@@ -244,7 +250,6 @@ def test_kube_no_env_vars(monkeypatch):
     monkeypatch.setattr("os.path.exists", lambda path: False)
     monkeypatch.setattr("ramalama.kube.get_accel_env_vars", lambda: {})
     monkeypatch.setattr("ramalama.kube.version", lambda: "test-version")
-    monkeypatch.setattr("ramalama.kube.genname", lambda: "test-name")
 
     args = Args()
 
@@ -255,6 +260,7 @@ def test_kube_no_env_vars(monkeypatch):
         None,
         args,
         ["llama-server"],
+        False,
     )
 
     result = kube.generate()
@@ -271,7 +277,6 @@ def test_kube_no_devices(monkeypatch):
     monkeypatch.setattr("os.path.exists", lambda path: path not in ["/dev/dri", "/dev/kfd"])
     monkeypatch.setattr("ramalama.kube.get_accel_env_vars", lambda: {})
     monkeypatch.setattr("ramalama.kube.version", lambda: "test-version")
-    monkeypatch.setattr("ramalama.kube.genname", lambda: "test-name")
 
     args = Args()
 
@@ -282,6 +287,7 @@ def test_kube_no_devices(monkeypatch):
         None,
         args,
         ["llama-server"],
+        False,
     )
 
     result = kube.generate()

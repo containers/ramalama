@@ -309,6 +309,34 @@ function skip_if_s390x() {
     fi
 }
 
+function get_podman_version() {
+    # Extract podman version as a comparable number (e.g., "5.7.0" -> 50700)
+    local version_output
+    version_output=$(podman version --format '{{.Client.Version}}' 2>/dev/null || echo "0.0.0")
+    local version_major version_minor version_patch
+    version_major=$(echo "$version_output" | cut -d. -f1)
+    version_minor=$(echo "$version_output" | cut -d. -f2)
+    version_patch=$(echo "$version_output" | cut -d. -f3 | cut -d- -f1)  # Handle versions like "5.7.0-dev"
+    
+    # Convert to integer for comparison (e.g., 5.7.0 -> 50700)
+    echo $((version_major * 10000 + version_minor * 100 + version_patch))
+}
+
+function skip_if_podman_too_old() {
+    local required_version="$1"  # e.g., "5.7.0"
+    local required_major required_minor required_patch
+    required_major=$(echo "$required_version" | cut -d. -f1)
+    required_minor=$(echo "$required_version" | cut -d. -f2)
+    required_patch=$(echo "$required_version" | cut -d. -f3)
+    
+    local required_num=$((required_major * 10000 + required_minor * 100 + required_patch))
+    local current_num=$(get_podman_version)
+    
+    if [ "$current_num" -lt "$required_num" ]; then
+        skip "Requires podman >= $required_version (found $(podman version --format '{{.Client.Version}}' 2>/dev/null || echo 'unknown'))"
+    fi
+}
+
 function is_bigendian() {
     is_s390x
 }

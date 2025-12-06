@@ -73,3 +73,31 @@ skip_if_gh_actions_darwin = pytest.mark.skipif(
 skip_if_no_huggingface_cli = pytest.mark.skipif(shutil.which("hf") is None, reason="hf cli not installed")
 
 skip_if_no_llama_bench = pytest.mark.skipif(shutil.which("llama-bench") is None, reason="llama-bench not installed")
+
+
+def get_podman_version():
+    """Get podman version as a tuple of integers (major, minor, patch)."""
+    try:
+        import subprocess
+
+        result = subprocess.run(
+            ["podman", "version", "--format", "{{.Client.Version}}"], capture_output=True, text=True, check=True
+        )
+        version_str = result.stdout.strip()
+        # Handle versions like "5.7.0-dev" by taking only the numeric part
+        version_parts = version_str.split('-')[0].split('.')
+        return tuple(int(x) for x in version_parts[:3])
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+        return (0, 0, 0)
+
+
+def is_podman_version_at_least(major, minor, patch=0):
+    """Check if podman version is at least the specified version."""
+    current = get_podman_version()
+    required = (major, minor, patch)
+    return current >= required
+
+
+skip_if_podman_too_old = pytest.mark.skipif(
+    not is_podman_version_at_least(5, 7, 0), reason="requires podman >= 5.7.0 for artifact support"
+)
