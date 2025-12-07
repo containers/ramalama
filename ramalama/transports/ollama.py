@@ -146,8 +146,8 @@ class Ollama(Transport):
 
         self.type = "Ollama"
 
-    def extract_model_identifiers(self) -> tuple[str, str, str]:
-        model_name, model_tag, model_organization = super().extract_model_identifiers()
+    def extract_model_identifiers(self, model=None) -> tuple[str, str, str]:
+        model_name, model_tag, model_organization = super().extract_model_identifiers(model)
 
         # use the ollama default namespace if no model organization has been identified
         if not model_organization:

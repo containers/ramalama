@@ -51,8 +51,8 @@ class URL(Transport):
         split = self.model.rsplit("/", 1)
         self.directory = split[0].removeprefix("/") if len(split) > 1 else ""
 
-    def extract_model_identifiers(self):
-        model_name, model_tag, model_organization = super().extract_model_identifiers()
+    def extract_model_identifiers(self, model=None):
+        model_name, model_tag, model_organization = super().extract_model_identifiers(model)
 
         parts = model_organization.split("/")
         if len(parts) > 2 and parts[-2] == "blob":

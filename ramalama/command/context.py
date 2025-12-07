@@ -2,7 +2,7 @@ import argparse
 import os
 from typing import Optional
 
-from ramalama.common import check_metal, check_nvidia
+from ramalama.common import MNT_DIR, check_metal, check_nvidia
 from ramalama.console import should_colorize
 from ramalama.transports.transport_factory import CLASS_MODEL_TYPES, New
 
@@ -123,7 +123,15 @@ class RamalamaModelContext:
     def draft_model_path(self) -> str:
         if getattr(self.model, "draft_model", None):
             assert self.model.draft_model
-            return self.model.draft_model._get_entry_model_path(self.is_container, self.should_generate, self.dry_run)
+            path = self.model.draft_model._get_entry_model_path(self.is_container, self.should_generate, self.dry_run)
+            if self.is_container and not path.startswith("oci://"):
+                # Handle container paths by inserting 'drafts' into the MNT_DIR path
+                if path.startswith(MNT_DIR):
+                    rest = path[len(MNT_DIR) :].lstrip('/')
+                    return f"{MNT_DIR}/drafts/{rest}"
+                else:
+                    return path
+            return path
         return ""
 
 
