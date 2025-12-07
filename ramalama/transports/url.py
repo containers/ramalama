@@ -59,7 +59,7 @@ class URL(Transport):
             return self.model
         return super().model_alias()
 
-    def extract_model_identifiers(self):
+    def extract_model_identifiers(self, model=None):
         if self.type == "file":
             return (
                 Path(self.model).name,
@@ -67,7 +67,7 @@ class URL(Transport):
                 normalize_host_path_for_container(str(Path(self.model).parent)).removeprefix("/"),
             )
 
-        model_name, model_tag, model_organization = super().extract_model_identifiers()
+        model_name, model_tag, model_organization = super().extract_model_identifiers(model)
 
         parts = model_organization.split("/")
         if len(parts) > 2 and parts[-2] == "blob":
