@@ -11,16 +11,18 @@ from ramalama.path_utils import create_file_link
 from ramalama.transports.base import Transport
 
 
-def in_existing_cache(model_name, model_tag):
+def in_existing_cache(organization, model_name, model_tag):
     if not available("ollama"):
         return None
     default_ollama_caches = [
         os.path.expanduser('~/.ollama/models'),
         '/usr/share/ollama/.ollama/models',
     ]
+    if ollama_models_env := os.environ.get("OLLAMA_MODELS"):
+        default_ollama_caches.insert(0, os.path.expanduser(ollama_models_env))
 
     for cache_dir in default_ollama_caches:
-        manifest_path = os.path.join(cache_dir, 'manifests', 'registry.ollama.ai', model_name, model_tag)
+        manifest_path = os.path.join(cache_dir, 'manifests', 'registry.ollama.ai', organization, model_name, model_tag)
         if os.access(manifest_path, os.R_OK):
             with open(manifest_path, 'r') as file:
                 manifest_data = json.load(file)
@@ -180,7 +182,7 @@ class Ollama(Transport):
 
         ollama_repo = OllamaRepository(name, organization)
         manifest = ollama_repo.fetch_manifest(tag)
-        ollama_cache_path = in_existing_cache(self.model_name, tag)
+        ollama_cache_path = in_existing_cache(organization, self.model_name, tag)
         is_model_in_ollama_cache = ollama_cache_path is not None
         files: list[SnapshotFile] = ollama_repo.get_file_list(tag, cached_files, is_model_in_ollama_cache)
 
