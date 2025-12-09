@@ -44,9 +44,9 @@ class GlobalModelStore:
 
                     model_path = root.replace(self.path, "").replace(os.sep, "", 1)
 
-                    parts = model_path.split("/")
+                    parts = model_path.split(os.sep)
                     model_source = parts[0]
-                    model_path_without_source = f"{os.sep}".join(parts[1:])
+                    model_path_without_source = "/".join(parts[1:])
 
                     separator = ":///" if model_source == "file" else "://"  # Use ':///' for file URLs, '://' otherwise
                     tag = ref_file_name.replace(".json", "")
