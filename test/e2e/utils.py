@@ -55,6 +55,14 @@ class RamalamaExecWorkspace:
         os.chdir(self.__prev_working_dir)
         self.close()
 
+    @property
+    def storage_path(self):
+        return Path(self.storage_dir)
+
+    @property
+    def workspace_path(self):
+        return Path(self.workspace_dir)
+
     def close(self):
         if self.workspace_dir and os.path.exists(self.workspace_dir):
             shutil.rmtree(self.workspace_dir)

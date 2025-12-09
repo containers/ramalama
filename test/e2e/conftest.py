@@ -4,13 +4,14 @@ import shutil
 import string
 import subprocess
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from test.conftest import ramalama_container_engine
 
 import bcrypt
 import pytest
+import requests
 
 
 @dataclass
@@ -90,3 +91,75 @@ def container_registry():
             )
         finally:
             subprocess.run([ramalama_container_engine, "stop", registry_name], check=False)
+
+
+@dataclass
+class OllamaServer:
+    url: str
+    models_dir: Path
+    timeout: int = 10
+    proc: subprocess.Popen = field(init=False, repr=False, default=None)
+
+    def _wait_for_server_ready(self):
+        start_time = time.time()
+        while time.time() - start_time < self.timeout:
+            try:
+                requests.get(self.url, timeout=0.5)
+                break
+            except requests.exceptions.ConnectionError:
+                time.sleep(0.5)
+        else:
+            pytest.fail("Ollama server did not start in time")
+
+        assert requests.get(self.url).text == "Ollama is running"
+
+    def _stop_process(self):
+        if self.proc:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait()
+
+    def __enter__(self):
+        env = os.environ.copy()
+        env["OLLAMA_MODELS"] = str(self.models_dir)
+        env["OLLAMA_HOST"] = self.url
+
+        self.proc = subprocess.Popen(
+            ["ollama", "serve"],
+            env=env,
+        )
+        try:
+            self._wait_for_server_ready()
+        except Exception:
+            self._stop_process()
+            raise
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._stop_process()
+
+    def pull_model(self, model_name: str):
+        env = os.environ.copy()
+        env["OLLAMA_HOST"] = self.url
+
+        subprocess.run(
+            ["ollama", "pull", model_name],
+            env=env,
+            check=True,
+            capture_output=True,
+        )
+
+
+@pytest.fixture(scope="function")
+def ollama_server():
+    with TemporaryDirectory() as temp_dir:
+        models_dir = Path(temp_dir)
+        host = "127.0.0.1"
+        port = random.randint(12000, 13000)
+        url = f"http://{host}:{port}"
+
+        with OllamaServer(url=url, models_dir=models_dir, timeout=10) as server:
+            yield server
