@@ -69,7 +69,8 @@ dev = [
     "mypy",
     "types-PyYAML",
     "types-jsonschema",
-    "tox"
+    "tox",
+    "requests"
 ]
 
 cov = [
