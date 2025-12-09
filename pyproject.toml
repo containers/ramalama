@@ -71,6 +71,7 @@ dev = [
     "types-PyYAML",
     "types-jsonschema",
     "tox",
+    "requests"
 ]
 
 cov = [
