@@ -1,9 +1,9 @@
-from sqlite3 import NotSupportedError
+from typing import Any
+
 from ramalama.chat import chat
 from ramalama.chat_providers.base import ChatProvider
-from ramalama.transports.base import TransportBase
-from typing import Any
 from ramalama.common import perror
+from ramalama.transports.base import TransportBase
 
 
 class APITransport(TransportBase):
