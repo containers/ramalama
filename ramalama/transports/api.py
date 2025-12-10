@@ -1,6 +1,9 @@
+from sqlite3 import NotSupportedError
 from ramalama.chat import chat
 from ramalama.chat_providers.base import ChatProvider
 from ramalama.transports.base import TransportBase
+from typing import Any
+from ramalama.common import perror
 
 
 class APITransport(TransportBase):
@@ -91,3 +94,6 @@ class APITransport(TransportBase):
                 f'Model "{self.model}" not available from provider "{self.provider.provider}". '
                 f"Available models: {available}"
             )
+
+    def pull(self, args: Any):
+        perror(f"{self.model} is provided over a hosted API preventing direct pulling of the model file.")
