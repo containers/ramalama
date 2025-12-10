@@ -243,7 +243,13 @@ The `ramalama.provider` table configures hosted API providers that RamaLama can 
 
 `[[ramalama.provider]]`
 
-**openai_api_key**=""
+**openai**=""
+
+Configuration settings for the openai hosted provider
+
+`[[ramalama.provider.openai]]`
+
+**api_key**=""
 
 Provider-specific API key used when invoking OpenAI-hosted transports. Overrides `RAMALAMA_API_KEY` when set.
 

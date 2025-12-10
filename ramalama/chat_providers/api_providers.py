@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections.abc import Callable
 
 from ramalama.chat_providers.base import ChatProvider
@@ -7,7 +5,7 @@ from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
 from ramalama.config import CONFIG
 
 PROVIDER_API_KEY_RESOLVERS: dict[str, Callable[[], str | None]] = {
-    "openai": lambda: CONFIG.provider.openai_api_key,
+    "openai": lambda: CONFIG.provider.openai.api_key,
 }
 
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from ramalama.chat import chat
 from ramalama.chat_providers.base import ChatProvider
 from ramalama.transports.base import TransportBase

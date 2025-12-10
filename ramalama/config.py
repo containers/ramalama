@@ -145,8 +145,13 @@ class UserConfig:
 
 
 @dataclass
+class OpenaiProviderConfig:
+    api_key: str | None = None
+
+
+@dataclass
 class ProviderConfig:
-    openai_api_key: str | None = None
+    openai: OpenaiProviderConfig = field(default_factory=OpenaiProviderConfig)
 
 
 @dataclass

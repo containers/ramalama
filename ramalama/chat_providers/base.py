@@ -1,13 +1,3 @@
-"""Common chat provider interfaces.
-
-This module defines the base classes and helper dataclasses that concrete
-providers (OpenAI, Anthropic, Azure, etc.) will extend.  The intent is to own
-all HTTP payload generation, response normalization, and streaming parsing so
-the rest of RamaLama can treat every provider uniformly.
-"""
-
-from __future__ import annotations
-
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence

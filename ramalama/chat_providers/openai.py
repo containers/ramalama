@@ -1,7 +1,3 @@
-"""OpenAI-compatible chat provider implementation."""
-
-from __future__ import annotations
-
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from functools import singledispatch
