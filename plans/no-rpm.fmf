@@ -12,7 +12,7 @@ provision:
     how: artemis
     hardware:
         gpu:
-            device-name: GK210 (Tesla K80)
+            device-name: GV100 (Tesla V100)
             vendor-name: NVIDIA
         disk:
             - size: ">= 512 GiB"
