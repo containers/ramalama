@@ -1,4 +1,4 @@
-ARG CUDA_VERSION=12.8.1
+ARG CUDA_VERSION=13.0.2
 # Base image with CUDA for compilation
 FROM docker.io/nvidia/cuda:${CUDA_VERSION}-devel-ubi9 AS builder
 
@@ -15,6 +15,6 @@ FROM docker.io/nvidia/cuda:${CUDA_VERSION}-runtime-ubi9
 COPY --from=builder /tmp/install /usr
 
 # Workaround for CUDA libraries not in the ld path in base container
-RUN echo "/usr/local/cuda-12.8/compat" > /etc/ld.so.conf.d/99_cuda_compat.conf && ldconfig
+RUN readlink -f /usr/local/cuda/compat > /etc/ld.so.conf.d/99_cuda_compat.conf && ldconfig
 
 ENTRYPOINT []
