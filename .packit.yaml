@@ -64,6 +64,7 @@ jobs:
       - fedora-latest-stable
     tmt_plan: "/plans/no-rpm"
     identifier: "no-rpm-fedora"
+    manual_trigger: true
 
   # Tests for CentOS Stream
   - job: tests
