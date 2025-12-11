@@ -18,10 +18,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Install dependencies
-        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bash codespell podman
           uv run -- make install-requirements
 
       - name: Run format check
@@ -79,32 +76,23 @@ jobs:
           ./container_build.sh build -s ramalama
 
   unit-test:
-    name: Unit Tests
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - title: ""
+            uv-options: {}
+          - title: " (python 3.10)"
+            uv-options:
+              python-version: '3.10'
+    name: Unit Tests${{ matrix.variant.title }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
-
-      - name: Install dependencies
-        shell: bash
-        run: |
-          df -h
-          sudo apt-get update
-          sudo apt-get install -y bash codespell pipx podman
-          uv run -- make install-requirements
-
-      - name: Upgrade to podman 5
-        run: |
-           set -e
-           # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
-           # Update package lists
-           sudo apt-get update
-           sudo apt-get purge firefox
-           # Install specific podman version
-           sudo apt-get upgrade -y podman crun
+        with: ${{ matrix.variant.uv-options }}
 
       - name: Run unit tests
         run: |
@@ -280,7 +268,18 @@ jobs:
            uv run -- make bats-nocontainer
 
   e2e-tests:
-    name: E2E Tests
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - title: ""
+            uv-options:
+              activate-environment: true
+          - title: " (python 3.10)"
+            uv-options:
+              python-version: '3.10'
+              activate-environment: true
+    name: E2E Tests${{ matrix.variant.title }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -288,8 +287,7 @@ jobs:
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
-        with:
-          activate-environment: true
+        with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
         shell: bash
@@ -325,7 +323,18 @@ jobs:
            make e2e-tests
 
   e2e-tests-nocontainer:
-    name: E2E Tests (--no-container)
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - title: ""
+            uv-options:
+              activate-environment: true
+          - title: " (python 3.10)"
+            uv-options:
+              python-version: '3.10'
+              activate-environment: true
+    name: E2E Tests (--no-container)${{ matrix.variant.title }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -333,8 +342,7 @@ jobs:
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
-        with:
-          activate-environment: true
+        with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
         shell: bash
@@ -366,7 +374,18 @@ jobs:
            make e2e-tests-nocontainer
 
   e2e-tests-docker:
-    name: E2E Tests (docker)
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - title: ""
+            uv-options:
+              activate-environment: true
+          - title: " (python 3.10)"
+            uv-options:
+              python-version: '3.10'
+              activate-environment: true
+    name: E2E Tests (docker)${{ matrix.variant.title }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -374,8 +393,7 @@ jobs:
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
-        with:
-          activate-environment: true
+        with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
         shell: bash
@@ -429,7 +447,18 @@ jobs:
            make e2e-tests-docker
 
   e2e-tests-macos:
-    name: E2E Tests (macos)
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - title: ""
+            uv-options:
+              activate-environment: true
+          - title: " (python 3.10)"
+            uv-options:
+              python-version: '3.10'
+              activate-environment: true
+    name: E2E Tests (MacOS)${{ matrix.variant.title }}
     runs-on: macos-15
     timeout-minutes: 60
     steps:
@@ -437,9 +466,7 @@ jobs:
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
-        with:
-          activate-environment: true
-          python-version: '<3.14'
+        with: ${{ matrix.variant.uv-options }}
 
       - name: install mlx-lm
         shell: bash
@@ -463,22 +490,27 @@ jobs:
           make e2e-tests-nocontainer
 
   e2e-tests-windows:
-    name: E2E Tests (Windows with Podman)
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - title: ""
+            uv-options:
+              activate-environment: true
+          - title: " (python 3.10)"
+            uv-options:
+              python-version: '3.10'
+              activate-environment: true
+    name: E2E Tests (Windows)${{ matrix.variant.title }}
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
       - name: Install uv
         uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
+        with: ${{ matrix.variant.uv-options }}
 
       - name: Update WSL2
         shell: pwsh
@@ -541,13 +573,6 @@ jobs:
           Write-Host "Podman info:"
           podman info
 
-      - name: Install Python dependencies
-        shell: pwsh
-        run: |
-          Write-Host "Installing Python dependencies..."
-          uv pip install --system ".[dev]"
-          uv tool install tox --with tox-uv
-
       - name: Run E2E tests
         shell: pwsh
         env:
@@ -559,7 +584,7 @@ jobs:
           $env:PATH = "$uvToolsPath;$env:PATH"
 
           # Run tests
-          tox -e e2e -- --container-engine=podman -v
+          uv run tox -e e2e -- -v
 
       - name: Debug - Show Podman logs on failure
         if: failure()
