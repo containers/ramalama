@@ -6,7 +6,7 @@ import platform
 import random
 import re
 import string
-from contextlib import chdir
+from contextlib import contextmanager
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
 from test.conftest import (
@@ -21,6 +21,17 @@ from test.conftest import (
 from test.e2e.utils import RamalamaExecWorkspace, check_output, get_full_model_name
 
 import pytest
+
+
+@contextmanager
+def chdir(path):
+    old_dir = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(old_dir)
+
 
 DRY_RUN_TEST_MODEL = "dry_run_model"
 RAMALAMA_DRY_RUN = ["ramalama", "-q", "--dryrun", "serve"]

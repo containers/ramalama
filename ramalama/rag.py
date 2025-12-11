@@ -1,12 +1,12 @@
 import os
 import subprocess
 import tempfile
-from enum import StrEnum
 from functools import partial
 from textwrap import dedent
 
 from ramalama.chat import ChatOperationalArgs
 from ramalama.common import accel_image, perror, set_accel_env_vars
+from ramalama.compat import StrEnum
 from ramalama.config import Config
 from ramalama.engine import BuildEngine, Engine, is_healthy, wait_for_healthy
 from ramalama.path_utils import get_container_mount_path
