@@ -6,12 +6,12 @@ import sys
 import time
 from abc import ABC, abstractmethod
 from http.client import HTTPConnection, HTTPException
-from tempfile import NamedTemporaryFile
 from typing import Any, Callable
 
 # Live reference for checking global vars
 import ramalama.common
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
+from ramalama.compat import NamedTemporaryFile
 from ramalama.logger import logger
 
 

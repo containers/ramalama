@@ -1,10 +1,57 @@
-from ramalama.compat import StrEnum
+import os
+
+from ramalama.compat import NamedTemporaryFile, StrEnum
+
+
+def test_NamedTemporaryFile_delete_on_context_exit():
+    try:
+        with NamedTemporaryFile() as f:
+            assert os.path.exists(f.name)
+        assert not os.path.exists(f.name)
+    finally:
+        if os.path.exists(f.name):
+            os.unlink(f.name)
+
+
+def test_NamedTemporaryFile_delete_on_close():
+    try:
+        with NamedTemporaryFile() as f:
+            assert os.path.exists(f.name)
+            f.close()
+            assert not os.path.exists(f.name)
+    finally:
+        if os.path.exists(f.name):
+            os.unlink(f.name)
+
+
+def test_NamedTemporaryFile_no_delete():
+    try:
+        with NamedTemporaryFile(delete=False) as f:
+            assert os.path.exists(f.name)
+        assert os.path.exists(f.name)
+    finally:
+        if os.path.exists(f.name):
+            os.unlink(f.name)
+
+
+def test_NamedTemporaryFile_no_delete_on_close():
+    try:
+        with NamedTemporaryFile(delete_on_close=False) as f:
+            assert os.path.exists(f.name)
+            f.close()
+            assert os.path.exists(f.name)
+        assert not os.path.exists(f.name)
+    finally:
+        if os.path.exists(f.name):
+            os.unlink(f.name)
+
 
 def test_StrEnum():
     class TestEnum(StrEnum):
         A = "a"
         B = "b"
         C = "c"
+
     assert TestEnum.A == "a"
     assert TestEnum.B == "b"
     assert TestEnum.C == "c"

@@ -1,7 +1,6 @@
 import os
 import shutil
 import subprocess
-import tempfile
 from contextlib import ExitStack
 from pathlib import Path
 from sys import platform
@@ -20,6 +19,7 @@ from ramalama.common import (
     rm_until_substring,
     verify_checksum,
 )
+from ramalama.compat import NamedTemporaryFile
 from ramalama.config import DEFAULT_IMAGE, default_config
 
 
@@ -123,7 +123,7 @@ def test_accel_image(accel_env: str, env_override, config_override: str, expecte
     monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
     monkeypatch.setattr("ramalama.common.attempt_to_use_versioned", lambda *args, **kwargs: False)
 
-    with tempfile.NamedTemporaryFile('w', delete_on_close=False) as f:
+    with NamedTemporaryFile('w', delete_on_close=False) as f:
         cmdline = []
         cmdline.extend(["run", "granite"])
 
