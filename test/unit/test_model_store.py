@@ -81,4 +81,4 @@ def test_try_convert_existing_chat_template_converts_flat_jinja(tmp_path, monkey
     assert len(captured["files"]) == 1
     converted_file = captured["files"][0]
     assert converted_file.type == SnapshotFileType.ChatTemplate
-    assert converted_file.content == wrap_template_with_messages_loop(original_template)
+    assert converted_file.content == wrap_template_with_messages_loop(original_template).encode("utf-8")

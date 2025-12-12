@@ -222,21 +222,25 @@ def populate_volume_from_image(model: Transport, args: Namespace, output_filenam
     return volume
 
 
-def generate_sha256(to_hash: str, with_sha_prefix: bool = True) -> str:
+def generate_sha256_binary(to_hash: bytes, with_sha_prefix: bool = True) -> str:
     """
-    Generates a sha256 for a string.
+    Generates a sha256 for data bytes.
 
     Args:
-    to_hash (str): The string to generate the sha256 hash for.
+    to_hash (bytes): The data to generate the sha256 hash for.
 
     Returns:
     str: Hex digest of the input appended to the prefix sha256-
     """
     h = hashlib.new("sha256")
-    h.update(to_hash.encode("utf-8"))
+    h.update(to_hash)
     if with_sha_prefix:
         return f"sha256-{h.hexdigest()}"
     return h.hexdigest()
+
+
+def generate_sha256(to_hash: str, with_sha_prefix: bool = True) -> str:
+    return generate_sha256_binary(to_hash.encode("utf-8"), with_sha_prefix)
 
 
 def verify_checksum(filename: str) -> bool:

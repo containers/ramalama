@@ -24,7 +24,7 @@ class HttpClient:
     def __init__(self):
         pass
 
-    def init(self, url, headers, output_file, show_progress, response_str=None):
+    def init(self, url, headers, output_file, show_progress, response_bytes=None):
         output_file_partial = None
         if output_file:
             output_file_partial = output_file + ".partial"
@@ -32,8 +32,8 @@ class HttpClient:
         self.file_size = self.set_resume_point(output_file_partial)
         self.urlopen(url, headers)
         self.total_to_download = int(self.response.getheader('content-length', 0))
-        if response_str is not None:
-            response_str.append(self.response.read().decode('utf-8'))
+        if response_bytes is not None:
+            response_bytes.append(self.response.read())
         else:
             out = File()
             try:
