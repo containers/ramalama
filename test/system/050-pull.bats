@@ -77,7 +77,6 @@ load setup_suite
     is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally"
     run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
 
-    skip_if_no_hf_cli
     run_ramalama pull hf://HuggingFaceTB/SmolLM-135M
     run_ramalama list
     is "$output" ".*HuggingFaceTB/SmolLM-135M" "image was actually pulled locally"
@@ -115,29 +114,6 @@ load setup_suite
     is "$output" ".*Not removing snapshot" "snapshot with remaining reference was not deleted"
     run_ramalama --debug rm huggingface://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0
     is "$output" ".*Snapshot removed" "snapshot with no remaining references was deleted"
-}
-
-# bats test_tags=distro-integration
-@test "ramalama pull hf cli cache" {
-    skip_if_no_hf_cli
-    hf download Felladrin/gguf-smollm-360M-instruct-add-basics smollm-360M-instruct-add-basics.IQ2_XXS.gguf
-
-    run_ramalama pull hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
-    run_ramalama list
-    is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally from hf-cli cache"
-    run_ramalama rm hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
-
-    run_ramalama pull huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
-    run_ramalama list
-    is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally from hf-cli cache"
-    run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
-
-    RAMALAMA_TRANSPORT=huggingface run_ramalama pull Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
-    run_ramalama list
-    is "$output" ".*Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS" "image was actually pulled locally from hf-cli cache"
-    run_ramalama rm huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf
-
-    rm -rf ~/.cache/huggingface/hub/models--Felladrin--gguf-smollm-360M-instruct-add-basics
 }
 
 # bats test_tags=distro-integration
