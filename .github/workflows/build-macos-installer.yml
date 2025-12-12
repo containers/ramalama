@@ -61,7 +61,7 @@ jobs:
           echo "Found package: $PKG_FILE"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: macos-installer
           path: ${{ steps.find_pkg.outputs.pkg_file }}
@@ -76,7 +76,7 @@ jobs:
           echo "$SHA256  ${{ steps.find_pkg.outputs.pkg_name }}" > "${{ steps.find_pkg.outputs.pkg_file }}.sha256"
 
       - name: Upload SHA256 artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: macos-installer-sha256
           path: ${{ steps.find_pkg.outputs.pkg_file }}.sha256
