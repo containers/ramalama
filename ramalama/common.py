@@ -722,7 +722,7 @@ def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_
         try:
             image = select_cuda_image(config)
         except NotImplementedError as e:
-            logger.warn(f"{e}: Falling back to default image.")
+            logger.warning(f"{e}: Falling back to default image.")
             image = config.default_image
 
     vers = minor_release()
