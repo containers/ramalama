@@ -5,4 +5,15 @@ COPY container-images/scripts/build_llama_and_whisper.sh \
      /src/
 WORKDIR /src/
 RUN ./build_llama_and_whisper.sh ramalama
+# Install ramalama to support a non-standard use-case
+COPY . /src/ramalama
+WORKDIR /src/ramalama
+RUN python3 -m ensurepip && \
+    python3 -m pip \
+      --no-cache-dir \
+      --disable-pip-version-check \
+      install \
+        --compile \
+        --prefix=/usr \
+        .
 WORKDIR /
