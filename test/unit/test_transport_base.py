@@ -250,11 +250,12 @@ class TestMLXRuntime:
             with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
                 model.run(args, cmd)
 
-        # Verify that serve_nonblocking was called (indicating server-client model)
-        mock_serve_nonblocking.assert_called_once()
-
         # Verify that chat.chat was called (parent process)
         mock_chat.assert_called_once()
+
+        # Verify that serve_nonblocking was called (indicating server-client model) and that the server_process is set
+        mock_serve_nonblocking.assert_called_once()
+        assert mock_chat.call_args[0][0].server_process == mock_serve_nonblocking.return_value
 
         # Verify args were set up correctly for server-client model
         # MLX runtime uses OpenAI-compatible endpoints under /v1
