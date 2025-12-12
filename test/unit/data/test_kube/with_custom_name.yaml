@@ -2,7 +2,7 @@
 # it into Kubernetes.
 #
 # Created with ramalama-test-version
-apiVersion: v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: custom-name
@@ -25,7 +25,7 @@ spec:
         args: ['--model', '/mnt/models/model.file']
         env:
         - name: TEST_ENV
-          value: test_value
+          value: "test_value"
 
         volumeMounts:
         - mountPath: /mnt/models/model.file
