@@ -1,19 +1,17 @@
+"""
+Data models and parsing for llama-bench JSON output.
+"""
+
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
-from collections.abc import Iterable
-from typing_extensions import runtime
 
-
-# Columns match the initial migration schema for the llama_bench table.
-TABLE_COLUMNS: list[str] = [
+# Column order for database inserts (matches llama_bench table schema)
+TABLE_COLUMNS = [
     "build_commit",
     "build_number",
-    "cuda",
-    "opencl",
-    "metal",
-    "gpu_blas",
-    "blas",
+    "backends",
     "cpu_info",
     "gpu_info",
     "model_filename",
@@ -21,38 +19,59 @@ TABLE_COLUMNS: list[str] = [
     "model_size",
     "model_n_params",
     "n_batch",
+    "n_ubatch",
     "n_threads",
-    "f16_kv",
+    "cpu_mask",
+    "cpu_strict",
+    "poll",
+    "type_k",
+    "type_v",
     "n_gpu_layers",
+    "n_cpu_moe",
+    "split_mode",
     "main_gpu",
-    "mul_mat_q",
+    "no_kv_offload",
+    "flash_attn",
+    "devices",
     "tensor_split",
+    "tensor_buft_overrides",
+    "use_mmap",
+    "embeddings",
+    "no_op_offload",
+    "no_host",
     "n_prompt",
     "n_gen",
+    "n_depth",
     "test_time",
     "avg_ns",
     "stddev_ns",
     "avg_ts",
     "stddev_ts",
+    "samples_ns",
+    "samples_ts",
 ]
 
 INT_FIELDS = {
     "build_number",
-    "cuda",
-    "opencl",
-    "metal",
-    "gpu_blas",
-    "blas",
     "model_size",
     "model_n_params",
     "n_batch",
+    "n_ubatch",
     "n_threads",
-    "f16_kv",
+    "cpu_strict",
+    "poll",
     "n_gpu_layers",
+    "n_cpu_moe",
     "main_gpu",
-    "mul_mat_q",
+    "no_kv_offload",
+    "flash_attn",
+    "use_mmap",
+    "embeddings",
+    "no_op_offload",
+    "no_host",
     "n_prompt",
     "n_gen",
+    "n_depth",
     "avg_ns",
     "stddev_ns",
 }
@@ -64,46 +83,42 @@ FLOAT_FIELDS = {
 
 
 def _as_int(value: Any) -> int | None:
-    if value is None:
+    if value is None or value == "":
         return None
     if isinstance(value, bool):
-        return int(value)
+        return 1 if value else 0
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (ValueError, TypeError):
         return None
 
 
 def _as_float(value: Any) -> float | None:
-    if value is None:
+    if value is None or value == "":
         return None
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except (ValueError, TypeError):
         return None
 
 
 @dataclass
 class TestConfiguration:
-    container_image: str
-    container_runtime: str
-    inference_engine: str
-    runtime_args: str | dict | list | None
+    """Container configuration metadata for a benchmark run."""
 
-    def as_db_tuple(self, user_device_id: int):
-        if self.runtime_args is None:
-            runtime_args = ""
-        elif isinstance(self.runtime_args, str):
-            runtime_args = self.runtime_args
-        else:
-            runtime_args = json.dumps(self.runtime_args)
+    container_image: str = ""
+    container_runtime: str = ""
+    inference_engine: str = ""
+    runtime_args: dict[str, Any] | None = None
 
+    def as_db_tuple(self, user_device_id: int) -> tuple:
+        """Return values for database insert."""
         return (
             user_device_id,
             self.container_image,
             self.container_runtime,
             self.inference_engine,
-            runtime_args,
+            json.dumps(self.runtime_args) if self.runtime_args else None,
         )
 
 
@@ -111,11 +126,7 @@ class TestConfiguration:
 class LlamaBenchResult:
     build_commit: str | None = None
     build_number: int | None = None
-    cuda: int | None = None
-    opencl: int | None = None
-    metal: int | None = None
-    gpu_blas: int | None = None
-    blas: int | None = None
+    backends: str | None = None
     cpu_info: str | None = None
     gpu_info: str | None = None
     model_filename: str | None = None
@@ -123,19 +134,36 @@ class LlamaBenchResult:
     model_size: int | None = None
     model_n_params: int | None = None
     n_batch: int | None = None
+    n_ubatch: int | None = None
     n_threads: int | None = None
-    f16_kv: int | None = None
+    cpu_mask: str | None = None
+    cpu_strict: int | None = None
+    poll: int | None = None
+    type_k: str | None = None
+    type_v: str | None = None
     n_gpu_layers: int | None = None
+    n_cpu_moe: int | None = None
+    split_mode: str | None = None
     main_gpu: int | None = None
-    mul_mat_q: int | None = None
+    no_kv_offload: int | None = None
+    flash_attn: int | None = None
+    devices: str | None = None
     tensor_split: str | None = None
+    tensor_buft_overrides: str | None = None
+    use_mmap: int | None = None
+    embeddings: int | None = None
+    no_op_offload: int | None = None
+    no_host: int | None = None
     n_prompt: int | None = None
     n_gen: int | None = None
+    n_depth: int | None = None
     test_time: str | None = None
     avg_ns: int | None = None
     stddev_ns: int | None = None
     avg_ts: float | None = None
     stddev_ts: float | None = None
+    samples_ns: str | None = None  # JSON array stored as string
+    samples_ts: str | None = None  # JSON array stored as string
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "LlamaBenchResult":
@@ -143,7 +171,14 @@ class LlamaBenchResult:
         kwargs: dict[str, Any] = {}
         for col in TABLE_COLUMNS:
             raw_val = payload.get(col)
-            if col in FLOAT_FIELDS:
+
+            # Convert arrays to JSON strings
+            if col in ("samples_ns", "samples_ts"):
+                if isinstance(raw_val, list):
+                    kwargs[col] = json.dumps(raw_val)
+                else:
+                    kwargs[col] = raw_val
+            elif col in FLOAT_FIELDS:
                 kwargs[col] = _as_float(raw_val)
             elif col in INT_FIELDS:
                 kwargs[col] = _as_int(raw_val)
@@ -159,27 +194,26 @@ class LlamaBenchResult:
         return {col: getattr(self, col) for col in TABLE_COLUMNS}
 
 
-def parse_jsonl(stream: str) -> list[LlamaBenchResult]:
-    """Parse newline-delimited JSON into a list of LlamaBenchResult objects."""
-    results: list[LlamaBenchResult] = []
-    for line in stream.splitlines():
-        line = line.strip()
-        if not line:
+def parse_jsonl(content: str) -> list[LlamaBenchResult]:
+    """Parse newline-delimited JSON benchmark results."""
+    results = []
+    for line in content.strip().split("\n"):
+        if not line.strip():
             continue
-        payload = json.loads(line)
-        results.append(LlamaBenchResult.from_payload(payload))
+        result = json.loads(line)
+        results.append(LlamaBenchResult.from_payload(result))
     return results
 
 
-def parse_json(blob: str) -> list[LlamaBenchResult]:
-    """Parse a JSON array or single object into LlamaBenchResult objects."""
-    payload = json.loads(blob)
-    if isinstance(payload, list):
-        return [LlamaBenchResult.from_payload(item) for item in payload]
-    return [LlamaBenchResult.from_payload(payload)]
+def parse_json(content: str) -> list[LlamaBenchResult]:
+    """Parse JSON array or single object benchmark results."""
+    data = json.loads(content)
+    if not isinstance(data, list):
+        data = [data]
+    return [LlamaBenchResult.from_payload(result) for result in data]
 
 
-def iter_db_rows(results: Iterable[LlamaBenchResult]) -> Iterable[tuple[Any, ...]]:
-    """Yield database-ready tuples from an iterable of results."""
+def iter_db_rows(results: list[LlamaBenchResult], config_id: int):
+    """Yield (config_id, *result) tuples for database insertion."""
     for result in results:
-        yield result.as_db_tuple()
+        yield (config_id, *result.as_db_tuple())

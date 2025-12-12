@@ -148,7 +148,7 @@ def _current_device_info() -> tuple[str, str, str, str, str]:
     operating_system = f"{platform.system()} {platform.release()}"
     cpu_info = platform.processor() or platform.machine()
     gpu_info = ""
-    accel = info["Accelerator"] or "none"
+    accel = info["Accelerator"] or "cpu"
 
     if isinstance(engine_info, dict):
         hostname = engine_info.get("Name", hostname) or hostname
@@ -237,3 +237,38 @@ class DBManager:
         if rowid is None:
             raise Exception("Should never reach here")
         return int(rowid)
+
+    def list_benchmarks(self, limit: int | None = None, offset: int = 0):
+        """List benchmark results with device and configuration info."""
+        query = """
+            SELECT
+                lb.id,
+                lb.model_filename,
+                lb.model_size,
+                lb.model_n_params,
+                lb.n_prompt,
+                lb.n_gen,
+                lb.test_time,
+                lb.avg_ts as tokens_per_sec,
+                lb.stddev_ts as stddev_tokens_per_sec,
+                cc.inference_engine,
+                cc.container_runtime,
+                cc.runtime_args,
+                ud.hostname,
+                ud.cpu_info,
+                ud.gpu_info,
+                lb.backends as accel,
+                datetime(lb.created_at) as created_at
+            FROM llama_bench lb
+            JOIN container_configuration cc ON lb.test_configuration_id = cc.id
+            JOIN user_device ud ON cc.user_device_id = ud.id
+            ORDER BY lb.created_at DESC, lb.id DESC
+        """
+
+        if limit:
+            query += f" LIMIT {limit} OFFSET {offset}"
+
+        with get_conn(self.db_path) as connection:
+            cursor = connection.cursor()
+            cursor.execute(query)
+            return cursor.fetchall()

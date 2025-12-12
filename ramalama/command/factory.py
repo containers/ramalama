@@ -17,7 +17,6 @@ def is_truthy(resolved_stmt: str) -> bool:
 
 
 class CommandFactory:
-
     def __init__(self, spec_files: dict[str, Path], schema_files: dict[str, Path]):
         self.spec_files = spec_files
         self.schema_files = schema_files
@@ -80,13 +79,11 @@ class CommandFactory:
         if not ("{{" in stmt and "}}" in stmt):
             return stmt
 
-        return jinja2.Template(stmt).render(
-            {
-                "args": ctx.args,
-                "model": ctx.model,
-                "host": ctx.host,
-            }
-        )
+        return jinja2.Template(stmt).render({
+            "args": ctx.args,
+            "model": ctx.model,
+            "host": ctx.host,
+        })
 
     @staticmethod
     def validate_spec(spec_data: dict, schema: dict):

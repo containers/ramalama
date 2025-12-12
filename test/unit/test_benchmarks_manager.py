@@ -57,7 +57,7 @@ def test_save_llama_bench_result_inserts_all(tmp_path, monkeypatch):
         container_image="quay.io/ramalama/ramalama:latest",
         container_runtime="docker",
         inference_engine="llama.cpp",
-        runtime_args="--threads 2",
+        runtime_args={"threads": 2},
     )
     res = llama_bench.LlamaBenchResult(
         build_commit="abc123",
@@ -92,7 +92,7 @@ def test_save_llama_bench_result_inserts_all(tmp_path, monkeypatch):
         "quay.io/ramalama/ramalama:latest",
         "docker",
         "llama.cpp",
-        "--threads 2",
+        '{"threads": 2}',
     )
 
     cur.execute(

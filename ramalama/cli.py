@@ -283,6 +283,7 @@ def configure_subcommands(parser):
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
     bench_parser(subparsers)
+    benchmarks_parser(subparsers)
     chat_parser(subparsers)
     containers_parser(subparsers)
     convert_parser(subparsers)
@@ -491,8 +492,147 @@ def add_network_argument(parser, dflt="none"):
 def bench_parser(subparsers):
     parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
     runtime_options(parser, "bench")
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
+    parser.add_argument("MODEL", completer=local_models)
+    parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="output format (table or json)",
+    )
     parser.set_defaults(func=bench_cli)
+
+
+def benchmarks_parser(subparsers):
+    parser = subparsers.add_parser("benchmarks", help="manage and view benchmark results")
+    parser.set_defaults(func=lambda _: parser.print_help())
+
+    benchmarks_subparsers = parser.add_subparsers(dest="benchmarks_command")
+
+    list_parser = benchmarks_subparsers.add_parser("list", help="list benchmark results")
+    list_parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="limit number of results to display",
+    )
+    list_parser.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help="offset for pagination",
+    )
+    list_parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="output format (table or json)",
+    )
+    list_parser.set_defaults(func=benchmarks_list_cli)
+
+
+def benchmarks_list_cli(args):
+    """Display a list of benchmark results from the database."""
+    from ramalama.benchmarks.manager import DBManager
+    from ramalama.benchmarks.errors import MissingDBPathError
+
+    db_path = CONFIG.benchmarks.db_path
+    if not db_path:
+        print("Error: No benchmarks database path configured")
+        print("Set RAMALAMA__BENCHMARKS_DB_PATH or configure benchmarks.db_path in ramalama.conf")
+        sys.exit(1)
+
+    try:
+        db = DBManager(db_path)
+        results = db.list_benchmarks(limit=args.limit, offset=args.offset)
+
+        if not results:
+            print("No benchmark results found")
+            return
+
+        if args.format == "json":
+            import json
+            # Convert sqlite Row objects to dicts
+            output = []
+            for row in results:
+                output.append(dict(row))
+            print(json.dumps(output, indent=2))
+        else:
+            # Table format
+            _print_benchmarks_table(results)
+
+    except MissingDBPathError:
+        print("Error: RAMALAMA__BENCHMARKS_DB_PATH not configured")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading benchmarks: {e}")
+        if args.debug:
+            raise
+        sys.exit(1)
+
+
+def _print_benchmarks_table(results):
+    """Print benchmark results in a formatted table."""
+    # Calculate column widths
+    headers = ["ID", "Model", "Size", "Params", "Test", "Tokens/sec", "Engine", "Device", "Date"]
+    col_widths = [len(h) for h in headers]
+
+    # Process results to get max widths
+    rows = []
+    for row in results:
+        model = (row["model_filename"] or "")[:40]  # Truncate long names
+        size_mb = f"{row['model_size'] / 1024 / 1024:.0f}M" if row["model_size"] else "-"
+        params = f"{row['model_n_params'] / 1e9:.1f}B" if row["model_n_params"] else "-"
+
+        # Format test type: PP512 (prompt processing) or TG128 (text generation)
+        try:
+            n_prompt = row["n_prompt"] or 0
+        except (KeyError, TypeError):
+            n_prompt = 0
+        try:
+            n_gen = row["n_gen"] or 0
+        except (KeyError, TypeError):
+            n_gen = 0
+        if n_prompt > 0 and n_gen == 0:
+            test_type = f"PP{n_prompt}"
+        elif n_gen > 0 and n_prompt == 0:
+            test_type = f"TG{n_gen}"
+        elif n_prompt > 0 and n_gen > 0:
+            test_type = f"PP{n_prompt}+TG{n_gen}"
+        else:
+            test_type = "-"
+
+        tokens_sec = f"{row['tokens_per_sec']:.1f}" if row["tokens_per_sec"] else "-"
+        engine = (row["inference_engine"] or "")[:15]
+        device = (row["accel"] or "cpu")[:10]
+        date = (row["created_at"] or "")[:19]  # YYYY-MM-DD HH:MM:SS
+
+        row_data = [
+            str(row["id"]),
+            model,
+            size_mb,
+            params,
+            test_type,
+            tokens_sec,
+            engine,
+            device,
+            date,
+        ]
+        rows.append(row_data)
+
+        # Update column widths
+        for i, val in enumerate(row_data):
+            col_widths[i] = max(col_widths[i], len(val))
+
+    # Print header
+    header_row = " | ".join(h.ljust(col_widths[i]) for i, h in enumerate(headers))
+    print(header_row)
+    print("-" * len(header_row))
+
+    # Print rows
+    for row_data in rows:
+        print(" | ".join(val.ljust(col_widths[i]) for i, val in enumerate(row_data)))
+
+    print(f"\nTotal: {len(results)} result(s)")
 
 
 def containers_parser(subparsers):
