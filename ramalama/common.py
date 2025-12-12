@@ -122,18 +122,14 @@ def quoted(arr) -> str:
 
 def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
     logger.debug(f"exec_cmd: {quoted(args)}")
-    if stdout2null:
-        with open(os.devnull, 'w') as devnull:
-            os.dup2(devnull.fileno(), sys.stdout.fileno())
 
-    if stderr2null:
-        with open(os.devnull, 'w') as devnull:
-            os.dup2(devnull.fileno(), sys.stderr.fileno())
-
+    stdout_target = subprocess.DEVNULL if stdout2null else None
+    stderr_target = subprocess.DEVNULL if stderr2null else None
     try:
-        return os.execvp(args[0], args)
-    except Exception:
-        perror(f"os.execvp({args[0]}, {args})")
+        result = subprocess.run(args, stdout=stdout_target, stderr=stderr_target, check=False)
+        sys.exit(result.returncode)
+    except Exception as e:
+        perror(f"Failed to execute {quoted(args)}: {e}")
         raise
 
 

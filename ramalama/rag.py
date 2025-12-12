@@ -177,25 +177,33 @@ class RagTransport(OCI):
         args.rag = None
         super()._handle_container_chat(args, pid)
 
-    def _start_model(self, args, cmd: list[str]):
-        pid = self.imodel._fork_and_serve(args, self.model_cmd)
-        if pid:
-            _, status = os.waitpid(pid, 0)
-            if status != 0:
-                raise subprocess.CalledProcessError(
-                    os.waitstatus_to_exitcode(status),
-                    " ".join(cmd),
-                )
-        return pid
-
     def serve(self, args, cmd: list[str]):
-        pid = self._start_model(args.model_args, cmd)
-        if pid:
-            super().serve(args, cmd)
+        args.model_args.name = self.imodel.get_container_name(args.model_args)
+        process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd)
+        if not args.dryrun:
+            if process and process.wait() != 0:
+                raise subprocess.CalledProcessError(
+                    process.returncode,
+                    " ".join(self.model_cmd),
+                )
+        super().serve(args, cmd)
 
     def run(self, args, cmd: list[str]):
         args.model_args.name = self.imodel.get_container_name(args.model_args)
-        super().run(args, cmd)
+        process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd)
+        rag_process = self.serve_nonblocking(args, cmd)
+        if not args.dryrun:
+            if process and process.wait() != 0:
+                raise subprocess.CalledProcessError(
+                    process.returncode,
+                    " ".join(self.model_cmd),
+                )
+            if rag_process and rag_process.wait() != 0:
+                raise subprocess.CalledProcessError(
+                    rag_process.returncode,
+                    " ".join(cmd),
+                )
+            return self._connect_and_chat(args, process)
 
     def wait_for_healthy(self, args):
         self.imodel.wait_for_healthy(args.model_args)
