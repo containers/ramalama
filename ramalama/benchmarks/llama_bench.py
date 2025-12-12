@@ -4,7 +4,6 @@ Data models and parsing for llama-bench JSON output.
 
 import json
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 # Column order for database inserts (matches llama_bench table schema)

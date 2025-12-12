@@ -1,7 +1,5 @@
 import sqlite3
 
-import pytest
-
 from ramalama.benchmarks import llama_bench, manager
 
 

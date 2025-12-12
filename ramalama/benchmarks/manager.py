@@ -1,21 +1,21 @@
 import logging
-import json
-from pathlib import Path
-from sqlite3 import Cursor, Connection
-import sqlite3
-from contextlib import contextmanager
-from ramalama.config import CONFIG, load_file_config, get_inference_spec_files, get_inference_schema_files
-from ramalama.log_levels import LogLevel
-from collections.abc import Generator
-from ramalama.benchmarks import llama_bench
-from ramalama.benchmarks.errors import MissingDBPathError
-from ramalama.common import get_accel, accel_image
-from ramalama import engine
-from ramalama.rag import rag_image
-from ramalama.version import version
-from types import SimpleNamespace
 import platform
 import socket
+import sqlite3
+from collections.abc import Generator
+from contextlib import contextmanager
+from pathlib import Path
+from sqlite3 import Connection, Cursor
+from types import SimpleNamespace
+
+from ramalama import engine
+from ramalama.benchmarks import llama_bench
+from ramalama.benchmarks.errors import MissingDBPathError
+from ramalama.common import accel_image, get_accel
+from ramalama.config import CONFIG, get_inference_schema_files, get_inference_spec_files, load_file_config
+from ramalama.log_levels import LogLevel
+from ramalama.rag import rag_image
+from ramalama.version import version
 
 logger = logging.getLogger("ramalama.benchmarks")
 logger.setLevel(CONFIG.log_level or LogLevel.WARNING)
@@ -29,11 +29,13 @@ def get_conn(db_path: Path | str) -> Generator[Connection, None, None]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.executescript("""
+    cur.executescript(
+        """
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = NORMAL;
     PRAGMA foreign_keys = ON;
-    """)
+    """
+    )
     try:
         yield conn
         conn.commit()
@@ -64,10 +66,12 @@ class DBMigrationManager:
         self.cursor = cur
 
     def has_schema(self) -> bool:
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             SELECT name FROM sqlite_master
             WHERE type='table' AND name='meta'
-         """)
+         """
+        )
         return self.cursor.fetchone() is not None
 
     def get_schema_version(self) -> int:

@@ -507,7 +507,8 @@ class Transport(TransportBase):
             result = self._run_bench_command(cmd, args)
 
             import json
-            from ramalama.benchmarks.llama_bench import parse_jsonl, parse_json
+
+            from ramalama.benchmarks.llama_bench import parse_json, parse_jsonl
             from ramalama.config import CONFIG
 
             try:
@@ -531,6 +532,7 @@ class Transport(TransportBase):
             if db_path and not getattr(args, "no_save", False):
                 try:
                     from ramalama.benchmarks.manager import DBManager
+
                     config = self._get_test_configuration(args, cmd)
                     db = DBManager(db_path)
                     for bench_result in bench_results:

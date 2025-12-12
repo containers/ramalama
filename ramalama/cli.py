@@ -503,7 +503,13 @@ def bench_parser(subparsers):
 
 
 def benchmarks_parser(subparsers):
-    parser = subparsers.add_parser("benchmarks", help="manage and view benchmark results")
+    db_path = CONFIG.benchmarks.db_path
+    epilog = f"Database location: {db_path}" if db_path else "Database location: not configured"
+    parser = subparsers.add_parser(
+        "benchmarks",
+        help="manage and view benchmark results",
+        epilog=epilog,
+    )
     parser.set_defaults(func=lambda _: parser.print_help())
 
     benchmarks_subparsers = parser.add_subparsers(dest="benchmarks_command")
@@ -532,8 +538,8 @@ def benchmarks_parser(subparsers):
 
 def benchmarks_list_cli(args):
     """Display a list of benchmark results from the database."""
-    from ramalama.benchmarks.manager import DBManager
     from ramalama.benchmarks.errors import MissingDBPathError
+    from ramalama.benchmarks.manager import DBManager
 
     db_path = CONFIG.benchmarks.db_path
     if not db_path:
@@ -551,6 +557,7 @@ def benchmarks_list_cli(args):
 
         if args.format == "json":
             import json
+
             # Convert sqlite Row objects to dicts
             output = []
             for row in results:

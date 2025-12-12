@@ -79,11 +79,13 @@ class CommandFactory:
         if not ("{{" in stmt and "}}" in stmt):
             return stmt
 
-        return jinja2.Template(stmt).render({
-            "args": ctx.args,
-            "model": ctx.model,
-            "host": ctx.host,
-        })
+        return jinja2.Template(stmt).render(
+            {
+                "args": ctx.args,
+                "model": ctx.model,
+                "host": ctx.host,
+            }
+        )
 
     @staticmethod
     def validate_spec(spec_data: dict, schema: dict):
