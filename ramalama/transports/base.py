@@ -401,14 +401,9 @@ class Transport(TransportBase):
         # Use subprocess.Popen for all platforms
         # Prepare args for the server
         args.host = CONFIG.host
-        args.generate = ""
         args.detach = True
 
         set_accel_env_vars()
-
-        if args.generate:
-            self.generate_container_config(args, cmd)
-            return None
 
         if args.container:
             # For container mode, set up the container and start it with subprocess
