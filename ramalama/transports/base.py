@@ -647,7 +647,11 @@ class Transport(TransportBase):
             self.generate_container_config(args, cmd)
             return
 
-        self.execute_command(cmd, args)
+        try:
+            self.execute_command(cmd, args)
+        except Exception as e:
+            self._cleanup_server_process(args.server_process)
+            raise e
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
         quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
