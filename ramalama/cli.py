@@ -60,6 +60,8 @@ from ramalama.version import print_version, version
 shortnames = Shortnames()
 
 GENERATE_OPTIONS = ["quadlet", "kube", "quadlet/kube", "compose"]
+LIST_SORT_FIELD_OPTIONS = ["size", "modified", "name"]
+LIST_SORT_ORDER_OPTIONS = ["desc", "asc"]
 
 
 class ParsedGenerateInput:
@@ -524,6 +526,20 @@ def list_parser(subparsers):
     parser.add_argument("--all", dest="all", action="store_true", help="include partially downloaded AI Models")
     parser.add_argument("--json", dest="json", action="store_true", help="print using json")
     parser.add_argument("-n", "--noheading", dest="noheading", action="store_true", help="do not display heading")
+    parser.add_argument(
+        "--sort",
+        dest="sort",
+        choices=LIST_SORT_FIELD_OPTIONS,
+        default="name",
+        help="field used to sort the AI Models",
+    )
+    parser.add_argument(
+        "--order",
+        dest="order",
+        choices=LIST_SORT_ORDER_OPTIONS,
+        default="desc",
+        help="order used to sort the AI Models",
+    )
     parser.set_defaults(func=list_cli)
 
 
@@ -544,6 +560,7 @@ def _list_models_from_store(args):
     ret = []
     local_timezone = datetime.now().astimezone().tzinfo
 
+    # map the listed models to the proper output structure for display
     for model, files in models.items():
         is_partially_downloaded = any(file.is_partial for file in files)
         if not args.all and is_partially_downloaded:
@@ -563,6 +580,9 @@ def _list_models_from_store(args):
                 "size": size_sum,
             }
         )
+
+    # sort the listed models according to the desired order
+    ret.sort(key=lambda entry: entry[args.sort], reverse=args.order == "desc")
 
     return ret
 
