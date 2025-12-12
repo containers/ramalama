@@ -326,11 +326,21 @@ def load_cdi_config(spec_dirs: list[str]) -> CDI_RETURN_TYPE | None:
     return None
 
 
+def get_podman_machine_cdi_config() -> CDI_RETURN_TYPE | None:
+    cdi_config = run_cmd(["podman", "machine", "ssh", "cat", "/etc/cdi/nvidia.yaml"], encoding="utf-8").stdout.strip()
+    if cdi_config:
+        return yaml.safe_load(cdi_config)
+    return None
+
+
 def find_in_cdi(devices: list[str]) -> tuple[list[str], list[str]]:
     # Attempts to find a CDI configuration for each device in devices
     # and returns a list of configured devices and a list of
     # unconfigured devices.
-    cdi = load_cdi_config(['/var/run/cdi', '/etc/cdi'])
+    if platform.system() == "Windows":
+        cdi = get_podman_machine_cdi_config()
+    else:
+        cdi = load_cdi_config(['/var/run/cdi', '/etc/cdi'])
     try:
         cdi_devices = cdi.get("devices", []) if cdi else []
         cdi_device_names = [name for cdi_device in cdi_devices if (name := cdi_device.get("name"))]
