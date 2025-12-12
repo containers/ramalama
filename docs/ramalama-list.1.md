@@ -25,6 +25,12 @@ print Model list in json format
 #### **--noheading**, **-n**
 do not print heading
 
+#### **--order**
+order used to sort the AI Models. Valid options are 'asc' and 'desc'
+
+#### **--sort**
+field used to sort the AI Models. Valid options are 'name', 'size', and 'modified'.
+
 ## EXAMPLES
 
 List all Models downloaded to users homedir
