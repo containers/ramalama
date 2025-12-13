@@ -21,6 +21,9 @@ def convert_from_human_readable_size(input) -> float:
 
 
 def list_artifacts(args: EngineArgType):
+    if args.engine is None:
+        raise ValueError("Cannot list artifacts without a provided engine like podman or docker.")
+
     if args.engine == "docker":
         return []
 
@@ -82,6 +85,9 @@ def engine_supports_manifest_attributes(engine) -> bool:
 
 
 def list_manifests(args: EngineArgType):
+    if args.engine is None:
+        raise ValueError("Cannot list manifests without a provided engine like podman or docker.")
+
     if args.engine == "docker":
         return []
 

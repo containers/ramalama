@@ -3,7 +3,9 @@ import subprocess
 import tempfile
 from functools import partial
 from textwrap import dedent
+from typing import Literal, cast
 
+from ramalama.arg_types import RagArgsType, ServeRunArgsType
 from ramalama.chat import ChatOperationalArgs
 from ramalama.common import accel_image, perror, set_accel_env_vars
 from ramalama.compat import StrEnum
@@ -149,7 +151,7 @@ class RagTransport(OCI):
 
     type: str = "Model+RAG"
 
-    def __init__(self, imodel: Transport, cmd: list[str], args):
+    def __init__(self, imodel: Transport, cmd: list[str], args: RagArgsType):
         super().__init__(args.rag, args.store, args.engine)
         self.imodel = imodel
         self.model_cmd = cmd
@@ -163,21 +165,22 @@ class RagTransport(OCI):
             return os.path.exists(self.model)
         return super().exists()
 
-    def new_engine(self, args):
+    def new_engine(self, args: RagArgsType) -> "RagEngine":
         return RagEngine(args, sourcetype=self.kind)
 
-    def setup_mounts(self, args):
+    def setup_mounts(self, args: RagArgsType) -> None:
         pass
 
-    def chat_operational_args(self, args):
+    def chat_operational_args(self, args: RagArgsType) -> ChatOperationalArgs:
         return ChatOperationalArgs(name=args.model_args.name)
 
-    def _handle_container_chat(self, args, pid):
+    def _handle_container_chat(self, args: RagArgsType, server_process: int) -> Literal[0]:
         # Clear args.rag so RamaLamaShell doesn't treat it as local data for RAG context
-        args.rag = None
-        super()._handle_container_chat(args, pid)
+        chat_args = cast(ServeRunArgsType, args)
+        chat_args.rag = None
+        return super()._handle_container_chat(chat_args, server_process)
 
-    def serve(self, args, cmd: list[str]):
+    def serve(self, args: RagArgsType, cmd: list[str]):
         args.model_args.name = self.imodel.get_container_name(args.model_args)
         process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd)
         if not args.dryrun:
@@ -193,7 +196,7 @@ class RagTransport(OCI):
                 args.model_args.ignore = True
                 stop_container(args.model_args, args.model_args.name, remove=True)
 
-    def run(self, args, cmd: list[str]):
+    def run(self, args: RagArgsType, cmd: list[str]):
         args.model_args.name = self.imodel.get_container_name(args.model_args)
         process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd)
         rag_process = self.serve_nonblocking(args, cmd)
@@ -213,6 +216,6 @@ class RagTransport(OCI):
             )
         return self._connect_and_chat(args, rag_process)
 
-    def wait_for_healthy(self, args):
+    def wait_for_healthy(self, args: RagArgsType) -> None:
         self.imodel.wait_for_healthy(args.model_args)
         wait_for_healthy(args, partial(is_healthy, model_name=f"{self.imodel.model_name}+rag"))

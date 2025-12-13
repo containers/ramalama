@@ -9,7 +9,7 @@ import sys
 import urllib.error
 from datetime import datetime, timezone
 from textwrap import dedent
-from typing import get_args
+from typing import Any, get_args
 from urllib.parse import urlparse
 
 # if autocomplete doesn't exist, just do nothing, don't break
@@ -151,7 +151,7 @@ class ArgumentParserWithDefaults(argparse.ArgumentParser):
                 kwargs['help'] += f' (default: {default})'
         action = super().add_argument(*args, **kwargs)
         if completer is not None:
-            action.completer = completer
+            action.completer = completer  # type: ignore[attr-defined]
         return action
 
 
@@ -320,7 +320,7 @@ def parse_arguments(parser):
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
 
-    def map_https_to_transport(input: str) -> str | None:
+    def map_https_to_transport(input: str) -> str:
         if input.startswith("https://") or input.startswith("http://"):
             url = urlparse(input)
             # detect if the whole repo is defined or a specific file
@@ -480,7 +480,7 @@ def bench_cli(args):
     model.bench(args, assemble_command(args))
 
 
-def add_network_argument(parser, dflt="none"):
+def add_network_argument(parser, dflt: str | None = "none"):
     # Disable network access by default, and give the option to pass any supported network mode into
     # podman if needed:
     # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
@@ -585,13 +585,11 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append(
-            {
-                "name": f"{model} (partial)" if is_partially_downloaded else model,
-                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-                "size": size_sum,
-            }
-        )
+        ret.append({
+            "name": f"{model} (partial)" if is_partially_downloaded else model,
+            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+            "size": size_sum,
+        })
 
     # sort the listed models according to the desired order
     ret.sort(key=lambda entry: entry[args.sort], reverse=args.order == "desc")
@@ -604,7 +602,7 @@ def _list_models(args):
 
 
 def info_cli(args):
-    info = {
+    info: dict[str, Any] = {
         "Accelerator": get_accel(),
         "Config": load_file_config(),
         "Engine": {
@@ -1360,6 +1358,9 @@ def version_parser(subparsers):
 
 class AddPathOrUrl(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
+        if not isinstance(values, list):
+            raise ValueError("AddPathOrUrl can only be used with the settings `nargs='+'`")
+
         setattr(namespace, self.dest, [])
         namespace.urls = []
         for value in values:
@@ -1556,7 +1557,7 @@ def inspect_cli(args):
 
 
 def main() -> None:
-    def eprint(e, exit_code):
+    def eprint(e: Exception | str, exit_code: int):
         try:
             if args.debug:
                 logger.exception(e)
@@ -1587,8 +1588,8 @@ def main() -> None:
     except FileNotFoundError as e:
         eprint(e, errno.ENOENT)
     except HelpException:
-        parser.print_help()
-    except (IsADirectoryError, ConnectionError, IndexError, KeyError, ValueError, NoRefFileFound) as e:
+        parser.print_help()  # type: ignore[possibly-unbound]
+    except (ConnectionError, IndexError, KeyError, ValueError, NoRefFileFound) as e:
         eprint(e, errno.EINVAL)
     except NotImplementedError as e:
         eprint(e, errno.ENOSYS)
@@ -1605,12 +1606,11 @@ def main() -> None:
     except ParseError as e:
         eprint(f"Failed to parse model: {e}", errno.EINVAL)
     except SafetensorModelNotSupported:
-        eprint(
-            f"""Safetensor models are not supported. Please convert it to GGUF via:
-$ ramalama convert --gguf=<quantization> {args.model} <oci-name>
-$ ramalama run <oci-name>
-""",
-            errno.ENOTSUP,
+        message = (
+            "Safetensor models are not supported. Please convert it to GGUF via:"
+            f"$ ramalama convert --gguf=<quantization> {args.model} <oci-name>"  # type: ignore[possibly-unbound]
+            "$ ramalama run <oci-name>"
         )
+        eprint(message, errno.ENOTSUP)
     except NoGGUFModelFileFound:
-        eprint(f"No GGUF model file found for downloaded model '{args.model}'", errno.ENOENT)
+        eprint(f"No GGUF model file found for downloaded model '{args.model}'", errno.ENOENT)  # type: ignore
