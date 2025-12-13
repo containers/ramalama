@@ -6,7 +6,10 @@ import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+if TYPE_CHECKING:
+    from ramalama.chat import ChatOperationalArgs
 
 import ramalama.chat as chat
 from ramalama.common import (
@@ -428,7 +431,7 @@ class Transport(TransportBase):
             chat.chat(args)
             return 0
 
-    def chat_operational_args(self, args):
+    def chat_operational_args(self, args) -> "ChatOperationalArgs | None":
         return None
 
     def wait_for_healthy(self, args):
@@ -708,8 +711,12 @@ class Transport(TransportBase):
 
 
 def compute_ports(exclude: list[str] | None = None) -> list[int]:
-    excluded = exclude and set(map(int, exclude)) or set()
-    ports = list(sorted(set(range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1)) - excluded))
+    excluded = set() if exclude is None else set(map(int, exclude))
+    ports = [p for p in range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1) if p not in excluded]
+
+    if not ports:
+        raise ValueError("All ports in the DEFAULT_PORT_RANGE were exhausted by the exclusion list.")
+
     first_port = ports.pop(0)
     random.shuffle(ports)
     # try always the first port before the randomized others

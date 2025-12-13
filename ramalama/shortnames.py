@@ -53,5 +53,5 @@ class Shortnames:
     def _strip_quotes(self, s) -> str:
         return s.strip("'\"")
 
-    def resolve(self, model) -> str | None:
+    def resolve(self, model: str) -> str:
         return self.shortnames.get(model, model)
