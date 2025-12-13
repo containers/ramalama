@@ -1607,9 +1607,9 @@ def main() -> None:
         eprint(f"Failed to parse model: {e}", errno.EINVAL)
     except SafetensorModelNotSupported:
         message = (
-            "Safetensor models are not supported. Please convert it to GGUF via:"
-            f"$ ramalama convert --gguf=<quantization> {args.model} <oci-name>"  # type: ignore[possibly-unbound]
-            "$ ramalama run <oci-name>"
+            "Safetensor models are not supported. Please convert it to GGUF via:\n"
+            f"$ ramalama convert --gguf=<quantization> {args.model} <oci-name>\n"  # type: ignore[possibly-unbound]
+            "$ ramalama run <oci-name>\n"
         )
         eprint(message, errno.ENOTSUP)
     except NoGGUFModelFileFound:
