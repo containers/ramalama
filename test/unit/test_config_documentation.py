@@ -25,7 +25,7 @@ def get_config_fields():
     }
 
     config_fields = [field.name for field in fields(BaseConfig) if field.name not in excluded_fields]
-    config_fields.extend(('http_client', 'images', 'rag_images', 'user'))
+    config_fields.extend(('benchmarks', 'http_client', 'images', 'rag_images', 'user'))
     return sorted(set(config_fields))
 
 
@@ -47,7 +47,7 @@ def get_documented_fields_in_conf():
     documented = set()
 
     # Subsections that contain their own field documentation (these fields should not be extracted)
-    subsections_with_fields = {'http_client', 'user'}
+    subsections_with_fields = {'benchmarks', 'http_client', 'user'}
 
     # Track which section we're in to exclude nested fields under commented subsections
     in_commented_nested_section = False

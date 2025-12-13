@@ -18,6 +18,7 @@ from ramalama.common import (
     is_split_file_model,
     perror,
     populate_volume_from_image,
+    run_cmd,
     set_accel_env_vars,
 )
 from ramalama.compose import Compose
@@ -382,9 +383,168 @@ class Transport(TransportBase):
             mount_opts += f",ro{self.engine.relabel()}"
             self.engine.add([mount_opts])
 
+    def _run_bench_command(self, cmd: list[str], args) -> subprocess.CompletedProcess:
+        """Run bench command and capture output for database storage."""
+        if args.container:
+            self.setup_container(args)
+            self.setup_mounts(args)
+            self.engine.add([args.image] + cmd)
+
+            if args.dryrun:
+                self.engine.dryrun()
+                return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+            return self.engine.run_process()
+        else:
+            if args.dryrun:
+                dry_run(cmd)
+                return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+            return run_cmd(cmd, encoding="utf-8")
+
+    def _get_test_configuration(self, args, cmd: list[str]):
+        """Extract test configuration from current runtime context."""
+        from ramalama.benchmarks.llama_bench import TestConfiguration
+
+        container_image = getattr(args, "image", "") if args.container else ""
+        container_runtime = getattr(args, "engine", "") if args.container else ""
+
+        # Extract inference engine from command
+        inference_engine = ""
+        if cmd:
+            inference_engine = os.path.basename(cmd[0])
+
+        # Collect runtime args
+        runtime_args = {
+            "threads": getattr(args, "threads", None),
+            "ctx_size": getattr(args, "ctx_size", None),
+            "gpu_layers": getattr(args, "gpu_layers", None),
+            "batch_size": getattr(args, "batch_size", None),
+        }
+        # Remove None values
+        runtime_args = {k: v for k, v in runtime_args.items() if v is not None}
+
+        return TestConfiguration(
+            container_image=container_image,
+            container_runtime=container_runtime,
+            inference_engine=inference_engine,
+            runtime_args=runtime_args if runtime_args else None,
+        )
+
+    def _format_bench_results(self, results):
+        """Format benchmark results as a table for display."""
+        if not results:
+            return
+
+        # Print header
+        headers = ["model", "size", "params", "backend", "ngl", "threads", "test", "t/s"]
+        col_widths = {
+            "model": 30,
+            "size": 10,
+            "params": 10,
+            "backend": 10,
+            "ngl": 3,
+            "threads": 7,
+            "test": 15,
+            "t/s": 20,
+        }
+
+        header_row = " | ".join(h.ljust(col_widths[h]) for h in headers)
+        print(f"| {header_row} |")
+        print(f"| {'-' * len(header_row)} |")
+
+        # Print rows
+        for r in results:
+            model = (r.model_filename or "")[:30]
+            size = f"{r.model_size / 1024 / 1024:.2f} MiB" if r.model_size else "-"
+            params = f"{r.model_n_params / 1e9:.2f} B" if r.model_n_params else "-"
+            backend = (r.gpu_info or r.cpu_info or "CPU")[:10]
+            ngl = str(r.n_gpu_layers) if r.n_gpu_layers else "-"
+            threads = str(r.n_threads) if r.n_threads else "-"
+
+            # Format test type
+            if r.n_prompt and r.n_gen:
+                test = f"pp{r.n_prompt}+tg{r.n_gen}"
+            elif r.n_prompt:
+                test = f"pp{r.n_prompt}"
+            elif r.n_gen:
+                test = f"tg{r.n_gen}"
+            else:
+                test = "-"
+
+            # Format tokens/sec with stddev
+            if r.avg_ts and r.stddev_ts:
+                t_s = f"{r.avg_ts:.2f} ± {r.stddev_ts:.2f}"
+            elif r.avg_ts:
+                t_s = f"{r.avg_ts:.2f}"
+            else:
+                t_s = "-"
+
+            row_data = {
+                "model": model,
+                "size": size,
+                "params": params,
+                "backend": backend,
+                "ngl": ngl,
+                "threads": threads,
+                "test": test,
+                "t/s": t_s,
+            }
+
+            row = " | ".join(str(row_data[h]).ljust(col_widths[h]) for h in headers)
+            print(f"| {row} |")
+
+        # Print build info if available
+        if results and results[0].build_commit:
+            print(f"\nbuild: {results[0].build_commit} ({results[0].build_number or 1})")
+
     def bench(self, args, cmd: list[str]):
         set_accel_env_vars()
-        self.execute_command(cmd, args)
+
+        output_format = getattr(args, "format", "table")
+
+        try:
+            result = self._run_bench_command(cmd, args)
+
+            import json
+
+            from ramalama.benchmarks.llama_bench import parse_json, parse_jsonl
+            from ramalama.config import CONFIG
+
+            try:
+                bench_results = parse_jsonl(result.stdout)
+            except (json.JSONDecodeError, ValueError):
+                try:
+                    bench_results = parse_json(result.stdout)
+                except Exception as e:
+                    logger.error(f"Failed to parse benchmark results: {e}")
+                    if result.stdout:
+                        print(result.stdout)
+                    return
+
+            if output_format == "json":
+                print(result.stdout)
+            else:
+                self._format_bench_results(bench_results)
+
+            # Save to database if configured
+            db_path = CONFIG.benchmarks.db_path
+            if db_path and not getattr(args, "no_save", False):
+                try:
+                    from ramalama.benchmarks.manager import DBManager
+
+                    config = self._get_test_configuration(args, cmd)
+                    db = DBManager(db_path)
+                    for bench_result in bench_results:
+                        db.save_llama_bench_result(configuration=config, result=bench_result)
+                    logger.debug(f"Saved {len(bench_results)} benchmark result(s) to database")
+                except Exception as e:
+                    logger.warning(f"Failed to save benchmark results to database: {e}")
+
+        except Exception as e:
+            # Fall back to regular execution if capture fails
+            logger.debug(f"Failed to capture benchmark output: {e}")
+            self.execute_command(cmd, args)
 
     def run(self, args, server_cmd: list[str]):
         # The Run command will first launch a daemonized service
