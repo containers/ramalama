@@ -330,7 +330,7 @@ def info(args) -> list[Any] | str | dict[str, Any]:
         output = run_cmd(conman_args).stdout.decode("utf-8").strip()
         if output == "":
             return []
-        return cast(dict[str, Any], json.loads(output))
+        return json.loads(output)
     except FileNotFoundError as e:
         return str(e)
 

@@ -29,9 +29,8 @@ def isolate_config():
 
 def test_correct_config_defaults(monkeypatch):
     monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
-    with patch("ramalama.config.load_file_config", return_value={}):
-        with patch("ramalama.config.load_env_config", return_value={}):
-            cfg = default_config()
+    with patch("ramalama.config.load_env_config", return_value={}):
+        cfg = default_config()
 
     assert cfg.carimage == "registry.access.redhat.com/ubi10-micro:latest"
     assert cfg.container in [True, False]  # depends on env/system
