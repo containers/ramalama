@@ -421,16 +421,16 @@ class Transport(TransportBase):
                 self.engine.exec_args,
             )
             return process
-        else:
-            if args.dryrun:
-                dry_run(cmd)
-                return None
 
-            # Non-container mode: run the command directly with subprocess
-            process = subprocess.Popen(
-                cmd,
-            )
-            return process
+        # Non-container mode: run the command directly with subprocess
+        if args.dryrun:
+            dry_run(cmd)
+            return None
+
+        process = subprocess.Popen(
+            cmd,
+        )
+        return process
 
     def _connect_and_chat(self, args, server_process):
         """Connect to the server and start chat in the parent process."""
