@@ -15,11 +15,22 @@ from ramalama.config import (
 from ramalama.log_levels import LogLevel
 
 
+@pytest.fixture(autouse=True)
+def isolate_config():
+    """
+    Isolate tests from user configuration files by mocking config loading.
+    This fixture is automatically used for all tests in this module.
+    Individual tests can override by explicitly patching if needed.
+    """
+    with patch("ramalama.config.load_file_config", return_value={}):
+        with patch("ramalama.config.apple_vm", return_value=False):
+            yield
+
+
 def test_correct_config_defaults(monkeypatch):
     monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
-    with patch("ramalama.config.load_file_config", return_value={}):
-        with patch("ramalama.config.load_env_config", return_value={}):
-            cfg = default_config()
+    with patch("ramalama.config.load_env_config", return_value={}):
+        cfg = default_config()
 
     assert cfg.carimage == "registry.access.redhat.com/ubi10-micro:latest"
     assert cfg.container in [True, False]  # depends on env/system
