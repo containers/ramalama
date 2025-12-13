@@ -39,7 +39,7 @@ class OllamaRepositoryMock(OllamaRepository):
         }
 
     def get_file_list(self, tag, cached_files, is_model_in_ollama_cache, manifest=None) -> list[SnapshotFile]:
-        return [LocalSnapshotFile("dummy content", "dummy", SnapshotFileType.Other)]
+        return [LocalSnapshotFile("dummy content".encode("utf-8"), "dummy", SnapshotFileType.Other)]
 
 
 def test_ollama_model_pull(ollama_model):

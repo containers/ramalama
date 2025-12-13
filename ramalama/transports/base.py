@@ -390,39 +390,60 @@ class Transport(TransportBase):
         # The Run command will first launch a daemonized service
         # and run chat to communicate with it.
 
-        args.noout = not args.debug
+        process = self.serve_nonblocking(args, server_cmd)
+        if process:
+            return self._connect_and_chat(args, process)
 
-        pid = self._fork_and_serve(args, server_cmd)
-        if pid:
-            return self._connect_and_chat(args, pid)
-
-    def _fork_and_serve(self, args, cmd: list[str]):
+    def serve_nonblocking(self, args, cmd: list[str]) -> subprocess.Popen | None:
         if args.container:
             args.name = self.get_container_name(args)
-        pid = os.fork()
-        if pid == 0:
-            # Child process - start the server
-            self._start_server(args, cmd)
-        return pid
 
-    def _start_server(self, args, cmd: list[str]):
-        """Start the server in the child process."""
+        # Use subprocess.Popen for all platforms
+        # Prepare args for the server
         args.host = CONFIG.host
-        args.generate = ""
         args.detach = True
-        self.serve(args, cmd)
 
-    def _connect_and_chat(self, args, server_pid):
+        set_accel_env_vars()
+
+        if args.container:
+            # For container mode, set up the container and start it with subprocess
+            self.setup_container(args)
+            self.setup_mounts(args)
+            # Make sure Image precedes cmd_args
+            self.engine.add([args.image] + cmd)
+
+            if args.dryrun:
+                self.engine.dryrun()
+                return None
+
+            # Start the container using subprocess.Popen
+            process = subprocess.Popen(
+                self.engine.exec_args,
+            )
+            return process
+
+        # Non-container mode: run the command directly with subprocess
+        if args.dryrun:
+            dry_run(cmd)
+            return None
+
+        process = subprocess.Popen(
+            cmd,
+        )
+        return process
+
+    def _connect_and_chat(self, args, server_process):
         """Connect to the server and start chat in the parent process."""
         args.url = f"http://127.0.0.1:{args.port}/v1"
         if getattr(args, "runtime", None) == "mlx":
             args.prefix = "🍏 > "
-        args.pid2kill = ""
 
         if args.container:
-            return self._handle_container_chat(args, server_pid)
+            return self._handle_container_chat(args, server_process)
         else:
-            args.pid2kill = server_pid
+            # Store the Popen object for monitoring
+            args.server_process = server_process
+
             if getattr(args, "runtime", None) == "mlx":
                 return self._handle_mlx_chat(args)
             chat.chat(args)
@@ -434,10 +455,11 @@ class Transport(TransportBase):
     def wait_for_healthy(self, args):
         wait_for_healthy(args, is_healthy)
 
-    def _handle_container_chat(self, args, server_pid):
+    def _handle_container_chat(self, args, server_process):
         """Handle chat for container-based execution."""
-        _, status = os.waitpid(server_pid, 0)
-        if status != 0:
+        # Wait for the server process to complete (blocking)
+        exit_code = server_process.wait()
+        if exit_code != 0:
             raise ValueError(f"Failed to serve model {self.model_name}, for ramalama run command")
 
         if not args.dryrun:
@@ -480,7 +502,7 @@ class Transport(TransportBase):
             except Exception as e:
                 if i >= max_retries - 1:
                     perror(f"Error: Failed to connect to MLX server after {max_retries} attempts: {e}")
-                    self._cleanup_server_process(args.pid2kill)
+                    self._cleanup_server_process(args.server_process)
                     raise e
                 logger.debug(f"Connection attempt failed, retrying... (attempt {i + 1}/{max_retries}): {e}")
                 time.sleep(3)
@@ -498,32 +520,16 @@ class Transport(TransportBase):
         except (socket.error, ValueError):
             return False
 
-    def _cleanup_server_process(self, pid):
+    def _cleanup_server_process(self, process):
         """Clean up the server process."""
-        if not pid:
+        if not process:
             return
 
-        import signal
-
+        process.terminate()
         try:
-            # Try graceful termination first
-            os.kill(pid, signal.SIGTERM)
-            time.sleep(1)  # Give it time to terminate gracefully
-
-            # Force kill if still running (SIGKILL is Unix-only)
-            if hasattr(signal, 'SIGKILL'):
-                try:
-                    os.kill(pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-            else:
-                # On Windows, send SIGTERM again as fallback
-                try:
-                    os.kill(pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-        except ProcessLookupError:
-            pass
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
 
     def perplexity(self, args, cmd: list[str]):
         set_accel_env_vars()
@@ -636,7 +642,11 @@ class Transport(TransportBase):
             self.generate_container_config(args, cmd)
             return
 
-        self.execute_command(cmd, args)
+        try:
+            self.execute_command(cmd, args)
+        except Exception as e:
+            self._cleanup_server_process(args.server_process)
+            raise e
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
         quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)

@@ -524,17 +524,9 @@ jobs:
         run: |
           Write-Host "Installing Podman on Windows..."
 
-          # Download and install Podman
-          $podmanVersion = "5.7.0"
-          $installerUrl = "https://github.com/containers/podman/releases/download/v$podmanVersion/podman-$podmanVersion-setup.exe"
-          $installerPath = "$env:TEMP\podman-setup.exe"
+          winget install --accept-source-agreements --silent --disable-interactivity --exact --id RedHat.Podman
 
-          Write-Host "Downloading Podman v$podmanVersion..."
-          Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath
-
-          Write-Host "Installing Podman..."
-          Start-Process -FilePath $installerPath -ArgumentList "/install", "/quiet", "/norestart" -Wait -NoNewWindow
-
+          # TODO: remove when this just works https://github.com/microsoft/winget-cli/issues/549
           # Add Podman to PATH for current session
           $podmanPath = "$env:ProgramFiles" + "\RedHat\Podman"
           $env:PATH = "$podmanPath;$env:PATH"
@@ -572,6 +564,21 @@ jobs:
 
           Write-Host "Podman info:"
           podman info
+
+      - name: Install OpenSSL
+        shell: pwsh
+        run: |
+          winget install --accept-source-agreements --silent --disable-interactivity --exact --id ShiningLight.OpenSSL.Light
+
+          # Add OpenSSL to PATH for current session
+          $opensslPath = "$env:ProgramFiles" + "\OpenSSL-Win64\bin"
+          $env:PATH = "$opensslPath;$env:PATH"
+          [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [EnvironmentVariableTarget]::Process)
+
+          # Update PATH for future steps
+          Add-Content -Path $env:GITHUB_PATH -Value "$opensslPath"
+
+          openssl version
 
       - name: Run E2E tests
         shell: pwsh

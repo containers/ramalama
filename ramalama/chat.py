@@ -97,7 +97,6 @@ def add_api_key(args, headers=None):
 @dataclass
 class ChatOperationalArgs:
     initial_connection: bool = False
-    pid2kill: int | None = None
     name: str | None = None
     keepalive: int | None = None
     monitor: "ServerMonitor | None" = None
@@ -485,23 +484,12 @@ class RamaLamaShell(cmd.Cmd):
         if getattr(self.args, "initial_connection", False):
             return
 
-        if getattr(self.args, "pid2kill", False):
-            # Send signals to terminate process
-            # On Windows, only SIGTERM and SIGINT are supported
+        if getattr(self.args, "server_process", False):
+            self.args.server_process.terminate()
             try:
-                os.kill(self.args.pid2kill, signal.SIGINT)
-            except (ProcessLookupError, AttributeError):
-                pass
-            try:
-                os.kill(self.args.pid2kill, signal.SIGTERM)
-            except (ProcessLookupError, AttributeError):
-                pass
-            # SIGKILL doesn't exist on Windows, use SIGTERM instead
-            if hasattr(signal, 'SIGKILL'):
-                try:
-                    os.kill(self.args.pid2kill, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
+                self.args.server_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.args.server_process.kill()
         elif getattr(self.args, "name", None):
             args = copy.copy(self.args)
             args.ignore = True
@@ -548,41 +536,40 @@ class ServerMonitor:
 
     def __init__(
         self,
-        server_pid=None,
+        server_process=None,
         container_name=None,
         container_engine=None,
         join_timeout=3.0,
         check_interval=0.5,
+        inspect_timeout=30.0,
     ):
         """
         Initialize the server monitor.
 
         Args:
-            server_pid: Process ID to monitor (for direct process monitoring)
+            server_process: subprocess.Popen object to monitor
             container_name: Container name to monitor (for container monitoring)
             container_engine: Container engine command (podman/docker)
             join_timeout: Seconds for thread join when stopping (default: 3.0)
             check_interval: Seconds between monitoring checks (default: 0.5)
+            inspect_timeout: Seconds to wait for container inspect command to complete (default: 30.0)
 
-        Note: If neither server_pid nor container_name is provided, the monitor
+        Note: If neither server_process nor container_name is provided, the monitor
         operates in no-op mode (no actual monitoring occurs).
         """
-        self.server_pid = server_pid
+        self.server_process = server_process
         self.container_name = container_name
         self.container_engine = container_engine
         self.timeout = join_timeout
         self.check_interval = check_interval
-
+        self.inspect_timeout = inspect_timeout
         self._stop_event = threading.Event()
         self._exited_event = threading.Event()
         self._exit_info = {}
         self._monitor_thread = None
 
         # Determine monitoring mode
-        if server_pid:
-            if sys.platform == "win32":
-                # os.waitpid() is not available for non-child processes on Windows.
-                raise NotImplementedError("Process monitoring by PID is not supported on Windows.")
+        if self.server_process:
             self._mode = "process"
         elif container_name and container_engine:
             self._mode = "container"
@@ -630,31 +617,24 @@ class ServerMonitor:
         """Monitor the server process and report if it exits."""
         while not self._stop_event.is_set():
             try:
-                # Use waitpid with WNOHANG to check without blocking
-                pid, status = os.waitpid(self.server_pid, os.WNOHANG)
-                if pid != 0:
+                exit_code = self.server_process.poll()
+                if exit_code is not None:
                     # Process has exited
-                    self._exit_info["pid"] = self.server_pid
-                    self._exit_info["status"] = status
-                    if os.WIFEXITED(status):
-                        self._exit_info["type"] = "exit"
-                        self._exit_info["code"] = os.WEXITSTATUS(status)
-                    elif os.WIFSIGNALED(status):
-                        self._exit_info["type"] = "signal"
-                        self._exit_info["signal"] = os.WTERMSIG(status)
-                    else:
-                        self._exit_info["type"] = "unknown"
+                    self._exit_info["pid"] = self.server_process.pid
+                    self._exit_info["type"] = "exit"
+                    self._exit_info["code"] = exit_code
                     self._exited_event.set()
                     # Send SIGINT to main process to interrupt the chat
                     _thread.interrupt_main()
                     break
-            except ChildProcessError:
-                # Process doesn't exist or already reaped
-                self._exit_info["pid"] = self.server_pid
+            except Exception as e:
+                logger.debug(f"Error monitoring process: {e}", exc_info=True)
+                self._exit_info["pid"] = self.server_process.pid
                 self._exit_info["type"] = "missing"
                 self._exited_event.set()
                 _thread.interrupt_main()
                 break
+
             # Use wait() instead of sleep() for responsive shutdown
             self._stop_event.wait(self.check_interval)
 
@@ -668,7 +648,7 @@ class ServerMonitor:
                     [self.container_engine, "inspect", "--format", inspect_format, self.container_name],
                     capture_output=True,
                     text=True,
-                    timeout=self.check_interval,
+                    timeout=self.inspect_timeout,
                 )
                 output_lines = result.stdout.strip().split('\n')
                 status = output_lines[0] if output_lines else ""
@@ -753,13 +733,12 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
         signal.alarm(convert_to_seconds(args.keepalive))  # type: ignore
 
     # Start server process or container monitoring
-    # Check if we should monitor a process (pid2kill) or container (name)
-    pid2kill = getattr(args, "pid2kill", None)
+    server_process = getattr(args, "server_process", None)
     container_name = getattr(args, "name", None)
 
-    if pid2kill:
+    if server_process:
         # Monitor the server process
-        monitor = ServerMonitor(server_pid=pid2kill)
+        monitor = ServerMonitor(server_process=server_process)
     elif container_name:
         # Monitor the container
         conman = getattr(args, "engine", CONFIG.engine)

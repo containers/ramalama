@@ -210,14 +210,15 @@ class TestMLXRuntime:
 
     @patch('ramalama.transports.base.platform.system')
     @patch('ramalama.transports.base.platform.machine')
-    @patch('ramalama.transports.base.os.fork')
+    @patch('ramalama.transports.base.Transport.serve_nonblocking', return_value=MagicMock())
     @patch('ramalama.chat.chat')
     @patch('socket.socket')
-    def test_mlx_run_uses_server_client_model(self, mock_socket_class, mock_chat, mock_fork, mock_machine, mock_system):
+    def test_mlx_run_uses_server_client_model(
+        self, mock_socket_class, mock_chat, mock_serve_nonblocking, mock_machine, mock_system
+    ):
         """Test that MLX runtime uses server-client model in run method"""
         mock_system.return_value = "Darwin"
         mock_machine.return_value = "arm64"
-        mock_fork.return_value = 123  # Parent process
 
         # Mock socket to simulate successful connection (server ready)
         mock_socket = MagicMock()
@@ -249,16 +250,16 @@ class TestMLXRuntime:
             with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
                 model.run(args, cmd)
 
-        # Verify that fork was called (indicating server-client model)
-        mock_fork.assert_called_once()
-
         # Verify that chat.chat was called (parent process)
         mock_chat.assert_called_once()
+
+        # Verify that serve_nonblocking was called (indicating server-client model) and that the server_process is set
+        mock_serve_nonblocking.assert_called_once()
+        assert mock_chat.call_args[0][0].server_process == mock_serve_nonblocking.return_value
 
         # Verify args were set up correctly for server-client model
         # MLX runtime uses OpenAI-compatible endpoints under /v1
         assert args.url == "http://127.0.0.1:8080/v1"
-        assert args.pid2kill == 123
 
 
 class TestOCIModelSetupMounts:

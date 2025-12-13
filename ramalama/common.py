@@ -122,18 +122,14 @@ def quoted(arr) -> str:
 
 def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
     logger.debug(f"exec_cmd: {quoted(args)}")
-    if stdout2null:
-        with open(os.devnull, 'w') as devnull:
-            os.dup2(devnull.fileno(), sys.stdout.fileno())
 
-    if stderr2null:
-        with open(os.devnull, 'w') as devnull:
-            os.dup2(devnull.fileno(), sys.stderr.fileno())
-
+    stdout_target = subprocess.DEVNULL if stdout2null else None
+    stderr_target = subprocess.DEVNULL if stderr2null else None
     try:
-        return os.execvp(args[0], args)
-    except Exception:
-        perror(f"os.execvp({args[0]}, {args})")
+        result = subprocess.run(args, stdout=stdout_target, stderr=stderr_target, check=False)
+        sys.exit(result.returncode)
+    except Exception as e:
+        perror(f"Failed to execute {quoted(args)}: {e}")
         raise
 
 
@@ -226,21 +222,25 @@ def populate_volume_from_image(model: Transport, args: Namespace, output_filenam
     return volume
 
 
-def generate_sha256(to_hash: str, with_sha_prefix: bool = True) -> str:
+def generate_sha256_binary(to_hash: bytes, with_sha_prefix: bool = True) -> str:
     """
-    Generates a sha256 for a string.
+    Generates a sha256 for data bytes.
 
     Args:
-    to_hash (str): The string to generate the sha256 hash for.
+    to_hash (bytes): The data to generate the sha256 hash for.
 
     Returns:
     str: Hex digest of the input appended to the prefix sha256-
     """
     h = hashlib.new("sha256")
-    h.update(to_hash.encode("utf-8"))
+    h.update(to_hash)
     if with_sha_prefix:
         return f"sha256-{h.hexdigest()}"
     return h.hexdigest()
+
+
+def generate_sha256(to_hash: str, with_sha_prefix: bool = True) -> str:
+    return generate_sha256_binary(to_hash.encode("utf-8"), with_sha_prefix)
 
 
 def verify_checksum(filename: str) -> bool:
@@ -326,11 +326,21 @@ def load_cdi_config(spec_dirs: list[str]) -> CDI_RETURN_TYPE | None:
     return None
 
 
+def get_podman_machine_cdi_config() -> CDI_RETURN_TYPE | None:
+    cdi_config = run_cmd(["podman", "machine", "ssh", "cat", "/etc/cdi/nvidia.yaml"], encoding="utf-8").stdout.strip()
+    if cdi_config:
+        return yaml.safe_load(cdi_config)
+    return None
+
+
 def find_in_cdi(devices: list[str]) -> tuple[list[str], list[str]]:
     # Attempts to find a CDI configuration for each device in devices
     # and returns a list of configured devices and a list of
     # unconfigured devices.
-    cdi = load_cdi_config(['/var/run/cdi', '/etc/cdi'])
+    if platform.system() == "Windows":
+        cdi = get_podman_machine_cdi_config()
+    else:
+        cdi = load_cdi_config(['/var/run/cdi', '/etc/cdi'])
     try:
         cdi_devices = cdi.get("devices", []) if cdi else []
         cdi_device_names = [name for cdi_device in cdi_devices if (name := cdi_device.get("name"))]
@@ -712,7 +722,7 @@ def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_
         try:
             image = select_cuda_image(config)
         except NotImplementedError as e:
-            logger.warn(f"{e}: Falling back to default image.")
+            logger.warning(f"{e}: Falling back to default image.")
             image = config.default_image
 
     vers = minor_release()

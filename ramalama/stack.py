@@ -1,11 +1,13 @@
 import os
-import tempfile
+import platform
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
 from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image
+from ramalama.compat import NamedTemporaryFile
 from ramalama.config import CONFIG
 from ramalama.engine import add_labels
+from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
 
@@ -50,7 +52,7 @@ class Stack:
         - mountPath: {self.model._get_entry_model_path(True, True, False)}
           name: model"""
 
-        if self.args.dri == "on":
+        if self.args.dri == "on" and platform.system() != "Windows":
             volume_mounts += """
         - mountPath: /dev/dri
           name: dri"""
@@ -58,9 +60,13 @@ class Stack:
         return volume_mounts
 
     def _gen_volumes(self):
+        host_model_path = normalize_host_path_for_container(self.model._get_entry_model_path(False, False, False))
+        if platform.system() == "Windows":
+            #  Workaround https://github.com/containers/podman/issues/16704
+            host_model_path = '/mnt' + host_model_path
         volumes = f"""
       - hostPath:
-          path: {self.model._get_entry_model_path(False, False, False)}
+          path: {host_model_path}
         name: model"""
         if self.args.dri == "on":
             volumes += """
@@ -209,34 +215,35 @@ spec:
                 k.write(self.args.generate.output_dir)
                 return
 
-        yaml_file = tempfile.NamedTemporaryFile(prefix='RamaLama_', delete=not self.args.debug)
-        with open(yaml_file.name, 'w') as c:
-            c.write(yaml)
-            c.flush()
+        with NamedTemporaryFile(
+            mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
+        ) as yaml_file:
+            yaml_file.write(yaml)
+            yaml_file.close()
 
-        exec_args = [
-            self.args.engine,
-            "kube",
-            "play",
-            "--replace",
-        ]
-        if not self.args.detach:
-            exec_args.append("--wait")
+            exec_args = [
+                self.args.engine,
+                "kube",
+                "play",
+                "--replace",
+            ]
+            if not self.args.detach:
+                exec_args.append("--wait")
 
-        exec_args.append(yaml_file.name)
-        exec_cmd(exec_args)
+            exec_args.append(yaml_file.name)
+            exec_cmd(exec_args)
 
     def stop(self):
-        yaml_file = tempfile.NamedTemporaryFile(prefix='RamaLama_', delete=not self.args.debug)
-        with open(yaml_file.name, 'w') as c:
-            c.write(self.generate())
-            c.flush()
+        with NamedTemporaryFile(
+            mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
+        ) as yaml_file:
+            yaml_file.write(self.generate())
+            yaml_file.close()
 
-        exec_args = [
-            self.args.engine,
-            "kube",
-            "down",
-            yaml_file.name,
-        ]
-
-        exec_cmd(exec_args)
+            exec_args = [
+                self.args.engine,
+                "kube",
+                "down",
+                yaml_file.name,
+            ]
+            exec_cmd(exec_args)

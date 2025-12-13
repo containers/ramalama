@@ -2,9 +2,15 @@ import os
 
 import pytest
 
+from ramalama.common import generate_sha256_binary
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.reffile import RefJSONFile, StoreFile, StoreFileType
-from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType, validate_snapshot_files
+from ramalama.model_store.snapshot_file import (
+    LocalSnapshotFile,
+    SnapshotFile,
+    SnapshotFileType,
+    validate_snapshot_files,
+)
 from ramalama.model_store.store import ModelStore
 from ramalama.model_store.template_conversion import wrap_template_with_messages_loop
 
@@ -81,4 +87,28 @@ def test_try_convert_existing_chat_template_converts_flat_jinja(tmp_path, monkey
     assert len(captured["files"]) == 1
     converted_file = captured["files"][0]
     assert converted_file.type == SnapshotFileType.ChatTemplate
-    assert converted_file.content == wrap_template_with_messages_loop(original_template)
+    assert converted_file.content == wrap_template_with_messages_loop(original_template).encode("utf-8")
+
+
+def test_local_snapshot_file_binary_download_and_digest(tmp_path):
+    # Use a payload that includes a null byte to ensure we are truly treating this as binary data
+    content = b"binary-\x00-test-content"
+    expected_digest = generate_sha256_binary(content)
+
+    # Create a LocalSnapshotFile with known binary content
+    snapshot_file = LocalSnapshotFile(
+        name="test.bin",
+        type=SnapshotFileType.Other,
+        content=content,
+    )
+
+    # Act: download to a temporary path
+    target_path = tmp_path / "downloaded.bin"
+    snapshot_file.download(target_path, tmp_path)
+
+    # Assert: file contents are exactly what we provided
+    on_disk = target_path.read_bytes()
+    assert on_disk == content
+
+    # Assert: digest matches generate_sha256_binary(content)
+    assert snapshot_file.hash == expected_digest

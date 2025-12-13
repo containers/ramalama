@@ -2,7 +2,7 @@ import os
 from enum import IntEnum
 from typing import Dict, Sequence
 
-from ramalama.common import generate_sha256, perror
+from ramalama.common import generate_sha256_binary, perror
 from ramalama.http_client import download_file
 from ramalama.logger import logger
 
@@ -57,7 +57,7 @@ class SnapshotFile:
 class LocalSnapshotFile(SnapshotFile):
     def __init__(
         self,
-        content: str,
+        content: bytes,
         name: str,
         type: SnapshotFileType,
         should_show_progress: bool = False,
@@ -67,7 +67,7 @@ class LocalSnapshotFile(SnapshotFile):
         super().__init__(
             "",
             {},
-            generate_sha256(content),
+            generate_sha256_binary(content),
             name,
             type,
             should_show_progress,
@@ -77,7 +77,7 @@ class LocalSnapshotFile(SnapshotFile):
         self.content = content
 
     def download(self, blob_file_path, snapshot_dir):
-        with open(blob_file_path, "w") as file:
+        with open(blob_file_path, "wb") as file:
             file.write(self.content)
             file.flush()
         return os.path.relpath(blob_file_path, start=snapshot_dir)

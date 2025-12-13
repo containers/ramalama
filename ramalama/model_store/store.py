@@ -266,7 +266,11 @@ class ModelStore:
                     logger.debug(f"Failed to convert template: {e}")
                     continue
 
-            files = [LocalSnapshotFile(normalized_template, "chat_template_converted", SnapshotFileType.ChatTemplate)]
+            files = [
+                LocalSnapshotFile(
+                    normalized_template.encode("utf-8"), "chat_template_converted", SnapshotFileType.ChatTemplate
+                )
+            ]
             self._update_snapshot(ref_file, snapshot_hash, files)
             return True
 
@@ -302,7 +306,7 @@ class ModelStore:
         # chat template if it is a Go Template (ollama-specific)
         files = [
             LocalSnapshotFile(
-                tmpl,
+                tmpl.encode("utf-8"),
                 "chat_template_extracted",
                 SnapshotFileType.Other if needs_conversion else SnapshotFileType.ChatTemplate,
             )
@@ -311,7 +315,9 @@ class ModelStore:
             try:
                 desired_template = convert_go_to_jinja(tmpl)
                 files.append(
-                    LocalSnapshotFile(desired_template, "chat_template_converted", SnapshotFileType.ChatTemplate)
+                    LocalSnapshotFile(
+                        desired_template.encode("utf-8"), "chat_template_converted", SnapshotFileType.ChatTemplate
+                    )
                 )
             except Exception as ex:
                 logger.debug(f"Failed to convert Go Template to Jinja: {ex}")
@@ -397,6 +403,7 @@ class ModelStore:
         return True
 
     def _remove_blob_file(self, snapshot_file_path: str):
+        # FIXME: this assumes a symlink, fails on Windows
         blob_path = Path(snapshot_file_path).resolve()
         try:
             if os.path.exists(blob_path) and Path(self.base_path) in blob_path.parents:

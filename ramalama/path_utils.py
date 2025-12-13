@@ -1,7 +1,7 @@
 """Utilities for cross-platform path handling, especially for Windows Docker/Podman support."""
 
 import os
-import sys
+import platform
 from pathlib import Path, PureWindowsPath
 
 
@@ -27,7 +27,7 @@ def normalize_host_path_for_container(host_path: str) -> str:
         Windows: "C:\\Users\\John\\models" -> "/c/Users/John/models"
         Linux: "/home/john/models" -> "/home/john/models"
     """
-    if sys.platform != 'win32':
+    if platform.system() != "Windows":
         # On Linux/macOS, paths are already in the correct format
         return host_path
 
@@ -37,8 +37,13 @@ def normalize_host_path_for_container(host_path: str) -> str:
     # First, resolve symlinks and make the path absolute.
     path = Path(host_path).resolve()
 
-    # Handle UNC paths (e.g., \\server\share). On Windows, these resolve to
-    # absolute paths but don't have a drive letter.
+    # Handle UNC paths to container filesystem
+    # e.g if the model store is placed on the podman machine VM to reduce copying
+    # \\wsl.localhost\podman-machine-default\home\user\.local\share\ramalama\store
+    # NOTE: UNC paths cannot be accessed implicitly from the container, would need to smb mount
+    if path.drive.startswith("\\\\"):
+        return '/' + path.relative_to(path.drive).as_posix()
+
     if not path.drive:
         return path.as_posix()
 
@@ -58,7 +63,7 @@ def is_windows_absolute_path(path: str) -> bool:
     Returns:
         True if the path looks like a Windows absolute path (e.g., C:\\, D:\\)
     """
-    if sys.platform != 'win32':
+    if platform.system() != "Windows":
         return False
 
     return PureWindowsPath(path).is_absolute()

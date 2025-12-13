@@ -1,14 +1,13 @@
 import json
 import platform
 import re
-from subprocess import STDOUT, CalledProcessError
+from subprocess import PIPE, STDOUT, CalledProcessError
 from test.conftest import (
     skip_if_container,
     skip_if_darwin,
     skip_if_docker,
     skip_if_gh_actions_darwin,
     skip_if_no_container,
-    xfail_if_windows,
 )
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
@@ -38,177 +37,175 @@ def shared_ctx_with_models(test_model):
 
 
 @pytest.mark.e2e
-@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_no_container
 def test_basic_dry_run():
     ramalama_info = json.loads(check_output(["ramalama", "info"]))
     conman = ramalama_info["Engine"]["Name"]
 
-    result = check_output(["ramalama", "-q", "--dryrun", "run", TEST_MODEL])
+    result = check_output(["ramalama", "-q", "--dryrun", "run", TEST_MODEL], stdin=PIPE)
     assert not result.startswith(f"{conman} run --rm")
     assert not re.search(r".*-t -i", result), "run without terminal"
 
-    result = check_output(["ramalama", "-q", "--dryrun", "run", TEST_MODEL, "what's up doc?"])
+    result = check_output(["ramalama", "-q", "--dryrun", "run", TEST_MODEL, "what's up doc?"], stdin=PIPE)
     assert result.startswith(f"{conman} run")
     assert not re.search(r".*-t -i", result), "run without terminal"
 
-    result = check_output(f'echo "Test" | ramalama -q --dryrun run {TEST_MODEL}', shell=True)
+    result = check_output(f'echo "Test" | ramalama -q --dryrun run {TEST_MODEL}', shell=True, stdin=PIPE)
     assert result.startswith(f"{conman} run")
     assert not re.search(r".*-t -i", result), "run without terminal"
 
 
 @pytest.mark.e2e
-@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @pytest.mark.parametrize(
-    "extra_params, pattern, config, env_vars, expected",
+    "extra_params, pattern, config, env_vars, expected, stdin",
     [
         # fmt: off
         pytest.param(
-            [], f".*{TEST_MODEL_FULL_NAME}.*", None, None, True,
+            [], f".*{TEST_MODEL_FULL_NAME}.*", None, None, True, None,
             id="check test_model", marks=skip_if_no_container
         ),
         pytest.param(
-            [], r".*--cache-reuse 256", None, None, True,
+            [], r".*--cache-reuse 256", None, None, True, None,
             id="check cache-reuse is being set", marks=skip_if_no_container
         ),
         pytest.param(
-            [], r".*--ctx-size", None, None, False,
+            [], r".*--ctx-size", None, None, False, None,
             id="check ctx-size is not show by default", marks=skip_if_no_container
         ),
         pytest.param(
-            [], r".*--seed", None, None, False,
+            [], r".*--seed", None, None, False, None,
             id="check --seed is not set by default", marks=skip_if_no_container
         ),
         pytest.param(
-            [], r".*-t -i", None, None, False,
+            [], r".*-t -i",None, None, False, PIPE,
             id="check -t -i is not present without tty", marks=skip_if_no_container)
         ,
         pytest.param(
             ["--env", "a=b", "--env", "test=success", "--name", "foobar"],
-            r"--env a=b --env test=success", None, None, True,
+            r"--env a=b --env test=success", None, None, True, None,
             id="check --env", marks=skip_if_no_container,
         ),
         pytest.param(
-            ["--oci-runtime", "foobar"], r"--runtime foobar", None, None, True,
+            ["--oci-runtime", "foobar"], r"--runtime foobar", None, None, True, None,
             id="check --oci-runtime", marks=skip_if_no_container)
         ,
         pytest.param(
             ["--net", "bridge", "--name", "foobar"], r".*--network bridge",
-            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
+            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True, None,
             id="check --net=bridge with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
             ["--name", "foobar"], f".*{TEST_MODEL_FULL_NAME}.*",
-            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
+            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True, None,
             id="check test_model with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
             ["-c", "4096", "--name", "foobar"], r".*--ctx-size 4096",
-            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
+            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True, None,
             id="check --ctx-size 4096 with RAMALAMA_CONFIG=/dev/null",  marks=skip_if_no_container,
         ),
         pytest.param(
             ["--cache-reuse", "512", "--name", "foobar"], r".*--cache-reuse 512", None,
-            {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
+            {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True, None,
             id="check --cache-reuse with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
             ["--name", "foobar"], r".*--temp 0.8", None, {
                 "RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'
-            }, True,
+            }, True, None,
             id="check --temp default value is 0.8 with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
             ["--seed", "9876", "--name", "foobar"], r".*--seed 9876",
-            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
+            None, {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True, None,
             id="check --seed 9876 with RAMALAMA_CONFIG=/dev/null", marks=skip_if_no_container,
         ),
         pytest.param(
             ["--name", "foobar"], r".*--pull newer", None,
-            {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True,
+            {"RAMALAMA_CONFIG": "NUL" if platform.system() == "Windows" else '/dev/null'}, True, None,
             id="check pull policy with RAMALAMA_CONFIG=/dev/null", marks=[skip_if_no_container, skip_if_docker],
         ),
         pytest.param(
-            [], DEFAULT_PULL_PATTERN, None, None, True,
+            [], DEFAULT_PULL_PATTERN, None, None, True, None,
             id="check default pull policy",
             marks=[skip_if_no_container],
         ),
         pytest.param(
-            ["--pull", "never", "-c", "4096", "--name", "foobbar"], r".*--pull never", None, None, True,
+            ["--pull", "never", "-c", "4096", "--name", "foobbar"], r".*--pull never", None, None, True, None,
             id="check never pull policy", marks=skip_if_no_container,
         ),
         pytest.param(
-            [], r".*--pull never", CONFIG_WITH_PULL_NEVER, None, True,
+            [], r".*--pull never", CONFIG_WITH_PULL_NEVER, None, True, None,
             id="check pull policy with RAMALAMA_CONFIG", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--name", "foobar"], r".*--name foobar", None, None, True,
+            ["--name", "foobar"], r".*--name foobar", None, None, True, None,
             id="check --name foobar", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--name", "foobar"], r".*--cap-drop=all", None, None, True,
+            ["--name", "foobar"], r".*--cap-drop=all", None, None, True, None,
             id="check if --cap-drop=all is present", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--name", "foobar"], r".*no-new-privileges", None, None, True,
+            ["--name", "foobar"], r".*no-new-privileges", None, None, True, None,
             id="check if --no-new-privs is present", marks=skip_if_no_container),
         pytest.param(
-            ["--selinux", "True"], r".*--security-opt=label=disable", None, None, False,
+            ["--selinux", "True"], r".*--security-opt=label=disable", None, None, False, None,
             id="check --selinux=True enables container separation", marks=skip_if_no_container),
         pytest.param(
-            ["--selinux", "False"], r".*--security-opt=label=disable", None, None, True,
+            ["--selinux", "False"], r".*--security-opt=label=disable", None, None, True, None,
             id="check --selinux=False disables container separation", marks=skip_if_no_container),
         pytest.param(
-            ["--runtime-args", "--foo -bar"], r".*--foo\s+-bar", None, None, True,
+            ["--runtime-args", "--foo -bar"], r".*--foo\s+-bar", None, None, True, None,
             id="check --runtime-args", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--runtime-args", "--foo='a b c'"], r".*--foo=a b c", None, None, True,
+            ["--runtime-args", "--foo='a b c'"], r".*--foo=a b c", None, None, True, None,
             id="check --runtime-args=\"--foo='a b c'\"", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--privileged"], r".*--privileged", None, None, True,
+            ["--privileged"], r".*--privileged", None, None, True, None,
             id="check --privileged", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--privileged"], r".*--cap-drop=all", None, None, False,
+            ["--privileged"], r".*--cap-drop=all", None, None, False, None,
             id="check cap-drop=all is not set when --privileged", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--privileged"], r".*no-new-privileges", None, None, False,
+            ["--privileged"], r".*no-new-privileges", None, None, False, None,
             id="check no-new-privileges is not set when --privileged", marks=skip_if_no_container
         ),
         pytest.param(
-            [], r".*foo:latest.*serve", None, {"RAMALAMA_IMAGE": "foo:latest"}, True,
+            [], r".*foo:latest.*serve", None, {"RAMALAMA_IMAGE": "foo:latest"}, True, None,
             id="check run with RAMALAMA_IMAGE=foo:latest", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--ctx-size", "4096"], r".*serve.*--ctx-size 4096", None, None, True,
+            ["--ctx-size", "4096"], r".*serve.*--ctx-size 4096", None, None, True, None,
             id="check --ctx-size 4096", marks=skip_if_container,
         ),
         pytest.param(
-            ["--ctx-size", "4096"], r".*--cache-reuse 256.*", None, None, True,
+            ["--ctx-size", "4096"], r".*--cache-reuse 256.*", None, None, True, None,
             id="check --cache-reuse is set by default to 256", marks=skip_if_container,
         ),
         pytest.param(
-            [], r".*-e ASAHI_VISIBLE_DEVICES=99", None, {"ASAHI_VISIBLE_DEVICES": "99"}, True,
+            [], r".*-e ASAHI_VISIBLE_DEVICES=99", None, {"ASAHI_VISIBLE_DEVICES": "99"}, True, None,
             id="check ASAHI_VISIBLE_DEVICES env var", marks=skip_if_no_container,
         ),
         pytest.param(
-            [], r".*-e CUDA_LAUNCH_BLOCKING=1", None, {"CUDA_LAUNCH_BLOCKING": "1"}, True,
+            [], r".*-e CUDA_LAUNCH_BLOCKING=1", None, {"CUDA_LAUNCH_BLOCKING": "1"}, True, None,
             id="check CUDA_LAUNCH_BLOCKING env var", marks=skip_if_no_container
         ),
         pytest.param(
-            [], r".*-e HIP_VISIBLE_DEVICES=99", None, {"HIP_VISIBLE_DEVICES": "99"}, True,
+            [], r".*-e HIP_VISIBLE_DEVICES=99", None, {"HIP_VISIBLE_DEVICES": "99"}, True, None,
             id="check HIP_VISIBLE_DEVICES env var", marks=skip_if_no_container
         ),
         pytest.param(
-            [], r".*-e HSA_OVERRIDE_GFX_VERSION=0.0.0", None, {"HSA_OVERRIDE_GFX_VERSION": "0.0.0"}, True,
+            [], r".*-e HSA_OVERRIDE_GFX_VERSION=0.0.0", None, {"HSA_OVERRIDE_GFX_VERSION": "0.0.0"}, True, None,
             id="check HSA_OVERRIDE_GFX_VERSION env var", marks=skip_if_no_container,
         ),
         pytest.param(
             [], r"(.*-e (HIP_VISIBLE_DEVICES=99|HSA_OVERRIDE_GFX_VERSION=0.0.0)){2}",
-            None, {"HIP_VISIBLE_DEVICES": "99", "HSA_OVERRIDE_GFX_VERSION": "0.0.0"}, True,
+            None, {"HIP_VISIBLE_DEVICES": "99", "HSA_OVERRIDE_GFX_VERSION": "0.0.0"}, True, None,
             id="check HIP_VISIBLE_DEVICES & HSA_OVERRIDE_GFX_VERSION env vars", marks=skip_if_no_container,
         ),
         pytest.param(
@@ -216,17 +213,17 @@ def test_basic_dry_run():
                 "--device", "NUL" if platform.system() == "Windows" else '/dev/null',
                 "--pull", "never"
             ],
-            r".*--device (NUL|/dev/null) .*", None, None, True,
+            r".*--device (NUL|/dev/null) .*", None, None, True, None,
             id="check --device=/dev/null", marks=skip_if_no_container),
         pytest.param(
-            ["--device", "none", "--pull", "never"], r".*--device.*", None, None, False,
+            ["--device", "none", "--pull", "never"], r".*--device.*", None, None, False, None,
             id="check --device with unsupported value", marks=skip_if_no_container),
         # fmt: on
     ],
 )
-def test_params(extra_params, pattern, config, env_vars, expected):
+def test_params(extra_params, pattern, config, env_vars, expected, stdin):
     with RamalamaExecWorkspace(config=config, env_vars=env_vars) as ctx:
-        result = ctx.check_output(RAMALAMA_DRY_RUN + extra_params + [TEST_MODEL])
+        result = ctx.check_output(RAMALAMA_DRY_RUN + extra_params + [TEST_MODEL], stdin=stdin)
         assert bool(re.search(pattern, result)) is expected
 
 
@@ -271,7 +268,6 @@ def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_co
 
 
 @pytest.mark.e2e
-@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_darwin  # test is broken on MAC --no-container right now
 def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     import platform
@@ -288,14 +284,12 @@ def test_run_model_with_prompt(shared_ctx_with_models, test_model):
 
 
 @pytest.mark.e2e
-@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 def test_run_keepalive(shared_ctx_with_models, test_model):
     ctx = shared_ctx_with_models
     ctx.check_call(["ramalama", "run", "--keepalive", "1s", test_model])
 
 
 @pytest.mark.e2e
-@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_no_container
 @skip_if_docker
 @skip_if_gh_actions_darwin
@@ -319,7 +313,7 @@ def test_run_keepalive(shared_ctx_with_models, test_model):
                 "tiny",
             ],
             22,
-            r".*Error: quay.io/ramalama/testrag: image not known",
+            r".*quay.io/ramalama/testrag: image not known",
             id="non-existing-image-with-rag",
         ),
     ],
@@ -333,7 +327,6 @@ def test_run_with_non_existing_images_new(shared_ctx_with_models, run_args, exit
 
 
 @pytest.mark.e2e
-@xfail_if_windows  # FIXME: AttributeError: module 'os' has no attribute 'fork'
 @skip_if_no_container
 @skip_if_darwin
 @skip_if_docker
