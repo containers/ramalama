@@ -12,7 +12,7 @@ metadata:
       event == "pull_request" && target_branch == "main" && body.action != "ready_for_review" &&
       (
         "container-images/common/Containerfile.rag".pathChanged() ||
-        "container-images/common/requirements-rag-cu128*.txt".pathChanged() ||
+        "container-images/common/requirements-rag-cu130*.txt".pathChanged() ||
         "container-images/scripts/build_rag.sh".pathChanged() ||
         "container-images/scripts/doc2rag".pathChanged() ||
         "container-images/scripts/rag_framework".pathChanged() ||
@@ -39,8 +39,8 @@ spec:
     value: container-images/common/Containerfile.rag
   - name: build-args
     value:
-    - PARENT=docker.io/nvidia/cuda:12.8.1-devel-ubi9
-    - TORCH_BACKEND=cu128
+    - PARENT=docker.io/nvidia/cuda:13.0.2-devel-ubi9
+    - TORCH_BACKEND=cu130
   pipelineRef:
     name: pull-request-pipeline
   timeouts:

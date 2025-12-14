@@ -4,9 +4,9 @@ install_pkgs() {
     local pkgs=("git-core" "libglvnd-glx")
     local default_python="python3.13"
 
-    if [ "$backend" = "cu128" ]; then
+    if [ "$backend" = "cu130" ]; then
         default_python="python3.12"
-        pkgs+=("libcudnn9-devel-cuda-12" "libcusparselt0" "cuda-cupti-12-*")
+        pkgs+=("libcudnn9-devel-cuda-13" "libcusparselt0" "cuda-cupti-13-*")
     elif [ "$backend" = "rocm6.3" ]; then
         pkgs+=("uv" "rocm-core" "hipblas" "rocblas" "rocm-hip")
     elif [ "$backend" = "xpu" ]; then
@@ -22,7 +22,7 @@ install_pkgs() {
     dnf -y --nodocs --setopt=install_weak_deps=false install "${pkgs[@]}"
     dnf -y clean all
 
-    if [ "$backend" = "cu128" ]; then
+    if [ "$backend" = "cu130" ]; then
         curl -LsSf https://astral.sh/uv/install.sh | sh
         # shellcheck disable=SC1091
         source /root/.local/bin/env
