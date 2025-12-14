@@ -17,6 +17,7 @@ DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
 DEFAULT_RAG_IMAGE: str = "quay.io/ramalama/ramalama-rag"
 SUPPORTED_ENGINES: TypeAlias = Literal["podman", "docker"]
 SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx"]
+RAG_MODES: TypeAlias = Literal["strict", "augment"]
 COLOR_OPTIONS: TypeAlias = Literal["auto", "always", "never"]
 GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q2_K",
@@ -239,6 +240,7 @@ class BaseConfig:
     prefix: str = None  # type: ignore
     pull: str = "newer"
     rag_format: Literal["qdrant", "json", "markdown", "milvus"] = "qdrant"
+    rag_mode: RAG_MODES = "augment"
     runtime: SUPPORTED_RUNTIMES = "llama.cpp"
     selinux: bool = False
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
