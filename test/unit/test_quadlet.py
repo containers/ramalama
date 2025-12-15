@@ -48,6 +48,7 @@ class Input:
         exec_args: list = [],
         accel_type: str = "cuda",
         artifact: str = "",
+        model_parts: Optional[list] = None,
     ):
         self.model_name = model_name
         self.model_src_blob = model_src_blob
@@ -64,6 +65,7 @@ class Input:
         self.exec_args = exec_args
         self.accel_type = accel_type
         self.artifact = artifact
+        self.model_parts = model_parts
 
 
 DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
@@ -203,6 +205,30 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
             ),
             DATA_PATH / "oci_rag",
         ),
+        (
+            Input(
+                model_name="gpt-oss-120b",
+                model_src_blob="sha256-e2865eb6c1df7b2ffbebf305cd5d9074d5ccc0fe3b862f98d343a46dad1606f9",
+                model_dest_name="/mnt/models/gpt-oss-120b-mxfp4-00001-of-00003.gguf",
+                image="testimage",
+                model_file_exists=True,
+                model_parts=[
+                    (
+                        "sha256-e2865eb6c1df7b2ffbebf305cd5d9074d5ccc0fe3b862f98d343a46dad1606f9",
+                        "/mnt/models/gpt-oss-120b-mxfp4-00001-of-00003.gguf",
+                    ),
+                    (
+                        "sha256-81856b5b996da9c9fd68397d49671264ead380a8355b3c83284eae5e21e998ed",
+                        "/mnt/models/gpt-oss-120b-mxfp4-00002-of-00003.gguf",
+                    ),
+                    (
+                        "sha256-38b087fffe4b5ba5d62fa7761ed7278a07fef7a6145b9744b11205b851021dce",
+                        "/mnt/models/gpt-oss-120b-mxfp4-00003-of-00003.gguf",
+                    ),
+                ],
+            ),
+            DATA_PATH / "multipart",
+        ),
     ],
 )
 def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
@@ -217,6 +243,11 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
         input.mmproj_src_blob: input.mmproj_file_exists,
     }
 
+    # Add existence checks for all model parts
+    if input.model_parts:
+        for src, _ in input.model_parts:
+            existence[src] = input.model_file_exists
+
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
     monkeypatch.setattr(Quadlet, "_gen_env", lambda self, quadlet_file: None)
     monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: input.accel_type)
@@ -229,6 +260,7 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
         input.args,
         input.exec_args,
         input.artifact,
+        input.model_parts,
     ).generate():
         assert file.filename in expected_files
 
