@@ -68,7 +68,7 @@ def test_basic_dry_run():
             id="check model name", marks=skip_if_no_container
         ),
         pytest.param(
-            [], r".*--name ramalama_.", None, None, True,
+            [], r".*--name ramalama-.", None, None, True,
             id="check default --name flag", marks=skip_if_no_container
         ),
         pytest.param(
@@ -624,7 +624,7 @@ def test_serve_kube_generation(test_model, generate, env_vars):
                     if "kube" in generate:
                         assert re.search(r".*env:", content)
                         assert re.search(r".*name: HIP_VISIBLE_DEVICES", content)
-                        assert re.search(r".*value: 99", content)
+                        assert re.search(r".*value: \"99\"", content)
                     elif "compose" in generate:
                         assert re.search(r".*environment:", content)
                         assert re.search(r".*- HIP_VISIBLE_DEVICES=99", content)
@@ -751,7 +751,7 @@ def test_serve_with_non_existing_images():
                 stderr=STDOUT,
             )
         assert exc_info.value.returncode == 22
-        assert re.search(r"quay.io/ramalama/rag: image not known.*", exc_info.value.output.decode("utf-8"))
+        assert re.search(r"Error: quay.io/ramalama/rag does not exist.*", exc_info.value.output.decode("utf-8"))
 
 
 @pytest.mark.e2e

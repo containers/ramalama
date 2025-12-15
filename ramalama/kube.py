@@ -2,7 +2,7 @@ import os
 import platform
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, genname, get_accel_env_vars
+from ramalama.common import MNT_DIR, RAG_DIR, get_accel_env_vars
 from ramalama.file import PlainFile
 from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.version import version
@@ -17,6 +17,7 @@ class Kube:
         mmproj_paths: Optional[Tuple[str, str]],
         args,
         exec_args,
+        artifact: bool,
     ):
         self.src_model_path, self.dest_model_path = model_paths
         self.src_chat_template_path, self.dest_chat_template_path = (
@@ -29,11 +30,12 @@ class Kube:
         if getattr(args, "name", None):
             self.name = args.name
         else:
-            self.name = genname()
+            self.name = "ramalama"
 
         self.args = args
         self.exec_args = exec_args
         self.image = args.image
+        self.artifact = artifact
 
     def _gen_volumes(self):
         mounts = """\
@@ -41,15 +43,17 @@ class Kube:
 
         volumes = """
       volumes:"""
-
         if os.path.exists(self.src_model_path):
             m, v = self._gen_path_volume()
             mounts += m
             volumes += v
         else:
+            subPath = ""
+            if not self.artifact:
+                subPath = """
+          subPath: /models"""
             mounts += f"""
-        - mountPath: {MNT_DIR}
-          subPath: /models
+        - mountPath: {MNT_DIR}{subPath}
           name: model"""
             volumes += self._gen_oci_volume()
 
@@ -104,7 +108,7 @@ class Kube:
     def _gen_oci_volume(self):
         return f"""
       - image:
-          reference: {self.ai_image}
+          reference: {self.src_model_path}
           pullPolicy: IfNotPresent
         name: model"""
 
@@ -176,7 +180,7 @@ class Kube:
         for k, v in env_vars.items():
             env_spec += f"""
         - name: {k}
-          value: {v}"""
+          value: \"{v}\""""
 
         return env_spec
 
@@ -191,7 +195,7 @@ class Kube:
 # it into Kubernetes.
 #
 # Created with ramalama-{_version}
-apiVersion: v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {self.name}

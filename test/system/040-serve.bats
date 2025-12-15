@@ -12,7 +12,7 @@ verify_begin=".*run --rm"
     if is_container; then
 	run_ramalama -q --dryrun serve ${model}
 	is "$output" "${verify_begin}.*" "dryrun correct"
-	is "$output" ".*--name ramalama_.*" "dryrun correct"
+	is "$output" ".*--name ramalama-.*" "dryrun correct"
 	is "$output" ".*${model}" "verify model name"
 	is "$output" ".*--cache-reuse 256" "cache"
 	assert "$output" !~ ".*--no-webui"
@@ -111,11 +111,11 @@ verify_begin=".*run --rm"
 
     run_ramalama -q --dryrun serve --detach ${model}
     is "$output" ".*-d .*" "dryrun correct"
-    is "$output" ".*--name ramalama_.*" "serve in detach mode"
+    is "$output" ".*--name ramalama-.*" "serve in detach mode"
 
     run_ramalama -q --dryrun serve -d ${model}
     is "$output" ".*-d .*" "dryrun correct"
-    is "$output" ".*--name ramalama_.*" "dryrun correct"
+    is "$output" ".*--name ramalama-.*" "dryrun correct"
 
     run_ramalama stop --all
 }
@@ -408,7 +408,7 @@ verify_begin=".*run --rm"
     run cat $name.yaml
     is "$output" ".*env:" "Should contain env property"
     is "$output" ".*name: HIP_VISIBLE_DEVICES" "Should contain env name"
-    is "$output" ".*value: 99" "Should contain env value"
+    is "$output" ".*value: \"99\"" "Should contain env value"
 
     run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube $model
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
@@ -424,7 +424,7 @@ verify_begin=".*run --rm"
     run cat $name.yaml
     is "$output" ".*env:" "Should contain env property"
     is "$output" ".*name: HIP_VISIBLE_DEVICES" "Should contain env name"
-    is "$output" ".*value: 99" "Should contain env value"
+    is "$output" ".*value: \"99\"" "Should contain env value"
 
     run cat $name.kube
     is "$output" ".*Yaml=$name.yaml" "Should container container port"
@@ -542,7 +542,7 @@ verify_begin=".*run --rm"
     is "$output" "Error: bogus: image not known"
 
     run_ramalama 22 serve --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
-    is "$output" "Error: quay.io/ramalama/rag: image not known.*"
+    is "$output" "Error: quay.io/ramalama/rag does not exist"
 }
 
 @test "ramalama serve with rag" {

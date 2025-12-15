@@ -39,14 +39,15 @@ Image to use when converting to GGUF format (when then `--gguf` option has been 
 executable and available in the `PATH`. The script is available from the `llama.cpp` GitHub repo. Defaults to the current
 `quay.io/ramalama/ramalama-rag` image.
 
-#### **--type**=*raw* | *car*
+#### **--type**="artifact" | *raw* | *car*
 
-type of OCI Model Image to convert.
+Convert the MODEL to the specified OCI Object
 
-| Type | Description                                                   |
-| ---- | ------------------------------------------------------------- |
-| car  | Includes base image with the model stored in a /models subdir |
-| raw  | Only the model and a link file model.file to it stored at /   |
+| Type     | Description                                                   |
+| -------- | ------------------------------------------------------------- |
+| artifact | Store AI Models as artifacts                                  |
+| car      | Traditional OCI image including base image with the model stored in a /models subdir |
+| raw      | Traditional OCI image including only the model and a link file `model.file` pointed at it stored at /   |
 
 ## EXAMPLE
 

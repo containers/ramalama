@@ -2,30 +2,30 @@
 # it into Kubernetes.
 #
 # Created with ramalama-test-version
-apiVersion: v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: generated-name
+  name: ramalama
   labels:
-    app: generated-name
+    app: ramalama
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: generated-name
+      app: ramalama
   template:
     metadata:
       labels:
-        app: generated-name
+        app: ramalama
     spec:
       containers:
-      - name: generated-name
+      - name: ramalama
         image: testimage
         command: ["llama-server"]
         args: ['--model', '/mnt/models/model.file']
         env:
         - name: TEST_ENV
-          value: test_value
+          value: "test_value"
         ports:
         - containerPort: 8080
           hostPort: 3000

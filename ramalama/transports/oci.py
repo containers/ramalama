@@ -1,15 +1,17 @@
 import copy
+import json
 import os
 import shutil
 import subprocess
 import tempfile
 from textwrap import dedent
+from typing import Tuple
 
 import ramalama.annotations as annotations
-from ramalama.common import exec_cmd, perror, run_cmd, set_accel_env_vars
+from ramalama.common import MNT_DIR, engine_version, exec_cmd, perror, run_cmd, set_accel_env_vars
 from ramalama.engine import BuildEngine, Engine, dry_run
 from ramalama.oci_tools import engine_supports_manifest_attributes
-from ramalama.transports.base import Transport
+from ramalama.transports.base import NoRefFileFound, Transport
 
 prefix = "oci://"
 
@@ -23,9 +25,11 @@ class OCI(Transport):
     def __init__(self, model: str, model_store_path: str, conman: str, ignore_stderr: bool = False):
         super().__init__(model, model_store_path)
 
+        if ":" not in self.model:
+            self.model = f"{self.model}:latest"
+
         if not conman:
             raise ValueError("RamaLama OCI Images requires a container engine")
-
         self.conman = conman
         self.ignore_stderr = ignore_stderr
 
@@ -119,8 +123,13 @@ class OCI(Transport):
     def _generate_containerfile(self, source_model, args):
         # Generate the containerfile content
         # Keep this in sync with docs/ramalama-oci.5.md !
+        is_car = args.type == "car"
+        is_raw = args.type == "raw"
+        if args.type == "artifact":
+            raise TypeError("artifact handling should not generate containerfiles.")
+        if not is_car and not is_raw:
+            raise ValueError(f"argument --type: invalid choice: '{args.type}' (choose from artifact,  car, raw)")
         content = [f"FROM {args.carimage} AS build"]
-
         model_name = source_model.model_name
         ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
 
@@ -163,6 +172,52 @@ class OCI(Transport):
             dry_run(cmd_args)
         else:
             run_cmd(cmd_args)
+
+    def _rm_artifact(self, ignore):
+        rm_cmd = [
+            self.conman,
+            "artifact",
+            "rm",
+        ]
+        if ignore:
+            rm_cmd.append("--ignore")
+        rm_cmd.append(self.model)
+
+        run_cmd(
+            rm_cmd,
+            ignore_all=True,
+        )
+
+    def _add_artifact(self, create, name, path, file_name) -> None:
+        cmd = [
+            self.conman,
+            "artifact",
+            "add",
+            "--annotation",
+            f"org.opencontainers.image.title={file_name}",
+        ]
+        if create:
+            if self.conman == "podman" and engine_version("podman") >= "5.7.0":
+                cmd.append("--replace")
+            cmd.extend(["--type", annotations.ArtifactTypeModelManifest])
+        else:
+            cmd.extend(["--append"])
+
+        cmd.extend([self.model, path])
+        run_cmd(
+            cmd,
+            ignore_stderr=True,
+        )
+
+    def _create_artifact(self, source_model, target, args) -> None:
+        model_name = source_model.model_name
+        ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
+        name = ref_file.model_files[0].name if ref_file.model_files else model_name
+        create = True
+        for file in ref_file.files:
+            blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+            self._add_artifact(create, name, blob_file_path, file.name)
+            create = False
 
     def _create_manifest_without_attributes(self, target, imageid, args):
         # Create manifest list for target with imageid
@@ -228,6 +283,11 @@ class OCI(Transport):
                 run_cmd(rm_cmd, ignore_stderr=True, stdout=None)
         except subprocess.CalledProcessError:
             pass
+        if args.type == "artifact":
+            perror(f"Creating Artifact {self.model} ...")
+            self._create_artifact(source_model, self.model, args)
+            return
+
         perror(f"Building {self.model} ...")
         imageid = self.build(source_model, args)
         if args.dryrun:
@@ -249,9 +309,13 @@ Tagging build instead
     def push(self, source_model, args):
         target = self.model
         source = source_model.model
-
-        perror(f"Pushing {self.model} ...")
         conman_args = [self.conman, "push"]
+        type = "image"
+        if args.type == "artifact":
+            type = args.type
+            conman_args.insert(1, "artifact")
+
+        perror(f"Pushing {type} {self.model} ...")
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
         if str(args.tlsverify).lower() == "false":
@@ -260,10 +324,16 @@ Tagging build instead
         if source != target:
             self._convert(source_model, args)
         try:
-            run_cmd(conman_args)
+            run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
         except subprocess.CalledProcessError as e:
-            perror(f"Failed to push OCI {target} : {e}")
-            raise e
+            try:
+                if args.type != "artifact":
+                    perror(f"Pushing artifact {self.model} ...")
+                    conman_args.insert(1, "artifact")
+                    run_cmd(conman_args)
+            except subprocess.CalledProcessError:
+                perror(f"Failed to push OCI {target} : {e}")
+                raise e
 
     def pull(self, args):
         if not args.engine:
@@ -282,16 +352,23 @@ Tagging build instead
         conman_args.extend([self.model])
         run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
 
-    def remove(self, args, ignore_stderr=False):
+    def remove(self, args) -> bool:
         if self.conman is None:
             raise NotImplementedError("OCI Images require a container engine")
 
         try:
             conman_args = [self.conman, "manifest", "rm", self.model]
-            run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
+            run_cmd(conman_args, ignore_stderr=True)
         except subprocess.CalledProcessError:
-            conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
-            run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
+            try:
+                conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
+                run_cmd(conman_args, ignore_stderr=True)
+            except subprocess.CalledProcessError:
+                try:
+                    self._rm_artifact(args.ignore)
+                except subprocess.CalledProcessError:
+                    raise KeyError(f"Model '{self.model}' not found")
+        return True
 
     def exists(self) -> bool:
         if self.conman is None:
@@ -299,7 +376,88 @@ Tagging build instead
 
         conman_args = [self.conman, "image", "inspect", self.model]
         try:
-            run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
+            run_cmd(conman_args, ignore_stderr=True)
             return True
         except Exception:
+            conman_args = [self.conman, "artifact", "inspect", self.model]
+            try:
+                run_cmd(conman_args, ignore_stderr=True)
+                return True
+            except Exception:
+                return False
+
+    def _inspect(
+        self,
+        show_all: bool = False,
+        show_all_metadata: bool = False,
+        get_field: str = "",
+        as_json: bool = False,
+        dryrun: bool = False,
+    ) -> Tuple[str, str]:
+        out = super().inspect(show_all, show_all_metadata, get_field, dryrun, as_json)
+        if as_json:
+            out_data = json.loads(out)
+        else:
+            out_data = out
+        conman_args = [self.conman, "image", "inspect", self.model]
+        oci_type = "Image"
+        try:
+            inspect_output = run_cmd(conman_args, ignore_stderr=True).stdout.decode('utf-8').strip()
+            # podman image inspect returns a list of objects
+            inspect_data = json.loads(inspect_output)
+            if as_json and inspect_data:
+                out_data.update(inspect_data[0])
+        except Exception as e:
+            conman_args = [self.conman, "artifact", "inspect", self.model]
+            try:
+                inspect_output = run_cmd(conman_args, ignore_stderr=True).stdout.decode('utf-8').strip()
+
+                # podman artifact inspect returns a single object
+                if as_json:
+                    out_data.update(json.loads(inspect_output))
+                oci_type = "Artifact"
+            except Exception:
+                raise e
+
+        if as_json:
+            return json.dumps(out_data), oci_type
+        return out_data, oci_type
+
+    def artifact_name(self) -> str:
+        conman_args = [
+            self.conman,
+            "artifact",
+            "inspect",
+            "--format",
+            '{{index  .Manifest.Annotations "org.opencontainers.image.title" }}',
+            self.model,
+        ]
+
+        return run_cmd(conman_args, ignore_stderr=True).stdout.decode('utf-8').strip()
+
+    def inspect(
+        self,
+        show_all: bool = False,
+        show_all_metadata: bool = False,
+        get_field: str = "",
+        as_json: bool = False,
+        dryrun: bool = False,
+    ) -> None:
+        out, type = self._inspect(show_all, show_all_metadata, get_field, as_json, dryrun)
+        if as_json:
+            print(out)
+        else:
+            print(f"{out}   Type: {type}")
+
+    def is_artifact(self) -> bool:
+        try:
+            _, oci_type = self._inspect()
+        except (NoRefFileFound, subprocess.CalledProcessError):
             return False
+        return oci_type == "Artifact"
+
+    def mount_cmd(self):
+        if self.artifact:
+            return f"--mount=type=artifact,src={self.model},destination={MNT_DIR}"
+        else:
+            return f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"

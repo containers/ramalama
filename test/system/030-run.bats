@@ -143,7 +143,7 @@ EOF
     is "$output" "\(Error: bogus: image not known\|docker: Error response from daemon: No such image: bogus:latest\)"
     is "$output" ".*Error: Failed to serve model TinyLlama-1.1B-Chat-v1.0-GGUF, for ramalama run command"
     run_ramalama 22 run --image bogus1 --rag quay.io/ramalama/rag --pull=never tiny
-    is "$output" "\(Error: quay.io/ramalama/rag: image not known\|Error response from daemon: No such image: quay.io/ramalama/rag:latest\)"
+    is "$output" "\(Error: quay.io/ramalama/rag does not exist\|Error response from daemon: No such image: quay.io/ramalama/rag:latest\)"
     is "$output" ".*Error: quay.io/ramalama/rag does not exist"
 }
 

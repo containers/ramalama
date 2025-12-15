@@ -47,6 +47,7 @@ class Input:
         args: Args = Args(),
         exec_args: list = [],
         accel_type: str = "cuda",
+        artifact: str = "",
     ):
         self.model_name = model_name
         self.model_src_blob = model_src_blob
@@ -62,6 +63,7 @@ class Input:
         self.args = args
         self.exec_args = exec_args
         self.accel_type = accel_type
+        self.artifact = artifact
 
 
 DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
@@ -226,6 +228,7 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
         (input.mmproj_src_blob, input.mmproj_dest_name),
         input.args,
         input.exec_args,
+        input.artifact,
     ).generate():
         assert file.filename in expected_files
 
