@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
+from functools import cached_property
 from typing import Any, Dict, Optional
 
 import ramalama.chat as chat
@@ -100,7 +101,7 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("push")
 
     @abstractmethod
-    def remove(self, args):
+    def remove(self, args) -> bool:
         raise self.__not_implemented_error("rm")
 
     @abstractmethod
@@ -153,6 +154,10 @@ class Transport(TransportBase):
         self.default_image = accel_image(CONFIG)
         self.draft_model: Transport | None = None
 
+    @cached_property
+    def artifact(self) -> bool:
+        return self.is_artifact()
+
     def extract_model_identifiers(self):
         model_name = self.model
         model_tag = "latest"
@@ -202,6 +207,13 @@ class Transport(TransportBase):
 
         if self.model_type == 'oci':
             if use_container or should_generate:
+                if getattr(self, "artifact", False):
+                    artifact_name_method = getattr(self, "artifact_name", None)
+                    if artifact_name_method:
+                        try:
+                            return f"{MNT_DIR}/{artifact_name_method()}"
+                        except subprocess.CalledProcessError:
+                            pass
                 return f"{MNT_DIR}/model.file"
             else:
                 return f"oci://{self.model}"
@@ -291,10 +303,13 @@ class Transport(TransportBase):
             return f"{MNT_DIR}/{chat_template_file.name}"
         return self.model_store.get_blob_file_path(chat_template_file.hash)
 
-    def remove(self, args):
+    def remove(self, args) -> bool:
         _, tag, _ = self.extract_model_identifiers()
-        if not self.model_store.remove_snapshot(tag) and not args.ignore:
+        if self.model_store.remove_snapshot(tag):
+            return True
+        if not args.ignore:
             raise KeyError(f"Model '{self.model}' not found")
+        return False
 
     def get_container_name(self, args):
         if getattr(args, "name", None):
@@ -347,9 +362,10 @@ class Transport(TransportBase):
     def setup_mounts(self, args):
         if args.dryrun:
             return
+
         if self.model_type == 'oci':
             if self.engine.use_podman:
-                mount_cmd = f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"
+                mount_cmd = self.mount_cmd()
             elif self.engine.use_docker:
                 output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
                 volume = populate_volume_from_image(self, args, os.path.basename(output_filename))
@@ -594,7 +610,7 @@ class Transport(TransportBase):
             )
         elif args.generate.gen_type == "kube":
             self.kube(
-                (model_src_path, model_dest_path),
+                (model_src_path.removeprefix("oci://"), model_dest_path),
                 (chat_template_src_path, chat_template_dest_path),
                 (mmproj_src_path, mmproj_dest_path),
                 args,
@@ -649,19 +665,21 @@ class Transport(TransportBase):
             raise e
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        quadlet = Quadlet(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
+        quadlet = Quadlet(
+            self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact
+        )
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
 
     def quadlet_kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
         kube.generate().write(output_dir)
 
-        quadlet = Quadlet(kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
+        quadlet = Quadlet(kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
         quadlet.kube().write(output_dir)
 
     def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
         kube.generate().write(output_dir)
 
     def compose(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
@@ -681,40 +699,38 @@ class Transport(TransportBase):
         get_field: str = "",
         as_json: bool = False,
         dryrun: bool = False,
-    ) -> None:
+    ) -> Any:
         model_name = self.filename
         model_registry = self.type.lower()
         model_path = self._get_inspect_model_path(dryrun)
-
         if GGUFInfoParser.is_model_gguf(model_path):
             if not show_all_metadata and get_field == "":
                 gguf_info: GGUFModelInfo = GGUFInfoParser.parse(model_name, model_registry, model_path)
-                print(gguf_info.serialize(json=as_json, all=show_all))
-                return
+                return gguf_info.serialize(json=as_json, all=show_all)
 
             metadata = GGUFInfoParser.parse_metadata(model_path)
             if show_all_metadata:
-                print(metadata.serialize(json=as_json))
-                return
+                return metadata.serialize(json=as_json)
             elif get_field != "":  # If a specific field is requested, print only that field
                 field_value = metadata.get(get_field)
                 if field_value is None:
                     raise KeyError(f"Field '{get_field}' not found in GGUF model metadata")
-                print(field_value)
-                return
+                return field_value
 
         if SafetensorInfoParser.is_model_safetensor(model_name):
             safetensor_info: SafetensorModelInfo = SafetensorInfoParser.parse(model_name, model_registry, model_path)
-            print(safetensor_info.serialize(json=as_json, all=show_all))
-            return
+            return safetensor_info.serialize(json=as_json, all=show_all)
 
-        print(ModelInfoBase(model_name, model_registry, model_path).serialize(json=as_json))
+        return ModelInfoBase(model_name, model_registry, model_path).serialize(json=as_json)
 
-    def print_pull_message(self, model_name):
+    def print_pull_message(self, model_name) -> None:
         model_name = trim_model_name(model_name)
         # Write messages to stderr
         perror(f"Downloading {model_name} ...")
         perror(f"Trying to pull {model_name} ...")
+
+    def is_artifact(self) -> bool:
+        return False
 
 
 def compute_ports(exclude: list[str] | None = None) -> list[int]:

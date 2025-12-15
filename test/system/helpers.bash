@@ -1,6 +1,6 @@
 # -*- bash -*-
 
-# RamaLama command to run; 
+# RamaLama command to run;
 RAMALAMA=${RAMALAMA:-ramalama}
 
 export RAMALAMA_CONFIG=${RAMALAMA_CONFIG:-./test/system/ramalama.conf}
@@ -65,7 +65,7 @@ function ramalama_basic_setup() {
 
     # runtime is not likely to change
     if [[ -z "$RAMALAMA_RUNTIME" ]]; then
-        RAMALAMA_RUNTIME=$(ramalama_runtime)
+	RAMALAMA_RUNTIME=$(ramalama_runtime)
     fi
 
     # In the unlikely event that a test runs is() before a run_ramalama()
@@ -120,11 +120,11 @@ function run_ramalama() {
     local expected_rc=0
     local allowed_levels="dit"
     case "$1" in
-        0\+[we]*)        allowed_levels+=$(expr "$1" : "^0+\([we]\+\)"); shift;;
-        [0-9])           expected_rc=$1; shift;;
-        [1-9][0-9])      expected_rc=$1; shift;;
-        [12][0-9][0-9])  expected_rc=$1; shift;;
-        '?')             expected_rc=  ; shift;;  # ignore exit code
+	0\+[we]*)        allowed_levels+=$(expr "$1" : "^0+\([we]\+\)"); shift;;
+	[0-9])           expected_rc=$1; shift;;
+	[1-9][0-9])      expected_rc=$1; shift;;
+	[12][0-9][0-9])  expected_rc=$1; shift;;
+	'?')             expected_rc=  ; shift;;  # ignore exit code
     esac
 
     # Remember command args, for possible use in later diagnostic messages
@@ -135,10 +135,10 @@ function run_ramalama() {
     #   https://bats-core.readthedocs.io/en/stable/warnings/BW01.html
     local silence127=
     if [[ "$expected_rc" = "127" ]]; then
-        # We could use "-127", but that would cause BATS to fail if the
-        # command exits any other status -- and default BATS failure messages
-        # are much less helpful than the run_ramalama ones. "!" is more flexible.
-        silence127="!"
+	# We could use "-127", but that would cause BATS to fail if the
+	# command exits any other status -- and default BATS failure messages
+	# are much less helpful than the run_ramalama ones. "!" is more flexible.
+	silence127="!"
     fi
 
     # stdout is only emitted upon error; this printf is to help in debugging
@@ -148,43 +148,43 @@ function run_ramalama() {
     run $silence127 timeout --foreground -v --kill=10 $RAMALAMA_TIMEOUT $RAMALAMA $_RAMALAMA_TEST_OPTS "$@" 3>/dev/null
     # without "quotes", multiple lines are glommed together into one
     if [ -n "$output" ]; then
-        echo "$(timestamp) $output"
+	echo "$(timestamp) $output"
 
-        # FIXME FIXME FIXME: instrumenting to track down #15488. Please
-        # remove once that's fixed. We include the args because, remember,
-        # bats only shows output on error; it's possible that the first
-        # instance of the metacopy warning happens in a test that doesn't
-        # check output, hence doesn't fail.
-        if [[ "$output" =~ Ignoring.global.metacopy.option ]]; then
-            echo "# YO! metacopy warning triggered by: ramalama $*" >&3
-        fi
+	# FIXME FIXME FIXME: instrumenting to track down #15488. Please
+	# remove once that's fixed. We include the args because, remember,
+	# bats only shows output on error; it's possible that the first
+	# instance of the metacopy warning happens in a test that doesn't
+	# check output, hence doesn't fail.
+	if [[ "$output" =~ Ignoring.global.metacopy.option ]]; then
+	    echo "# YO! metacopy warning triggered by: ramalama $*" >&3
+	fi
     fi
     if [ "$status" -ne 0 ]; then
-        echo -n "$(timestamp) [ rc=$status ";
-        if [ -n "$expected_rc" ]; then
-            if [ "$status" -eq "$expected_rc" ]; then
-                echo -n "(expected) ";
-            else
-                echo -n "(** EXPECTED $expected_rc **) ";
-            fi
-        fi
-        echo "]"
+	echo -n "$(timestamp) [ rc=$status ";
+	if [ -n "$expected_rc" ]; then
+	    if [ "$status" -eq "$expected_rc" ]; then
+		echo -n "(expected) ";
+	    else
+		echo -n "(** EXPECTED $expected_rc **) ";
+	    fi
+	fi
+	echo "]"
     fi
 
     if [ "$status" -eq 124 ]; then
-        if expr "$output" : ".*timeout: sending" >/dev/null; then
-            # It's possible for a subtest to _want_ a timeout
-            if [[ "$expected_rc" != "124" ]]; then
-                echo "*** TIMED OUT ***"
-                false
-            fi
-        fi
+	if expr "$output" : ".*timeout: sending" >/dev/null; then
+	    # It's possible for a subtest to _want_ a timeout
+	    if [[ "$expected_rc" != "124" ]]; then
+		echo "*** TIMED OUT ***"
+		false
+	    fi
+	fi
     fi
 
     if [ -n "$expected_rc" ]; then
-        if [ "$status" -ne "$expected_rc" ]; then
-            die "exit code is $status; expected $expected_rc"
-        fi
+	if [ "$status" -ne "$expected_rc" ]; then
+	    die "exit code is $status; expected $expected_rc"
+	fi
     fi
 }
 
@@ -192,8 +192,8 @@ function run_ramalama_testing() {
     printf "\n%s %s %s %s\n" "$(timestamp)" "$_LOG_PROMPT" "$RAMALAMA_TESTING" "$*"
     run $RAMALAMA_TESTING "$@"
     if [[ $status -ne 0 ]]; then
-        echo "$output"
-        die "Unexpected error from testing helper, which should always always succeed"
+	echo "$output"
+	die "Unexpected error from testing helper, which should always always succeed"
     fi
 }
 
@@ -228,19 +228,19 @@ function not_docker() {
 
 function skip_if_nocontainer() {
     if [[ "${_RAMALAMA_TEST_OPTS}" == "--nocontainer" ]]; then
-        skip "Not supported with --nocontainer"
+	skip "Not supported with --nocontainer"
     fi
 }
 
 function skip_if_notlocal() {
     if [[ "${_RAMALAMA_TEST}" != "local" ]]; then
-        skip "Not supported unless --local"
+	skip "Not supported unless --local"
     fi
 }
 
 function skip_if_docker() {
     if [[ "${_RAMALAMA_TEST_OPTS}" == "--engine=docker" ]]; then
-        skip "Not supported with --engine=docker"
+	skip "Not supported with --engine=docker"
     fi
 }
 
@@ -254,38 +254,38 @@ function is_tty() {
 
 function skip_if_darwin() {
     if [[ "$(uname)" == "Darwin" ]]; then
-        skip "Not supported on darwin"
+	skip "Not supported on darwin"
     fi
 }
 
 function is_apple_silicon() {
     # Check if we're on macOS and have Apple Silicon (arm64)
     if is_darwin; then
-        arch=$(uname -m)
-        [[ "$arch" == "arm64" ]]
+	arch=$(uname -m)
+	[[ "$arch" == "arm64" ]]
     else
-        return 1
+	return 1
     fi
 }
 
 function skip_if_no_hf_cli(){
     if ! command -v hf 2>&1 >/dev/null
     then
-        skip "Not supported without hf client"
+	skip "Not supported without hf client"
     fi
 }
 
 function skip_if_no_ollama() {
     if ! command -v ollama 2>&1 >/dev/null
     then
-        skip "Not supported without ollama"
+	skip "Not supported without ollama"
     fi
 }
 
 function skip_if_no_llama_bench() {
     if ! command -v llama-bench 2>&1 >/dev/null
     then
-        skip "Not supported without llama-bench"
+	skip "Not supported without llama-bench"
     fi
 }
 
@@ -295,7 +295,7 @@ function is_ppc64le() {
 
 function skip_if_ppc64le() {
     if is_ppc64le; then
-        skip "Not yet supported on ppc64le"
+	skip "Not yet supported on ppc64le"
     fi
 }
 
@@ -305,7 +305,35 @@ function is_s390x() {
 
 function skip_if_s390x() {
     if is_s390x; then
-        skip "Not yet supported on s390x"
+	skip "Not yet supported on s390x"
+    fi
+}
+
+function get_podman_version() {
+    # Extract podman version as a comparable number (e.g., "5.7.0" -> 50700)
+    local version_output
+    version_output=$(podman version --format '{{.Client.Version}}' 2>/dev/null || echo "0.0.0")
+    local version_major version_minor version_patch
+    version_major=$(echo "$version_output" | cut -d. -f1)
+    version_minor=$(echo "$version_output" | cut -d. -f2)
+    version_patch=$(echo "$version_output" | cut -d. -f3 | cut -d- -f1)  # Handle versions like "5.7.0-dev"
+
+    # Convert to integer for comparison (e.g., 5.7.0 -> 50700)
+    echo $((version_major * 10000 + version_minor * 100 + version_patch))
+}
+
+function skip_if_podman_too_old() {
+    local required_version="$1"  # e.g., "5.7.0"
+    local required_major required_minor required_patch
+    required_major=$(echo "$required_version" | cut -d. -f1)
+    required_minor=$(echo "$required_version" | cut -d. -f2)
+    required_patch=$(echo "$required_version" | cut -d. -f3)
+
+    local required_num=$((required_major * 10000 + required_minor * 100 + required_patch))
+    local current_num=$(get_podman_version)
+
+    if [ "$current_num" -lt "$required_num" ]; then
+	skip "Requires podman >= $required_version (found $(podman version --format '{{.Client.Version}}' 2>/dev/null || echo 'unknown'))"
     fi
 }
 
@@ -315,9 +343,9 @@ function is_bigendian() {
 
 function test_model() {
     if is_bigendian; then
-        echo ${2:-stories-be:260k}
+	echo ${2:-stories-be:260k}
     else
-        echo ${1:-smollm:135m}
+	echo ${1:-smollm:135m}
     fi
 }
 

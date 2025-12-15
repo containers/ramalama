@@ -46,7 +46,7 @@ class TestRLCRInitialization:
 
     def test_rlcr_model_initialization(self, rlcr_model):
         """Test that RLCR model initializes with correct rlcr.io prefix"""
-        assert rlcr_model.model == "rlcr.io/ramalama/gemma3-270m"
+        assert rlcr_model.model == "rlcr.io/ramalama/gemma3-270m:latest"
         assert rlcr_model._model_type == 'oci'
         assert rlcr_model.conman == "podman"
 
@@ -110,16 +110,16 @@ class TestRLCRIntegration:
     def test_complete_initialization_flow(self, rlcr_model):
         """Test complete RLCR initialization and model path construction"""
         # Test the complete flow
-        assert rlcr_model.model == "rlcr.io/ramalama/gemma3-270m"
+        assert rlcr_model.model == "rlcr.io/ramalama/gemma3-270m:latest"
         assert rlcr_model._model_type == 'oci'
         assert rlcr_model.conman == "podman"
 
     @pytest.mark.parametrize(
         "input_model,expected_path",
         [
-            ("simple-model", "rlcr.io/ramalama/simple-model"),
+            ("simple-model", "rlcr.io/ramalama/simple-model:latest"),
             ("model-with-tag:v1.0", "rlcr.io/ramalama/model-with-tag:v1.0"),
-            ("namespace/model", "rlcr.io/ramalama/namespace/model"),
+            ("namespace/model", "rlcr.io/ramalama/namespace/model:latest"),
             ("complex-name_123:latest", "rlcr.io/ramalama/complex-name_123:latest"),
         ],
     )

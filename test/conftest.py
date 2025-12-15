@@ -57,6 +57,29 @@ def test_model():
     return "smollm:135m" if sys.byteorder == "little" else "stories-be:260k"
 
 
+def get_podman_version():
+    """Get podman version as a tuple of integers (major, minor, patch)."""
+    try:
+        import subprocess
+
+        result = subprocess.run(
+            ["podman", "version", "--format", "{{.Client.Version}}"], capture_output=True, text=True, check=True
+        )
+        version_str = result.stdout.strip()
+        # Handle versions like "5.7.0-dev" by taking only the numeric part
+        version_parts = version_str.split('-')[0].split('.')
+        return tuple(int(x) for x in version_parts[:3])
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+        return (0, 0, 0)
+
+
+def is_podman_version_at_least(major, minor, patch=0):
+    """Check if podman version is at least the specified version."""
+    current = get_podman_version()
+    required = (major, minor, patch)
+    return current >= required
+
+
 skip_if_no_container = pytest.mark.skipif("not config.option.container", reason="no container mode is enabled")
 skip_if_container = pytest.mark.skipif("config.option.container", reason="container mode is enabled")
 skip_if_docker = pytest.mark.skipif(
@@ -80,4 +103,8 @@ skip_if_no_llama_bench = pytest.mark.skipif(shutil.which("llama-bench") is None,
 xfail_if_windows = pytest.mark.xfail(
     platform.system() == "Windows",
     reason="Known failure on Windows",
+)
+
+skip_if_podman_too_old = pytest.mark.skipif(
+    not is_podman_version_at_least(5, 7, 0), reason="requires podman >= 5.7.0 for artifact support"
 )
