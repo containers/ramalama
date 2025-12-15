@@ -1,12 +1,10 @@
 # The following code is inspired from: https://github.com/ericcurtin/lm-pull/blob/main/lm-pull.py
 
 import os
-import sys
+import platform
 
 # Import platform-specific locking mechanisms
-if sys.platform == 'win32':
-    import msvcrt
-else:
+if platform.system() != "Windows":
     import fcntl
 
 
@@ -22,30 +20,23 @@ class File:
     def lock(self):
         if self.file:
             self.fd = self.file.fileno()
-            try:
-                if sys.platform == 'win32':
-                    # Windows file locking using msvcrt
-                    msvcrt.locking(self.fd, msvcrt.LK_NBLCK, 1)
-                else:
+            if platform.system() != "Windows":
+                try:
                     # Unix file locking using fcntl
                     fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except (BlockingIOError, OSError):
-                self.fd = -1
-                return 1
-
+                except (BlockingIOError, OSError):
+                    self.fd = -1
+                    return 1
         return 0
 
     def __del__(self):
         if self.fd >= 0:
-            try:
-                if sys.platform == 'win32':
-                    # Unlock on Windows
-                    msvcrt.locking(self.fd, msvcrt.LK_UNLCK, 1)
-                else:
+            if platform.system() != "Windows":
+                try:
                     # Unlock on Unix
                     fcntl.flock(self.fd, fcntl.LOCK_UN)
-            except OSError:
-                pass  # File may already be closed
+                except OSError:
+                    pass  # File may already be closed
 
         if self.file:
             self.file.close()

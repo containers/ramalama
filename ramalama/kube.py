@@ -1,8 +1,10 @@
 import os
+import platform
 from typing import Optional, Tuple
 
 from ramalama.common import MNT_DIR, RAG_DIR, genname, get_accel_env_vars
 from ramalama.file import PlainFile
+from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.version import version
 
 
@@ -86,12 +88,16 @@ class Kube:
         return mounts, volumes
 
     def _gen_path_volume(self):
+        host_model_path = normalize_host_path_for_container(self.src_model_path)
+        if platform.system() == "Windows":
+            #  Workaround https://github.com/containers/podman/issues/16704
+            host_model_path = '/mnt' + host_model_path
         mount = f"""
         - mountPath: {self.dest_model_path}
           name: model"""
         volume = f"""
       - hostPath:
-          path: {self.src_model_path}
+          path: {host_model_path}
         name: model"""
         return mount, volume
 
@@ -116,22 +122,30 @@ class Kube:
         return mounts, volumes
 
     def _gen_chat_template_volume(self):
+        host_chat_template_path = normalize_host_path_for_container(self.src_chat_template_path)
+        if platform.system() == "Windows":
+            #  Workaround https://github.com/containers/podman/issues/16704
+            host_chat_template_path = '/mnt' + host_chat_template_path
         mount = f"""
         - mountPath: {self.dest_chat_template_path}
           name: chat_template"""
         volume = f"""
       - hostPath:
-          path: {self.src_chat_template_path}
+          path: {host_chat_template_path}
         name: chat_template"""
         return mount, volume
 
     def _gen_mmproj_volume(self):
+        host_mmproj_path = normalize_host_path_for_container(self.src_mmproj_path)
+        if platform.system() == "Windows":
+            #  Workaround https://github.com/containers/podman/issues/16704
+            host_mmproj_path = '/mnt' + host_mmproj_path
         mount = f"""
         - mountPath: {self.dest_mmproj_path}
           name: mmproj"""
         volume = f"""
       - hostPath:
-          path: {self.src_mmproj_path}
+          path: {host_mmproj_path}
         name: mmproj"""
         return mount, volume
 

@@ -9,6 +9,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from test.conftest import ramalama_container_engine
 
+import bcrypt
 import pytest
 
 
@@ -55,11 +56,9 @@ def container_registry():
         shutil.copy(work_dir / "domain.crt", trusted_certs_dir)
 
         # Create htpasswd file
-        subprocess.run(
-            f"htpasswd -Bbn {registry_username} {registry_password} > {htpasswd_file.as_posix()}",
-            shell=True,
-            check=True,
-        )
+        with open(htpasswd_file, "w") as pwfile:
+            passwd_hash = bcrypt.hashpw(registry_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            pwfile.write(f"{registry_username}:{passwd_hash}")
 
         # Start the registry
         subprocess.run(
