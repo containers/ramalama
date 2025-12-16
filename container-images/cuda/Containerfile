@@ -14,9 +14,6 @@ FROM docker.io/nvidia/cuda:${CUDA_VERSION}-runtime-ubi9
 # Copy the entire installation directory from the builder
 COPY --from=builder /tmp/install /usr
 
-# Workaround for CUDA libraries not in the ld path in base container
-RUN echo "/usr/local/cuda-12.8/compat" > /etc/ld.so.conf.d/99_cuda_compat.conf && ldconfig
-
 # Install python3.12 and ramalama to support a non-standard use-case
 RUN dnf -y install python3.12 && dnf -y clean all && ln -sf python3.12 /usr/bin/python3
 COPY . /src/ramalama
