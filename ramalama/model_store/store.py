@@ -325,7 +325,7 @@ class ModelStore:
             for file in ref_file.files:
                 if file.name == "chat_template_converted":
                     # Should not exist but 0.13.0 needs_conversion logic was inverted
-                    self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file.name))
+                    self._remove_blob_path(Path(self.get_snapshot_file_path(ref_file.hash, file.name)))
                     ref_file.remove_file(file.hash)
                     break
         self._update_snapshot(ref_file, snapshot_hash, files)
@@ -402,13 +402,11 @@ class ModelStore:
         self._download_snapshot_files(ref_file, snapshot_hash, new_snapshot_files)
         return True
 
-    def _remove_blob_file(self, snapshot_file_path: str):
-        # FIXME: this assumes a symlink, fails on Windows
-        blob_path = Path(snapshot_file_path).resolve()
+    def _remove_blob_path(self, blob_path: Path):
         try:
-            if os.path.exists(blob_path) and Path(self.base_path) in blob_path.parents:
-                os.remove(blob_path)
-                logger.debug(f"Removed blob for '{snapshot_file_path}'")
+            if blob_path.exists() and Path(self.base_path) in blob_path.parents:
+                blob_path.unlink(missing_ok=True)
+                logger.debug(f"Removed blob file '{blob_path}'")
         except Exception as ex:
             logger.error(f"Failed to remove blob file '{blob_path}': {ex}")
 
@@ -440,14 +438,16 @@ class ModelStore:
         for file in ref_file.files:
             blob_refcount = blob_refcounts.get(file.name, 0)
             if blob_refcount <= 1:
-                self._remove_blob_file(self.get_snapshot_file_path(ref_file.hash, file.name))
+                blob_absolute_path = Path(self.get_blob_file_path(file.hash))
+                self._remove_blob_path(blob_absolute_path)
             else:
                 logger.debug(f"Not removing blob {file} refcount={blob_refcount}")
 
         # Remove snapshot directory
         if snapshot_refcount <= 1:
             # FIXME: this only cleans up .partial files where the blob hash equals the snapshot hash
-            self._remove_blob_file(self.get_partial_blob_file_path(ref_file.hash))
+            partial_blob_file_path = Path(self.get_partial_blob_file_path(ref_file.hash))
+            self._remove_blob_path(partial_blob_file_path)
             snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
             shutil.rmtree(snapshot_directory, ignore_errors=True)
             logger.debug(f"Snapshot removed {ref_file.hash}")
@@ -455,10 +455,5 @@ class ModelStore:
             logger.debug(f"Not removing snapshot {ref_file.hash} refcount={snapshot_refcount}")
 
         # Remove ref file, ignore if file is not found
-        ref_file_path = self.get_ref_file_path(model_tag)
-        try:
-            os.remove(ref_file_path)
-        except FileNotFoundError:
-            pass
-
+        Path(self.get_ref_file_path(model_tag)).unlink(missing_ok=True)
         return True
