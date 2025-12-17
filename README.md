@@ -93,6 +93,58 @@ pip install ramalama
 
 **Note:** Windows support requires running containers via Docker/Podman. The model store uses hardlinks (no admin required) or falls back to file copies if hardlinks are unavailable.
 
+## Uninstall
+
+### Uninstall via pip
+If you installed RamaLama using pip, you can uninstall it with:
+```bash
+pip uninstall ramalama
+```
+
+### Uninstall on Fedora
+If you installed RamaLama using DNF:
+```bash
+sudo dnf remove ramalama
+```
+
+### Uninstall on macOS (Self-Contained Installer)
+To remove RamaLama installed via the `.pkg` installer:
+```bash
+# Remove the executable
+sudo rm /usr/local/bin/ramalama
+
+# Remove configuration and data files
+sudo rm -rf /usr/local/share/ramalama
+
+# Remove man pages (optional)
+sudo rm /usr/local/share/man/man1/ramalama*.1
+sudo rm /usr/local/share/man/man5/ramalama*.5
+sudo rm /usr/local/share/man/man7/ramalama*.7
+
+# Remove shell completions (optional)
+sudo rm /usr/local/share/bash-completion/completions/ramalama
+sudo rm /usr/local/share/fish/vendor_completions.d/ramalama.fish
+sudo rm /usr/local/share/zsh/site-functions/_ramalama
+```
+
+See the [macOS Installation Guide](docs/MACOS_INSTALL.md) for more details.
+
+### Remove User Data and Configuration
+After uninstalling RamaLama using any method above, you may want to remove downloaded models and configuration files from your home directory:
+
+```bash
+# Remove downloaded models and data (can be large)
+rm -rf ~/.local/share/ramalama
+
+# Remove configuration files
+rm -rf ~/.config/ramalama
+
+# If you ran RamaLama as root, also remove:
+sudo rm -rf /var/lib/ramalama
+```
+
+**Note:** The model data directory (`~/.local/share/ramalama`) can be quite large depending on how many models you've downloaded. Make sure you want to remove these files before running the commands above.
+
 ## Accelerated images
 
 | Accelerator                       | Image                      |
@@ -1191,14 +1243,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 
 ## In development
 
-Regarding this alpha, everything is under development, so expect breaking changes, luckily it's easy to reset everything and reinstall:
-
-```
-rm -rf /var/lib/ramalama # only required if running as root user
-rm -rf $HOME/.local/share/ramalama
-```
-
-and install again.
+Regarding this alpha, everything is under development, so expect breaking changes. If you need to reset your installation, see the [Uninstall](#uninstall) section above for instructions on removing RamaLama and cleaning up all data files, then reinstall.
 
 ## Known Issues
 
