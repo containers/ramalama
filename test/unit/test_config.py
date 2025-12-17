@@ -181,14 +181,10 @@ def test_load_env_config_coerces_log_level():
     assert cfg["log_level"] == LogLevel.DEBUG
 
 
-@pytest.mark.xfail(raises=ValueError)
-def test_load_env_config_invalid_log_level_raises():
-    load_env_config({"RAMALAMA_LOG_LEVEL": "notalevel"})
-
-
-@pytest.mark.xfail(raises=ValueError)
-def test_load_env_config_invalid_log_level_case_raises():
-    load_env_config({"RAMALAMA_LOG_LEVEL": "InVaLiD"})
+@pytest.mark.parametrize("invalid_level", ["notalevel", "InVaLiD"])
+def test_load_env_config_invalid_log_level_raises(invalid_level):
+    with pytest.raises(ValueError):
+        load_env_config({"RAMALAMA_LOG_LEVEL": invalid_level})
 
 
 class TestGetDefaultEngine:
