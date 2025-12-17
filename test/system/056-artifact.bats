@@ -121,13 +121,13 @@ load setup_suite
     run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/testmodel oci://$registry/artifact-test-push:latest
     run_ramalama list
     is "$output" ".*$registry/artifact-test-push.*latest" "artifact was pushed and listed"
-    run_ramalama push --type artifact oci://$registry/artifact-test-push:latest
+    run_ramalama push --tls-verify=false --type artifact oci://$registry/artifact-test-push:latest
 
     # Verify it's an artifact
     run_podman artifact ls
     is "$output" ".*$registry/artifact-test-push" "pushed artifact appears in podman artifact list"
 
-    run_ramalama rm oci://$registry/artifact-test-push:latest file://${testmodel}
+    run_ramalama rm oci://$registry/artifact-test-push:latest file://$RAMALAMA_TMPDIR/testmodel
 
     run_ramalama ls
     assert "$output" !~ ".*$registry/artifact-test-push" "pushed artifact was removed"
