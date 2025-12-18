@@ -28,7 +28,7 @@ spec:
   - name: build-args
     value:
     - PARENT=docker.io/nvidia/cuda:13.1.0-devel-ubi9
-    - TORCH_BACKEND=cu128
+    - TORCH_BACKEND=cu130
   pipelineRef:
     name: push-pipeline
   timeouts:
