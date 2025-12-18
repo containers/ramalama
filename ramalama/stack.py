@@ -245,9 +245,9 @@ spec:
         if not oci_runtime:
             return exec_cmd(exec_args)
 
-        oci_runtime_name = (
-            run_cmd([self.args.engine, "info", "--format", "{{.Host.OCIRuntime.Name}}"]).stdout.decode("utf-8").strip()
-        )
+        oci_runtime_name = run_cmd(
+            [self.args.engine, "info", "--format", "{{.Host.OCIRuntime.Name}}"], encoding="utf-8"
+        ).stdout.strip()
 
         with NamedTemporaryFile(
             mode="w", prefix="RamaLama_", suffix=".conf", delete=not self.args.debug, delete_on_close=False
@@ -267,7 +267,8 @@ spec:
                 if old_containers_conf:
                     os.environ["CONTAINERS_CONF_OVERRIDE"] = old_containers_conf
                 else:
-                    del os.environ["CONTAINERS_CONF_OVERRIDE"]
+                    if "CONTAINERS_CONF_OVERRIDE" in os.environ:
+                        del os.environ["CONTAINERS_CONF_OVERRIDE"]
 
     def stop(self):
         with NamedTemporaryFile(
