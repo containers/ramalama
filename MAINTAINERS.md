@@ -4,7 +4,8 @@
 
 | Maintainer| GitHub ID| Affiliation|
 | -------- | ------- | ------- |
-|  TODO| TODO | TODO |
+|  Dan Walsh | rhatdan | Red Hat |
+|  Mike Bonnet | mikebonnet | Red Hat |
 
 ## Reviewers
 
