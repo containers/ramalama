@@ -144,7 +144,7 @@ In some cases this is needed to access the gpu from a rootless container
 **log_level**=warning
 Set the logging level of RamaLama application.
 Valid Values:
-    debug, info, warning, error critical
+    debug, info, warning, error, critical
 Note: --debug option overrides this field and forces the system to debug
 
 **max_tokens**=0
