@@ -38,7 +38,7 @@ class Stack:
             return """
         resources:
           limits:
-             nvidia.com/gpu=all: 1"""
+             'nvidia.com/gpu=all': 1"""
         return ""
 
     def _gen_volume_mounts(self):
