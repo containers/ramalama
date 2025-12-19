@@ -494,7 +494,12 @@ verify_begin=".*run --rm"
     if [ -n "$RAMALAMA_STACK_IMAGE" ]; then
         podman pull "$RAMALAMA_STACK_IMAGE"
     fi
-    run_ramalama serve -d --name=${name} --api llama-stack --dri off --port 1234 ${model}
+    if [ -e /dev/dri ]; then
+        DRI_ARG=""
+    else
+        DRI_ARG="--dri off"
+    fi
+    run_ramalama serve -d --name=${name} --api llama-stack $DRI_ARG --port 1234 ${model}
     is "$output" ".*Llama Stack RESTAPI: http://localhost:1234" "reveal llama stack url"
     is "$output" ".*OpenAI RESTAPI: http://localhost:1234/v1/openai" "reveal openai url"
 
