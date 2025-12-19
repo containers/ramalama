@@ -261,7 +261,13 @@ The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""
         help="""do not run RamaLama in the default container.
 The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
-    verbosity_group.add_argument("--quiet", "-q", dest="quiet", action="store_true", help="reduce output.")
+    verbosity_group.add_argument(
+        "--quiet",
+        "-q",
+        dest="quiet",
+        action="store_true",
+        help="Reduce output verbosity (silences warnings, simplifies list output)",
+    )
     parser.add_argument(
         "--runtime",
         default=CONFIG.runtime,
@@ -372,7 +378,13 @@ def post_parse_setup(args):
     if hasattr(args, 'pull'):
         args.pull = normalize_pull_arg(args.pull, getattr(args, 'engine', None))
 
-    log_level = LogLevel.DEBUG if args.debug else (CONFIG.log_level or LogLevel.WARNING)
+    # Determine log level: debug > quiet > config > default
+    if args.debug:
+        log_level = LogLevel.DEBUG
+    elif getattr(args, 'quiet', False):
+        log_level = LogLevel.ERROR
+    else:
+        log_level = CONFIG.log_level or LogLevel.WARNING
     configure_logger(log_level)
 
 
