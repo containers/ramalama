@@ -43,6 +43,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Pin podman package from oracular release
+        run: |
+          sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+          sudo tee /etc/apt/preferences.d/podman-pin > /dev/null <<EOF
+          Package: podman conmon crun golang-github-containers-common golang-github-containers-image netavark init-system-helpers
+          Pin: release n=oracular
+          Pin-Priority: 1001
+
+          Package: *
+          Pin: release n=oracular
+          Pin-Priority: -1
+          EOF
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
 
@@ -54,7 +67,7 @@ jobs:
           sudo apt-get install -y bash codespell pipx podman
           uv run -- make install-requirements
 
-      - name: Upgrade to podman 5
+      - name: Mount .local on /mnt
         run: |
            set -e
            # /mnt has ~ 65 GB free disk space. / is too small.
@@ -62,13 +75,6 @@ jobs:
            sudo mkdir -m o=rwx -p /home/runner/.local
            sudo chown runner:runner /mnt/runner /home/runner/.local
            sudo mount --bind /mnt/runner /home/runner/.local
-           # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
-           # Update package lists
-           sudo apt-get update
-           sudo apt-get purge firefox
-           # Install specific podman version
-           sudo apt-get upgrade -y podman crun
 
       - name: Build a container for CPU inferencing
         shell: bash
@@ -104,18 +110,34 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Pin podman package from oracular release
+        run: |
+          sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+          sudo tee /etc/apt/preferences.d/podman-pin > /dev/null <<EOF
+          Package: podman conmon crun golang-github-containers-common golang-github-containers-image netavark init-system-helpers
+          Pin: release n=oracular
+          Pin-Priority: 1001
+
+          Package: *
+          Pin: release n=oracular
+          Pin-Priority: -1
+          EOF
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
+
+      - name: Mount .local on /mnt
+        run: |
+          set -e
+          # /mnt has ~ 65 GB free disk space. / is too small.
+          sudo mkdir -m a=rwx -p /mnt/tmp /mnt/runner
+          sudo mkdir -m o=rwx -p /home/runner/.local
+          sudo chown runner:runner /mnt/runner /home/runner/.local
+          sudo mount --bind /mnt/runner /home/runner/.local
 
       - name: install bats
         shell: bash
         run: |
-           df -h
-           # /mnt has ~ 65 GB free disk space. / is too small.
-           sudo mkdir -m a=rwx -p /mnt/tmp /mnt/runner
-           sudo mkdir -m o=rwx -p /home/runner/.local
-           sudo chown runner:runner /mnt/runner /home/runner/.local
-           sudo mount --bind /mnt/runner /home/runner/.local
            sudo apt-get update
            sudo apt-get install podman bats bash codespell
            uv run -- make install-requirements
@@ -123,17 +145,6 @@ jobs:
       - name: install ollama
         shell: bash
         run: ./.github/scripts/install-ollama.sh
-
-      - name: Upgrade to podman 5
-        run: |
-           set -e
-           # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
-           # Update package lists
-           sudo apt-get update
-           sudo apt-get purge firefox
-           # Install specific podman version
-           sudo apt-get upgrade -y podman crun
 
       - name: run bats
         run: |
@@ -145,6 +156,19 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
+
+      - name: Pin podman package from oracular release
+        run: |
+          sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+          sudo tee /etc/apt/preferences.d/podman-pin > /dev/null <<EOF
+          Package: podman conmon crun golang-github-containers-common golang-github-containers-image netavark init-system-helpers
+          Pin: release n=oracular
+          Pin-Priority: 1001
+
+          Package: *
+          Pin: release n=oracular
+          Pin-Priority: -1
+          EOF
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
@@ -162,17 +186,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/install-ollama.sh
 
-      - name: Upgrade to podman 5
-        run: |
-           set -e
-           # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
-           # Update package lists
-           sudo apt-get update
-           sudo apt-get purge firefox
-           # Install specific podman version
-           sudo apt-get upgrade -y podman crun
-
       - name: run bats-nocontainer
         run: |
            uv run -- make bats-nocontainer
@@ -183,6 +196,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Pin podman package from oracular release
+        run: |
+          sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+          sudo tee /etc/apt/preferences.d/podman-pin > /dev/null <<EOF
+          Package: podman conmon crun golang-github-containers-common golang-github-containers-image netavark init-system-helpers
+          Pin: release n=oracular
+          Pin-Priority: 1001
+
+          Package: *
+          Pin: release n=oracular
+          Pin-Priority: -1
+          EOF
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
 
@@ -190,23 +216,12 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install bats bash codespell
+           sudo apt-get install bats bash codespell podman
            uv run -- make install-requirements
 
       - name: install ollama
         shell: bash
         run: ./.github/scripts/install-ollama.sh
-
-      - name: Upgrade to podman 5
-        run: |
-           set -e
-           # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
-           # Update package lists
-           sudo apt-get update
-           sudo apt-get purge firefox
-           # Install specific podman version
-           sudo apt-get upgrade -y podman crun
 
       - name: Free Disk Space Linux
         shell: bash
@@ -285,19 +300,35 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Pin podman package from oracular release
+        run: |
+          sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+          sudo tee /etc/apt/preferences.d/podman-pin > /dev/null <<EOF
+          Package: podman conmon crun golang-github-containers-common golang-github-containers-image netavark init-system-helpers
+          Pin: release n=oracular
+          Pin-Priority: 1001
+
+          Package: *
+          Pin: release n=oracular
+          Pin-Priority: -1
+          EOF
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
         with: ${{ matrix.variant.uv-options }}
 
+      - name: Mount .local on /mnt
+        run: |
+          set -e
+          # /mnt has ~ 65 GB free disk space. / is too small.
+          sudo mkdir -m a=rwx -p /mnt/tmp /mnt/runner
+          sudo mkdir -m o=rwx -p /home/runner/.local
+          sudo chown runner:runner /mnt/runner /home/runner/.local
+          sudo mount --bind /mnt/runner /home/runner/.local
+
       - name: install requirements
         shell: bash
         run: |
-           df -h
-           # /mnt has ~ 65 GB free disk space. / is too small.
-           sudo mkdir -m a=rwx -p /mnt/runner
-           sudo mkdir -m o=rwx -p /home/runner/.local
-           sudo chown runner:runner /mnt/runner /home/runner/.local
-           sudo mount --bind /mnt/runner /home/runner/.local
            sudo apt-get update
            sudo apt-get install podman bash codespell
            uv tool install tox --with tox-uv
@@ -306,17 +337,6 @@ jobs:
       - name: install ollama
         shell: bash
         run: ./.github/scripts/install-ollama.sh
-
-      - name: Upgrade to podman 5
-        run: |
-           set -e
-           # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
-           # Update package lists
-           sudo apt-get update
-           sudo apt-get purge firefox
-           # Install specific podman version
-           sudo apt-get upgrade -y podman crun
 
       - name: run e2e-tests
         run: |
@@ -340,6 +360,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Pin podman package from oracular release
+        run: |
+          sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+          sudo tee /etc/apt/preferences.d/podman-pin > /dev/null <<EOF
+          Package: podman conmon crun golang-github-containers-common golang-github-containers-image netavark init-system-helpers
+          Pin: release n=oracular
+          Pin-Priority: 1001
+
+          Package: *
+          Pin: release n=oracular
+          Pin-Priority: -1
+          EOF
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
         with: ${{ matrix.variant.uv-options }}
@@ -357,17 +390,6 @@ jobs:
       - name: install ollama
         shell: bash
         run: ./.github/scripts/install-ollama.sh
-
-      - name: Upgrade to podman 5
-        run: |
-           set -e
-           # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
-           # Update package lists
-           sudo apt-get update
-           sudo apt-get purge firefox
-           # Install specific podman version
-           sudo apt-get upgrade -y podman crun
 
       - name: run e2e-tests-nocontainer
         run: |
@@ -391,6 +413,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Pin podman package from oracular release
+        run: |
+          sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+          sudo tee /etc/apt/preferences.d/podman-pin > /dev/null <<EOF
+          Package: podman conmon crun golang-github-containers-common golang-github-containers-image netavark init-system-helpers
+          Pin: release n=oracular
+          Pin-Priority: 1001
+
+          Package: *
+          Pin: release n=oracular
+          Pin-Priority: -1
+          EOF
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
         with: ${{ matrix.variant.uv-options }}
@@ -399,24 +434,13 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
-           sudo apt-get install bash codespell
+           sudo apt-get install bash codespell podman
            uv tool install tox --with tox-uv
            uv pip install ".[dev]"
 
       - name: install ollama
         shell: bash
         run: ./.github/scripts/install-ollama.sh
-
-      - name: Upgrade to podman 5
-        run: |
-           set -e
-           # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
-           # Update package lists
-           sudo apt-get update
-           sudo apt-get purge firefox
-           # Install specific podman version
-           sudo apt-get upgrade -y podman crun
 
       - name: Free Disk Space Linux
         shell: bash
