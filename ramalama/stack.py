@@ -3,7 +3,7 @@ import platform
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image
+from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, run_cmd, tagged_image
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import CONFIG
 from ramalama.engine import add_labels
@@ -20,7 +20,7 @@ class Stack:
     def __init__(self, args):
         self.args = args
         self.name = getattr(args, "name", None) or genname()
-        if os.path.basename(args.engine) != "podman":
+        if not os.path.basename(args.engine).startswith("podman"):
             raise ValueError("llama-stack requires use of the Podman container engine")
         self.host = "0.0.0.0"
         self.model = New(args.MODEL, args)
@@ -231,7 +231,44 @@ spec:
                 exec_args.append("--wait")
 
             exec_args.append(yaml_file.name)
-            exec_cmd(exec_args)
+            self._exec_with_runtime(exec_args)
+
+    def _exec_with_runtime(self, exec_args):
+        # With kube play there is no way to specify the runtime for CUDA
+        # Set the runtime in a temporary containers.conf file instead
+        oci_runtime = None
+        if getattr(self.args, "oci_runtime", None):
+            oci_runtime = self.args.oci_runtime
+        elif check_nvidia() == "cuda" and os.access("/usr/bin/nvidia-container-runtime", os.X_OK):
+            oci_runtime = "/usr/bin/nvidia-container-runtime"
+
+        if not oci_runtime:
+            return exec_cmd(exec_args)
+
+        oci_runtime_name = run_cmd(
+            [self.args.engine, "info", "--format", "{{.Host.OCIRuntime.Name}}"], encoding="utf-8"
+        ).stdout.strip()
+
+        with NamedTemporaryFile(
+            mode="w", prefix="RamaLama_", suffix=".conf", delete=not self.args.debug, delete_on_close=False
+        ) as containers_conf:
+            containers_conf.write(
+                f"""\
+[engine.runtimes]
+{oci_runtime_name} = [ '{oci_runtime}' ]
+"""
+            )
+            containers_conf.close()
+            old_containers_conf = os.environ.get("CONTAINERS_CONF_OVERRIDE")
+            try:
+                os.environ["CONTAINERS_CONF_OVERRIDE"] = containers_conf.name
+                return exec_cmd(exec_args)
+            finally:
+                if old_containers_conf:
+                    os.environ["CONTAINERS_CONF_OVERRIDE"] = old_containers_conf
+                else:
+                    if "CONTAINERS_CONF_OVERRIDE" in os.environ:
+                        del os.environ["CONTAINERS_CONF_OVERRIDE"]
 
     def stop(self):
         with NamedTemporaryFile(
