@@ -23,7 +23,7 @@ except Exception:
 
 import ramalama.chat as chat
 from ramalama import engine
-from ramalama.chat import default_prefix
+from ramalama.chat_utils import default_prefix
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
 from ramalama.common import accel_image, get_accel, perror
@@ -46,6 +46,7 @@ from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.rag import INPUT_DIR, Rag, RagTransport, rag_image
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack
+from ramalama.transports.api import APITransport
 from ramalama.transports.base import (
     MODEL_TYPES,
     NoGGUFModelFileFound,
@@ -1029,7 +1030,8 @@ If GPU device on host is accessible to via group access, this option leaks the u
     )
     parser.add_argument(
         "--temp",
-        default=CONFIG.temp,
+        type=float,
+        default=float(CONFIG.temp),
         help="temperature of the response from the AI model",
         completer=suppressCompleter,
     )
@@ -1115,6 +1117,19 @@ def chat_parser(subparsers):
     parser.add_argument("--model", "-m", type=str, completer=local_models, help="model for inferencing")
     parser.add_argument("--rag", type=str, help="a file or directory to use as context for the chat")
     parser.add_argument(
+        "--max-tokens",
+        dest="max_tokens",
+        type=int,
+        default=CONFIG.max_tokens,
+        help="maximum number of tokens to generate (0 = unlimited)",
+    )
+    parser.add_argument(
+        "--temp",
+        type=float,
+        default=float(CONFIG.temp),
+        help="temperature of the response from the AI model",
+    )
+    parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
     )
     parser.set_defaults(func=chat.chat)
@@ -1161,7 +1176,6 @@ def run_cli(args):
     try:
         # detect available port and update arguments
         args.port = compute_serving_port(args)
-
         model = New(args.MODEL, args)
         model.ensure_model_exists(args)
     except KeyError as e:
@@ -1173,6 +1187,11 @@ def run_cli(args):
         except Exception as exc:
             raise e from exc
 
+    is_api_transport = isinstance(model, APITransport)
+
+    if args.rag and is_api_transport:
+        raise ValueError("ramalama run --rag is not supported for hosted API transports.")
+
     if args.rag:
         if not args.container:
             raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
@@ -1180,7 +1199,9 @@ def run_cli(args):
         model = RagTransport(model, assemble_command(args.model_args), args)
         model.ensure_model_exists(args)
 
-    model.run(args, assemble_command(args))
+    server_cmd = [] if isinstance(model, APITransport) else assemble_command(args)
+
+    model.run(args, server_cmd)
 
 
 def serve_parser(subparsers):
@@ -1219,6 +1240,9 @@ def serve_cli(args):
 
         except Exception:
             raise e
+
+    if isinstance(model, APITransport):
+        raise ValueError("ramalama serve is not supported for hosted API transports.")
 
     if args.rag:
         if not args.container:

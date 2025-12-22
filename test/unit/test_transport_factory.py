@@ -3,6 +3,9 @@ from typing import Union
 
 import pytest
 
+import ramalama.transports.transport_factory as transport_factory_module
+from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
+from ramalama.transports.api import APITransport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
 from ramalama.transports.oci import OCI
@@ -35,6 +38,7 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
     "input,expected,error",
     [
         (Input("", "", ""), None, KeyError),
+        (Input("openai://gpt-4o-mini", "", ""), APITransport, None),
         (Input("huggingface://granite-code", "", ""), Huggingface, None),
         (Input("hf://granite-code", "", ""), Huggingface, None),
         (Input("hf.co/granite-code", "", ""), Huggingface, None),
@@ -113,6 +117,7 @@ def test_validate_oci_model_input(input: Input, error):
 @pytest.mark.parametrize(
     "input,expected",
     [
+        (Input("openai://gpt-4o-mini", "", ""), "gpt-4o-mini"),
         (Input("huggingface://granite-code", "", ""), "granite-code"),
         (
             Input("huggingface://ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", "", ""),
@@ -164,3 +169,21 @@ def test_prune_model_input(input: Input, expected: str):
     args = ARGS(input.Engine)
     pruned_model_input = TransportFactory(input.Model, args, input.Transport).prune_model_input()
     assert pruned_model_input == expected
+
+
+def test_transport_factory_passes_scheme_to_get_chat_provider(monkeypatch):
+    args = ARGS()
+    provider = OpenAIResponsesChatProvider("https://api.openai.com/v1")
+    captured: dict[str, str] = {}
+
+    def fake_get_chat_provider(scheme: str):
+        captured["scheme"] = scheme
+        return provider
+
+    monkeypatch.setattr(transport_factory_module, "get_chat_provider", fake_get_chat_provider)
+
+    transport = TransportFactory("openai://gpt-4o-mini", args).create()
+
+    assert captured["scheme"] == "openai"
+    assert isinstance(transport, APITransport)
+    assert transport.provider is provider

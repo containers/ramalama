@@ -29,6 +29,9 @@ Show this help message and exit
 #### **--list**
 List the available models at an endpoint
 
+#### **--max-tokens**=*integer*
+Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
+
 #### **--mcp**=SERVER_URL
 MCP (Model Context Protocol) servers to use for enhanced tool calling capabilities.
 Can be specified multiple times to connect to multiple MCP servers.
@@ -48,6 +51,10 @@ Automatically summarize conversation history after N messages to prevent context
 When enabled, ramalama will periodically condense older messages into a summary,
 keeping only recent messages and the summary. This prevents the context from growing
 indefinitely during long chat sessions. Set to 0 to disable (default: 4).
+
+#### **--temp**=*float*
+Temperature of the response from the AI Model.
+Lower numbers are more deterministic, higher numbers are more creative.
 
 #### **--url**=URL
 The host to send requests to (default: http://127.0.0.1:8080)
