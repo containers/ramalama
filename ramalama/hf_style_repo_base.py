@@ -1,10 +1,10 @@
-import fnmatch
 import json
 import os
 import re
 import tempfile
 import urllib.request
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 from ramalama.common import (
     SPLIT_MODEL_PATH_RE,
@@ -195,7 +195,7 @@ class HFStyleRepository(ABC):
         assert self.model_hash
 
         # Determine file type based on extension
-        if fnmatch.fnmatch(self.model_filename, '*.safetensors'):
+        if Path(self.model_filename).match('*.safetensors'):
             file_type = SnapshotFileType.SafetensorModel
         else:
             file_type = SnapshotFileType.GGUFModel

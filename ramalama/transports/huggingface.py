@@ -1,7 +1,7 @@
-import fnmatch
 import json
 import os
 import urllib.request
+from pathlib import Path
 
 from ramalama.common import run_cmd
 from ramalama.hf_style_repo_base import (
@@ -150,12 +150,14 @@ class HuggingfaceRepository(HFStyleRepository):
                 if file_info.get('type') != 'file':
                     continue
 
-                path = file_info['path']
-                logger.debug(f"Examining file {path}")
+                path_str = file_info['path']
+                logger.debug(f"Examining file {path_str}")
 
-                if fnmatch.fnmatch(path, '*.safetensors'):
+                path = Path(path_str)
+                # Note: case sensitivity follows platform defaults
+                if path.match('*.safetensors'):
                     self._collect_file(safetensors_files, file_info)
-                elif fnmatch.fnmatch(path, '*.safetensors.index.json'):
+                elif path.match('*.safetensors.index.json'):
                     index_file = path
                 elif path in {self.FILE_NAME_CONFIG, self.FILE_NAME_GENERATION_CONFIG, self.FILE_NAME_TOKENIZER_CONFIG}:
                     continue
