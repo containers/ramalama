@@ -146,7 +146,7 @@ class OCI(Transport):
         gguf_dir = None
         if getattr(args, "gguf", None):
             perror("Converting to gguf ...")
-            gguf_dir = tempfile.TemporaryDirectory(prefix="RamaLama_convert_", delete=False)
+            gguf_dir = tempfile.TemporaryDirectory(prefix="RamaLama_convert_")
             contextdir = gguf_dir.name
             model_file_name = self._convert_to_gguf(gguf_dir, source_model, args)
             content = self._gguf_containerfile(model_file_name, args)
