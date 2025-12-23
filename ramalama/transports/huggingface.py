@@ -163,8 +163,8 @@ class Huggingface(HFStyleRepoModel):
     def get_cli_download_args(self, directory_path, model):
         return ["hf", "download", "--local-dir", directory_path, model]
 
-    def extract_model_identifiers(self):
-        model_name, model_tag, model_organization = super().extract_model_identifiers()
+    def extract_model_identifiers(self, model=None):
+        model_name, model_tag, model_organization = super().extract_model_identifiers(model)
         if '/' not in model_organization:
             # if it is a repo then normalize the case insensitive quantization tag
             if model_tag != "latest":
