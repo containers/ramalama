@@ -1,8 +1,24 @@
-FROM quay.io/fedora/fedora:43
+FROM quay.io/fedora/fedora:43 AS builder
 
 COPY container-images/scripts/build_llama_and_whisper.sh \
      container-images/scripts/lib.sh \
      /src/
 WORKDIR /src/
 RUN ./build_llama_and_whisper.sh rocm
+
+FROM quay.io/fedora/fedora:43
+
+COPY --from=builder \
+  /tmp/install/bin/llama-bench \
+  /tmp/install/bin/llama-perplexity \
+  /tmp/install/bin/llama-quantize \
+  /tmp/install/bin/llama-server \
+  /tmp/install/bin/rpc-server \
+  /tmp/install/bin/whisper-server \
+  /usr/bin/
+COPY --from=builder /tmp/install/lib64/*.so /usr/lib64/
+
+RUN dnf -y --setopt=install_weak_deps=false install hipblas rocblas rocm-hip rocm-runtime rocsolver && \
+    dnf -y clean all
+
 WORKDIR /
