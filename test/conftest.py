@@ -105,6 +105,11 @@ xfail_if_windows = pytest.mark.xfail(
     reason="Known failure on Windows",
 )
 
+skip_if_no_ollama = pytest.mark.skipif(shutil.which("ollama") is None, reason="ollama not installed")
+
+skip_if_big_endian_machine = pytest.mark.skipif(sys.byteorder == "big", reason="skip big-endian architecture")
+skip_if_little_endian_machine = pytest.mark.skipif(sys.byteorder == "little", reason="skip little-endian architecture")
+
 skip_if_podman_too_old = pytest.mark.skipif(
     not is_podman_version_at_least(5, 7, 0), reason="requires podman >= 5.7.0 for artifact support"
 )
