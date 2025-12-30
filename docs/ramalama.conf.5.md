@@ -253,6 +253,21 @@ The maximum number of times to retry a failed download
 
 The maximum delay between retry attempts in seconds
 
+## RAMALAMA.PROVIDER TABLE
+The `ramalama.provider` table configures hosted API providers that RamaLama can proxy to.
+
+`[[ramalama.provider]]`
+
+**openai**=""
+
+Configuration settings for the openai hosted provider
+
+`[[ramalama.provider.openai]]`
+
+**api_key**=""
+
+Provider-specific API key used when invoking OpenAI-hosted transports. Overrides `RAMALAMA_API_KEY` when set.
+
 ## RAMALAMA.USER TABLE
 The ramalama.user table contains user preference settings.
 

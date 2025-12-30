@@ -124,7 +124,7 @@ class Stack:
                 '--ctx-size',
                 str(self.args.context),
                 '--temp',
-                self.args.temp,
+                str(self.args.temp),
                 '--jinja',
                 '--cache-reuse',
                 '256',
