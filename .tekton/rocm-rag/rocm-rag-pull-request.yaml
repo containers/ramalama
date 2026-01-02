@@ -34,7 +34,7 @@ spec:
   - name: output-image
     value: quay.io/redhat-user-workloads/ramalama-tenant/rocm-rag:on-pr-{{revision}}
   - name: image-expires-after
-    value: 5d
+    value: 4d
   - name: build-platforms
     value:
     - linux-d160-c8xlarge/amd64
