@@ -16,12 +16,16 @@ class Quadlet:
         args,
         exec_args,
         artifact: bool,
+        model_parts: Optional[list[Tuple[str, str]]] = None,
     ):
         self.src_model_path, self.dest_model_path = model_paths
         self.src_chat_template_path, self.dest_chat_template_path = (
             chat_template_paths if chat_template_paths is not None else ("", "")
         )
         self.src_mmproj_path, self.dest_mmproj_path = mmproj_path if mmproj_path is not None else ("", "")
+
+        # Store all model parts for multi-part models
+        self.model_parts = model_parts if model_parts is not None else [(self.src_model_path, self.dest_model_path)]
 
         if self.src_model_path.startswith("oci://"):
             self.src_model_path = self.src_model_path.removeprefix("oci://")
@@ -133,12 +137,16 @@ class Quadlet:
     def _gen_model_volume(self, quadlet_file: UnitFile):
         files: list[UnitFile] = []
 
-        if os.path.exists(self.src_model_path):
-            quadlet_file.add(
-                "Container", "Mount", f"type=bind,src={self.src_model_path},target={self.dest_model_path},ro,Z"
-            )
+        # Check if any model part exists as a file (non-OCI model from store)
+        local_model_parts = [part for part in self.model_parts if os.path.exists(part[0])]
+
+        if local_model_parts:
+            # Generate Mount= entries for each model part
+            for src_path, dest_path in local_model_parts:
+                quadlet_file.add("Container", "Mount", f"type=bind,src={src_path},target={dest_path},ro,Z")
             return files
 
+        # OCI model handling
         volume_file_name = f"{self.name}.volume"
         print(f"Generating quadlet file: {volume_file_name} ")
 
