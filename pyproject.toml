@@ -28,8 +28,8 @@ dependencies = [
   "jinja2",
 ]
 maintainers = [
-   { name="Dan Walsh", email = "dwalsh@redhat.com" },
-   { name="Eric Curtin", email = "ecurtin@redhat.com" },
+   { name = "Dan Walsh", email = "dawalsh@redhat.com" },
+   { name = "Mike Bonnet", email = "mikeb@redhat.com" },
 ]
 classifiers = [
   "License :: OSI Approved :: MIT License",
