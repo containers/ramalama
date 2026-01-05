@@ -42,7 +42,6 @@ class DefaultArgsType(Protocol):
     dryrun: bool
     engine: SUPPORTED_ENGINES
     noout: bool | None
-    ignore: bool | None
 
 
 DefaultArgs = protocol_to_dataclass(DefaultArgsType)
@@ -63,7 +62,7 @@ ChatSubArgs = protocol_to_dataclass(ChatSubArgsType)
 
 
 class ChatArgsType(DefaultArgsType, ChatSubArgsType):
-    pass
+    ignore: bool | None  # runtime-only
 
 
 class ServeRunArgsType(DefaultArgsType, Protocol):
@@ -91,6 +90,7 @@ class ServeRunArgsType(DefaultArgsType, Protocol):
     color: COLOR_OPTIONS
     prefix: str
     rag_image: str | None
+    ignore: bool | None  # runtime-only
 
 
 ServeRunArgs = protocol_to_dataclass(ServeRunArgsType)
