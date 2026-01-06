@@ -7,7 +7,10 @@ import sys
 import time
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+if TYPE_CHECKING:
+    from ramalama.chat import ChatOperationalArgs
 
 import ramalama.chat as chat
 from ramalama.common import (
@@ -109,7 +112,7 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("bench")
 
     @abstractmethod
-    def run(self, args, server_cmd: list[str]):
+    def run(self, args, cmd: list[str]):
         raise self.__not_implemented_error("run")
 
     @abstractmethod
@@ -451,11 +454,11 @@ class Transport(TransportBase):
         set_accel_env_vars()
         self.execute_command(cmd, args)
 
-    def run(self, args, server_cmd: list[str]):
+    def run(self, args, cmd: list[str]):
         # The Run command will first launch a daemonized service
         # and run chat to communicate with it.
 
-        process = self.serve_nonblocking(args, server_cmd)
+        process = self.serve_nonblocking(args, cmd)
         if process:
             return self._connect_and_chat(args, process)
 
@@ -514,7 +517,7 @@ class Transport(TransportBase):
             chat.chat(args)
             return 0
 
-    def chat_operational_args(self, args):
+    def chat_operational_args(self, args) -> "ChatOperationalArgs | None":
         return None
 
     def wait_for_healthy(self, args):
@@ -792,8 +795,12 @@ class Transport(TransportBase):
 
 
 def compute_ports(exclude: list[str] | None = None) -> list[int]:
-    excluded = exclude and set(map(int, exclude)) or set()
-    ports = list(sorted(set(range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1)) - excluded))
+    excluded = set() if exclude is None else set(map(int, exclude))
+    ports = [p for p in range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1) if p not in excluded]
+
+    if not ports:
+        raise ValueError("All ports in the DEFAULT_PORT_RANGE were exhausted by the exclusion list.")
+
     first_port = ports.pop(0)
     random.shuffle(ports)
     # try always the first port before the randomized others

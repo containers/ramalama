@@ -62,4 +62,47 @@ ChatSubArgs = protocol_to_dataclass(ChatSubArgsType)
 
 
 class ChatArgsType(DefaultArgsType, ChatSubArgsType):
-    pass
+    ignore: bool | None  # runtime-only
+
+
+class ServeRunArgsType(DefaultArgsType, Protocol):
+    """Args for serve and run commands"""
+
+    MODEL: str
+    port: int | None
+    name: str | None
+    rag: str | None
+    subcommand: str
+    detach: bool | None
+    api: str | None
+    image: str
+    host: str | None
+    generate: str | None
+    context: int
+    cache_reuse: int
+    authfile: str | None
+    device: list[str] | None
+    env: list[str]
+    ARGS: list[str] | None  # For run command
+    mcp: list[str] | None
+    summarize_after: int
+    # Chat/run specific options
+    color: COLOR_OPTIONS
+    prefix: str
+    rag_image: str | None
+    ignore: bool | None  # runtime-only
+
+
+ServeRunArgs = protocol_to_dataclass(ServeRunArgsType)
+
+
+class RagArgsType(ServeRunArgsType, Protocol):
+    """Args when using RAG functionality - wraps model args"""
+
+    model_args: ServeRunArgsType
+    model_host: str
+    model_port: int
+    rag: str  # type: ignore
+
+
+RagArgs = protocol_to_dataclass(RagArgsType)

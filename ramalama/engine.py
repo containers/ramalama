@@ -5,8 +5,9 @@ import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Sequence
 from http.client import HTTPConnection, HTTPException
-from typing import Any, Callable
+from typing import Any, cast
 
 # Live reference for checking global vars
 import ramalama.common
@@ -20,10 +21,10 @@ class BaseEngine(ABC):
 
     def __init__(self, args):
         base = os.path.basename(args.engine)
-        self.use_docker = base == "docker"
-        self.use_podman = base == "podman"
+        self.use_docker: bool = base == "docker"
+        self.use_podman: bool = base == "podman"
         self.args = args
-        self.exec_args = [self.args.engine]
+        self.exec_args: list[str] = [self.args.engine]
         self.base_args()
         self.add_labels()
         self.add_network()
@@ -35,10 +36,10 @@ class BaseEngine(ABC):
     @abstractmethod
     def base_args(self): ...
 
-    def add_label(self, label):
+    def add_label(self, label: str):
         self.add(["--label", label])
 
-    def add_name(self, name):
+    def add_name(self, name: str):
         self.add(["--name", name])
 
     def add_labels(self):
@@ -112,8 +113,8 @@ class BaseEngine(ABC):
         if getattr(self.args, "podman_keep_groups", None):
             self.exec_args += ["--group-add", "keep-groups"]
 
-    def add(self, newargs):
-        self.exec_args += newargs
+    def add(self, newargs: Sequence[str]):
+        self.exec_args.extend(newargs)
 
     def add_args(self, *args: str) -> None:
         self.add(args)
@@ -319,7 +320,7 @@ def containers(args):
         raise (e)
 
 
-def info(args):
+def info(args) -> list[Any] | str | dict[str, Any]:
     conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
@@ -334,7 +335,7 @@ def info(args):
         return str(e)
 
 
-def inspect(args, name, format=None, ignore_stderr=False):
+def inspect(args, name: str, format: str | None = None, ignore_stderr: bool = False):
     if not name:
         raise ValueError("must specify a container name")
     conman = str(args.engine) if args.engine is not None else None
@@ -349,7 +350,7 @@ def inspect(args, name, format=None, ignore_stderr=False):
     return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
 
 
-def logs(args, name, ignore_stderr=False):
+def logs(args, name: str, ignore_stderr: bool = False):
     if not name:
         raise ValueError("must specify a container name")
     conman = str(args.engine) if args.engine is not None else None
@@ -360,7 +361,7 @@ def logs(args, name, ignore_stderr=False):
     return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
 
 
-def stop_container(args, name, remove=False):
+def stop_container(args, name: str, remove: bool = False):
     if not name:
         raise ValueError("must specify a container name")
     conman = str(args.engine) if args.engine is not None else None
@@ -416,7 +417,7 @@ def stop_container(args, name, remove=False):
                 raise
 
 
-def add_labels(args, add_label):
+def add_labels(args, add_label: Callable[[str], None]):
     label_map = {
         "MODEL": "ai.ramalama.model",
         "engine": "ai.ramalama.engine",
@@ -452,7 +453,7 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
         model_names = [m["name"] for m in body["models"]]
         if not model_name:
             # The transport and tag is not included in the model name returned by the endpoint
-            model_name = args.MODEL.split("://")[-1]
+            model_name = cast(str, args.MODEL.split("://")[-1])
             model_name = model_name.split(":")[0]
         if not any(model_name in name for name in model_names):
             logger.debug(f'Container {args.name} does not include "{model_name}" in the model list: {model_names}')

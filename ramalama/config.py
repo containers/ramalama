@@ -99,7 +99,6 @@ def get_inference_spec_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
     for spec_dir in get_all_inference_spec_dirs("engines"):
-
         # Give preference to .yaml, then .json spec files
         file_extensions = ["*.yaml", "*.yml", "*.json"]
         for file_extension in file_extensions:
@@ -117,7 +116,6 @@ def get_inference_schema_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
 
     for schema_dir in get_all_inference_spec_dirs("schema"):
-
         for spec_file in sorted(Path(schema_dir).glob("schema.*.json")):
             file = Path(spec_file)
             version = file.name.replace("schema.", "").replace(".json", "")
@@ -280,8 +278,7 @@ class Config(LayeredMixin, BaseConfig):
 
         If Podman is detected on macOS without a configured machine, it falls back on docker availability.
         """
-        is_podman = self.engine is not None and os.path.basename(self.engine) == "podman"
-        if is_podman and sys.platform == "darwin":
+        if self.engine is not None and os.path.basename(self.engine) == "podman" and sys.platform == "darwin":
             run_with_podman_engine = apple_vm(self.engine, self)
             if not run_with_podman_engine and not self.is_set("engine"):
                 self.engine = "docker" if available("docker") else None

@@ -13,9 +13,9 @@ import shutil
 import string
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from functools import lru_cache
-from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict, cast, get_args
+from typing import IO, TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, TypedDict, cast, get_args
 
 import yaml
 
@@ -133,7 +133,15 @@ def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
         raise
 
 
-def run_cmd(args, cwd=None, stdout=subprocess.PIPE, ignore_stderr=False, ignore_all=False, encoding=None, env=None):
+def run_cmd(
+    args: Sequence[str],
+    cwd: str | None = None,
+    stdout: int | IO[Any] | None = subprocess.PIPE,
+    ignore_stderr: bool = False,
+    ignore_all: bool = False,
+    encoding: str | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[Any]:
     """
     Run the given command arguments.
 
