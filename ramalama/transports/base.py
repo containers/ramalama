@@ -1,6 +1,8 @@
+import json
 import os
 import platform
 import random
+import shlex
 import socket
 import subprocess
 import sys
@@ -10,6 +12,8 @@ from functools import cached_property
 from typing import Any, Dict, Optional
 
 import ramalama.chat as chat
+from ramalama.benchmarks.llama_bench import TestConfiguration, parse_json, print_bench_results
+from ramalama.benchmarks.manager import DBManager
 from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
@@ -19,6 +23,7 @@ from ramalama.common import (
     is_split_file_model,
     perror,
     populate_volume_from_image,
+    run_cmd,
     set_accel_env_vars,
 )
 from ramalama.compose import Compose
@@ -400,7 +405,52 @@ class Transport(TransportBase):
 
     def bench(self, args, cmd: list[str]):
         set_accel_env_vars()
-        self.execute_command(cmd, args)
+
+        output_format = getattr(args, "format", "table")
+
+        try:
+            if args.dryrun:
+                if args.container:
+                    self.engine.dryrun()
+                else:
+                    dry_run(cmd)
+                escaped_cmd = [shlex.quote(arg) for arg in cmd]
+                result = subprocess.CompletedProcess(args=escaped_cmd, returncode=0, stdout="", stderr="")
+            elif args.container:
+                self.setup_container(args)
+                self.setup_mounts(args)
+                self.engine.add([args.image] + cmd)
+                result = self.engine.run_process()
+            else:
+                result = run_cmd(cmd, encoding="utf-8")
+
+            try:
+                bench_results = parse_json(result.stdout)
+            except (json.JSONDecodeError, ValueError):
+                message = f"Could not parse benchmark output. Expected JSON but got:\n{result.stdout}"
+                raise ValueError(message)
+
+            if output_format == "json":
+                print(result.stdout)
+            else:
+                print_bench_results(bench_results)
+
+            db_path = CONFIG.benchmarks.db_path
+            if db_path and not CONFIG.benchmarks.disable:
+                try:
+                    test_config = TestConfiguration.from_args(args)
+                    db = DBManager(db_path)
+                    inserted = 0
+                    if bench_results:
+                        configuration_id = db.save_llama_bench_configuration(test_config)
+                        inserted = db.save_llama_bench_results(configuration_id, bench_results)
+                    logger.debug(f"Saved {inserted} benchmark result(s) to database")
+                except Exception as e:
+                    logger.warning(f"Failed to save benchmark results to database: {e}")
+
+        except Exception as e:
+            logger.debug(f"Failed to capture benchmark output: {e}")
+            self.execute_command(cmd, args)
 
     def run(self, args, server_cmd: list[str]):
         # The Run command will first launch a daemonized service
