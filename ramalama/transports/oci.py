@@ -61,8 +61,6 @@ class OCI(Transport):
         conman_args.append(self.model)
         return exec_cmd(conman_args)
 
-<<<<<<< HEAD
-=======
     def _target_decompose(self, model):
         model = model.removeprefix(prefix)
         # Remove the prefix and extract target details
@@ -152,7 +150,6 @@ class OCI(Transport):
             args=args,
         )
 
->>>>>>> a80a1182 (refactor + lint)
     def _convert_to_gguf(self, outdir, source_model, args):
         with tempfile.TemporaryDirectory(prefix="RamaLama_convert_src_") as srcdir:
             ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
@@ -268,11 +265,7 @@ class OCI(Transport):
         else:
             run_cmd(cmd_args)
 
-<<<<<<< HEAD
-    def _rm_artifact(self, ignore):
-=======
     def _rm_artifact(self, ignore) -> None:
->>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         rm_cmd = [
             self.conman,
             "artifact",
@@ -296,13 +289,7 @@ class OCI(Transport):
             f"org.opencontainers.image.title={file_name}",
         ]
         if create:
-<<<<<<< HEAD
-            if self.conman == "podman" and engine_version("podman") >= "5.7.0":
-                cmd.append("--replace")
-            cmd.extend(["--type", annotations.ArtifactTypeModelManifest])
-=======
             cmd.extend(["--replace", "--type", annotations.ArtifactTypeModelManifest])
->>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         else:
             cmd.extend(["--append"])
 
@@ -410,10 +397,6 @@ Tagging build instead
     def push(self, source_model, args):
         target = self.model
         source = source_model.model
-<<<<<<< HEAD
-=======
-
->>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         conman_args = [self.conman, "push"]
         type = "image"
         if args.type == "artifact":
@@ -465,11 +448,7 @@ Tagging build instead
         if self.capabilities.is_podman:
             self.artifact = self.is_artifact()
 
-<<<<<<< HEAD
-    def remove(self, args) -> bool:
-=======
     def remove(self, args):
->>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         if self.conman is None:
             raise NotImplementedError("OCI Images require a container engine")
 
@@ -485,10 +464,6 @@ Tagging build instead
                     self._rm_artifact(args.ignore)
                 except subprocess.CalledProcessError:
                     raise KeyError(f"Model '{self.model}' not found")
-<<<<<<< HEAD
-        return True
-=======
->>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
 
     def exists(self) -> bool:
         if self.strategy_mode == strat.STRATEGY_HTTP_BIND:
@@ -516,13 +491,8 @@ Tagging build instead
         get_field: str = "",
         as_json: bool = False,
         dryrun: bool = False,
-<<<<<<< HEAD
-    ) -> Tuple[str, str]:
-        out = super().inspect(show_all, show_all_metadata, get_field, dryrun, as_json)
-=======
     ) -> (str, str):
         out = super().get_inspect(show_all, show_all_metadata, get_field, dryrun, as_json=as_json)
->>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
         if as_json:
             out_data = json.loads(out)
         else:
@@ -544,12 +514,8 @@ Tagging build instead
                 if as_json:
                     out_data.update(json.loads(inspect_output))
                 oci_type = "Artifact"
-<<<<<<< HEAD
-            except Exception:
-=======
             except Exception as f:
                 print(f)
->>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
                 raise e
 
         if as_json:
@@ -585,11 +551,7 @@ Tagging build instead
     def is_artifact(self) -> bool:
         try:
             _, oci_type = self._inspect()
-<<<<<<< HEAD
-        except (NoRefFileFound, subprocess.CalledProcessError):
-=======
         except subprocess.CalledProcessError:
->>>>>>> 8cdb56b4 (Add support for converting to OCI artifacts)
             return False
         return oci_type == "Artifact"
 
