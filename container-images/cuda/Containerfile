@@ -1,4 +1,4 @@
-ARG CUDA_VERSION=12.8.1
+ARG CUDA_VERSION=12.9.1
 # Base image with CUDA for compilation
 FROM docker.io/nvidia/cuda:${CUDA_VERSION}-devel-ubi9 AS builder
 
