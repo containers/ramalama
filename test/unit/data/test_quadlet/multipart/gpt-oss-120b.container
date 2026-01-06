@@ -1,0 +1,23 @@
+[Unit]
+Description=RamaLama gpt-oss-120b AI Model Service
+After=local-fs.target
+
+[Container]
+AddDevice=-/dev/accel
+AddDevice=-/dev/dri
+AddDevice=-/dev/kfd
+AddDevice=nvidia.com/gpu=all
+Image=testimage
+RunInit=true
+Environment=HOME=/tmp
+Exec=
+SecurityLabelDisable=true
+DropCapability=all
+NoNewPrivileges=true
+Mount=type=bind,src=sha256-e2865eb6c1df7b2ffbebf305cd5d9074d5ccc0fe3b862f98d343a46dad1606f9,target=/mnt/models/gpt-oss-120b-mxfp4-00001-of-00003.gguf,ro,Z
+Mount=type=bind,src=sha256-81856b5b996da9c9fd68397d49671264ead380a8355b3c83284eae5e21e998ed,target=/mnt/models/gpt-oss-120b-mxfp4-00002-of-00003.gguf,ro,Z
+Mount=type=bind,src=sha256-38b087fffe4b5ba5d62fa7761ed7278a07fef7a6145b9744b11205b851021dce,target=/mnt/models/gpt-oss-120b-mxfp4-00003-of-00003.gguf,ro,Z
+
+[Install]
+WantedBy=multi-user.target default.target
+
