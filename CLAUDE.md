@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-RamaLama is a CLI tool for managing and serving AI models using containers. It provides a container-centric approach to AI model management, supporting multiple model registries (HuggingFace, Ollama, OCI registries) and automatic GPU detection with appropriate container image selection.
+RamaLama is a CLI tool for managing and serving AI models using containers. It provides a container-centric approach to AI model management, supporting multiple model registries (Hugging Face, Ollama, OCI registries) and automatic GPU detection with appropriate container image selection.
 
 ## Build and Development Commands
 
@@ -31,7 +31,7 @@ make bats-nocontainer        # Run in nocontainer mode
 make bats-docker             # Run with Docker
 
 # All tests
-make tests                   # Run unit + end-to-end tests
+make tests                   # Run unit tests and system-level integration tests
 ```
 
 ### Running a single test
@@ -48,7 +48,7 @@ RAMALAMA=$(pwd)/bin/ramalama bats -T test/system/030-run.bats
 
 ### Code Quality
 ```bash
-make validate                # Run all validation (codespell, lint, format check, type check)
+make validate                # Run all validation (codespell, lint, format check, man-check, type check)
 make lint                    # Run flake8 + shellcheck
 make check-format            # Check black + isort formatting
 make format                  # Auto-format with black + isort
@@ -88,7 +88,7 @@ Manages local model storage:
 - `schema.py` - Inference spec schema handling
 
 ### Key Patterns
-- **GPU Detection**: `get_accel()` in `common.py` detects GPU type (cuda, rocm, vulkan, etc.) and selects appropriate container image
+- **GPU Detection**: `get_accel()` in `common.py` detects GPU type (CUDA, ROCm, Vulkan, etc.) and selects appropriate container image
 - **Container Images**: GPU-specific images at `quay.io/ramalama/{ramalama,cuda,rocm,intel-gpu,...}`
 - **Inference Engines**: llama.cpp (default), vllm, mlx (macOS only) - configured via YAML specs in `inference-spec/engines/`
 
