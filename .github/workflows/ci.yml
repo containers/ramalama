@@ -255,7 +255,7 @@ jobs:
       - name: install golang
         shell: bash
         run: |
-           brew install go bats bash jq llama.cpp shellcheck
+           brew install go bats bash jq llama.cpp shellcheck coreutils
            uv run -- make install-requirements
 
       - name: install ollama
