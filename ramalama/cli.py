@@ -23,6 +23,7 @@ except Exception:
 
 import ramalama.chat as chat
 from ramalama import engine
+from ramalama.arg_types import DefaultArgsType
 from ramalama.chat import default_prefix
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
@@ -603,7 +604,7 @@ def _list_models(args):
     return _list_models_from_store(args)
 
 
-def info_cli(args):
+def info_cli(args: DefaultArgsType) -> None:
     info: dict[str, Any] = {
         "Accelerator": get_accel(),
         "Config": load_file_config(),

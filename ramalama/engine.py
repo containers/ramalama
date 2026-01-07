@@ -11,6 +11,7 @@ from typing import Any, cast
 
 # Live reference for checking global vars
 import ramalama.common
+from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
 from ramalama.logger import logger
@@ -19,7 +20,7 @@ from ramalama.logger import logger
 class BaseEngine(ABC):
     """General-purpose engine for running podman or docker commands"""
 
-    def __init__(self, args):
+    def __init__(self, args: BaseEngineArgsType) -> None:
         base = os.path.basename(args.engine)
         self.use_docker: bool = base == "docker"
         self.use_podman: bool = base == "podman"
@@ -144,7 +145,7 @@ class BaseEngine(ABC):
 class Engine(BaseEngine):
     """Engine for executing 'podman run'"""
 
-    def __init__(self, args):
+    def __init__(self, args: BaseEngineArgsType) -> None:
         super().__init__(args)
         self.add_detach_option()
         self.add_device_options()
@@ -175,15 +176,18 @@ class Engine(BaseEngine):
             self.add_env_option(env)
 
     def add_port_option(self) -> None:
-        if getattr(self.args, "port", "") == "":
+        port = getattr(self.args, "port", "")
+        if not port:
             return
 
+        # Convert port to string for processing
+        port_str = str(port)
         host = getattr(self.args, "host", "0.0.0.0")
         host = f"{host}:" if host != "0.0.0.0" else ""
-        if self.args.port.count(":") > 0:
-            self.add_args("-p", f"{host}{self.args.port}")
+        if ":" in port_str:
+            self.add_args("-p", f"{host}{port_str}")
         else:
-            self.add_args("-p", f"{host}{self.args.port}:{self.args.port}")
+            self.add_args("-p", f"{host}{port_str}:{port_str}")
 
     def add_privileged_options(self) -> None:
         if getattr(self.args, "privileged", False):
