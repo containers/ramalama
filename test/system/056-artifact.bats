@@ -389,7 +389,7 @@ EOF
 
     # Test with directory instead of file
     mkdir -p $RAMALAMA_TMPDIR/testdir
-    run_ramalama 22 convert --type artifact file://$RAMALAMA_TMPDIR/testdir test-artifact
+    run_ramalama 5 convert --type artifact file://$RAMALAMA_TMPDIR/testdir test-artifact
     is "$output" ".*Error.*" "directory as source is handled gracefully"
 }
 
