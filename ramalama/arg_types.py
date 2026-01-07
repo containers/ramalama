@@ -33,6 +33,32 @@ class StoreArgType(Protocol):
 StoreArgs = protocol_to_dataclass(StoreArgType)
 
 
+class BaseEngineArgsType(Protocol):
+    """Arguments required by BaseEngine.__init__"""
+
+    # Required attributes (accessed directly)
+    engine: SUPPORTED_ENGINES
+    dryrun: bool
+    quiet: bool
+    image: str
+    # Optional attributes (accessed via getattr)
+    pull: str | None
+    network: str | None
+    oci_runtime: str | None
+    selinux: bool | None
+    nocapdrop: bool | None
+    device: list[str] | None
+    podman_keep_groups: bool | None
+    # Optional attributes for labels
+    MODEL: str | None
+    runtime: str | None
+    port: str | int | None  # Can be string (e.g., "8080:8080") or int
+    subcommand: str | None
+
+
+BaseEngineArgs = protocol_to_dataclass(BaseEngineArgsType)
+
+
 class DefaultArgsType(Protocol):
     container: bool
     runtime: SUPPORTED_RUNTIMES
