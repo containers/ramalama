@@ -17,7 +17,7 @@ function setup() {
 @test "ramalama bench" {
     skip_if_nocontainer
     run_ramalama bench -t 2 $(test_model smollm:135m)
-    is "$output" ".*model.*size.*" "model and size in output"
+    is "$output" ".*model.*params.*" "model and params in output"
 }
 
 # vim: filetype=sh

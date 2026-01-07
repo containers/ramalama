@@ -253,6 +253,17 @@ The maximum number of times to retry a failed download
 
 The maximum delay between retry attempts in seconds
 
+## RAMALAMA.BENCHMARKS TABLE
+The ramalama.benchmarks table contains benchmark related settings.
+
+`[[ramalama.benchmarks]]`
+
+**db_path**="<conf dir>/db.sql"
+
+Manually specify where to save the metrics database.
+By default, this will be stored in the default configuration
+directory for your platform.
+
 ## RAMALAMA.USER TABLE
 The ramalama.user table contains user preference settings.
 

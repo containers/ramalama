@@ -23,6 +23,7 @@ except Exception:
 
 import ramalama.chat as chat
 from ramalama import engine
+from ramalama.benchmarks.llama_bench import print_bench_results
 from ramalama.chat import default_prefix
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
@@ -291,6 +292,7 @@ def configure_subcommands(parser):
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
     bench_parser(subparsers)
+    benchmarks_parser(subparsers)
     chat_parser(subparsers)
     containers_parser(subparsers)
     convert_parser(subparsers)
@@ -505,8 +507,95 @@ def add_network_argument(parser, dflt: str | None = "none"):
 def bench_parser(subparsers):
     parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
     runtime_options(parser, "bench")
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
+    parser.add_argument("MODEL", completer=local_models)
+    parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="output format (table or json)",
+    )
     parser.set_defaults(func=bench_cli)
+
+
+def benchmarks_parser(subparsers):
+    db_path = CONFIG.benchmarks.db_path
+    epilog = f"Database location: {db_path}" if db_path else "Database location: not configured"
+    parser = subparsers.add_parser(
+        "benchmarks",
+        help="manage and view benchmark results",
+        epilog=epilog,
+    )
+    parser.set_defaults(func=lambda _: parser.print_help())
+
+    benchmarks_subparsers = parser.add_subparsers(dest="benchmarks_command", metavar="[command]")
+
+    list_parser = benchmarks_subparsers.add_parser("list", help="list benchmark results")
+    list_parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="limit number of results to display",
+    )
+    list_parser.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help="offset for pagination",
+    )
+    list_parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="output format (table or json)",
+    )
+    list_parser.set_defaults(func=benchmarks_list_cli)
+
+
+def benchmarks_list_cli(args):
+    """Display a list of benchmark results from the database."""
+    from ramalama.benchmarks.errors import MissingDBPathError
+    from ramalama.benchmarks.manager import DBManager
+
+    db_path = CONFIG.benchmarks.db_path
+    if not db_path:
+        print("Error: No benchmarks database path configured")
+        print("Set RAMALAMA__BENCHMARKS_DB_PATH or configure benchmarks.db_path in ramalama.conf")
+        sys.exit(1)
+
+    try:
+        db = DBManager(db_path)
+        results = db.list_benchmarks(limit=args.limit, offset=args.offset)
+
+        if not results:
+            print("No benchmark results found")
+            return
+
+        if args.format == "json":
+            import json
+
+            output = []
+            for item in results:
+                row = item.result.as_dict()
+                if item.id is not None:
+                    row["id"] = item.id
+                if item.engine is not None:
+                    row["engine"] = item.engine
+                if item.created_at is not None:
+                    row["created_at"] = item.created_at
+                output.append(row)
+            print(json.dumps(output, indent=2))
+        else:
+            # Table format
+            print_bench_results(results)
+
+    except MissingDBPathError:
+        print("Error: RAMALAMA__BENCHMARKS_DB_PATH not configured")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading benchmarks: {e}")
+        if args.debug:
+            raise
+        sys.exit(1)
 
 
 def containers_parser(subparsers):

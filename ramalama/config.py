@@ -136,6 +136,25 @@ def coerce_to_bool(value: Any) -> bool:
     raise ValueError(f"Cannot coerce {value!r} to bool")
 
 
+def get_default_db_path() -> Path | None:
+    conf_dir = None
+    for dir in DEFAULT_CONFIG_DIRS:
+        if os.path.exists(dir):
+            conf_dir = dir
+            break
+
+    if conf_dir is not None:
+        return conf_dir / "db.sql"
+
+    return None
+
+
+@dataclass
+class Benchmarks:
+    db_path: Path | None = field(default_factory=get_default_db_path)
+    disable: bool = False
+
+
 @dataclass
 class UserConfig:
     no_missing_gpu_prompt: bool = False
@@ -215,6 +234,7 @@ class HTTPClientConfig:
 class BaseConfig:
     api: str = "none"
     api_key: str | None = None
+    benchmarks: Benchmarks = field(default_factory=Benchmarks)
     cache_reuse: int = 256
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
     container: bool = None  # type: ignore
@@ -225,12 +245,15 @@ class BaseConfig:
     dryrun: bool = False
     engine: SUPPORTED_ENGINES | None = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
+    gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
     host: str = "0.0.0.0"
+    http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
     image: str = None  # type: ignore
     images: RamalamaImages = field(default_factory=RamalamaImages)
     rag_image: str | None = None
     rag_images: RamalamaRagImages = field(default_factory=RamalamaRagImages)
     keep_groups: bool = False
+    log_level: LogLevel | None = None
     max_tokens: int = 0
     ngl: int = -1
     ocr: bool = False
@@ -250,9 +273,6 @@ class BaseConfig:
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
-    gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
-    http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
-    log_level: LogLevel | None = None
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
