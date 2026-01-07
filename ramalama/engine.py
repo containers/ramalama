@@ -184,7 +184,7 @@ class Engine(BaseEngine):
         port_str = str(port)
         host = getattr(self.args, "host", "0.0.0.0")
         host = f"{host}:" if host != "0.0.0.0" else ""
-        if port_str.count(":") > 0:
+        if ":" in port_str:
             self.add_args("-p", f"{host}{port_str}")
         else:
             self.add_args("-p", f"{host}{port_str}:{port_str}")
