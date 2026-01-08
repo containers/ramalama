@@ -141,16 +141,24 @@ class OllamaServer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._stop_process()
 
-    def pull_model(self, model_name: str):
+    def pull_model(self, model_name: str, retries: int = 5):
         env = os.environ.copy()
         env["OLLAMA_HOST"] = self.url
 
-        subprocess.run(
-            ["ollama", "pull", model_name],
-            env=env,
-            check=True,
-            capture_output=True,
-        )
+        # Ollama pull is flaky (many issues reported on github), so we retry a few times
+        for attempt in range(retries):
+            try:
+                subprocess.run(
+                    ["ollama", "pull", model_name],
+                    env=env,
+                    check=True,
+                )
+                return
+            except subprocess.CalledProcessError:
+                if attempt < retries - 1:
+                    time.sleep(30)
+                else:
+                    raise
 
 
 @pytest.fixture(scope="function")

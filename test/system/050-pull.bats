@@ -35,17 +35,17 @@ load setup_suite
 
     ollama serve &
     sleep 3
-    ollama pull tinyllama
+    (for i in $(seq 0 3); do ollama pull tinyllama && exit 0; sleep 30; done; ollama pull tinyllama)
     run_ramalama pull ollama://tinyllama
     run_ramalama rm ollama://tinyllama
     ollama rm tinyllama
 
-    ollama pull smollm:135m
+    (for i in $(seq 0 3); do ollama pull smollm:135m && exit 0; sleep 30; done; ollama pull smollm:135m)
     run_ramalama pull https://ollama.com/library/smollm:135m
     run_ramalama list
     is "$output" ".*ollama://library/smollm:135m" "image was actually pulled locally from ollama cache"
 
-    ollama pull smollm:360m
+    (for i in $(seq 0 3); do ollama pull smollm:360m && exit 0; sleep 30; done; ollama pull smollm:360m)
     RAMALAMA_TRANSPORT=ollama run_ramalama pull smollm:360m
     run_ramalama pull ollama://smollm:360m
     run_ramalama list
