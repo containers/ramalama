@@ -41,17 +41,16 @@ class StrategiesType(TypedDict):
     artifact: BaseArtifactStrategy
 
 
-class EngineStrategy:
+class OCIStrategyFactory:
     """Resolve reference kind and return the appropriate strategy implementation."""
 
     def __init__(
         self,
         engine: SUPPORTED_ENGINES | Path | str | None,
-        *,
-        model_store: ModelStore | None = None,
+        model_store: ModelStore,
     ):
         if (engine := engine or CONFIG.engine) is None:
-            raise Exception("EngineStrategies require a valid engine")
+            raise Exception("OCIStrategyFactory require a valid engine")
 
         self.engine = str(engine)
         self.model_store = model_store
