@@ -12,7 +12,8 @@ from ramalama.common import exec_cmd, perror, run_cmd, set_accel_env_vars
 from ramalama.engine import BuildEngine, Engine, dry_run
 from ramalama.oci_tools import engine_supports_manifest_attributes
 from ramalama.transports.base import Transport
-from ramalama.transports.oci.strategy import BaseOCIStrategy, EngineStrategy
+from ramalama.transports.oci.strategies import BaseOCIStrategy
+from ramalama.transports.oci.strategy import OCIStrategyFactory
 
 prefix = "oci://"
 
@@ -37,10 +38,10 @@ class OCI(Transport):
 
     @cached_property
     def strategy(self) -> BaseOCIStrategy:
-        return EngineStrategy(self.conman, model_store=self.model_store).resolve(self.model)
+        return OCIStrategyFactory(self.conman, model_store=self.model_store).resolve(self.model)
 
-    @cached_property
-    def artifact(self) -> bool:
+    @property
+    def is_artifact(self) -> bool:
         return self.strategy.kind == 'artifact'
 
     def login(self, args):
@@ -377,44 +378,6 @@ Tagging build instead
     def exists(self) -> bool:
         return self.strategy.exists(self.model)
 
-    def _inspect(
-        self,
-        show_all: bool = False,
-        show_all_metadata: bool = False,
-        get_field: str = "",
-        as_json: bool = False,
-        dryrun: bool = False,
-    ) -> tuple[str, str]:
-        out = super().get_inspect(show_all, show_all_metadata, get_field, dryrun, as_json=as_json)
-        if as_json:
-            out_data = json.loads(out)
-        else:
-            out_data = out
-        conman_args = [self.conman, "image", "inspect", self.model]
-        oci_type = "Image"
-        try:
-            inspect_output = run_cmd(conman_args, ignore_stderr=True).stdout.decode('utf-8').strip()
-            # podman image inspect returns a list of objects
-            inspect_data = json.loads(inspect_output)
-            if as_json and inspect_data:
-                out_data.update(inspect_data[0])
-        except Exception as e:
-            conman_args = [self.conman, "artifact", "inspect", self.model]
-            try:
-                inspect_output = run_cmd(conman_args, ignore_stderr=True).stdout.decode('utf-8').strip()
-
-                # podman artifact inspect returns a single object
-                if as_json:
-                    out_data.update(json.loads(inspect_output))
-                oci_type = "Artifact"
-            except Exception as f:
-                print(f)
-                raise e
-
-        if as_json:
-            return json.dumps(out_data), oci_type
-        return out_data, oci_type
-
     def entrypoint_path(self, mount_dir: str | None = None) -> str:
         return self.strategy.entrypoint_path(self.model, mount_dir=mount_dir)
 
@@ -426,18 +389,25 @@ Tagging build instead
         as_json: bool = False,
         dryrun: bool = False,
     ) -> None:
-        out, type = self._inspect(show_all, show_all_metadata, get_field, as_json, dryrun)
-        if as_json:
-            print(out)
-        else:
-            print(f"{out}   Type: {type}")
+        out = super().inspect(
+            show_all=show_all, show_all_metadata=show_all_metadata, get_field=get_field, dryrun=dryrun, as_json=as_json
+        )
 
-    def is_artifact(self) -> bool:
-        try:
-            _, oci_type = self._inspect()
-        except subprocess.CalledProcessError:
-            return False
-        return oci_type == "Artifact"
+        if get_field or dryrun:
+            print(out)
+            return
+
+        if as_json:
+            out = json.loads(out)
+
+            # docker/podman image inspect returns a list of objects
+            inspect = json.loads(self.strategy.inspect(self.model))
+            if self.strategy.kind == "image":
+                inspect = inspect[0] if inspect else {}
+
+            print(json.dumps(out | inspect, sort_keys=True, indent=4))
+        else:
+            print(f"{out}   Type: {self.strategy.kind.capitalize()}")
 
     def mount_cmd(self, src: str | None = None, dest: str | None = None):
         return self.strategy.mount_arg(src or self.model, dest)

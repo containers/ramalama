@@ -8,8 +8,7 @@ import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
-from functools import cached_property
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, TypeGuard
 
 from ramalama import chat
 from ramalama.common import ContainerEntryPoint
@@ -28,6 +27,7 @@ from ramalama.quadlet import Quadlet
 
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
+    from ramalama.transports.oci.oci import OCI
 
 from datetime import datetime, timezone
 
@@ -82,6 +82,10 @@ class NoRefFileFound(Exception):
 
     def __str__(self):
         return f"No ref file found for '{self.model}'. Please pull model."
+
+
+def is_oci(self) -> TypeGuard["OCI"]:
+    return self.model_type == "oci"
 
 
 def trim_model_name(model):
@@ -166,10 +170,6 @@ class Transport(TransportBase):
 
         self.default_image = accel_image(get_config())
         self.draft_model: Transport | None = None
-
-    @cached_property
-    def artifact(self) -> bool:
-        return self.is_artifact()
 
     def extract_model_identifiers(self):
         model_name = self.model
@@ -271,7 +271,7 @@ class Transport(TransportBase):
         if dry_run:
             return "/path/to/model"
 
-        if self.model_type == 'oci':
+        if is_oci(self):
             if use_container or should_generate:
                 return self.entrypoint_path()
             else:
@@ -387,16 +387,14 @@ class Transport(TransportBase):
         if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
             self.engine.add(["-i"])
 
-        self.engine.add(
-            [
-                "--label",
-                "ai.ramalama",
-                "--name",
-                name,
-                "--env=HOME=/tmp",
-                "--init",
-            ]
-        )
+        self.engine.add([
+            "--label",
+            "ai.ramalama",
+            "--name",
+            name,
+            "--env=HOME=/tmp",
+            "--init",
+        ])
 
     def setup_container(self, args):
         name = self.get_container_name(args)
@@ -449,9 +447,9 @@ class Transport(TransportBase):
             # Convert path to container-friendly format (handles Windows path conversion)
             container_blob_path = get_container_mount_path(blob_path)
             mount_path = f"{MNT_DIR}/{file.name}"
-            self.engine.add(
-                [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
-            )
+            self.engine.add([
+                f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"
+            ])
 
         if self.draft_model:
             draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
@@ -787,7 +785,14 @@ class Transport(TransportBase):
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None):
         quadlet = Quadlet(
-            self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
+            self.model_name,
+            model_paths,
+            chat_template_paths,
+            mmproj_paths,
+            args,
+            exec_args,
+            self.is_artifact,
+            model_parts,
         )
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
@@ -795,16 +800,16 @@ class Transport(TransportBase):
     def quadlet_kube(
         self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None
     ):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
         kube.generate().write(output_dir)
 
         quadlet = Quadlet(
-            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
+            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact, model_parts
         )
         quadlet.kube().write(output_dir)
 
     def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
         kube.generate().write(output_dir)
 
     def compose(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
@@ -855,6 +860,7 @@ class Transport(TransportBase):
         perror(f"Downloading {model_name} ...")
         perror(f"Trying to pull {model_name} ...")
 
+    @property
     def is_artifact(self) -> bool:
         return False
 

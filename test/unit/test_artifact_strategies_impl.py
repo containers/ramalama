@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 from ramalama.transports.oci import strategies
 
 
@@ -16,7 +18,7 @@ class Recorder:
 def test_podman_artifact_mount_and_pull(monkeypatch):
     rec = Recorder()
     monkeypatch.setattr(strategies, "run_cmd", rec)
-    strat = strategies.PodmanArtifactStrategy(engine="podman")
+    strat = strategies.PodmanArtifactStrategy(engine="podman", model_store=Mock())
     strat.pull("artifact:latest")
     assert rec.calls[0][0] == ["podman", "artifact", "pull", "artifact:latest"]
     assert strat.mount_arg("artifact:latest").startswith("--mount=type=artifact")
@@ -25,7 +27,7 @@ def test_podman_artifact_mount_and_pull(monkeypatch):
 def test_podman_artifact_exists(monkeypatch):
     rec = Recorder()
     monkeypatch.setattr(strategies, "run_cmd", rec)
-    strat = strategies.PodmanArtifactStrategy(engine="podman")
+    strat = strategies.PodmanArtifactStrategy(engine="podman", model_store=Mock())
     assert strat.exists("artifact:latest") is True
     assert rec.calls[0][0] == ["podman", "artifact", "inspect", "artifact:latest"]
 
@@ -33,7 +35,7 @@ def test_podman_artifact_exists(monkeypatch):
 def test_podman_image_path(monkeypatch):
     rec = Recorder()
     monkeypatch.setattr(strategies, "run_cmd", rec)
-    strat = strategies.PodmanImageStrategy(engine="podman")
+    strat = strategies.PodmanImageStrategy(engine="podman", model_store=Mock())
     strat.pull("image:latest")
     assert rec.calls[0][0] == ["podman", "pull", "image:latest"]
     assert strat.mount_arg("image:latest").startswith("--mount=type=image")
@@ -42,7 +44,7 @@ def test_podman_image_path(monkeypatch):
 def test_docker_image_path(monkeypatch):
     rec = Recorder()
     monkeypatch.setattr(strategies, "run_cmd", rec)
-    strat = strategies.DockerImageStrategy(engine="docker")
+    strat = strategies.DockerImageStrategy(engine="docker", model_store=Mock())
     strat.pull("image:latest")
     assert rec.calls[0][0] == ["docker", "pull", "image:latest"]
     assert strat.exists("image:latest") is True
@@ -72,7 +74,7 @@ def test_http_bind_path_fetch_and_exists(monkeypatch):
 
     monkeypatch.setattr(strategies, "download_oci_artifact", downloader)
     store = StoreStub()
-    strat = strategies.HttpArtifactStrategy(model_store=store)
+    strat = strategies.HttpArtifactStrategy(engine="docker", model_store=store)
     strat.pull("oci://example.com/ns/model:tag")
     assert called[0]["registry"] == "example.com"
     assert called[0]["reference"] == "ns/model:tag"

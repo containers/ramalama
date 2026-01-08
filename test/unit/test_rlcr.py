@@ -9,7 +9,7 @@ import pytest
 from ramalama.arg_types import StoreArgs
 from ramalama.transports.oci import resolver as oci_resolver
 from ramalama.transports.oci import strategies as oci_strategies
-from ramalama.transports.oci_artifact import download_oci_artifact
+from ramalama.transports.oci.oci_artifact import download_oci_artifact
 from ramalama.transports.rlcr import RamalamaContainerRegistry, find_model_file_in_image
 
 
@@ -146,14 +146,18 @@ class TestRLCRIntegration:
 class TestRLCRArtifactFallback:
     def test_pull_falls_back_to_artifact(self, rlcr_model, args):
         args.quiet = False
-        rlcr_model.strategy = oci_strategies.HttpArtifactStrategy(model_store=rlcr_model.model_store)
+        rlcr_model.strategy = oci_strategies.HttpArtifactStrategy(
+            engine=rlcr_model.conman, model_store=rlcr_model.model_store
+        )
 
         with patch('ramalama.transports.oci.strategies.download_oci_artifact', return_value=True) as mock_download:
             rlcr_model.pull(args)
             mock_download.assert_called_once()
 
     def test_pull_re_raises_when_artifact_download_fails(self, rlcr_model, args):
-        rlcr_model.strategy = oci_strategies.HttpArtifactStrategy(model_store=rlcr_model.model_store)
+        rlcr_model.strategy = oci_strategies.HttpArtifactStrategy(
+            engine=rlcr_model.conman, model_store=rlcr_model.model_store
+        )
 
         with patch(
             'ramalama.transports.oci.strategies.download_oci_artifact',
@@ -196,7 +200,7 @@ class TestOCIArtifactDownload:
                 with open(dest_path, "wb") as fh:
                     fh.write(data)
 
-        with patch('ramalama.transports.oci_artifact.OCIRegistryClient', FakeClient):
+        with patch('ramalama.transports.oci.oci_artifact.OCIRegistryClient', FakeClient):
             result = download_oci_artifact(
                 registry="rlcr.io",
                 reference="ramalama/gemma3-270m:gguf",
