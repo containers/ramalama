@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ramalama.annotations import AnnotationTitle
 
@@ -37,7 +37,13 @@ def _require(condition: bool, message: str) -> None:
         raise ValueError(message)
 
 
-def is_cnai_artifact_manifest(manifest: Dict[str, Any]) -> bool:
+def _require_str(value: Any, message: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(message)
+    return value
+
+
+def is_cnai_artifact_manifest(manifest: dict[str, Any]) -> bool:
     artifact_type = manifest.get("artifactType")
     config_media = (manifest.get("config") or {}).get("mediaType", "")
     if artifact_type == CNAI_ARTIFACT_TYPE or config_media == CNAI_CONFIG_MEDIA_TYPE:
@@ -51,17 +57,16 @@ class Descriptor:
     media_type: str
     digest: str
     size: int
-    annotations: Dict[str, str] = field(default_factory=dict)
+    annotations: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], *, allowed_media_types: Optional[set[str]] = None) -> "Descriptor":
-        media_type = data.get("mediaType")
-        digest = data.get("digest")
+    def from_dict(cls, data: dict[str, Any], *, allowed_media_types: set[str] | None = None) -> "Descriptor":
+        media_type = _require_str(data.get("mediaType"), "descriptor mediaType is required")
+        digest = _require_str(data.get("digest"), "descriptor digest is required")
         size = data.get("size")
 
-        _require(media_type, "descriptor mediaType is required")
-        _require(digest, "descriptor digest is required")
-        _require(size is not None, "descriptor size is required")
+        if size is None:
+            raise ValueError("descriptor size is required")
 
         if allowed_media_types is not None:
             _require(
@@ -72,8 +77,8 @@ class Descriptor:
         annotations = data.get("annotations") or {}
         return cls(media_type=media_type, digest=digest, size=int(size), annotations=annotations)
 
-    def to_dict(self) -> Dict[str, Any]:
-        data: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
             "mediaType": self.media_type,
             "digest": self.digest,
             "size": self.size,
@@ -82,7 +87,7 @@ class Descriptor:
             data["annotations"] = self.annotations
         return data
 
-    def title(self) -> Optional[str]:
+    def title(self) -> str | None:
         return self.annotations.get(AnnotationTitle)
 
 
@@ -92,14 +97,14 @@ class Manifest:
     media_type: str
     artifact_type: str
     config: Descriptor
-    layers: List[Descriptor]
-    annotations: Dict[str, str] = field(default_factory=dict)
+    layers: list[Descriptor]
+    annotations: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Manifest":
+    def from_dict(cls, data: dict[str, Any]) -> "Manifest":
         schema_version = data.get("schemaVersion", 2)
         media_type = data.get("mediaType") or OCI_MANIFEST_MEDIA_TYPE
-        artifact_type = data.get("artifactType")
+        artifact_type = _require_str(data.get("artifactType"), "artifactType is required")
         _require(artifact_type == CNAI_ARTIFACT_TYPE, f"artifactType must be '{CNAI_ARTIFACT_TYPE}'")
         _require(media_type == OCI_MANIFEST_MEDIA_TYPE, f"mediaType must be '{OCI_MANIFEST_MEDIA_TYPE}'")
 
@@ -111,7 +116,10 @@ class Manifest:
         )
 
         layers_data = data.get("layers") or []
-        _require(isinstance(layers_data, list) and layers_data, "layers must be a non-empty list")
+        _require(
+            isinstance(layers_data, list) and len(layers_data) > 0,
+            "layers must be a non-empty list",
+        )
         layers = [Descriptor.from_dict(layer, allowed_media_types=ALLOWED_LAYER_MEDIA_TYPES) for layer in layers_data]
 
         annotations = data.get("annotations") or {}
@@ -124,8 +132,8 @@ class Manifest:
             annotations=annotations,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
-        data: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
             "schemaVersion": self.schema_version,
             "mediaType": self.media_type,
             "artifactType": self.artifact_type,
