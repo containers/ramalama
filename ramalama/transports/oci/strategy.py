@@ -1,23 +1,19 @@
 import os
-import subprocess
-from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 from typing import Literal, TypedDict, cast
 
-from ramalama.artifacts import resolver as oci_resolver
-from ramalama.artifacts.strategies import (
+from ramalama.common import SemVer, engine_version
+from ramalama.config import CONFIG, SUPPORTED_ENGINES
+from ramalama.model_store.store import ModelStore
+from ramalama.transports.oci import resolver as oci_resolver
+from ramalama.transports.oci.strategies import (
     BaseArtifactStrategy,
     BaseImageStrategy,
-    BaseOCIStrategy,
     DockerImageStrategy,
     HttpArtifactStrategy,
     PodmanArtifactStrategy,
     PodmanImageStrategy,
 )
-from ramalama.common import SemVer, engine_version
-from ramalama.config import CONFIG, SUPPORTED_ENGINES
-from ramalama.model_store.store import ModelStore
 
 PODMAN_MIN_ARTIFACT_VERSION = SemVer(5, 7, 0)
 
