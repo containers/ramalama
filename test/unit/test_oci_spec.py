@@ -3,7 +3,7 @@ import json
 import pytest
 
 from ramalama.annotations import AnnotationTitle
-from ramalama.artifacts import spec as oci_spec
+from ramalama.transports.oci import spec as oci_spec
 
 
 def _valid_manifest():

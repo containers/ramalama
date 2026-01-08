@@ -8,12 +8,11 @@ from functools import cached_property
 from textwrap import dedent
 
 import ramalama.annotations as annotations
-from ramalama.artifacts import resolver as artifact_resolver
-from ramalama.artifacts.strategy import EngineStrategy
-from ramalama.common import MNT_DIR, engine_version, exec_cmd, perror, run_cmd, set_accel_env_vars
+from ramalama.common import exec_cmd, perror, run_cmd, set_accel_env_vars
 from ramalama.engine import BuildEngine, Engine, dry_run
 from ramalama.oci_tools import engine_supports_manifest_attributes
 from ramalama.transports.base import Transport
+from ramalama.transports.oci.strategy import BaseOCIStrategy, EngineStrategy
 
 prefix = "oci://"
 
@@ -36,8 +35,13 @@ class OCI(Transport):
         self.conman = conman
         self.ignore_stderr = ignore_stderr
 
-        self.strategy = EngineStrategy(self.conman, model_store=self.model_store).resolve(self.model)
-        self.artifact = self.strategy.kind == 'artifact'
+    @cached_property
+    def strategy(self) -> BaseOCIStrategy:
+        return EngineStrategy(self.conman, model_store=self.model_store).resolve(self.model)
+
+    @cached_property
+    def artifact(self) -> bool:
+        return self.strategy.kind == 'artifact'
 
     def login(self, args):
         conman_args = [self.conman, "login"]
