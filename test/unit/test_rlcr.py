@@ -7,6 +7,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 from ramalama.arg_types import StoreArgs
+from ramalama.transports.oci import resolver as oci_resolver
+from ramalama.transports.oci import strategies as oci_strategies
 from ramalama.transports.oci_artifact import download_oci_artifact
 from ramalama.transports.rlcr import RamalamaContainerRegistry, find_model_file_in_image
 
@@ -62,7 +64,7 @@ class TestRLCRInitialization:
 
     def test_rlcr_inherits_from_oci(self, rlcr_model):
         """Test that RLCR properly inherits from OCI"""
-        from ramalama.transports.oci import OCI
+        from ramalama.transports.oci.oci import OCI
 
         assert isinstance(rlcr_model, OCI)
 
@@ -144,31 +146,21 @@ class TestRLCRIntegration:
 class TestRLCRArtifactFallback:
     def test_pull_falls_back_to_artifact(self, rlcr_model, args):
         args.quiet = False
+        rlcr_model.strategy = oci_strategies.HttpArtifactStrategy(model_store=rlcr_model.model_store)
 
-        def run_cmd_side_effect(cmd, *cmd_args, **cmd_kwargs):
-            if len(cmd) >= 2 and cmd[1] == "pull":
-                raise subprocess.CalledProcessError(125, cmd)
-            mock_result = Mock()
-            mock_result.stdout.decode.return_value = ""
-            return mock_result
-
-        with patch('ramalama.transports.oci.run_cmd', side_effect=run_cmd_side_effect):
-            with patch('ramalama.transports.rlcr.download_oci_artifact', return_value=True) as mock_download:
-                rlcr_model.pull(args)
-                mock_download.assert_called_once()
+        with patch('ramalama.transports.oci.strategies.download_oci_artifact', return_value=True) as mock_download:
+            rlcr_model.pull(args)
+            mock_download.assert_called_once()
 
     def test_pull_re_raises_when_artifact_download_fails(self, rlcr_model, args):
-        def run_cmd_side_effect(cmd, *cmd_args, **cmd_kwargs):
-            if len(cmd) >= 2 and cmd[1] == "pull":
-                raise subprocess.CalledProcessError(125, cmd)
-            mock_result = Mock()
-            mock_result.stdout.decode.return_value = ""
-            return mock_result
+        rlcr_model.strategy = oci_strategies.HttpArtifactStrategy(model_store=rlcr_model.model_store)
 
-        with patch('ramalama.transports.oci.run_cmd', side_effect=run_cmd_side_effect):
-            with patch('ramalama.transports.rlcr.download_oci_artifact', return_value=False):
-                with pytest.raises(subprocess.CalledProcessError):
-                    rlcr_model.pull(args)
+        with patch(
+            'ramalama.transports.oci.strategies.download_oci_artifact',
+            side_effect=subprocess.CalledProcessError(1, "download"),
+        ):
+            with pytest.raises(subprocess.CalledProcessError):
+                rlcr_model.pull(args)
 
 
 class TestOCIArtifactDownload:
@@ -178,7 +170,7 @@ class TestOCIArtifactDownload:
         digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 
         class FakeClient:
-            def __init__(self, registry, repository, reference, verify_tls, username, password):
+            def __init__(self, registry, repository, reference):
                 self.registry = registry
                 self.repository = repository
                 self.reference = reference
@@ -210,7 +202,6 @@ class TestOCIArtifactDownload:
                 reference="ramalama/gemma3-270m:gguf",
                 model_store=store,
                 model_tag=rlcr_model.model_tag,
-                args=args,
             )
 
         assert result is True
@@ -223,6 +214,4 @@ class TestOCIArtifactDownload:
         new_model = RamalamaContainerRegistry(
             model="gemma3-270m", model_store_path=args.store, conman="podman", ignore_stderr=False
         )
-        assert new_model.exists()
-        assert new_model._artifact_downloaded is True
-        assert new_model._get_entry_model_path(True, False, False) == "/mnt/models/gemma-3-270m-it-Q6_K.gguf"
+        assert oci_resolver.model_store_has_snapshot(new_model.model_store, f"oci://{new_model.model}")

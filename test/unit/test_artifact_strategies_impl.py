@@ -1,4 +1,4 @@
-from ramalama.artifacts import strategies
+from ramalama.transports.oci import strategies
 
 
 class Recorder:
@@ -47,7 +47,7 @@ def test_docker_image_path(monkeypatch):
     assert rec.calls[0][0] == ["docker", "pull", "image:latest"]
     assert strat.exists("image:latest") is True
     assert rec.calls[1][0] == ["docker", "image", "inspect", "image:latest"]
-    assert strat.mount_arg("image:latest") is None
+    assert strat.mount_arg("image:latest").startswith("--mount=type=volume")
 
 
 def test_http_bind_path_fetch_and_exists(monkeypatch):
@@ -63,17 +63,22 @@ def test_http_bind_path_fetch_and_exists(monkeypatch):
             cached_files = ["blob"] if self.cached else []
             return None, cached_files, self.cached
 
+        def get_snapshot_directory_from_tag(self, model_tag):
+            return f"/snapshots/{model_tag}"
+
     def downloader(**kwargs):
         called.append(kwargs)
         return True
 
     monkeypatch.setattr(strategies, "download_oci_artifact", downloader)
     store = StoreStub()
-    strat = strategies.HttpBindStrategy(model_store=store)
+    strat = strategies.HttpArtifactStrategy(model_store=store)
     strat.pull("oci://example.com/ns/model:tag")
     assert called[0]["registry"] == "example.com"
     assert called[0]["reference"] == "ns/model:tag"
     assert called[0]["model_tag"] == "tag"
     assert strat.exists("oci://example.com/ns/model:tag") is True
     assert store.last_tag == "tag"
-    assert strat.mount_arg() is None
+    mount_arg = strat.mount_arg("oci://example.com/ns/model:tag")
+    assert "type=bind" in mount_arg
+    assert "destination=/mnt/models" in mount_arg

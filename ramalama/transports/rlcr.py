@@ -1,9 +1,8 @@
 import os
 import subprocess
 
-from ramalama.artifacts import strategy as strat
 from ramalama.common import MNT_DIR, run_cmd
-from ramalama.transports.oci import OCI
+from ramalama.transports.oci.oci import OCI
 
 
 def find_model_file_in_image(conman: str, model: str) -> str | None:

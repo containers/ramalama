@@ -2,9 +2,9 @@ import os
 from collections.abc import Callable
 from typing import Literal, Optional
 
-from ramalama.artifacts import spec as oci_spec
 from ramalama.common import run_cmd
 from ramalama.model_store.store import ModelStore
+from ramalama.transports.oci import spec as oci_spec
 from ramalama.transports.oci_artifact import OCIRegistryClient, _split_reference
 
 ReferenceKind = Literal["artifact", "image", "unknown"]

@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Generic, Literal, TypeVar
 
 from ramalama.annotations import AnnotationFilepath, AnnotationTitle
-from ramalama.common import MNT_DIR, run_cmd, sanitize_filename
+from ramalama.common import MNT_DIR, run_cmd
 from ramalama.model_store.store import ModelStore
 from ramalama.path_utils import get_container_mount_path
 from ramalama.transports.oci_artifact import download_oci_artifact

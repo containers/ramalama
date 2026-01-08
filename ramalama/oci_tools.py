@@ -6,7 +6,6 @@ import subprocess
 import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
 from ramalama.common import engine_version, run_cmd
-from ramalama.logger import logger
 
 ocilabeltype = "org.containers.type"
 

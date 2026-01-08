@@ -8,11 +8,11 @@ from collections.abc import Iterable
 from tempfile import NamedTemporaryFile
 from typing import Any
 
-from ramalama.artifacts import spec as oci_spec
 from ramalama.common import perror, sanitize_filename
 from ramalama.logger import logger
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
 from ramalama.model_store.store import ModelStore
+from ramalama.transports.oci import spec as oci_spec
 
 OCI_ARTIFACT_MEDIA_TYPES = {
     oci_spec.CNAI_ARTIFACT_TYPE,

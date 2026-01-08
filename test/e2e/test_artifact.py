@@ -8,11 +8,10 @@ artifact creation when possible.
 """
 
 import json
-import platform
 import re
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.conftest import skip_if_docker, skip_if_no_container, skip_if_podman_too_old, skip_if_windows
+from test.conftest import skip_if_docker, skip_if_no_container
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 import pytest
@@ -395,9 +394,9 @@ def test_artifact_rm_multiple():
         models_after = json.loads(json_result_after)
         for model in models_after:
             for i in range(3):
-                assert f"test-multi-rm-unique-{i}" not in model.get(
-                    "name", ""
-                ), f"Artifact test-multi-rm-unique-{i} still present after removal"
+                assert f"test-multi-rm-unique-{i}" not in model.get("name", ""), (
+                    f"Artifact test-multi-rm-unique-{i} still present after removal"
+                )
 
 
 @pytest.mark.e2e
@@ -412,16 +411,14 @@ def test_artifact_with_different_tags():
         # Create artifacts with different tags
         tags = ["v1.0", "v2.0", "latest"]
         for tag in tags:
-            ctx.check_call(
-                [
-                    "ramalama",
-                    "convert",
-                    "--type",
-                    "raw",
-                    f"file://{test_file}",
-                    f"test-tagged-artifact:{tag}",
-                ]
-            )
+            ctx.check_call([
+                "ramalama",
+                "convert",
+                "--type",
+                "raw",
+                f"file://{test_file}",
+                f"test-tagged-artifact:{tag}",
+            ])
 
         # Verify all tags appear in list
         result = ctx.check_output(["ramalama", "list"])
