@@ -292,16 +292,7 @@ class OCI(Transport):
         imageid = self.build(source_model, args)
         if args.dryrun:
             imageid = "a1b2c3d4e5f6"
-        try:
-            self._create_manifest(self.model, imageid, args)
-        except subprocess.CalledProcessError as e:
-            perror(
-                f"""\
-Failed to create manifest for OCI {self.model} : {e}
-Tagging build instead
-                """
-            )
-            self.tag(imageid, self.model, args)
+        self._create_manifest(self.model, imageid, args)
 
     def convert(self, source_model, args):
         self._convert(source_model, args)
