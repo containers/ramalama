@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
 from typing import Literal, TypedDict, cast
-
+from functools import lru_cache
 from ramalama.common import SemVer, engine_version
 from ramalama.config import CONFIG, SUPPORTED_ENGINES
 from ramalama.model_store.store import ModelStore
 from ramalama.transports.oci import resolver as oci_resolver
 from ramalama.transports.oci.strategies import (
+    BaseOCIStrategy,
     BaseArtifactStrategy,
     BaseImageStrategy,
     DockerImageStrategy,
@@ -53,20 +54,15 @@ class OCIStrategyFactory:
             raise Exception("OCIStrategyFactory require a valid engine")
 
         self.engine = str(engine)
+        self.engine_name: SUPPORTED_ENGINES = cast(SUPPORTED_ENGINES, os.path.basename(self.engine))
         self.model_store = model_store
         self._type_resolver = oci_resolver.OCITypeResolver(self.engine, model_store=self.model_store)
 
-        engine_name = cast(SUPPORTED_ENGINES, os.path.basename(self.engine))
-        self.strategies: StrategiesType = {
-            "image": get_engine_image_strategy(self.engine, engine_name)(
-                self.engine,
-                model_store=self.model_store,
-            ),
-            "artifact": get_engine_artifact_strategy(self.engine, engine_name)(
-                self.engine,
-                model_store=self.model_store,
-            ),
-        }
+    @lru_cache
+    def strategies(self, kind: Literal['image', 'artifact']) -> BaseArtifactStrategy | BaseImageStrategy:
+        cls_generator = get_engine_image_strategy if kind == 'image' else get_engine_artifact_strategy
+        cls = cls_generator(self.engine, self.engine_name)
+        return cls(engine=self.engine, model_store=self.model_store)
 
     def resolve_kind(self, model: str) -> Literal["image", "artifact"] | None:
         kind = self._type_resolver.resolve(model)
@@ -79,4 +75,4 @@ class OCIStrategyFactory:
         if kind is None:
             raise Exception(f"Could not identify an artifact type for {model}")
 
-        return self.strategies[kind]
+        return self.strategies(kind)
