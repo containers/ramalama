@@ -7,7 +7,7 @@ from ramalama.annotations import AnnotationFilepath, AnnotationTitle
 from ramalama.common import MNT_DIR, run_cmd
 from ramalama.model_store.store import ModelStore
 from ramalama.path_utils import get_container_mount_path
-from ramalama.transports.oci_artifact import download_oci_artifact
+from ramalama.transports.oci.oci_artifact import OCIRegistryClient, _split_reference, download_oci_artifact
 
 StrategyKind = Literal["artifact", "image"]
 K = TypeVar("K", bound=StrategyKind)
@@ -44,6 +44,11 @@ class BaseOCIStrategy(Generic[K], ABC):
         """Return the list of candidate model filenames."""
         raise NotImplementedError
 
+    @abstractmethod
+    def inspect(self, ref: str) -> str:
+        """Return raw inspect output for the reference."""
+        raise NotImplementedError
+
     def entrypoint_path(self, ref: str, mount_dir: str | None = None) -> str:
         mount_dir = mount_dir or MNT_DIR
         filenames = self.filenames(ref)
@@ -55,10 +60,17 @@ class BaseOCIStrategy(Generic[K], ABC):
 class BaseArtifactStrategy(BaseOCIStrategy[Literal['artifact']]):
     kind: Literal['artifact'] = "artifact"
 
+    def __init__(self, engine: str, *, model_store: ModelStore):
+        self.engine = engine
+        self.model_store = model_store
+
 
 class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
     kind: Literal['image'] = 'image'
-    engine: str
+
+    def __init__(self, engine: str, *, model_store: ModelStore):
+        self.engine = engine
+        self.model_store = model_store
 
     def pull(self, ref: str, cmd_args: list[str] = []) -> None:
         run_cmd([self.engine, "pull", ref, *cmd_args])
@@ -84,6 +96,10 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
 
     def filenames(self, ref: str) -> list[str]:
         return ["model.file"]
+
+    def inspect(self, ref: str) -> str:
+        result = run_cmd([self.engine, "image", "inspect", ref], ignore_stderr=True)
+        return result.stdout.decode("utf-8").strip()
 
 
 def normalize_reference(reference: str) -> str:
@@ -115,8 +131,8 @@ def model_tag_from_ref(reference: str) -> str:
 class HttpArtifactStrategy(BaseArtifactStrategy):
     """HTTP download + bind mount strategy (used for Docker or fallback)."""
 
-    def __init__(self, engine: str | None = None, *, model_store: ModelStore | None = None):
-        super().__init__(model_store=model_store)
+    def __init__(self, engine: str = "podman", *, model_store: ModelStore):
+        super().__init__(engine=engine, model_store=model_store)
 
     def pull(self, ref: str, cmd_args: list[str] = []) -> None:
         if not self.model_store:
@@ -169,11 +185,17 @@ class HttpArtifactStrategy(BaseArtifactStrategy):
             raise ValueError(f"No model files found for artifact {ref}")
         return sorted(file.name for file in ref_file.model_files)
 
+    def inspect(self, ref: str) -> str:
+        registry, reference = split_oci_reference(ref)
+        repository, ref_tag = _split_reference(reference)
+        client = OCIRegistryClient(registry, repository, ref_tag)
+        manifest, _ = client.get_manifest()
+        return json.dumps(manifest)
+
 
 class PodmanArtifactStrategy(BaseArtifactStrategy):
-    def __init__(self, engine: str | None = None, *, model_store: ModelStore | None = None):
-        super().__init__(model_store=model_store)
-        self.engine = engine or "podman"  # support for pathlike engine references
+    def __init__(self, engine: str = "podman", *, model_store: ModelStore):
+        super().__init__(engine=engine, model_store=model_store)
 
     def pull(self, ref: str, cmd_args: list[str] = []) -> None:
         run_cmd([self.engine, "artifact", "pull", ref, *cmd_args])
@@ -204,11 +226,11 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
         payload = result.stdout.decode("utf-8").strip()
         manifest = json.loads(payload) if payload else {}
         names = []
-        annotations = [AnnotationFilepath, AnnotationTitle]
+        annotation_keys = [AnnotationFilepath, AnnotationTitle]
         for layer in manifest.get("layers") or manifest.get("blobs") or []:
             annotations = layer.get("annotations") or {}
-            for annotation in annotations:
-                if name := annotations.get(annotation):
+            for annotation_key in annotation_keys:
+                if name := annotations.get(annotation_key):
                     names.append(os.path.basename(name))
                     break
 
@@ -226,20 +248,22 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
             return mount_dir
         return os.path.join(mount_dir, filenames[0])
 
+    def inspect(self, ref: str) -> str:
+        result = run_cmd([self.engine, "artifact", "inspect", ref], ignore_stderr=True)
+        return result.stdout.decode("utf-8").strip()
+
 
 class PodmanImageStrategy(BaseImageStrategy):
-    def __init__(self, engine: str | None = None, *, model_store: ModelStore | None = None):
-        super().__init__(model_store=model_store)
-        self.engine = engine or "podman"
+    def __init__(self, engine: str = "podman", *, model_store: ModelStore):
+        super().__init__(engine=engine, model_store=model_store)
 
     def mount_arg(self, src: str, dest: str | None = None) -> str:
         return f"--mount=type=image,src={src},destination={dest or MNT_DIR},subpath=/models,rw=false"
 
 
 class DockerImageStrategy(BaseImageStrategy):
-    def __init__(self, engine: str | None = None, *, model_store: ModelStore | None = None):
-        super().__init__(model_store=model_store)
-        self.engine = engine or "docker"
+    def __init__(self, engine: str = "docker", *, model_store: ModelStore):
+        super().__init__(engine=engine, model_store=model_store)
 
     def mount_arg(self, src: str, dest: str | None = None) -> str | None:
         return f"--mount=type=volume,src={src},dst={dest or MNT_DIR},readonly"

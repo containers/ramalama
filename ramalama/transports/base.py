@@ -6,11 +6,11 @@ import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
-from functools import cached_property
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, TypeGuard
 
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
+    from ramalama.transports.oci.oci import OCI
 
 import ramalama.chat as chat
 from ramalama.common import (
@@ -72,6 +72,10 @@ class NoRefFileFound(Exception):
 
     def __str__(self):
         return f"No ref file found for '{self.model}'. Please pull model."
+
+
+def is_oci(self) -> TypeGuard["OCI"]:
+    return self.model_type == "oci"
 
 
 def trim_model_name(model):
@@ -156,10 +160,6 @@ class Transport(TransportBase):
 
         self.default_image = accel_image(CONFIG)
         self.draft_model: Transport | None = None
-
-    @cached_property
-    def artifact(self) -> bool:
-        return self.is_artifact()
 
     def extract_model_identifiers(self):
         model_name = self.model
@@ -257,7 +257,7 @@ class Transport(TransportBase):
         if dry_run:
             return "/path/to/model"
 
-        if self.model_type == 'oci':
+        if is_oci(self):
             if use_container or should_generate:
                 return self.entrypoint_path()
             else:
@@ -716,7 +716,14 @@ class Transport(TransportBase):
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None):
         quadlet = Quadlet(
-            self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
+            self.model_name,
+            model_paths,
+            chat_template_paths,
+            mmproj_paths,
+            args,
+            exec_args,
+            self.is_artifact,
+            model_parts,
         )
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
@@ -724,16 +731,16 @@ class Transport(TransportBase):
     def quadlet_kube(
         self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None
     ):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
         kube.generate().write(output_dir)
 
         quadlet = Quadlet(
-            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
+            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact, model_parts
         )
         quadlet.kube().write(output_dir)
 
     def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
         kube.generate().write(output_dir)
 
     def compose(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
@@ -783,6 +790,7 @@ class Transport(TransportBase):
         perror(f"Downloading {model_name} ...")
         perror(f"Trying to pull {model_name} ...")
 
+    @property
     def is_artifact(self) -> bool:
         return False
 

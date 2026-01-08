@@ -18,7 +18,7 @@ def convert_from_human_readable_size(input) -> float:
 
 
 def list_artifacts(args: EngineArgType):
-    if args.engine == "docker":
+    if args.engine == "docker" or args.engine is None:
         return []
 
     conman_args = [
