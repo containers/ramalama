@@ -237,7 +237,8 @@ def download_oci_artifact(*, registry: str, reference: str, model_store: ModelSt
 
     snapshot_files = list(_build_snapshot_files(client, manifest))
     if not snapshot_files:
-        raise ValueError("Artifact manifest contained no downloadable blobs.")
+        perror("Artifact manifest contained no downloadable blobs.")
+        return False
 
     model_store.new_snapshot(model_tag, manifest_digest, snapshot_files)
     return True

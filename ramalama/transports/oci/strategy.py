@@ -1,13 +1,13 @@
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal, TypedDict, cast
-from functools import lru_cache
+
 from ramalama.common import SemVer, engine_version
 from ramalama.config import CONFIG, SUPPORTED_ENGINES
 from ramalama.model_store.store import ModelStore
 from ramalama.transports.oci import resolver as oci_resolver
 from ramalama.transports.oci.strategies import (
-    BaseOCIStrategy,
     BaseArtifactStrategy,
     BaseImageStrategy,
     DockerImageStrategy,
@@ -42,6 +42,15 @@ class StrategiesType(TypedDict):
     artifact: BaseArtifactStrategy
 
 
+@lru_cache
+def get_strategy(
+    engine: str, engine_name: SUPPORTED_ENGINES, model_store: ModelStore, kind: Literal['image', 'artifact']
+) -> BaseArtifactStrategy | BaseImageStrategy:
+    cls_generator = get_engine_image_strategy if kind == 'image' else get_engine_artifact_strategy
+    cls = cls_generator(engine, engine_name)
+    return cls(engine=engine, model_store=model_store)
+
+
 class OCIStrategyFactory:
     """Resolve reference kind and return the appropriate strategy implementation."""
 
@@ -58,11 +67,8 @@ class OCIStrategyFactory:
         self.model_store = model_store
         self._type_resolver = oci_resolver.OCITypeResolver(self.engine, model_store=self.model_store)
 
-    @lru_cache
     def strategies(self, kind: Literal['image', 'artifact']) -> BaseArtifactStrategy | BaseImageStrategy:
-        cls_generator = get_engine_image_strategy if kind == 'image' else get_engine_artifact_strategy
-        cls = cls_generator(self.engine, self.engine_name)
-        return cls(engine=self.engine, model_store=self.model_store)
+        return get_strategy(self.engine, self.engine_name, self.model_store, kind)
 
     def resolve_kind(self, model: str) -> Literal["image", "artifact"] | None:
         kind = self._type_resolver.resolve(model)

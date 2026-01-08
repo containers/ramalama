@@ -72,7 +72,9 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
         self.engine = engine
         self.model_store = model_store
 
-    def pull(self, ref: str, cmd_args: list[str] = []) -> None:
+    def pull(self, ref: str, cmd_args: list[str] | None = None) -> None:
+        if cmd_args is None:
+            cmd_args = []
         run_cmd([self.engine, "pull", ref, *cmd_args])
 
     def exists(self, src: str) -> bool:
@@ -134,7 +136,9 @@ class HttpArtifactStrategy(BaseArtifactStrategy):
     def __init__(self, engine: str = "podman", *, model_store: ModelStore):
         super().__init__(engine=engine, model_store=model_store)
 
-    def pull(self, ref: str, cmd_args: list[str] = []) -> None:
+    def pull(self, ref: str, cmd_args: list[str] | None = None) -> None:
+        if cmd_args is None:
+            cmd_args = []
         if not self.model_store:
             raise ValueError("HTTP artifact strategy requires a model store")
         registry, reference = split_oci_reference(ref)
@@ -197,7 +201,9 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
     def __init__(self, engine: str = "podman", *, model_store: ModelStore):
         super().__init__(engine=engine, model_store=model_store)
 
-    def pull(self, ref: str, cmd_args: list[str] = []) -> None:
+    def pull(self, ref: str, cmd_args: list[str] | None = None) -> None:
+        if cmd_args is None:
+            cmd_args = []
         run_cmd([self.engine, "artifact", "pull", ref, *cmd_args])
 
     def exists(self, src: str) -> bool:

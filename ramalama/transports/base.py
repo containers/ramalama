@@ -780,7 +780,7 @@ class Transport(TransportBase):
         try:
             self.execute_command(cmd, args)
         except Exception as e:
-            self._cleanup_server_process(args.server_process)
+            self._cleanup_server_process(getattr(args, 'server_process', None))
             raise e
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None):
