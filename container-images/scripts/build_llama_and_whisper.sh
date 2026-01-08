@@ -25,9 +25,9 @@ dnf_install_asahi() {
 }
 
 dnf_install_cuda() {
-  dnf install -y gcc-toolset-12
+  dnf install -y gcc-toolset-15
   # shellcheck disable=SC1091
-  . /opt/rh/gcc-toolset-12/enable
+  . /opt/rh/gcc-toolset-15/enable
 }
 
 dnf_install_cann() {
