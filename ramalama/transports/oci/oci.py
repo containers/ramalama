@@ -373,7 +373,14 @@ Tagging build instead
         self.strategy.pull(self.model, cmd_args=conman_args)
 
     def remove(self, args) -> bool:
-        return self.strategy.remove(self.model, args)
+        cmd_args = []
+        ignore = getattr(args, "ignore", False)
+        if ignore:
+            if self.strategy.kind == "artifact":
+                cmd_args.append("--ignore")
+            else:
+                cmd_args.append(f"--force={ignore}")
+        return self.strategy.remove(self.model, cmd_args=cmd_args)
 
     def exists(self) -> bool:
         return self.strategy.exists(self.model)
