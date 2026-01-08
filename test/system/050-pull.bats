@@ -31,6 +31,7 @@ load setup_suite
 
 # bats test_tags=distro-integration
 @test "ramalama pull ollama cache" {
+    skip "ollama pull is failing with \"Error: digest mismatch\", see https://github.com/ollama/ollama/issues/941"
     skip_if_no_ollama
 
     ollama serve &

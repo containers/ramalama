@@ -217,6 +217,9 @@ def test_pull_wrong_endian_model_error(model, expected):
         assert expected in exc_info.value.output.decode("utf-8")
 
 
+@pytest.mark.xfail(
+    reason="ollama pull is failing with \"Error: digest mismatch\", see https://github.com/ollama/ollama/issues/941"
+)
 @pytest.mark.e2e
 @pytest.mark.distro_integration
 @skip_if_no_ollama
