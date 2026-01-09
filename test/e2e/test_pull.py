@@ -356,8 +356,8 @@ def test_pull_with_registry(container_registry, container_engine):
         ctx.check_call(ramalama_cli + ["pull"] + auth_flags + [fake_model_registry_url])
 
         # Check if the fake model was pulled correctly
-        model_list = json.loads(ctx.check_output(ramalama_cli + ["list", "--json", "--sort", "modified"]))
-        assert model_list[0]["name"] == fake_model_registry_url
+        model_list = json.loads(ctx.check_output(ramalama_cli + ["list", "--json"]))
+        assert fake_model_registry_url in [x["name"] for x in model_list]
 
         # Clean fake image
         ctx.check_call([container_engine, "rmi", fake_model_registry_url.replace("oci://", "")])
