@@ -142,6 +142,8 @@ spec:
       value: "50"
     - name: mergeTargetBranch
       value: "true"
+    - name: mergeSourceRepoUrl
+      value: https://github.com/containers/ramalama
     runAfter:
     - init
     taskRef:
