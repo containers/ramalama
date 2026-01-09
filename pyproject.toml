@@ -187,6 +187,10 @@ include = ["ramalama", "ramalama.*"]
 "share/zsh/site-functions" = ["completions/zsh/site-functions/*"]
 "share/fish/vendor_completions.d" = ["completions/fish/vendor_completions.d/*"]
 
+[tool.check-wheel-contents]
+# W002 fails on duplicate files, and completions for bash and zsh are identical
+ignore = ["W002"]
+
 [tool.tox]
 
 [tool.tox.env_run_base]
