@@ -1,8 +1,17 @@
-name: Build macOS Installer
+name: Build and publish macOS Installer
 
 on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
   release:
-    types: [published]
+    types:
+      - published
   workflow_dispatch:
     inputs:
       ref:
@@ -23,7 +32,13 @@ on:
 
 jobs:
   build-macos-pkg:
+    name: Build macOS installer
     runs-on: macos-latest
+    environment: macos-installer
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      pkg_name: ${{ steps.build.pkg_name }}
+      sha256: ${{ steps.build.sha256 }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -54,64 +69,79 @@ jobs:
           echo "RamaLama version: $VERSION"
 
       - name: Build macOS package
+        id: build
         run: |
           make -C docs install-tools
           make docs-manpages
           ./scripts/build_macos_pkg.sh
-
-      - name: Find built package
-        id: find_pkg
-        run: |
-          PKG_FILE=$(find build/macos-pkg -name "RamaLama-*-macOS-Installer.pkg" | head -n 1)
+          PKG_FILE="build/macos-pkg/RamaLama-${{ steps.get_version.outputs.version }}-macOS-Installer.pkg"
+          PKG_NAME="$(basename $PKG_FILE)"
           echo "pkg_file=$PKG_FILE" >> $GITHUB_OUTPUT
-          echo "pkg_name=$(basename $PKG_FILE)" >> $GITHUB_OUTPUT
-          echo "Found package: $PKG_FILE"
+          echo "pkg_name=$PKG_NAME" >> $GITHUB_OUTPUT
+          SHA256=$(shasum -a 256 "$PKG_FILE" | cut -d' ' -f1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "SHA256: $SHA256"
+          echo "$SHA256  $PKG_NAME" > "$PKG_FILE.sha256"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: macos-installer
-          path: ${{ steps.find_pkg.outputs.pkg_file }}
+          path: |
+            ${{ steps.build.outputs.pkg_file }}
+            ${{ steps.build.outputs.pkg_file }}.sha256
           retention-days: 30
-
-      - name: Calculate SHA256
-        id: sha256
-        run: |
-          SHA256=$(shasum -a 256 "${{ steps.find_pkg.outputs.pkg_file }}" | cut -d' ' -f1)
-          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-          echo "SHA256: $SHA256"
-          echo "$SHA256  ${{ steps.find_pkg.outputs.pkg_name }}" > "${{ steps.find_pkg.outputs.pkg_file }}.sha256"
-
-      - name: Upload SHA256 artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: macos-installer-sha256
-          path: ${{ steps.find_pkg.outputs.pkg_file }}.sha256
-          retention-days: 30
-
-      - name: Upload to release
-        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_release == 'true')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            ${{ steps.find_pkg.outputs.pkg_file }}
-            ${{ steps.find_pkg.outputs.pkg_file }}.sha256
-          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.tag_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Summary
         run: |
           echo "## macOS Installer Build Complete! 🎉" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package**: ${{ steps.find_pkg.outputs.pkg_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **SHA256**: ${{ steps.sha256.outputs.sha256 }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: ${{ steps.build.outputs.pkg_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **SHA256**: ${{ steps.build.outputs.sha256 }}" >> $GITHUB_STEP_SUMMARY
+
+  publish-installer-to-release:
+    name: Publish macOS installer to Github release
+    if: |
+      github.repository_owner == 'containers' && (
+        github.event.action == 'published' || (
+          github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_release == 'true'
+        )
+      )
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    needs: build-macos-pkg
+    steps:
+      - name: Fetch build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: macos-installer
+          path: macos
+
+      - name: Upload artifacts to Github release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_NAME: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: >-
+          gh release upload "$RELEASE_NAME" macos/* --repo "$REPOSITORY"
+
+      - name: Summary
+        env:
+          VERSION: ${{ needs.build-macos-pkg.outputs.version }}
+          PKG_NAME: ${{ needs.build-macos-pkg.outputs.pkg_name }}
+          SHA256: ${{ needs.build-macos-pkg.outputs.sha256 }}
+        run: |
+          echo "## macOS Installer Release Complete! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: $PKG_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "- **SHA256**: $SHA256" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Installation" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "# Download and install" >> $GITHUB_STEP_SUMMARY
-          echo "curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.version }}/${{ steps.find_pkg.outputs.pkg_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "sudo installer -pkg ${{ steps.find_pkg.outputs.pkg_name }} -target /" >> $GITHUB_STEP_SUMMARY
+          echo "curl -LO https://github.com/${{ github.repository }}/releases/download/v$VERSION/$PKG_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "sudo installer -pkg $PKG_NAME -target /" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-
