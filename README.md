@@ -1266,6 +1266,14 @@ This project wouldn't be possible without the help of other projects like:
 
 so if you like this tool, give some of these repos a :star:, and hey, give us a :star: too while you are at it.
 
+<a href="https://www.star-history.com/#containers/ramalama&type=date&legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=containers/ramalama&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=containers/ramalama&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=containers/ramalama&type=date&legend=top-left" />
+  </picture>
+</a>
+
 ## Community
 
 For general questions and discussion, please use RamaLama's
