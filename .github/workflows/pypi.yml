@@ -1,0 +1,121 @@
+name: Build and publish PyPI package
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  release:
+    types:
+      - published
+
+jobs:
+  # Create and verify release artifacts
+  # - build source dist (tarball) and wheel
+  # - upload artifacts to GHA
+  build-package:
+    name: Build package
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout containers/ramalama
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build and inspect python package
+        uses: hynek/build-and-inspect-python-package@efb823f52190ad02594531168b7a2d5790e66516 # v2.14.0
+        with:
+          attest-build-provenance-github: |
+            ${{ github.repository_owner == 'containers' && (
+                  github.event.action == 'published' ||
+                  ( github.event_name == 'push' && github.ref == 'refs/heads/main' )
+                ) && 'true' || 'false'
+            }}
+
+  # push to Test PyPI on
+  # - a new GitHub release is published
+  # - a PR is merged into main branch
+  publish-test-pypi:
+    name: Publish packages to test.pypi.org
+    if: |
+      github.repository_owner == 'containers' && (
+        github.event.action == 'published' ||
+        ( github.event_name == 'push' && github.ref == 'refs/heads/main' )
+      )
+    permissions:
+      # see https://docs.pypi.org/trusted-publishers/
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/ramalama
+    needs: build-package
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
+      - name: Fetch build artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: Packages
+          path: dist
+
+      - name: Upload to Test PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+          print-hash: true
+
+  # push to Production PyPI on
+  # - a new GitHub release is published
+  publish-pypi:
+    name: Publish release to pypi.org
+    if: github.repository_owner == 'containers' && github.event.action == 'published'
+    permissions:
+      # see https://docs.pypi.org/trusted-publishers/
+      id-token: write
+      # allow gh release upload
+      contents: write
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/ramalama
+    needs: build-package
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
+      - name: Fetch build artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: Packages
+          path: dist
+
+      - name: Upload artifacts to GitHub release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          gh release upload '${{ github.ref_name }}' dist/* --repo '${{ github.repository }}'
+
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          print-hash: true
