@@ -183,7 +183,7 @@ cmake_steps() {
 }
 
 set_install_prefix() {
-  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ] || [ "$containerfile" = "cann" ] || [ "$containerfile" = "musa" ]; then
+  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ] || [ "$containerfile" = "cann" ] || [ "$containerfile" = "musa" ] || [ "$containerfile" = "rocm" ]; then
     echo "/tmp/install"
   else
     echo "/usr"
@@ -204,7 +204,7 @@ configure_common_flags() {
       common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
     fi
 
-    common_flags+=("-DGGML_HIP=ON" "-DAMDGPU_TARGETS=${AMDGPU_TARGETS:-gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201}")
+    common_flags+=("-DGGML_HIP=ON" "-DGPU_TARGETS=${GPU_TARGETS:-gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201}")
     ;;
   cuda)
     common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined" "-DCMAKE_CUDA_FLAGS=\"-U__ARM_NEON -U__ARM_NEON__\"")
@@ -235,7 +235,6 @@ clone_and_build_whisper_cpp() {
 
   git_clone_specific_commit "${WHISPER_CPP_REPO:-https://github.com/ggerganov/whisper.cpp}" "$whisper_cpp_commit"
   cmake_steps "${whisper_flags[@]}"
-  mkdir -p "$install_prefix/bin"
   cd ..
   if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" != y ]]; then
       rm -rf whisper.cpp
@@ -244,8 +243,6 @@ clone_and_build_whisper_cpp() {
 
 clone_and_build_llama_cpp() {
   local llama_cpp_commit="${LLAMA_CPP_PULL_REF:-$DEFAULT_LLAMA_CPP_COMMIT}"
-  local install_prefix
-  install_prefix=$(set_install_prefix)
   git_clone_specific_commit "${LLAMA_CPP_REPO:-https://github.com/ggml-org/llama.cpp}" "$llama_cpp_commit"
   cmake_steps "${common_flags[@]}"
   install -m 755 build/bin/rpc-server "$install_prefix"/bin/rpc-server
