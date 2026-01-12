@@ -210,6 +210,9 @@ commands = [
 ]
 
 [tool.tox.env.e2e]
+deps = [
+    "mlx-lm ; sys_platform == 'darwin' and platform_machine == 'arm64'"
+]
 commands = [
   [
     "pytest",

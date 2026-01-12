@@ -468,11 +468,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with: ${{ matrix.variant.uv-options }}
 
-      - name: install mlx-lm
-        shell: bash
-        run: |
-          uv pip install mlx-lm
-
       - name: install requirements
         shell: bash
         run: |
