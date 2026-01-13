@@ -160,17 +160,16 @@ image = "{config_override}"
 def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
     mock_run_cmd.return_value.stdout = b'[{"Name": "myvm"}]'
     mock_handle_provider.return_value = True
-    mock_config = Mock()
-    mock_config.user.no_missing_gpu_prompt = True
+    config = object()
     from ramalama.common import apple_vm
 
-    result = apple_vm("podman", mock_config)
+    result = apple_vm("podman", config)
 
     assert result is True
     mock_run_cmd.assert_called_once_with(
         ["podman", "machine", "list", "--format", "json", "--all-providers"], ignore_stderr=True, encoding="utf-8"
     )
-    mock_handle_provider.assert_called_once_with({"Name": "myvm"}, mock_config)
+    mock_handle_provider.assert_called_once_with({"Name": "myvm"}, config)
 
 
 class TestCheckNvidia:

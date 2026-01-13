@@ -5,7 +5,6 @@ import cmd
 import copy
 import itertools
 import json
-import os
 import signal
 import subprocess
 import sys
