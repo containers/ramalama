@@ -19,7 +19,7 @@ from datetime import timedelta
 from ramalama.arg_types import ChatArgsType
 from ramalama.common import perror
 from ramalama.config import get_config
-from ramalama.console import EMOJI, should_colorize
+from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
@@ -59,26 +59,6 @@ def res(response, color):
 
     print("")
     return assistant_response
-
-
-def default_prefix():
-    if not EMOJI:
-        return "> "
-
-    config = get_config()
-    if config.prefix:
-        return config.prefix
-
-    engine = config.engine
-
-    if engine:
-        if os.path.basename(engine) == "podman":
-            return "🦭 > "
-
-        if os.path.basename(engine) == "docker":
-            return "🐋 > "
-
-    return "🦙 > "
 
 
 def add_api_key(args, headers=None):

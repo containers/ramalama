@@ -36,11 +36,11 @@ from ramalama.config import (
     load_file_config,
 )
 from ramalama.config_types import COLOR_OPTIONS
-from ramalama.console import EMOJI
 from ramalama.endian import EndianMismatchError
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
+from ramalama.prompt_utils import default_prefix
 from ramalama.transports.base import (
     MODEL_TYPES,
     NoGGUFModelFileFound,
@@ -73,25 +73,6 @@ def get_shortnames():
     from ramalama.shortnames import Shortnames
 
     return Shortnames()
-
-
-def default_prefix():
-    # Keep in sync with ramalama.chat.default_prefix to avoid importing chat at startup.
-    if not EMOJI:
-        return "> "
-
-    config = get_config()
-    if config.prefix:
-        return config.prefix
-
-    engine = config.engine
-    if engine:
-        if os.path.basename(engine) == "podman":
-            return "\U0001f9ad > "
-        if os.path.basename(engine) == "docker":
-            return "\U0001f40b > "
-
-    return "\U0001f999 > "
 
 
 def assemble_command_lazy(cli_args: argparse.Namespace) -> list[str]:
@@ -639,13 +620,11 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append(
-            {
-                "name": f"{model} (partial)" if is_partially_downloaded else model,
-                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-                "size": size_sum,
-            }
-        )
+        ret.append({
+            "name": f"{model} (partial)" if is_partially_downloaded else model,
+            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+            "size": size_sum,
+        })
 
     # sort the listed models according to the desired order
     ret.sort(key=lambda entry: entry[args.sort], reverse=args.order == "desc")
