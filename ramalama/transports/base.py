@@ -46,6 +46,8 @@ from ramalama.common import (
     run_cmd,
     set_accel_env_vars,
 )
+from ramalama.config import get_config
+from ramalama.engine import Engine
 from ramalama.logger import logger
 from ramalama.path_utils import get_container_mount_path
 
@@ -383,7 +385,7 @@ class Transport(TransportBase):
 
         return genname()
 
-    def new_engine(self, args):
+    def new_engine(self, args) -> Engine:
         return Engine(args)
 
     def base(self, args, name):

@@ -25,6 +25,9 @@ DEFAULT_PORT = int(config.port)
 
 hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
 ms_granite_blob = "https://modelscope.cn/models/ibm-granite/granite-3b-code-base-2k-GGUF/file/view"
+_CONFIG = get_config()
+DEFAULT_PORT = int(_CONFIG.port)
+DEFAULT_PORT_RANGE = _CONFIG.default_port_range
 
 
 @pytest.mark.parametrize(
