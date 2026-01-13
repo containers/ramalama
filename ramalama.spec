@@ -15,8 +15,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path.cwd() / 'ramalama'))
 from version import version as get_version
 
-block_cipher = None
-
 # Get the project root directory
 project_root = Path.cwd()
 
@@ -80,28 +78,21 @@ a = Analysis(
         'pandas',
         'PIL',
     ],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='ramalama',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,  # Disabled for Apple Silicon compatibility
-    upx_exclude=[],
-    runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -110,11 +101,20 @@ exe = EXE(
     entitlements_file=None,
 )
 
-# Create app bundle for macOS
-app = BUNDLE(
+coll = COLLECT(
     exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='ramalama',
+)
+
+app = BUNDLE(
+    coll,
     name='ramalama.app',
-    icon=None,
+    icon='logos/ICNS/ramalama.icns',
     bundle_identifier='com.github.containers.ramalama',
     version=app_version,
     info_plist={
@@ -123,8 +123,7 @@ app = BUNDLE(
         'CFBundleIdentifier': 'com.github.containers.ramalama',
         'CFBundleVersion': app_version,
         'CFBundleShortVersionString': app_version,
-        'NSHumanReadableCopyright': 'Copyright © 2024 The Containers Organization',
+        'NSHumanReadableCopyright': 'Copyright © 2026 The Containers Organization',
         'CFBundleExecutable': 'ramalama',
     },
 )
-
