@@ -25,7 +25,6 @@ except Exception:
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import accel_image, get_accel, perror
-from ramalama.console import EMOJI
 from ramalama.config import (
     COLOR_OPTIONS,
     GGUF_QUANTIZATION_MODES,
@@ -37,6 +36,7 @@ from ramalama.config import (
     get_inference_spec_files,
     load_file_config,
 )
+from ramalama.console import EMOJI
 from ramalama.endian import EndianMismatchError
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
@@ -87,11 +87,11 @@ def default_prefix():
     engine = config.engine
     if engine:
         if os.path.basename(engine) == "podman":
-            return "\U0001F9AD > "
+            return "\U0001f9ad > "
         if os.path.basename(engine) == "docker":
-            return "\U0001F40B > "
+            return "\U0001f40b > "
 
-    return "\U0001F999 > "
+    return "\U0001f999 > "
 
 
 def assemble_command_lazy(cli_args: argparse.Namespace) -> list[str]:

@@ -1,14 +1,14 @@
 import json
 import os
 import sys
-from functools import lru_cache
 from dataclasses import dataclass, field, fields
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import apple_vm, available
-from ramalama.config_types import COLOR_OPTIONS, PathStr, SUPPORTED_ENGINES, SUPPORTED_RUNTIMES
+from ramalama.config_types import COLOR_OPTIONS, SUPPORTED_ENGINES, SUPPORTED_RUNTIMES, PathStr
 from ramalama.layered_config import LayeredMixin
 from ramalama.log_levels import LogLevel, coerce_log_level
 from ramalama.toml_parser import TOMLParser

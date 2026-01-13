@@ -24,6 +24,8 @@ from ramalama.common import (
     populate_volume_from_image,
     set_accel_env_vars,
 )
+from ramalama.config import get_config
+from ramalama.engine import Engine
 from ramalama.logger import logger
 from ramalama.path_utils import get_container_mount_path
 
@@ -141,8 +143,6 @@ class Transport(TransportBase):
 
         self._model_store_path: str = model_store_path
         self._model_store: Optional["ModelStore"] = None
-
-        from ramalama.config import get_config
 
         self.default_image = accel_image(get_config())
         self.draft_model: Transport | None = None
@@ -362,9 +362,7 @@ class Transport(TransportBase):
 
         return genname()
 
-    def new_engine(self, args):
-        from ramalama.engine import Engine
-
+    def new_engine(self, args) -> Engine:
         return Engine(args)
 
     def base(self, args, name):
@@ -460,10 +458,6 @@ class Transport(TransportBase):
     def serve_nonblocking(self, args, cmd: list[str]) -> subprocess.Popen | None:
         if args.container:
             args.name = self.get_container_name(args)
-
-        # Use subprocess.Popen for all platforms
-        # Prepare args for the server
-        from ramalama.config import get_config
 
         args.host = get_config().host
         args.detach = True

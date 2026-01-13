@@ -11,6 +11,7 @@ from ramalama.config import get_config
 from ramalama.logger import logger
 from ramalama.mcp.mcp_client import PureMCPClient
 
+
 class LLMAgent:
     """An LLM-powered agent that can make multiple tool calls to accomplish tasks."""
 
