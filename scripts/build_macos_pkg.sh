@@ -57,24 +57,18 @@ rm -rf "$PROJECT_ROOT/dist"
 rm -rf "$PROJECT_ROOT/build"
 mkdir -p "$BUILD_DIR"
 
-# Build standalone executable with PyInstaller
-echo "Building standalone executable..."
+# Build app bundle with PyInstaller
+echo "Building app bundle..."
 cd "$PROJECT_ROOT"
 pyinstaller ramalama.spec --clean --noconfirm
 
-# Verify build - PyInstaller creates either a single file or directory
-BUILT_EXECUTABLE=""
-if [ -f "$PROJECT_ROOT/dist/ramalama" ]; then
-    BUILT_EXECUTABLE="$PROJECT_ROOT/dist/ramalama"
-    echo "Found single-file executable: $BUILT_EXECUTABLE"
-elif [ -f "$PROJECT_ROOT/dist/ramalama/ramalama" ]; then
-    BUILT_EXECUTABLE="$PROJECT_ROOT/dist/ramalama/ramalama"
-    echo "Found executable in bundle: $BUILT_EXECUTABLE"
-elif [ -d "$PROJECT_ROOT/dist/ramalama.app" ]; then
-    BUILT_EXECUTABLE="$PROJECT_ROOT/dist/ramalama.app/Contents/MacOS/ramalama"
-    echo "Found app bundle: $PROJECT_ROOT/dist/ramalama.app"
+# Verify build - PyInstaller creates a .app directory
+BUNDLE_DIR="$PROJECT_ROOT/dist/ramalama.app"
+BUILT_EXECUTABLE="$BUNDLE_DIR/Contents/MacOS/ramalama"
+if [ -d "$BUNDLE_DIR" ]; then
+    echo "Found app bundle: $BUNDLE_DIR"
 else
-    echo "Error: PyInstaller build failed - no executable found in dist/"
+    echo "Error: PyInstaller build failed - no bundle found in dist/"
     echo "Contents of dist/:"
     ls -la "$PROJECT_ROOT/dist/" || true
     exit 1
@@ -86,46 +80,24 @@ if [ ! -x "$BUILT_EXECUTABLE" ]; then
     exit 1
 fi
 
-echo "Standalone executable built successfully: $BUILT_EXECUTABLE"
+echo "App bundle built successfully: $BUNDLE_DIR"
 
 # Create package structure
 echo "Creating package structure..."
 PKG_ROOT="$BUILD_DIR/package-root"
 mkdir -p "$PKG_ROOT/usr/local/bin"
-mkdir -p "$PKG_ROOT/usr/local/share/ramalama"
 mkdir -p "$PKG_ROOT/usr/local/share/man/man1"
 mkdir -p "$PKG_ROOT/usr/local/share/man/man5"
 mkdir -p "$PKG_ROOT/usr/local/share/man/man7"
 mkdir -p "$PKG_ROOT/usr/local/share/bash-completion/completions"
 mkdir -p "$PKG_ROOT/usr/local/share/fish/vendor_completions.d"
 mkdir -p "$PKG_ROOT/usr/local/share/zsh/site-functions"
+mkdir -p "$PKG_ROOT/Applications"
 
-# Copy executable
-echo "Copying executable..."
-if [ -d "$PROJECT_ROOT/dist/ramalama.app" ]; then
-    # For app bundle, copy the executable from inside
-    cp "$BUILT_EXECUTABLE" "$PKG_ROOT/usr/local/bin/ramalama"
-else
-    # For single file or directory bundle
-    cp "$BUILT_EXECUTABLE" "$PKG_ROOT/usr/local/bin/ramalama"
-fi
-chmod +x "$PKG_ROOT/usr/local/bin/ramalama"
-
-# Verify the copy worked
-if [ ! -x "$PKG_ROOT/usr/local/bin/ramalama" ]; then
-    echo "Error: Failed to copy executable to package root"
-    exit 1
-fi
-
-# Copy configuration files
-echo "Copying configuration files..."
-cp "$PROJECT_ROOT/shortnames/shortnames.conf" "$PKG_ROOT/usr/local/share/ramalama/"
-cp "$PROJECT_ROOT/docs/ramalama.conf" "$PKG_ROOT/usr/local/share/ramalama/"
-
-# Copy inference spec files
-mkdir -p "$PKG_ROOT/usr/local/share/ramalama/inference"
-cp "$PROJECT_ROOT"/inference-spec/schema/*.json "$PKG_ROOT/usr/local/share/ramalama/inference/"
-cp "$PROJECT_ROOT"/inference-spec/engines/* "$PKG_ROOT/usr/local/share/ramalama/inference/"
+# Copy bundle
+echo "Copying bundle..."
+cp -a "$BUNDLE_DIR" "$PKG_ROOT/Applications"
+ln -s ../../../Applications/ramalama.app/Contents/MacOS/ramalama "$PKG_ROOT/usr/local/bin/ramalama"
 
 # Copy man pages
 echo "Copying documentation..."
@@ -205,6 +177,7 @@ pkgbuild \
     --version "$VERSION" \
     --scripts "$SCRIPTS_DIR" \
     --install-location "/" \
+    --component-plist "$SCRIPT_DIR/macos-installer/ramalama-pkg.plist" \
     "$PKG_OUTPUT"
 
 # Copy installer resource files from templates
@@ -243,4 +216,3 @@ echo "To distribute:"
 echo "  1. Sign the package (recommended for public distribution)"
 echo "  2. Upload to GitHub Releases"
 echo "  3. Optionally notarize with Apple"
-

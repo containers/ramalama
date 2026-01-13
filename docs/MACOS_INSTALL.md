@@ -30,11 +30,11 @@ sudo installer -pkg RamaLama-VERSION-macOS-Installer.pkg -target /
 
 The installer places files in:
 - `/usr/local/bin/ramalama` - Main executable
-- `/usr/local/share/ramalama/` - Configuration files
 - `/usr/local/share/man/` - Man pages
 - `/usr/local/share/bash-completion/` - Bash completions
 - `/usr/local/share/fish/` - Fish completions
 - `/usr/local/share/zsh/` - Zsh completions
+- `/Applications/ramalama.app` - App bundle containing configuration files, resources, Python dependencies, etc.
 
 ### Verify Installation
 
@@ -124,8 +124,10 @@ To remove RamaLama:
 # Remove the executable
 sudo rm /usr/local/bin/ramalama
 
+# Remove the app bundle
+sudo rm -rf /Applications/ramalama.app
+
 # Remove configuration and data files (optional)
-sudo rm -rf /usr/local/share/ramalama
 rm -rf ~/.local/share/ramalama
 rm -rf ~/.config/ramalama
 
