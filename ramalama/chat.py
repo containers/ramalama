@@ -18,7 +18,7 @@ from datetime import timedelta
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.common import perror
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 from ramalama.console import EMOJI, should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
@@ -65,10 +65,11 @@ def default_prefix():
     if not EMOJI:
         return "> "
 
-    if CONFIG.prefix:
-        return CONFIG.prefix
+    config = get_config()
+    if config.prefix:
+        return config.prefix
 
-    engine = CONFIG.engine
+    engine = config.engine
 
     if engine:
         if os.path.basename(engine) == "podman":
@@ -741,7 +742,7 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
         monitor = ServerMonitor(server_process=server_process)
     elif container_name:
         # Monitor the container
-        conman = getattr(args, "engine", CONFIG.engine)
+        conman = getattr(args, "engine", get_config().engine)
         if not conman:
             raise ValueError("Container engine is required when monitoring a container")
         monitor = ServerMonitor(container_name=container_name, container_engine=conman)

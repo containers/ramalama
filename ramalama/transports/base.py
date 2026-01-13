@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
+    from ramalama.model_store.store import ModelStore
 
-import ramalama.chat as chat
 from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
@@ -24,20 +24,8 @@ from ramalama.common import (
     populate_volume_from_image,
     set_accel_env_vars,
 )
-from ramalama.compose import Compose
-from ramalama.config import CONFIG, DEFAULT_PORT_RANGE
-from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
-from ramalama.kube import Kube
 from ramalama.logger import logger
-from ramalama.model_inspect.base_info import ModelInfoBase
-from ramalama.model_inspect.gguf_info import GGUFModelInfo
-from ramalama.model_inspect.gguf_parser import GGUFInfoParser
-from ramalama.model_inspect.safetensor_info import SafetensorModelInfo
-from ramalama.model_inspect.safetensor_parser import SafetensorInfoParser
-from ramalama.model_store.global_store import GlobalModelStore
-from ramalama.model_store.store import ModelStore
 from ramalama.path_utils import get_container_mount_path
-from ramalama.quadlet import Quadlet
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
 
@@ -152,9 +140,11 @@ class Transport(TransportBase):
         self._model_type = type(self).__name__.lower()
 
         self._model_store_path: str = model_store_path
-        self._model_store: Optional[ModelStore] = None
+        self._model_store: Optional["ModelStore"] = None
 
-        self.default_image = accel_image(CONFIG)
+        from ramalama.config import get_config
+
+        self.default_image = accel_image(get_config())
         self.draft_model: Transport | None = None
 
     @cached_property
@@ -194,8 +184,11 @@ class Transport(TransportBase):
         return self._model_type
 
     @property
-    def model_store(self) -> ModelStore:
+    def model_store(self) -> "ModelStore":
         if self._model_store is None:
+            from ramalama.model_store.global_store import GlobalModelStore
+            from ramalama.model_store.store import ModelStore
+
             name, _, orga = self.extract_model_identifiers()
             self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
         return self._model_store
@@ -370,6 +363,8 @@ class Transport(TransportBase):
         return genname()
 
     def new_engine(self, args):
+        from ramalama.engine import Engine
+
         return Engine(args)
 
     def base(self, args, name):
@@ -468,7 +463,9 @@ class Transport(TransportBase):
 
         # Use subprocess.Popen for all platforms
         # Prepare args for the server
-        args.host = CONFIG.host
+        from ramalama.config import get_config
+
+        args.host = get_config().host
         args.detach = True
 
         set_accel_env_vars()
@@ -492,6 +489,8 @@ class Transport(TransportBase):
 
         # Non-container mode: run the command directly with subprocess
         if args.dryrun:
+            from ramalama.engine import dry_run
+
             dry_run(cmd)
             return None
 
@@ -506,6 +505,8 @@ class Transport(TransportBase):
         if getattr(args, "runtime", None) == "mlx":
             args.prefix = "🍏 > "
 
+        from ramalama import chat as chat_module
+
         if args.container:
             return self._handle_container_chat(args, server_process)
         else:
@@ -514,17 +515,21 @@ class Transport(TransportBase):
 
             if getattr(args, "runtime", None) == "mlx":
                 return self._handle_mlx_chat(args)
-            chat.chat(args)
+            chat_module.chat(args)
             return 0
 
     def chat_operational_args(self, args) -> "ChatOperationalArgs | None":
         return None
 
     def wait_for_healthy(self, args):
+        from ramalama.engine import is_healthy, wait_for_healthy
+
         wait_for_healthy(args, is_healthy)
 
     def _handle_container_chat(self, args, server_process):
         """Handle chat for container-based execution."""
+        from ramalama import chat as chat_module
+
         # Wait for the server process to complete (blocking)
         exit_code = server_process.wait()
         if exit_code != 0:
@@ -541,7 +546,7 @@ class Transport(TransportBase):
         args.ignore = getattr(args, "dryrun", False)
         for i in range(6):
             try:
-                chat.chat(args, self.chat_operational_args(args))
+                chat_module.chat(args, self.chat_operational_args(args))
                 break
             except Exception as e:
                 if i >= 5:
@@ -551,6 +556,8 @@ class Transport(TransportBase):
 
     def _handle_mlx_chat(self, args):
         """Handle chat for MLX runtime with connection retries."""
+        from ramalama import chat as chat_module
+
         args.ignore = getattr(args, "dryrun", False)
         args.initial_connection = True
         max_retries = 10
@@ -560,7 +567,7 @@ class Transport(TransportBase):
                 if self._is_server_ready(args.port):
                     args.initial_connection = False
                     time.sleep(1)  # Give server time to stabilize
-                    chat.chat(args)
+                    chat_module.chat(args)
                     break
                 else:
                     logger.debug(f"MLX server not ready, waiting... (attempt {i + 1}/{max_retries})")
@@ -698,6 +705,8 @@ class Transport(TransportBase):
             if self.exec_model_in_container(exec_args, args):
                 return
             if args.dryrun:
+                from ramalama.engine import dry_run
+
                 dry_run(exec_args)
                 return
             exec_cmd(exec_args, stdout2null=args.noout, stderr2null=args.noout)
@@ -722,6 +731,8 @@ class Transport(TransportBase):
             raise e
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None):
+        from ramalama.quadlet import Quadlet
+
         quadlet = Quadlet(
             self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
         )
@@ -731,6 +742,9 @@ class Transport(TransportBase):
     def quadlet_kube(
         self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None
     ):
+        from ramalama.kube import Kube
+        from ramalama.quadlet import Quadlet
+
         kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
         kube.generate().write(output_dir)
 
@@ -740,15 +754,21 @@ class Transport(TransportBase):
         quadlet.kube().write(output_dir)
 
     def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
+        from ramalama.kube import Kube
+
         kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
         kube.generate().write(output_dir)
 
     def compose(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
+        from ramalama.compose import Compose
+
         compose = Compose(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
         compose.generate().write(output_dir)
 
     def inspect_metadata(self) -> Dict[str, Any]:
         model_path = self._get_entry_model_path(False, False, False)
+        from ramalama.model_inspect.gguf_parser import GGUFInfoParser
+
         if GGUFInfoParser.is_model_gguf(model_path):
             return GGUFInfoParser.parse_metadata(model_path).data
         return {}
@@ -761,6 +781,12 @@ class Transport(TransportBase):
         as_json: bool = False,
         dryrun: bool = False,
     ) -> Any:
+        from ramalama.model_inspect.base_info import ModelInfoBase
+        from ramalama.model_inspect.gguf_info import GGUFModelInfo
+        from ramalama.model_inspect.gguf_parser import GGUFInfoParser
+        from ramalama.model_inspect.safetensor_info import SafetensorModelInfo
+        from ramalama.model_inspect.safetensor_parser import SafetensorInfoParser
+
         model_name = self.filename
         model_registry = self.type.lower()
         model_path = self._get_inspect_model_path(dryrun)
@@ -796,10 +822,13 @@ class Transport(TransportBase):
 
 def compute_ports(exclude: list[str] | None = None) -> list[int]:
     excluded = set() if exclude is None else set(map(int, exclude))
-    ports = [p for p in range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1) if p not in excluded]
+    from ramalama.config import get_config
+
+    port_range = get_config().default_port_range
+    ports = [p for p in range(port_range[0], port_range[1] + 1) if p not in excluded]
 
     if not ports:
-        raise ValueError("All ports in the DEFAULT_PORT_RANGE were exhausted by the exclusion list.")
+        raise ValueError("All ports in the default port range were exhausted by the exclusion list.")
 
     first_port = ports.pop(0)
     random.shuffle(ports)

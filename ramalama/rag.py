@@ -6,7 +6,6 @@ from textwrap import dedent
 from typing import Literal, cast
 
 from ramalama.arg_types import RagArgsType, ServeRunArgsType
-from ramalama.chat import ChatOperationalArgs
 from ramalama.common import accel_image, perror, set_accel_env_vars
 from ramalama.compat import StrEnum
 from ramalama.config import Config
@@ -171,7 +170,9 @@ class RagTransport(OCI):
     def setup_mounts(self, args: RagArgsType) -> None:
         pass
 
-    def chat_operational_args(self, args: RagArgsType) -> ChatOperationalArgs:
+    def chat_operational_args(self, args: RagArgsType) -> "ChatOperationalArgs":
+        from ramalama.chat import ChatOperationalArgs
+
         return ChatOperationalArgs(name=args.model_args.name)
 
     def _handle_container_chat(self, args: RagArgsType, server_process: int) -> Literal[0]:
