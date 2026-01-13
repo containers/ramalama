@@ -40,8 +40,7 @@ from ramalama.config import (
     get_inference_spec_files,
     load_file_config,
 )
-from ramalama.config_types import COLOR_OPTIONS
-from ramalama.console import EMOJI
+
 from ramalama.endian import EndianMismatchError
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
@@ -80,25 +79,6 @@ def get_shortnames():
     from ramalama.shortnames import Shortnames
 
     return Shortnames()
-
-
-def default_prefix():
-    # Keep in sync with ramalama.chat.default_prefix to avoid importing chat at startup.
-    if not EMOJI:
-        return "> "
-
-    config = get_config()
-    if config.prefix:
-        return config.prefix
-
-    engine = config.engine
-    if engine:
-        if os.path.basename(engine) == "podman":
-            return "\U0001f9ad > "
-        if os.path.basename(engine) == "docker":
-            return "\U0001f40b > "
-
-    return "\U0001f999 > "
 
 
 def assemble_command_lazy(cli_args: argparse.Namespace) -> list[str]:

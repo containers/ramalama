@@ -41,6 +41,36 @@ from ramalama.proxy_support import setup_proxy_support
 setup_proxy_support()
 
 
+def res(response, color):
+    color_default = ""
+    color_yellow = ""
+    if (color == "auto" and should_colorize()) or color == "always":
+        color_default = "\033[0m"
+        color_yellow = "\033[33m"
+
+    print("\r", end="")
+    assistant_response = ""
+    for line in response:
+        line = line.decode("utf-8").strip()
+        if line.startswith("data: {"):
+            choice = ""
+
+            json_line = json.loads(line[len("data: ") :])
+            if "choices" in json_line and json_line["choices"]:
+                choice = json_line["choices"][0]["delta"]
+            if "content" in choice:
+                choice = choice["content"]
+            else:
+                continue
+
+            if choice:
+                print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
+                assistant_response += choice
+
+    print("")
+    return assistant_response
+
+
 def add_api_key(args, headers=None):
     # static analyzers suggest for dict, this is a safer way of setting
     # a default value, rather than using the parameter directly
