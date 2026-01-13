@@ -687,11 +687,13 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append({
-            "name": f"{model} (partial)" if is_partially_downloaded else model,
-            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-            "size": size_sum,
-        })
+        ret.append(
+            {
+                "name": f"{model} (partial)" if is_partially_downloaded else model,
+                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+                "size": size_sum,
+            }
+        )
 
     # sort the listed models according to the desired order
     ret.sort(key=lambda entry: entry[args.sort], reverse=args.order == "desc")
@@ -935,6 +937,8 @@ def _get_source_model(args, transport=None):
 
 
 def push_cli(args):
+    from ramalama.transports.transport_factory import New, TransportFactory
+
     target = args.SOURCE
     transport = None
     if not args.TARGET:
@@ -944,7 +948,6 @@ def push_cli(args):
     if args.TARGET:
         shortnames = get_shortnames()
         target = shortnames.resolve(args.TARGET)
-    from ramalama.transports.transport_factory import New, TransportFactory
 
     target_model = New(target, args)
 
