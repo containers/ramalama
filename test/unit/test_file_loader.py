@@ -4,10 +4,19 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
+from ramalama.chat_utils import ImageURLPart
 from ramalama.file_loaders.file_manager import ImageFileManager, OpanAIChatAPIMessageBuilder, TextFileManager
 from ramalama.file_loaders.file_types.base import BaseFileLoader
 from ramalama.file_loaders.file_types.image import BasicImageFileLoader
 from ramalama.file_loaders.file_types.txt import TXTFileLoader
+
+
+def _text_content(message):
+    return message.text or ""
+
+
+def _image_parts(message):
+    return [attachment for attachment in message.attachments if isinstance(attachment, ImageURLPart)]
 
 
 class TestBaseFileLoader:
@@ -269,9 +278,10 @@ class TestOpanAIChatAPIMessageBuilder:
             messages = builder.load(tmp_file.name)
 
             assert len(messages) == 1
-            assert messages[0]["role"] == "system"
-            assert "Test content" in messages[0]["content"]
-            assert f"<!--start_document {tmp_file.name}-->" in messages[0]["content"]
+            assert messages[0].role == "user"
+            content = _text_content(messages[0])
+            assert "Test content" in content
+            assert f"<!--start_document {tmp_file.name}-->" in content
 
     def test_builder_load_image_files_only(self):
         """Test loading only image files."""
@@ -283,12 +293,10 @@ class TestOpanAIChatAPIMessageBuilder:
             messages = builder.load(tmp_file.name)
 
             assert len(messages) == 1
-            assert messages[0]["role"] == "system"
-            assert isinstance(messages[0]["content"], list)
-            assert len(messages[0]["content"]) == 1
-            assert 'image_url' in messages[0]["content"][0]
-            assert 'url' in messages[0]["content"][0]["image_url"]
-            assert "data:image/" in messages[0]["content"][0]["image_url"]["url"]
+            assert messages[0].role == "user"
+            image_parts = _image_parts(messages[0])
+            assert len(image_parts) == 1
+            assert "data:image/" in image_parts[0].url
 
     def test_builder_load_mixed_files(self):
         """Test loading mixed text and image files."""
@@ -306,12 +314,11 @@ class TestOpanAIChatAPIMessageBuilder:
 
             assert len(messages) == 2
             # First message should be text
-            assert messages[0]["role"] == "system"
-            assert "Text content" in messages[0]["content"]
+            assert messages[0].role == "user"
+            assert "Text content" in _text_content(messages[0])
             # Second message should be image
-            assert messages[1]["role"] == "system"
-            assert isinstance(messages[1]["content"], list)
-            assert len(messages[1]["content"]) == 1
+            assert messages[1].role == "user"
+            assert len(_image_parts(messages[1])) == 1
 
     @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     def test_builder_load_no_supported_files(self):
@@ -405,7 +412,7 @@ class TestFileUploadIntegration:
             messages = builder.load(tmp_dir)
 
             assert len(messages) == 1
-            content = messages[0]["content"]
+            content = _text_content(messages[0])
             for file_content in files_content.values():
                 assert file_content in content
 
