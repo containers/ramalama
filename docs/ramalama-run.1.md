@@ -41,6 +41,17 @@ Min chunk size to attempt reusing from the cache via KV shifting
 Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)
 
+#### **--context-shift**
+Enable context shifting in llama.cpp when context is full. This allows the server to automatically truncate older context to make room for new tokens. Automatically enabled when using `--context-strategy truncation`.
+
+#### **--context-strategy**=*strategy*
+Strategy for managing context when the limit is reached. Options:
+- **observation_masking** (default): Fast context management that keeps recent messages and masks older ones with brief notes
+- **llm_summarizer**: Uses the LLM to create intelligent summaries of conversation history
+- **truncation**: Let llama.cpp handle context via --context-shift (automatically enables --context-shift)
+- **clear**: Only clears server cache, keeps full conversation history
+- **none**: Do nothing, let server handle context errors
+
 #### **--ctx-size**, **-c**
 size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 4096, 0 = loaded from model)
 
@@ -178,6 +189,12 @@ Specify seed rather than using random seed model interaction
 
 #### **--selinux**=*true*
 Enable SELinux container separation
+
+#### **--server-timeout**=*seconds*
+Timeout in seconds for server API queries such as context size and health checks (default: 2.0).
+
+#### **--summarization-timeout**=*seconds*
+Timeout in seconds for LLM summarization requests. Only used with `--context-strategy llm_summarizer` (default: 30.0).
 
 #### **--summarize-after**=*N*
 Automatically summarize conversation history after N messages to prevent context growth.

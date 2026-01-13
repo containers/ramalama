@@ -376,6 +376,10 @@ def post_parse_setup(args):
             logger.info("MLX runtime automatically uses --nocontainer mode")
         args.container = False
 
+    # Truncation context strategy automatically enables --context-shift
+    if getattr(args, "context_strategy", None) == "truncation":
+        args.context_shift = True
+
     if hasattr(args, 'pull'):
         args.pull = normalize_pull_arg(args.pull, getattr(args, 'engine', None))
 
@@ -882,6 +886,13 @@ def runtime_options(parser, command):
             help=argparse.SUPPRESS,
             completer=suppressCompleter,
         )
+        parser.add_argument(
+            "--context-shift",
+            dest="context_shift",
+            action="store_true",
+            default=False,
+            help="enable context shifting in llama.cpp when context is full (for truncation strategy)",
+        )
     if command == "serve":
         parser.add_argument(
             "-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode"
@@ -1093,6 +1104,29 @@ def chat_run_options(parser):
         default=CONFIG.summarize_after,
         metavar="N",
         help="automatically summarize conversation history after N messages to prevent context growth (0=disabled)",
+    )
+    parser.add_argument(
+        "--context-strategy",
+        choices=["observation_masking", "llm_summarizer", "truncation", "clear", "none"],
+        default="observation_masking",
+        help="strategy for managing context when limit is reached: "
+        "observation_masking (fast, keeps recent messages), "
+        "llm_summarizer (uses LLM to create summaries), "
+        "truncation (let llama.cpp handle via --ctx-shift), "
+        "clear (only clears server cache, keeps full history), "
+        "none (do nothing, let server handle context errors)",
+    )
+    parser.add_argument(
+        "--server-timeout",
+        type=float,
+        default=2.0,
+        help="timeout in seconds for server API queries (context size, health checks)",
+    )
+    parser.add_argument(
+        "--summarization-timeout",
+        type=float,
+        default=30.0,
+        help="timeout in seconds for LLM summarization requests (only used with llm_summarizer strategy)",
     )
 
 
