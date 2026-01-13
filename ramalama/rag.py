@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import os
 import subprocess
 import tempfile
 from functools import partial
 from textwrap import dedent
-from typing import Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
+
+if TYPE_CHECKING:
+    from ramalama.chat import ChatOperationalArgs
 
 from ramalama.arg_types import RagArgsType, ServeRunArgsType
 from ramalama.common import accel_image, perror, set_accel_env_vars
@@ -170,7 +175,7 @@ class RagTransport(OCI):
     def setup_mounts(self, args: RagArgsType) -> None:
         pass
 
-    def chat_operational_args(self, args: RagArgsType) -> "ChatOperationalArgs":
+    def chat_operational_args(self, args: RagArgsType) -> ChatOperationalArgs:
         from ramalama.chat import ChatOperationalArgs
 
         return ChatOperationalArgs(name=args.model_args.name)
