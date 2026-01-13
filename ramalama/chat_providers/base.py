@@ -7,7 +7,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from ramalama.chat_utils import ChatMessageType
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 
 
 @dataclass(slots=True)
@@ -58,7 +58,7 @@ class ChatProvider(ABC):
         default_headers: Mapping[str, str] | None = None,
     ) -> None:
         if api_key is None:
-            api_key = CONFIG.api_key
+            api_key = get_config().api_key
 
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key

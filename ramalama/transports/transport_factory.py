@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from ramalama.arg_types import StoreArgType
 from ramalama.chat_providers.api_providers import get_chat_provider
 from ramalama.common import rm_until_substring
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 from ramalama.path_utils import file_uri_to_path
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import MODEL_TYPES, Transport
@@ -169,5 +169,5 @@ class TransportFactory:
 
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
     if transport is None:
-        transport = CONFIG.transport
+        transport = get_config().transport
     return TransportFactory(name, args, transport=transport).create()

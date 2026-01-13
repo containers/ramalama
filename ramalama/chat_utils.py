@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 from ramalama.console import EMOJI, should_colorize
 
 RoleType = Literal["system", "user", "assistant", "tool"]
@@ -96,13 +96,15 @@ def stream_response(chunks: Iterable[bytes], color: str, provider: StreamParser)
 
 
 def default_prefix() -> str:
+    config = get_config()
+
     if not EMOJI:
         return "> "
 
-    if CONFIG.prefix:
-        return CONFIG.prefix
+    if config.prefix:
+        return config.prefix
 
-    if engine := CONFIG.engine:
+    if engine := config.engine:
         if os.path.basename(engine) == "podman":
             return "🦭 > "
 

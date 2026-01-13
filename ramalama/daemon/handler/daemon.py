@@ -6,7 +6,7 @@ from ramalama.arg_types import StoreArgs
 from ramalama.cli import parse_args_from_cmd
 from ramalama.command.factory import assemble_command
 from ramalama.common import generate_sha256
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 from ramalama.daemon.dto.model import ModelDetailsResponse, ModelResponse, model_list_to_dict
 from ramalama.daemon.dto.serve import ServeRequest, ServeResponse, StopServeRequest
 from ramalama.daemon.handler.base import APIHandler
@@ -117,7 +117,7 @@ class DaemonAPIHandler(APIHandler):
         model = TransportFactory(
             serve_request.model_name,
             StoreArgs(store=self.model_store_path, engine=None, container=False),
-            transport=CONFIG.transport,
+            transport=get_config().transport,
         ).create()
 
         # Use the RamaLama CLI parser to get a namespace with all variables and their
@@ -152,7 +152,7 @@ class DaemonAPIHandler(APIHandler):
         model = TransportFactory(
             stop_serve_request.model_name,
             StoreArgs(store=self.model_store_path, engine=None, container=False),
-            transport=CONFIG.transport,
+            transport=get_config().transport,
         ).create()
 
         mid = generate_model_id(model)

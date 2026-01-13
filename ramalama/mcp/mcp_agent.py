@@ -7,11 +7,9 @@ import urllib.error
 import urllib.request
 from typing import Any, Dict, List
 
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 from ramalama.logger import logger
 from ramalama.mcp.mcp_client import PureMCPClient
-
-logging.basicConfig(level=CONFIG.log_level or logging.INFO)
 
 
 class LLMAgent:
@@ -24,6 +22,11 @@ class LLMAgent:
         model: str | None = None,
         args=None,
     ):
+        config_level = get_config().log_level or logging.INFO
+        if logging.getLogger().handlers:
+            logging.getLogger().setLevel(config_level)
+        else:
+            logging.basicConfig(level=config_level)
         self.clients = clients if isinstance(clients, list) else [clients]
         self.llm_base_url = llm_base_url.rstrip('/')
         self.model = model
