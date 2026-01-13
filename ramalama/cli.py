@@ -40,6 +40,7 @@ from ramalama.config import (
     get_inference_spec_files,
     load_file_config,
 )
+from ramalama.config_types import COLOR_OPTIONS
 from ramalama.console import EMOJI
 from ramalama.endian import EndianMismatchError
 from ramalama.log_levels import LogLevel
