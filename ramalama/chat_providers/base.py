@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
+from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from ramalama.chat_utils import ChatMessageType
@@ -92,6 +93,8 @@ class ChatProvider(ABC):
         return {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
 
     def serialize_payload(self, payload: Mapping[str, Any]) -> bytes:
+        # return json.dumps(payload).encode("utf-8")
+        payload = {k: v for k, v in payload.items() if v is not None}
         return json.dumps(payload).encode("utf-8")
 
     def create_request(
@@ -156,8 +159,25 @@ class ChatProvider(ABC):
             headers=self.prepare_headers(include_auth=True),
             method="GET",
         )
-        with urllib_request.urlopen(request) as response:  # type: ignore[call-arg]
-            payload = self.parse_response_body(response.read())
+        try:
+            with urllib_request.urlopen(request) as response:
+                payload = self.parse_response_body(response.read())
+        except urllib_error.HTTPError as exc:
+            if exc.code in (401, 403):
+                message = (
+                    f"Could not authenticate with {self.provider}. The provided API key was either missing or invalid.\n"
+                    f"Set RAMALAMA_API_KEY or ramalama.provider.<provider_name>.api_key."
+                )
+                try:
+                    payload = self.parse_response_body(exc.read())
+                except:
+                    payload = {}
+
+                if details := payload.get("error", {}).get("message", None):
+                    message = f"{message}\n\n{details}"
+
+                raise ChatProviderError(message, status_code=exc.code) from exc
+            raise
 
         if not isinstance(payload, Mapping):
             raise ChatProviderError("Invalid model list payload", payload=payload)
