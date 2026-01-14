@@ -28,5 +28,6 @@ def test_list_models_reports_auth_error(monkeypatch):
         provider.list_models()
 
     message = str(excinfo.value)
-    assert "API key missing or invalid" in message
+    assert "Could not authenticate with openai." in message
+    assert "missing or invalid" in message
     assert "Invalid API key" in message

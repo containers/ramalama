@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
+from ramalama.config import CONFIG
 from ramalama.transports import api as api_module
 from ramalama.transports.api import APITransport
 
@@ -50,7 +51,8 @@ def test_api_transport_ensure_exists_mutates_args(monkeypatch):
     assert args.engine is None
 
 
-def test_api_transport_ensure_exists_requires_api_key():
+def test_api_transport_ensure_exists_requires_api_key(monkeypatch):
+    monkeypatch.setattr(CONFIG, "api_key", None)
     provider = make_provider(api_key=None)
     transport = APITransport("gpt-4", provider)
     args = SimpleNamespace(container=True, engine="podman")
