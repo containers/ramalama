@@ -133,6 +133,7 @@ EOF
 }
 
 @test "ramalama verify default engine" {
+    # Cannot run on docker as that also sets RAMALAMA_CONTAINER_ENGINE
     skip_if_docker
     engine=e_$(safename)
     RAMALAMA_CONTAINER_ENGINE=${engine} run_ramalama --help

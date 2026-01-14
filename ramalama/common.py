@@ -765,6 +765,12 @@ def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, sh
         return False
 
 
-class ContainerEntryPoint:
+class ContainerEntryPoint(str):
     def __init__(self, entrypoint: Optional[str] = None):
         self.entrypoint = entrypoint
+
+    def __str__(self):
+        return str(self.entrypoint)
+
+    def __repr__(self):
+        return repr(self.entrypoint)
