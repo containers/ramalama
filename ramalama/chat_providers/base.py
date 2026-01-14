@@ -35,7 +35,7 @@ class ChatStreamEvent:
     done: bool = False
 
 
-class ChatProviderError(RuntimeError):
+class ChatProviderError(Exception):
     """Raised when a provider request fails or returns an invalid payload."""
 
     def __init__(self, message: str, *, status_code: int | None = None, payload: Any | None = None):

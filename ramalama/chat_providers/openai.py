@@ -15,9 +15,17 @@ from ramalama.chat_utils import (
 )
 
 
+class UnsupportedMessageType(Exception):
+    """Raised when a provider request fails or returns an invalid payload."""
+
+
 @singledispatch
 def message_to_completions_dict(message: Any) -> dict[str, Any]:
-    raise ValueError(f"Undefined message type {type(message)}")
+    message = (
+        f"Cannot convert message type `{type(message)}` to a completions dictionary.\n"
+        "Please create an issue at: https://github.com/containers/ramalama/issues"
+    )
+    raise UnsupportedMessageType(message)
 
 
 @message_to_completions_dict.register

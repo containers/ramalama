@@ -7,8 +7,6 @@ import sys
 
 import pytest
 
-os.environ.setdefault("RAMALAMA_CONFIG", "/dev/null")
-
 ramalama_container = True
 ramalama_container_engine = "podman"
 

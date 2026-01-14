@@ -36,9 +36,9 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message.role == "user"
-            content = system_message.text or ""
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            content = message.text or ""
             assert "This is test content for chat input" in content
             assert f"<!--start_document {tmp_file.name}-->" in content
 
@@ -68,9 +68,9 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message.role == "user"
-            content = system_message.text or ""
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            content = message.text or ""
             assert "Text file content" in content
             assert "# Markdown Content" in content
             assert "test.txt" in content
@@ -132,9 +132,9 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message.role == "user"
-            text = _text_content(system_message)
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            text = _text_content(message)
             assert f"<!--start_document {tmp_file.name}-->" in text
             assert text.endswith(f"\n<!--start_document {tmp_file.name}-->\n")
 
@@ -160,9 +160,9 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message.role == "user"
-            text = system_message.text or ""
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            text = message.text or ""
             assert unicode_content in text
             assert f"<!--start_document {tmp_file.name}-->" in text
 
@@ -196,9 +196,9 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message.role == "user"
-            text = _text_content(system_message)
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            text = _text_content(message)
             assert "English content" in text
             assert '{"key": "value", "number": 42}' in text
             assert "setting: enabled" in text
@@ -246,9 +246,9 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message.role == "user"
-            text = _text_content(system_message)
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            text = _text_content(message)
             assert "File content" in text
             assert f"<!--start_document {tmp_file.name}-->" in text
 
@@ -300,10 +300,10 @@ class TestImageUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message.role == "user"
-            assert len(system_message.attachments) == 1
-            part = system_message.attachments[0]
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            assert len(message.attachments) == 1
+            part = message.attachments[0]
             assert isinstance(part, ImageURLPart)
             assert part.url.startswith("data:image/")
             assert "base64," in part.url
@@ -334,10 +334,10 @@ class TestImageUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message.role == "user"
-            assert len(system_message.attachments) == 2
-            for part in system_message.attachments:
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            assert len(message.attachments) == 2
+            for part in message.attachments:
                 assert isinstance(part, ImageURLPart)
                 assert "data:image/" in part.url
                 assert "base64," in part.url
@@ -434,10 +434,10 @@ class TestImageUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message.role == "user"
-            assert len(system_message.attachments) == 2
-            for part in system_message.attachments:
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            assert len(message.attachments) == 2
+            for part in message.attachments:
                 assert isinstance(part, ImageURLPart)
                 assert "data:image/" in part.url
                 assert "base64," in part.url
