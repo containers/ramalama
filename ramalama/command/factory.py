@@ -9,6 +9,7 @@ import jsonschema
 import yaml
 
 from ramalama.command import context, error, schema
+from ramalama.common import ContainerEntryPoint
 from ramalama.config import get_inference_schema_files, get_inference_spec_files
 
 
@@ -58,6 +59,8 @@ class CommandFactory:
         binary = CommandFactory.eval_stmt(engine.binary, ctx)
         if is_truthy(binary):
             cmd += binary.split(" ")
+        else:
+            cmd.append(ContainerEntryPoint())
 
         for option in engine.options:
             should_add = option.condition is None or is_truthy(CommandFactory.eval_stmt(option.condition, ctx))

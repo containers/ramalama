@@ -15,7 +15,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from functools import lru_cache
-from typing import IO, TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, TypedDict, cast, get_args
+from typing import IO, TYPE_CHECKING, Any, Literal, Optional, Protocol, TypeAlias, TypedDict, cast, get_args
 
 import yaml
 
@@ -763,3 +763,8 @@ def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, sh
 
     except Exception:
         return False
+
+
+class ContainerEntryPoint:
+    def __init__(self, entrypoint: Optional[str] = None):
+        self.entrypoint = entrypoint

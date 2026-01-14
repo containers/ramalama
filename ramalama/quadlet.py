@@ -2,7 +2,7 @@ import os
 import shlex
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, get_accel, get_accel_env_vars
+from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel, get_accel_env_vars
 from ramalama.file import UnitFile
 
 
@@ -68,7 +68,12 @@ class Quadlet:
         quadlet_file.add("Container", "RunInit", "true")
         quadlet_file.add("Container", "Environment", "HOME=/tmp")
 
-        exec_cmd = shlex.join(self.exec_args)
+        cmd_args = self.exec_args
+        if len(cmd_args) > 0 and isinstance(cmd_args[0], ContainerEntryPoint):
+            # Ignore entrypoint
+            cmd_args = cmd_args[1:]
+
+        exec_cmd = shlex.join(cmd_args)
         quadlet_file.add("Container", "Exec", f"{exec_cmd}")
 
         if getattr(self.args, "privileged", False):

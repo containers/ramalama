@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
+from ramalama.common import ContainerEntryPoint
+
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
 
@@ -169,7 +171,7 @@ class Transport(TransportBase):
 
         # extract model tag from name if exists
         if ":" in model_name:
-            model_name, model_tag = model_name.split(":", 1)
+            model_name, model_tag = model_name.rsplit(":", 1)
 
         # extract model organization from name if exists and update name
         split = model_name.rsplit("/", 1)
@@ -404,6 +406,10 @@ class Transport(TransportBase):
         if not args.container:
             return False
 
+        if len(cmd_args) > 0 and isinstance(cmd_args[0], ContainerEntryPoint):
+            # Ignore entrypoint
+            cmd_args = cmd_args[1:]
+
         self.setup_container(args)
         self.setup_mounts(args)
 
@@ -462,6 +468,10 @@ class Transport(TransportBase):
     def run(self, args, cmd: list[str]):
         # The Run command will first launch a daemonized service
         # and run chat to communicate with it.
+
+        if len(cmd) > 0 and isinstance(cmd[0], ContainerEntryPoint):
+            # Ignore entrypoint
+            cmd = cmd[1:]
 
         process = self.serve_nonblocking(args, cmd)
         if process:
