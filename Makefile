@@ -4,11 +4,7 @@ SELINUXOPT ?= $(shell test -x /usr/sbin/selinuxenabled && selinuxenabled && echo
 PREFIX ?= /usr/local
 BINDIR ?= ${PREFIX}/bin
 SHAREDIR ?= ${PREFIX}/share
-# PYTHON ?= $(shell command -v python3 python|head -n1)
-ifndef PYTHON
-UV_BIN := $(shell command -v uv 2>/dev/null)
-PYTHON := $(if $(UV_BIN),uv run python3,$(shell command -v python3))
-endif
+PYTHON ?= $(shell command -v python3 python|head -n1)
 DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 MYPIP ?= pip
