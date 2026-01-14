@@ -50,6 +50,15 @@ def test_api_transport_ensure_exists_mutates_args(monkeypatch):
     assert args.engine is None
 
 
+def test_api_transport_ensure_exists_requires_api_key():
+    provider = make_provider(api_key=None)
+    transport = APITransport("gpt-4", provider)
+    args = SimpleNamespace(container=True, engine="podman")
+
+    with pytest.raises(ValueError, match="Missing API key"):
+        transport.ensure_model_exists(args)
+
+
 def test_api_transport_overrides_provider_api_key(monkeypatch):
     provider = make_provider()
     transport = APITransport("gpt-4o-mini", provider)

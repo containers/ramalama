@@ -74,7 +74,7 @@ def _(message: AssistantMessage) -> dict[str, Any]:
 
 class CompletionsPayload(TypedDict, total=False):
     messages: list[dict[str, Any]]
-    model: str
+    model: str | None
     temperature: float | None
     max_tokens: int | None
     stream: bool
@@ -89,9 +89,6 @@ class OpenAICompletionsChatProvider(ChatProvider):
         self._stream_buffer: str = ""
 
     def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> CompletionsPayload:
-        if options.model is None:
-            raise ValueError("Chat options require a model value")
-
         payload: CompletionsPayload = {
             "messages": [message_to_completions_dict(m) for m in messages],
             "model": options.model,

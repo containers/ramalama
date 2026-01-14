@@ -93,8 +93,6 @@ class ChatProvider(ABC):
         return {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
 
     def serialize_payload(self, payload: Mapping[str, Any]) -> bytes:
-        # return json.dumps(payload).encode("utf-8")
-        payload = {k: v for k, v in payload.items() if v is not None}
         return json.dumps(payload).encode("utf-8")
 
     def create_request(
