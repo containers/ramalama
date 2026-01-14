@@ -440,7 +440,7 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
     conn = None
     try:
         conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
-        if args.debug:
+        if getattr(args, "debug", False):
             conn.set_debuglevel(1)
         if CONFIG.runtime == 'vllm':
             conn.request("GET", "/ping")
@@ -489,13 +489,14 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()
 
+    display_dots = not getattr(args, "debug", False) and sys.stdin.isatty()
     n = 0
     while time.time() - start_time < timeout:
         try:
-            if not args.debug:
+            if display_dots:
                 perror('\r' + n * '.', end='', flush=True)
             if health_func(args):
-                if not args.debug:
+                if display_dots:
                     perror('\r' + n * ' ' + '\r', end='', flush=True)
                 return
         except (ConnectionError, HTTPException, UnicodeDecodeError, json.JSONDecodeError) as e:

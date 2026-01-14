@@ -1,6 +1,7 @@
 import argparse
 import ast
 import json
+import shlex
 from pathlib import Path
 from typing import Any
 
@@ -58,7 +59,7 @@ class CommandFactory:
         # FIXME: binary should be a string array to work with nocontainer
         binary = CommandFactory.eval_stmt(engine.binary, ctx)
         if is_truthy(binary):
-            cmd += binary.split(" ")
+            cmd += shlex.split(binary)
         else:
             cmd.append(ContainerEntryPoint())
 
