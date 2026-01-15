@@ -133,33 +133,27 @@ def test_is_healthy_conn(mock_conn):
         (200, 200, '{"models": [{"name": "somemodel"}]}', 'does not include "themodel"'),
     ],
 )
-@patch("ramalama.engine.time.sleep", side_effect=TimeoutExpired("sleep", 1))
 @patch("ramalama.engine.logger.debug")
 @patch("ramalama.engine.HTTPConnection")
-def test_is_healthy_fail(mock_conn, mock_debug, mock_sleep, health_status, models_status, models_body, models_msg):
-    mock_health_resp = Mock()
-    mock_health_resp.status = health_status
-    mock_health_resp.reason = "unavailable"
-    mock_models_resp = Mock()
-    mock_models_resp.status = models_status
-    mock_models_resp.reason = "entropy"
-    mock_models_resp.read.return_value = models_body
-    mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
+def test_is_healthy_fail(mock_conn, mock_debug, health_status, models_status, models_body, models_msg):
+    mock_health_resp = Mock(status=health_status, reason="unavailable")
+    responses = [mock_health_resp]
+    if models_status is not None:
+        mock_models_resp = Mock(status=models_status, reason="entropy")
+        mock_models_resp.read.return_value = models_body
+        responses.append(mock_models_resp)
+    mock_conn.return_value.getresponse.side_effect = responses
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
     assert not is_healthy(args)
-    if models_status is None:
-        assert mock_conn.return_value.getresponse.call_count == 1
-    else:
-        assert mock_conn.return_value.getresponse.call_count == 2
+    assert mock_conn.return_value.getresponse.call_count == len(responses)
+    if len(responses) > 1:
         assert models_msg in mock_debug.call_args.args[0]
 
 
 @patch("ramalama.engine.HTTPConnection")
 def test_is_healthy_unicode_fail(mock_conn):
-    mock_health_resp = Mock()
-    mock_health_resp.status = 200
-    mock_models_resp = Mock()
-    mock_models_resp.status = 200
+    mock_health_resp = Mock(status=200)
+    mock_models_resp = Mock(status=200)
     mock_models_resp.read.return_value = b'{"extended_ascii_ae": "\xe6"}'
     mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(name="thecontainer", port=8080, debug=False)
@@ -175,10 +169,8 @@ def test_is_healthy_unicode_fail(mock_conn):
 @patch("ramalama.engine.logger.debug")
 @patch("ramalama.engine.HTTPConnection")
 def test_is_healthy_success(mock_conn, mock_debug, health_status):
-    mock_health_resp = Mock()
-    mock_health_resp.status = health_status
-    mock_models_resp = Mock()
-    mock_models_resp.status = 200
+    mock_health_resp = Mock(status=health_status)
+    mock_models_resp = Mock(status=200)
     mock_models_resp.read.return_value = '{"models": [{"name": "themodel"}]}'
     mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
