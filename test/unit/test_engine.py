@@ -124,13 +124,21 @@ def test_is_healthy_conn(mock_conn):
 @pytest.mark.parametrize(
     "health_status, models_status, models_body, models_msg",
     [
-        (503, None, "", ""),
-        (200, 500, "", "status code 500: entropy"),
-        (404, 500, "", "status code 500: entropy"),
-        (200, 200, "", "empty response"),
-        (200, 200, "{}", "does not include a model list"),
-        (200, 200, '{"models": []}', 'does not include "themodel"'),
-        (200, 200, '{"models": [{"name": "somemodel"}]}', 'does not include "themodel"'),
+        pytest.param(503, None, "", "", id="health api returns 503 loading"),
+        pytest.param(200, 500, "", "status code 500: entropy", id="models api returns 500 error"),
+        pytest.param(404, 500, "", "status code 500: entropy", id="no health api, models api returns 500 error"),
+        pytest.param(200, 200, "", "empty response", id="health ok, models api empty response"),
+        pytest.param(200, 200, "{}", "does not include a model list", id="health ok, models api no models listed"),
+        pytest.param(
+            200, 200, '{"models": []}', 'does not include "themodel"', id="health ok, models api no models listed"
+        ),
+        pytest.param(
+            200,
+            200,
+            '{"models": [{"name": "somemodel"}]}',
+            'does not include "themodel"',
+            id="health ok, models api missing the model",
+        ),
     ],
 )
 @patch("ramalama.engine.logger.debug")
@@ -164,7 +172,10 @@ def test_is_healthy_unicode_fail(mock_conn):
 
 @pytest.mark.parametrize(
     "health_status",
-    [200, 404],
+    [
+        pytest.param(200, id="health api ok"),
+        pytest.param(404, id="no health api"),
+    ],
 )
 @patch("ramalama.engine.logger.debug")
 @patch("ramalama.engine.HTTPConnection")
