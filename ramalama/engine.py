@@ -441,18 +441,24 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
         conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
         if args.debug:
             conn.set_debuglevel(1)
-        conn.request("GET", "/models")
-        resp = conn.getresponse()
-        if resp.status != 200:
-            logger.debug(f"Container {args.name} returned status code {resp.status}: {resp.reason}")
+        conn.request("GET", "/health")
+        health_resp = conn.getresponse()
+        health_resp.read()
+        if health_resp.status not in (200, 404):
+            logger.debug(f"Container {args.name} /health status code: {health_resp.status}: {health_resp.reason}")
             return False
-        content = resp.read()
+        conn.request("GET", "/models")
+        models_resp = conn.getresponse()
+        if models_resp.status != 200:
+            logger.debug(f"Container {args.name} /models status code {models_resp.status}: {models_resp.reason}")
+            return False
+        content = models_resp.read()
         if not content:
-            logger.debug(f"Container {args.name} returned an empty response")
+            logger.debug(f"Container {args.name} /models returned an empty response")
             return False
         body = json.loads(content)
         if "models" not in body:
-            logger.debug(f"Container {args.name} does not include a model list in the response")
+            logger.debug(f"Container {args.name} /models does not include a model list in the response")
             return False
         model_names = [m["name"] for m in body["models"]]
         if not model_name:
@@ -460,7 +466,9 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
             model_name = cast(str, args.MODEL.split("://")[-1])
             model_name = model_name.split(":")[0]
         if not any(model_name in name for name in model_names):
-            logger.debug(f'Container {args.name} does not include "{model_name}" in the model list: {model_names}')
+            logger.debug(
+                f'Container {args.name} /models does not include "{model_name}" in the model list: {model_names}'
+            )
             return False
         logger.debug(f"Container {args.name} is healthy")
         return True

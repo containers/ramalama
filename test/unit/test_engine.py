@@ -3,7 +3,7 @@ from argparse import Namespace
 from http.client import HTTPException
 from json import JSONDecodeError
 from subprocess import TimeoutExpired
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -122,46 +122,68 @@ def test_is_healthy_conn(mock_conn):
 
 
 @pytest.mark.parametrize(
-    "status, body, msg",
+    "health_status, models_status, models_body, models_msg",
     [
-        (500, "", "status code 500: entropy"),
-        (200, "", "empty response"),
-        (200, "{}", "does not include a model list"),
-        (200, '{"models": []}', 'does not include "themodel"'),
-        (200, '{"models": [{"name": "somemodel"}]}', 'does not include "themodel"'),
+        (503, None, "", ""),
+        (200, 500, "", "status code 500: entropy"),
+        (404, 500, "", "status code 500: entropy"),
+        (200, 200, "", "empty response"),
+        (200, 200, "{}", "does not include a model list"),
+        (200, 200, '{"models": []}', 'does not include "themodel"'),
+        (200, 200, '{"models": [{"name": "somemodel"}]}', 'does not include "themodel"'),
     ],
 )
 @patch("ramalama.engine.time.sleep", side_effect=TimeoutExpired("sleep", 1))
 @patch("ramalama.engine.logger.debug")
 @patch("ramalama.engine.HTTPConnection")
-def test_is_healthy_fail(mock_conn, mock_debug, mock_sleep, status, body, msg):
-    mock_resp = mock_conn.return_value.getresponse.return_value
-    mock_resp.status = status
-    mock_resp.reason = "entropy"
-    mock_resp.read.return_value = body
+def test_is_healthy_fail(mock_conn, mock_debug, mock_sleep, health_status, models_status, models_body, models_msg):
+    mock_health_resp = Mock()
+    mock_health_resp.status = health_status
+    mock_health_resp.reason = "unavailable"
+    mock_models_resp = Mock()
+    mock_models_resp.status = models_status
+    mock_models_resp.reason = "entropy"
+    mock_models_resp.read.return_value = models_body
+    mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
     assert not is_healthy(args)
-    assert msg in mock_debug.call_args.args[0]
+    if models_status is None:
+        assert mock_conn.return_value.getresponse.call_count == 1
+    else:
+        assert mock_conn.return_value.getresponse.call_count == 2
+        assert models_msg in mock_debug.call_args.args[0]
 
 
 @patch("ramalama.engine.HTTPConnection")
 def test_is_healthy_unicode_fail(mock_conn):
-    mock_resp = mock_conn.return_value.getresponse.return_value
-    mock_resp.status = 200
-    mock_resp.read.return_value = b'{"extended_ascii_ae": "\xe6"}'
+    mock_health_resp = Mock()
+    mock_health_resp.status = 200
+    mock_models_resp = Mock()
+    mock_models_resp.status = 200
+    mock_models_resp.read.return_value = b'{"extended_ascii_ae": "\xe6"}'
+    mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(name="thecontainer", port=8080, debug=False)
     with pytest.raises(UnicodeDecodeError):
         is_healthy(args)
+    assert mock_conn.return_value.getresponse.call_count == 2
 
 
+@pytest.mark.parametrize(
+    "health_status",
+    [200, 404],
+)
 @patch("ramalama.engine.logger.debug")
 @patch("ramalama.engine.HTTPConnection")
-def test_is_healthy_success(mock_conn, mock_debug):
-    mock_resp = mock_conn.return_value.getresponse.return_value
-    mock_resp.status = 200
-    mock_resp.read.return_value = '{"models": [{"name": "themodel"}]}'
+def test_is_healthy_success(mock_conn, mock_debug, health_status):
+    mock_health_resp = Mock()
+    mock_health_resp.status = health_status
+    mock_models_resp = Mock()
+    mock_models_resp.status = 200
+    mock_models_resp.read.return_value = '{"models": [{"name": "themodel"}]}'
+    mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
     assert is_healthy(args)
+    assert mock_conn.return_value.getresponse.call_count == 2
     assert mock_debug.call_args.args[0] == "Container thecontainer is healthy"
 
 
