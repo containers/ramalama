@@ -4,7 +4,6 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.config import (
-    DEFAULT_PORT,
     BaseConfig,
     RamalamaImages,
     default_config,
@@ -45,7 +44,7 @@ def test_correct_config_defaults(monkeypatch):
     assert cfg.keep_groups is False
     assert cfg.ngl == -1
     assert cfg.threads == -1
-    assert cfg.port == str(DEFAULT_PORT)
+    assert cfg.port == BaseConfig().port
     assert cfg.pull in ["newer", "always"]  # depends on engine
     assert cfg.runtime == "llama.cpp"
     assert cfg.store == get_default_store()

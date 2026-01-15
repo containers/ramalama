@@ -5,7 +5,6 @@ import cmd
 import copy
 import itertools
 import json
-import os
 import signal
 import subprocess
 import sys
@@ -18,8 +17,8 @@ from datetime import timedelta
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.common import perror
-from ramalama.config import CONFIG
-from ramalama.console import EMOJI, should_colorize
+from ramalama.config import get_config
+from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
@@ -59,25 +58,6 @@ def res(response, color):
 
     print("")
     return assistant_response
-
-
-def default_prefix():
-    if not EMOJI:
-        return "> "
-
-    if CONFIG.prefix:
-        return CONFIG.prefix
-
-    engine = CONFIG.engine
-
-    if engine:
-        if os.path.basename(engine) == "podman":
-            return "🦭 > "
-
-        if os.path.basename(engine) == "docker":
-            return "🐋 > "
-
-    return "🦙 > "
 
 
 def add_api_key(args, headers=None):
@@ -741,7 +721,7 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
         monitor = ServerMonitor(server_process=server_process)
     elif container_name:
         # Monitor the container
-        conman = getattr(args, "engine", CONFIG.engine)
+        conman = getattr(args, "engine", get_config().engine)
         if not conman:
             raise ValueError("Container engine is required when monitoring a container")
         monitor = ServerMonitor(container_name=container_name, container_engine=conman)

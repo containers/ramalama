@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from ramalama.arg_types import StoreArgType
 from ramalama.common import rm_until_substring
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 from ramalama.transports.base import MODEL_TYPES
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
@@ -153,5 +153,5 @@ class TransportFactory:
 
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
     if transport is None:
-        transport = CONFIG.transport
+        transport = get_config().transport
     return TransportFactory(name, args, transport=transport).create()

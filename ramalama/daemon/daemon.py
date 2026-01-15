@@ -6,7 +6,7 @@ import socketserver
 import threading
 from datetime import datetime, timedelta
 
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 from ramalama.daemon.handler.ramalama import RamalamaHandler
 from ramalama.daemon.logging import configure_logger, logger
 from ramalama.daemon.service.model_runner import ModelRunner
@@ -122,7 +122,7 @@ def parse_args():
 
 
 def run(host: str = "0.0.0.0", port: int = 8080, model_store_path: str = "/models"):
-    configure_logger(CONFIG.log_level or LogLevel.DEBUG)
+    configure_logger(get_config().log_level or LogLevel.DEBUG)
     logger.debug(f"Starting Ramalama daemon on {host}:{port}...")
     with RamalamaServer(host, port, model_store_path, timedelta(seconds=10)) as httpd:
         with ShutdownHandler(httpd):
