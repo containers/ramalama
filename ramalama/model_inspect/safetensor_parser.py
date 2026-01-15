@@ -1,5 +1,6 @@
 import json
 import struct
+from pathlib import Path
 
 import ramalama.console as console
 from ramalama.model_inspect.error import ParseError
@@ -18,7 +19,7 @@ class SafetensorInfoParser:
         return model_name.endswith(".safetensor") or model_name.endswith(".safetensors")
 
     @staticmethod
-    def parse(model_name: str, model_registry: str, model_path: str) -> SafetensorModelInfo:
+    def parse(model_name: str, model_registry: str, model_path: Path) -> SafetensorModelInfo:
         try:
             with open(model_path, "rb") as model_file:
                 prefix = '<'
@@ -27,7 +28,7 @@ class SafetensorInfoParser:
                 header_size = struct.unpack(typestring, model_file.read(8))[0]
                 header = json.loads(model_file.read(header_size))
 
-                return SafetensorModelInfo(model_name, model_registry, model_path, header)
+                return SafetensorModelInfo(model_name, model_registry, str(model_path), header)
 
         except Exception as ex:
             msg = f"Failed to parse safetensor model '{model_path}': {ex}"

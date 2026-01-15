@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import time
+import pathlib
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from http.client import HTTPConnection, HTTPException
@@ -123,7 +124,7 @@ class BaseEngine(ABC):
         self.add(args)
 
     def add_volume(self, src: str, dest: str, *, opts="ro"):
-        self.add_args("-v", f"{normalize_host_path_for_container(src)}:{dest}:{opts}{self.relabel()}")
+        self.add_args("-v", f"{normalize_host_path_for_container(pathlib.Path(src))}:{dest}:{opts}{self.relabel()}")
 
     def dryrun(self):
         dry_run(self.exec_args)

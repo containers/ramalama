@@ -1,5 +1,6 @@
 import argparse
 import os
+from pathlib import Path
 from typing import Optional
 
 from ramalama.common import check_metal, check_nvidia
@@ -112,19 +113,19 @@ class RamalamaModelContext:
         return self.model._get_entry_model_path(self.is_container, self.should_generate, self.dry_run)
 
     @property
-    def mmproj_path(self) -> Optional[str]:
+    def mmproj_path(self) -> Optional[Path]:
         return self.model._get_mmproj_path(self.is_container, self.should_generate, self.dry_run)
 
     @property
-    def chat_template_path(self) -> Optional[str]:
+    def chat_template_path(self) -> Optional[Path]:
         return self.model._get_chat_template_path(self.is_container, self.should_generate, self.dry_run)
 
     @property
-    def draft_model_path(self) -> str:
+    def draft_model_path(self) -> Optional[str]:
         if getattr(self.model, "draft_model", None):
             assert self.model.draft_model
             return self.model.draft_model._get_entry_model_path(self.is_container, self.should_generate, self.dry_run)
-        return ""
+        return None
 
 
 class RamalamaHostContext:

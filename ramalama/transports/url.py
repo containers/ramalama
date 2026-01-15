@@ -61,10 +61,11 @@ class URL(Transport):
 
     def extract_model_identifiers(self):
         if self.type == "file":
+            normalized_host_path = normalize_host_path_for_container(Path(self.model).parent)
             return (
                 Path(self.model).name,
                 "latest",
-                normalize_host_path_for_container(str(Path(self.model).parent)).removeprefix("/"),
+                str(normalized_host_path).removeprefix("/"),
             )
 
         model_name, model_tag, model_organization = super().extract_model_identifiers()
