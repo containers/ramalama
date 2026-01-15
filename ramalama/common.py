@@ -800,3 +800,27 @@ class SemVer:
     @classmethod
     def parse(cls, s: str) -> "SemVer":
         return parse_semver(s)
+
+
+def store_disk_stats(store_path: Path) -> dict[str, Optional[int]] | None:
+    """Get disk usage statistics for the store path.
+
+    Walks up the directory tree if the path does not exist until an existing
+    parent is found.
+
+    Args:
+        store_path: Path to the model store directory.
+
+    Returns:
+        A dictionary with disk usage stats  - None for all stats if no path is found.
+    """
+    current_path = store_path
+    while True:
+        try:
+            total, used, free = shutil.disk_usage(current_path)
+            return {"total": total, "used": used, "free": free}
+        except OSError:
+            if current_path == current_path.parent:
+                # Reached the root of the filesystem.
+                return {"total": None, "used": None, "free": None}
+            current_path = current_path.parent
