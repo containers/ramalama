@@ -1,0 +1,75 @@
+kind: Pipeline
+apiVersion: tekton.dev/v1
+metadata:
+  name: e2e-tests
+spec:
+  description: |
+    Test the newly-built ramalama images on all supported architectures using the e2e tests.
+  params:
+  - name: SNAPSHOT
+    description: >-
+      Information about the components included in the current snapshot under test.
+  - name: platforms
+    description: VM platforms on which to run test commands
+    type: array
+    default:
+    - linux-m4xlarge/amd64
+    - linux-m4xlarge/arm64
+    - linux/ppc64le
+    - linux/s390x
+    - linux-g64xlarge/amd64
+  - name: commands
+    description: Test commands to run
+    type: array
+    default:
+    - bash -xc "bin/ramalama info && make e2e-tests"
+  - name: git-url
+    description: URL of the Git repository containing pipeline and task definitions
+    default: https://github.com/containers/ramalama.git
+  - name: git-revision
+    description: Revision of the Git repository containing pipeline and task definitions
+    default: main
+  tasks:
+  - name: init
+    params:
+    - name: SNAPSHOT
+      value: $(params.SNAPSHOT)
+    taskRef:
+      resolver: git
+      params:
+      - name: url
+        value: $(params.git-url)
+      - name: revision
+        value: $(params.git-revision)
+      - name: pathInRepo
+        value: .tekton/integration/tasks/init-snapshot.yaml
+  - name: test
+    matrix:
+      params:
+      - name: PLATFORM
+        value:
+        - $(params.platforms)
+      - name: cmd
+        value:
+        - $(params.commands)
+    params:
+    - name: image
+      value: $(tasks.init.results.e2e-image)
+    - name: envs
+      value:
+      - RAMALAMA_DEFAULT_IMAGE="$(tasks.init.results.ramalama-image)"
+      - RAMALAMA_DEFAULT_RAG_IMAGE="$(tasks.init.results.ramalama-rag-image)"
+      - RAMALAMA_STACK_IMAGE=$(tasks.init.results.stack-image)
+      - >-
+        RAMALAMA_IMAGES='{"CUDA_VISIBLE_DEVICES": "$(tasks.init.results.cuda-image)"}'
+      - >-
+        RAMALAMA_RAG_IMAGES='{"CUDA_VISIBLE_DEVICES": "$(tasks.init.results.cuda-rag-image)"}'
+    taskRef:
+      resolver: git
+      params:
+      - name: url
+        value: $(params.git-url)
+      - name: revision
+        value: $(params.git-revision)
+      - name: pathInRepo
+        value: .tekton/integration/tasks/test-vm-cmd.yaml
