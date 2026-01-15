@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List
 
 from ramalama import oci_tools
@@ -22,10 +23,10 @@ class GlobalModelStore:
         self,
         base_path: str,
     ):
-        self._store_base_path = os.path.join(base_path, "store")
+        self._store_base_path = Path(os.path.join(base_path, "store"))
 
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         return self._store_base_path
 
     def list_models(self, engine: str, show_container: bool) -> Dict[str, List[ModelFile]]:
@@ -33,16 +34,16 @@ class GlobalModelStore:
 
         for root, subdirs, _ in os.walk(self.path):
             if DIRECTORY_NAME_REFS in subdirs:
-                ref_dir = os.path.join(root, DIRECTORY_NAME_REFS)
+                ref_dir = Path(root).joinpath(DIRECTORY_NAME_REFS)
                 for ref_file_name in os.listdir(ref_dir):
-                    ref_file_path = os.path.join(ref_dir, ref_file_name)
+                    ref_file_path = ref_dir.joinpath(ref_file_name)
                     ref_file = migrate_reffile_to_refjsonfile(
-                        ref_file_path, os.path.join(root, DIRECTORY_NAME_SNAPSHOTS)
+                        ref_file_path, Path(root).joinpath(DIRECTORY_NAME_SNAPSHOTS)
                     )
                     if ref_file is None:
                         ref_file = RefJSONFile.from_path(ref_file_path)
 
-                    model_path = root.replace(self.path, "").replace(os.sep, "", 1)
+                    model_path = root.replace(f"{self.path}", "").replace(os.sep, "", 1)
 
                     parts = model_path.split(os.sep)
                     model_source = parts[0]
@@ -55,14 +56,14 @@ class GlobalModelStore:
                     collected_files = []
                     for snapshot_file in ref_file.files:
                         is_partially_downloaded = False
-                        snapshot_file_path = os.path.join(
-                            root, DIRECTORY_NAME_SNAPSHOTS, ref_file.hash, snapshot_file.name
+                        snapshot_file_path = Path(root).joinpath(
+                            DIRECTORY_NAME_SNAPSHOTS, ref_file.hash, snapshot_file.name
                         )
-                        if not os.path.exists(snapshot_file_path):
-                            blobs_partial_file_path = os.path.join(
-                                root, DIRECTORY_NAME_BLOBS, ref_file.hash + ".partial"
+                        if not snapshot_file_path.exists():
+                            blobs_partial_file_path = Path(root).joinpath(
+                                DIRECTORY_NAME_BLOBS, ref_file.hash + ".partial"
                             )
-                            if not os.path.exists(blobs_partial_file_path):
+                            if not blobs_partial_file_path.exists():
                                 continue
 
                             snapshot_file_path = blobs_partial_file_path

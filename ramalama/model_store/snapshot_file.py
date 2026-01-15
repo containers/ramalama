@@ -1,5 +1,6 @@
 import os
 from enum import IntEnum
+from pathlib import Path
 from typing import Dict, Sequence
 
 from ramalama.common import generate_sha256_binary, perror
@@ -36,8 +37,8 @@ class SnapshotFile:
         self.should_verify_checksum: bool = should_verify_checksum
         self.required: bool = required
 
-    def download(self, blob_file_path: str, snapshot_dir: str) -> str:
-        if not os.path.exists(blob_file_path):
+    def download(self, blob_file_path: Path, snapshot_dir: Path) -> str:
+        if not blob_file_path.exists():
             if self.should_show_progress:
                 perror(f"Downloading {self.name}")
             download_file(
@@ -50,7 +51,7 @@ class SnapshotFile:
             logger.debug(f"Using cached blob for {self.name} ({os.path.basename(blob_file_path)})")
         prefix = os.path.dirname(self.name)
         if prefix:
-            snapshot_dir = os.path.join(snapshot_dir, prefix)
+            snapshot_dir = snapshot_dir.joinpath(prefix)
         return os.path.relpath(blob_file_path, start=snapshot_dir)
 
 

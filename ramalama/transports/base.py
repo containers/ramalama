@@ -7,6 +7,7 @@ import sys
 import time
 from abc import ABC, abstractmethod
 from functools import cached_property
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
@@ -225,7 +226,7 @@ class Transport(TransportBase):
         safetensor_files = ref_file.safetensor_model_files
         if safetensor_files:
             # Safetensor models use directory mounts, not individual files
-            src_path = self.model_store.get_snapshot_directory_from_tag(self.model_tag)
+            src_path = str(self.model_store.get_snapshot_directory_from_tag(self.model_tag))
             if use_container or should_generate:
                 dest_path = MNT_DIR
             else:
@@ -239,16 +240,20 @@ class Transport(TransportBase):
             if use_container or should_generate:
                 dest_path = f"{MNT_DIR}/{model_file.name}"
             else:
-                dest_path = self.model_store.get_blob_file_path(model_file.hash)
-            src_path = self.model_store.get_blob_file_path(model_file.hash)
+                dest_path = str(self.model_store.get_blob_file_path(model_file.hash))
+            src_path = str(self.model_store.get_blob_file_path(model_file.hash))
             model_parts.append((src_path, dest_path))
 
         # Sort multi-part models by filename to ensure correct order
-        if len(model_parts) > 1 and any("-00001-of-" in name for _, name in model_parts):
+        if len(model_parts) > 1 and any("-00001-of-" in str(name) for _, name in model_parts):
             model_parts.sort(key=lambda x: x[1])
 
         return model_parts
 
+    #
+    # Keep returning str here due to the possible return value of oci:// which would be
+    # reduced to oci:/ by pathlib.Path.
+    #
     def _get_entry_model_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> str:
         """
         Returns the path to the model blob on the host if use_container and should_generate are both False.
@@ -279,7 +284,7 @@ class Transport(TransportBase):
         if safetensor_files:
             if use_container or should_generate:
                 return MNT_DIR
-            return self.model_store.get_snapshot_directory_from_tag(self.model_tag)
+            return str(self.model_store.get_snapshot_directory_from_tag(self.model_tag))
         elif not gguf_files:
             raise NoGGUFModelFileFound()
 
@@ -294,7 +299,7 @@ class Transport(TransportBase):
 
         if use_container or should_generate:
             return f"{MNT_DIR}/{model_file.name}"
-        return self.model_store.get_blob_file_path(model_file.hash)
+        return str(self.model_store.get_blob_file_path(model_file.hash))
 
     def _get_inspect_model_path(self, dry_run: bool) -> str:
         """Return a concrete file path for inspection.
@@ -304,16 +309,17 @@ class Transport(TransportBase):
             return "/path/to/model"
         if self.model_type == 'oci':
             return self._get_entry_model_path(False, False, dry_run)
-        safetensor_blob = self.model_store.get_safetensor_blob_path(self.model_tag, self.filename)
+        safetensor_blob_path = self.model_store.get_safetensor_blob_path(self.model_tag, self.filename)
+        safetensor_blob = None if safetensor_blob_path is None else str(safetensor_blob_path)
         return safetensor_blob or self._get_entry_model_path(False, False, dry_run)
 
-    def _get_mmproj_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[str]:
+    def _get_mmproj_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[Path]:
         """
         Returns the path to the mmproj blob on the host if use_container and should_generate are both False.
         Or returns the path to the mounted file inside a container.
         """
         if dry_run:
-            return ""
+            return Path("")
 
         if self.model_type == 'oci':
             return None
@@ -328,16 +334,16 @@ class Transport(TransportBase):
         # Use the first mmproj file
         mmproj_file = ref_file.mmproj_files[0]
         if use_container or should_generate:
-            return f"{MNT_DIR}/{mmproj_file.name}"
+            return Path(f"{MNT_DIR}/{mmproj_file.name}")
         return self.model_store.get_blob_file_path(mmproj_file.hash)
 
-    def _get_chat_template_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[str]:
+    def _get_chat_template_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> Optional[Path]:
         """
         Returns the path to the chat template blob on the host if use_container and should_generate are both False.
         Or returns the path to the mounted file inside a container.
         """
         if dry_run:
-            return ""
+            return Path("")
 
         if self.model_type == 'oci':
             return None
@@ -352,7 +358,7 @@ class Transport(TransportBase):
         # Use the last chat template file (may have been go template converted to jinja)
         chat_template_file = ref_file.chat_templates[-1]
         if use_container or should_generate:
-            return f"{MNT_DIR}/{chat_template_file.name}"
+            return Path(f"{MNT_DIR}/{chat_template_file.name}")
         return self.model_store.get_blob_file_path(chat_template_file.hash)
 
     def remove(self, args) -> bool:
@@ -445,7 +451,7 @@ class Transport(TransportBase):
         if self.draft_model:
             draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
             # Convert path to container-friendly format (handles Windows path conversion)
-            container_draft_model = get_container_mount_path(draft_model)
+            container_draft_model = get_container_mount_path(Path(draft_model))
             mount_opts = f"--mount=type=bind,src={container_draft_model},destination={MNT_FILE_DRAFT}"
             mount_opts += f",ro{self.engine.relabel()}"
             self.engine.add([mount_opts])
@@ -748,7 +754,7 @@ class Transport(TransportBase):
         compose.generate().write(output_dir)
 
     def inspect_metadata(self) -> Dict[str, Any]:
-        model_path = self._get_entry_model_path(False, False, False)
+        model_path = Path(self._get_entry_model_path(False, False, False))
         if GGUFInfoParser.is_model_gguf(model_path):
             return GGUFInfoParser.parse_metadata(model_path).data
         return {}
@@ -763,7 +769,10 @@ class Transport(TransportBase):
     ) -> Any:
         model_name = self.filename
         model_registry = self.type.lower()
-        model_path = self._get_inspect_model_path(dryrun)
+        model_path = Path(self._get_inspect_model_path(dryrun))
+        if not model_path.exists():
+            raise NoRefFileFound(model_name)
+
         if GGUFInfoParser.is_model_gguf(model_path):
             if not show_all_metadata and get_field == "":
                 gguf_info: GGUFModelInfo = GGUFInfoParser.parse(model_name, model_registry, model_path)
@@ -782,7 +791,7 @@ class Transport(TransportBase):
             safetensor_info: SafetensorModelInfo = SafetensorInfoParser.parse(model_name, model_registry, model_path)
             return safetensor_info.serialize(json=as_json, all=show_all)
 
-        return ModelInfoBase(model_name, model_registry, model_path).serialize(json=as_json)
+        return ModelInfoBase(model_name, model_registry, str(model_path)).serialize(json=as_json)
 
     def print_pull_message(self, model_name) -> None:
         model_name = trim_model_name(model_name)
