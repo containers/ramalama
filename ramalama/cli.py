@@ -24,7 +24,7 @@ try:
 except Exception:
     suppressCompleter = None
 
-from ramalama import engine
+from ramalama import common, engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.benchmarks.utilities import print_bench_results
 from ramalama.cli_arg_normalization import normalize_pull_arg
@@ -718,6 +718,7 @@ def info_cli(args: DefaultArgsType) -> None:
             "Names": shortnames.shortnames,
         },
         "Store": args.store,
+        "StoreUsage": common.store_disk_stats(args),
         "UseContainer": args.container,
         "Version": version(),
     }
