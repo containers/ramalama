@@ -116,7 +116,7 @@ spec:
       --security-opt label=disable \
       --security-opt unmask=/proc/* \
       --device /dev/net/tun \
-      -v /tmp \
+      -v /var/tmp:/tmp \
       \${EXTRA_ARGS[*]} \
       ${PODMAN_ENV[*]} \
       $TEST_IMAGE $TEST_CMD
