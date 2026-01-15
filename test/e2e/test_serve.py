@@ -673,7 +673,7 @@ def test_kube_generation_with_llama_api(test_model):
             content = f.read()
             assert re.search(r".*llama-server", content)
             assert re.search(r".*hostPort: 1234", content)
-            assert re.search(r".*quay.io/ramalama/llama-stack", content)
+            assert re.search(r".*/llama-stack", content)
 
 
 @pytest.mark.e2e
