@@ -5,7 +5,6 @@ import cmd
 import copy
 import itertools
 import json
-import os
 import signal
 import subprocess
 import sys
@@ -13,13 +12,24 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 
 from ramalama.arg_types import ChatArgsType
+from ramalama.chat_providers import ChatProvider, ChatRequestOptions
+from ramalama.chat_providers.openai import OpenAICompletionsChatProvider
+from ramalama.chat_utils import (
+    AssistantMessage,
+    ChatMessageType,
+    SystemMessage,
+    ToolMessage,
+    UserMessage,
+    stream_response,
+)
 from ramalama.common import perror
 from ramalama.config import CONFIG
-from ramalama.console import EMOJI, should_colorize
+from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
@@ -31,69 +41,6 @@ from ramalama.proxy_support import setup_proxy_support
 setup_proxy_support()
 
 
-def res(response, color):
-    color_default = ""
-    color_yellow = ""
-    if (color == "auto" and should_colorize()) or color == "always":
-        color_default = "\033[0m"
-        color_yellow = "\033[33m"
-
-    print("\r", end="")
-    assistant_response = ""
-    for line in response:
-        line = line.decode("utf-8").strip()
-        if line.startswith("data: {"):
-            choice = ""
-
-            json_line = json.loads(line[len("data: ") :])
-            if "choices" in json_line and json_line["choices"]:
-                choice = json_line["choices"][0]["delta"]
-            if "content" in choice:
-                choice = choice["content"]
-            else:
-                continue
-
-            if choice:
-                print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
-                assistant_response += choice
-
-    print("")
-    return assistant_response
-
-
-def default_prefix():
-    if not EMOJI:
-        return "> "
-
-    if CONFIG.prefix:
-        return CONFIG.prefix
-
-    engine = CONFIG.engine
-
-    if engine:
-        if os.path.basename(engine) == "podman":
-            return "🦭 > "
-
-        if os.path.basename(engine) == "docker":
-            return "🐋 > "
-
-    return "🦙 > "
-
-
-def add_api_key(args, headers=None):
-    # static analyzers suggest for dict, this is a safer way of setting
-    # a default value, rather than using the parameter directly
-    headers = headers or {}
-    if getattr(args, "api_key", None):
-        api_key_min = 20
-        if len(args.api_key) < api_key_min:
-            perror("Warning: Provided API key is invalid.")
-
-        headers["Authorization"] = f"Bearer {args.api_key}"
-
-    return headers
-
-
 @dataclass
 class ChatOperationalArgs:
     initial_connection: bool = False
@@ -102,18 +49,70 @@ class ChatOperationalArgs:
     monitor: "ServerMonitor | None" = None
 
 
+class Spinner:
+    def __init__(self, wait_time: float = 0.1):
+        self._stop_event: threading.Event = threading.Event()
+        self._thread: threading.Thread | None = None
+        self.wait_time = wait_time
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+        return False
+
+    def start(self) -> "Spinner":
+        if not sys.stdout.isatty():
+            return self
+
+        if self._thread is not None:
+            self.stop()
+
+        self._thread = threading.Thread(target=self._spinner_loop, daemon=True)
+        self._thread.start()
+        return self
+
+    def stop(self):
+        if self._thread is None:
+            return
+
+        self._stop_event.set()
+        self._thread.join(timeout=0.2)
+        perror("\r", end="", flush=True)
+        self._thread = None
+        self._stop_event = threading.Event()
+
+    def _spinner_loop(self):
+        frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+
+        for frame in itertools.cycle(frames):
+            if self._stop_event.is_set():
+                break
+            perror(f"\r{frame}", end="", flush=True)
+            self._stop_event.wait(self.wait_time)
+
+
 class RamaLamaShell(cmd.Cmd):
-    def __init__(self, args: ChatArgsType, operational_args: ChatOperationalArgs | None = None):
+    def __init__(
+        self,
+        args: ChatArgsType,
+        operational_args: ChatOperationalArgs | None = None,
+        provider: ChatProvider | None = None,
+    ):
         if operational_args is None:
             operational_args = ChatOperationalArgs()
 
         super().__init__()
-        self.conversation_history: list[dict] = []
+        self.conversation_history: list[ChatMessageType] = []
         self.args = args
         self.operational_args = operational_args
         self.request_in_process = False
         self.prompt = args.prefix
-        self.url = f"{args.url}/chat/completions"
+        self.provider = provider or OpenAICompletionsChatProvider(args.url, getattr(args, "api_key", None))
+        self.url = self.provider.build_url()
+
         self.prep_rag_message()
         self.mcp_agent: LLMAgent | None = None
         self.initialize_mcp()
@@ -131,7 +130,7 @@ class RamaLamaShell(cmd.Cmd):
 
     def _summarize_conversation(self):
         """Summarize the conversation history to prevent context growth."""
-        if len(self.conversation_history) < 4:
+        if len(self.conversation_history) < 10:
             # Need at least a few messages to summarize
             return
 
@@ -145,16 +144,14 @@ class RamaLamaShell(cmd.Cmd):
             return
 
         # Create a summarization prompt
-        conversation_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages_to_summarize])
-
-        summary_prompt = {
-            "role": "user",
-            "content": (
-                f"Please provide a concise summary of the following conversation, "
+        conversation_text = "\n".join([self._format_message_for_summary(msg) for msg in messages_to_summarize])
+        summary_prompt = UserMessage(
+            text=(
+                "Please provide a concise summary of the following conversation, "
                 f"preserving key information and context:\n\n{conversation_text}\n\n"
-                f"Provide only the summary, without any preamble."
-            ),
-        }
+                "Provide only the summary, without any preamble."
+            )
+        )
 
         # Make API call to get summary
         # Provide user feedback during summarization
@@ -167,12 +164,12 @@ class RamaLamaShell(cmd.Cmd):
                 summary = result['choices'][0]['message']['content']
 
                 # Rebuild conversation history with summary
-                new_history = []
+                new_history: list[ChatMessageType] = []
                 if first_msg:
                     new_history.append(first_msg)
 
                 # Add summary as a system message
-                new_history.append({"role": "system", "content": f"Previous conversation summary: {summary}"})
+                new_history.append(SystemMessage(text=f"Previous conversation summary: {summary}"))
 
                 # Add recent messages
                 new_history.extend(recent_msgs)
@@ -196,35 +193,42 @@ class RamaLamaShell(cmd.Cmd):
                 self._summarize_conversation()
                 self.message_count = 0  # Reset counter after summarization
 
-    def _make_api_request(self, messages, stream=True):
-        """Make an API request with the given messages.
+    def _history_snapshot(self) -> list[dict[str, str]]:
+        return [
+            {"role": msg.role, "content": self._format_message_for_summary(msg)} for msg in self.conversation_history
+        ]
 
-        Args:
-            messages: List of message dicts to send
-            stream: Whether to stream the response
+    def _format_message_for_summary(self, msg: ChatMessageType) -> str:
+        content = msg.text or ""
+        if isinstance(msg, AssistantMessage):
+            if msg.tool_calls:
+                content += f"\n[tool_calls: {', '.join(call.name for call in msg.tool_calls)}]"
 
-        Returns:
-            urllib.request.Request object
-        """
-        data = {
-            "stream": stream,
-            "messages": messages,
-        }
-        if getattr(self.args, "model", None):
-            data["model"] = self.args.model
-        if getattr(self.args, "temp", None):
-            data["temperature"] = float(self.args.temp)
-        if stream and getattr(self.args, "max_tokens", None):
-            data["max_completion_tokens"] = self.args.max_tokens
+        if isinstance(msg, ToolMessage):
+            content = f"\n[tool_response: {msg.text}]"
 
-        headers = add_api_key(self.args)
-        headers["Content-Type"] = "application/json"
+        return f"{msg.role}: {content}".strip()
 
-        return urllib.request.Request(
-            self.url,
-            data=json.dumps(data).encode('utf-8'),
-            headers=headers,
-            method="POST",
+    def _make_api_request(self, messages: Sequence[ChatMessageType], stream: bool = True):
+        """Create a provider request for arbitrary message lists."""
+        max_tokens = self.args.max_tokens if stream and getattr(self.args, "max_tokens", None) else None
+        options = self._build_request_options(stream=stream, max_tokens=max_tokens)
+        return self.provider.create_request(messages, options)
+
+    def _resolve_model_name(self) -> str | None:
+        if getattr(self.args, "runtime", None) == "mlx":
+            return None
+        return getattr(self.args, "model", None)
+
+    def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:
+        temperature = getattr(self.args, "temp", None)
+        if max_tokens is not None and max_tokens <= 0:
+            max_tokens = None
+        return ChatRequestOptions(
+            model=self._resolve_model_name(),
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=stream,
         )
 
     def initialize_mcp(self):
@@ -281,7 +285,7 @@ class RamaLamaShell(cmd.Cmd):
         """Determine if the request should be handled by MCP tools."""
         if not self.mcp_agent:
             return False
-        return self.mcp_agent.should_use_tools(content, self.conversation_history)
+        return self.mcp_agent.should_use_tools(content, self._history_snapshot())
 
     def _handle_mcp_request(self, content: str) -> str:
         """Handle a request using MCP tools (multi-tool capable, automatic)."""
@@ -325,8 +329,8 @@ class RamaLamaShell(cmd.Cmd):
             print(f"\n {r['tool']} -> {r['output']}")
 
         # Save to history
-        self.conversation_history.append({"role": "user", "content": f"/tool {question}"})
-        self.conversation_history.append({"role": "assistant", "content": str(responses)})
+        self.conversation_history.append(UserMessage(text=f"/tool {question}"))
+        self.conversation_history.append(AssistantMessage(text=str(responses)))
 
     def _select_tools(self):
         """Interactive multi-tool selection without prompting for arguments."""
@@ -395,41 +399,26 @@ class RamaLamaShell(cmd.Cmd):
                 # If streaming, _handle_mcp_request already printed output
                 if isinstance(response, str) and response.strip():
                     print(response)
-                self.conversation_history.append({"role": "user", "content": content})
-                self.conversation_history.append({"role": "assistant", "content": response})
+                self.conversation_history.append(UserMessage(text=content))
+                self.conversation_history.append(AssistantMessage(text=response))
                 self._check_and_summarize()
             return False
 
-        self.conversation_history.append({"role": "user", "content": content})
+        self.conversation_history.append(UserMessage(text=content))
         self.request_in_process = True
         response = self._req()
         if response:
-            self.conversation_history.append({"role": "assistant", "content": response})
+            self.conversation_history.append(AssistantMessage(text=response))
         self.request_in_process = False
         self._check_and_summarize()
 
     def _make_request_data(self):
-        data = {
-            "stream": True,
-            "messages": self.conversation_history,
-        }
-        if getattr(self.args, "temp", None):
-            data["temperature"] = float(self.args.temp)
-        if getattr(self.args, "max_tokens", None):
-            data["max_completion_tokens"] = self.args.max_tokens
-        # For MLX runtime, omit explicit model to allow server default ("default_model")
-        if getattr(self.args, "runtime", None) != "mlx" and self.args.model is not None:
-            data["model"] = self.args.model
-
-        json_data = json.dumps(data).encode("utf-8")
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        headers = add_api_key(self.args, headers)
-        logger.debug("Request: URL=%s, Data=%s, Headers=%s", self.url, json_data, headers)
-        request = urllib.request.Request(self.url, data=json_data, headers=headers, method="POST")
-
+        options = self._build_request_options(
+            stream=True,
+            max_tokens=getattr(self.args, "max_tokens", None),
+        )
+        request = self.provider.create_request(self.conversation_history, options)
+        logger.debug("Request: URL=%s, Data=%s, Headers=%s", request.full_url, request.data, request.headers)
         return request
 
     def _req(self):
@@ -442,28 +431,46 @@ class RamaLamaShell(cmd.Cmd):
         # Adjust timeout based on whether we're in initial connection phase
         max_timeout = 30 if getattr(self.args, "initial_connection", False) else 16
 
-        for c in itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']):
+        last_error: Exception | None = None
+
+        spinner = Spinner().start()
+
+        while True:
             try:
                 response = urllib.request.urlopen(request)
+                spinner.stop()
                 break
-            except Exception:
-                if sys.stdout.isatty():
-                    perror(f"\r{c}", end="", flush=True)
+            except urllib.error.HTTPError as http_err:
+                error_body = http_err.read().decode("utf-8", "ignore").strip()
+                message = f"HTTP {http_err.code}"
+                if error_body:
+                    message = f"{message}: {error_body}"
+                perror(f"\r{message}")
 
-                if total_time_slept > max_timeout:
-                    break
+                self.kills()
+                spinner.stop()
+                return None
+            except Exception as exc:
+                last_error = exc
 
-                total_time_slept += i
-                time.sleep(i)
+            if total_time_slept > max_timeout:
+                break
 
-                i = min(i * 2, 0.1)
+            total_time_slept += i
+            time.sleep(i)
 
+            i = min(i * 2, 0.1)
+
+        spinner.stop()
         if response:
-            return res(response, self.args.color)
+            return stream_response(response, self.args.color, self.provider)
 
         # Only show error and kill if not in initial connection phase
         if not getattr(self.args, "initial_connection", False):
-            perror(f"\rError: could not connect to: {self.url}")
+            error_suffix = ""
+            if last_error:
+                error_suffix = f" ({last_error})"
+            perror(f"\rError: could not connect to: {self.url}{error_suffix}")
             self.kills()
         else:
             logger.debug(f"Could not connect to: {self.url}")
@@ -721,12 +728,20 @@ def _report_server_exit(monitor):
         perror("Check server logs for more details about why the service exited.")
 
 
-def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None):
+def chat(
+    args: ChatArgsType,
+    operational_args: ChatOperationalArgs | None = None,
+    provider: ChatProvider | None = None,
+):
     if args.dryrun:
         assert args.ARGS is not None
         prompt = " ".join(args.ARGS)
         print(f"\nramalama chat --color {args.color} --prefix  \"{args.prefix}\" --url {args.url} {prompt}")
         return
+
+    if provider is None:
+        provider = OpenAICompletionsChatProvider(args.url, getattr(args, "api_key", None))
+
     # SIGALRM is Unix-only, skip keepalive timeout handling on Windows
     if getattr(args, "keepalive", False) and hasattr(signal, 'SIGALRM'):
         signal.signal(signal.SIGALRM, alarm_handler)
@@ -752,14 +767,12 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
     monitor.start()
     list_models = getattr(args, "list", False)
     if list_models:
-        url = f"{args.url}/models"
-        headers = add_api_key(args)
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req) as response:
-            data = json.loads(response.read())
-            ids = [model["id"] for model in data.get("data", [])]
-            for id in ids:
-                print(id)
+        for model_id in provider.list_models():
+            print(model_id)
+        monitor.stop()
+        if hasattr(signal, 'alarm'):
+            signal.alarm(0)
+        return
 
     # Ensure operational_args is initialized
     if operational_args is None:
@@ -770,7 +783,7 @@ def chat(args: ChatArgsType, operational_args: ChatOperationalArgs | None = None
 
     successful_exit = True
     try:
-        shell = RamaLamaShell(args, operational_args)
+        shell = RamaLamaShell(args, operational_args, provider=provider)
         if shell.handle_args(monitor):
             return
 

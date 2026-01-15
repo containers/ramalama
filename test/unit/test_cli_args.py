@@ -51,6 +51,7 @@ parser = get_parser()
 
 special_cases = {
     "api_key": "api-key",
+    "max_tokens": "max-tokens",
 }
 
 
@@ -85,8 +86,12 @@ def args_to_cli_args(args_obj, subcommand: str | None, special_cases: dict | Non
             cli_args.extend(value)
             continue
 
-        # Otherwise, add as --flag value
-        cli_args.extend([flag, str(value)])
+        # Otherwise, add as --flag value, guarding negative values which argparse would treat as options.
+        value_str = str(value)
+        if value_str.startswith("-"):
+            cli_args.append(f"{flag}={value_str}")
+        else:
+            cli_args.extend([flag, value_str])
 
     return cli_args
 

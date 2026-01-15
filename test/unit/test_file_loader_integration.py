@@ -5,6 +5,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ramalama.chat import RamaLamaShell, chat
+from ramalama.chat_utils import ImageURLPart
+
+
+def _text_content(message):
+    return message.text or ""
 
 
 class TestFileUploadChatIntegration:
@@ -31,10 +36,11 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message["role"] == "system"
-            assert "This is test content for chat input" in system_message["content"]
-            assert f"<!--start_document {tmp_file.name}-->" in system_message["content"]
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            content = message.text or ""
+            assert "This is test content for chat input" in content
+            assert f"<!--start_document {tmp_file.name}-->" in content
 
     @patch('urllib.request.urlopen')
     def test_chat_with_file_input_directory(self, mock_urlopen):
@@ -62,13 +68,14 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message["role"] == "system"
-            assert "Text file content" in system_message["content"]
-            assert "# Markdown Content" in system_message["content"]
-            assert "test.txt" in system_message["content"]
-            assert "readme.md" in system_message["content"]
-            assert "<!--start_document" in system_message["content"]
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            content = message.text or ""
+            assert "Text file content" in content
+            assert "# Markdown Content" in content
+            assert "test.txt" in content
+            assert "readme.md" in content
+            assert "<!--start_document" in content
 
     @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     @patch('urllib.request.urlopen')
@@ -125,11 +132,11 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message["role"] == "system"
-            assert f"<!--start_document {tmp_file.name}-->" in system_message["content"]
-            # Empty file should still have the delimiter but no content
-            assert system_message["content"].endswith(f"\n<!--start_document {tmp_file.name}-->\n")
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            text = _text_content(message)
+            assert f"<!--start_document {tmp_file.name}-->" in text
+            assert text.endswith(f"\n<!--start_document {tmp_file.name}-->\n")
 
     @patch('urllib.request.urlopen')
     def test_chat_with_file_input_unicode_content(self, mock_urlopen):
@@ -153,10 +160,11 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message["role"] == "system"
-            assert unicode_content in system_message["content"]
-            assert f"<!--start_document {tmp_file.name}-->" in system_message["content"]
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            text = message.text or ""
+            assert unicode_content in text
+            assert f"<!--start_document {tmp_file.name}-->" in text
 
     @patch('urllib.request.urlopen')
     def test_chat_with_file_input_mixed_content_types(self, mock_urlopen):
@@ -188,15 +196,16 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message["role"] == "system"
-            assert "English content" in system_message["content"]
-            assert '{"key": "value", "number": 42}' in system_message["content"]
-            assert "setting: enabled" in system_message["content"]
-            assert "values:" in system_message["content"]
-            assert "english.txt" in system_message["content"]
-            assert "data.json" in system_message["content"]
-            assert "config.yaml" in system_message["content"]
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            text = _text_content(message)
+            assert "English content" in text
+            assert '{"key": "value", "number": 42}' in text
+            assert "setting: enabled" in text
+            assert "values:" in text
+            assert "english.txt" in text
+            assert "data.json" in text
+            assert "config.yaml" in text
 
     @patch('urllib.request.urlopen')
     def test_chat_with_file_input_no_input_specified(self, mock_urlopen):
@@ -237,10 +246,11 @@ class TestFileUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message["role"] == "system"
-            assert "File content" in system_message["content"]
-            assert f"<!--start_document {tmp_file.name}-->" in system_message["content"]
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            text = _text_content(message)
+            assert "File content" in text
+            assert f"<!--start_document {tmp_file.name}-->" in text
 
     def test_chat_function_with_rag_and_dryrun(self):
         """Test that chat function works correctly with rag and dryrun."""
@@ -290,14 +300,13 @@ class TestImageUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message["role"] == "system"
-            assert isinstance(system_message["content"], list)
-            assert len(system_message["content"]) == 1
-            assert 'image_url' in system_message["content"][0]
-            assert 'url' in system_message["content"][0]["image_url"]
-            assert "data:image/" in system_message["content"][0]["image_url"]["url"]
-            assert "base64," in system_message["content"][0]["image_url"]["url"]
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            assert len(message.attachments) == 1
+            part = message.attachments[0]
+            assert isinstance(part, ImageURLPart)
+            assert part.url.startswith("data:image/")
+            assert "base64," in part.url
 
     @patch('urllib.request.urlopen')
     def test_chat_with_image_input_directory(self, mock_urlopen):
@@ -325,14 +334,13 @@ class TestImageUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message["role"] == "system"
-            assert isinstance(system_message["content"], list)
-            assert len(system_message["content"]) == 2
-            assert all('image_url' in item for item in system_message["content"])
-            assert all('url' in item["image_url"] for item in system_message["content"])
-            assert all("data:image/" in item["image_url"]["url"] for item in system_message["content"])
-            assert all("base64," in item["image_url"]["url"] for item in system_message["content"])
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            assert len(message.attachments) == 2
+            for part in message.attachments:
+                assert isinstance(part, ImageURLPart)
+                assert "data:image/" in part.url
+                assert "base64," in part.url
 
     @patch('urllib.request.urlopen')
     def test_chat_with_image_input_mixed_file_types(self, mock_urlopen):
@@ -359,30 +367,22 @@ class TestImageUploadChatIntegration:
             shell = RamaLamaShell(mock_args)
 
             # Check that two system messages were added to conversation history
-            system_messages = [msg for msg in shell.conversation_history if msg["role"] == "system"]
-            assert len(system_messages) == 2
+            user_messages = [msg for msg in shell.conversation_history if msg.role == "user"]
+            assert len(user_messages) == 2
 
             # Determine which message is text and which is image
-            if isinstance(system_messages[0]["content"], str):
-                text_msg = system_messages[0]
-                image_msg = system_messages[1]
+            if user_messages[0].attachments:
+                image_msg = user_messages[0]
+                text_msg = user_messages[1]
             else:
-                text_msg = system_messages[1]
-                image_msg = system_messages[0]
+                text_msg = user_messages[0]
+                image_msg = user_messages[1]
 
-            # Assert text message content
-            assert "Text content" in text_msg["content"]
-            assert "readme.txt" in text_msg["content"]
+            text = _text_content(text_msg)
+            assert "Text content" in text
+            assert "readme.txt" in text
 
-            # Assert image message content
-            assert isinstance(image_msg["content"], list)
-            assert any(
-                isinstance(item, dict)
-                and "image_url" in item
-                and "url" in item["image_url"]
-                and "data:image/" in item["image_url"]["url"]
-                for item in image_msg["content"]
-            )
+            assert any(isinstance(part, ImageURLPart) for part in image_msg.attachments)
 
     @pytest.mark.filterwarnings("ignore:.*Unsupported file types detected!.*")
     @patch('urllib.request.urlopen')
@@ -434,11 +434,10 @@ class TestImageUploadChatIntegration:
 
             # Check that the system message was added to conversation history
             assert len(shell.conversation_history) == 1
-            system_message = shell.conversation_history[0]
-            assert system_message["role"] == "system"
-            assert isinstance(system_message["content"], list)
-            assert len(system_message["content"]) == 2
-            assert all('image_url' in item for item in system_message["content"])
-            assert all('url' in item["image_url"] for item in system_message["content"])
-            assert all("data:image/" in item["image_url"]["url"] for item in system_message["content"])
-            assert all("base64," in item["image_url"]["url"] for item in system_message["content"])
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            assert len(message.attachments) == 2
+            for part in message.attachments:
+                assert isinstance(part, ImageURLPart)
+                assert "data:image/" in part.url
+                assert "base64," in part.url
