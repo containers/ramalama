@@ -88,6 +88,12 @@ spec:
 
       cat > scripts/test.sh <<SCRIPTEOF
       #!/bin/bash -ex
+
+      df -h
+      du -sh /var/tmp
+      podman ps
+      podman image list
+
       EXTRA_ARGS=()
       if [ -f /etc/cdi/nvidia.yaml ]; then
         echo "Found NVIDIA config, enabling CDI"
@@ -137,6 +143,11 @@ spec:
         scripts/test.sh
         log End local exec
       fi
+
+      df -h
+      du -sh /var/tmp
+      podman ps
+      podman image list
 
       jq -jnc '{result: "SUCCESS", timestamp: now | todateiso8601, failures: 0, successes: 1, warnings: 0}' | tee "$RESULTS_TEST_OUTPUT_PATH"
       echo
