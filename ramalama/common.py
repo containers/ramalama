@@ -15,6 +15,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from functools import lru_cache
+from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, TypedDict, cast, get_args
 
 import yaml
@@ -117,7 +118,7 @@ def available(cmd: str) -> bool:
 
 def quoted(arr) -> str:
     """Return string with quotes around elements containing spaces."""
-    return " ".join(['"' + element + '"' if ' ' in element else element for element in arr])
+    return " ".join(['"' + s + '"' if ' ' in s else s for element in arr for s in [str(element)]])
 
 
 def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
@@ -251,25 +252,25 @@ def generate_sha256(to_hash: str, with_sha_prefix: bool = True) -> str:
     return generate_sha256_binary(to_hash.encode("utf-8"), with_sha_prefix)
 
 
-def verify_checksum(filename: str) -> bool:
+def verify_checksum(filepath: Path) -> bool:
     """
     Verifies if the SHA-256 checksum of a file matches the checksum provided in
-    the filename.
+    the file path.
 
     Args:
-    filename (str): The filename containing the checksum prefix
+    filepath (Path): The filen path containing the checksum prefix
                     (e.g., "sha256:<checksum>")
 
     Returns:
     bool: True if the checksum matches, False otherwise.
     """
 
-    if not os.path.exists(filename):
+    if not filepath.exists():
         return False
 
     # Check if the filename starts with "sha256:" or "sha256-" and extract the checksum from filename
     expected_checksum = ""
-    fn_base = os.path.basename(filename)
+    fn_base = filepath.name if filepath.is_file() else ""
     if fn_base.startswith("sha256:"):
         expected_checksum = fn_base.split(":")[1]
     elif fn_base.startswith("sha256-"):
@@ -282,7 +283,7 @@ def verify_checksum(filename: str) -> bool:
 
     # Calculate the SHA-256 checksum of the file contents
     sha256_hash = hashlib.sha256()
-    with open(filename, "rb") as f:
+    with open(filepath, "rb") as f:
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
 

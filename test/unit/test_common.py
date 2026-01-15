@@ -1,4 +1,3 @@
-import os
 import shutil
 import subprocess
 from contextlib import ExitStack
@@ -81,11 +80,11 @@ def test_verify_checksum(
     if ":" in input_file_name and platform == "win32":
         return
 
-    full_dir_path = os.path.join(Path(__file__).parent, "verify_checksum")
-    file_path = os.path.join(full_dir_path, input_file_name)
+    full_dir_path = Path(__file__).parent / "verify_checksum"
+    file_path = full_dir_path / input_file_name
 
     try:
-        os.makedirs(full_dir_path, exist_ok=True)
+        full_dir_path.mkdir(exist_ok=True, parents=True)
         with open(file_path, "w") as f:
             f.write(content)
 

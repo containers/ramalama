@@ -5,7 +5,7 @@ import platform
 from pathlib import Path, PureWindowsPath
 
 
-def normalize_host_path_for_container(host_path: str) -> str:
+def normalize_host_path_for_container(host_path: Path) -> Path:
     """
     Convert a host filesystem path to a format suitable for container volume mounts.
 
@@ -35,22 +35,22 @@ def normalize_host_path_for_container(host_path: str) -> str:
     # Docker Desktop for Windows expects paths in the format /c/Users/... instead of C:\Users\...
 
     # First, resolve symlinks and make the path absolute.
-    path = Path(host_path).resolve()
+    path = host_path.resolve()
 
     # Handle UNC paths to container filesystem
     # e.g if the model store is placed on the podman machine VM to reduce copying
     # \\wsl.localhost\podman-machine-default\home\user\.local\share\ramalama\store
     # NOTE: UNC paths cannot be accessed implicitly from the container, would need to smb mount
     if path.drive.startswith("\\\\"):
-        return '/' + path.relative_to(path.drive).as_posix()
+        return Path('/' + path.relative_to(path.drive).as_posix())
 
     if not path.drive:
-        return path.as_posix()
+        return Path(path.as_posix())
 
     # Handle paths with drive letters
     drive_letter = path.drive[0].lower()
     # path.as_posix() on Windows is 'C:/Users/...', so we partition on ':' and take the rest.
-    return f"/{drive_letter}{path.as_posix().partition(':')[2]}"
+    return Path(f"/{drive_letter}{path.as_posix().partition(':')[2]}")
 
 
 def is_windows_absolute_path(path: str) -> bool:
@@ -69,7 +69,7 @@ def is_windows_absolute_path(path: str) -> bool:
     return PureWindowsPath(path).is_absolute()
 
 
-def resolve_real_path(path: str) -> str:
+def resolve_real_path(path: Path) -> Path:
     """
     Resolve a path to its real absolute path, handling symlinks.
 
@@ -82,10 +82,10 @@ def resolve_real_path(path: str) -> str:
     Returns:
         Absolute path with symlinks resolved
     """
-    return os.path.realpath(path)
+    return Path(os.path.realpath(path))
 
 
-def get_container_mount_path(host_path: str) -> str:
+def get_container_mount_path(host_path: Path) -> Path:
     """
     Get the properly formatted path for use in container mount arguments.
 
@@ -110,7 +110,7 @@ def get_container_mount_path(host_path: str) -> str:
     return normalize_host_path_for_container(real_path)
 
 
-def create_file_link(src: str, dst: str) -> None:
+def create_file_link(src: Path, dst: Path) -> None:
     """
     Create a link from dst to src using the best available method for the platform.
 
@@ -134,15 +134,15 @@ def create_file_link(src: str, dst: str) -> None:
         - Hardlinks share the same inode, so deleting one doesn't affect the other
         - On Windows, hardlinks are preferred over symlinks for file operations
     """
-    if not os.path.exists(src):
+    if not src.exists():
         raise FileNotFoundError(f"Source file does not exist: {src}")
 
     # Ensure destination directory exists
-    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    dst.parent.mkdir(exist_ok=True, parents=True)
 
     # Remove existing destination if it exists
-    if os.path.exists(dst) or os.path.islink(dst):
-        os.unlink(dst)
+    if dst.exists() or dst.is_symlink():
+        dst.unlink()
 
     # Strategy 1: Try hardlink first (best for Windows, works without admin)
     try:

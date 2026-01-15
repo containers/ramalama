@@ -1,6 +1,7 @@
 import io
 import struct
 from enum import IntEnum
+from pathlib import Path
 from typing import Any, Dict, cast
 
 from ramalama.endian import GGUFEndian
@@ -112,7 +113,7 @@ GGUF_NUMBER_FORMATS: list[GGUFValueType] = [
 
 class GGUFInfoParser:
     @staticmethod
-    def is_model_gguf(model_path: str) -> bool:
+    def is_model_gguf(model_path: Path) -> bool:
         try:
             with open(model_path, "rb") as model_file:
                 magic_number = GGUFInfoParser.read_string(model_file, GGUFEndian.LITTLE, 4)
@@ -178,7 +179,7 @@ class GGUFInfoParser:
         return value
 
     @staticmethod
-    def get_model_endianness(model_path: str) -> GGUFEndian:
+    def get_model_endianness(model_path: Path) -> GGUFEndian:
         # Pin model endianness to Little Endian by default.
         # Models downloaded via HuggingFace are majority Little Endian.
         model_endianness = GGUFEndian.LITTLE
@@ -205,7 +206,7 @@ class GGUFInfoParser:
         return metadata
 
     @staticmethod
-    def parse_metadata(model_path: str) -> GGUFModelMetadata:
+    def parse_metadata(model_path: Path) -> GGUFModelMetadata:
         model_endianness = GGUFInfoParser.get_model_endianness(model_path)
 
         with open(model_path, "rb") as model:
@@ -220,7 +221,7 @@ class GGUFInfoParser:
             return GGUFModelMetadata(GGUFInfoParser._parse_metadata(model, model_endianness))
 
     @staticmethod
-    def parse(model_name: str, model_registry: str, model_path: str) -> GGUFModelInfo:
+    def parse(model_name: str, model_registry: str, model_path: Path) -> GGUFModelInfo:
         model_endianness = GGUFInfoParser.get_model_endianness(model_path)
 
         with open(model_path, "rb") as model:
@@ -249,5 +250,5 @@ class GGUFInfoParser:
                 tensors.append(Tensor(name, n_dimensions, dimensions, tensor_type.name, offset))
 
             return GGUFModelInfo(
-                model_name, model_registry, model_path, gguf_version, metadata, tensors, model_endianness
+                model_name, model_registry, str(model_path), gguf_version, metadata, tensors, model_endianness
             )

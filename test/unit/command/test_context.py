@@ -116,4 +116,4 @@ def test_ramalama_model_context_without_draft_model():
         dry_run=True,
     )
 
-    assert ctx.draft_model_path == ""
+    assert ctx.draft_model_path is None

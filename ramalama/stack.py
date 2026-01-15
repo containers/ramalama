@@ -1,5 +1,6 @@
 import os
 import platform
+from pathlib import Path
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
@@ -60,10 +61,10 @@ class Stack:
         return volume_mounts
 
     def _gen_volumes(self):
-        host_model_path = normalize_host_path_for_container(self.model._get_entry_model_path(False, False, False))
+        host_model_path = normalize_host_path_for_container(Path(self.model._get_entry_model_path(False, False, False)))
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
-            host_model_path = '/mnt' + host_model_path
+            host_model_path = f"/mnt{host_model_path}"
         volumes = f"""
       - hostPath:
           path: {host_model_path}
