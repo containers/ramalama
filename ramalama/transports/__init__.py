@@ -1,6 +1,6 @@
 from .huggingface import Huggingface, HuggingfaceRepository
 from .modelscope import ModelScope, ModelScopeRepository
-from .oci import OCI
+from .oci.oci import OCI
 from .ollama import Ollama, OllamaRepository
 from .rlcr import RamalamaContainerRegistry
 from .url import URL

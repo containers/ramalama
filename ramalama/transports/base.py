@@ -6,11 +6,11 @@ import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
-from functools import cached_property
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, TypeGuard
 
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
+    from ramalama.transports.oci.oci import OCI
 
 import ramalama.chat as chat
 from ramalama.common import (
@@ -72,6 +72,10 @@ class NoRefFileFound(Exception):
 
     def __str__(self):
         return f"No ref file found for '{self.model}'. Please pull model."
+
+
+def is_oci(self) -> TypeGuard["OCI"]:
+    return self.model_type == "oci"
 
 
 def trim_model_name(model):
@@ -156,10 +160,6 @@ class Transport(TransportBase):
 
         self.default_image = accel_image(CONFIG)
         self.draft_model: Transport | None = None
-
-    @cached_property
-    def artifact(self) -> bool:
-        return self.is_artifact()
 
     def extract_model_identifiers(self):
         model_name = self.model
@@ -257,16 +257,9 @@ class Transport(TransportBase):
         if dry_run:
             return "/path/to/model"
 
-        if self.model_type == 'oci':
+        if is_oci(self):
             if use_container or should_generate:
-                if getattr(self, "artifact", False):
-                    artifact_name_method = getattr(self, "artifact_name", None)
-                    if artifact_name_method:
-                        try:
-                            return f"{MNT_DIR}/{artifact_name_method()}"
-                        except subprocess.CalledProcessError:
-                            pass
-                return f"{MNT_DIR}/model.file"
+                return self.entrypoint_path()
             else:
                 return f"oci://{self.model}"
 
@@ -416,12 +409,12 @@ class Transport(TransportBase):
             return
 
         if self.model_type == 'oci':
-            if self.engine.use_podman:
+            if self.engine.use_podman or self.strategy.kind == "artifact":
                 mount_cmd = self.mount_cmd()
             elif self.engine.use_docker:
                 output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
                 volume = populate_volume_from_image(self, args, os.path.basename(output_filename))
-                mount_cmd = f"--mount=type=volume,src={volume},dst={MNT_DIR},readonly"
+                mount_cmd = self.mount_cmd(volume, MNT_DIR)
             else:
                 raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
             self.engine.add([mount_cmd])
@@ -718,12 +711,19 @@ class Transport(TransportBase):
         try:
             self.execute_command(cmd, args)
         except Exception as e:
-            self._cleanup_server_process(args.server_process)
+            self._cleanup_server_process(getattr(args, 'server_process', None))
             raise e
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None):
         quadlet = Quadlet(
-            self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
+            self.model_name,
+            model_paths,
+            chat_template_paths,
+            mmproj_paths,
+            args,
+            exec_args,
+            self.is_artifact,
+            model_parts,
         )
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
@@ -731,16 +731,16 @@ class Transport(TransportBase):
     def quadlet_kube(
         self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None
     ):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
         kube.generate().write(output_dir)
 
         quadlet = Quadlet(
-            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
+            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact, model_parts
         )
         quadlet.kube().write(output_dir)
 
     def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
         kube.generate().write(output_dir)
 
     def compose(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
@@ -790,6 +790,7 @@ class Transport(TransportBase):
         perror(f"Downloading {model_name} ...")
         perror(f"Trying to pull {model_name} ...")
 
+    @property
     def is_artifact(self) -> bool:
         return False
 
