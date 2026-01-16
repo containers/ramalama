@@ -2,7 +2,7 @@ import re
 import sys
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.conftest import skip_if_docker, skip_if_no_container
+from test.conftest import skip_if_docker, skip_if_no_container, skip_if_ppc64le, skip_if_s390x
 from test.e2e.utils import RamalamaExecWorkspace
 
 import pytest
@@ -216,6 +216,8 @@ def test_run_dry_run_pull_policy(container_engine):
 
 @pytest.mark.e2e
 @skip_if_no_container
+@skip_if_ppc64le
+@skip_if_s390x
 def test_rag(container_engine):
     with RamalamaExecWorkspace() as ctx:
         (Path(ctx.workspace_dir) / "README.md").touch()

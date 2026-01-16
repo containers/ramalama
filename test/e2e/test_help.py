@@ -85,7 +85,8 @@ def test_help_output(subcommand):
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("command", ["run", "bench", "serve"], ids=lambda x: f"ramalama {x}")
-def test_default_image(command):
+def test_default_image(monkeypatch, command):
+    monkeypatch.delenv("RAMALAMA_DEFAULT_IMAGE", raising=False)
     result = check_output(["ramalama", command, "--help"])
     match = DEFAULT_IMAGE_PATTERN.search(result.replace("\n", ""))
 
@@ -161,7 +162,8 @@ def test_default_container_engine_by_env_variable():
 
 
 @pytest.mark.e2e
-def test_default_container_engine_by_config():
+def test_default_container_engine_by_config(monkeypatch):
+    monkeypatch.delenv("RAMALAMA_CONTAINER_ENGINE", raising=False)
     engine_name = "podman-test"
     config = f"""
     [ramalama]

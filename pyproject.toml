@@ -198,6 +198,7 @@ package = "wheel"
 extras = ["dev", "cov"]
 pass_env = [
   "GITHUB_ACTIONS",
+  "RAMALAMA_*",
 ]
 commands = [
   [

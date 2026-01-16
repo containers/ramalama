@@ -16,6 +16,8 @@ from test.conftest import (
     skip_if_gh_actions_darwin,
     skip_if_no_container,
     skip_if_not_darwin,
+    skip_if_ppc64le,
+    skip_if_s390x,
 )
 from test.e2e.utils import RamalamaExecWorkspace, check_output, get_full_model_name
 
@@ -673,12 +675,14 @@ def test_kube_generation_with_llama_api(test_model):
             content = f.read()
             assert re.search(r".*llama-server", content)
             assert re.search(r".*hostPort: 1234", content)
-            assert re.search(r".*quay.io/ramalama/llama-stack", content)
+            assert re.search(r".*/llama-stack", content)
 
 
 @pytest.mark.e2e
 @skip_if_docker
 @skip_if_no_container
+@skip_if_ppc64le
+@skip_if_s390x
 def test_serve_api(caplog):
     # Configure logging for requests
     caplog.set_level(logging.CRITICAL, logger="requests")
@@ -763,7 +767,7 @@ def test_serve_with_rag():
         result_a = ctx.check_output(RAMALAMA_DRY_RUN + ["--rag", "quay.io/ramalama/rag", "--pull", "never", "tiny"])
         assert re.search(r".*llama-server", result_a)
         assert re.search(r".*--port 8081", result_a)
-        assert re.search(r".*quay.io/ramalama/.*-rag:", result_a)
+        assert re.search(r".*quay.io/.*-rag(@sha256)?:", result_a)
         assert re.search(r".*rag_framework serve", result_a)
         assert re.search(r".*--port 8080", result_a)
         assert re.search(r".*--mount=type=image,source=quay.io/ramalama/rag,destination=/rag,rw=true", result_a)

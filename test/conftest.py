@@ -117,6 +117,8 @@ skip_if_no_ollama = pytest.mark.skipif(shutil.which("ollama") is None, reason="o
 
 skip_if_big_endian_machine = pytest.mark.skipif(sys.byteorder == "big", reason="skip big-endian architecture")
 skip_if_little_endian_machine = pytest.mark.skipif(sys.byteorder == "little", reason="skip little-endian architecture")
+skip_if_ppc64le = pytest.mark.skipif(platform.machine() == "ppc64le", reason="skip on ppc64le")
+skip_if_s390x = pytest.mark.skipif(platform.machine() == "s390x", reason="skip on s390x")
 
 skip_if_podman_too_old = pytest.mark.skipif(
     not is_podman_version_at_least(5, 7, 0), reason="requires podman >= 5.7.0 for artifact support"
