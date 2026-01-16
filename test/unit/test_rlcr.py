@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import tempfile
@@ -7,7 +8,9 @@ from unittest.mock import Mock, patch
 import pytest
 
 from ramalama.arg_types import StoreArgs
+from ramalama.oci_tools import OciRef
 from ramalama.transports.oci import resolver as oci_resolver
+from ramalama.transports.oci import spec as oci_spec
 from ramalama.transports.oci import strategies as oci_strategies
 from ramalama.transports.oci.oci_artifact import download_oci_artifact
 from ramalama.transports.rlcr import RamalamaContainerRegistry, find_model_file_in_image
@@ -181,13 +184,27 @@ class TestOCIArtifactDownload:
 
             def get_manifest(self):
                 manifest = {
-                    "artifactType": "application/vnd.cnai.model.manifest.v1+json",
+                    "artifactType": oci_spec.CNAI_ARTIFACT_TYPE,
                     "blobs": [
                         {
                             "mediaType": "application/octet-stream",
                             "digest": digest,
                             "size": 4,
-                            "annotations": {"org.opencontainers.image.title": "gemma-3-270m-it-Q6_K.gguf"},
+                            "annotations": {
+                                oci_spec.LAYER_ANNOTATION_FILEPATH: "gemma-3-270m-it-Q6_K.gguf",
+                                oci_spec.LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED: "true",
+                                oci_spec.LAYER_ANNOTATION_FILE_METADATA: json.dumps(
+                                    {
+                                        "name": "gemma-3-270m-it-Q6_K.gguf",
+                                        "mode": 0o644,
+                                        "uid": 0,
+                                        "gid": 0,
+                                        "size": 4,
+                                        "mtime": "2024-01-01T00:00:00Z",
+                                        "typeflag": ord("0"),
+                                    }
+                                ),
+                            },
                         }
                     ],
                 }
@@ -202,8 +219,7 @@ class TestOCIArtifactDownload:
 
         with patch('ramalama.transports.oci.oci_artifact.OCIRegistryClient', FakeClient):
             result = download_oci_artifact(
-                registry="rlcr.io",
-                reference="ramalama/gemma3-270m:gguf",
+                reference="rlcr.io/ramalama/gemma3-270m:gguf",
                 model_store=store,
                 model_tag=rlcr_model.model_tag,
             )
@@ -218,4 +234,4 @@ class TestOCIArtifactDownload:
         new_model = RamalamaContainerRegistry(
             model="gemma3-270m", model_store_path=args.store, conman="podman", ignore_stderr=False
         )
-        assert oci_resolver.model_store_has_snapshot(new_model.model_store, f"oci://{new_model.model}")
+        assert oci_resolver.model_store_has_snapshot(new_model.model_store, OciRef.from_ref_string(new_model.model))

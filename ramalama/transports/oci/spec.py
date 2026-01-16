@@ -1,35 +1,54 @@
+import json
+import os
+import stat
+import tarfile
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 
-from ramalama.annotations import AnnotationTitle
+# CNAI_ARTIFACT_TYPE is the media type for a model artifact manifest.
+CNAI_ARTIFACT_TYPE = "application/vnd.cncf.model.manifest.v1+json"
 
-CNAI_ARTIFACT_TYPE = "application/vnd.cnai.model.manifest.v1+json"
-CNAI_CONFIG_MEDIA_TYPE = "application/vnd.cnai.model.config.v1+json"
+# CNAI_CONFIG_MEDIA_TYPE is the media type for a model config object.
+CNAI_CONFIG_MEDIA_TYPE = "application/vnd.cncf.model.config.v1+json"
+
+# OCI_MANIFEST_MEDIA_TYPE is the standard OCI image manifest media type.
 OCI_MANIFEST_MEDIA_TYPE = "application/vnd.oci.image.manifest.v1+json"
 
-# Allow the CNAI layer media types from the model format spec.
+# LAYER_ANNOTATION_FILEPATH specifies the file path of the layer (string).
+LAYER_ANNOTATION_FILEPATH = "org.cncf.model.filepath"
+
+# LAYER_ANNOTATION_FILE_METADATA specifies file metadata JSON for the layer (string).
+LAYER_ANNOTATION_FILE_METADATA = "org.cncf.model.file.metadata+json"
+
+# LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED indicates media type classification is untested (string).
+LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED = "org.cncf.model.file.mediatype.untested"
+
+# ALLOWED_LAYER_MEDIA_TYPES contains CNAI layer media types from the model format spec.
 ALLOWED_LAYER_MEDIA_TYPES = {
-    "application/vnd.cnai.model.weight.v1.raw",
-    "application/vnd.cnai.model.weight.v1.tar",
-    "application/vnd.cnai.model.weight.v1.tar+gzip",
-    "application/vnd.cnai.model.weight.v1.tar+zstd",
-    "application/vnd.cnai.model.weight.config.v1.raw",
-    "application/vnd.cnai.model.weight.config.v1.tar",
-    "application/vnd.cnai.model.weight.config.v1.tar+gzip",
-    "application/vnd.cnai.model.weight.config.v1.tar+zstd",
-    "application/vnd.cnai.model.doc.v1.raw",
-    "application/vnd.cnai.model.doc.v1.tar",
-    "application/vnd.cnai.model.doc.v1.tar+gzip",
-    "application/vnd.cnai.model.doc.v1.tar+zstd",
-    "application/vnd.cnai.model.code.v1.raw",
-    "application/vnd.cnai.model.code.v1.tar",
-    "application/vnd.cnai.model.code.v1.tar+gzip",
-    "application/vnd.cnai.model.code.v1.tar+zstd",
-    "application/vnd.cnai.model.dataset.v1.raw",
-    "application/vnd.cnai.model.dataset.v1.tar",
-    "application/vnd.cnai.model.dataset.v1.tar+gzip",
-    "application/vnd.cnai.model.dataset.v1.tar+zstd",
+    "application/vnd.cncf.model.weight.v1.raw",
+    "application/vnd.cncf.model.weight.v1.tar",
+    "application/vnd.cncf.model.weight.v1.tar+gzip",
+    "application/vnd.cncf.model.weight.v1.tar+zstd",
+    "application/vnd.cncf.model.weight.config.v1.raw",
+    "application/vnd.cncf.model.weight.config.v1.tar",
+    "application/vnd.cncf.model.weight.config.v1.tar+gzip",
+    "application/vnd.cncf.model.weight.config.v1.tar+zstd",
+    "application/vnd.cncf.model.doc.v1.raw",
+    "application/vnd.cncf.model.doc.v1.tar",
+    "application/vnd.cncf.model.doc.v1.tar+gzip",
+    "application/vnd.cncf.model.doc.v1.tar+zstd",
+    "application/vnd.cncf.model.code.v1.raw",
+    "application/vnd.cncf.model.code.v1.tar",
+    "application/vnd.cncf.model.code.v1.tar+gzip",
+    "application/vnd.cncf.model.code.v1.tar+zstd",
+    "application/vnd.cncf.model.dataset.v1.raw",
+    "application/vnd.cncf.model.dataset.v1.tar",
+    "application/vnd.cncf.model.dataset.v1.tar+gzip",
+    "application/vnd.cncf.model.dataset.v1.tar+zstd",
 }
+
+_MEDIATYPE_UNTESTED_VALUES = {"true", "false"}
 
 
 def _require(condition: bool, message: str) -> None:
@@ -43,7 +62,99 @@ def _require_str(value: Any, message: str) -> str:
     return value
 
 
-def is_cnai_artifact_manifest(manifest: dict[str, Any]) -> bool:
+def _require_int(value: Any, message: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(message)
+    return value
+
+
+def _typeflag_for_mode(mode: int) -> int:
+    if stat.S_ISDIR(mode):
+        return ord(tarfile.DIRTYPE)
+    if stat.S_ISLNK(mode):
+        return ord(tarfile.SYMTYPE)
+    return ord(tarfile.REGTYPE)
+
+
+def normalize_layer_filepath(value: str) -> str:
+    value = _require_str(value, "layer annotation filepath must be a non-empty string")
+    if os.path.isabs(value):
+        raise ValueError("layer annotation filepath must be relative")
+    normalized = os.path.normpath(value).lstrip(os.sep)
+    if normalized in {"", "."} or normalized.startswith(".."):
+        raise ValueError("layer annotation filepath must not escape the layer")
+    return normalized
+
+
+@dataclass(frozen=True)
+class FileMetadata:
+    name: str
+    mode: int
+    uid: int
+    gid: int
+    size: int
+    mtime: str
+    typeflag: int
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "FileMetadata":
+        if not isinstance(data, dict):
+            raise ValueError("file metadata must be a JSON object")
+        name = _require_str(data.get("name"), "file metadata name is required")
+        mode = _require_int(data.get("mode"), "file metadata mode is required")
+        uid = _require_int(data.get("uid"), "file metadata uid is required")
+        gid = _require_int(data.get("gid"), "file metadata gid is required")
+        size = _require_int(data.get("size"), "file metadata size is required")
+        mtime = _require_str(data.get("mtime"), "file metadata mtime is required")
+        typeflag = _require_int(data.get("typeflag"), "file metadata typeflag is required")
+        return cls(
+            name=name,
+            mode=mode,
+            uid=uid,
+            gid=gid,
+            size=size,
+            mtime=mtime,
+            typeflag=typeflag,
+        )
+
+    @classmethod
+    def from_json(cls, value: str) -> "FileMetadata":
+        try:
+            data = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError("file metadata annotation must be valid JSON") from exc
+        return cls.from_dict(data)
+
+    @classmethod
+    def from_path(cls, path: str, *, name: str | None = None) -> "FileMetadata":
+        stat_result = os.stat(path, follow_symlinks=False)
+        mtime = datetime.fromtimestamp(stat_result.st_mtime, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        return cls(
+            name=name or os.path.basename(path),
+            mode=stat.S_IMODE(stat_result.st_mode),
+            uid=stat_result.st_uid,
+            gid=stat_result.st_gid,
+            size=stat_result.st_size,
+            mtime=mtime,
+            typeflag=_typeflag_for_mode(stat_result.st_mode),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "mode": self.mode,
+            "uid": self.uid,
+            "gid": self.gid,
+            "size": self.size,
+            "mtime": self.mtime,
+            "typeflag": self.typeflag,
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), separators=(",", ":"))
+
+
+def is_cncf_artifact_manifest(manifest: dict[str, Any]) -> bool:
     artifact_type = manifest.get("artifactType")
     config_media = (manifest.get("config") or {}).get("mediaType", "")
     if artifact_type == CNAI_ARTIFACT_TYPE or config_media == CNAI_CONFIG_MEDIA_TYPE:
@@ -75,6 +186,11 @@ class Descriptor:
             )
 
         annotations = data.get("annotations") or {}
+        if not isinstance(annotations, dict):
+            raise ValueError("descriptor annotations must be a map")
+        for key, value in annotations.items():
+            if not isinstance(key, str) or not isinstance(value, str):
+                raise ValueError("descriptor annotations must be a string map")
         return cls(media_type=media_type, digest=digest, size=int(size), annotations=annotations)
 
     def to_dict(self) -> dict[str, Any]:
@@ -87,8 +203,25 @@ class Descriptor:
             data["annotations"] = self.annotations
         return data
 
-    def title(self) -> str | None:
-        return self.annotations.get(AnnotationTitle)
+    def filepath(self) -> str | None:
+        value = self.annotations.get(LAYER_ANNOTATION_FILEPATH)
+        if value is None:
+            return None
+        return normalize_layer_filepath(value)
+
+    def file_metadata(self) -> FileMetadata | None:
+        value = self.annotations.get(LAYER_ANNOTATION_FILE_METADATA)
+        if value is None:
+            return None
+        return FileMetadata.from_json(value)
+
+    def media_type_untested(self) -> bool | None:
+        value = self.annotations.get(LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED)
+        if value is None:
+            return None
+        if value not in _MEDIATYPE_UNTESTED_VALUES:
+            raise ValueError("layer annotation mediatype.untested must be 'true' or 'false'")
+        return value == "true"
 
 
 @dataclass
