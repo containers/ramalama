@@ -3,7 +3,13 @@ import re
 import sys
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.conftest import skip_if_container, skip_if_docker, skip_if_no_container
+from test.conftest import (
+    skip_if_container,
+    skip_if_docker,
+    skip_if_no_container,
+    skip_if_ppc64le,
+    skip_if_s390x,
+)
 from test.e2e.utils import RamalamaExecWorkspace
 
 import pytest
@@ -23,6 +29,9 @@ def test_convert_custom_gguf_config():
 
 @pytest.mark.e2e
 @skip_if_docker
+@skip_if_no_container
+@skip_if_ppc64le
+@skip_if_s390x
 @pytest.mark.parametrize(
     "in_model, out_model, extra_params, expected",
     [
@@ -31,40 +40,34 @@ def test_convert_custom_gguf_config():
             Path("aimodel"), "foobar", None,
             "oci://localhost/foobar:latest",
             id="file://{workspace_dir}/aimodel -> foobar",
-            marks=[skip_if_no_container,
-                   pytest.mark.xfail(sys.platform.startswith("win"), reason="windows path formatting")]
+            marks=[pytest.mark.xfail(sys.platform.startswith("win"), reason="windows path formatting")]
         ),
         pytest.param(
             Path("aimodel"), "oci://foobar", None,
             "oci://localhost/foobar:latest",
             id="file://{workspace_dir}/aimodel -> oci://foobar",
-            marks=[skip_if_no_container,
-                   pytest.mark.xfail(sys.platform.startswith("win"), reason="windows path formatting")]
+            marks=[pytest.mark.xfail(sys.platform.startswith("win"), reason="windows path formatting")]
         ),
         pytest.param(
             "tiny", "oci://quay.io/ramalama/tiny", None,
             "oci://quay.io/ramalama/tiny:latest",
             id="tiny -> oci://quay.io/ramalama/tiny",
-            marks=[skip_if_no_container, skip_if_docker]
         ),
         pytest.param(
             "ollama://tinyllama", "oci://quay.io/ramalama/tinyllama", None,
             "oci://quay.io/ramalama/tinyllama:latest",
             id="ollama://tinyllama -> oci://quay.io/ramalama/tinyllama",
-            marks=[skip_if_no_container, skip_if_docker]
         ),
         pytest.param(
             "hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0", "oci://quay.io/ramalama/tinyllama", None,
             "oci://quay.io/ramalama/tinyllama:latest",
             id="hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 -> oci://quay.io/ramalama/tinyllama",
-            marks=[skip_if_no_container, skip_if_docker]
         ),
         pytest.param(
             "hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0", "oci://quay.io/ramalama/tiny-q4-0",
             ["--gguf", "Q4_0"],
             "oci://quay.io/ramalama/tiny-q4-0:latest",
             id="hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 -> oci://quay.io/ramalama/tiny-q4-0 (--gguf Q4_0)",
-            marks=[skip_if_no_container, skip_if_docker]
         ),
         # fmt: on
     ],

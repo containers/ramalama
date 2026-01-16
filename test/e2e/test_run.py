@@ -333,7 +333,7 @@ def test_run_with_non_existing_images_new(shared_ctx_with_models, run_args, exit
 def test_run_with_rag():
     with RamalamaExecWorkspace() as ctx:
         result_a = ctx.check_output(RAMALAMA_DRY_RUN + ["--rag", "quay.io/ramalama/rag", "--pull", "never", "tiny"])
-        assert re.search(r".*quay.io/ramalama/.*-rag:", result_a)
+        assert re.search(r".*quay.io/.*-rag(@sha256)?:", result_a)
 
         result_b = ctx.check_output(
             RAMALAMA_DRY_RUN
