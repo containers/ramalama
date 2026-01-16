@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 import ramalama.chat as chat
 from ramalama.common import (
     MNT_DIR,
-    MNT_FILE_DRAFT,
     accel_image,
     exec_cmd,
     genname,
@@ -161,8 +160,10 @@ class Transport(TransportBase):
     def artifact(self) -> bool:
         return self.is_artifact()
 
-    def extract_model_identifiers(self):
-        model_name = self.model
+    def extract_model_identifiers(self, model=None):
+        if model is None:
+            model = self.model
+        model_name = model
         model_tag = "latest"
         model_organization = ""
 
@@ -443,12 +444,20 @@ class Transport(TransportBase):
             )
 
         if self.draft_model:
-            draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
-            # Convert path to container-friendly format (handles Windows path conversion)
-            container_draft_model = get_container_mount_path(draft_model)
-            mount_opts = f"--mount=type=bind,src={container_draft_model},destination={MNT_FILE_DRAFT}"
-            mount_opts += f",ro{self.engine.relabel()}"
-            self.engine.add([mount_opts])
+            # Get the model tag for draft model
+            _, draft_tag, _ = self.extract_model_identifiers(model=self.draft_model.model)
+            ref_file_draft = self.draft_model.model_store.get_ref_file(draft_tag)
+            if ref_file_draft is None:
+                raise NoRefFileFound(self.draft_model.model)
+
+            # Mount the draft model files
+            for file in ref_file_draft.files:
+                blob_path = self.draft_model.model_store.get_blob_file_path(file.hash)
+                container_blob_path = get_container_mount_path(blob_path)
+                mount_path = f"{MNT_DIR}/drafts/{file.name}"
+                self.engine.add(
+                    [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
+                )
 
     def bench(self, args, cmd: list[str]):
         set_accel_env_vars()
