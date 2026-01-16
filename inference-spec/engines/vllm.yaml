@@ -3,14 +3,14 @@ commands:
   - name: serve
     inference_engine:
       name: "vllm server"
-      binary: "/opt/venv/bin/python3 -m vllm.entrypoints.openai.api_server"
+      binary: "{{ '' if host.is_container else 'python3 -m vllm.entrypoints.openai.api_server' }}"
       options: &serve_run_options
         - name: "--model"
           description: "The AI model to run"
           value: "{{ model.model_path }}"
         - name: "--served-model-name"
           description: "The name assigned to the run AI model"
-          value: "{{ model.model_name }}"
+          value: "{{ model.alias }}"
         - name: "--max_model_len"
           description: "Size of the model context"
           value: "{{ args.ctx_size if args.ctx_size else 2048 }}"
@@ -21,14 +21,14 @@ commands:
           description: "Seed the global PRNG"
           value: "{{ args.seed }}"
         # Special case:
-        # Pass arbitrary runtime arguments to llama-server
+        # Pass arbitrary runtime arguments to vLLM server
         - name: ""
-          description: "Arbitrary runtime arguments for llama-server"
+          description: "Arbitrary runtime arguments for vLLM server"
           value: "{{ args.runtime_args }}"
   - name: run
     inference_engine:
       name: "vllm server with chat"
-      binary: "vllm start"
+      binary: "{{ '' if host.is_container else 'python3 -m vllm.entrypoints.openai.api_server' }}"
       options: *serve_run_options
   - name: rag
     inference_engine:

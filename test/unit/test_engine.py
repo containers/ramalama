@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from ramalama.engine import Engine, containers, dry_run, images, is_healthy, wait_for_healthy
+import ramalama.engine
 
 
 class TestEngine(unittest.TestCase):
@@ -23,13 +23,13 @@ class TestEngine(unittest.TestCase):
         )
 
     def test_init_basic(self):
-        engine = Engine(self.base_args)
+        engine = ramalama.engine.Engine(self.base_args)
         self.assertEqual(engine.use_podman, True)
         self.assertEqual(engine.use_docker, False)
 
     def test_add_container_labels(self):
         args = Namespace(**vars(self.base_args), MODEL="test-model", port="8080", subcommand="run")
-        engine = Engine(args)
+        engine = ramalama.engine.Engine(args)
         exec_args = engine.exec_args
         self.assertNotIn("--rm", exec_args)
         self.assertIn("--label", exec_args)
@@ -39,7 +39,7 @@ class TestEngine(unittest.TestCase):
 
     def test_serve_rm(self):
         args = Namespace(**vars(self.base_args), MODEL="test-model", port="8080", subcommand="serve")
-        engine = Engine(args)
+        engine = ramalama.engine.Engine(args)
         exec_args = engine.exec_args
         self.assertIn("--rm", exec_args)
 
@@ -50,14 +50,14 @@ class TestEngine(unittest.TestCase):
         mock_os_access.return_value = True
 
         # Test Podman
-        podman_engine = Engine(self.base_args)
+        podman_engine = ramalama.engine.Engine(self.base_args)
         self.assertIn("--runtime", podman_engine.exec_args)
         self.assertIn("/usr/bin/nvidia-container-runtime", podman_engine.exec_args)
 
         # Test Podman when nvidia-container-runtime executable is missing
         # This is expected with the official package
         mock_os_access.return_value = False
-        podman_engine = Engine(self.base_args)
+        podman_engine = ramalama.engine.Engine(self.base_args)
         self.assertNotIn("--runtime", podman_engine.exec_args)
         self.assertNotIn("/usr/bin/nvidia-container-runtime", podman_engine.exec_args)
 
@@ -65,30 +65,30 @@ class TestEngine(unittest.TestCase):
         args = self.base_args
         args.engine = "docker"
         docker_args = Namespace(**vars(args))
-        docker_engine = Engine(docker_args)
+        docker_engine = ramalama.engine.Engine(docker_args)
         self.assertIn("--runtime", docker_engine.exec_args)
         self.assertIn("nvidia", docker_engine.exec_args)
 
     def test_add_privileged_options(self):
         # Test non-privileged (default)
-        engine = Engine(self.base_args)
+        engine = ramalama.engine.Engine(self.base_args)
         self.assertIn("--security-opt=label=disable", engine.exec_args)
         self.assertIn("--cap-drop=all", engine.exec_args)
 
         # Test privileged
         privileged_args = Namespace(**vars(self.base_args), privileged=True)
-        privileged_engine = Engine(privileged_args)
+        privileged_engine = ramalama.engine.Engine(privileged_args)
         self.assertIn("--privileged", privileged_engine.exec_args)
 
     def test_add_selinux(self):
         self.base_args.selinux = True
         # Test non-privileged (default)
-        engine = Engine(self.base_args)
+        engine = ramalama.engine.Engine(self.base_args)
         self.assertNotIn("--security-opt=label=disable", engine.exec_args)
 
     def test_add_port_option(self):
         args = Namespace(**vars(self.base_args), port="8080")
-        engine = Engine(args)
+        engine = ramalama.engine.Engine(args)
         self.assertIn("-p", engine.exec_args)
         self.assertIn("8080:8080", engine.exec_args)
 
@@ -96,7 +96,7 @@ class TestEngine(unittest.TestCase):
     def test_images(self, mock_run_cmd):
         mock_run_cmd.return_value.stdout = b"image1\nimage2\n"
         args = Namespace(engine="podman", debug=False, format="", noheading=False, notrunc=False)
-        result = images(args)
+        result = ramalama.engine.images(args)
         self.assertEqual(result, ["image1", "image2"])
         mock_run_cmd.assert_called_once()
 
@@ -104,20 +104,20 @@ class TestEngine(unittest.TestCase):
     def test_containers(self, mock_run_cmd):
         mock_run_cmd.return_value.stdout = b"container1\ncontainer2\n"
         args = Namespace(engine="podman", debug=False, format="", noheading=False, notrunc=False)
-        result = containers(args)
+        result = ramalama.engine.containers(args)
         self.assertEqual(result, ["container1", "container2"])
         mock_run_cmd.assert_called_once()
 
     def test_dry_run(self):
         with patch('sys.stdout') as mock_stdout:
-            dry_run(["podman", "run", "--rm", "test-image"])
+            ramalama.engine.dry_run(["podman", "run", "--rm", "test-image"])
             mock_stdout.write.assert_called()
 
 
 @patch("ramalama.engine.HTTPConnection")
 def test_is_healthy_conn(mock_conn):
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
-    is_healthy(args)
+    ramalama.engine.is_healthy(args)
     mock_conn.assert_called_once_with("127.0.0.1", args.port, timeout=3)
 
 
@@ -152,7 +152,7 @@ def test_is_healthy_fail(mock_conn, mock_debug, health_status, models_status, mo
         responses.append(mock_models_resp)
     mock_conn.return_value.getresponse.side_effect = responses
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
-    assert not is_healthy(args)
+    assert not ramalama.engine.is_healthy(args)
     assert mock_conn.return_value.getresponse.call_count == len(responses)
     if len(responses) > 1:
         assert models_msg in mock_debug.call_args.args[0]
@@ -166,7 +166,7 @@ def test_is_healthy_unicode_fail(mock_conn):
     mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(name="thecontainer", port=8080, debug=False)
     with pytest.raises(UnicodeDecodeError):
-        is_healthy(args)
+        ramalama.engine.is_healthy(args)
     assert mock_conn.return_value.getresponse.call_count == 2
 
 
@@ -185,9 +185,27 @@ def test_is_healthy_success(mock_conn, mock_debug, health_status):
     mock_models_resp.read.return_value = '{"models": [{"name": "themodel"}]}'
     mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
-    assert is_healthy(args)
+    assert ramalama.engine.is_healthy(args)
     assert mock_conn.return_value.getresponse.call_count == 2
     assert mock_debug.call_args.args[0] == "Container thecontainer is healthy"
+
+
+@pytest.mark.parametrize(
+    "status, ok",
+    [
+        (500, False),
+        (404, False),
+        (200, True),
+    ],
+)
+@patch("ramalama.engine.HTTPConnection")
+def test_is_healthy_vllm(mock_conn, status, ok):
+    mock_resp = mock_conn.return_value.getresponse.return_value
+    mock_resp.status = status
+    args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False, runtime="vllm")
+    with patch.object(ramalama.engine.CONFIG, "runtime", "vllm"):
+        assert ramalama.engine.is_healthy(args) == ok
+        assert mock_conn.return_value.mock_calls[0].args == ('GET', '/ping')
 
 
 @pytest.mark.parametrize(
@@ -207,7 +225,7 @@ def test_wait_for_healthy_error(mock_logs, exc):
 
     args = Namespace(name="thecontainer", debug=True, engine="podman")
     with pytest.raises(TimeoutExpired):
-        wait_for_healthy(args, healthy_func, timeout=1)
+        ramalama.engine.wait_for_healthy(args, healthy_func, timeout=1)
     mock_logs.assert_called_once()
 
 
@@ -219,7 +237,7 @@ def test_wait_for_healthy_timeout(mock_logs):
 
     args = Namespace(name="thecontainer", debug=True, engine="podman")
     with pytest.raises(TimeoutExpired, match="timed out after 0 seconds"):
-        wait_for_healthy(args, healthy_func, timeout=0)
+        ramalama.engine.wait_for_healthy(args, healthy_func, timeout=0)
     mock_logs.assert_called_once()
 
 
@@ -229,7 +247,7 @@ def test_wait_for_healthy_success():
         return True
 
     args = Namespace(name="thecontainer", debug=False)
-    wait_for_healthy(args, healthy_func, timeout=1)
+    ramalama.engine.wait_for_healthy(args, healthy_func, timeout=1)
 
 
 if __name__ == '__main__':

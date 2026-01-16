@@ -3,6 +3,7 @@ import os
 import platform
 import re
 import string
+from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
 from test.conftest import skip_if_no_container
 from test.e2e.utils import RamalamaExecWorkspace, check_output, get_ramalama_subcommands
@@ -48,7 +49,7 @@ def default_storage_path():
     if hasattr(os, 'geteuid') and os.geteuid() == 0:
         return "/var/lib/ramalama"
 
-    return os.path.expanduser("~/.local/share/ramalama")
+    return str(Path("~/.local/share/ramalama").expanduser())
 
 
 @pytest.mark.e2e
@@ -178,7 +179,7 @@ def test_default_container_engine_by_config():
 def test_default_container_engine_variable_precedence():
     env_engine_name = "env-engine"
     config_engine_name = "config-engine"
-    param_engine_name = "podman"
+    param_engine_name = "docker"
 
     config = f"""
     [ramalama]
@@ -187,14 +188,14 @@ def test_default_container_engine_variable_precedence():
     env_vars = {"RAMALAMA_CONTAINER_ENGINE": env_engine_name}
 
     with RamalamaExecWorkspace(config=config, env_vars=env_vars) as ctx:
-        # RAMALAMA_CONTAINER_ENGINE > RAMALAMA_CONFIG
+        # CLI > RAMALAMA_CONTAINER_ENGINE > RAMALAMA_CONFIG
         result = ctx.check_output(["ramalama", "--help"])
         match = DEFAULT_CONTAINER_ENGINE_PATTERN.search(result.replace("\n", ""))
         assert match and match.group("engine") == env_engine_name
 
         result = ctx.check_output(["ramalama", "--engine", param_engine_name, "--help"])
         match = DEFAULT_CONTAINER_ENGINE_PATTERN.search(result.replace("\n", ""))
-        assert match and match.group("engine") == "env-engine"
+        assert match and match.group("engine") == "docker"
 
 
 @pytest.mark.e2e
@@ -214,6 +215,29 @@ def test_default_runtime():
     result = check_output(["ramalama", "--help"])
     match = DEFAULT_RUNTIME_PATTERN.search(result.replace("\n", ""))
     assert match and match.group("runtime") == "llama.cpp"
+
+
+@pytest.mark.e2e
+def test_default_runtime_variable_precedence():
+    env_runtime = "mlx"
+    config_runtime = "lamma.cpp"
+    param_runtime = "vllm"
+
+    config = f"""
+    [ramalama]
+    runtime="{config_runtime}"
+    """
+    env_vars = {"RAMALAMA_RUNTIME": env_runtime}
+
+    with RamalamaExecWorkspace(config=config, env_vars=env_vars) as ctx:
+        # CLI > RAMALAMA_RUNTIME > RAMALAMA_CONFIG
+        result = ctx.check_output(["ramalama", "--help"])
+        match = DEFAULT_RUNTIME_PATTERN.search(result.replace("\n", ""))
+        assert match and match.group("runtime") == env_runtime
+
+        result = ctx.check_output(["ramalama", "--runtime", param_runtime, "--help"])
+        match = DEFAULT_RUNTIME_PATTERN.search(result.replace("\n", ""))
+        assert match and match.group("runtime") == param_runtime
 
 
 @pytest.mark.e2e
@@ -247,18 +271,18 @@ def test_default_store_variable_precedence():
         # precedence: RAMALAMA_CONFIG > default
         result = ctx.check_output(["ramalama", "--help"])
         match = DEFAULT_STORE_PATTERN.search(result.replace("\n", ""))
-        assert match and match.group("store_path") == f"{ctx.workspace_dir}/.local/share/ramalama"
+        assert match and match.group("store_path") == str(
+            Path(f"{ctx.workspace_dir}") / ".local" / "share" / "ramalama"
+        )
 
         # precedence: --store > RAMALAMA_CONFIG > default
-        #   --help will show the RAMALAMA_CONFIG or default store path,
-        #   but the rest of the command will use the --store value
         result = ctx.check_output(["ramalama", "--store", f"{ctx.workspace_dir}/.ramalama", "--help"])
         match = DEFAULT_STORE_PATTERN.search(result.replace("\n", ""))
-        assert match and match.group("store_path") == f"{ctx.workspace_dir}/.local/share/ramalama"
+        assert match and match.group("store_path") == str(Path(f"{ctx.workspace_dir}") / ".ramalama")
 
         if platform.system() != "Darwin":
             result = ctx.check_output(["ramalama", "--store", f"{ctx.workspace_dir}/.ramalama", "info"])
-            assert json.loads(result)["Store"] == os.path.join(ctx.workspace_dir, ".ramalama")
+            assert json.loads(result)["Store"] == str(Path(ctx.workspace_dir) / ".ramalama")
 
 
 @pytest.mark.e2e
