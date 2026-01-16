@@ -15,6 +15,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from functools import lru_cache
+from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, TypedDict, cast, get_args
 
 import yaml
@@ -26,7 +27,7 @@ from ramalama.version import version
 if TYPE_CHECKING:
     from argparse import Namespace
 
-    from ramalama.arg_types import SUPPORTED_ENGINES, ContainerArgType
+    from ramalama.arg_types import SUPPORTED_ENGINES, ContainerArgType, DefaultArgsType
     from ramalama.config import Config, RamalamaImageConfig
     from ramalama.transports.base import Transport
 
@@ -763,3 +764,26 @@ def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, sh
 
     except Exception:
         return False
+
+
+def store_disk_stats(args: "DefaultArgsType") -> dict[str, int] | None:
+    """Get disk usage statistics for the store path.
+
+    Walks up the directory tree if the path does not exist until an existing
+    parent is found.
+
+    Args:
+        args: CLI arguments containing the store path.
+
+    Returns:
+        A dictionary with disk usage stats  - None for all stats if no path is found.
+    """
+    current_path = Path(args.store)
+    while True:
+        try:
+            return dict(zip(("total", "used", "free"), shutil.disk_usage(current_path)))
+        except FileNotFoundError:
+            if current_path == current_path.parent:
+                # Reached the root of the filesystem.
+                return dict(zip(("total", "used", "free"), (None, None, None)))
+            current_path = current_path.parent
