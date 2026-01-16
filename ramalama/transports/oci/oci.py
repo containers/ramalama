@@ -8,17 +8,15 @@ from functools import cached_property
 from textwrap import dedent
 
 import ramalama.annotations as annotations
-from ramalama.common import exec_cmd, perror, run_cmd, set_accel_env_vars
+from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd, set_accel_env_vars
 from ramalama.engine import BuildEngine, Engine, dry_run
-from ramalama.oci_tools import engine_supports_manifest_attributes
+from ramalama.oci_tools import OciRef, engine_supports_manifest_attributes
 from ramalama.transports.base import Transport
+from ramalama.transports.oci import spec as oci_spec
 from ramalama.transports.oci.strategies import BaseOCIStrategy
 from ramalama.transports.oci.strategy import OCIStrategyFactory
 
 prefix = "oci://"
-
-ociimage_raw = "org.containers.type=ai.image.model.raw"
-ociimage_car = "org.containers.type=ai.image.model.car"
 
 
 class OCI(Transport):
@@ -35,10 +33,11 @@ class OCI(Transport):
             raise ValueError("RamaLama OCI Images requires a container engine")
         self.conman = conman
         self.ignore_stderr = ignore_stderr
+        self.ref: OciRef = OciRef.from_ref_string(self.model.removeprefix(prefix))
 
     @cached_property
     def strategy(self) -> BaseOCIStrategy:
-        return OCIStrategyFactory(self.conman, model_store=self.model_store).resolve(self.model)
+        return OCIStrategyFactory(self.conman, model_store=self.model_store).resolve(self.ref)
 
     @property
     def is_artifact(self) -> bool:
@@ -126,15 +125,15 @@ class OCI(Transport):
     def build_image(self, cfile, contextdir, args):
         if args.type == "car":
             parent = args.carimage
-            label = ociimage_car
         else:
             parent = "scratch"
-            label = ociimage_raw
-        footer = dedent(f"""
+
+        footer = dedent(
+            f"""
             FROM {parent}
-            LABEL {label}
             COPY --from=build /data/ /
-            """).strip()
+            """
+        ).strip()
         full_cfile = cfile + "\n\n" + footer + "\n"
         if args.debug:
             perror(f"Containerfile: \n{full_cfile}")
@@ -217,12 +216,18 @@ class OCI(Transport):
         )
 
     def _add_artifact(self, create, name, path, file_name) -> None:
+        filepath = oci_spec.normalize_layer_filepath(file_name)
+        metadata = oci_spec.FileMetadata.from_path(path, name=file_name).to_json()
         cmd = [
             self.conman,
             "artifact",
             "add",
             "--annotation",
-            f"org.opencontainers.image.title={file_name}",
+            f"{oci_spec.LAYER_ANNOTATION_FILEPATH}={filepath}",
+            "--annotation",
+            f"{oci_spec.LAYER_ANNOTATION_FILE_METADATA}={metadata}",
+            "--annotation",
+            f"{oci_spec.LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED}=true",
         ]
         if create:
             cmd.extend(["--replace", "--type", annotations.ArtifactTypeModelManifest])
@@ -281,10 +286,6 @@ class OCI(Transport):
             self.conman,
             "manifest",
             "annotate",
-            "--annotation",
-            f"{annotations.AnnotationModel}=true",
-            "--annotation",
-            ociimage_car if args.type == "car" else ociimage_raw,
             "--annotation",
             f"{annotations.AnnotationTitle}={args.SOURCE}",
             target,
@@ -370,7 +371,7 @@ Tagging build instead
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
 
-        self.strategy.pull(self.model, cmd_args=conman_args)
+        self.strategy.pull(self.ref, cmd_args=conman_args)
 
     def remove(self, args) -> bool:
         cmd_args = []
@@ -380,13 +381,13 @@ Tagging build instead
                 cmd_args.append("--ignore")
             else:
                 cmd_args.append(f"--force={ignore}")
-        return self.strategy.remove(self.model, cmd_args=cmd_args)
+        return self.strategy.remove(self.ref, cmd_args=cmd_args)
 
     def exists(self) -> bool:
-        return self.strategy.exists(self.model)
+        return self.strategy.exists(self.ref)
 
     def entrypoint_path(self, mount_dir: str | None = None) -> str:
-        return self.strategy.entrypoint_path(self.model, mount_dir=mount_dir)
+        return self.strategy.entrypoint_path(self.ref, mount_dir=mount_dir)
 
     def inspect(
         self,
@@ -408,7 +409,7 @@ Tagging build instead
             out = json.loads(out)
 
             # docker/podman image inspect returns a list of objects
-            inspect = json.loads(self.strategy.inspect(self.model))
+            inspect = json.loads(self.strategy.inspect(self.ref))
             if self.strategy.kind == "image":
                 inspect = inspect[0] if inspect else {}
 
@@ -416,5 +417,9 @@ Tagging build instead
         else:
             print(f"{out}   Type: {self.strategy.kind.capitalize()}")
 
-    def mount_cmd(self, src: str | None = None, dest: str | None = None):
-        return self.strategy.mount_arg(src or self.model, dest)
+    def mount_cmd(self, src: str | OciRef | None = None, dest: str | None = None):
+        if isinstance(src, OciRef):
+            return self.strategy.mount_arg(src, dest)
+        if src is not None:
+            return f"--mount=type=volume,src={src},dst={dest or MNT_DIR},readonly"
+        return self.strategy.mount_arg(self.ref, dest)

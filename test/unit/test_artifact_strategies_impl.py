@@ -1,5 +1,6 @@
 from unittest.mock import Mock
 
+from ramalama.oci_tools import OciRef
 from ramalama.transports.oci import strategies
 
 
@@ -19,37 +20,41 @@ def test_podman_artifact_mount_and_pull(monkeypatch):
     rec = Recorder()
     monkeypatch.setattr(strategies, "run_cmd", rec)
     strat = strategies.PodmanArtifactStrategy(engine="podman", model_store=Mock())
-    strat.pull("artifact:latest")
-    assert rec.calls[0][0] == ["podman", "artifact", "pull", "artifact:latest"]
-    assert strat.mount_arg("artifact:latest").startswith("--mount=type=artifact")
+    ref = OciRef.from_ref_string("artifact:latest")
+    strat.pull(ref)
+    assert rec.calls[0][0] == ["podman", "artifact", "pull", str(ref)]
+    assert strat.mount_arg(ref).startswith("--mount=type=artifact")
 
 
 def test_podman_artifact_exists(monkeypatch):
     rec = Recorder()
     monkeypatch.setattr(strategies, "run_cmd", rec)
     strat = strategies.PodmanArtifactStrategy(engine="podman", model_store=Mock())
-    assert strat.exists("artifact:latest") is True
-    assert rec.calls[0][0] == ["podman", "artifact", "inspect", "artifact:latest"]
+    ref = OciRef.from_ref_string("artifact:latest")
+    assert strat.exists(ref) is True
+    assert rec.calls[0][0] == ["podman", "artifact", "inspect", str(ref)]
 
 
 def test_podman_image_path(monkeypatch):
     rec = Recorder()
     monkeypatch.setattr(strategies, "run_cmd", rec)
     strat = strategies.PodmanImageStrategy(engine="podman", model_store=Mock())
-    strat.pull("image:latest")
-    assert rec.calls[0][0] == ["podman", "pull", "image:latest"]
-    assert strat.mount_arg("image:latest").startswith("--mount=type=image")
+    ref = OciRef.from_ref_string("image:latest")
+    strat.pull(ref)
+    assert rec.calls[0][0] == ["podman", "pull", str(ref)]
+    assert strat.mount_arg(ref).startswith("--mount=type=image")
 
 
 def test_docker_image_path(monkeypatch):
     rec = Recorder()
     monkeypatch.setattr(strategies, "run_cmd", rec)
     strat = strategies.DockerImageStrategy(engine="docker", model_store=Mock())
-    strat.pull("image:latest")
-    assert rec.calls[0][0] == ["docker", "pull", "image:latest"]
-    assert strat.exists("image:latest") is True
-    assert rec.calls[1][0] == ["docker", "image", "inspect", "image:latest"]
-    assert strat.mount_arg("image:latest").startswith("--mount=type=volume")
+    ref = OciRef.from_ref_string("image:latest")
+    strat.pull(ref)
+    assert rec.calls[0][0] == ["docker", "pull", str(ref)]
+    assert strat.exists(ref) is True
+    assert rec.calls[1][0] == ["docker", "image", "inspect", str(ref)]
+    assert strat.mount_arg(ref).startswith("--mount=type=volume")
 
 
 def test_http_bind_path_fetch_and_exists(monkeypatch):
@@ -75,12 +80,12 @@ def test_http_bind_path_fetch_and_exists(monkeypatch):
     monkeypatch.setattr(strategies, "download_oci_artifact", downloader)
     store = StoreStub()
     strat = strategies.HttpArtifactStrategy(engine="docker", model_store=store)
-    strat.pull("oci://example.com/ns/model:tag")
-    assert called[0]["registry"] == "example.com"
-    assert called[0]["reference"] == "ns/model:tag"
+    ref = OciRef.from_ref_string("example.com/ns/model:tag")
+    strat.pull(ref)
+    assert called[0]["reference"] == str(ref)
     assert called[0]["model_tag"] == "tag"
-    assert strat.exists("oci://example.com/ns/model:tag") is True
+    assert strat.exists(ref) is True
     assert store.last_tag == "tag"
-    mount_arg = strat.mount_arg("oci://example.com/ns/model:tag")
+    mount_arg = strat.mount_arg(ref)
     assert "type=bind" in mount_arg
     assert "destination=/mnt/models" in mount_arg

@@ -19,18 +19,8 @@ which contains an AI model in GGUF format (consumable by `llama-server`).
 
 ## Metadata
 
-The image’s config contains an `org.containers.type` label. The value of the label can be one of:
+Layer annotations follow the CNAI model specification. Each layer SHOULD include:
 
-- `ai.image.model.raw`: The image contains only the AI model
-- `ai.image.model.car`: The image also contains other software; more details of that software are currently unspecified in this document.
-
-## Local Image Storage
-
-The model image may be pulled into, or created in, Podman’s local image storage.
-
-In such a situation, to simplify identification of AI models,
-the model image may be wrapped in an OCI index pointing at the AI model image,
-and in the index, the manifests’ descriptor pointing at the AI model image contains an `org.cnai.model.model` annotation.
-
-Note that the wrapping in an OCI index does not happen in all situations,
-and in particular does not happen when RamaLama uses Docker instead of Podman.
+- `org.cncf.model.filepath`
+- `org.cncf.model.file.metadata+json`
+- `org.cncf.model.file.mediatype.untested`

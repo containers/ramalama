@@ -6,6 +6,7 @@ from typing import Literal, TypedDict, cast
 from ramalama.common import SemVer, engine_version
 from ramalama.config import CONFIG, SUPPORTED_ENGINES
 from ramalama.model_store.store import ModelStore
+from ramalama.oci_tools import OciRef
 from ramalama.transports.oci import resolver as oci_resolver
 from ramalama.transports.oci.strategies import (
     BaseArtifactStrategy,
@@ -70,13 +71,13 @@ class OCIStrategyFactory:
     def strategies(self, kind: Literal['image', 'artifact']) -> BaseArtifactStrategy | BaseImageStrategy:
         return get_strategy(self.engine, self.engine_name, self.model_store, kind)
 
-    def resolve_kind(self, model: str) -> Literal["image", "artifact"] | None:
+    def resolve_kind(self, model: OciRef) -> Literal["image", "artifact"] | None:
         kind = self._type_resolver.resolve(model)
         if kind == "unknown":
             return None
         return kind
 
-    def resolve(self, model: str) -> BaseArtifactStrategy | BaseImageStrategy:
+    def resolve(self, model: OciRef) -> BaseArtifactStrategy | BaseImageStrategy:
         kind = self.resolve_kind(model)
         if kind is None:
             raise Exception(f"Could not identify an artifact type for {model}")

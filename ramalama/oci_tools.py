@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TypedDict
 import subprocess
@@ -7,7 +8,8 @@ import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
 from ramalama.common import engine_version, run_cmd
 from ramalama.logger import logger
-
+from ramalama.config import SUPPORTED_ENGINES
+from ramalama.transports.oci import spec as oci_spec
 
 ocilabeltype = "org.containers.type"
 
@@ -49,11 +51,12 @@ def list_artifacts(args: EngineArgType):
     if args.engine is None:
         raise ValueError("Cannot list artifacts without a provided engine like podman or docker.")
 
-    if args.engine == "docker":
+    engine = args.engine
+    if engine == "docker":
         return []
 
     conman_args = [
-        args.engine,
+        engine,
         "artifact",
         "ls",
         "--format",
@@ -75,7 +78,7 @@ def list_artifacts(args: EngineArgType):
     models: list[ListModelResponse] = []
     for artifact in artifacts:
         conman_args = [
-            args.engine,
+            engine,
             "artifact",
             "inspect",
             artifact["ID"],
@@ -204,6 +207,15 @@ def list_images(args: EngineArgType) -> list[ListModelResponse]:
             image_id, size = line.split(maxsplit=1)
             size_by_id[image_id] = size
 
+        return [
+            {
+                "name": m["name"],
+                "modified": parse_datetime(m["modified"]),
+                "size": int(size_by_id[m["id"]]),
+            }
+            for m in raw
+        ]
+
     return [
         {
             "name": m["name"],
@@ -223,3 +235,54 @@ def list_models(args: EngineArgType) -> list[ListModelResponse]:
     models.extend(list_manifests(args))
     models.extend(list_artifacts(args))
     return models
+
+
+@dataclass(frozen=True)
+class OciRef:
+    registry: str
+    repository: str
+    specifier: str  # Either the digest or the tag
+    tag: str | None = None
+    digest: str | None = None
+
+    def __str__(self) -> str:
+        if self.digest:
+            return f"{self.registry}/{self.repository}@{self.digest}"
+        return f"{self.registry}/{self.repository}:{self.tag or self.specifier}"
+
+    @staticmethod
+    def from_ref_string(ref: str) -> "OciRef":
+        return split_oci_reference(ref)
+
+
+def split_oci_reference(ref: str, default_registry: str = "docker.io") -> OciRef:
+    ref = ref.strip()
+
+    name, digest = ref.split("@", 1) if "@" in ref else (ref, None)
+
+    slash = name.rfind("/")
+    colon = name.rfind(":")
+    if colon > slash:
+        name, tag = name[:colon], name[colon + 1 :]
+    else:
+        tag = None
+
+    parts = name.split("/", 1)
+    if len(parts) == 1:
+        registry = default_registry
+        repository = parts[0]
+    else:
+        first, rest = parts[0], parts[1]
+        if first == "localhost" or "." in first or ":" in first:
+            registry = first
+            repository = rest
+        else:
+            registry = default_registry
+            repository = name  # keep full path
+
+    specifier = digest or tag
+    if specifier is None:
+        tag = "latest"
+        specifier = tag
+
+    return OciRef(registry=registry, repository=repository, tag=tag, digest=digest, specifier=specifier)

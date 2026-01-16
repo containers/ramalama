@@ -2,11 +2,19 @@ import json
 
 import pytest
 
-from ramalama.annotations import AnnotationTitle
 from ramalama.transports.oci import spec as oci_spec
 
 
 def _valid_manifest():
+    layer_metadata = {
+        "name": "model.gguf",
+        "mode": 0o644,
+        "uid": 0,
+        "gid": 0,
+        "size": 30327160,
+        "mtime": "2024-01-01T00:00:00Z",
+        "typeflag": ord("0"),
+    }
     return {
         "schemaVersion": 2,
         "mediaType": oci_spec.OCI_MANIFEST_MEDIA_TYPE,
@@ -18,13 +26,16 @@ def _valid_manifest():
         },
         "layers": [
             {
-                "mediaType": "application/vnd.cnai.model.weight.v1.tar",
+                "mediaType": "application/vnd.cncf.model.weight.v1.tar",
                 "digest": "sha256:3f907c1a03bf20f20355fe449e18ff3f9de2e49570ffb536f1a32f20c7179808",
                 "size": 30327160,
-                "annotations": {AnnotationTitle: "model.gguf"},
+                "annotations": {
+                    oci_spec.LAYER_ANNOTATION_FILEPATH: "model.gguf",
+                    oci_spec.LAYER_ANNOTATION_FILE_METADATA: json.dumps(layer_metadata),
+                    oci_spec.LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED: "true",
+                },
             }
         ],
-        "annotations": {AnnotationTitle: "example-manifest"},
     }
 
 
@@ -33,7 +44,9 @@ def test_round_trip_manifest():
     manifest = oci_spec.Manifest.from_dict(manifest_dict)
     assert manifest.artifact_type == oci_spec.CNAI_ARTIFACT_TYPE
     assert manifest.config.media_type == oci_spec.CNAI_CONFIG_MEDIA_TYPE
-    assert manifest.layers[0].title() == "model.gguf"
+    assert manifest.layers[0].filepath() == "model.gguf"
+    assert manifest.layers[0].file_metadata().name == "model.gguf"
+    assert manifest.layers[0].media_type_untested() is True
 
     round_trip = manifest.to_dict()
     assert round_trip == manifest_dict
