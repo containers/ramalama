@@ -1,11 +1,12 @@
 import json
+from dataclasses import dataclass
 from datetime import datetime
 
 import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
 from ramalama.common import engine_version, run_cmd
-
-ocilabeltype = "org.containers.type"
+from ramalama.config import SUPPORTED_ENGINES
+from ramalama.transports.oci import spec as oci_spec
 
 
 def convert_from_human_readable_size(input) -> float:
@@ -18,11 +19,12 @@ def convert_from_human_readable_size(input) -> float:
 
 
 def list_artifacts(args: EngineArgType):
-    if args.engine == "docker" or args.engine is None:
+    engine = args.engine
+    if engine == "docker" or engine is None:
         return []
 
     conman_args = [
-        args.engine,
+        engine,
         "artifact",
         "ls",
         "--format",
@@ -41,7 +43,7 @@ def list_artifacts(args: EngineArgType):
     models = []
     for artifact in artifacts:
         conman_args = [
-            args.engine,
+            engine,
             "artifact",
             "inspect",
             artifact["ID"],
@@ -75,15 +77,30 @@ def engine_supports_manifest_attributes(engine) -> bool:
     return True
 
 
+def inspect_manifest(engine: SUPPORTED_ENGINES | str, reference: str) -> dict | None:
+    try:
+        output = run_cmd([engine, "manifest", "inspect", reference], ignore_stderr=True)
+    except Exception:
+        return None
+    payload = output.stdout.decode("utf-8").strip()
+    if payload == "":
+        return None
+    try:
+        return json.loads(payload)
+    except json.JSONDecodeError:
+        return None
+
+
 def list_manifests(args: EngineArgType):
-    if args.engine is None:
+    engine = args.engine
+    if engine is None:
         raise ValueError("Cannot list manifests without a provided engine like podman or docker.")
 
-    if args.engine == "docker":
+    if engine == "docker":
         return []
 
     conman_args = [
-        args.engine,
+        engine,
         "images",
         "--filter",
         "manifest=true",
@@ -98,37 +115,47 @@ def list_manifests(args: EngineArgType):
         return []
 
     manifests = json.loads(f"[{output[:-1]}]")
-    if not engine_supports_manifest_attributes(args.engine):
+    if not engine_supports_manifest_attributes(engine):
         return manifests
 
     models = []
     for manifest in manifests:
-        conman_args = [
-            args.engine,
-            "manifest",
-            "inspect",
-            manifest["ID"],
-        ]
-        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-
-        if output == "":
+        ref = manifest["name"].removeprefix("oci://")
+        inspect = inspect_manifest(engine, ref)
+        if not inspect:
             continue
-        inspect = json.loads(output)
-        if 'manifests' not in inspect:
-            continue
-        if not inspect['manifests']:
-            continue
-        img = inspect['manifests'][0]
-        if 'annotations' not in img:
-            continue
-        if annotations.AnnotationModel in img['annotations']:
-            models += [
+        if oci_spec.is_cncf_artifact_manifest(inspect):
+            models.append(
                 {
                     "name": manifest["name"],
                     "modified": manifest["modified"],
                     "size": manifest["size"],
                 }
-            ]
+            )
+            continue
+        for descriptor in inspect.get("manifests") or []:
+            if descriptor.get("artifactType") == oci_spec.CNAI_ARTIFACT_TYPE:
+                models.append(
+                    {
+                        "name": manifest["name"],
+                        "modified": manifest["modified"],
+                        "size": manifest["size"],
+                    }
+                )
+                break
+            digest = descriptor.get("digest")
+            if not digest:
+                continue
+            child = inspect_manifest(engine, f"{ref}@{digest}")
+            if child and oci_spec.is_cncf_artifact_manifest(child):
+                models.append(
+                    {
+                        "name": manifest["name"],
+                        "modified": manifest["modified"],
+                        "size": manifest["size"],
+                    }
+                )
+                break
     return models
 
 
@@ -137,40 +164,7 @@ def list_models(args: EngineArgType):
     if conman is None:
         return []
 
-    # if engine is docker, size will be retrieved from the inspect command later
-    # if engine is podman use "size":{{ .VirtualSize }}
-    formatLine = '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}"'
-    if conman == "podman":
-        formatLine += ',"size":{{ .VirtualSize }}},'
-    else:
-        formatLine += ',"id":"{{ .ID }}"},'
-
-    conman_args = [
-        conman,
-        "images",
-        "--filter",
-        f"label={ocilabeltype}",
-        "--format",
-        formatLine,
-    ]
     models = []
-    output = run_cmd(conman_args, env={"TZ": "UTC"}).stdout.decode("utf-8").strip()
-    if output != "":
-        models += json.loads(f"[{output[:-1]}]")
-        # exclude dangling images having no tag (i.e. <none>:<none>)
-        models = [model for model in models if model["name"] != "oci://<none>:<none>"]
-
-        # Grab the size from the inspect command
-        if conman == "docker":
-            # grab the size from the inspect command
-            for model in models:
-                conman_args = [conman, "image", "inspect", model["id"], "--format", "{{.Size}}"]
-                output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-                # convert the number value from the string output
-                model["size"] = int(output)
-                # drop the id from the model
-                del model["id"]
-
     models += list_manifests(args)
     models += list_artifacts(args)
     for model in models:
@@ -181,3 +175,54 @@ def list_models(args: EngineArgType):
         model["modified"] = parsed_date.isoformat()
 
     return models
+
+
+@dataclass(frozen=True)
+class OciRef:
+    registry: str
+    repository: str
+    specifier: str  # Either the digest or the tag
+    tag: str | None = None
+    digest: str | None = None
+
+    def __str__(self) -> str:
+        if self.digest:
+            return f"{self.registry}/{self.repository}@{self.digest}"
+        return f"{self.registry}/{self.repository}:{self.tag or self.specifier}"
+
+    @staticmethod
+    def from_ref_string(ref: str) -> "OciRef":
+        return split_oci_reference(ref)
+
+
+def split_oci_reference(ref: str, default_registry: str = "docker.io") -> OciRef:
+    ref = ref.strip()
+
+    name, digest = ref.split("@", 1) if "@" in ref else (ref, None)
+
+    slash = name.rfind("/")
+    colon = name.rfind(":")
+    if colon > slash:
+        name, tag = name[:colon], name[colon + 1 :]
+    else:
+        tag = None
+
+    parts = name.split("/", 1)
+    if len(parts) == 1:
+        registry = default_registry
+        repository = parts[0]
+    else:
+        first, rest = parts[0], parts[1]
+        if first == "localhost" or "." in first or ":" in first:
+            registry = first
+            repository = rest
+        else:
+            registry = default_registry
+            repository = name  # keep full path
+
+    specifier = digest or tag
+    if specifier is None:
+        tag = "latest"
+        specifier = tag
+
+    return OciRef(registry=registry, repository=repository, tag=tag, digest=digest, specifier=specifier)
