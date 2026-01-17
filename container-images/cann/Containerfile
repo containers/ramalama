@@ -16,7 +16,6 @@ RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install \
           /tmp/install/bin/llama-quantize \
           /tmp/install/bin/llama-server \
           /tmp/install/bin/rpc-server \
-          /tmp/install/bin/whisper-server \
           /usr/bin/ && \
     cp -a /tmp/install/lib64/*.so* /usr/lib64/
 ENTRYPOINT [ \

@@ -125,7 +125,10 @@ dnf_install() {
     dnf_install_cann
   fi
 
-  dnf_install_ffmpeg
+  if [ "$build_whisper" == "true" ]; then
+    # ffmpeg is only used by whisper.cpp
+    dnf_install_ffmpeg
+  fi
 
   if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
       dnf install -y gdb strace
@@ -294,10 +297,14 @@ main() {
   local common_flags
   configure_common_flags
   common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=${install_prefix}")
+  local build_whisper="true"
+  if [ "$uname_m" == "s390x" ] || [ "$containerfile" == "cann" ]; then
+      build_whisper="false"
+  fi
   available dnf && dnf_install
 
   setup_build_env
-  if [ "$uname_m" != "s390x" ]; then
+  if [ "$build_whisper" == "true" ]; then
     clone_and_build_whisper_cpp
   fi
 
