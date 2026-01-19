@@ -13,7 +13,7 @@ PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 EXCLUDE_DIRS := .venv venv .tox build
 EXCLUDE_OPTS := $(addprefix --exclude-dir=,$(EXCLUDE_DIRS))
 PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" $(EXCLUDE_OPTS) $(PROJECT_DIR) || true)
-BATS_IMAGE ?= localhost/bats:latest
+E2E_IMAGE ?= localhost/e2e:latest
 
 default: help
 
@@ -179,14 +179,14 @@ bats-nocontainer:
 bats-docker:
 	_RAMALAMA_TEST_OPTS=--engine=docker RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
 
-.PHONY: bats-image
-bats-image:
-	podman inspect $(BATS_IMAGE) &> /dev/null || \
-		podman build -t $(BATS_IMAGE) -f container-images/bats/Containerfile .
+.PHONY: e2e-image
+e2e-image:
+	podman inspect $(E2E_IMAGE) &> /dev/null || \
+		podman build -t $(E2E_IMAGE) -f container-images/e2e/Containerfile .
 
-bats-in-container e2e-tests-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
+e2e-tests-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
 
-%-in-container: bats-image
+%-in-container: e2e-image
 	podman run --rm \
 		--userns=keep-id:size=200000 \
 		--security-opt label=disable \
@@ -194,7 +194,7 @@ bats-in-container e2e-tests-in-container: extra-opts = --security-opt unmask=/pr
 		$(extra-opts) \
 		-v /tmp \
 		-v $(CURDIR):/src \
-		$(BATS_IMAGE) make $*
+		$(E2E_IMAGE) make $*
 
 .PHONY: ci
 ci:
@@ -236,7 +236,7 @@ e2e-tests-docker: requires-tox
 	tox -q -e e2e -- --container-engine=docker
 
 .PHONY: end-to-end-tests
-end-to-end-tests: validate bats bats-nocontainer ci
+end-to-end-tests: validate e2e-tests e2e-tests-nocontainer ci
 	make clean
 	hack/tree_status.sh
 

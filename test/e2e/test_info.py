@@ -12,7 +12,8 @@ from ramalama.version import version
 @pytest.mark.e2e
 @pytest.mark.distro_integration
 @skip_if_gh_actions_darwin
-def test_info(container_engine):
+def test_info(monkeypatch, container_engine):
+    monkeypatch.delenv("RAMALAMA_DEFAULT_IMAGE", raising=False)
     info = json.loads(check_output(["ramalama", "info"]))
 
     assert info["Image"].startswith("quay.io/ramalama/")
