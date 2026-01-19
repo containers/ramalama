@@ -144,6 +144,8 @@ spec:
       value: "true"
     - name: mergeSourceRepoUrl
       value: https://github.com/containers/ramalama
+    - name: verbose
+      value: "true"
     runAfter:
     - init
     taskRef:
