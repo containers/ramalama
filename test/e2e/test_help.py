@@ -87,6 +87,7 @@ def test_help_output(subcommand):
 @pytest.mark.parametrize("command", ["run", "bench", "serve"], ids=lambda x: f"ramalama {x}")
 def test_default_image(monkeypatch, command):
     monkeypatch.delenv("RAMALAMA_DEFAULT_IMAGE", raising=False)
+    monkeypatch.delenv("RAMALAMA_IMAGES", raising=False)
     result = check_output(["ramalama", command, "--help"])
     match = DEFAULT_IMAGE_PATTERN.search(result.replace("\n", ""))
 

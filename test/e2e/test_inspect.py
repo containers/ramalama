@@ -1,6 +1,5 @@
 import json
 import re
-import sys
 from subprocess import STDOUT, CalledProcessError
 from test.e2e.utils import RamalamaExecWorkspace
 
@@ -37,9 +36,7 @@ def test_inspect_non_existent_model(shared_ctx):
         pytest.param(GGUF_MODEL, False, ["Registry"], "ollama", id="gguf_inspect_registry"),
         pytest.param(GGUF_MODEL, False, ["Format"], "GGUF", id="gguf_inspect_format"),
         pytest.param(GGUF_MODEL, False, ["Version"], "3", id="gguf_inspect_version"),
-        pytest.param(
-            GGUF_MODEL, False, ["Endianness"], "0" if sys.byteorder == "little" else "1", id="gguf_inspect_endianness"
-        ),
+        pytest.param(GGUF_MODEL, False, ["Endianness"], "0", id="gguf_inspect_endianness"),
         pytest.param(GGUF_MODEL, False, ["Metadata"], "23", id="gguf_inspect_metadata_count"),
         pytest.param(GGUF_MODEL, False, ["Tensors"], "201", id="gguf_inspect_tensors_count"),
         pytest.param(
@@ -62,7 +59,7 @@ def test_inspect_non_existent_model(shared_ctx):
             GGUF_MODEL,
             True,
             ["Endianness"],
-            "0" if sys.byteorder == "little" else "1",
+            "0",
             id="gguf_inspect_all_endianness",
         ),
         pytest.param(

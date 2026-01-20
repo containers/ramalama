@@ -3,6 +3,7 @@ import random
 import shutil
 import string
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -12,6 +13,10 @@ from test.conftest import ramalama_container_engine
 import bcrypt
 import pytest
 import requests
+
+if sys.byteorder == "big":
+    # Most tests assume little-endian so need to disable endianness verification on big-endian systems
+    os.environ["RAMALAMA_VERIFY"] = "false"
 
 
 @dataclass

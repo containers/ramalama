@@ -14,6 +14,7 @@ from ramalama.version import version
 @skip_if_gh_actions_darwin
 def test_info(monkeypatch, container_engine):
     monkeypatch.delenv("RAMALAMA_DEFAULT_IMAGE", raising=False)
+    monkeypatch.delenv("RAMALAMA_IMAGES", raising=False)
     info = json.loads(check_output(["ramalama", "info"]))
 
     assert info["Image"].startswith("quay.io/ramalama/")
