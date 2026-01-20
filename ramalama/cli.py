@@ -24,12 +24,13 @@ try:
     suppressCompleter: type[argcomplete.completers.SuppressCompleter] | None = argcomplete.completers.SuppressCompleter
 except Exception:
     suppressCompleter = None
-
+from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.benchmarks.utilities import print_bench_results
 from ramalama.chat_utils import default_prefix
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import accel_image, get_accel, perror
+from ramalama.command.factory import assemble_command
+from ramalama.common import accel_image, exec_cmd, get_accel, perror
 from ramalama.config import (
     GGUF_QUANTIZATION_MODES,
     SUPPORTED_ENGINES,
@@ -40,13 +41,16 @@ from ramalama.config import (
     get_inference_spec_files,
     load_file_config,
 )
-
+from ramalama.daemon.daemon import run
 from ramalama.endian import EndianMismatchError
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
 from ramalama.path_utils import file_uri_to_path
-from ramalama.transports.api import APITransport
+from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.rag import RagTransport, rag_image
+from ramalama.shortnames import Shortnames
+from ramalama.stack import Stack
 from ramalama.transports.base import (
     MODEL_TYPES,
     NoGGUFModelFileFound,
@@ -55,6 +59,7 @@ from ramalama.transports.base import (
     compute_serving_port,
     trim_model_name,
 )
+from ramalama.transports.transport_factory import New, TransportFactory
 from ramalama.version import print_version, version
 
 GENERATE_OPTIONS = ["quadlet", "kube", "quadlet/kube", "compose"]
@@ -69,21 +74,15 @@ def default_image() -> str:
 
 @lru_cache(maxsize=1)
 def default_rag_image() -> str:
-    from ramalama.rag import rag_image
-
     return rag_image(get_config())
 
 
 @lru_cache(maxsize=1)
 def get_shortnames():
-    from ramalama.shortnames import Shortnames
-
     return Shortnames()
 
 
 def assemble_command_lazy(cli_args: argparse.Namespace) -> list[str]:
-    from ramalama.command.factory import assemble_command
-
     return assemble_command(cli_args)
 
 
@@ -145,14 +144,12 @@ def local_models(prefix, parsed_args, **kwargs):
 
 def local_containers(prefix, parsed_args, **kwargs):
     parsed_args.format = '{{.Names}}'
-    from ramalama import engine
 
     return engine.containers(parsed_args)
 
 
 def local_images(prefix, parsed_args, **kwargs):
     parsed_args.format = "{{.Repository}}:{{.Tag}}"
-    from ramalama import engine
 
     return engine.images(parsed_args)
 
@@ -162,8 +159,6 @@ def available_metadata(prefix, parsed_args, **kwargs):
         # shotnames resolution has not been applied for auto-completion
         # Therefore it needs to be done explicitly here in order to support it
         resolved_model = get_shortnames().resolve(parsed_args.MODEL)
-
-        from ramalama.transports.transport_factory import New
 
         metadata = New(resolved_model, parsed_args).inspect_metadata()
         return [field for field in metadata.keys() if field.startswith(parsed_args.get)]
@@ -459,8 +454,6 @@ def normalize_registry(registry):
 def login_cli(args):
     registry = normalize_registry(args.REGISTRY)
 
-    from ramalama.transports.transport_factory import New
-
     model = New(registry, args)
     return model.login(args)
 
@@ -477,7 +470,6 @@ def logout_parser(subparsers):
 
 def logout_cli(args):
     registry = normalize_registry(args.REGISTRY)
-    from ramalama.transports.transport_factory import New
 
     model = New(registry, args)
     return model.logout(args)
@@ -514,7 +506,6 @@ def human_duration(d):
 
 
 def bench_cli(args):
-    from ramalama.transports.transport_factory import New
 
     model = New(args.MODEL, args)
     model.ensure_model_exists(args)
@@ -618,7 +609,6 @@ def containers_parser(subparsers):
 
 
 def list_containers(args):
-    from ramalama import engine
 
     containers = engine.containers(args)
     if len(containers) == 0:
@@ -667,7 +657,6 @@ def human_readable_size(size):
 
 
 def _list_models_from_store(args):
-    from ramalama.model_store.global_store import GlobalModelStore
 
     models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
 
@@ -687,13 +676,11 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append(
-            {
-                "name": f"{model} (partial)" if is_partially_downloaded else model,
-                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-                "size": size_sum,
-            }
-        )
+        ret.append({
+            "name": f"{model} (partial)" if is_partially_downloaded else model,
+            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+            "size": size_sum,
+        })
 
     # sort the listed models according to the desired order
     ret.sort(key=lambda entry: entry[args.sort], reverse=args.order == "desc")
@@ -804,7 +791,6 @@ def pull_parser(subparsers):
 
 
 def pull_cli(args):
-    from ramalama.transports.transport_factory import New
 
     model = New(args.MODEL, args)
     model.pull(args)
@@ -877,8 +863,6 @@ def convert_cli(args):
     shortnames = get_shortnames()
     tgt = shortnames.resolve(target)
 
-    from ramalama.transports.transport_factory import TransportFactory
-
     model = TransportFactory(tgt, args).create_oci()
 
     source_model = _get_source_model(args)
@@ -924,7 +908,6 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
 def _get_source_model(args, transport=None):
     shortnames = get_shortnames()
     src = shortnames.resolve(args.SOURCE)
-    from ramalama.transports.transport_factory import New
 
     smodel = New(src, args, transport=transport)
     if smodel.type == "OCI":
@@ -937,7 +920,6 @@ def _get_source_model(args, transport=None):
 
 
 def push_cli(args):
-    from ramalama.transports.transport_factory import New, TransportFactory
 
     target = args.SOURCE
     transport = None
@@ -1300,7 +1282,6 @@ def run_parser(subparsers):
 
 
 def run_cli(args):
-    from ramalama.transports.transport_factory import New, TransportFactory
 
     try:
         # detect available port and update arguments
@@ -1325,7 +1306,6 @@ def run_cli(args):
         if not args.container:
             raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
         args = _rag_args(args)
-        from ramalama.rag import RagTransport
 
         model = RagTransport(model, assemble_command_lazy(args.model_args), args)
         model.ensure_model_exists(args)
@@ -1341,7 +1321,6 @@ def serve_parser(subparsers):
 
 
 def serve_cli(args):
-    from ramalama.transports.transport_factory import New, TransportFactory
 
     if not args.container:
         args.detach = False
@@ -1349,8 +1328,6 @@ def serve_cli(args):
     if args.api == "llama-stack":
         if not args.container:
             raise ValueError("ramalama serve --api llama-stack command cannot be run with the --nocontainer option.")
-
-        from ramalama.stack import Stack
 
         stack = Stack(args)
         return stack.serve()
@@ -1381,7 +1358,6 @@ def serve_cli(args):
         if not args.container:
             raise ValueError("ramalama serve --rag cannot be run with the --nocontainer option.")
         args = _rag_args(args)
-        from ramalama.rag import RagTransport
 
         model = RagTransport(model, assemble_command_lazy(args.model_args), args)
         model.ensure_model_exists(args)
@@ -1472,8 +1448,6 @@ def daemon_parser(subparsers) -> None:
 
 
 def daemon_start_cli(args):
-    from ramalama.common import exec_cmd
-
     daemon_cmd = []
     daemon_model_store_dir = args.store
     is_daemon_in_container = args.container and args.engine in get_args(SUPPORTED_ENGINES)
@@ -1510,8 +1484,6 @@ def daemon_start_cli(args):
 
 
 def daemon_run_cli(args):
-    from ramalama.daemon.daemon import run
-
     run(host=args.host, port=int(args.port), model_store_path=args.store)
 
 
@@ -1628,8 +1600,6 @@ def rm_parser(subparsers):
 def _rm_oci_model(model, args) -> bool:
     # attempt to remove as a container image
     try:
-        from ramalama.transports.transport_factory import TransportFactory
-
         m = TransportFactory(model, args, ignore_stderr=True).create_oci()
         return m.remove(args)
     except Exception:
@@ -1639,7 +1609,6 @@ def _rm_oci_model(model, args) -> bool:
 def _rm_model(models, args):
     exceptions = []
     shortnames = get_shortnames()
-    from ramalama.transports.transport_factory import New
 
     for model in models:
         model = shortnames.resolve(model)
@@ -1678,8 +1647,6 @@ def rm_cli(args):
     if len(args.MODEL) > 0:
         raise IndexError("can not specify --all as well MODEL")
 
-    from ramalama.model_store.global_store import GlobalModelStore
-
     models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
 
     failed_models = []
@@ -1703,7 +1670,6 @@ def perplexity_parser(subparsers):
 
 
 def perplexity_cli(args):
-    from ramalama.transports.transport_factory import New
 
     model = New(args.MODEL, args)
     model.ensure_model_exists(args)
@@ -1728,7 +1694,6 @@ def inspect_parser(subparsers):
 
 def inspect_cli(args):
     args.pull = "never"
-    from ramalama.transports.transport_factory import New
 
     model = New(args.MODEL, args)
     print(model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun))

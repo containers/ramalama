@@ -3,7 +3,6 @@ import json
 from datetime import datetime, timedelta
 
 from ramalama.arg_types import StoreArgs
-from ramalama.cli import parse_args_from_cmd
 from ramalama.command.factory import assemble_command
 from ramalama.common import generate_sha256
 from ramalama.config import get_config
@@ -107,6 +106,8 @@ class DaemonAPIHandler(APIHandler):
         handler.wfile.flush()
 
     def _handle_post_serve(self, handler: http.server.SimpleHTTPRequestHandler):
+        from ramalama.cli import parse_args_from_cmd  # resolve circular import
+
         content_length = int(handler.headers["Content-Length"])
         payload = handler.rfile.read(content_length).decode("utf-8")
         serve_request = ServeRequest.from_string(payload)

@@ -46,8 +46,6 @@ from ramalama.common import (
     run_cmd,
     set_accel_env_vars,
 )
-from ramalama.config import get_config
-from ramalama.engine import Engine
 from ramalama.logger import logger
 from ramalama.path_utils import get_container_mount_path
 
@@ -819,6 +817,7 @@ class Transport(TransportBase):
 
     def inspect_metadata(self) -> dict[str, Any]:
         model_path = self._get_entry_model_path(False, False, False)
+
         if GGUFInfoParser.is_model_gguf(model_path):
             return GGUFInfoParser.parse_metadata(model_path).data
         return {}
@@ -866,6 +865,7 @@ class Transport(TransportBase):
 
 def compute_ports(exclude: list[str] | None = None) -> list[int]:
     excluded = set() if exclude is None else set(map(int, exclude))
+
     port_range = get_config().default_port_range
     ports = [p for p in range(port_range[0], port_range[1] + 1) if p not in excluded]
 
