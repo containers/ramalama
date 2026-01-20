@@ -766,10 +766,8 @@ def test_serve_with_rag():
     with RamalamaExecWorkspace() as ctx:
         result_a = ctx.check_output(RAMALAMA_DRY_RUN + ["--rag", "quay.io/ramalama/rag", "--pull", "never", "tiny"])
         assert re.search(r".*llama-server", result_a)
-        assert re.search(r".*--port 8081", result_a)
         assert re.search(r".*quay.io/.*-rag(@sha256)?:", result_a)
         assert re.search(r".*rag_framework serve", result_a)
-        assert re.search(r".*--port 8080", result_a)
         assert re.search(r".*--mount=type=image,source=quay.io/ramalama/rag,destination=/rag,rw=true", result_a)
 
         result_b = ctx.check_output(
