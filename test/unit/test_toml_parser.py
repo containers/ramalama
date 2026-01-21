@@ -119,11 +119,9 @@ def test_toml_parser_get(toml, expected):
 @pytest.mark.parametrize(
     "toml_error_string",
     [
-        (
-            """
+        ("""
             This is not a valid TOML file.
-            """
-        ),
+            """),
     ],
 )
 def test_toml_parser_wrong_parse(toml_error_string):

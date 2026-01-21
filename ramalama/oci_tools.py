@@ -32,12 +32,10 @@ def list_artifacts(args: EngineArgType):
         "artifact",
         "ls",
         "--format",
-        (
-            '{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
+        ('{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
             "created":"{{ .CreatedAt }}", \
             "size":"{{ .Size }}", \
-            "ID":"{{ .Digest }}"},'
-        ),
+            "ID":"{{ .Digest }}"},'),
     ]
     try:
         if (output := run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()) == "":

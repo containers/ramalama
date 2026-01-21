@@ -62,12 +62,10 @@ class Rag:
         src = os.path.basename(source)
         engine = BuildEngine(args)
         return engine.build_containerfile(
-            dedent(
-                f"""
+            dedent(f"""
                 FROM scratch
                 COPY {src} /vector.db
-                """
-            ),
+                """),
             contextdir,
             tag=self.target,
         )

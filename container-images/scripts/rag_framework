@@ -254,9 +254,7 @@ class OpenAICompatibleRagService:
         conversation_history = self._extract_conversation_context(messages[:-1])
 
         # Enhanced system prompt with RAG context
-        system_prompt = (
-            textwrap.dedent(
-                """
+        system_prompt = textwrap.dedent("""
             You are an expert software architect assistant.
             Use the provided context and conversation history to answer questions accurately and concisely.
             If the answer is not in the context, respond with "I don't know" - do not fabricate details.
@@ -271,11 +269,7 @@ class OpenAICompatibleRagService:
             {2}
 
             Provide a helpful and accurate response based on the context above.
-            """
-            )
-            .strip()
-            .format(conversation_history, rag_context, latest_message.content)
-        )
+            """).strip().format(conversation_history, rag_context, latest_message.content)
 
         return [{"role": "user", "content": system_prompt}]
 
