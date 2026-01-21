@@ -112,15 +112,14 @@ spec:
       fi
       podman pull $TEST_IMAGE
 
-      TEMP_DIR=$(mktemp -d -p /var/tmp e2e-test.XXXXXX)
-      trap 'rm -rf "$TEMP_DIR"' EXIT
+      TEMP_DIR=\$(mktemp -d -p \$PWD e2e-test.XXXXXX)
 
       podman run \
       --userns=keep-id \
       --security-opt label=disable \
       --security-opt unmask=/proc/* \
       --device /dev/net/tun \
-      -v "${TEMP_DIR}":/tmp \
+      -v \$TEMP_DIR:/tmp \
       \${EXTRA_ARGS[*]} \
       ${PODMAN_ENV[*]} \
       $TEST_IMAGE $TEST_CMD
