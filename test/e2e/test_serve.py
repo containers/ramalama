@@ -734,6 +734,10 @@ def test_serve_api(caplog):
 @skip_if_gh_actions_darwin
 def test_serve_with_non_existing_images():
     with RamalamaExecWorkspace() as ctx:
+        # If the requested model is missing, "ramalama serve --pull never" will exit with
+        # "Error: <model> does not exist" and returncode 22. To test the behavior of a
+        # non-existent image reference, the requested model must already be available locally.
+        ctx.check_call(["ramalama", "pull", "tiny"])
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(["ramalama", "serve", "--image", "bogus", "--pull", "never", "tiny"], stderr=STDOUT)
         assert exc_info.value.returncode == 125
