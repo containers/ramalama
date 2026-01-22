@@ -145,6 +145,16 @@ class UserConfig:
 
 
 @dataclass
+class OpenaiProviderConfig:
+    api_key: str | None = None
+
+
+@dataclass
+class ProviderConfig:
+    openai: OpenaiProviderConfig = field(default_factory=OpenaiProviderConfig)
+
+
+@dataclass
 class RamalamaSettings:
     """These settings are not managed directly by the user"""
 
@@ -253,6 +263,7 @@ class BaseConfig:
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
     http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
     log_level: LogLevel | None = None
+    provider: ProviderConfig = field(default_factory=ProviderConfig)
 
     def __post_init__(self):
         self.container = coerce_to_bool(self.container) if self.container is not None else self.engine is not None
