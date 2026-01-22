@@ -14,7 +14,7 @@ load setup_suite
 
     testmodel=$RAMALAMA_TMPDIR/testmodel
     artifact=artifact-test:latest
-    run_ramalama ? rm ${artifact}
+    run_ramalama rm --ignore ${artifact}
 
     echo "hello" > ${testmodel}
     run_ramalama convert --type artifact file://${testmodel} ${artifact}
@@ -111,7 +111,7 @@ load setup_suite
 	--password ${PODMAN_LOGIN_PASS} \
 	oci://$registry
 
-    run_ramalama ? rm oci://$registry/artifact-test-push:latest
+    run_ramalama rm --ignore oci://$registry/artifact-test-push:latest
     echo "test model" > $RAMALAMA_TMPDIR/testmodel
 
     run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/testmodel oci://$registry/artifact-test-push:latest
@@ -144,7 +144,7 @@ load setup_suite
     skip_if_s390x
 
     artifact="artifact-test:latest"
-    run_podman ? podman artifact rm ${artifact}
+    run_podman ? artifact rm ${artifact}
     # Create a regular image
     echo "test model" > $RAMALAMA_TMPDIR/testmodel
     run_ramalama convert --type raw file://$RAMALAMA_TMPDIR/testmodel test-image
@@ -195,7 +195,7 @@ load setup_suite
     skip_if_ppc64le
     skip_if_s390x
 
-    run_ramalama ? rm test-config-artifact:latest
+    run_ramalama rm --ignore test-config-artifact:latest
     # Create a temporary config with artifact as default
     local config_file=$RAMALAMA_TMPDIR/ramalama.conf
     cat > $config_file << EOF
@@ -253,7 +253,7 @@ EOF
     skip_if_ppc64le
     skip_if_s390x
 
-    run_ramalama ? rm test-car:latest test-raw:latest
+    run_ramalama rm --ignore test-car:latest test-raw:latest
     echo "test model" > $RAMALAMA_TMPDIR/testmodel
 
     # Test car type
@@ -293,7 +293,7 @@ EOF
 
     echo "test model" > $RAMALAMA_TMPDIR/testmodel
 
-    run_ramalama ? rm artifact-test:latest
+    run_ramalama rm --ignore artifact-test:latest
     # Test artifact push
     run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/testmodel oci://$registry/artifact-test-push:latest
     run_ramalama list

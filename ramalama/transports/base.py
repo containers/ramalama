@@ -84,8 +84,14 @@ class NoRefFileFound(Exception):
         return f"No ref file found for '{self.model}'. Please pull model."
 
 
-def is_oci(self) -> TypeGuard["OCI"]:
-    return self.model_type == "oci"
+def is_oci(transport: "Transport") -> TypeGuard["OCI"]:
+    """
+    Type guard to determine whether a given transport is an OCI transport.
+
+    This assumes the transport exposes a `model_type` attribute and that
+    OCI-based transports set `model_type` to the string `"oci"`.
+    """
+    return getattr(transport, "model_type", None) == "oci"
 
 
 def trim_model_name(model):
