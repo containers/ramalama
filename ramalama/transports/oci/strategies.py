@@ -76,7 +76,7 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
     def pull(self, ref: OciRef, cmd_args: list[str] | None = None) -> None:
         if cmd_args is None:
             cmd_args = []
-        run_cmd([self.engine, "pull", str(ref), *cmd_args])
+        run_cmd([self.engine, "pull", *cmd_args, str(ref)])
 
     def exists(self, ref: OciRef) -> bool:
         try:
@@ -85,7 +85,10 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
         except Exception:
             return False
 
-    def remove(self, ref: OciRef, cmd_args: list[str] = []) -> bool:
+    def remove(self, ref: OciRef, cmd_args: list[str] | None = None) -> bool:
+        if cmd_args is None:
+            cmd_args = []
+
         try:
             run_cmd([self.engine, "manifest", "rm", str(ref)], ignore_stderr=True)
             return True
@@ -133,7 +136,10 @@ class HttpArtifactStrategy(BaseArtifactStrategy):
         except Exception:
             return False
 
-    def remove(self, ref: OciRef, cmd_args: list[str] = []) -> bool:
+    def remove(self, ref: OciRef, cmd_args: list[str] | None = None) -> bool:
+        if cmd_args is None:
+            cmd_args = []
+
         if not self.model_store:
             return False
         try:
@@ -172,7 +178,7 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
     def pull(self, ref: OciRef, cmd_args: list[str] | None = None) -> None:
         if cmd_args is None:
             cmd_args = []
-        run_cmd([self.engine, "artifact", "pull", str(ref), *cmd_args])
+        run_cmd([self.engine, "artifact", "pull", *cmd_args, str(ref)])
 
     def exists(self, ref: OciRef) -> bool:
         try:
@@ -184,7 +190,10 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
     def mount_arg(self, ref: OciRef, dest: str | None = None) -> str:
         return f"--mount=type=artifact,src={str(ref)},destination={dest or MNT_DIR}"
 
-    def remove(self, ref: OciRef, cmd_args: list[str] = []) -> bool:
+    def remove(self, ref: OciRef, cmd_args: list[str] | None = None) -> bool:
+        if cmd_args is None:
+            cmd_args = []
+
         try:
             run_cmd([self.engine, "artifact", "rm", *cmd_args, str(ref)], ignore_stderr=True)
             return True
