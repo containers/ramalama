@@ -61,18 +61,6 @@ rm_container_image() {
   fi
 }
 
-add_entrypoint() {
-    tag=$2
-    if [ -n "$4" ]; then
-        tag=$tag-$4
-    fi
-    tag=$tag-$3
-    containerfile="container-images/common/Containerfile.entrypoint"
-    build_args=("--build-arg" "PARENT=$2" "--build-arg" "ENTRYPOINT=${3}.sh")
-    echo "$1 build ${nocache} ${build_args[*]} -t $tag -f ${containerfile} ."
-    eval "$1 build ${nocache} ${build_args[*]} -t $tag -f ${containerfile} ."
-}
-
 add_rag() {
     tag="$2"
     if [ -n "$3" ]; then
@@ -100,11 +88,6 @@ add_rag() {
     eval "$1 build ${nocache} ${build_args[*]} -t $tag -f ${containerfile} ."
 }
 
-add_entrypoints() {
-    add_entrypoint "$1" "$2" "whisper-server" "$3"
-    add_entrypoint "$1" "$2" "llama-server"   "$3"
-}
-
 build() {
   local target=${1}
   local version=${3:-}
@@ -128,7 +111,6 @@ build() {
 	  ;;
 	  *)
 	      if [ "${build_all}" -eq 1 ]; then
-		  add_entrypoints "${conman[@]}" "${REGISTRY_PATH}"/"${target}" "${version}"
 		  add_rag "${conman[@]}" "${REGISTRY_PATH}"/"${target}" "${version}"
 		  rm_container_image
 	      fi
@@ -139,7 +121,6 @@ build() {
       ;;
     multi-arch)
       podman farm build -t "$REGISTRY_PATH"/"${target}" -f "${target}"/Containerfile .
-      add_entrypoints "podman farm" "$REGISTRY_PATH"/"${target}" "${version}"
       ;;
     *)
       echo "Invalid command: ${2:-}. Use 'build', 'push' or 'multi-arch'."

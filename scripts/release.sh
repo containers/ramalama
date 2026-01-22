@@ -60,8 +60,6 @@ case ${1} in
 	podman run --pull=never --rm "${REPO}/$1"-rag rag_framework load
 
 	release "$1"
-	release "$1"-whisper-server
-	release "$1"-llama-server
 	release "$1"-rag
 	;;
 esac
