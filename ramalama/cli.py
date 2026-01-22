@@ -22,7 +22,7 @@ except Exception:
 
 
 import ramalama.chat as chat
-from ramalama import engine
+from ramalama import common, engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.chat import default_prefix
 from ramalama.cli_arg_normalization import normalize_pull_arg
@@ -624,6 +624,7 @@ def info_cli(args: DefaultArgsType) -> None:
             "Names": shortnames.shortnames,
         },
         "Store": args.store,
+        "StoreUsage": common.store_disk_stats(args),
         "UseContainer": args.container,
         "Version": version(),
     }
