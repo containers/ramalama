@@ -5,6 +5,7 @@ import shutil
 import sys
 import time
 import urllib.request
+from pathlib import Path
 
 import ramalama.console as console
 from ramalama.common import perror
@@ -24,10 +25,10 @@ class HttpClient:
     def __init__(self):
         pass
 
-    def init(self, url, headers, output_file, show_progress, response_bytes=None):
-        output_file_partial = None
-        if output_file:
-            output_file_partial = output_file + ".partial"
+    def init(
+        self, url: str, headers: dict[str, str] | None, output_file: Path, show_progress: bool, response_bytes=None
+    ):
+        output_file_partial = Path(f"{output_file}.partial")
 
         self.file_size = self.set_resume_point(output_file_partial)
         self.urlopen(url, headers)
@@ -49,8 +50,7 @@ class HttpClient:
             finally:
                 del out  # Ensure file is closed before rename
 
-        if output_file:
-            os.rename(output_file_partial, output_file)
+        os.rename(output_file_partial, output_file)
 
     def urlopen(self, url, headers):
         headers["Range"] = f"bytes={self.file_size}-"
@@ -162,13 +162,13 @@ class HttpClient:
         return now_downloaded / elapsed_seconds
 
 
-def download_file(url: str, dest_path: str, headers: dict[str, str] | None = None, show_progress: bool = True):
+def download_file(url: str, dest_path: Path, headers: dict[str, str] | None = None, show_progress: bool = True):
     """
     Downloads a file from a given URL to a specified destination path.
 
     Args:
         url (str): The URL to download from.
-        dest_path (str): The path to save the downloaded file.
+        dest_path (Path): The path to save the downloaded file.
         headers (dict): Optional headers to include in the request.
         show_progress (bool): Whether to show a progress bar during download.
 

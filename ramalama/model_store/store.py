@@ -53,7 +53,7 @@ class ModelStore:
         self._model_organization = model_organization
 
     @property
-    def base_path(self) -> str:
+    def base_path(self) -> Path:
         return self._store.path
 
     @property
@@ -69,32 +69,29 @@ class ModelStore:
         return self._model_type
 
     @property
-    def model_base_directory(self) -> str:
-        return os.path.join(self.base_path, self.model_type, self.model_organization, self.model_name)
+    def model_base_directory(self) -> Path:
+        return self.base_path.joinpath(self.model_type, self.model_organization, self.model_name)
 
     @property
-    def blobs_directory(self) -> str:
-        return os.path.join(self.model_base_directory, DIRECTORY_NAME_BLOBS)
+    def blobs_directory(self) -> Path:
+        return self.model_base_directory.joinpath(DIRECTORY_NAME_BLOBS)
 
     @property
-    def refs_directory(self) -> str:
-        return os.path.join(self.model_base_directory, DIRECTORY_NAME_REFS)
+    def refs_directory(self) -> Path:
+        return self.model_base_directory.joinpath(DIRECTORY_NAME_REFS)
 
     @property
-    def snapshots_directory(self) -> str:
-        return os.path.join(self.model_base_directory, DIRECTORY_NAME_SNAPSHOTS)
+    def snapshots_directory(self) -> Path:
+        return self.model_base_directory.joinpath(DIRECTORY_NAME_SNAPSHOTS)
 
-    def file_exists(self, file_path: str) -> bool:
-        return os.path.exists(file_path)
-
-    def get_ref_file_path(self, model_tag: str) -> str:
-        return os.path.join(self.refs_directory, f"{model_tag}.json")
+    def get_ref_file_path(self, model_tag: str) -> Path:
+        return self.refs_directory.joinpath(f"{model_tag}.json")
 
     def get_ref_file(self, model_tag: str) -> Optional[RefJSONFile]:
         ref_file_path = self.get_ref_file_path(model_tag)
         ref_file = migrate_reffile_to_refjsonfile(ref_file_path, self.snapshots_directory)
         if ref_file is None:
-            if os.path.exists(ref_file_path):
+            if ref_file_path.exists():
                 ref_file = RefJSONFile.from_path(ref_file_path)
         if ref_file is not None:
             if ref_file.version != RefJSONFile.version:
@@ -130,19 +127,19 @@ class ModelStore:
             return ""
         return sanitize_filename(ref_file.hash)
 
-    def get_snapshot_directory_from_tag(self, model_tag: str) -> str:
-        return os.path.join(self.snapshots_directory, self.get_snapshot_hash(model_tag))
+    def get_snapshot_directory_from_tag(self, model_tag: str) -> Path:
+        return self.snapshots_directory.joinpath(self.get_snapshot_hash(model_tag))
 
-    def get_snapshot_directory(self, hash: str) -> str:
-        return os.path.join(self.snapshots_directory, hash)
+    def get_snapshot_directory(self, hash: str) -> Path:
+        return self.snapshots_directory.joinpath(hash)
 
-    def get_snapshot_file_path(self, tag_hash: str, filename: str) -> str:
-        return os.path.join(self.snapshots_directory, sanitize_filename(tag_hash), filename)
+    def get_snapshot_file_path(self, tag_hash: str, filename: str) -> Path:
+        return self.snapshots_directory.joinpath(sanitize_filename(tag_hash), filename)
 
-    def get_blob_file_path(self, file_hash: str) -> str:
-        return os.path.join(self.blobs_directory, sanitize_filename(file_hash))
+    def get_blob_file_path(self, file_hash: str) -> Path:
+        return self.blobs_directory.joinpath(sanitize_filename(file_hash))
 
-    def get_safetensor_blob_path(self, model_tag: str, requested_filename: str) -> Optional[str]:
+    def get_safetensor_blob_path(self, model_tag: str, requested_filename: str) -> Optional[Path]:
         ref_file = self.get_ref_file(model_tag)
         if ref_file is None:
             return None
@@ -153,26 +150,23 @@ class ModelStore:
         chosen = matched if matched is not None else safetensor_files[0]
         return self.get_blob_file_path(chosen.hash)
 
-    def get_blob_file_path_by_name(self, tag_hash: str, filename: str) -> str:
-        return str(Path(self.get_snapshot_file_path(tag_hash, filename)).resolve())
+    def get_blob_file_path_by_name(self, tag_hash: str, filename: str) -> Path:
+        return self.get_snapshot_file_path(tag_hash, filename).resolve()
 
     def get_blob_file_hash(self, tag_hash: str, filename: str) -> str:
-        return os.path.basename(self.get_blob_file_path_by_name(tag_hash, filename))
+        blob_file = self.get_blob_file_path_by_name(tag_hash, filename)
+        return blob_file.name if blob_file.is_file() else ""
 
-    def get_partial_blob_file_path(self, file_hash: str) -> str:
-        return self.get_blob_file_path(file_hash) + ".partial"
+    def get_partial_blob_file_path(self, file_hash: str) -> Path:
+        return Path(f"{self.get_blob_file_path(file_hash)}.partial")
 
     def ensure_directory_setup(self) -> None:
-        os.makedirs(self.blobs_directory, exist_ok=True)
-        os.makedirs(self.refs_directory, exist_ok=True)
-        os.makedirs(self.snapshots_directory, exist_ok=True)
+        self.blobs_directory.mkdir(exist_ok=True, parents=True)
+        self.refs_directory.mkdir(exist_ok=True, parents=True)
+        self.snapshots_directory.mkdir(exist_ok=True, parents=True)
 
     def directory_setup_exists(self) -> bool:
-        return (
-            os.path.exists(self.blobs_directory)
-            and os.path.exists(self.refs_directory)
-            and os.path.exists(self.snapshots_directory)
-        )
+        return self.blobs_directory.exists() and self.refs_directory.exists() and self.snapshots_directory.exists()
 
     def get_cached_files(self, model_tag: str) -> Tuple[str, list[str], bool]:
         cached_files: list[str] = []
@@ -213,7 +207,7 @@ class ModelStore:
             ref_file.write_to_file()
 
         snapshot_directory = self.get_snapshot_directory(snapshot_hash)
-        os.makedirs(snapshot_directory, exist_ok=True)
+        snapshot_directory.mkdir(exist_ok=True, parents=True)
         return ref_file
 
     def _download_snapshot_files(
@@ -325,7 +319,7 @@ class ModelStore:
             for file in ref_file.files:
                 if file.name == "chat_template_converted":
                     # Should not exist but 0.13.0 needs_conversion logic was inverted
-                    self._remove_blob_path(Path(self.get_snapshot_file_path(ref_file.hash, file.name)))
+                    self._remove_blob_path(self.get_snapshot_file_path(ref_file.hash, file.name))
                     ref_file.remove_file(file.hash)
                     break
         self._update_snapshot(ref_file, snapshot_hash, files)
@@ -416,7 +410,7 @@ class ModelStore:
         model_tags = [
             Path(entry).stem
             for entry in os.listdir(self.refs_directory)
-            if os.path.isfile(os.path.join(self.refs_directory, entry))
+            if self.refs_directory.joinpath(entry).is_file()
         ]
         refs = [ref for tag in model_tags if (ref := self.get_ref_file(tag))]
 
@@ -438,22 +432,19 @@ class ModelStore:
         for file in ref_file.files:
             blob_refcount = blob_refcounts.get(file.name, 0)
             if blob_refcount <= 1:
-                blob_absolute_path = Path(self.get_blob_file_path(file.hash))
-                self._remove_blob_path(blob_absolute_path)
+                self._remove_blob_path(self.get_blob_file_path(file.hash))
             else:
                 logger.debug(f"Not removing blob {file} refcount={blob_refcount}")
 
         # Remove snapshot directory
         if snapshot_refcount <= 1:
             # FIXME: this only cleans up .partial files where the blob hash equals the snapshot hash
-            partial_blob_file_path = Path(self.get_partial_blob_file_path(ref_file.hash))
-            self._remove_blob_path(partial_blob_file_path)
-            snapshot_directory = self.get_snapshot_directory_from_tag(model_tag)
-            shutil.rmtree(snapshot_directory, ignore_errors=True)
+            self._remove_blob_path(self.get_partial_blob_file_path(ref_file.hash))
+            shutil.rmtree(self.get_snapshot_directory_from_tag(model_tag), ignore_errors=True)
             logger.debug(f"Snapshot removed {ref_file.hash}")
         else:
             logger.debug(f"Not removing snapshot {ref_file.hash} refcount={snapshot_refcount}")
 
         # Remove ref file, ignore if file is not found
-        Path(self.get_ref_file_path(model_tag)).unlink(missing_ok=True)
+        self.get_ref_file_path(model_tag).unlink(missing_ok=True)
         return True

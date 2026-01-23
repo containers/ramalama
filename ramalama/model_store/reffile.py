@@ -1,6 +1,6 @@
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -21,14 +21,14 @@ class RefFile:
         self.model_name: str = ""
         self.chat_template_name: str = ""
         self.mmproj_name: str = ""
-        self._path: str = ""
+        self._path: Path = Path("")
 
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         return self._path
 
     @staticmethod
-    def from_path(path: str) -> "RefFile":
+    def from_path(path: Path) -> "RefFile":
         ref_file = RefFile()
         ref_file._path = path
         with open(path, "r") as file:
@@ -82,12 +82,12 @@ class RefFile:
             file.flush()
 
     @staticmethod
-    def map_to_refjsonfile(ref_file_path: str, snapshot_directory: str) -> "RefJSONFile":
+    def map_to_refjsonfile(ref_file_path: Path, snapshot_directory: Path) -> "RefJSONFile":
         ref_file = RefFile.from_path(ref_file_path)
 
         ref = RefJSONFile(
             hash=ref_file.hash,
-            path=f"{ref_file.path}.json",
+            path=Path(f"{ref_file.path}.json"),
             files=[],
         )
 
@@ -116,10 +116,10 @@ class RefFile:
 #
 # Temporary migration routine to ensure smooth transition to new RefFile format
 #
-def migrate_reffile_to_refjsonfile(ref_file_path: str, snapshot_directory: str) -> Optional["RefJSONFile"]:
+def migrate_reffile_to_refjsonfile(ref_file_path: Path, snapshot_directory: Path) -> Optional["RefJSONFile"]:
     # Check if a ref file in old format is present by removing the file extension
-    old_ref_file_path = ref_file_path.replace(".json", "")
-    if os.path.exists(old_ref_file_path):
+    old_ref_file_path = ref_file_path.with_suffix("")
+    if old_ref_file_path.exists():
         logger.debug(f"Migrating old ref file '{old_ref_file_path}' to new format")
         ref: RefJSONFile = RefFile.map_to_refjsonfile(old_ref_file_path, snapshot_directory)
         ref.write_to_file()
@@ -162,13 +162,13 @@ class StoreFile:
 @dataclass
 class RefJSONFile:
     hash: str
-    path: str
+    path: Path
     files: list[StoreFile]
 
     version: str = "v1.0.1"
 
     def to_json(self) -> str:
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=2)
+        return json.dumps(asdict(self), default=str, sort_keys=True, indent=2)
 
     def write_to_file(self):
         with open(self.path, "w") as file:
@@ -198,7 +198,7 @@ class RefJSONFile:
                 break
 
     @staticmethod
-    def from_path(path: str) -> "RefJSONFile":
+    def from_path(path: Path) -> "RefJSONFile":
         with open(path, "r") as f:
             data = json.loads(f.read())
 
@@ -219,7 +219,7 @@ class RefJSONFile:
                 files=ref_files,
             )
             # ref file has moved
-            if ref_file.path != data["path"]:
+            if f"{ref_file.path}" != data["path"]:
                 logger.debug(f"Updating ref file path to '{ref_file.path}'")
                 ref_file.write_to_file()
             return ref_file
