@@ -1,6 +1,5 @@
 import json
 import re
-import sys
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
 from test.conftest import (
@@ -39,14 +38,12 @@ def test_convert_custom_gguf_config():
         pytest.param(
             Path("aimodel"), "foobar", None,
             "oci://localhost/foobar:latest",
-            id="file://{workspace_dir}/aimodel -> foobar",
-            marks=[pytest.mark.xfail(sys.platform.startswith("win"), reason="windows path formatting")]
+            id="{workspace_uri}/aimodel -> foobar",
         ),
         pytest.param(
             Path("aimodel"), "oci://foobar", None,
             "oci://localhost/foobar:latest",
-            id="file://{workspace_dir}/aimodel -> oci://foobar",
-            marks=[pytest.mark.xfail(sys.platform.startswith("win"), reason="windows path formatting")]
+            id="{workspace_uri}/aimodel -> oci://foobar",
         ),
         pytest.param(
             "tiny", "oci://quay.io/ramalama/tiny", None,
@@ -100,7 +97,7 @@ def test_convert(in_model, out_model, extra_params, expected):
             assert expected in model_name_list
         finally:
             # Clean images
-            ctx.check_call(ramalama_cli + ["rm", expected.replace("oci://", "")])
+            ctx.check_call(ramalama_cli + ["rm", "--ignore", expected.replace("oci://", "")])
 
 
 @pytest.mark.e2e

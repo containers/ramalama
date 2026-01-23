@@ -44,6 +44,7 @@ from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.path_utils import file_uri_to_path
 from ramalama.rag import INPUT_DIR, Rag, RagTransport, rag_image
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack
@@ -1368,10 +1369,10 @@ class AddPathOrUrl(argparse.Action):
         namespace.urls = []
         for value in values:
             parsed = urlparse(value)
-            if parsed.scheme in ["file", ""] and parsed.netloc == "":
-                getattr(namespace, self.dest).append(parsed.path.rstrip("/"))
-            else:
+            if parsed.scheme in ["http", "https"]:
                 namespace.urls.append(value)
+            else:
+                getattr(namespace, self.dest).append(file_uri_to_path(value))
 
 
 def rag_parser(subparsers):
@@ -1617,3 +1618,8 @@ def main() -> None:
         eprint(message, errno.ENOTSUP)
     except NoGGUFModelFileFound:
         eprint(f"No GGUF model file found for downloaded model '{args.model}'", errno.ENOENT)  # type: ignore
+    except Exception as e:
+        if isinstance(e, OSError) and hasattr(e, "winerror") and e.winerror == 206:
+            eprint("Path too long, please enable long path support in the Windows registry", errno.ENAMETOOLONG)
+        else:
+            raise

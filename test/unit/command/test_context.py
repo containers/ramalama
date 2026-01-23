@@ -75,6 +75,7 @@ def test_ramalama_model_context_properties(is_container, should_generate, dry_ru
     mock_model.model_name = "smollm"
     mock_model.model_tag = "135m"
     mock_model.model_organization = "mock-org"
+    mock_model.model_alias = "mock-org/smollm"
 
     mock_model._get_entry_model_path.return_value = "/path/to/model"
     mock_model._get_mmproj_path.return_value = "/path/to/mmproj"

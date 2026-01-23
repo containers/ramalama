@@ -503,6 +503,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Enable long path support
+        shell: pwsh
+        run: |
+           New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with: ${{ matrix.variant.uv-options }}

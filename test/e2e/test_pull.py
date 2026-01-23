@@ -2,7 +2,7 @@ import json
 import random
 import re
 import string
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from subprocess import STDOUT, CalledProcessError
 from test.conftest import (
     skip_if_big_endian_machine,
@@ -11,12 +11,13 @@ from test.conftest import (
     skip_if_no_container,
     skip_if_no_huggingface_cli,
     skip_if_no_ollama,
-    xfail_if_windows,
 )
 from test.e2e.utils import RamalamaExecWorkspace
 from time import time
 
 import pytest
+
+from ramalama.path_utils import normalize_host_path_for_container
 
 
 @pytest.mark.e2e
@@ -114,7 +115,6 @@ def test_pull_non_existing_model():
         pytest.param(
             Path("mymodel.gguf"), None, Path("mymodel.gguf"),
             id="{workspace_dir}/mymodel.gguf model with file:// url",
-            marks=xfail_if_windows
         )
         # fmt: on
     ],
@@ -130,7 +130,7 @@ def test_pull(model, env_vars, expected):
             model_path = ctx.workspace_path / model
             model_path.parent.mkdir(parents=True, exist_ok=True)
             model_path.touch()
-            model_name = model_path.as_uri()
+            model_name = "file://" + model_path.as_posix()
         else:
             raise ValueError(f"Unsupported model type: {type(model)}")
 
@@ -138,7 +138,12 @@ def test_pull(model, env_vars, expected):
         if isinstance(expected, str):
             expected_name = expected
         elif isinstance(expected, Path):
-            expected_name = (ctx.workspace_path / expected).as_uri()
+            expected_name = (
+                "file://"
+                + PurePosixPath(normalize_host_path_for_container(str(ctx.workspace_path)))
+                .joinpath(PurePosixPath(expected))
+                .as_posix()
+            )
         else:
             raise ValueError(f"Unsupported expected type: {type(expected)}")
 
@@ -330,7 +335,6 @@ def test_pull_using_huggingface_cache(hf_repo, hf_model, model, env_vars, expect
 @pytest.mark.e2e
 @pytest.mark.distro_integration
 @skip_if_no_container
-@xfail_if_windows
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")
 def test_pull_with_registry(container_registry, container_engine):
     with RamalamaExecWorkspace() as ctx:

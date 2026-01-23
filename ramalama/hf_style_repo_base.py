@@ -284,6 +284,8 @@ class HFStyleRepoModel(Transport, ABC):
             # No use pulling again
             raise
         except Exception as e:
+            if isinstance(e, OSError) and hasattr(e, "winerror") and e.winerror == 206:
+                raise  # Path too long on Windows
             if not available(self.get_cli_command()):
                 perror(f"URL pull failed and {self.get_cli_command()} not available")
                 raise KeyError(f"Failed to pull model: {str(e)}")

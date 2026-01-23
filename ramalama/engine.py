@@ -7,7 +7,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from http.client import HTTPConnection, HTTPException
-from typing import Any, cast
+from typing import Any
 
 # Live reference for checking global vars
 import ramalama.common
@@ -15,6 +15,7 @@ from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
 from ramalama.logger import logger
+from ramalama.path_utils import normalize_host_path_for_container
 
 
 class BaseEngine(ABC):
@@ -121,7 +122,7 @@ class BaseEngine(ABC):
         self.add(args)
 
     def add_volume(self, src: str, dest: str, *, opts="ro"):
-        self.add_args("-v", f"{src}:{dest}:{opts}{self.relabel()}")
+        self.add_args("-v", f"{normalize_host_path_for_container(src)}:{dest}:{opts}{self.relabel()}")
 
     def dryrun(self):
         dry_run(self.exec_args)
@@ -462,9 +463,10 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
             return False
         model_names = [m["name"] for m in body["models"]]
         if not model_name:
-            # The transport and tag is not included in the model name returned by the endpoint
-            model_name = cast(str, args.MODEL.split("://")[-1])
-            model_name = model_name.split(":")[0]
+            # FIXME: modules have a circular dependency so inline import here
+            from ramalama.transports.transport_factory import New
+
+            model_name = New(args.MODEL, args).model_alias
         if not any(model_name in name for name in model_names):
             logger.debug(
                 f'Container {args.name} /models does not include "{model_name}" in the model list: {model_names}'

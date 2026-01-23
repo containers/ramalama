@@ -1,4 +1,6 @@
+import ntpath
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -20,6 +22,8 @@ class RamalamaExecWorkspace:
         self.config = config
         self.environ = os.environ.copy()
         self.workspace_dir = tempfile.mkdtemp() if self.isolated or self.config else None
+        if self.workspace_dir and platform.system() == "Windows":
+            self.workspace_dir = ntpath.realpath(self.workspace_dir)
         self.storage_dir = None
         self.__prev_working_dir = None
 
@@ -27,7 +31,11 @@ class RamalamaExecWorkspace:
         if self.workspace_dir and self.config:
             config_path = Path(self.workspace_dir) / "ramalama.conf"
             with config_path.open("w") as f:
-                f.write(self.config.format(workspace_dir=self.workspace_dir))
+                f.write(
+                    self.config.format(
+                        workspace_dir=self.workspace_dir, workspace_uri=Path(self.workspace_dir).as_uri()
+                    )
+                )
                 self.environ["RAMALAMA_CONFIG"] = config_path.as_posix()
 
         # Create storage directory
@@ -62,6 +70,10 @@ class RamalamaExecWorkspace:
     @property
     def workspace_path(self):
         return Path(self.workspace_dir)
+
+    @property
+    def workspace_uri(self):
+        return self.workspace_path.as_uri()
 
     def close(self):
         if self.workspace_dir and os.path.exists(self.workspace_dir):

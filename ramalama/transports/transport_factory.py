@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from ramalama.arg_types import StoreArgType
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
+from ramalama.path_utils import file_uri_to_path
 from ramalama.transports.base import MODEL_TYPES
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
@@ -60,7 +61,7 @@ class TransportFactory:
                 return OCI, self.create_oci
         if self.model.startswith("rlcr://"):
             return RamalamaContainerRegistry, self.create_rlcr
-        for prefix in ["http://", "https://", "file://"]:
+        for prefix in ["http://", "https://", "file:"]:
             if self.model.startswith(prefix):
                 return URL, self.create_url
         if self.transport == "huggingface":
@@ -77,6 +78,10 @@ class TransportFactory:
         raise KeyError(f'transport "{self.transport}" not supported. Must be oci, huggingface, modelscope, or ollama.')
 
     def prune_model_input(self) -> str:
+
+        if self.model_cls == URL and urlparse(self.model).scheme == "file":
+            return file_uri_to_path(self.model)
+
         # remove protocol from model input
         pruned_model_input = rm_until_substring(self.model, "://")
 

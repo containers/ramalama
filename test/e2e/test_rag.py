@@ -1,11 +1,19 @@
+import platform
 import re
-import sys
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.conftest import skip_if_docker, skip_if_no_container, skip_if_ppc64le, skip_if_s390x
+from test.conftest import (
+    skip_if_docker,
+    skip_if_no_container,
+    skip_if_not_windows,
+    skip_if_ppc64le,
+    skip_if_s390x,
+)
 from test.e2e.utils import RamalamaExecWorkspace
 
 import pytest
+
+from ramalama.path_utils import normalize_host_path_for_container
 
 RAG_DRY_RUN = ["ramalama", "--dryrun", "rag"]
 RUN_DRY_RUN = ["ramalama", "--dryrun", "run"]
@@ -13,6 +21,7 @@ RUN_DRY_RUN = ["ramalama", "--dryrun", "run"]
 HTTP_FILE = "https://github.com/containers/ramalama/blob/main/README.md"
 RAG_MODEL = "quay.io/ramalama/myrag:1.2"
 OLLAMA_MODEL = "ollama://smollm:135m"
+WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
 
 
 @pytest.mark.e2e
@@ -42,19 +51,16 @@ OLLAMA_MODEL = "ollama://smollm:135m"
             id="check no /docs when no local files"
         ),
         pytest.param(
-            Path("README.md"), [], True, ".*-v {workspace_dir}/README.md:/docs/README.md:ro",
-            marks=pytest.mark.xfail(sys.platform.startswith("win"), reason="windows path formatting"),
+            Path("README.md"), [], True, ".*-v \"?{workspace_dir}/README.md:/docs/README.md:ro\"?",
             id="check with local file"
         ),
         pytest.param(
             Path("README.md"), [], True, ".*doc2rag --format qdrant /output /docs",
-            marks=pytest.mark.xfail(sys.platform.startswith("win"), reason="doc2rag path format fails on Windows"),
             id="check doc2rag existence with local file"
         ),
         pytest.param(
             Path("README.md"), ["--format", "markdown", "--ocr"], True,
             ".*doc2rag --format markdown --ocr /output /docs",
-            marks=pytest.mark.xfail(sys.platform.startswith("win"), reason="doc2rag path format fails on Windows"),
             id="check --ocr flag with local file"
         ),
         # fmt: on
@@ -68,20 +74,62 @@ def test_rag_dry_run(file, params, expected, expected_regex):
             file = str(file_path)
 
         result = ctx.check_output(RAG_DRY_RUN + params + [file, RAG_MODEL])
-        assert bool(re.search(expected_regex.format(workspace_dir=ctx.workspace_dir), result)) is expected
+        assert (
+            bool(
+                re.search(
+                    expected_regex.format(workspace_dir=normalize_host_path_for_container(ctx.workspace_dir)), result
+                )
+            )
+            is expected
+        )
+
+
+_file_uri_id_suffix = 'C:/dir/file' if platform.system() == "Windows" else '/absolute_dir/file'
+_file_uri_id_relative = "relative_dir/file"
 
 
 @pytest.mark.e2e
 @skip_if_no_container
-@pytest.mark.xfail(sys.platform.startswith("win"), reason="windows path formatting")
-def test_rag_dry_run_with_file_uri():
+@pytest.mark.parametrize(
+    "scheme,relative_path",
+    [
+        pytest.param("file:", True, id=f"file:{_file_uri_id_relative}"),
+        pytest.param("file:", False, id=f"file:{_file_uri_id_suffix}"),
+        pytest.param("file:/", False, id=f"file:/{_file_uri_id_suffix}", marks=skip_if_not_windows),
+        pytest.param("file://", False, id=f"file://{_file_uri_id_suffix}"),
+    ],
+)
+def test_rag_dry_run_with_file_uri(scheme, relative_path):
     with RamalamaExecWorkspace() as ctx:
         file_path = Path(ctx.workspace_dir) / "README.md"
+        file_path.touch()
+
+        if relative_path:
+            file_path = file_path.relative_to(ctx.workspace_dir)
+        file_uri = f"{scheme}{file_path.as_posix()}"
+
+        result = ctx.check_output(RAG_DRY_RUN + [file_uri, RAG_MODEL])
+
+        assert re.search(
+            fr".*-v \"?{normalize_host_path_for_container(Path(ctx.workspace_dir, 'README.md'))}\"?:/docs/README.md:ro",
+            result,
+        )
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+@skip_if_not_windows
+def test_rag_dry_run_with_file_network_uri():
+    with RamalamaExecWorkspace() as ctx:
+        file_path = Path(WSL_TMP_DIR) / "README.md"
         file_path.touch()
         file_uri = file_path.as_uri()
 
         result = ctx.check_output(RAG_DRY_RUN + [file_uri, RAG_MODEL])
-        assert re.search(fr".*-v {Path(ctx.workspace_dir, 'README.md')}:/docs/README.md:ro", result)
+        assert re.search(
+            fr".*-v \"?{normalize_host_path_for_container(file_path)}\"?:/docs/README.md:ro",
+            result,
+        )
 
 
 @pytest.mark.e2e
@@ -193,13 +241,15 @@ def test_run_dry_run_with_debug():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@pytest.mark.xfail(sys.platform.startswith("win"), reason="windows path formatting")
 def test_run_dry_run_with_local_folder():
     with RamalamaExecWorkspace() as ctx:
         rag_path = Path(ctx.workspace_dir) / "rag"
         rag_path.mkdir()
         result = ctx.check_output(["ramalama", "--dryrun", "run", "--rag", str(rag_path), OLLAMA_MODEL])
-        assert re.search(fr".*--mount=type=bind,source={rag_path},destination=/rag/vector.db.*", result)
+        assert re.search(
+            fr".*--mount=type=bind,source={normalize_host_path_for_container(rag_path)},destination=/rag/vector.db.*",
+            result,
+        )
 
 
 @pytest.mark.e2e
@@ -231,4 +281,27 @@ def test_rag(container_engine):
                 RAG_MODEL,
             ]
         )
+        ctx.check_call([container_engine, "rmi", RAG_MODEL])
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+@skip_if_not_windows
+def test_rag_with_unc_path(container_engine):
+    with RamalamaExecWorkspace() as ctx:
+        file_path = Path(WSL_TMP_DIR) / "README.md"
+        file_path.touch()
+        ctx.check_call(["ramalama", "rag", str(file_path), RAG_MODEL])
+        ctx.check_call([container_engine, "rmi", RAG_MODEL])
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+@skip_if_not_windows
+def test_rag_with_unc_uri(container_engine):
+    with RamalamaExecWorkspace() as ctx:
+        file_path = Path(WSL_TMP_DIR) / "README.md"
+        file_path.touch()
+        file_uri = file_path.as_uri()
+        ctx.check_call(["ramalama", "rag", file_uri, RAG_MODEL])
         ctx.check_call([container_engine, "rmi", RAG_MODEL])
