@@ -88,6 +88,19 @@ spec:
 
       cat > scripts/test.sh <<SCRIPTEOF
       #!/bin/bash -ex
+
+      # show instance info
+      uname -a
+      echo "--- Mounts ---"
+      mount
+      echo
+      echo "--- Disk Usage ---"
+      df -h
+      echo
+      echo "--- Mem Info ---"
+      free
+      echo "----------------"
+
       EXTRA_ARGS=()
       if [ -f /etc/cdi/nvidia.yaml ]; then
         echo "Found NVIDIA config, enabling CDI"
