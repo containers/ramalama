@@ -13,8 +13,8 @@ spec:
     description: VM platforms on which to run test commands
     type: array
     default:
-    - linux-m4xlarge/amd64
-    - linux-m4xlarge/arm64
+    - linux-d160-m4xlarge/amd64
+    - linux-d160-m4xlarge/arm64
     - linux/ppc64le
     - linux/s390x
     - linux-g64xlarge/amd64
