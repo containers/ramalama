@@ -66,7 +66,7 @@ dev = [
     "hypothesis>=6.135.26",
     "isort~=7.0",
     "pytest~=9.0",
-    "wheel~=0.45.0",
+    "wheel~=0.46.3",
     "mypy",
     "types-PyYAML",
     "types-jsonschema",
