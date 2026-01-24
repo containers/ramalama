@@ -1,6 +1,6 @@
 import platform
 import socket
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, ClassVar, Literal, TypeVar, overload
@@ -88,6 +88,7 @@ class LlamaBenchResultV1(LlamaBenchResult):
     embeddings: int | None = None
     no_op_offload: int | None = None
     no_host: int | None = None
+    use_direct_io: int | None = None
     n_prompt: int | None = None
     n_gen: int | None = None
     n_depth: int | None = None
@@ -102,7 +103,7 @@ class LlamaBenchResultV1(LlamaBenchResult):
     @classmethod
     def from_payload(cls, payload: dict) -> "LlamaBenchResult":
         """Build a result from a llama-bench JSON/JSONL object."""
-        return cls(**payload)
+        return cls(**{f.name: payload[f.name] for f in fields(cls) if f.name in payload})
 
 
 @dataclass
