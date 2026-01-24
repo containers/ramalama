@@ -157,35 +157,41 @@ class ArgumentParserWithDefaults(argparse.ArgumentParser):
         return action
 
 
+def get_initial_parser():
+    description = get_description()
+    parser = create_argument_parser(description, add_help=False)
+    return parser
+
+
 def get_parser():
     description = get_description()
-    parser = create_argument_parser(description)
+    parser = create_argument_parser(description, add_help=True)
     configure_subcommands(parser)
     return parser
 
 
 def init_cli():
     """Initialize the RamaLama CLI and parse command line arguments."""
-    # Need to know if we're running with --dryrun or --generate before adding the subcommands,
-    # otherwise calls to accel_image() when setting option defaults will cause unnecessary image pulls.
-    if any(arg in ("--dryrun", "--dry-run", "--generate") or arg.startswith("--generate=") for arg in sys.argv[1:]):
-        CONFIG.dryrun = True
-    parser = get_parser()
-    args = parse_arguments(parser)
-    post_parse_setup(args)
-    return parser, args
+    return parse_args_from_cmd(sys.argv[1:])
 
 
-def parse_args_from_cmd(cmd: list[str]) -> argparse.Namespace:
+def parse_args_from_cmd(cmd: list[str]) -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     """Parse arguments based on a command string"""
     # Need to know if we're running with --dryrun or --generate before adding the subcommands,
     # otherwise calls to accel_image() when setting option defaults will cause unnecessary image pulls.
     if any(arg in ("--dryrun", "--dry-run", "--generate") or arg.startswith("--generate=") for arg in sys.argv[1:]):
         CONFIG.dryrun = True
+    # Phase 1: Parse the initial arguments to set CONFIG.runtime etc... as this can affect the subcommands
+    initial_parser = get_initial_parser()
+    initial_args, _ = initial_parser.parse_known_args(cmd)
+    for arg in initial_args.__dict__.keys():
+        if hasattr(CONFIG, arg):
+            setattr(CONFIG, arg, getattr(initial_args, arg))
+    # Phase 2: Re-parse the arguments with the subcommands enabled
     parser = get_parser()
     args = parser.parse_args(cmd)
     post_parse_setup(args)
-    return args
+    return parser, args
 
 
 def get_description():
@@ -214,12 +220,13 @@ def abspath(astring) -> str:
     return os.path.abspath(astring)
 
 
-def create_argument_parser(description: str):
+def create_argument_parser(description: str, add_help: bool = True):
     """Create and configure the argument parser for the CLI."""
     parser = ArgumentParserWithDefaults(
         prog="ramalama",
         description=description,
         formatter_class=argparse.RawTextHelpFormatter,
+        add_help=add_help,
     )
     configure_arguments(parser)
     return parser
@@ -312,11 +319,6 @@ def configure_subcommands(parser):
     stop_parser(subparsers)
     version_parser(subparsers)
     daemon_parser(subparsers)
-
-
-def parse_arguments(parser):
-    """Parse command line arguments."""
-    return parser.parse_args()
 
 
 def post_parse_setup(args):

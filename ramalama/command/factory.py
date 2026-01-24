@@ -1,6 +1,7 @@
 import argparse
 import ast
 import json
+import shlex
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ import jsonschema
 import yaml
 
 from ramalama.command import context, error, schema
+from ramalama.common import ContainerEntryPoint
 from ramalama.config import get_inference_schema_files, get_inference_spec_files
 
 
@@ -53,7 +55,14 @@ class CommandFactory:
     def resolve_cmd(spec: schema.CommandSpecV1, ctx: context.RamalamaCommandContext) -> list[str]:
         engine = spec.command.engine
 
-        cmd = [engine.binary]
+        cmd = []
+        # FIXME: binary should be a string array to work with nocontainer
+        binary = CommandFactory.eval_stmt(engine.binary, ctx)
+        if is_truthy(binary):
+            cmd += shlex.split(binary)
+        else:
+            cmd.append(ContainerEntryPoint())
+
         for option in engine.options:
             should_add = option.condition is None or is_truthy(CommandFactory.eval_stmt(option.condition, ctx))
             if not should_add:

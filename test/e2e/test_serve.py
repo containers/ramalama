@@ -23,6 +23,7 @@ from test.conftest import (
 from test.e2e.utils import RamalamaExecWorkspace, check_output, get_full_model_name
 
 import pytest
+import yaml
 
 
 @contextmanager
@@ -542,14 +543,30 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
         assert re.search(r".*Generating quadlet file: test-generation.kube", result)
         kube_file = Path(ctx.workspace_dir) / "test-generation.yaml"
         with kube_file.open("r") as f:
-            content = f.read()
-            assert re.search(r".*command: \[\".*python3 -m vllm.entrypoints.openai.api_server\"]", content)
-            assert re.search(
-                r".*args: \['--model',\s+'/mnt/models/model.file',\s+'--max_model_len',\s+'2048',\s+'--port',\s+'1234'",
-                content,
-            )
-            assert re.search(".*reference: localhost", content)
-            assert re.search(r".*pullPolicy: IfNotPresent", content)
+            content = yaml.safe_load(f.read())
+            containers_spec = content.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [])
+            assert len(containers_spec) == 1
+            container_spec = containers_spec[0]
+            assert 'command' not in container_spec
+            model_alias = f"{container_registry.host}:{container_registry.port}/{test_model.split(':')[0]}"
+            assert container_spec['args'] == [
+                "--model",
+                "/mnt/models/model.file",
+                "--served-model-name",
+                f"{model_alias}",
+                "--max_model_len",
+                "2048",
+                "--port",
+                "1234",
+            ]
+            volumes_spec = content.get("spec", {}).get("template", {}).get("spec", {}).get("volumes", [])
+            assert volumes_spec[0] == {
+                "name": "model",
+                "image": {
+                    "reference": f"{container_registry.host}:{container_registry.port}/{test_model}",
+                    "pullPolicy": "IfNotPresent",
+                },
+            }
 
 
 @pytest.mark.e2e

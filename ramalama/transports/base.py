@@ -1,3 +1,4 @@
+import copy
 import os
 import platform
 import random
@@ -8,6 +9,8 @@ import time
 from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from ramalama.common import ContainerEntryPoint
 
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
@@ -168,7 +171,7 @@ class Transport(TransportBase):
 
         # extract model tag from name if exists
         if ":" in model_name:
-            model_name, model_tag = model_name.split(":", 1)
+            model_name, model_tag = model_name.rsplit(":", 1)
 
         # extract model organization from name if exists and update name
         split = model_name.rsplit("/", 1)
@@ -403,6 +406,10 @@ class Transport(TransportBase):
         if not args.container:
             return False
 
+        if len(cmd_args) > 0 and isinstance(cmd_args[0], ContainerEntryPoint):
+            # Ignore entrypoint
+            cmd_args = cmd_args[1:]
+
         self.setup_container(args)
         self.setup_mounts(args)
 
@@ -462,6 +469,10 @@ class Transport(TransportBase):
         # The Run command will first launch a daemonized service
         # and run chat to communicate with it.
 
+        if len(cmd) > 0 and isinstance(cmd[0], ContainerEntryPoint):
+            # Ignore entrypoint
+            cmd = cmd[1:]
+
         process = self.serve_nonblocking(args, cmd)
         if process:
             return self._connect_and_chat(args, process)
@@ -510,15 +521,19 @@ class Transport(TransportBase):
         if getattr(args, "runtime", None) == "mlx":
             args.prefix = "🍏 > "
 
+        # Model name in the chat request must match RamalamaModelContext.alias()
+        chat_args = copy.deepcopy(args)
+        chat_args.model = f"{self.model_organization}/{self.model_name}"
+
         if args.container:
-            return self._handle_container_chat(args, server_process)
+            return self._handle_container_chat(chat_args, server_process)
         else:
             # Store the Popen object for monitoring
-            args.server_process = server_process
+            chat_args.server_process = server_process
 
-            if getattr(args, "runtime", None) == "mlx":
-                return self._handle_mlx_chat(args)
-            chat.chat(args)
+            if getattr(chat_args, "runtime", None) == "mlx":
+                return self._handle_mlx_chat(chat_args)
+            chat.chat(chat_args)
             return 0
 
     def chat_operational_args(self, args) -> "ChatOperationalArgs | None":

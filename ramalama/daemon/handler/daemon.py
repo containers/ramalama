@@ -125,7 +125,7 @@ class DaemonAPIHandler(APIHandler):
         ramalama_cmd = ["ramalama", "--runtime", serve_request.runtime, "serve", model.model_name, "--port", str(port)]
         for arg, val in serve_request.exec_args.items():
             ramalama_cmd.extend([arg, val])
-        args = parse_args_from_cmd(ramalama_cmd)
+        _, args = parse_args_from_cmd(ramalama_cmd)
         # always log to file at the model-specific location
         args.logfile = f"{DEFAULT_LOG_DIR}/{model.model_organization}_{model.model_name}_{model.model_tag}.log"
         inference_engine_command = assemble_command(args)
