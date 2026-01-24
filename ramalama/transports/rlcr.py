@@ -2,8 +2,8 @@ import os
 import subprocess
 
 from ramalama.common import MNT_DIR, run_cmd
-from ramalama.transports.oci_artifact import download_oci_artifact
 from ramalama.transports.oci import OCI
+from ramalama.transports.oci_artifact import download_oci_artifact
 
 
 def find_model_file_in_image(conman: str, model: str) -> str | None:
@@ -60,6 +60,9 @@ class RamalamaContainerRegistry(OCI):
             raise exc
 
     def _attempt_artifact_pull(self, args) -> bool:
+        return self._attempt_http_fetch(args)
+
+    def _attempt_http_fetch(self, args) -> bool:
         registry, reference, _ = self._target_decompose(self.model)
 
         success = False

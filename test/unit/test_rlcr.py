@@ -185,13 +185,13 @@ class TestOCIArtifactDownload:
 
             def get_manifest(self):
                 manifest = {
-                    "artifactType": "application/vnd.ramalama.model.gguf",
+                    "artifactType": "application/vnd.cnai.model.manifest.v1+json",
                     "blobs": [
                         {
                             "mediaType": "application/octet-stream",
                             "digest": digest,
                             "size": 4,
-                            "annotations": {"org.opencontainers.image.title": "model.gguf"},
+                            "annotations": {"org.opencontainers.image.title": "gemma-3-270m-it-Q6_K.gguf"},
                         }
                     ],
                 }
@@ -218,7 +218,7 @@ class TestOCIArtifactDownload:
         assert ref is not None
         model_files = ref.model_files
         assert model_files
-        assert model_files[0].name == "model.gguf"
+        assert model_files[0].name == "gemma-3-270m-it-Q6_K.gguf"
 
         new_model = RamalamaContainerRegistry(
             model="gemma3-270m", model_store_path=args.store, conman="podman", ignore_stderr=False
