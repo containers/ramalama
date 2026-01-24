@@ -40,7 +40,6 @@ dnf_install_cann() {
     cmake \
     findutils \
     yum \
-    curl-devel \
     pigz
 }
 
@@ -98,7 +97,7 @@ dnf_install() {
   local rpm_exclude_list="selinux-policy,container-selinux"
   local rpm_list=("python3-dnf-plugin-versionlock"
     "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
-    "dnf-plugins-core" "libcurl-devel" "gawk")
+    "dnf-plugins-core" "gawk")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools"
     "spirv-tools" "glslc" "glslang")
   if is_rhel_based; then
@@ -207,7 +206,7 @@ configure_common_flags() {
     common_flags+=("-DGGML_HIP=ON" "-DGPU_TARGETS=${GPU_TARGETS:-gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201}")
     ;;
   cuda)
-    common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined" "-DCMAKE_CUDA_FLAGS=\"-U__ARM_NEON -U__ARM_NEON__\"")
+    common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
     ;;
   vulkan | asahi)
     common_flags+=("-DGGML_VULKAN=1")
@@ -259,7 +258,7 @@ cleanup() {
 }
 
 add_common_flags() {
-  common_flags+=("-DLLAMA_CURL=ON" "-DGGML_RPC=ON")
+  common_flags+=("-DGGML_RPC=ON" "-DLLAMA_BUILD_TESTS=OFF" "-DLLAMA_BUILD_EXAMPLES=OFF" "-DGGML_BUILD_TESTS=OFF" "-DGGML_BUILD_EXAMPLES=OFF")
   if [ "$containerfile" != "cann" ]; then
       common_flags+=("-DGGML_NATIVE=OFF" "-DGGML_BACKEND_DL=ON" "-DGGML_CPU_ALL_VARIANTS=ON")
   fi
