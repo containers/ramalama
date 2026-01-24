@@ -35,6 +35,10 @@ class APITransport(TransportBase):
     def model_type(self) -> str:
         return self.type
 
+    @property
+    def model_alias(self):
+        return f"{self.model_organization}/{self.model_name}"
+
     def _get_entry_model_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> str:
         raise NotImplementedError(
             f"{self.model} is provided over a hosted API preventing direct pulling of the model file."
