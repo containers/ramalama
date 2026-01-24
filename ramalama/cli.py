@@ -15,7 +15,6 @@ from typing import Any, get_args
 from urllib.parse import urlparse
 
 from ramalama.benchmarks.manager import BenchmarksManager
-from ramalama.arg_types import COLOR_OPTIONS
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
@@ -40,7 +39,7 @@ from ramalama.config import (
     get_inference_spec_files,
     load_file_config,
 )
-from ramalama.daemon.daemon import run
+from ramalama.config_types import COLOR_OPTIONS
 from ramalama.endian import EndianMismatchError
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
@@ -1484,6 +1483,8 @@ def daemon_start_cli(args):
 
 
 def daemon_run_cli(args):
+    from ramalama.daemon.daemon import run
+
     run(host=args.host, port=int(args.port), model_store_path=args.store)
 
 
