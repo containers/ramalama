@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from ramalama.arg_types import ChatArgsType
+from ramalama.chat_api_llama_server import LlamaServerAPI, ServerTimeouts, handle_context_overflow
 from ramalama.common import perror
 from ramalama.config import CONFIG
 from ramalama.console import EMOJI, should_colorize
@@ -26,6 +27,7 @@ from ramalama.logger import logger
 from ramalama.mcp.mcp_agent import LLMAgent
 from ramalama.mcp.mcp_client import PureMCPClient
 from ramalama.proxy_support import setup_proxy_support
+from ramalama.summarizer import LLMSummarizer
 
 # Setup proxy support on module import
 setup_proxy_support()
@@ -40,12 +42,31 @@ def res(response, color):
 
     print("\r", end="")
     assistant_response = ""
+    chunks_received = 0
     for line in response:
         line = line.decode("utf-8").strip()
         if line.startswith("data: {"):
             choice = ""
+            chunks_received += 1
 
             json_line = json.loads(line[len("data: ") :])
+
+            # Check for context size error or server errors that indicate context issues
+            if "error" in json_line:
+                error = json_line["error"]
+                error_type = error.get("type", "")
+                error_msg = error.get("message", "").lower()
+
+                # Treat these as context size errors - they indicate we need to summarize more aggressively
+                if error_type == "exceed_context_size_error":
+                    raise ContextSizeExceededError(error)
+                if "context shift is disabled" in error_msg or "context" in error_msg:
+                    # Server can't handle the context size even after our summarization
+                    logger.warning(f"Context-related server error: {error}")
+                    raise ContextSizeExceededError(error)
+                # Log other errors
+                logger.warning(f"Error in response stream: {error}")
+
             if "choices" in json_line and json_line["choices"]:
                 choice = json_line["choices"][0]["delta"]
             if "content" in choice:
@@ -58,7 +79,21 @@ def res(response, color):
                 assistant_response += choice
 
     print("")
+
+    if not assistant_response and chunks_received > 0:
+        logger.debug(f"Received {chunks_received} chunks but no content - response may have been empty")
+    elif not assistant_response:
+        logger.debug("No response chunks received from server")
+
     return assistant_response
+
+
+class ContextSizeExceededError(Exception):
+    """Exception raised when context size is exceeded."""
+
+    def __init__(self, error_info):
+        self.error_info = error_info
+        super().__init__(f"Context size exceeded: {error_info.get('message', 'Unknown error')}")
 
 
 def default_prefix():
@@ -119,7 +154,27 @@ class RamaLamaShell(cmd.Cmd):
         self.initialize_mcp()
 
         self.content: list[str] = []
-        self.message_count = 0  # Track messages for summarization
+
+        # Initialize server API and context strategy
+        server_timeouts = ServerTimeouts(
+            query=getattr(args, 'server_timeout', 2.0),
+        )
+        self.server_api = LlamaServerAPI(args.url, timeouts=server_timeouts)
+        self._init_context_strategy()
+
+    def _init_context_strategy(self):
+        """Initialize the context management strategy based on args."""
+        # context_strategy is a boolean flag (--context-strategy enables it)
+        if getattr(self.args, 'context_strategy', False):
+            self.context_strategy = LLMSummarizer(
+                api_url=self.args.url,
+                model=getattr(self.args, 'model', None),
+                timeout=int(getattr(self.args, 'summarization_timeout', 30)),
+            )
+            logger.debug("Using LLM summarization for context management")
+        else:
+            self.context_strategy = None
+            logger.debug("Context management disabled")
 
     def prep_rag_message(self):
         if (context := self.args.rag) is None:
@@ -128,73 +183,6 @@ class RamaLamaShell(cmd.Cmd):
         builder = OpanAIChatAPIMessageBuilder()
         messages = builder.load(context)
         self.conversation_history.extend(messages)
-
-    def _summarize_conversation(self):
-        """Summarize the conversation history to prevent context growth."""
-        if len(self.conversation_history) < 4:
-            # Need at least a few messages to summarize
-            return
-
-        # Keep the first message (system/RAG context) and last 2 messages
-        # Summarize everything in between
-        first_msg = self.conversation_history[0]
-        messages_to_summarize = self.conversation_history[1:-2]
-        recent_msgs = self.conversation_history[-2:]
-
-        if not messages_to_summarize:
-            return
-
-        # Create a summarization prompt
-        conversation_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages_to_summarize])
-
-        summary_prompt = {
-            "role": "user",
-            "content": (
-                f"Please provide a concise summary of the following conversation, "
-                f"preserving key information and context:\n\n{conversation_text}\n\n"
-                f"Provide only the summary, without any preamble."
-            ),
-        }
-
-        # Make API call to get summary
-        # Provide user feedback during summarization
-        print("\nSummarizing conversation to reduce context size...", flush=True)
-        try:
-            req = self._make_api_request([summary_prompt], stream=False)
-
-            with urllib.request.urlopen(req) as response:
-                result = json.loads(response.read())
-                summary = result['choices'][0]['message']['content']
-
-                # Rebuild conversation history with summary
-                new_history = []
-                if first_msg:
-                    new_history.append(first_msg)
-
-                # Add summary as a system message
-                new_history.append({"role": "system", "content": f"Previous conversation summary: {summary}"})
-
-                # Add recent messages
-                new_history.extend(recent_msgs)
-
-                self.conversation_history = new_history
-                logger.debug(f"Summarized conversation: {len(messages_to_summarize)} messages -> 1 summary")
-
-        except (urllib.error.URLError, json.JSONDecodeError, KeyError, IndexError) as e:
-            logger.warning(f"Failed to summarize conversation: {e}")
-            # On failure, just keep the conversation as-is
-        finally:
-            # Clear the "Summarizing..." message
-            print("\r" + " " * 60 + "\r", end="", flush=True)
-
-    def _check_and_summarize(self):
-        """Check if conversation needs summarization and trigger it."""
-        summarize_after = getattr(self.args, "summarize_after", 0)
-        if summarize_after > 0:
-            self.message_count += 2  # user + assistant messages
-            if self.message_count >= summarize_after:
-                self._summarize_conversation()
-                self.message_count = 0  # Reset counter after summarization
 
     def _make_api_request(self, messages, stream=True):
         """Make an API request with the given messages.
@@ -397,7 +385,6 @@ class RamaLamaShell(cmd.Cmd):
                     print(response)
                 self.conversation_history.append({"role": "user", "content": content})
                 self.conversation_history.append({"role": "assistant", "content": response})
-                self._check_and_summarize()
             return False
 
         self.conversation_history.append({"role": "user", "content": content})
@@ -405,8 +392,13 @@ class RamaLamaShell(cmd.Cmd):
         response = self._req()
         if response:
             self.conversation_history.append({"role": "assistant", "content": response})
+        else:
+            # If no response, remove the user message to prevent consecutive user messages
+            # This avoids the pathological state where models get confused
+            logger.debug("No response received - removing user message to prevent consecutive user messages")
+            if self.conversation_history and self.conversation_history[-1].get("role") == "user":
+                self.conversation_history.pop()
         self.request_in_process = False
-        self._check_and_summarize()
 
     def _make_request_data(self):
         data = {
@@ -432,12 +424,29 @@ class RamaLamaShell(cmd.Cmd):
 
         return request
 
+    def _clear_slot_cache(self):
+        """Clear the slot cache and reduce conversation context."""
+        if self.context_strategy is None:
+            # Do absolutely nothing - let the error propagate
+            print("\nContext size exceeded.", flush=True)
+            perror("Error: Context limit reached. Use --context-strategy to enable automatic context management.")
+            return False
+
+        self.conversation_history, success = handle_context_overflow(
+            self.server_api,
+            self.conversation_history,
+            self.context_strategy,
+            verbose=True,
+        )
+        return success
+
     def _req(self):
         request = self._make_request_data()
 
         i = 0.01
         total_time_slept = 0
         response = None
+        context_error = None
 
         # Adjust timeout based on whether we're in initial connection phase
         max_timeout = 30 if getattr(self.args, "initial_connection", False) else 16
@@ -446,6 +455,28 @@ class RamaLamaShell(cmd.Cmd):
             try:
                 response = urllib.request.urlopen(request)
                 break
+            except urllib.error.HTTPError as http_error:
+                # Check if this is a context size error returned as HTTP error
+                if http_error.code == 400:
+                    try:
+                        error_body = http_error.read().decode('utf-8')
+                        error_data = json.loads(error_body)
+                        if error_data.get("error", {}).get("type") == "exceed_context_size_error":
+                            logger.debug(f"Context size exceeded (HTTP 400): {error_data}")
+                            context_error = ContextSizeExceededError(error_data.get("error", {}))
+                            break  # Exit loop to handle the error
+                    except (json.JSONDecodeError, KeyError, AttributeError):
+                        pass
+                # If not a context error, continue trying
+                if sys.stdout.isatty():
+                    perror(f"\r{c}", end="", flush=True)
+
+                if total_time_slept > max_timeout:
+                    break
+
+                total_time_slept += i
+                time.sleep(i)
+                i = min(i * 2, 0.1)
             except Exception:
                 if sys.stdout.isatty():
                     perror(f"\r{c}", end="", flush=True)
@@ -458,15 +489,87 @@ class RamaLamaShell(cmd.Cmd):
 
                 i = min(i * 2, 0.1)
 
-        if response:
-            return res(response, self.args.color)
+        # Handle context size error detected in HTTP response
+        if context_error:
+            logger.debug(f"Handling context size error: {context_error.error_info}")
+            # Clear cache and summarize, then retry with summarized history
+            if self._clear_slot_cache():
+                # Retry the request with the summarized conversation history
+                logger.debug("Retrying request with summarized history")
+                retry_request = self._make_request_data()
+                try:
+                    retry_response = urllib.request.urlopen(retry_request, timeout=30)
+                    return res(retry_response, self.args.color)
+                except Exception as retry_error:
+                    logger.warning(f"Retry failed after cache clear: {retry_error}")
+                    perror(f"\rError: Failed to complete request after clearing cache: {retry_error}")
+                    return None
+            else:
+                perror("\rError: Context size exceeded and failed to clear cache")
+                return None
 
-        # Only show error and kill if not in initial connection phase
-        if not getattr(self.args, "initial_connection", False):
-            perror(f"\rError: could not connect to: {self.url}")
-            self.kills()
-        else:
-            logger.debug(f"Could not connect to: {self.url}")
+        # Handle context size error in streaming response
+        try:
+            if response:
+                return res(response, self.args.color)
+        except ContextSizeExceededError as e:
+            logger.debug(f"Context size exceeded in stream: {e.error_info}")
+            # Clear cache and summarize, then retry with summarized history
+            if self._clear_slot_cache():
+                # Retry the request with the summarized conversation history
+                logger.debug("Retrying request with summarized history")
+                retry_request = self._make_request_data()
+                try:
+                    retry_response = urllib.request.urlopen(retry_request, timeout=30)
+                    return res(retry_response, self.args.color)
+                except Exception as retry_error:
+                    logger.warning(f"Retry failed after cache clear: {retry_error}")
+                    perror(f"\rError: Failed to complete request after clearing cache: {retry_error}")
+                    return None
+            else:
+                perror("\rError: Context size exceeded and failed to clear cache")
+                return None
+
+        # If we couldn't connect and have a long conversation history,
+        # it might be a context size issue that caused the server to hang/crash
+        if not response:
+            # Check if we have a long conversation that might have caused issues
+            if len(self.conversation_history) > 3 and self.context_strategy is not None:
+                logger.debug("Connection failed with long conversation history - attempting recovery")
+                print("\rConnection failed. Conversation history may be too large. Attempting recovery...", flush=True)
+
+                # Use the context strategy to reduce history
+                n_ctx = self.server_api.get_context_size()
+                reduced = self.context_strategy.reduce_context(self.conversation_history, n_ctx)
+
+                if len(reduced) < len(self.conversation_history):
+                    self.conversation_history = reduced
+
+                    # Try to clear the cache
+                    if self.server_api.clear_slot_cache():
+                        print("Cache cleared. Retrying...", flush=True)
+                    else:
+                        # Wait a moment for server to stabilize
+                        time.sleep(3)
+
+                    # Retry the request
+                    logger.debug("Retrying request after recovery")
+                    retry_request = self._make_request_data()
+                    try:
+                        retry_response = urllib.request.urlopen(retry_request, timeout=30)
+                        result = res(retry_response, self.args.color)
+                        print("Recovery successful!", flush=True)
+                        return result
+                    except Exception as retry_error:
+                        logger.warning(f"Retry failed after recovery: {retry_error}")
+                        perror("\rError: Failed to complete request after recovery")
+
+            # Only show error and kill if not in initial connection phase and we didn't recover
+            if not getattr(self.args, "initial_connection", False):
+                perror(f"\rError: could not connect to: {self.url}")
+                self.kills()
+            else:
+                logger.debug(f"Could not connect to: {self.url}")
 
         return None
 

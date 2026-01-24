@@ -23,6 +23,9 @@ Can also be set via the RAMALAMA_API_KEY environment variable.
 Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)
 
+#### **--context-strategy**
+Enable LLM-based summarization for managing context when the limit is reached. When enabled, the LLM creates intelligent summaries of conversation history to prevent context overflow.
+
 #### **--help**, **-h**
 Show this help message and exit
 
@@ -42,6 +45,12 @@ Prefix for the user prompt (default: 🦭 > )
 
 #### **--rag**=path
 A file or directory of files to be loaded and provided as local context in the chat history.
+
+#### **--server-timeout**=*seconds*
+Timeout in seconds for server API queries such as context size and health checks (default: 2.0).
+
+#### **--summarization-timeout**=*seconds*
+Timeout in seconds for LLM summarization requests. Only used with `--context-strategy` (default: 30.0).
 
 #### **--summarize-after**=*N*
 Automatically summarize conversation history after N messages to prevent context growth.
