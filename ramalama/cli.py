@@ -27,7 +27,6 @@ except Exception:
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.benchmarks.utilities import print_bench_results
-from ramalama.chat_utils import default_prefix
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
 from ramalama.common import accel_image, exec_cmd, get_accel, perror
@@ -46,8 +45,9 @@ from ramalama.endian import EndianMismatchError
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
-from ramalama.path_utils import file_uri_to_path
 from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.path_utils import file_uri_to_path
+from ramalama.prompt_utils import default_prefix
 from ramalama.rag import RagTransport, rag_image
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack

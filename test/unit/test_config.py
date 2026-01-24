@@ -665,11 +665,13 @@ class TestConfigIntegration:
             assert cfg.user.no_missing_gpu_prompt is True
 
             # Deep merged images
-            expected_images = RamalamaImages(**{
-                "CUDA_VISIBLE_DEVICES": "custom/cuda:latest",  # from env
-                "INTEL_VISIBLE_DEVICES": "custom/intel:latest",  # from env
-                "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm:latest",  # from file config
-            })
+            expected_images = RamalamaImages(
+                **{
+                    "CUDA_VISIBLE_DEVICES": "custom/cuda:latest",  # from env
+                    "INTEL_VISIBLE_DEVICES": "custom/intel:latest",  # from env
+                    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm:latest",  # from file config
+                }
+            )
             assert cfg.images == expected_images
 
     def test_config_is_set_behavior(self):
