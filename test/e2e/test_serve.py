@@ -6,6 +6,7 @@ import platform
 import random
 import re
 import string
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
@@ -297,6 +298,10 @@ def test_serve_and_stop(shared_ctx, test_model):
 
     # Serve Container1
     ctx.check_call(["ramalama", "serve", "--name", container1_id, "--detach", test_model])
+
+    # FIXME: race-condition, chat can fail to connect if llama.cpp isn't ready, just sleep a little for now
+    time.sleep(10)
+
     try:
         info = json.loads(ctx.check_output(["ramalama", "info"]))
         full_model_name = info["Shortnames"]["Names"][test_model]
