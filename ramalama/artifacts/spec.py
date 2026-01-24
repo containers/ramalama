@@ -37,6 +37,15 @@ def _require(condition: bool, message: str) -> None:
         raise ValueError(message)
 
 
+def is_cnai_artifact_manifest(manifest: Dict[str, Any]) -> bool:
+    artifact_type = manifest.get("artifactType")
+    config_media = (manifest.get("config") or {}).get("mediaType", "")
+    if artifact_type == CNAI_ARTIFACT_TYPE or config_media == CNAI_CONFIG_MEDIA_TYPE:
+        return True
+    layers = manifest.get("layers") or manifest.get("blobs") or []
+    return any(layer.get("mediaType") in ALLOWED_LAYER_MEDIA_TYPES for layer in layers)
+
+
 @dataclass
 class Descriptor:
     media_type: str
