@@ -569,28 +569,18 @@ def benchmarks_parser(subparsers):
 def benchmarks_list_cli(args):
     """Display a list of benchmark results from storage."""
 
-    try:
-        bench_manager = BenchmarksManager(CONFIG.benchmarks.storage_folder)
-        results = bench_manager.list()
+    bench_manager = BenchmarksManager(CONFIG.benchmarks.storage_folder)
+    results = bench_manager.list()
 
-        if not results:
-            print("No benchmark results found")
-            return
+    if not results:
+        print("No benchmark results found")
+        return
 
-        if args.format == "json":
-            output = [asdict(item) for item in results]
-            print(json.dumps(output, indent=2, sort_keys=True))
-        else:
-            print_bench_results(results)
-
-    except MissingStorageFolderError:
-        print("Error: RAMALAMA__BENCHMARKS_STORAGE_FOLDER not configured")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error reading benchmarks: {e}")
-        if args.debug:
-            raise
-        sys.exit(1)
+    if args.format == "json":
+        output = [asdict(item) for item in results]
+        print(json.dumps(output, indent=2, sort_keys=True))
+    else:
+        print_bench_results(results)
 
 
 def containers_parser(subparsers):
