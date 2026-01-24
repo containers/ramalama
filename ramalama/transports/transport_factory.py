@@ -4,10 +4,12 @@ from typing import TypeAlias
 from urllib.parse import urlparse
 
 from ramalama.arg_types import StoreArgType
+from ramalama.chat_providers.api_providers import get_chat_provider
 from ramalama.common import rm_until_substring
 from ramalama.config import CONFIG
 from ramalama.path_utils import file_uri_to_path
-from ramalama.transports.base import MODEL_TYPES
+from ramalama.transports.api import APITransport
+from ramalama.transports.base import MODEL_TYPES, Transport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
 from ramalama.transports.oci import OCI
@@ -15,7 +17,7 @@ from ramalama.transports.ollama import Ollama
 from ramalama.transports.rlcr import RamalamaContainerRegistry
 from ramalama.transports.url import URL
 
-CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry
+CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry | APITransport
 
 
 class TransportFactory:
@@ -26,6 +28,7 @@ class TransportFactory:
         transport: str = "ollama",
         ignore_stderr: bool = False,
     ):
+
         self.model = model
         self.store_path = args.store
         self.transport = transport
@@ -39,41 +42,45 @@ class TransportFactory:
         self._create = _create
 
         self.pruned_model = self.prune_model_input()
-        self.draft_model = None
+        self.draft_model: Transport | None = None
 
-        if getattr(args, 'model_draft', None):
+        model_draft = getattr(args, "model_draft", None)
+        if model_draft:
             dm_args = copy.deepcopy(args)
             dm_args.model_draft = None  # type: ignore
-            self.draft_model = TransportFactory(args.model_draft, dm_args, ignore_stderr=True).create()  # type: ignore
+            draft_model = TransportFactory(model_draft, dm_args, ignore_stderr=True).create()
+            if not isinstance(draft_model, Transport):
+                raise ValueError("Draft models must be local transports; hosted API transports are not supported.")
+            self.draft_model = draft_model
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
-        for prefix in ["huggingface://", "hf://", "hf.co/"]:
-            if self.model.startswith(prefix):
+        match self.model:
+            case model if model.startswith(("huggingface://", "hf://", "hf.co/")):
                 return Huggingface, self.create_huggingface
-        for prefix in ["modelscope://", "ms://"]:
-            if self.model.startswith(prefix):
+            case model if model.startswith(("modelscope://", "ms://")):
                 return ModelScope, self.create_modelscope
-        for prefix in ["ollama://", "ollama.com/library/"]:
-            if self.model.startswith(prefix):
+            case model if model.startswith(("ollama://", "ollama.com/library/")):
                 return Ollama, self.create_ollama
-        for prefix in ["oci://", "docker://"]:
-            if self.model.startswith(prefix):
+            case model if model.startswith(("oci://", "docker://")):
                 return OCI, self.create_oci
-        if self.model.startswith("rlcr://"):
-            return RamalamaContainerRegistry, self.create_rlcr
-        for prefix in ["http://", "https://", "file:"]:
-            if self.model.startswith(prefix):
+            case model if model.startswith("rlcr://"):
+                return RamalamaContainerRegistry, self.create_rlcr
+            case model if model.startswith(("http://", "https://", "file:")):
                 return URL, self.create_url
-        if self.transport == "huggingface":
-            return Huggingface, self.create_huggingface
-        if self.transport == "modelscope":
-            return ModelScope, self.create_modelscope
-        if self.transport == "ollama":
-            return Ollama, self.create_ollama
-        if self.transport == "rlcr":
-            return RamalamaContainerRegistry, self.create_rlcr
-        if self.transport == "oci":
-            return OCI, self.create_oci
+            case model if model.startswith(("openai://")):
+                return APITransport, self.create_api_transport
+
+        match self.transport:
+            case "huggingface":
+                return Huggingface, self.create_huggingface
+            case "modelscope":
+                return ModelScope, self.create_modelscope
+            case "ollama":
+                return Ollama, self.create_ollama
+            case "rlcr":
+                return RamalamaContainerRegistry, self.create_rlcr
+            case "oci":
+                return OCI, self.create_oci
 
         raise KeyError(f'transport "{self.transport}" not supported. Must be oci, huggingface, modelscope, or ollama.')
 
@@ -154,6 +161,10 @@ class TransportFactory:
         model = URL(self.pruned_model, self.store_path, urlparse(self.model).scheme)
         model.draft_model = self.draft_model
         return model
+
+    def create_api_transport(self) -> APITransport:
+        scheme = self.model.split("://", 1)[0]
+        return APITransport(self.pruned_model, provider=get_chat_provider(scheme))
 
 
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:

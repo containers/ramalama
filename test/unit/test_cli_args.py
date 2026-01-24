@@ -51,6 +51,7 @@ parser = get_parser()
 
 special_cases = {
     "api_key": "api-key",
+    "max_tokens": "max-tokens",
 }
 
 
@@ -115,6 +116,10 @@ def test_default_endpoint(chatargs):
         ChatSubArgs,
         prefix=st.sampled_from(['> ', '🦙 > ', '🦭 > ', '🐋 > ']),
         url=st.sampled_from(['https://test.com', 'test.com']),
+        temp=st.one_of(
+            st.none(),
+            st.floats(min_value=0, allow_nan=False, allow_infinity=False).map(lambda v: 0.0 if v == 0 else v),
+        ),
     )
 )
 def test_chat_endpoint(chatargs):

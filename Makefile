@@ -118,7 +118,7 @@ endif
 .PHONY: lint
 lint:
 ifneq (,$(wildcard /usr/bin/python3))
-	/usr/bin/python3 -m compileall -q -x '\.venv' .
+	${PYTHON} -m compileall -q -x '\.venv' .
 endif
 	! grep -ri $(EXCLUDE_OPTS) "#\!/usr/bin/python3" .
 	flake8 $(FLAKE8_ARGS) $(PROJECT_DIR) $(PYTHON_SCRIPTS)

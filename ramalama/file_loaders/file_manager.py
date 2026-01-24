@@ -4,6 +4,7 @@ from string import Template
 from typing import Type
 from warnings import warn
 
+from ramalama.chat_utils import AttachmentPart, ChatMessageType, ImageURLPart, UserMessage
 from ramalama.file_loaders.file_types import base, image, txt
 
 
@@ -115,17 +116,18 @@ class OpanAIChatAPIMessageBuilder:
     def supported_extensions(self) -> set[str]:
         return self.text_manager.loaders.keys() | self.image_manager.loaders.keys()
 
-    def load(self, file_path: str) -> list[dict]:
+    def load(self, file_path: str) -> list[ChatMessageType]:
         text_files, image_files, unsupported_files = self.partition_files(file_path)
 
         if unsupported_files:
             unsupported_files_warning(unsupported_files, list(self.supported_extensions()))
 
-        messages: list[dict] = []
+        messages: list[ChatMessageType] = []
         if text_files:
-            messages.append({"role": "system", "content": self.text_manager.load(text_files)})
+            messages.append(UserMessage(text=self.text_manager.load(text_files)))
         if image_files:
-            content = [{"type": "image_url", "image_url": {"url": c}} for c in self.image_manager.load(image_files)]
-            message = {"role": "system", "content": content}
-            messages.append(message)
+            attachments: list[AttachmentPart] = []
+            for data_url in self.image_manager.load(image_files):
+                attachments.append(ImageURLPart(url=data_url))
+            messages.append(UserMessage(attachments=attachments))
         return messages
