@@ -2,7 +2,9 @@
 
 import os
 import platform
+import string
 from pathlib import Path, PureWindowsPath
+from urllib.parse import unquote_to_bytes
 
 
 def normalize_host_path_for_container(host_path: str) -> str:
@@ -169,3 +171,28 @@ def create_file_link(src: str, dst: str) -> None:
         return
     except Exception as e:
         raise OSError(f"Failed to create link from {src} to {dst}: all methods failed") from e
+
+
+def file_uri_to_path(uri: str) -> str:
+    # based on the 3.14 Path.from_uri logic
+    if not uri.startswith('file:'):
+        # Local path
+        p = Path(uri)
+        return str(p)
+    path = uri[5:]
+    if path[:3] == '///' or (path[:2] == '//' and path[2] in string.ascii_letters and path[3] == ':'):
+        # Remove empty authority
+        path = path[2:]
+    elif path[:12] == '//localhost/':
+        # Remove 'localhost' authority
+        path = path[11:]
+    if path[:3] == '///' or (path[:1] == '/' and path[2:3] in ':|'):
+        # Remove slash before DOS device/UNC path
+        path = path[1:]
+    if path[1:2] == '|':
+        # Replace bar with colon in DOS drive
+        path = path[:1] + ':' + path[2:]
+    p = Path(os.fsdecode(unquote_to_bytes(path)))
+    if not p.is_absolute() and not p.exists():
+        raise ValueError(f"URI is not absolute: {uri!r}")
+    return str(p)

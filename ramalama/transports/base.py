@@ -182,6 +182,10 @@ class Transport(TransportBase):
         return self._model_name
 
     @property
+    def model_alias(self):
+        return f"{self.model_organization}/{self.model_name}"
+
+    @property
     def model_tag(self) -> str:
         return self._model_tag
 

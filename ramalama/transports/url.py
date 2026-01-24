@@ -1,9 +1,11 @@
 import os
 import re
 import shutil
+from pathlib import Path
 
 from ramalama.common import SPLIT_MODEL_PATH_RE, generate_sha256, is_split_file_model
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
+from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.transports.base import Transport
 from ramalama.transports.huggingface import HuggingfaceRepository
 from ramalama.transports.modelscope import ModelScopeRepository
@@ -41,17 +43,30 @@ class LocalModelFile(SnapshotFile):
 
 class URL(Transport):
     def __init__(self, model, model_store_path, scheme):
+        self.type = scheme
         super().__init__(model, model_store_path)
 
         # Use the URL scheme as model type so we can distinguish
         # between the various types such as http, https and file
         self._model_type = scheme
 
-        self.type = scheme
         split = self.model.rsplit("/", 1)
         self.directory = split[0].removeprefix("/") if len(split) > 1 else ""
 
+    @property
+    def model_alias(self):
+        if self.type == "file":
+            return self.model
+        return super().model_alias()
+
     def extract_model_identifiers(self):
+        if self.type == "file":
+            return (
+                Path(self.model).name,
+                "latest",
+                normalize_host_path_for_container(str(Path(self.model).parent)).removeprefix("/"),
+            )
+
         model_name, model_tag, model_organization = super().extract_model_identifiers()
 
         parts = model_organization.split("/")

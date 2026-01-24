@@ -105,7 +105,7 @@ class RamalamaModelContext:
 
     @property
     def alias(self) -> str:
-        return f"{self.model.model_organization}/{self.model.model_name}"
+        return self.model.model_alias
 
     @property
     def model_path(self) -> str:

@@ -116,6 +116,7 @@ def test_command_factory(
     mock_model.model_name = model.model_name
     mock_model.model_tag = model.model_tag
     mock_model.model_organization = model.model_organization
+    mock_model.model_alias = f"{model.model_organization}/{model.model_name}"
 
     mock_model._get_entry_model_path.return_value = "/path/to/model"
     mock_model._get_mmproj_path.return_value = "/path/to/mmproj" if input.has_mmproj else ""

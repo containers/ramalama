@@ -117,7 +117,7 @@ class TestEngine(unittest.TestCase):
 @patch("ramalama.engine.HTTPConnection")
 def test_is_healthy_conn(mock_conn):
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
-    is_healthy(args)
+    is_healthy(args, model_name="themodel")
     mock_conn.assert_called_once_with("127.0.0.1", args.port, timeout=3)
 
 
@@ -152,7 +152,7 @@ def test_is_healthy_fail(mock_conn, mock_debug, health_status, models_status, mo
         responses.append(mock_models_resp)
     mock_conn.return_value.getresponse.side_effect = responses
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
-    assert not is_healthy(args)
+    assert not is_healthy(args, model_name="themodel")
     assert mock_conn.return_value.getresponse.call_count == len(responses)
     if len(responses) > 1:
         assert models_msg in mock_debug.call_args.args[0]
@@ -166,7 +166,7 @@ def test_is_healthy_unicode_fail(mock_conn):
     mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(name="thecontainer", port=8080, debug=False)
     with pytest.raises(UnicodeDecodeError):
-        is_healthy(args)
+        is_healthy(args, model_name="themodel")
     assert mock_conn.return_value.getresponse.call_count == 2
 
 
@@ -185,7 +185,7 @@ def test_is_healthy_success(mock_conn, mock_debug, health_status):
     mock_models_resp.read.return_value = '{"models": [{"name": "themodel"}]}'
     mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
-    assert is_healthy(args)
+    assert is_healthy(args, model_name="themodel")
     assert mock_conn.return_value.getresponse.call_count == 2
     assert mock_debug.call_args.args[0] == "Container thecontainer is healthy"
 

@@ -1,13 +1,16 @@
 import json
 import platform
 import re
-from subprocess import PIPE, STDOUT, CalledProcessError
+import shutil
+from pathlib import Path
+from subprocess import DEVNULL, PIPE, STDOUT, CalledProcessError
 from test.conftest import (
     skip_if_container,
     skip_if_darwin,
     skip_if_docker,
     skip_if_gh_actions_darwin,
     skip_if_no_container,
+    skip_if_not_windows,
 )
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
@@ -22,6 +25,8 @@ CONFIG_WITH_PULL_NEVER = """
 pull="never"
 """
 DEFAULT_PULL_PATTERN = r".*--pull (?:always|newer)"
+
+WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
 
 
 @pytest.fixture(scope="module")
@@ -283,10 +288,53 @@ def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     ctx.check_call(run_cmd)
 
 
+_file_uri_id_suffix = 'C:/dir/file' if platform.system() == "Windows" else '/absolute_dir/file'
+_file_uri_id_relative = "relative_dir/file"
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(
+    "scheme,relative_path",
+    [
+        pytest.param("file:", True, id=f"file:{_file_uri_id_relative}"),
+        pytest.param("file:", False, id=f"file:{_file_uri_id_suffix}"),
+        pytest.param("file:/", False, id=f"file:/{_file_uri_id_suffix}", marks=skip_if_not_windows),
+        pytest.param("file://", False, id=f"file://{_file_uri_id_suffix}"),
+    ],
+)
+def test_run_with_file_uri(shared_ctx_with_models, test_model, scheme, relative_path):
+    ctx = shared_ctx_with_models
+
+    model_info = json.loads(ctx.check_output(["ramalama", "inspect", test_model, "--json"]))
+    model_path = Path(ctx.workspace_dir) / "test_model.gguf"
+    shutil.copy(model_info["Path"], str(model_path))
+    if relative_path:
+        model_path = model_path.relative_to(ctx.workspace_dir)
+    file_uri = f"{scheme}{model_path.as_posix()}"
+    ctx.check_call(["ramalama", "run", file_uri], stdin=DEVNULL)
+
+    if not relative_path:
+        # Remove the original file, should still work with the model store URI
+        model_path.unlink()
+        ctx.check_call(["ramalama", "run", file_uri], stdin=DEVNULL)
+
+
+@pytest.mark.e2e
+@skip_if_not_windows
+def test_run_with_unc_file_uri(shared_ctx_with_models, test_model):
+    ctx = shared_ctx_with_models
+
+    model_info = json.loads(ctx.check_output(["ramalama", "inspect", test_model, "--json"]))
+    model_path = Path(WSL_TMP_DIR) / "test_model.gguf"
+    shutil.copy(model_info["Path"], str(model_path))
+    file_uri = model_path.as_uri()
+    ctx.check_call(["ramalama", "run", file_uri], stdin=DEVNULL)
+
+
 @pytest.mark.e2e
 def test_run_keepalive(shared_ctx_with_models, test_model):
     ctx = shared_ctx_with_models
-    ctx.check_call(["ramalama", "run", "--keepalive", "1s", test_model])
+    ctx.check_call(["ramalama", "run", "--keepalive", "1s", test_model], stdin=DEVNULL)
 
 
 @pytest.mark.e2e
