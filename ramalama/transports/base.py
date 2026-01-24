@@ -272,7 +272,7 @@ class Transport(TransportBase):
         if dry_run:
             return "/path/to/model"
 
-        if self.model_type == 'oci':
+        if self.model_type == 'oci' and getattr(self, "strategy_mode", "") != "http-bind":
             if use_container or should_generate:
                 if getattr(self, "artifact", False):
                     return f"{MNT_DIR}/{self.artifact_name()}"
@@ -312,7 +312,7 @@ class Transport(TransportBase):
         """
         if dry_run:
             return "/path/to/model"
-        if self.model_type == 'oci':
+        if self.model_type == 'oci' and getattr(self, "strategy_mode", "") != "http-bind":
             return self._get_entry_model_path(False, False, dry_run)
         safetensor_blob = self.model_store.get_safetensor_blob_path(self.model_tag, self.filename)
         return safetensor_blob or self._get_entry_model_path(False, False, dry_run)
@@ -427,7 +427,7 @@ class Transport(TransportBase):
         if args.dryrun:
             return
 
-        if self.model_type == 'oci':
+        if self.model_type == 'oci' and getattr(self, "strategy_mode", "") != "http-bind":
             if self.engine.use_podman:
                 mount_cmd = self.mount_cmd()
             elif self.engine.use_docker:

@@ -14,7 +14,7 @@ SecurityLabelDisable=true
 DropCapability=all
 NoNewPrivileges=true
 PublishPort=127.0.0.1:2020:2020
-Mount=type=image,source=tinyllama,destination=/mnt/models,subpath=/models,readwrite=false
+Mount=type=image,source=sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816,destination=/mnt/models,subpath=/models,readwrite=false
 
 [Install]
 WantedBy=multi-user.target default.target

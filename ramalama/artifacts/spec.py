@@ -103,9 +103,7 @@ class Manifest:
 
         layers_data = data.get("layers") or []
         _require(isinstance(layers_data, list) and layers_data, "layers must be a non-empty list")
-        layers = [
-            Descriptor.from_dict(layer, allowed_media_types=ALLOWED_LAYER_MEDIA_TYPES) for layer in layers_data
-        ]
+        layers = [Descriptor.from_dict(layer, allowed_media_types=ALLOWED_LAYER_MEDIA_TYPES) for layer in layers_data]
 
         annotations = data.get("annotations") or {}
         return cls(
