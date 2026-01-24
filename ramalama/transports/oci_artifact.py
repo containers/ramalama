@@ -4,16 +4,19 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from tempfile import TemporaryFile
-from typing import Any
 from collections.abc import Iterable
+from tempfile import NamedTemporaryFile
+from typing import Any
 
+from ramalama.artifacts import spec as oci_spec
 from ramalama.common import perror, sanitize_filename
 from ramalama.logger import logger
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
+from ramalama.model_store.store import ModelStore
 
 OCI_ARTIFACT_MEDIA_TYPES = {
-    "application/vnd.cnai.model.manifest.v1+json",
+    oci_spec.CNAI_ARTIFACT_TYPE,
+    oci_spec.CNAI_CONFIG_MEDIA_TYPE,
 }
 
 MANIFEST_ACCEPT_HEADERS = [
@@ -84,9 +87,6 @@ class OCIRegistryClient:
         registry: str,
         repository: str,
         reference: str,
-        verify_tls: bool = True,
-        username: str | None = None,
-        password: str | None = None,
     ):
         self.registry = registry
         self.repository = repository
@@ -117,19 +117,34 @@ class OCIRegistryClient:
 
         hasher = hashlib.sha256()
 
-        with TemporaryFile() as out_file:
-            while True:
-                chunk = response.read(BLOB_CHUNK_SIZE)
-                if not chunk:
-                    break
-                out_file.write(chunk)
-                if hash_algo == "sha256":
-                    hasher.update(chunk)
+        temp_path = None
+        try:
+            with NamedTemporaryFile(delete=False, dir=os.path.dirname(dest_path) or ".") as out_file:
+                temp_path = out_file.name
+                while True:
+                    chunk = response.read(BLOB_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    out_file.write(chunk)
+                    if hash_algo == "sha256":
+                        hasher.update(chunk)
 
             if hash_algo == "sha256" and (actual_hash := hasher.hexdigest()) != expected_hash:
                 raise ValueError(f"Digest mismatch for {digest}: expected {expected_hash}, got {actual_hash}")
 
-            os.replace(out_file.name, dest_path)
+            if temp_path is not None:
+                os.replace(temp_path, dest_path)
+                try:
+                    os.chmod(dest_path, 0o644)
+                except OSError:
+                    pass
+        except Exception:
+            if temp_path is not None:
+                try:
+                    os.remove(temp_path)
+                except FileNotFoundError:
+                    pass
+            raise
 
     def _prepare_headers(self, headers: dict[str, str] | None = None) -> dict[str, str]:
         final_headers = dict() if headers is None else headers.copy()
@@ -204,24 +219,10 @@ def _build_snapshot_files(client: OCIRegistryClient, manifest: dict[str, Any]) -
         yield RegistryBlobSnapshotFile(client, digest, name, media_type)
 
 
-def download_oci_artifact(
-    *,
-    registry: str,
-    reference: str,
-    model_store,
-    model_tag: str,
-    args,
-) -> bool:
+def download_oci_artifact(*, registry: str, reference: str, model_store: ModelStore, model_tag: str) -> bool:
     repository, ref = _split_reference(reference)
 
-    client = OCIRegistryClient(
-        registry,
-        repository,
-        ref,
-        verify_tls=getattr(args, "tlsverify", True),
-        username=getattr(args, "username", None),
-        password=getattr(args, "password", None),
-    )
+    client = OCIRegistryClient(registry, repository, ref)
 
     try:
         manifest, manifest_digest = client.get_manifest()
@@ -230,7 +231,7 @@ def download_oci_artifact(
         return False
 
     artifact_type = manifest.get("artifactType") or manifest.get("config", {}).get("mediaType", "")
-    if artifact_type not in OCI_ARTIFACT_MEDIA_TYPES:
+    if not oci_spec.is_cnai_artifact_manifest(manifest):
         logger.debug(f"Manifest artifact type '{artifact_type}' not in supported set {OCI_ARTIFACT_MEDIA_TYPES}")
         return False
 
@@ -238,6 +239,5 @@ def download_oci_artifact(
     if not snapshot_files:
         raise ValueError("Artifact manifest contained no downloadable blobs.")
 
-    perror(f"Pulling OCI artifact {registry}/{reference} ...")
-    model_store.new_snapshot(model_tag, manifest_digest, snapshot_files, verify=getattr(args, "verify", True))
+    model_store.new_snapshot(model_tag, manifest_digest, snapshot_files)
     return True

@@ -4,17 +4,16 @@ import os
 import shutil
 import subprocess
 import tempfile
+from functools import cached_property
 from textwrap import dedent
 
 import ramalama.annotations as annotations
+from ramalama.artifacts import resolver as artifact_resolver
+from ramalama.artifacts.strategy import EngineStrategy
 from ramalama.common import MNT_DIR, engine_version, exec_cmd, perror, run_cmd, set_accel_env_vars
-from ramalama.artifacts import spec as oci_spec
-from ramalama.artifacts import strategy as strat
-from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd, set_accel_env_vars
 from ramalama.engine import BuildEngine, Engine, dry_run
 from ramalama.oci_tools import engine_supports_manifest_attributes
 from ramalama.transports.base import Transport
-from ramalama.transports.oci_artifact import OCIRegistryClient, _split_reference, download_oci_artifact
 
 prefix = "oci://"
 
@@ -36,9 +35,9 @@ class OCI(Transport):
             raise ValueError("RamaLama OCI Images requires a container engine")
         self.conman = conman
         self.ignore_stderr = ignore_stderr
-        self.capabilities = strat.probe_capabilities(self.conman)
-        self.strategy_mode = self._determine_strategy()
-        self.artifact = False
+
+        self.strategy = EngineStrategy(self.conman, model_store=self.model_store).resolve(self.model)
+        self.artifact = self.strategy.kind == 'artifact'
 
     def login(self, args):
         conman_args = [self.conman, "login"]
@@ -75,80 +74,12 @@ class OCI(Transport):
         reference_dir = reference.replace(":", "/")
         return registry, reference, reference_dir
 
-    def _determine_strategy(self) -> str:
-        if self.capabilities.artifact_supported:
-            return strat.STRATEGY_PODMAN_ARTIFACT
-
-        if self._has_local_snapshot():
-            return strat.STRATEGY_HTTP_BIND
-
-        ref_type = self._probe_manifest_type()
-        if ref_type == "artifact":
-            return strat.STRATEGY_HTTP_BIND
-
-        if self.capabilities.is_podman or self.capabilities.is_docker:
-            return strat.STRATEGY_PODMAN_IMAGE
-        return strat.STRATEGY_HTTP_BIND
-
     def _has_local_snapshot(self) -> bool:
         try:
             _, cached_files, complete = self.model_store.get_cached_files(self.model_tag)
             return complete and bool(cached_files)
         except Exception:
             return False
-
-    def _probe_manifest_type(self) -> str:
-        if not self.model.startswith(prefix):
-            # Not an OCI reference (likely local image)
-            return "image"
-
-        registry, reference, _ = self._target_decompose(self.model)
-        repository, ref = _split_reference(reference)
-        client = OCIRegistryClient(registry, repository, ref)
-        try:
-            manifest, _ = client.get_manifest()
-        except Exception:
-            return "unknown"
-        artifact_type = manifest.get("artifactType") or manifest.get("config", {}).get("mediaType", "")
-        if artifact_type == oci_spec.CNAI_ARTIFACT_TYPE:
-            return "artifact"
-        return "image"
-
-    def _http_fetch(self, reference: str, check_only: bool = False):
-        store = self.model_store
-        # Fast path: check cache
-        try:
-            _, cached_files, complete = store.get_cached_files(self.model_tag)
-            if check_only:
-                return complete and bool(cached_files)
-            if complete and cached_files:
-                return True
-        except Exception:
-            if check_only:
-                return False
-
-        registry, ref, _ = self._target_decompose(reference)
-
-        class _Args:
-            # mimic CLI args used by download_oci_artifact for verification
-            def __init__(self, verify, authfile, tlsverify):
-                self.verify = verify
-                self.authfile = authfile
-                self.tlsverify = tlsverify
-
-        args = _Args(
-            verify=getattr(self, "verify", True) if hasattr(self, "verify") else True,
-            authfile=getattr(self, "authfile", None) if hasattr(self, "authfile") else None,
-            tlsverify=getattr(self, "tlsverify", True) if hasattr(self, "tlsverify") else True,
-        )
-
-        return download_oci_artifact(
-            registry=registry,
-            reference=ref,
-            model_store=store,
-            model_tag=self.model_tag,
-            args=args,
-        )
 
     def _convert_to_gguf(self, outdir, source_model, args):
         with tempfile.TemporaryDirectory(prefix="RamaLama_convert_src_") as srcdir:
@@ -424,65 +355,23 @@ Tagging build instead
                 raise e
 
     def pull(self, args):
-        # HTTP bind path: fetch into model store
-        if self.strategy_mode == strat.STRATEGY_HTTP_BIND:
-            perror(f"Downloading {self.model} via HTTP ...")
-            self._http_fetch(self.model)
-            return
-
-        if not args.engine:
-            raise NotImplementedError("OCI images require a container engine like Podman or Docker")
-
-        conman_args = [args.engine, "pull"]
+        conman_args = []
         if args.quiet:
             conman_args.extend(['--quiet'])
         else:
-            # Write message to stderr
             perror(f"Downloading {self.model} ...")
         if str(args.tlsverify).lower() == "false":
             conman_args.extend([f"--tls-verify={args.tlsverify}"])
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
-        conman_args.extend([self.model])
-        run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
-        if self.capabilities.is_podman:
-            self.artifact = self.is_artifact()
 
-    def remove(self, args):
-        if self.conman is None:
-            raise NotImplementedError("OCI Images require a container engine")
+        self.strategy.pull(self.model, cmd_args=conman_args)
 
-        try:
-            conman_args = [self.conman, "manifest", "rm", self.model]
-            run_cmd(conman_args, ignore_stderr=True)
-        except subprocess.CalledProcessError:
-            try:
-                conman_args = [self.conman, "rmi", f"--force={args.ignore}", self.model]
-                run_cmd(conman_args, ignore_stderr=True)
-            except subprocess.CalledProcessError:
-                try:
-                    self._rm_artifact(args.ignore)
-                except subprocess.CalledProcessError:
-                    raise KeyError(f"Model '{self.model}' not found")
+    def remove(self, args) -> bool:
+        return self.strategy.remove(self.model, args)
 
     def exists(self) -> bool:
-        if self.strategy_mode == strat.STRATEGY_HTTP_BIND:
-            return bool(self._http_fetch(self.model, check_only=True))
-
-        if self.conman is None:
-            return False
-
-        conman_args = [self.conman, "image", "inspect", self.model]
-        try:
-            run_cmd(conman_args, ignore_stderr=True)
-            return True
-        except Exception:
-            conman_args = [self.conman, "artifact", "inspect", self.model]
-            try:
-                run_cmd(conman_args, ignore_stderr=True)
-                return True
-            except Exception:
-                return False
+        return self.strategy.exists(self.model)
 
     def _inspect(
         self,
@@ -491,7 +380,7 @@ Tagging build instead
         get_field: str = "",
         as_json: bool = False,
         dryrun: bool = False,
-    ) -> (str, str):
+    ) -> tuple[str, str]:
         out = super().get_inspect(show_all, show_all_metadata, get_field, dryrun, as_json=as_json)
         if as_json:
             out_data = json.loads(out)
@@ -522,17 +411,8 @@ Tagging build instead
             return json.dumps(out_data), oci_type
         return out_data, oci_type
 
-    def artifact_name(self) -> str:
-        conman_args = [
-            self.conman,
-            "artifact",
-            "inspect",
-            "--format",
-            '{{index  .Manifest.Annotations "org.opencontainers.image.title" }}',
-            self.model,
-        ]
-
-        return run_cmd(conman_args, ignore_stderr=True).stdout.decode('utf-8').strip()
+    def entrypoint_path(self, mount_dir: str | None = None) -> str:
+        return self.strategy.entrypoint_path(self.model, mount_dir=mount_dir)
 
     def inspect(
         self,
@@ -555,11 +435,5 @@ Tagging build instead
             return False
         return oci_type == "Artifact"
 
-    def mount_cmd(self):
-        if self.capabilities.is_podman:
-            if self.artifact:
-                return f"--mount=type=artifact,src={self.model},destination={MNT_DIR}"
-            return f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"
-        if self.capabilities.is_docker:
-            raise NotImplementedError("Docker artifact mount not supported; use http-bind strategy")
-        return f"--mount=type=image,src={self.model},destination={MNT_DIR},subpath=/models,rw=false"
+    def mount_cmd(self, src: str | None = None, dest: str | None = None):
+        return self.strategy.mount_arg(src or self.model, dest)

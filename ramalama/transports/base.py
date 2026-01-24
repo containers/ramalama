@@ -160,7 +160,6 @@ class Transport(TransportBase):
         self._model_type: str
         self._model_name, self._model_tag, self._model_organization = self.extract_model_identifiers()
         self._model_type = type(self).__name__.lower()
-        self.artifact = False
 
         self._model_store_path: str = model_store_path
         self._model_store: Optional["ModelStore"] = None
@@ -272,11 +271,9 @@ class Transport(TransportBase):
         if dry_run:
             return "/path/to/model"
 
-        if self.model_type == 'oci' and getattr(self, "strategy_mode", "") != "http-bind":
+        if self.model_type == 'oci':
             if use_container or should_generate:
-                if getattr(self, "artifact", False):
-                    return f"{MNT_DIR}/{self.artifact_name()}"
-                return f"{MNT_DIR}/model.file"
+                return self.entrypoint_path()
             else:
                 return f"oci://{self.model}"
 
@@ -312,7 +309,7 @@ class Transport(TransportBase):
         """
         if dry_run:
             return "/path/to/model"
-        if self.model_type == 'oci' and getattr(self, "strategy_mode", "") != "http-bind":
+        if self.model_type == 'oci':
             return self._get_entry_model_path(False, False, dry_run)
         safetensor_blob = self.model_store.get_safetensor_blob_path(self.model_tag, self.filename)
         return safetensor_blob or self._get_entry_model_path(False, False, dry_run)
@@ -390,14 +387,16 @@ class Transport(TransportBase):
         if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
             self.engine.add(["-i"])
 
-        self.engine.add([
-            "--label",
-            "ai.ramalama",
-            "--name",
-            name,
-            "--env=HOME=/tmp",
-            "--init",
-        ])
+        self.engine.add(
+            [
+                "--label",
+                "ai.ramalama",
+                "--name",
+                name,
+                "--env=HOME=/tmp",
+                "--init",
+            ]
+        )
 
     def setup_container(self, args):
         name = self.get_container_name(args)
@@ -427,13 +426,13 @@ class Transport(TransportBase):
         if args.dryrun:
             return
 
-        if self.model_type == 'oci' and getattr(self, "strategy_mode", "") != "http-bind":
-            if self.engine.use_podman:
+        if self.model_type == 'oci':
+            if self.engine.use_podman or self.strategy.kind == "artifact":
                 mount_cmd = self.mount_cmd()
             elif self.engine.use_docker:
                 output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
                 volume = populate_volume_from_image(self, args, os.path.basename(output_filename))
-                mount_cmd = f"--mount=type=volume,src={volume},dst={MNT_DIR},readonly"
+                mount_cmd = self.mount_cmd(volume, MNT_DIR)
             else:
                 raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
             self.engine.add([mount_cmd])
@@ -450,9 +449,9 @@ class Transport(TransportBase):
             # Convert path to container-friendly format (handles Windows path conversion)
             container_blob_path = get_container_mount_path(blob_path)
             mount_path = f"{MNT_DIR}/{file.name}"
-            self.engine.add([
-                f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"
-            ])
+            self.engine.add(
+                [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
+            )
 
         if self.draft_model:
             draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
@@ -721,7 +720,7 @@ class Transport(TransportBase):
 
         if args.generate.gen_type == "quadlet":
             self.quadlet(
-                (model_src_path.removeprefix("oci://"), model_dest_path),
+                (model_src_path, model_dest_path),
                 (chat_template_src_path, chat_template_dest_path),
                 (mmproj_src_path, mmproj_dest_path),
                 args,
@@ -786,18 +785,22 @@ class Transport(TransportBase):
             self._cleanup_server_process(args.server_process)
             raise e
 
-    def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
+    def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None):
         quadlet = Quadlet(
-            self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact
+            self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
         )
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
 
-    def quadlet_kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
+    def quadlet_kube(
+        self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None
+    ):
         kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
         kube.generate().write(output_dir)
 
-        quadlet = Quadlet(kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
+        quadlet = Quadlet(
+            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
+        )
         quadlet.kube().write(output_dir)
 
     def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
@@ -822,16 +825,6 @@ class Transport(TransportBase):
         get_field: str = "",
         as_json: bool = False,
         dryrun: bool = False,
-    ) -> None:
-        print(self.get_inspect(show_all, show_all_metadata, get_field, dryrun, as_json))
-
-    def get_inspect(
-        self,
-        show_all: bool = False,
-        show_all_metadata: bool = False,
-        get_field: str = "",
-        dryrun: bool = False,
-        as_json: bool = False,
     ) -> Any:
         model_name = self.filename
         model_registry = self.type.lower()

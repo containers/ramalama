@@ -2,112 +2,86 @@ import os
 import subprocess
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Callable, List, Optional
+from pathlib import Path
+from typing import Literal, TypedDict, cast
 
-from ramalama.common import engine_version, run_cmd
+from ramalama.artifacts import resolver as oci_resolver
+from ramalama.artifacts.strategies import (
+    BaseArtifactStrategy,
+    BaseImageStrategy,
+    BaseOCIStrategy,
+    DockerImageStrategy,
+    HttpArtifactStrategy,
+    PodmanArtifactStrategy,
+    PodmanImageStrategy,
+)
+from ramalama.common import SemVer, engine_version
+from ramalama.config import CONFIG, SUPPORTED_ENGINES
+from ramalama.model_store.store import ModelStore
 
-STRATEGY_AUTO = "auto"
-STRATEGY_PODMAN_ARTIFACT = "podman-artifact"
-STRATEGY_PODMAN_IMAGE = "podman-image"
-STRATEGY_HTTP_BIND = "http-bind"
-
-PODMAN_MIN_ARTIFACT_VERSION = "5.7.0"
-
-
-def _parse_version(version: str) -> List[int]:
-    parts = []
-    for part in version.split("."):
-        try:
-            parts.append(int(part))
-        except ValueError:
-            parts.append(0)
-    return parts
+PODMAN_MIN_ARTIFACT_VERSION = SemVer(5, 7, 0)
 
 
-def _version_gte(version: str, minimum: str) -> bool:
-    v_parts = _parse_version(version)
-    m_parts = _parse_version(minimum)
-    # Normalize length
-    while len(v_parts) < len(m_parts):
-        v_parts.append(0)
-    while len(m_parts) < len(v_parts):
-        m_parts.append(0)
-    return v_parts >= m_parts
+def get_engine_image_strategy(engine: str, engine_name: SUPPORTED_ENGINES) -> type[BaseImageStrategy]:
+    if engine_name == "docker":
+        return DockerImageStrategy
+    elif engine_name == "podman":
+        return PodmanImageStrategy
+    else:
+        raise ValueError(f"No engine image strategies for `{engine_name}` engine.")
 
 
-def _artifact_supported(engine: str, version: str, runner: Optional[Callable] = None) -> bool:
-    runner = runner or run_cmd
-    if not _version_gte(version, PODMAN_MIN_ARTIFACT_VERSION):
-        return False
-    try:
-        runner([engine, "artifact", "ls"], ignore_all=True)
-        return True
-    except Exception:
-        return False
+def get_engine_artifact_strategy(engine: str, engine_name: SUPPORTED_ENGINES) -> type[BaseArtifactStrategy]:
+    if engine_name == "podman":
+        version = SemVer.parse(engine_version(engine))
+        if version >= PODMAN_MIN_ARTIFACT_VERSION:
+            return PodmanArtifactStrategy
+
+    return HttpArtifactStrategy
 
 
-@dataclass
-class ArtifactCapabilities:
-    engine: Optional[str]
-    is_podman: bool
-    is_docker: bool
-    version: Optional[str]
-    artifact_supported: bool
-    order: List[str]
+class StrategiesType(TypedDict):
+    image: BaseImageStrategy
+    artifact: BaseArtifactStrategy
 
 
-def _compute_order(caps: ArtifactCapabilities) -> List[str]:
-    if caps.artifact_supported:
-        return [STRATEGY_PODMAN_ARTIFACT, STRATEGY_PODMAN_IMAGE, STRATEGY_HTTP_BIND]
-    if caps.is_podman:
-        return [STRATEGY_PODMAN_IMAGE, STRATEGY_HTTP_BIND]
-    return [STRATEGY_HTTP_BIND]
+class EngineStrategy:
+    """Resolve reference kind and return the appropriate strategy implementation."""
 
+    def __init__(
+        self,
+        engine: SUPPORTED_ENGINES | Path | str | None,
+        *,
+        model_store: ModelStore | None = None,
+    ):
+        if (engine := engine or CONFIG.engine) is None:
+            raise Exception("EngineStrategies require a valid engine")
 
-@lru_cache(maxsize=None)
-def probe_capabilities(engine: Optional[str]) -> ArtifactCapabilities:
-    engine_name = os.path.basename(engine) if engine else ""
-    is_podman = engine_name == "podman"
-    is_docker = engine_name == "docker"
-    version = None
-    artifact = False
+        self.engine = str(engine)
+        self.model_store = model_store
+        self._type_resolver = oci_resolver.OCITypeResolver(self.engine, model_store=self.model_store)
 
-    if is_podman:
-        try:
-            version = engine_version(engine)
-        except (FileNotFoundError, subprocess.CalledProcessError):
-            version = None
-        if version:
-            artifact = _artifact_supported(engine, version, runner=run_cmd)
+        engine_name = cast(SUPPORTED_ENGINES, os.path.basename(self.engine))
+        self.strategies: StrategiesType = {
+            "image": get_engine_image_strategy(self.engine, engine_name)(
+                self.engine,
+                model_store=self.model_store,
+            ),
+            "artifact": get_engine_artifact_strategy(self.engine, engine_name)(
+                self.engine,
+                model_store=self.model_store,
+            ),
+        }
 
-    caps = ArtifactCapabilities(
-        engine=engine,
-        is_podman=is_podman,
-        is_docker=is_docker,
-        version=version,
-        artifact_supported=artifact,
-        order=[],
-    )
-    caps.order = _compute_order(caps)
-    return caps
+    def resolve_kind(self, model: str) -> Literal["image", "artifact"] | None:
+        kind = self._type_resolver.resolve(model)
+        if kind == "unknown":
+            return None
+        return kind
 
+    def resolve(self, model: str) -> BaseArtifactStrategy | BaseImageStrategy:
+        kind = self.resolve_kind(model)
+        if kind is None:
+            raise Exception(f"Could not identify an artifact type for {model}")
 
-def select_strategy(mode: str, caps: ArtifactCapabilities) -> str:
-    if mode == STRATEGY_AUTO:
-        return caps.order[0]
-
-    if mode == STRATEGY_PODMAN_ARTIFACT and not caps.artifact_supported:
-        raise ValueError("podman artifact strategy requested but engine does not support artifacts")
-    if mode == STRATEGY_PODMAN_IMAGE and not caps.is_podman:
-        raise ValueError("podman image strategy requested but engine is not podman")
-    if mode == STRATEGY_HTTP_BIND:
-        return mode
-
-    if mode in {STRATEGY_PODMAN_ARTIFACT, STRATEGY_PODMAN_IMAGE}:
-        return mode
-
-    raise ValueError(f"unknown strategy '{mode}'")
-
-
-def clear_probe_cache() -> None:
-    probe_capabilities.cache_clear()
+        return self.strategies[kind]
