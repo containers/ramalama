@@ -47,7 +47,6 @@ from ramalama.common import (
     set_accel_env_vars,
 )
 from ramalama.logger import logger
-
 from ramalama.path_utils import get_container_mount_path
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
@@ -395,14 +394,16 @@ class Transport(TransportBase):
         if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
             self.engine.add(["-i"])
 
-        self.engine.add([
-            "--label",
-            "ai.ramalama",
-            "--name",
-            name,
-            "--env=HOME=/tmp",
-            "--init",
-        ])
+        self.engine.add(
+            [
+                "--label",
+                "ai.ramalama",
+                "--name",
+                name,
+                "--env=HOME=/tmp",
+                "--init",
+            ]
+        )
 
     def setup_container(self, args):
         name = self.get_container_name(args)
@@ -455,9 +456,9 @@ class Transport(TransportBase):
             # Convert path to container-friendly format (handles Windows path conversion)
             container_blob_path = get_container_mount_path(blob_path)
             mount_path = f"{MNT_DIR}/{file.name}"
-            self.engine.add([
-                f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"
-            ])
+            self.engine.add(
+                [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
+            )
 
         if self.draft_model:
             draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
