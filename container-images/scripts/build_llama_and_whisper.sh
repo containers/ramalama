@@ -1,7 +1,7 @@
 #!/bin/bash
 
-DEFAULT_LLAMA_CPP_COMMIT="968929528c6a05e10249366fbe5f0330ad9af678"
-DEFAULT_WHISPER_COMMIT="679bdb53dbcbfb3e42685f50c7ff367949fd4d48"
+DEFAULT_LLAMA_CPP_COMMIT="091a46cb8d43c0e662d04b80a3d11320d25b7d49" # b7815
+DEFAULT_WHISPER_COMMIT="2eeeba56e9edd762b4b38467bab96c2517163158" # v1.8.3
 
 dnf_install_intel_gpu() {
   local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel"
