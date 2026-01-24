@@ -2,7 +2,7 @@ import os
 import platform
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, get_accel_env_vars, ContainerEntryPoint
+from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel_env_vars
 from ramalama.file import PlainFile
 from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.version import version
