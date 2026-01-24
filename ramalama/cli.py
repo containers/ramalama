@@ -7,10 +7,14 @@ import shlex
 import subprocess
 import sys
 import urllib.error
+from dataclasses import asdict
 from datetime import datetime, timezone
 from textwrap import dedent
 from typing import Any, get_args
 from urllib.parse import urlparse
+
+from ramalama.benchmarks.errors import MissingStorageFolderError
+from ramalama.benchmarks.manager import BenchmarksManager
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
@@ -24,7 +28,12 @@ except Exception:
 import ramalama.chat as chat
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
+<<<<<<< HEAD
 from ramalama.chat_utils import default_prefix
+=======
+from ramalama.benchmarks.utilities import print_bench_results
+from ramalama.chat import default_prefix
+>>>>>>> 8a473985 (adds benchmark metrics persistence)
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
 from ramalama.common import accel_image, get_accel, perror
@@ -301,6 +310,7 @@ def configure_subcommands(parser):
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
     bench_parser(subparsers)
+    benchmarks_parser(subparsers)
     chat_parser(subparsers)
     containers_parser(subparsers)
     convert_parser(subparsers)
@@ -324,6 +334,8 @@ def configure_subcommands(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
+    if getattr(args, "subcommand", None) == "benchmark":
+        args.subcommand = "bench"
 
     def map_https_to_transport(input: str) -> str:
         if input.startswith("https://") or input.startswith("http://"):
@@ -510,8 +522,75 @@ def add_network_argument(parser, dflt: str | None = "none"):
 def bench_parser(subparsers):
     parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
     runtime_options(parser, "bench")
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
+    parser.add_argument("MODEL", completer=local_models)
+    parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="output format (table or json)",
+    )
     parser.set_defaults(func=bench_cli)
+
+
+def benchmarks_parser(subparsers):
+    storage_folder = CONFIG.benchmarks.storage_folder
+    epilog = f"Storage folder: {storage_folder}" if storage_folder else "Storage folder: not configured"
+    parser = subparsers.add_parser(
+        "benchmarks",
+        help="manage and view benchmark results",
+        epilog=epilog,
+    )
+    parser.set_defaults(func=lambda _: parser.print_help())
+
+    benchmarks_subparsers = parser.add_subparsers(dest="benchmarks_command", metavar="[command]")
+
+    list_parser = benchmarks_subparsers.add_parser("list", help="list benchmark results")
+    list_parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="limit number of results to display",
+    )
+    list_parser.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help="offset for pagination",
+    )
+    list_parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="output format (table or json)",
+    )
+    list_parser.set_defaults(func=benchmarks_list_cli)
+
+
+def benchmarks_list_cli(args):
+    """Display a list of benchmark results from storage."""
+
+    try:
+        bench_manager = BenchmarksManager(CONFIG.benchmarks.storage_folder)
+        results = bench_manager.list()
+
+        if not results:
+            print("No benchmark results found")
+            return
+
+        if args.format == "json":
+            output = [asdict(item) for item in results]
+            print(json.dumps(output, indent=2, sort_keys=True))
+        else:
+            print_bench_results(results)
+
+    except MissingStorageFolderError:
+        print("Error: RAMALAMA__BENCHMARKS_STORAGE_FOLDER not configured")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading benchmarks: {e}")
+        if args.debug:
+            raise
+        sys.exit(1)
 
 
 def containers_parser(subparsers):

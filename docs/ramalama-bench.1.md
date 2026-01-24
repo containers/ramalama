@@ -51,6 +51,9 @@ process to be launched inside of the container. If an environment variable is
 specified without a value, the container engine checks the host environment
 for a value and set the variable only if it is set on the host.
 
+#### **--format**
+Set the output format of the benchmark results. Options include json and table (default: table).
+
 #### **--help**, **-h**
 show this help message and exit
 

@@ -19,7 +19,6 @@ def is_truthy(resolved_stmt: str) -> bool:
 
 
 class CommandFactory:
-
     def __init__(self, spec_files: dict[str, Path], schema_files: dict[str, Path]):
         self.spec_files = spec_files
         self.schema_files = schema_files

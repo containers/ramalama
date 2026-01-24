@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass, field, fields
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
 
@@ -46,21 +47,17 @@ def _get_default_config_dirs() -> list[Path]:
         # Windows-specific paths using APPDATA and LOCALAPPDATA
         appdata = os.getenv("APPDATA", os.path.expanduser("~/AppData/Roaming"))
         localappdata = os.getenv("LOCALAPPDATA", os.path.expanduser("~/AppData/Local"))
-        dirs.extend(
-            [
-                Path(os.path.join(localappdata, "ramalama")),
-                Path(os.path.join(appdata, "ramalama")),
-            ]
-        )
+        dirs.extend([
+            Path(os.path.join(localappdata, "ramalama")),
+            Path(os.path.join(appdata, "ramalama")),
+        ])
     else:
         # Unix-specific paths
-        dirs.extend(
-            [
-                Path("/etc/ramalama"),
-                Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
-                Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
-            ]
-        )
+        dirs.extend([
+            Path("/etc/ramalama"),
+            Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
+            Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
+        ])
 
     return dirs
 
@@ -79,6 +76,7 @@ def get_default_engine() -> SUPPORTED_ENGINES | None:
     return "docker" if available("docker") else None
 
 
+@lru_cache(maxsize=1)
 def get_default_store() -> str:
     # Check if running as root (Unix only)
     if hasattr(os, 'geteuid') and os.geteuid() == 0:
@@ -134,6 +132,22 @@ def coerce_to_bool(value: Any) -> bool:
         elif val in {"off", "false", "0", "no", "n"}:
             return False
     raise ValueError(f"Cannot coerce {value!r} to bool")
+
+
+def get_storage_folder(base_path: str | None = None):
+    if base_path is None:
+        base_path = get_default_store()
+
+    return os.path.join(base_path, "benchmarks")
+
+
+@dataclass
+class Benchmarks:
+    storage_folder: str = field(default_factory=get_storage_folder)
+    disable: bool = False
+
+    def __post_init__(self):
+        os.makedirs(self.storage_folder, exist_ok=True)
 
 
 @dataclass
@@ -225,6 +239,7 @@ class HTTPClientConfig:
 class BaseConfig:
     api: str = "none"
     api_key: str | None = None
+    benchmarks: Benchmarks = field(default_factory=Benchmarks)
     cache_reuse: int = 256
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
     container: bool = None  # type: ignore
@@ -235,12 +250,15 @@ class BaseConfig:
     dryrun: bool = False
     engine: SUPPORTED_ENGINES | None = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
+    gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
     host: str = "0.0.0.0"
+    http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
     image: str = None  # type: ignore
     images: RamalamaImages = field(default_factory=RamalamaImages)
     rag_image: str | None = None
     rag_images: RamalamaRagImages = field(default_factory=RamalamaRagImages)
     keep_groups: bool = False
+    log_level: LogLevel | None = None
     max_tokens: int = 0
     ngl: int = -1
     ocr: bool = False
@@ -297,30 +315,26 @@ class Config(LayeredMixin, BaseConfig):
 
 def load_file_config() -> dict[str, Any]:
     parser = TOMLParser()
-    config_path = os.getenv("RAMALAMA_CONFIG")
+    config_paths: list[str] = []
 
-    if config_path and os.path.exists(config_path):
-        config = parser.parse_file(config_path)
-        config = config.get("ramalama", {})
-        config['settings'] = {'config_files': [config_path]}
-        if log_level := config.get("log_level"):
-            config["log_level"] = coerce_log_level(log_level)
-        return config
+    if (config_path := os.getenv("RAMALAMA_CONFIG", None)) and os.path.exists(config_path):
+        config_paths.append(config_path)
+    else:
+        default_config_paths = [os.path.join(conf_dir, "ramalama.conf") for conf_dir in DEFAULT_CONFIG_DIRS]
 
-    config = {}
-    default_config_paths = [os.path.join(conf_dir, "ramalama.conf") for conf_dir in DEFAULT_CONFIG_DIRS]
+        for path in default_config_paths:
+            if os.path.exists(path):
+                config_paths.append(str(path))
 
-    config_paths = []
-    for path in default_config_paths:
-        if os.path.exists(path):
-            config_paths.append(str(path))
-            parser.parse_file(path)
-        path_str = f"{path}.d"
-        if os.path.isdir(path_str):
-            for conf_file in sorted(Path(path_str).glob("*.conf")):
-                config_paths.append(str(conf_file))
-                parser.parse_file(conf_file)
-    config = parser.data
+            path_str = f"{path}.d"
+            if os.path.isdir(path_str):
+                for conf_file in sorted(Path(path_str).glob("*.conf")):
+                    config_paths.append(str(conf_file))
+
+    for file in config_paths:
+        parser.parse_file(file)
+
+    config: dict[str, Any] = parser.data
     if config:
         config = config.get('ramalama', {})
         config['settings'] = {'config_files': config_paths}
