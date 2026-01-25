@@ -1,11 +1,9 @@
 import base64
-import os
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
-from ramalama.config import get_config
-from ramalama.console import EMOJI, should_colorize
+from ramalama.console import should_colorize
 
 RoleType = Literal["system", "user", "assistant", "tool"]
 
@@ -95,25 +93,6 @@ def stream_response(chunks: Iterable[bytes], color: str, provider: StreamParser)
     return assistant_response
 
 
-def default_prefix() -> str:
-    config = get_config()
-
-    if not EMOJI:
-        return "> "
-
-    if config.prefix:
-        return config.prefix
-
-    if engine := config.engine:
-        if os.path.basename(engine) == "podman":
-            return "🦭 > "
-
-        if os.path.basename(engine) == "docker":
-            return "🐋 > "
-
-    return "🦙 > "
-
-
 def serialize_part(part: AttachmentPart) -> dict[str, Any]:
     if isinstance(part, ImageURLPart):
         payload: dict[str, Any] = {"url": part.url}
@@ -133,7 +112,6 @@ __all__ = [
     "ToolCall",
     "ImageURLPart",
     "ImageBytesPart",
-    "default_prefix",
     "stream_response",
     "serialize_part",
 ]

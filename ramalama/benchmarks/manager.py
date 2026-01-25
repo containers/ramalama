@@ -7,11 +7,6 @@ from pathlib import Path
 from ramalama.benchmarks.errors import MissingStorageFolderError
 from ramalama.benchmarks.schemas import BenchmarkRecord, DeviceInfoV1, get_benchmark_record
 from ramalama.benchmarks.utilities import parse_jsonl
-from ramalama.config import CONFIG
-from ramalama.log_levels import LogLevel
-
-logger = logging.getLogger("ramalama.benchmarks")
-logger.setLevel(CONFIG.log_level or LogLevel.WARNING)
 
 SCHEMA_VERSION = 1
 BENCHMARKS_FILENAME = "benchmarks.jsonl"

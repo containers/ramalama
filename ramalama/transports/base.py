@@ -513,8 +513,9 @@ class Transport(TransportBase):
         else:
             print_bench_results(results)
 
-        if not CONFIG.benchmarks.disable:
-            bench_manager = BenchmarksManager(CONFIG.benchmarks.storage_folder)
+        config = get_config()
+        if not config.benchmarks.disable:
+            bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
             bench_manager.save(results)
 
     def run(self, args, cmd: list[str]):

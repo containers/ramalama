@@ -549,7 +549,8 @@ def bench_parser(subparsers):
 
 
 def benchmarks_parser(subparsers):
-    storage_folder = CONFIG.benchmarks.storage_folder
+    config = get_config()
+    storage_folder = config.benchmarks.storage_folder
     epilog = f"Storage folder: {storage_folder}" if storage_folder else "Storage folder: not configured"
     parser = subparsers.add_parser(
         "benchmarks",
@@ -584,8 +585,8 @@ def benchmarks_parser(subparsers):
 
 def benchmarks_list_cli(args):
     """Display a list of benchmark results from storage."""
-
-    bench_manager = BenchmarksManager(CONFIG.benchmarks.storage_folder)
+    config = get_config()
+    bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
     results = bench_manager.list()
 
     if not results:
