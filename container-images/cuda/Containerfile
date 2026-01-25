@@ -11,8 +11,16 @@ RUN ./build_llama_and_whisper.sh cuda
 # Final runtime image
 FROM docker.io/nvidia/cuda:${CUDA_VERSION}-runtime-ubi9
 
-# Copy the entire installation directory from the builder
-COPY --from=builder /tmp/install /usr
+RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install \
+    cp -a /tmp/install/bin/llama-bench \
+          /tmp/install/bin/llama-perplexity \
+          /tmp/install/bin/llama-quantize \
+          /tmp/install/bin/llama-server \
+          /tmp/install/bin/rpc-server \
+          /tmp/install/bin/whisper-server \
+          /tmp/install/bin/*.so* \
+          /usr/bin/ && \
+    cp -a /tmp/install/lib64/*.so* /usr/lib64/
 
 # Install python3.12 and ramalama to support a non-standard use-case
 RUN dnf -y install python3.12 && dnf -y clean all && ln -sf python3.12 /usr/bin/python3
