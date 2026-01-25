@@ -267,6 +267,16 @@ Configuration settings for the openai hosted provider
 **api_key**=""
 
 Provider-specific API key used when invoking OpenAI-hosted transports. Overrides `RAMALAMA_API_KEY` when set.
+## RAMALAMA.BENCHMARKS TABLE
+The ramalama.benchmarks table contains benchmark related settings.
+
+`[[ramalama.benchmarks]]`
+
+**storage_folder**="<default store>/benchmarks"
+
+Manually specify where to save benchmark results.
+By default, this will be stored in the default model store directory under `benchmarks/`.
+Changing `ramalama.store` does not update this; set `ramalama.benchmarks.storage_folder` explicitly if needed.
 
 ## RAMALAMA.USER TABLE
 The ramalama.user table contains user preference settings.

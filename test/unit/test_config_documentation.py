@@ -25,7 +25,7 @@ def get_config_fields():
     }
 
     config_fields = [field.name for field in fields(BaseConfig) if field.name not in excluded_fields]
-    config_fields.extend(('http_client', 'images', 'rag_images', 'user'))
+    config_fields.extend(('benchmarks', 'http_client', 'images', 'rag_images', 'user'))
     return sorted(set(config_fields))
 
 
@@ -47,7 +47,7 @@ def get_documented_fields_in_conf():
     documented = set()
 
     # Subsections that contain their own field documentation (these fields should not be extracted)
-    subsections_with_fields = {'http_client', 'user'}
+    subsections_with_fields = {'benchmarks', 'http_client', 'user'}
 
     # Track which section we're in to exclude nested fields under commented subsections
     in_commented_nested_section = False
@@ -199,8 +199,8 @@ class TestConfigDocumentation:
         missing = set(config_fields) - set(documented_fields)
 
         assert not missing, (
-            f"The following CONFIG fields are missing from docs/ramalama.conf:\n"
-            f"{', '.join(sorted(missing))}\n\n"
+            f"The following CONFIG fields are missing from docs/ramalama.conf: "
+            f"`{', '.join(sorted(missing))}`. "
             f"Please add documentation for these fields in docs/ramalama.conf"
         )
 
@@ -211,11 +211,12 @@ class TestConfigDocumentation:
 
         missing = set(config_fields) - set(documented_fields)
 
-        assert not missing, (
-            f"The following CONFIG fields are missing from docs/ramalama.conf.5.md:\n"
-            f"{', '.join(sorted(missing))}\n\n"
+        warning_message = (
+            f"The following CONFIG fields are missing from docs/ramalama.conf.5.md:"
+            f"`{', '.join(sorted(missing))}`. "
             f"Please add documentation for these fields in docs/ramalama.conf.5.md"
         )
+        assert not missing, warning_message
 
     def test_no_undocumented_fields_in_conf(self):
         """Verify ramalama.conf doesn't document non-existent fields."""
@@ -225,8 +226,8 @@ class TestConfigDocumentation:
         extra = set(documented_fields) - set(config_fields) - self.KNOWN_ALIASES
 
         assert not extra, (
-            f"The following fields are documented in docs/ramalama.conf but not in CONFIG:\n"
-            f"{', '.join(sorted(extra))}\n\n"
+            f"The following fields are documented in docs/ramalama.conf but not in CONFIG:"
+            f"`{', '.join(sorted(extra))}`. "
             f"These might be typos or outdated documentation."
         )
 
@@ -238,8 +239,8 @@ class TestConfigDocumentation:
         extra = set(documented_fields) - set(config_fields) - self.KNOWN_ALIASES
 
         assert not extra, (
-            f"The following fields are documented in docs/ramalama.conf.5.md but not in CONFIG:\n"
-            f"{', '.join(sorted(extra))}\n\n"
+            f"The following fields are documented in docs/ramalama.conf.5.md but not in CONFIG: "
+            f"`{', '.join(sorted(extra))}`. "
             f"These might be typos or outdated documentation."
         )
 
@@ -258,7 +259,7 @@ class TestConfigDocumentation:
             error_msg.append(f"Fields documented only in ramalama.conf.5.md:\n{', '.join(sorted(only_in_manpage))}")
 
         assert not error_msg, (
-            "Documentation inconsistency between ramalama.conf and ramalama.conf.5.md:\n\n"
-            + "\n\n".join(error_msg)
-            + "\n\nBoth files should document the same configuration options."
+            "Documentation inconsistency between ramalama.conf and ramalama.conf.5.md:"
+            + " ".join(error_msg)
+            + ". Both files should document the same configuration options."
         )

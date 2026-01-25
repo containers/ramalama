@@ -143,6 +143,7 @@ def test_env_overrides_file_and_default():
     ],
 )
 def test_get_default_store(uid, is_root, expected):
+    get_default_store.cache_clear()
     with patch("os.geteuid", return_value=uid):
         assert get_default_store() == expected
 

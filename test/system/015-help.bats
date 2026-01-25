@@ -50,7 +50,7 @@ function check_help() {
         # If usage lists no arguments (strings in ALL CAPS), confirm
         # by running with 'invalid-arg' and expecting failure.
         if ! expr "$usage" : '.*[A-Z]' >/dev/null; then
-            if [ "$cmd" != "help" ] && [ "$cmd" != "daemon" ]; then
+            if [ "$cmd" != "help" ] && [ "$cmd" != "daemon" ] && [ "$cmd" != "benchmarks" ]; then
                 dprint "$command_string invalid-arg"
                 run_ramalama '?' "$@" $cmd invalid-arg
                 is "$status" 2 \
