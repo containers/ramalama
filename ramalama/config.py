@@ -47,17 +47,21 @@ def _get_default_config_dirs() -> list[Path]:
         # Windows-specific paths using APPDATA and LOCALAPPDATA
         appdata = os.getenv("APPDATA", os.path.expanduser("~/AppData/Roaming"))
         localappdata = os.getenv("LOCALAPPDATA", os.path.expanduser("~/AppData/Local"))
-        dirs.extend([
-            Path(os.path.join(localappdata, "ramalama")),
-            Path(os.path.join(appdata, "ramalama")),
-        ])
+        dirs.extend(
+            [
+                Path(os.path.join(localappdata, "ramalama")),
+                Path(os.path.join(appdata, "ramalama")),
+            ]
+        )
     else:
         # Unix-specific paths
-        dirs.extend([
-            Path("/etc/ramalama"),
-            Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
-            Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
-        ])
+        dirs.extend(
+            [
+                Path("/etc/ramalama"),
+                Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
+                Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
+            ]
+        )
 
     return dirs
 

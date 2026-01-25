@@ -13,7 +13,6 @@ from textwrap import dedent
 from typing import Any, get_args
 from urllib.parse import urlparse
 
-from ramalama.benchmarks.errors import MissingStorageFolderError
 from ramalama.benchmarks.manager import BenchmarksManager
 
 # if autocomplete doesn't exist, just do nothing, don't break
@@ -28,12 +27,8 @@ except Exception:
 import ramalama.chat as chat
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
-<<<<<<< HEAD
-from ramalama.chat_utils import default_prefix
-=======
 from ramalama.benchmarks.utilities import print_bench_results
-from ramalama.chat import default_prefix
->>>>>>> 8a473985 (adds benchmark metrics persistence)
+from ramalama.chat_utils import default_prefix
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
 from ramalama.common import accel_image, get_accel, perror
@@ -659,13 +654,11 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append(
-            {
-                "name": f"{model} (partial)" if is_partially_downloaded else model,
-                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-                "size": size_sum,
-            }
-        )
+        ret.append({
+            "name": f"{model} (partial)" if is_partially_downloaded else model,
+            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+            "size": size_sum,
+        })
 
     # sort the listed models according to the desired order
     ret.sort(key=lambda entry: entry[args.sort], reverse=args.order == "desc")
