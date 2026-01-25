@@ -479,7 +479,7 @@ class Transport(TransportBase):
             else:
                 dry_run(cmd)
 
-            result = subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+            return
         elif args.container:
             self.setup_container(args)
             self.setup_mounts(args)
