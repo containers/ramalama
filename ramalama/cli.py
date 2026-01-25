@@ -23,6 +23,7 @@ try:
     suppressCompleter: type[argcomplete.completers.SuppressCompleter] | None = argcomplete.completers.SuppressCompleter
 except Exception:
     suppressCompleter = None
+
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.benchmarks.utilities import print_bench_results
@@ -50,6 +51,7 @@ from ramalama.prompt_utils import default_prefix
 from ramalama.rag import RagTransport, rag_image
 from ramalama.shortnames import Shortnames
 from ramalama.stack import Stack
+from ramalama.transports.api import APITransport
 from ramalama.transports.base import (
     MODEL_TYPES,
     NoGGUFModelFileFound,
@@ -675,11 +677,13 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append({
-            "name": f"{model} (partial)" if is_partially_downloaded else model,
-            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-            "size": size_sum,
-        })
+        ret.append(
+            {
+                "name": f"{model} (partial)" if is_partially_downloaded else model,
+                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+                "size": size_sum,
+            }
+        )
 
     # sort the listed models according to the desired order
     ret.sort(key=lambda entry: entry[args.sort], reverse=args.order == "desc")
