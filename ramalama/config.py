@@ -282,9 +282,6 @@ class BaseConfig:
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
-    gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
-    http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
-    log_level: LogLevel | None = None
     provider: ProviderConfig = field(default_factory=ProviderConfig)
 
     def __post_init__(self):
