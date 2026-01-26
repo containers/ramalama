@@ -23,8 +23,6 @@ release-arm() {
 	stable-diffusion | openvino | ramalama-cli | llama-stack)
 	;;
 	*)
-	    podman push "${REPO}"/"$1"-whisper-server "${ARMREPO}"/"$1"-whisper-server
-	    podman push "${REPO}"/"$1"-llama-server "${ARMREPO}"/"$1"-llama-server
 	    podman push "${REPO}"/"$1"-rag "${ARMREPO}"/"$1"-rag
 	    ;;
     esac
@@ -46,8 +44,6 @@ release() {
 	stable-diffusion | openvino | ramalama-cli | llama-stack)
 	;;
 	*)
-	    release-ramalama "$1"-whisper-server
-	    release-ramalama "$1"-llama-server
 	    release-ramalama "$1"-rag
 	    ;;
     esac
