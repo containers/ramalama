@@ -390,7 +390,5 @@ def test_default_api_key():
     with RamalamaExecWorkspace(config=config, env_vars={"RAMALAMA_API_KEY": api_key}) as ctx:
         result = ctx.check_output(["ramalama", "chat", "--help"])
         match = f"default: {api_key}" in result
-        assert (
-            match
-        ), f"Environment variable should override config file: expected \
+        assert match, f"Environment variable should override config file: expected \
         {api_key}"

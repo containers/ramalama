@@ -99,13 +99,11 @@ class OCI(Transport):
         else:
             parent = "scratch"
             label = ociimage_raw
-        footer = dedent(
-            f"""
+        footer = dedent(f"""
             FROM {parent}
             LABEL {label}
             COPY --from=build /data/ /
-            """
-        ).strip()
+            """).strip()
         full_cfile = cfile + "\n\n" + footer + "\n"
         if args.debug:
             perror(f"Containerfile: \n{full_cfile}")
@@ -113,13 +111,11 @@ class OCI(Transport):
         return engine.build_containerfile(full_cfile, contextdir)
 
     def _gguf_containerfile(self, model_file_name, args):
-        return dedent(
-            f"""
+        return dedent(f"""
             FROM {args.carimage} AS build
             COPY {model_file_name} /data/models/{model_file_name}
             RUN ln -s {model_file_name} /data/models/model.file
-            """
-        ).strip()
+            """).strip()
 
     def _generate_containerfile(self, source_model, args):
         # Generate the containerfile content
@@ -296,12 +292,10 @@ class OCI(Transport):
         try:
             self._create_manifest(self.model, imageid, args)
         except subprocess.CalledProcessError as e:
-            perror(
-                f"""\
+            perror(f"""\
 Failed to create manifest for OCI {self.model} : {e}
 Tagging build instead
-                """
-            )
+                """)
             self.tag(imageid, self.model, args)
 
     def convert(self, source_model, args):

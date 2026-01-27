@@ -129,12 +129,10 @@ def test_accel_image(accel_env: str, env_override, config_override: str, expecte
 
         env = {}
         if config_override:
-            f.write(
-                f"""\
+            f.write(f"""\
 [ramalama]
 image = "{config_override}"
-                """
-            )
+                """)
             f.flush()
             env["RAMALAMA_CONFIG"] = f.name
         else:

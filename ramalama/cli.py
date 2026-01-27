@@ -1518,11 +1518,9 @@ If GPU device on host is accessible to via group access, this option leaks the u
     parser.add_argument(
         "PATHS",
         nargs="+",
-        help=dedent(
-            """
+        help=dedent("""
         Files/URLs/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
-        formatted files to be processed"""
-        ),
+        formatted files to be processed"""),
         action=AddPathOrUrl,
     )
     parser.add_argument(
