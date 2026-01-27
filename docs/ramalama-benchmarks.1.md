@@ -30,7 +30,7 @@ limit number of results to display
 #### **--offset**=OFFSET
 offset for pagination (default: 0)
 
-#### **--format**={table,json}
+#### **--format**=\{table,json\}
 output format (table or json) (default: table)
 
 ## EXAMPLES

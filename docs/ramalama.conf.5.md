@@ -272,7 +272,7 @@ The ramalama.benchmarks table contains benchmark related settings.
 
 `[[ramalama.benchmarks]]`
 
-**storage_folder**="<default store>/benchmarks"
+**storage_folder**="\<default store>/benchmarks"
 
 Manually specify where to save benchmark results.
 By default, this will be stored in the default model store directory under `benchmarks/`.
