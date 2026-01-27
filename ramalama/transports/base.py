@@ -28,15 +28,6 @@ from ramalama.quadlet import Quadlet
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
 
-<<<<<<< HEAD
-from datetime import datetime, timezone
-
-from ramalama.benchmarks.manager import BenchmarksManager
-from ramalama.benchmarks.schemas import BenchmarkRecord, BenchmarkRecordV1, get_benchmark_record
-from ramalama.benchmarks.utilities import parse_json, print_bench_results
-=======
-import ramalama.chat as chat
->>>>>>> be51e8bd (adds ability to inspect shortnames)
 from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
