@@ -20,7 +20,6 @@ Contributors can comment on or contribute to the issues linked here.
   Define a syntax that simplifies adding new runtimes.  
   Current runtimes:  
   - `llama.cpp`  
-  - `whisper.cpp`  
   - `vllm`  
   - `stable-diffusion`  
   - `OpenVINO`  

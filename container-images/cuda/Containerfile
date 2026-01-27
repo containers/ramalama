@@ -2,11 +2,11 @@ ARG CUDA_VERSION=12.9.1
 # Base image with CUDA for compilation
 FROM docker.io/nvidia/cuda:${CUDA_VERSION}-devel-ubi9 AS builder
 
-COPY container-images/scripts/build_llama_and_whisper.sh \
+COPY container-images/scripts/build_llama.sh \
      container-images/scripts/lib.sh \
      /src/
 WORKDIR /src/
-RUN ./build_llama_and_whisper.sh cuda
+RUN ./build_llama.sh cuda
 
 # Final runtime image
 FROM docker.io/nvidia/cuda:${CUDA_VERSION}-runtime-ubi9

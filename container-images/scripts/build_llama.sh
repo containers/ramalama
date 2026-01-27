@@ -1,7 +1,6 @@
 #!/bin/bash
 
 DEFAULT_LLAMA_CPP_COMMIT="091a46cb8d43c0e662d04b80a3d11320d25b7d49" # b7815
-DEFAULT_WHISPER_COMMIT="2eeeba56e9edd762b4b38467bab96c2517163158" # v1.8.3
 
 dnf_install_intel_gpu() {
   local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel"
@@ -9,13 +8,6 @@ dnf_install_intel_gpu() {
     "intel-oneapi-compiler-dpcpp-cpp" "intel-level-zero"
     "oneapi-level-zero" "oneapi-level-zero-devel" "intel-compute-runtime")
   dnf install -y "${intel_rpms[@]}"
-
-  # shellcheck disable=SC1091
-  . /opt/intel/oneapi/setvars.sh
-}
-
-dnf_remove() {
-  dnf -y clean all
 }
 
 dnf_install_asahi() {
@@ -74,25 +66,6 @@ dnf_install_mesa() {
   rm_non_ubi_repos
 }
 
-# There is no ffmpeg-free package in the openEuler repository. openEuler can use ffmpeg,
-# which also has the same GPL/LGPL license as ffmpeg-free.
-dnf_install_ffmpeg() {
-  if is_rhel_based; then
-    dnf_install_epel
-    add_stream_repo "AppStream"
-    add_stream_repo "BaseOS"
-    add_stream_repo "CRB"
-  fi
-
-  if [ "${ID}" = "openEuler" ]; then
-    dnf install -y ffmpeg
-  else
-    dnf install -y ffmpeg-free
-  fi
-
-  rm_non_ubi_repos
-}
-
 dnf_install() {
   local rpm_exclude_list="selinux-policy,container-selinux"
   local rpm_list=("python3-dnf-plugin-versionlock"
@@ -124,8 +97,6 @@ dnf_install() {
     dnf_install_cann
   fi
 
-  dnf_install_ffmpeg
-
   if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
       dnf install -y gdb strace
   fi
@@ -134,16 +105,12 @@ dnf_install() {
 }
 
 cmake_check_warnings() {
-  # There has warning "CMake Warning:Manually-specified variables were not used by the project" during compile of custom ascend kernels of ggml cann backend.
-  # Should remove "cann" judge condition when this warning are fixed in llama.cpp/whisper.cpp
-  if [ "$containerfile" != "cann" ]; then
-    awk -v rc=0 '/CMake Warning:/ { rc=1 } 1; END {exit rc}'
-  else
-    awk '/CMake Warning:/ {print $0}'
-  fi
+  awk -v rc=0 '/CMake Warning:/ { rc=1 } 1; END {exit rc}'
 }
 
 setup_build_env() {
+  # external scripts may reference unbound variables
+  set +u
   if [ "$containerfile" = "cann" ]; then
     # source build env
     cann_in_sys_path=/usr/local/Ascend/ascend-toolkit
@@ -162,7 +129,11 @@ setup_build_env() {
       echo "No Ascend Toolkit found"
       exit 1
     fi
+  elif [ "$containerfile" = "intel-gpu" ]; then
+    # shellcheck disable=SC1091
+    source /opt/intel/oneapi/setvars.sh
   fi
+  set -u
 }
 
 cmake_steps() {
@@ -190,7 +161,13 @@ set_install_prefix() {
 }
 
 configure_common_flags() {
-  common_flags=()
+  common_flags=(
+      "-DGGML_CCACHE=OFF" "-DGGML_RPC=ON" "-DCMAKE_INSTALL_PREFIX=${install_prefix}"
+      "-DLLAMA_BUILD_TESTS=OFF" "-DLLAMA_BUILD_EXAMPLES=OFF" "-DGGML_BUILD_TESTS=OFF" "-DGGML_BUILD_EXAMPLES=OFF"
+  )
+  if [ "$containerfile" != "cann" ]; then
+      common_flags+=("-DGGML_NATIVE=OFF" "-DGGML_BACKEND_DL=ON" "-DGGML_CPU_ALL_VARIANTS=ON")
+  fi
   if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
       common_flags+=("-DGGML_CMAKE_BUILD_TYPE=Debug")
   else
@@ -198,6 +175,16 @@ configure_common_flags() {
   fi
 
   case "$containerfile" in
+  ramalama)
+    if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
+      common_flags+=("-DGGML_VULKAN=ON")
+    elif [ "$uname_m" = "s390x" ] || [ "$uname_m" = "ppc64le" ]; then
+      common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
+    fi
+    if [ "$uname_m" = "s390x" ]; then
+      common_flags+=("-DARCH_FLAGS=-march=z15")
+    fi
+    ;;
   rocm*)
     if [ "${ID}" = "fedora" ]; then
       common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
@@ -223,28 +210,10 @@ configure_common_flags() {
   esac
 }
 
-clone_and_build_whisper_cpp() {
-  local whisper_cpp_commit="${WHISPER_CPP_PULL_REF:-$DEFAULT_WHISPER_COMMIT}"
-  local whisper_flags=("${common_flags[@]}")
-  whisper_flags+=("-DBUILD_SHARED_LIBS=OFF")
-  # See: https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#compilation-options
-  if [ "$containerfile" = "musa" ]; then
-    whisper_flags+=("-DCMAKE_POSITION_INDEPENDENT_CODE=ON")
-  fi
-
-  git_clone_specific_commit "${WHISPER_CPP_REPO:-https://github.com/ggerganov/whisper.cpp}" "$whisper_cpp_commit"
-  cmake_steps "${whisper_flags[@]}"
-  cd ..
-  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" != y ]]; then
-      rm -rf whisper.cpp
-  fi
-}
-
 clone_and_build_llama_cpp() {
   local llama_cpp_commit="${LLAMA_CPP_PULL_REF:-$DEFAULT_LLAMA_CPP_COMMIT}"
   git_clone_specific_commit "${LLAMA_CPP_REPO:-https://github.com/ggml-org/llama.cpp}" "$llama_cpp_commit"
   cmake_steps "${common_flags[@]}"
-  install -m 755 build/bin/rpc-server "$install_prefix"/bin/rpc-server
   cd ..
   if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" != y ]]; then
       rm -rf llama.cpp
@@ -252,35 +221,15 @@ clone_and_build_llama_cpp() {
 }
 
 cleanup() {
-  available dnf && dnf_remove
-  rm -rf /var/cache/*dnf* /opt/rocm-*/lib/*/library/*gfx9*
+  available dnf && dnf -y clean all
   ldconfig # needed for libraries
-}
-
-add_common_flags() {
-  common_flags+=("-DGGML_RPC=ON" "-DLLAMA_BUILD_TESTS=OFF" "-DLLAMA_BUILD_EXAMPLES=OFF" "-DGGML_BUILD_TESTS=OFF" "-DGGML_BUILD_EXAMPLES=OFF")
-  if [ "$containerfile" != "cann" ]; then
-      common_flags+=("-DGGML_NATIVE=OFF" "-DGGML_BACKEND_DL=ON" "-DGGML_CPU_ALL_VARIANTS=ON")
-  fi
-  case "$containerfile" in
-  ramalama)
-    if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
-      common_flags+=("-DGGML_VULKAN=ON")
-    elif [ "$uname_m" = "s390x" ] || [ "$uname_m" = "ppc64le" ]; then
-      common_flags+=("-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=OpenBLAS")
-    fi
-    if [ "$uname_m" = "s390x" ]; then
-      common_flags+=("-DARCH_FLAGS=-march=z15")
-    fi
-    ;;
-  esac
 }
 
 main() {
   # shellcheck disable=SC1091
   source /etc/os-release
 
-  set -ex -o pipefail
+  set -eux -o pipefail
 
   # shellcheck disable=SC1091
   source "$(dirname "$0")/lib.sh"
@@ -292,15 +241,10 @@ main() {
   uname_m="$(uname -m)"
   local common_flags
   configure_common_flags
-  common_flags+=("-DGGML_CCACHE=OFF" "-DCMAKE_INSTALL_PREFIX=${install_prefix}")
+
   available dnf && dnf_install
-
   setup_build_env
-  if [ "$uname_m" != "s390x" ]; then
-    clone_and_build_whisper_cpp
-  fi
 
-  add_common_flags
   clone_and_build_llama_cpp
   cleanup
 }

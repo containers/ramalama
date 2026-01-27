@@ -40,10 +40,6 @@ add_build_platform() {
       # set to 'y' to include the debug tools and debug files in the image
       "RAMALAMA_IMAGE_BUILD_DEBUG_MODE"
 
-      # reference of a whisper.cpp repo and commit to use
-      "WHISPER_CPP_REPO"
-      "WHISPER_CPP_PULL_REF"
-
       # reference to a llama.cpp repo and commit to use
       "LLAMA_CPP_REPO"
       "LLAMA_CPP_PULL_REF"
