@@ -14,7 +14,7 @@ COPY container-images/intel-gpu/oneAPI.repo /etc/yum.repos.d/
 
 RUN dnf install -y --setopt=install_weak_deps=false \
       procps-ng intel-oneapi-runtime-mkl intel-oneapi-mkl-sycl-dft \
-      intel-level-zero oneapi-level-zero intel-compute-runtime libcurl lspci \
+      intel-level-zero oneapi-level-zero intel-compute-runtime lspci \
       clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core \
       intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl gawk
 
