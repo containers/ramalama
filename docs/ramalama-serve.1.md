@@ -61,6 +61,9 @@ Path of the authentication file for OCI registries
 #### **--cache-reuse**=256
 Min chunk size to attempt reusing from the cache via KV shifting
 
+#### **--context-shift**
+Enable context shifting in llama.cpp when context is full. This allows the server to automatically truncate older context to make room for new tokens.
+
 #### **--ctx-size**, **-c**
 size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 4096, 0 = loaded from model)
 
