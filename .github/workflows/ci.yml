@@ -37,7 +37,33 @@ jobs:
         run: |
           uv run -- make type-check
 
+  unit-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - title: ""
+            uv-options: {}
+          - title: " (python 3.10)"
+            uv-options:
+              python-version: '3.10'
+    name: Unit Tests${{ matrix.variant.title }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v7
+        with: ${{ matrix.variant.uv-options }}
+
+      - name: Run unit tests
+        run: |
+          uv run -- make unit-tests
+
   build-image:
+    needs:
+      - lint
+      - unit-test
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -75,30 +101,10 @@ jobs:
         run: |
           ./container_build.sh build -s ramalama
 
-  unit-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        variant:
-          - title: ""
-            uv-options: {}
-          - title: " (python 3.10)"
-            uv-options:
-              python-version: '3.10'
-    name: Unit Tests${{ matrix.variant.title }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
-        with: ${{ matrix.variant.uv-options }}
-
-      - name: Run unit tests
-        run: |
-          uv run -- make unit-tests
-
   e2e-tests:
+    needs:
+      - lint
+      - unit-test
     strategy:
       fail-fast: false
       matrix:
@@ -154,6 +160,9 @@ jobs:
            make e2e-tests
 
   e2e-tests-nocontainer:
+    needs:
+      - lint
+      - unit-test
     strategy:
       fail-fast: false
       matrix:
@@ -205,6 +214,9 @@ jobs:
            make e2e-tests-nocontainer
 
   e2e-tests-docker:
+    needs:
+      - lint
+      - unit-test
     strategy:
       fail-fast: false
       matrix:
@@ -278,6 +290,9 @@ jobs:
            make e2e-tests-docker
 
   e2e-tests-macos:
+    needs:
+      - lint
+      - unit-test
     strategy:
       fail-fast: false
       matrix:
@@ -316,6 +331,9 @@ jobs:
           make e2e-tests-nocontainer
 
   e2e-tests-windows:
+    needs:
+      - lint
+      - unit-test
     strategy:
       fail-fast: false
       matrix:
