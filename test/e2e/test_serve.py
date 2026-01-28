@@ -292,6 +292,7 @@ def test_full_model_name_expansion():
 
 @pytest.mark.e2e
 @skip_if_no_container
+@pytest.mark.slow
 def test_serve_and_stop(shared_ctx, test_model):
     ctx = shared_ctx
     container1_id = f"serve_and_stop_{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
@@ -341,6 +342,7 @@ def test_serve_and_stop(shared_ctx, test_model):
 
 @pytest.mark.e2e
 @skip_if_no_container
+@pytest.mark.slow
 def test_serve_multiple_models(shared_ctx, test_model):
     ctx = shared_ctx
     container1_id = f"serve_multiple_{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
@@ -469,6 +471,7 @@ def test_generation_with_bad_add_to_unit_flag_value(test_model):
 @pytest.mark.e2e
 @skip_if_no_container
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")
+@pytest.mark.slow
 def test_quadlet_and_kube_generation_with_container_registry(container_registry, is_container, test_model):
     with RamalamaExecWorkspace() as ctx:
         authfile = (Path(ctx.workspace_dir) / "authfile.json").as_posix()
@@ -709,6 +712,7 @@ def test_kube_generation_with_llama_api(test_model):
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
+@pytest.mark.slow
 def test_serve_api(caplog):
     # Configure logging for requests
     caplog.set_level(logging.CRITICAL, logger="requests")

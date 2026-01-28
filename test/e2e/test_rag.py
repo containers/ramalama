@@ -268,6 +268,7 @@ def test_run_dry_run_pull_policy(container_engine):
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
+@pytest.mark.slow
 def test_rag(container_engine):
     with RamalamaExecWorkspace() as ctx:
         (Path(ctx.workspace_dir) / "README.md").touch()

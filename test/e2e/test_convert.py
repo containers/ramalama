@@ -48,22 +48,26 @@ def test_convert_custom_gguf_config():
         pytest.param(
             "tiny", "oci://quay.io/ramalama/tiny", None,
             "oci://quay.io/ramalama/tiny:latest",
+            marks=pytest.mark.slow,
             id="tiny -> oci://quay.io/ramalama/tiny",
         ),
         pytest.param(
             "ollama://tinyllama", "oci://quay.io/ramalama/tinyllama", None,
             "oci://quay.io/ramalama/tinyllama:latest",
+            marks=pytest.mark.slow,
             id="ollama://tinyllama -> oci://quay.io/ramalama/tinyllama",
         ),
         pytest.param(
             "hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0", "oci://quay.io/ramalama/tinyllama", None,
             "oci://quay.io/ramalama/tinyllama:latest",
+            marks=pytest.mark.slow,
             id="hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 -> oci://quay.io/ramalama/tinyllama",
         ),
         pytest.param(
             "hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0", "oci://quay.io/ramalama/tiny-q4-0",
             ["--gguf", "Q4_0"],
             "oci://quay.io/ramalama/tiny-q4-0:latest",
+            marks=pytest.mark.slow,
             id="hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 -> oci://quay.io/ramalama/tiny-q4-0 (--gguf Q4_0)",
         ),
         # fmt: on

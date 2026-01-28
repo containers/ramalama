@@ -58,6 +58,41 @@ We use `pytest` marks to categorize tests or skip them based on certain conditio
 
 For example, the `skip_if_no_container` mark will skip a test if the `--no-container` flag is enabled.
 
+### Filtering Tests with Marks
+
+We use marks to categorize tests. A common use case is to mark slow-running tests so they can be included or excluded from a test run.
+
+#### The `slow` Mark
+
+Some tests can be particularly time-consuming. We mark these with `@pytest.mark.slow`.
+
+This allows for flexible test execution:
+
+-   **Run only fast tests:** To speed up development, you can exclude slow tests.
+    ```bash
+    tox -e e2e -- -m "not slow"
+    ```
+
+-   **Run only slow tests:** To focus on the slow tests, for example in a dedicated CI job.
+    ```bash
+    tox -e e2e -- -m "slow"
+    ```
+
+-   **Run all tests:** By default, `tox -e e2e` runs all tests, including those marked as `slow`.
+
+Example of a slow test:
+```python
+import pytest
+from test.conftest import skip_if_no_container
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_no_container
+def test_something_slow_in_a_container():
+    # This test is marked as slow
+    assert True
+```
+
 ### How to Use Marks
 
 To use a mark, you apply it as a decorator to a test function.

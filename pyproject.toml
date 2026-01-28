@@ -168,7 +168,7 @@ lcov.output = "coverage/coverage.lcov"
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-markers = ["e2e", "distro_integration"]
+markers = ["e2e", "distro_integration", "slow"]
 addopts = "-m 'not e2e' --color=yes --durations=10"
 
 [tool.setuptools.packages.find]
