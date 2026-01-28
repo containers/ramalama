@@ -169,9 +169,10 @@ class RamalamaCommandContext:
             model = cli_args.model
         else:
             model = None
+
         host = RamalamaHostContext(
             is_container,
-            check_nvidia() is None,
+            check_nvidia() is not None,
             check_metal(argparse.Namespace(**{"container": is_container})),
             should_colorize(),
             os.getenv("RAMALAMA_LLAMACPP_RPC_NODES", None),
