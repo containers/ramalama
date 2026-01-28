@@ -47,6 +47,7 @@ def test_pull_non_existing_model():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @pytest.mark.parametrize(
     "model, env_vars, expected",
@@ -167,6 +168,7 @@ def test_pull(model, env_vars, expected):
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @pytest.mark.slow
 def test_pull_model_layers_download():
@@ -181,6 +183,7 @@ def test_pull_model_layers_download():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @pytest.mark.slow
 def test_pull_huggingface_tag_multiple_references():
@@ -202,6 +205,7 @@ def test_pull_huggingface_tag_multiple_references():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @pytest.mark.parametrize(
     "model, expected",
@@ -231,6 +235,7 @@ def test_pull_wrong_endian_model_error(model, expected):
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @skip_if_no_ollama
 @skip_if_darwin
@@ -285,6 +290,7 @@ def test_pull_using_ollama_cache(ollama_server, ollama_model, model, env_vars, e
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @skip_if_no_huggingface_cli
 @pytest.mark.parametrize(
@@ -340,6 +346,7 @@ def test_pull_using_huggingface_cache(hf_repo, hf_model, model, env_vars, expect
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @skip_if_no_container
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")

@@ -396,6 +396,7 @@ def test_artifact_list_json_with_size():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @skip_if_no_container
 @skip_if_docker
 @skip_if_podman_too_old
@@ -469,6 +470,7 @@ def test_artifact_with_different_tags():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @skip_if_no_container
 @skip_if_docker
 @skip_if_podman_too_old
@@ -503,6 +505,7 @@ def test_artifact_list_empty_after_cleanup():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @skip_if_no_container
 @skip_if_docker
 @skip_if_podman_too_old
@@ -533,6 +536,7 @@ def test_artifact_with_config_default_type():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @skip_if_no_container
 @skip_if_docker
 @skip_if_podman_too_old

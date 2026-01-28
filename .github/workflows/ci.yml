@@ -120,7 +120,7 @@ jobs:
 
       - name: run e2e-tests
         run: |
-           make e2e-tests
+           make ci-e2e-tests
 
   e2e-tests-nocontainer:
     needs:
@@ -174,7 +174,7 @@ jobs:
 
       - name: run e2e-tests-nocontainer
         run: |
-           make e2e-tests-nocontainer
+           make ci-e2e-tests-nocontainer
 
   e2e-tests-docker:
     needs:
@@ -250,7 +250,7 @@ jobs:
       - name: run e2e-tests-docker
         run: |
            docker info
-           make e2e-tests-docker
+           make ci-e2e-tests-docker
 
   e2e-tests-macos:
     needs:
@@ -291,7 +291,7 @@ jobs:
       - name: run e2e-tests-nocontainer
         shell: bash
         run: |
-          make e2e-tests-nocontainer
+          make ci-e2e-tests-nocontainer
 
   e2e-tests-windows:
     needs:
@@ -403,7 +403,7 @@ jobs:
           $env:PATH = "$uvToolsPath;$env:PATH"
 
           # Run tests
-          uv run tox -e e2e -- -v
+          uv run tox -e ci-e2e
 
       - name: Debug - Show Podman logs on failure
         if: failure()

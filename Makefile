@@ -240,6 +240,18 @@ end-to-end-tests: validate e2e-tests e2e-tests-nocontainer ci
 	make clean
 	hack/tree_status.sh
 
+.PHONY: ci-e2e-tests
+ci-e2e-tests: requires-tox
+	tox -q -e ci-e2e
+
+.PHONY: ci-e2e-tests-nocontainer
+ci-e2e-tests-nocontainer: requires-tox
+	tox -q -e ci-e2e -- --no-container
+
+.PHONY: ci-e2e-tests-docker
+ci-e2e-tests-docker: requires-tox
+	tox -q -e ci-e2e -- --container-engine=docker
+
 .PHONY: test
 test: tests
 

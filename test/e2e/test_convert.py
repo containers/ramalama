@@ -38,11 +38,13 @@ def test_convert_custom_gguf_config():
         pytest.param(
             Path("aimodel"), "foobar", None,
             "oci://localhost/foobar:latest",
+            marks=pytest.mark.no_parallel,
             id="{workspace_uri}/aimodel -> foobar",
         ),
         pytest.param(
             Path("aimodel"), "oci://foobar", None,
             "oci://localhost/foobar:latest",
+            marks=pytest.mark.no_parallel,
             id="{workspace_uri}/aimodel -> oci://foobar",
         ),
         pytest.param(

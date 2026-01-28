@@ -25,6 +25,7 @@ def shared_ctx():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.parametrize(
     "args,expected",
     [
@@ -48,6 +49,7 @@ def test_output(shared_ctx, args, expected):
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 def test_json_output(shared_ctx):
     json_raw = shared_ctx.check_output(["ramalama", "list", "--json"])
     result = json.loads(json_raw)
@@ -59,6 +61,7 @@ def test_json_output(shared_ctx):
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 def test_all_images_removed(shared_ctx):
     shared_ctx.check_call(["ramalama", "rm", "-a"])
     result = shared_ctx.check_output(["ramalama", "list", "--noheading"])
