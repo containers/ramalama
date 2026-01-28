@@ -705,7 +705,6 @@ def test_kube_generation_with_llama_api(test_model):
             assert re.search(r".*/llama-stack", content)
 
 
-@pytest.mark.e2e
 @skip_if_docker
 @skip_if_no_container
 @skip_if_ppc64le
