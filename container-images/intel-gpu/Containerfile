@@ -1,11 +1,11 @@
 FROM quay.io/fedora/fedora:43 as builder
 
 COPY container-images/intel-gpu/oneAPI.repo /etc/yum.repos.d/
-COPY container-images/scripts/build_llama_and_whisper.sh \
+COPY container-images/scripts/build_llama.sh \
      container-images/scripts/lib.sh \
      /src/
 WORKDIR /src/
-RUN ./build_llama_and_whisper.sh intel-gpu
+RUN ./build_llama.sh intel-gpu
 
 FROM quay.io/fedora/fedora:43
 

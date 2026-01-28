@@ -16,7 +16,7 @@ pushd "$TMT_TREE"
 if [[ $1 == "docker" ]]; then
     ./container_build.sh build ramalama
 elif [[ $1 == "nocontainer" ]]; then
-    ./container-images/scripts/build_llama_and_whisper.sh
+    ./container-images/scripts/build_llama.sh
 fi
 ./.github/scripts/install-ollama.sh
 

@@ -3,11 +3,11 @@ ARG UBUNTU_VERSION=22.04
 # Base image with MUSA for compilation
 FROM docker.io/mthreads/musa:${VERSION}-devel-ubuntu${UBUNTU_VERSION}-amd64 AS builder
 
-COPY container-images/scripts/build_llama_and_whisper.sh \
+COPY container-images/scripts/build_llama.sh \
      container-images/scripts/lib.sh \
      /src/
 WORKDIR /src/
-RUN ./build_llama_and_whisper.sh musa
+RUN ./build_llama.sh musa
 
 # Final runtime image
 FROM docker.io/mthreads/musa:${VERSION}-runtime-ubuntu${UBUNTU_VERSION}-amd64

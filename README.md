@@ -1258,7 +1258,6 @@ Regarding this alpha, everything is under development, so expect breaking change
 This project wouldn't be possible without the help of other projects like:
 
 - [llama.cpp](https://github.com/ggml-org/llama.cpp)
-- [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
 - [vllm](https://github.com/vllm-project/vllm)
 - [mlx-lm](https://github.com/ml-explore/mlx-examples)
 - [podman](https://github.com/containers/podman)

@@ -1,9 +1,9 @@
 FROM quay.io/fedora/fedora:43
 
 ENV ASAHI_VISIBLE_DEVICES 1
-COPY container-images/scripts/build_llama_and_whisper.sh \
+COPY container-images/scripts/build_llama.sh \
      container-images/scripts/lib.sh \
      /src/
 WORKDIR /src/
-RUN ./build_llama_and_whisper.sh asahi
+RUN ./build_llama.sh asahi
 WORKDIR /

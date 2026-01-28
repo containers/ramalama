@@ -155,7 +155,7 @@ jobs:
            df -h
            sudo apt-get update
            sudo apt-get install podman bats bash codespell git cmake libcurl4-openssl-dev
-           sudo ./container-images/scripts/build_llama_and_whisper.sh
+           sudo ./container-images/scripts/build_llama.sh
            uv run -- make install-requirements
 
       - name: install ollama
@@ -350,7 +350,7 @@ jobs:
           df -h
           sudo apt-get update
           sudo apt-get install podman bash codespell git cmake libcurl4-openssl-dev
-          sudo ./container-images/scripts/build_llama_and_whisper.sh
+          sudo ./container-images/scripts/build_llama.sh
           uv tool install tox --with tox-uv
           uv pip install ".[dev]"
 

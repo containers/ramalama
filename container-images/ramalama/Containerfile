@@ -1,10 +1,10 @@
 FROM quay.io/fedora/fedora:43
 
-COPY container-images/scripts/build_llama_and_whisper.sh \
+COPY container-images/scripts/build_llama.sh \
      container-images/scripts/lib.sh \
      /src/
 WORKDIR /src/
-RUN ./build_llama_and_whisper.sh ramalama
+RUN ./build_llama.sh ramalama
 # Install ramalama to support a non-standard use-case
 COPY . /src/ramalama
 WORKDIR /src/ramalama

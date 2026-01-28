@@ -65,7 +65,6 @@ case ${1} in
     *)
 	podman run --pull=never --rm "${REPO}/$1" ls -l /usr/bin/llama-server
 	podman run --pull=never --rm "${REPO}/$1" ls -l /usr/bin/llama-run
-	podman run --pull=never --rm "${REPO}/$1" ls -l /usr/bin/whisper-server
 	podman run --pull=never --rm "${REPO}/$1"-rag rag_framework load
 	;;
 esac
