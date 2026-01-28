@@ -64,47 +64,6 @@ jobs:
         run: |
           uv run -- make unit-tests
 
-  build-image:
-    needs:
-      - lint
-      - unit-test
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Install dependencies
-        shell: bash
-        run: |
-          df -h
-          sudo apt-get update
-          sudo apt-get install -y bash codespell pipx podman
-          uv run -- make install-requirements
-
-      - name: Upgrade to podman 5
-        run: |
-           set -e
-           # /mnt has ~ 65 GB free disk space. / is too small.
-           sudo mkdir -m a=rwx -p /mnt/tmp /mnt/runner
-           sudo mkdir -m o=rwx -p /home/runner/.local
-           sudo chown runner:runner /mnt/runner /home/runner/.local
-           sudo mount --bind /mnt/runner /home/runner/.local
-           # Enable universe repository which contains podman
-           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
-           # Update package lists
-           sudo apt-get update
-           sudo apt-get purge firefox
-           # Install specific podman version
-           sudo apt-get upgrade -y podman crun
-
-      - name: Build a container for CPU inferencing
-        shell: bash
-        run: |
-          ./container_build.sh build -s ramalama
-
   e2e-tests:
     needs:
       - lint
