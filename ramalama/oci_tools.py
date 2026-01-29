@@ -1,7 +1,7 @@
 import json
 import subprocess
 from datetime import datetime
-from typing import NotRequired, TypedDict, cast
+from typing import TypedDict
 
 import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
@@ -56,10 +56,12 @@ def list_artifacts(args: EngineArgType) -> list[ListModelResponse]:
         "artifact",
         "ls",
         "--format",
-        ('{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
+        (
+            '{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
             "created":"{{ .CreatedAt }}", \
             "size":"{{ .Size }}", \
-            "ID":"{{ .Digest }}"},'),
+            "ID":"{{ .Digest }}"},'
+        ),
     ]
     try:
         if (output := run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()) == "":
@@ -88,13 +90,11 @@ def list_artifacts(args: EngineArgType) -> list[ListModelResponse]:
             continue
         if inspect["Manifest"]['artifactType'] != annotations.ArtifactTypeModelManifest:
             continue
-        models.append(
-            {
-                "name": artifact["name"],
-                "modified": parse_datetime(artifact["created"]),
-                "size": convert_from_human_readable_size(artifact["size"]),
-            }
-        )
+        models.append({
+            "name": artifact["name"],
+            "modified": parse_datetime(artifact["created"]),
+            "size": convert_from_human_readable_size(artifact["size"]),
+        })
     return models
 
 
@@ -153,27 +153,12 @@ def list_manifests(args: EngineArgType) -> list[ListModelResponse]:
         if 'annotations' not in img:
             continue
         if annotations.AnnotationModel in img['annotations']:
-            models.append(
-                {
-                    "name": manifest["name"],
-                    "modified": parse_datetime(manifest["modified"]),
-                    "size": manifest["size"],
-                }
-            )
+            models.append({
+                "name": manifest["name"],
+                "modified": parse_datetime(manifest["modified"]),
+                "size": manifest["size"],
+            })
     return models
-
-
-class DockerModelResponse(TypedDict):
-    name: str
-    id: str
-    modified: str
-    size: NotRequired[str]
-
-
-class PodmanModelResponse(TypedDict):
-    name: str
-    modified: str
-    size: str
 
 
 def list_images(args: EngineArgType) -> list[ListModelResponse]:
@@ -205,37 +190,37 @@ def list_images(args: EngineArgType) -> list[ListModelResponse]:
     if output == "":
         return []
 
-    # exclude dangling images having no tag (i.e. <none>:<none>)
-    model_list: list[DockerModelResponse | PodmanModelResponse] = [
-        model for model in json.loads(f"[{output[:-1]}]") if model["name"] != "oci://<none>:<none>"
-    ]
+    raw = [model for model in json.loads(f"[{output[:-1]}]") if model["name"] != "oci://<none>:<none>"]
 
     if conman == 'docker':
-        docker_models = cast(list[DockerModelResponse], model_list)
-        ids = [m["id"] for m in docker_models]
-        if ids:
-            inspect_args = [conman, "image", "inspect", *ids, "--format", "{{.Id}} {{.Size}}"]
-            inspect_out = run_cmd(inspect_args).stdout.decode("utf-8").strip()
-            size_by_id: dict[str, str] = {}
-            for line in inspect_out.splitlines():
-                if not line:
-                    continue
-                image_id, size = line.split(maxsplit=1)
-                size_by_id[image_id] = size
+        ids = [m["id"] for m in raw]
+        inspect_args = [conman, "image", "inspect", *ids, "--format", "{{.Id}} {{.Size}}"]
+        inspect_out = run_cmd(inspect_args).stdout.decode("utf-8").strip()
 
-            for model in docker_models:
-                model['size'] = size_by_id[model["id"]]
+        size_by_id: dict[str, str] = {}
+        for line in inspect_out.splitlines():
+            if not line:
+                continue
+            image_id, size = line.split(maxsplit=1)
+            size_by_id[image_id] = size
 
-    sized_models = cast(list[PodmanModelResponse], model_list)
-    models: list[ListModelResponse] = [
+        return [
+            {
+                "name": m["name"],
+                "modified": parse_datetime(m["modified"]),
+                "size": int(size_by_id[m["id"]]),
+            }
+            for m in raw
+        ]
+
+    return [
         {
-            'name': model['name'],
-            'modified': parse_datetime(model['modified']),
-            'size': int(model['size']),
+            "name": m["name"],
+            "modified": parse_datetime(m["modified"]),
+            "size": int(m["size"]),
         }
-        for model in sized_models
+        for m in raw
     ]
-    return models
 
 
 def list_models(args: EngineArgType) -> list[ListModelResponse]:
