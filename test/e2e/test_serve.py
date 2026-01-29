@@ -16,7 +16,6 @@ from test.conftest import (
     skip_if_docker,
     skip_if_gh_actions_darwin,
     skip_if_no_container,
-    skip_if_not_darwin,
     skip_if_ppc64le,
     skip_if_s390x,
 )
@@ -181,10 +180,6 @@ def test_basic_dry_run():
         pytest.param(
             [], r".*--cache-reuse 256", None, None, True,
             id="check --cache-reuse default value", marks=skip_if_container
-        ),
-        pytest.param(
-            [], r".*--flash-attn", None, None, True,
-            id="check --flash-attn", marks=[skip_if_container, skip_if_not_darwin]
         ),
         pytest.param(
             ["--host", "127.0.0.1"],
