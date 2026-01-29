@@ -9,14 +9,12 @@ RUN ./build_llama.sh intel-gpu
 
 FROM quay.io/fedora/fedora:43
 
-COPY --from=builder /tmp/install/ /usr/
+RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install \
+    cp -a /tmp/install/bin/ /usr/ && \
+    cp -a /tmp/install/lib64/*.so* /usr/lib64/
 COPY container-images/intel-gpu/oneAPI.repo /etc/yum.repos.d/
-
-RUN dnf install -y --setopt=install_weak_deps=false \
-      procps-ng intel-oneapi-runtime-mkl intel-oneapi-mkl-sycl-dft \
-      intel-level-zero oneapi-level-zero intel-compute-runtime lspci \
-      clinfo intel-oneapi-runtime-compilers intel-oneapi-mkl-core \
-      intel-oneapi-mkl-sycl-blas intel-oneapi-runtime-dnnl gawk
+RUN --mount=type=bind,target=/src \
+    /src/container-images/scripts/build_llama.sh intel-gpu runtime
 
 COPY --chmod=755 container-images/intel-gpu/entrypoint.sh /usr/bin/
 
