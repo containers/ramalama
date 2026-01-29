@@ -96,8 +96,6 @@ skip_if_gh_actions_darwin = pytest.mark.skipif(
 skip_if_windows = pytest.mark.skipif(platform.system() == "Windows", reason="Windows operating system")
 skip_if_not_windows = pytest.mark.skipif(platform.system() != "Windows", reason="not Windows operating system")
 
-skip_if_no_huggingface_cli = pytest.mark.skipif(shutil.which("hf") is None, reason="hf cli not installed")
-
 skip_if_no_llama_bench = pytest.mark.skipif(shutil.which("llama-bench") is None, reason="llama-bench not installed")
 
 skip_if_no_mlx = pytest.mark.skipif(

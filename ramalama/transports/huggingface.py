@@ -1,9 +1,9 @@
 import json
 import os
-import pathlib
 import urllib.request
+from pathlib import Path
 
-from ramalama.common import available, perror, run_cmd
+from ramalama.common import run_cmd
 from ramalama.hf_style_repo_base import (
     HFStyleRepoFile,
     HFStyleRepoModel,
@@ -11,8 +11,6 @@ from ramalama.hf_style_repo_base import (
     fetch_checksum_from_api_base,
 )
 from ramalama.logger import logger
-from ramalama.model_store.snapshot_file import SnapshotFileType
-from ramalama.path_utils import create_file_link
 
 missing_huggingface = """This operation requires huggingface-cli which is not available.
 
@@ -24,11 +22,6 @@ Or via distribution package managers like dnf or apt. Example:
 
 sudo dnf install python3-huggingface-hub
 """
-
-
-def is_hf_cli_available():
-    """Check if huggingface-cli is available on the system."""
-    return available("hf")
 
 
 def huggingface_token():
@@ -83,6 +76,64 @@ def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
         return json.loads(repo_manifest)
 
 
+def fetch_repo_files(repo_name: str, revision: str = "main"):
+    """Fetch the list of files in a HuggingFace repository using the Files API with pagination support."""
+    token = huggingface_token()
+    base_api_url = f"https://huggingface.co/api/models/{repo_name}/tree/{revision}"
+
+    all_files = []
+    next_url: str | None = base_api_url
+
+    # TODO: Handle Diffusers-multifolder layout
+    # See https://huggingface.co/docs/diffusers/v0.35.1/using-diffusers/other-formats#diffusers-multifolder
+    while next_url:
+        logger.debug(f"Fetching repo files from {next_url}")
+
+        request = urllib.request.Request(
+            url=next_url,
+            headers={
+                'Accept': 'application/json',
+            },
+        )
+        if token is not None:
+            request.add_header('Authorization', f"Bearer {token}")
+
+        with urllib.request.urlopen(request) as response:
+            files_data = response.read().decode('utf-8')
+            data = json.loads(files_data)
+
+            # Response should be a list of files or a dict
+            if isinstance(data, list):
+                all_files.extend(data)
+            elif isinstance(data, dict):
+                files = data.get('files') or data.get('siblings') or []
+                all_files.extend(files)
+            else:
+                raise ValueError(f"Unexpected response from HuggingFace API: {type(data)}")
+
+            # Check for pagination via Link header
+            next_url = None
+            link_header = response.headers.get('Link')
+            if link_header:
+                # Parse Link header: <url>; rel="next"
+                # Example: '<https://huggingface.co/api/models/foo/tree/main?cursor=abc>; rel="next"'
+                for link in link_header.split(','):
+                    parts = link.split(';')
+                    has_next_rel = any('rel="next"' in p.strip() or "rel='next'" in p.strip() for p in parts)
+                    if has_next_rel:
+                        for p in parts:
+                            p = p.strip()
+                            if p.startswith('<') and p.endswith('>'):
+                                next_url = p[1:-1]
+                                logger.debug(f"Found next page via Link header: {next_url}")
+                                break
+                        if next_url:
+                            break
+
+    logger.debug(f"Fetched {len(all_files)} total files from repository {repo_name}")
+    return all_files
+
+
 class HuggingfaceCLIFile(HFStyleRepoFile):
     pass
 
@@ -90,18 +141,98 @@ class HuggingfaceCLIFile(HFStyleRepoFile):
 class HuggingfaceRepository(HFStyleRepository):
     REGISTRY_URL = "https://huggingface.co"
 
-    def fetch_metadata(self):
+    def _fetch_manifest_metadata(self):
         # Repo org/name. Fetch repo manifest to determine model/mmproj file
         self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/{self.name}/resolve/main"
-        self.manifest = fetch_repo_manifest(f"{self.organization}/{self.name}", self.tag)
+
         try:
+            self.manifest = fetch_repo_manifest(f"{self.organization}/{self.name}", self.tag)
+        except (urllib.error.HTTPError, json.JSONDecodeError, KeyError) as e:
+            logger.debug(f'fetch_repo_manifest failed: {e}')
+            return False
+        try:
+            # Note that the blobId in the manifest already has a sha256: prefix
             self.model_filename = self.manifest['ggufFile']['rfilename']
             self.model_hash = self.manifest['ggufFile']['blobId']
+            self.mmproj_filename = self.manifest.get('mmprojFile', {}).get('rfilename', None)
+            self.mmproj_hash = self.manifest.get('mmprojFile', {}).get('blobId', None)
+            return True
         except KeyError:
-            perror("Repository manifest missing ggufFile data")
-            raise
-        self.mmproj_filename = self.manifest.get('mmprojFile', {}).get('rfilename', None)
-        self.mmproj_hash = self.manifest.get('mmprojFile', {}).get('blobId', None)
+            # No ggufFile in manifest
+            return False
+
+    def _collect_file(self, file_list, file_info):
+        path = file_info['path']
+        oid = file_info.get('oid', '')
+        if 'lfs' in file_info and 'oid' in file_info['lfs']:
+            oid = file_info['lfs']['oid']
+        file_list.append({'filename': path, 'oid': oid})
+
+    def _fetch_safetensors_metadata(self):
+        """Fetch metadata for safetensors models from HuggingFace API."""
+        repo_name = f"{self.organization}/{self.name}"
+        try:
+            files = fetch_repo_files(repo_name)
+        except (urllib.error.HTTPError, json.JSONDecodeError, KeyError) as e:
+            logger.debug(f'fetch_repo_files failed: {e}')
+            return False
+
+        # Find all safetensors files, config files and index files
+        safetensors_files = []
+        self.other_files = []
+        index_file = None
+
+        try:
+            for file_info in files:
+                if file_info.get('type') != 'file':
+                    continue
+
+                path_str = file_info['path']
+                logger.debug(f"Examining file {path_str}")
+
+                path = Path(path_str)
+                # Note: case sensitivity follows platform defaults
+                if path.match('*.safetensors'):
+                    self._collect_file(safetensors_files, file_info)
+                elif path.match('*.safetensors.index.json'):
+                    index_file = path_str
+                elif path_str in {
+                    self.FILE_NAME_CONFIG,
+                    self.FILE_NAME_GENERATION_CONFIG,
+                    self.FILE_NAME_TOKENIZER_CONFIG,
+                }:
+                    continue
+                else:
+                    self._collect_file(self.other_files, file_info)
+
+            if not safetensors_files:
+                logger.debug('No safetensors files found')
+                return False
+
+            # Sort safetensors files by name for consistent ordering
+            safetensors_files.sort(key=lambda x: x['filename'])
+
+            # Use the first safetensors file as the main model
+            # If there are multiple files, they might be sharded
+            self.model_filename = safetensors_files[0]['filename']
+            self.model_hash = f"sha256:{safetensors_files[0]['oid']}"
+
+            # Store additional safetensors files for get_file_list
+            self.additional_safetensor_files = safetensors_files[1:]
+
+            # Store index file if found
+            self.safetensors_index_file = index_file
+        except (KeyError, ValueError) as e:
+            logger.debug(f'_fetch_safetensors_metadata failed: {e}')
+            return False
+
+        return True
+
+    def fetch_metadata(self):
+        # Try to fetch GGUF manifest first, then safetensors metadata
+        if not self._fetch_manifest_metadata() and not self._fetch_safetensors_metadata():
+            raise KeyError("No metadata found")
+
         token = huggingface_token()
         if token is not None:
             self.headers['Authorization'] = f"Bearer {token}"
@@ -126,7 +257,6 @@ class Huggingface(HFStyleRepoModel):
         super().__init__(model, model_store_path)
 
         self.type = "huggingface"
-        self.hf_cli_available = is_hf_cli_available()
 
     def get_cli_command(self):
         return "hf"
@@ -161,7 +291,7 @@ class Huggingface(HFStyleRepoModel):
             return HuggingfaceRepository(name, organization, tag)
 
     def get_cli_download_args(self, directory_path, model):
-        return ["hf", "download", "--local-dir", directory_path, model]
+        raise NotImplementedError("huggingface cli download not available")
 
     def extract_model_identifiers(self):
         model_name, model_tag, model_organization = super().extract_model_identifiers()
@@ -182,32 +312,6 @@ class Huggingface(HFStyleRepoModel):
         return snapshot_path, cache_path
 
     def in_existing_cache(self, args, target_path, sha256_checksum):
-        if not self.hf_cli_available:
-            return False
-
-        default_hf_caches = [os.path.join(os.environ['HOME'], '.cache/huggingface/hub')]
-        namespace, repo = os.path.split(str(self.directory))
-
-        for cache_dir in default_hf_caches:
-            snapshot_path, cache_path = self._fetch_snapshot_path(cache_dir, namespace, repo)
-            if not snapshot_path or not cache_path or not os.path.exists(snapshot_path):
-                continue
-
-            file_path = os.path.join(snapshot_path, self.filename)
-            if not os.path.exists(file_path):
-                continue
-
-            blob_path = pathlib.Path(file_path).resolve()
-            if not os.path.exists(blob_path):
-                continue
-
-            blob_file = os.path.relpath(blob_path, start=os.path.join(cache_path, 'blobs'))
-            if str(blob_file) != str(sha256_checksum):
-                continue
-
-            # Use cross-platform file linking (hardlink/symlink/copy)
-            create_file_link(str(blob_path), target_path)
-            return True
         return False
 
     def push(self, _, args):
@@ -230,50 +334,4 @@ class Huggingface(HFStyleRepoModel):
         return proc.stdout.decode("utf-8")
 
     def _collect_cli_files(self, tempdir: str) -> tuple[str, list[HuggingfaceCLIFile]]:
-        cache_dir = os.path.join(tempdir, ".cache", "huggingface", "download")
-        files: list[HuggingfaceCLIFile] = []
-        snapshot_hash = ""
-
-        for root, _, filenames in os.walk(tempdir):
-            for filename in filenames:
-                if filename == ".gitattributes":
-                    continue
-
-                entry_path = os.path.join(root, filename)
-                rel_name = os.path.relpath(entry_path, start=tempdir)
-
-                # Skip files inside the .cache directory itself
-                if rel_name.startswith(".cache/"):
-                    continue
-
-                sha256 = ""
-                metadata_path = os.path.join(cache_dir, f"{rel_name}.metadata")
-                if not os.path.exists(metadata_path):
-                    continue
-                with open(metadata_path) as metafile:
-                    lines = metafile.readlines()
-                    if len(lines) < 2:
-                        continue
-                    sha256 = f"sha256:{lines[1].strip()}"
-                if sha256 == "sha256:":
-                    continue
-
-                if os.path.basename(rel_name).lower() == "readme.md":
-                    snapshot_hash = sha256
-                    continue
-
-                hf_file = HuggingfaceCLIFile(
-                    url=entry_path,
-                    header={},
-                    hash=sha256,
-                    type=SnapshotFileType.Other,
-                    name=rel_name,
-                )
-                # try to identify the model file in the pulled repo
-                if rel_name.endswith(".gguf"):
-                    hf_file.type = SnapshotFileType.GGUFModel
-                elif rel_name.endswith(".safetensors"):
-                    hf_file.type = SnapshotFileType.SafetensorModel
-                files.append(hf_file)
-
-        return snapshot_hash, files
+        return "", []
