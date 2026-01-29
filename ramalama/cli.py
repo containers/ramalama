@@ -15,7 +15,6 @@ from typing import Any, get_args
 from urllib.parse import urlparse
 
 from ramalama.benchmarks.manager import BenchmarksManager
-from ramalama.model_inspect.shortname_info import ShortNameInfo
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
@@ -622,6 +621,12 @@ def list_containers(args):
 
 def info_parser(subparsers):
     parser = subparsers.add_parser("info", help="display information pertaining to setup of RamaLama.")
+    parser.add_argument(
+        "--shortnames",
+        dest="shortnames",
+        action="store_true",
+        help="display available shortnames",
+    )
     parser.set_defaults(func=info_cli)
 
 
@@ -680,13 +685,11 @@ def _list_models_from_store(args):
             size_sum += file.size
             last_modified = max(file.modified, last_modified)
 
-        ret.append(
-            {
-                "name": f"{model} (partial)" if is_partially_downloaded else model,
-                "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
-                "size": size_sum,
-            }
-        )
+        ret.append({
+            "name": f"{model} (partial)" if is_partially_downloaded else model,
+            "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
+            "size": size_sum,
+        })
 
     # sort the listed models according to the desired order
     ret.sort(key=lambda entry: entry[args.sort], reverse=args.order == "desc")
@@ -700,6 +703,17 @@ def _list_models(args):
 
 def info_cli(args: DefaultArgsType) -> None:
     shortnames = get_shortnames()
+    if getattr(args, 'shortnames', None):
+        for name in sorted(shortnames.shortnames):
+            config_source = shortnames.config_sources.get(name)
+            source = shortnames.shortnames[name]
+
+            print(f"{name}")
+            print(f"   Source: {source}")
+            if config_source:
+                print(f"   Config: {config_source}")
+        return
+
     info: dict[str, Any] = {
         "Accelerator": get_accel(),
         "Config": load_file_config(),
@@ -717,6 +731,7 @@ def info_cli(args: DefaultArgsType) -> None:
         "Shortnames": {
             "Files": shortnames.paths,
             "Names": shortnames.shortnames,
+            "Sources": shortnames.sources,
         },
         "Store": args.store,
         "UseContainer": args.container,
@@ -1694,40 +1709,19 @@ def inspect_parser(subparsers):
         help="display specific metadata field of AI Model",
     )
     parser.add_argument("--json", dest="json", action="store_true", help="display AI Model information in JSON format")
-    parser.add_argument(
-        "--shortnames",
-        dest="shortnames",
-        action="store_true",
-        help="display available shortnames",
-    )
     parser.add_argument("MODEL", nargs="?", completer=local_models)  # positional argument
     parser.set_defaults(func=inspect_cli)
 
 
 def inspect_cli(args):
-    if args.shortnames:
-        if args.json:
-            print(json.dumps(shortnames.shortnames))
-        else:
-            for name in sorted(shortnames.shortnames):
-                print(f"{name} = {shortnames.shortnames[name]}")
-        return
-
     if not args.MODEL:
         parser = get_parser()
-        parser.error("inspect requires MODEL unless --shortnames is set")
+        parser.error("inspect requires MODEL")
 
     args.pull = "never"
 
     model = New(args.MODEL, args)
-    try:
-        inspect = model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)
-    except NoRefFileFound:
-        model_name = args.UNRESOLVED_MODEL
-        if model_name not in shortnames.shortnames:
-            raise
-        info = ShortNameInfo(name=model_name, source=shortnames.resolve(model_name))
-        inspect = info.serialize(args.json)
+    inspect = model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)
 
     print(inspect)
 

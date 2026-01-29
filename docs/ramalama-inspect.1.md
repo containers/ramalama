@@ -29,9 +29,6 @@ Print usage message
 #### **--json**
 Print the AI Model information in json format.
 
-#### **--shortnames**
-Print the available shortnames and exit. Can be used without a model.
-
 ## EXAMPLES
 
 Inspect the smollm:135m model for basic information
@@ -78,13 +75,6 @@ $ ramalama inspect smollm:135m --all --json
         ...
     ]
 }
-```
-
-List available shortnames
-```
-$ ramalama inspect --shortnames
-smollm:135m = ollama://smollm:135m
-tinyllama:latest = ollama://tinyllama:latest
 ```
 
 Use the autocomplete function of `--get` to view a list of fields:
