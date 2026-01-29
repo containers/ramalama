@@ -292,6 +292,7 @@ def test_full_model_name_expansion():
 
 @pytest.mark.e2e
 @skip_if_no_container
+@pytest.mark.slow
 def test_serve_and_stop(shared_ctx, test_model):
     ctx = shared_ctx
     container1_id = f"serve_and_stop_{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
@@ -323,7 +324,8 @@ def test_serve_and_stop(shared_ctx, test_model):
         ctx.check_call(["ramalama", "stop", container1_id])
 
     # Start Container2
-    c2_id = ctx.check_output(["ramalama", "serve", "--name", container2_id, "-d", test_model]).split("\n")[0]
+    c2_cmd = ["ramalama", "serve", "--name", container2_id, "-p", "8181", "-d", test_model]
+    c2_id = ctx.check_output(c2_cmd).split("\n")[0]
     try:
         containers_list = check_output(["ramalama", "containers", "-n"])
         assert re.search(f".*{c2_id[:10]}", containers_list)
@@ -341,6 +343,7 @@ def test_serve_and_stop(shared_ctx, test_model):
 
 @pytest.mark.e2e
 @skip_if_no_container
+@pytest.mark.slow
 def test_serve_multiple_models(shared_ctx, test_model):
     ctx = shared_ctx
     container1_id = f"serve_multiple_{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
@@ -469,6 +472,7 @@ def test_generation_with_bad_add_to_unit_flag_value(test_model):
 @pytest.mark.e2e
 @skip_if_no_container
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")
+@pytest.mark.slow
 def test_quadlet_and_kube_generation_with_container_registry(container_registry, is_container, test_model):
     with RamalamaExecWorkspace() as ctx:
         authfile = (Path(ctx.workspace_dir) / "authfile.json").as_posix()
@@ -705,10 +709,12 @@ def test_kube_generation_with_llama_api(test_model):
             assert re.search(r".*/llama-stack", content)
 
 
+@pytest.mark.e2e
 @skip_if_docker
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
+@pytest.mark.slow
 def test_serve_api(caplog):
     # Configure logging for requests
     caplog.set_level(logging.CRITICAL, logger="requests")

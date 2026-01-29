@@ -66,6 +66,7 @@ dev = [
     "hypothesis>=6.135.26",
     "isort~=7.0",
     "pytest~=9.0",
+    "pytest-xdist",
     "wheel~=0.46.3",
     "mypy",
     "types-PyYAML",
@@ -168,7 +169,7 @@ lcov.output = "coverage/coverage.lcov"
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-markers = ["e2e", "distro_integration"]
+markers = ["e2e", "distro_integration", "slow"]
 addopts = "-m 'not e2e' --color=yes --durations=10"
 
 [tool.setuptools.packages.find]
@@ -222,6 +223,20 @@ commands = [
     "--durations=10",
     "--basetemp={envtmpdir}",
     "--tb=short",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[tool.tox.env.ci-e2e]
+deps = [
+    "mlx-lm ; sys_platform == 'darwin' and platform_machine == 'arm64'"
+]
+commands = [
+  [
+    "pytest", "-v", "--tb=short",
+    "-n", "auto", "--dist", "loadfile",
+    "-m", "e2e",
+    "--basetemp={envtmpdir}",
     { replace = "posargs", extend = true },
   ],
 ]

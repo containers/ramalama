@@ -194,7 +194,7 @@ def test_rag_error_when_file_is_missing():
     [
         # fmt: off
         pytest.param(
-            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*llama-server --host [\w\.]+ --port 8081",
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*llama-server --host [\w\.]+ --port \d+ ",
             id="check llama-server"
         ),
         pytest.param(
@@ -202,7 +202,7 @@ def test_rag_error_when_file_is_missing():
             id="check rag image"
         ),
         pytest.param(
-            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, ".*rag_framework serve --port 8080",
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*rag_framework serve --port \d+ ",
             id="check rag_framework"
         ),
         pytest.param(
@@ -268,6 +268,7 @@ def test_run_dry_run_pull_policy(container_engine):
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
+@pytest.mark.slow
 def test_rag(container_engine):
     with RamalamaExecWorkspace() as ctx:
         (Path(ctx.workspace_dir) / "README.md").touch()

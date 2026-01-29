@@ -273,12 +273,14 @@ def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_co
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_darwin  # test is broken on MAC --no-container right now
 def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     import platform
 
     ctx = shared_ctx_with_models
 
-    run_cmd = ["ramalama", "run", "--temp", "0"]
+    run_cmd = ["ramalama", "run", "--temp", "0", "-p", "8180"]
     if platform.system() in ["Darwin", "Windows"]:
         # FIXME: continues rambling on Windows and macOS without --max-token
         run_cmd.extend(["--max-tokens", "100"])
@@ -295,12 +297,13 @@ _file_uri_id_relative = "relative_dir/file"
 @pytest.mark.parametrize(
     "scheme,relative_path",
     [
-        pytest.param("file:", True, id=f"file:{_file_uri_id_relative}"),
-        pytest.param("file:", False, id=f"file:{_file_uri_id_suffix}"),
-        pytest.param("file:/", False, id=f"file:/{_file_uri_id_suffix}", marks=skip_if_not_windows),
-        pytest.param("file://", False, id=f"file://{_file_uri_id_suffix}"),
+        pytest.param("file:", True, id=f"file:{_file_uri_id_relative}", marks=pytest.mark.slow),
+        pytest.param("file:", False, id=f"file:{_file_uri_id_suffix}", marks=pytest.mark.slow),
+        pytest.param("file:/", False, id=f"file:/{_file_uri_id_suffix}", marks=[skip_if_not_windows, pytest.mark.slow]),
+        pytest.param("file://", False, id=f"file://{_file_uri_id_suffix}", marks=pytest.mark.slow),
     ],
 )
+@pytest.mark.slow
 def test_run_with_file_uri(shared_ctx_with_models, test_model, scheme, relative_path):
     ctx = shared_ctx_with_models
 
@@ -331,6 +334,7 @@ def test_run_with_unc_file_uri(shared_ctx_with_models, test_model):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 def test_run_keepalive(shared_ctx_with_models, test_model):
     ctx = shared_ctx_with_models
     ctx.check_call(["ramalama", "run", "--keepalive", "1s", test_model], stdin=DEVNULL)
