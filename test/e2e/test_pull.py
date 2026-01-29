@@ -47,6 +47,7 @@ def test_pull_non_existing_model():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @pytest.mark.parametrize(
     "model, env_vars, expected",
@@ -54,62 +55,69 @@ def test_pull_non_existing_model():
         # fmt: off
         pytest.param(
             "ollama://tinyllama", None, "ollama://library/tinyllama:latest",
-            id="tinyllama model with ollama:// url"
+            id="tinyllama model with ollama:// url",
+            marks=pytest.mark.slow
         ),
         pytest.param(
             "smollm:360m", {"RAMALAMA_TRANSPORT": "ollama"}, "ollama://library/smollm:360m",
-            id="smollm:360m model with RAMALAMA_TRANSPORT=ollama"
+            id="smollm:360m model with RAMALAMA_TRANSPORT=ollama",
+            marks=pytest.mark.slow
         ),
         pytest.param(
             "ollama://smollm:360m", None, "ollama://library/smollm:360m",
-            id="smollm:360m model with ollama:// url"
+            id="smollm:360m model with ollama:// url",
+            marks=pytest.mark.slow
         ),
         pytest.param(
             "https://ollama.com/library/smollm:135m", None, "ollama://library/smollm:135m",
-            id="smollm:135m model with http url from ollama"
+            id="smollm:135m model with http url from ollama",
+            marks=pytest.mark.slow
         ),
         pytest.param(
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             None,
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            id="hf://Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model"
+            id="hf://Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model",
+            marks=pytest.mark.slow
         ),
         pytest.param(
             "huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             None,
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            id="huggingface://Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model"
+            id="huggingface://Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model",
+            marks=pytest.mark.slow
         ),
         pytest.param(
             "Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             {"RAMALAMA_TRANSPORT": "huggingface"},
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            id="Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model with RAMALAMA_TRANSPORT=huggingface"
+            id="Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model with RAMALAMA_TRANSPORT=huggingface",
+            marks=pytest.mark.slow
         ),
         pytest.param(
             "hf://HuggingFaceTB/SmolLM-135M", None, "hf://HuggingFaceTB/SmolLM-135M",
             id="hf://HuggingFaceTB/SmolLM-135M model",
-            marks=[skip_if_no_huggingface_cli]
+            marks=[skip_if_no_huggingface_cli, pytest.mark.slow]
         ),
         pytest.param(
             "hf://ggml-org/SmolVLM-256M-Instruct-GGUF", None, "hf://ggml-org/SmolVLM-256M-Instruct-GGUF",
             id="hf://ggml-org/SmolVLM-256M-Instruct-GGUF model",
-            marks=[skip_if_no_huggingface_cli]
+            marks=[skip_if_no_huggingface_cli, pytest.mark.slow]
         ),
         pytest.param(
             "hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0", None, "hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0",
             id="hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0 model",
-            marks=[skip_if_no_huggingface_cli]
+            marks=[skip_if_no_huggingface_cli, pytest.mark.slow]
         ),
         pytest.param(
             "oci://quay.io/ramalama/smollm:135m", None, "oci://quay.io/ramalama/smollm:135m",
             id="smollm:135m model with oci:// url",
-            marks=skip_if_no_container
+            marks=[skip_if_no_container, pytest.mark.slow]
         ),
         pytest.param(
             "quay.io/ramalama/smollm:135m", {"RAMALAMA_TRANSPORT": "oci"}, "oci://quay.io/ramalama/smollm:135m",
             id="smollm:135m model with RAMALAMA_TRANSPORT=oci",
-            marks=skip_if_no_container
+            marks=[skip_if_no_container, pytest.mark.slow]
         ),
         pytest.param(
             Path("mymodel.gguf"), None, Path("mymodel.gguf"),
@@ -160,7 +168,9 @@ def test_pull(model, env_vars, expected):
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
+@pytest.mark.slow
 def test_pull_model_layers_download():
     with RamalamaExecWorkspace() as ctx:
         ramalama_cli = ["ramalama", "--store", str(ctx.storage_path)]
@@ -173,7 +183,9 @@ def test_pull_model_layers_download():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
+@pytest.mark.slow
 def test_pull_huggingface_tag_multiple_references():
     with RamalamaExecWorkspace() as ctx:
         ramalama_cli = ["ramalama", "--store", str(ctx.storage_path)]
@@ -193,6 +205,7 @@ def test_pull_huggingface_tag_multiple_references():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @pytest.mark.parametrize(
     "model, expected",
@@ -222,6 +235,7 @@ def test_pull_wrong_endian_model_error(model, expected):
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @skip_if_no_ollama
 @skip_if_darwin
@@ -234,6 +248,7 @@ def test_pull_wrong_endian_model_error(model, expected):
             None,
             "ollama://library/tinyllama:latest",
             id="tinyllama model with ollama:// url",
+            marks=pytest.mark.slow,
         ),
         pytest.param(
             "smollm:135m",
@@ -241,6 +256,7 @@ def test_pull_wrong_endian_model_error(model, expected):
             None,
             "ollama://library/smollm:135m",
             id="smollm:135m model with http url from ollama",
+            marks=pytest.mark.slow,
         ),
         pytest.param(
             "smollm:360m",
@@ -248,6 +264,7 @@ def test_pull_wrong_endian_model_error(model, expected):
             {"RAMALAMA_TRANSPORT": "ollama"},
             "ollama://library/smollm:360m",
             id="smollm:360m model with RAMALAMA_TRANSPORT=ollama",
+            marks=pytest.mark.slow,
         ),
     ],
 )
@@ -273,6 +290,7 @@ def test_pull_using_ollama_cache(ollama_server, ollama_model, model, env_vars, e
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @skip_if_no_huggingface_cli
 @pytest.mark.parametrize(
@@ -285,6 +303,7 @@ def test_pull_using_ollama_cache(ollama_server, ollama_model, model, env_vars, e
             None,
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             id="with hf:// url",
+            marks=pytest.mark.slow,
         ),
         pytest.param(
             "Felladrin/gguf-smollm-360M-instruct-add-basics",
@@ -293,6 +312,7 @@ def test_pull_using_ollama_cache(ollama_server, ollama_model, model, env_vars, e
             None,
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             id="with huggingface:// url",
+            marks=pytest.mark.slow,
         ),
         pytest.param(
             "Felladrin/gguf-smollm-360M-instruct-add-basics",
@@ -301,6 +321,7 @@ def test_pull_using_ollama_cache(ollama_server, ollama_model, model, env_vars, e
             {"RAMALAMA_TRANSPORT": "huggingface"},
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             id="with RAMALAMA_TRANSPORT=huggingface",
+            marks=pytest.mark.slow,
         ),
     ],
 )
@@ -325,9 +346,11 @@ def test_pull_using_huggingface_cache(hf_repo, hf_model, model, env_vars, expect
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.distro_integration
 @skip_if_no_container
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")
+@pytest.mark.slow
 def test_pull_with_registry(container_registry, container_engine):
     with RamalamaExecWorkspace() as ctx:
         ramalama_cli = ["ramalama", "--store", str(ctx.storage_path)]

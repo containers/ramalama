@@ -273,6 +273,8 @@ def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_co
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
+@pytest.mark.slow
 @skip_if_darwin  # test is broken on MAC --no-container right now
 def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     import platform
@@ -293,15 +295,17 @@ _file_uri_id_relative = "relative_dir/file"
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.parametrize(
     "scheme,relative_path",
     [
-        pytest.param("file:", True, id=f"file:{_file_uri_id_relative}"),
-        pytest.param("file:", False, id=f"file:{_file_uri_id_suffix}"),
-        pytest.param("file:/", False, id=f"file:/{_file_uri_id_suffix}", marks=skip_if_not_windows),
-        pytest.param("file://", False, id=f"file://{_file_uri_id_suffix}"),
+        pytest.param("file:", True, id=f"file:{_file_uri_id_relative}", marks=pytest.mark.slow),
+        pytest.param("file:", False, id=f"file:{_file_uri_id_suffix}", marks=pytest.mark.slow),
+        pytest.param("file:/", False, id=f"file:/{_file_uri_id_suffix}", marks=[skip_if_not_windows, pytest.mark.slow]),
+        pytest.param("file://", False, id=f"file://{_file_uri_id_suffix}", marks=pytest.mark.slow),
     ],
 )
+@pytest.mark.slow
 def test_run_with_file_uri(shared_ctx_with_models, test_model, scheme, relative_path):
     ctx = shared_ctx_with_models
 
@@ -320,6 +324,7 @@ def test_run_with_file_uri(shared_ctx_with_models, test_model, scheme, relative_
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @skip_if_not_windows
 def test_run_with_unc_file_uri(shared_ctx_with_models, test_model):
     ctx = shared_ctx_with_models
@@ -332,12 +337,15 @@ def test_run_with_unc_file_uri(shared_ctx_with_models, test_model):
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
+@pytest.mark.slow
 def test_run_keepalive(shared_ctx_with_models, test_model):
     ctx = shared_ctx_with_models
     ctx.check_call(["ramalama", "run", "--keepalive", "1s", test_model], stdin=DEVNULL)
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @skip_if_no_container
 @skip_if_docker
 @skip_if_gh_actions_darwin

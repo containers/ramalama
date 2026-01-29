@@ -18,6 +18,7 @@ def shared_ctx():
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 def test_inspect_non_existent_model(shared_ctx):
     ctx = shared_ctx
     model_name = "non_existent_model_for_inspect"
@@ -28,6 +29,7 @@ def test_inspect_non_existent_model(shared_ctx):
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.parametrize(
     "model_name, use_all_flag, expected_key, expected_value",
     [
@@ -86,6 +88,7 @@ def test_inspect_model_json_output(shared_ctx, model_name, use_all_flag, expecte
 
 
 @pytest.mark.e2e
+@pytest.mark.no_parallel
 @pytest.mark.parametrize(
     "key, expected_value",
     [
