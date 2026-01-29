@@ -169,7 +169,7 @@ lcov.output = "coverage/coverage.lcov"
 [tool.pytest.ini_options]
 testpaths = ["test"]
 markers = ["e2e", "distro_integration"]
-addopts = "-m 'not e2e' --color=yes"
+addopts = "-m 'not e2e' --color=yes --durations=10"
 
 [tool.setuptools.packages.find]
 include = ["ramalama", "ramalama.*"]
@@ -219,6 +219,7 @@ commands = [
     "pytest",
     "-m", "e2e",
     "-vvv",
+    "--durations=10",
     "--basetemp={envtmpdir}",
     "--tb=short",
     { replace = "posargs", extend = true },

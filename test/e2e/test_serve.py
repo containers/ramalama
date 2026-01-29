@@ -400,17 +400,20 @@ def test_stop_failures():
 
 
 @pytest.mark.e2e
-def test_quadlet_generation(test_model):
-    with RamalamaExecWorkspace(env_vars={"HIP_VISIBLE_DEVICES": "99"}) as ctx:
-        test_model_full_name = get_full_model_name(test_model)
-        container_file = Path(ctx.workspace_dir) / f"{test_model_full_name}.container"
-        ctx.check_call(["ramalama", "serve", "--port", "1234", "--generate", "quadlet", test_model])
-        with container_file.open("r") as f:
-            content = f.read()
-            assert re.search(r".*PublishPort=0.0.0.0:1234:1234", content)
-            assert re.search(r".*llama-server --host 0.0.0.0 --port 1234 --model .*", content)
-            assert re.search(f".*Mount=type=bind,.*{test_model_full_name}", content)
-            assert re.search(r".*Environment=HIP_VISIBLE_DEVICES=99", content)
+def test_quadlet_generation(shared_ctx, test_model):
+    ctx = shared_ctx
+    test_model_full_name = get_full_model_name(test_model)
+    container_file = Path(ctx.workspace_dir) / f"{test_model_full_name}.container"
+    ctx.check_call(
+        ["ramalama", "serve", "--port", "1234", "--pull", "never", "--generate", "quadlet", test_model],
+        env={"HIP_VISIBLE_DEVICES": "99"},
+    )
+    with container_file.open("r") as f:
+        content = f.read()
+        assert re.search(r".*PublishPort=0.0.0.0:1234:1234", content)
+        assert re.search(r".*llama-server --host 0.0.0.0 --port 1234 --model .*", content)
+        assert re.search(f".*Mount=type=bind,.*{test_model_full_name}", content)
+        assert re.search(r".*Environment=HIP_VISIBLE_DEVICES=99", content)
 
 
 @pytest.mark.e2e
@@ -612,6 +615,8 @@ def test_serve_kube_generation(test_model, generate, env_vars):
                 "test",
                 "--port",
                 "1234",
+                "--pull",
+                "never",
                 "--generate",
                 generate.format(tmp_dir=ctx.workspace_dir, sep=os.sep),
                 test_model,
@@ -700,7 +705,6 @@ def test_kube_generation_with_llama_api(test_model):
             assert re.search(r".*/llama-stack", content)
 
 
-@pytest.mark.e2e
 @skip_if_docker
 @skip_if_no_container
 @skip_if_ppc64le

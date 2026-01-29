@@ -13,7 +13,6 @@ from test.conftest import (
     skip_if_no_ollama,
 )
 from test.e2e.utils import RamalamaExecWorkspace
-from time import time
 
 import pytest
 
@@ -261,23 +260,16 @@ def test_pull_using_ollama_cache(ollama_server, ollama_model, model, env_vars, e
         ctx.environ["OLLAMA_MODELS"] = str(ollama_server.models_dir)
 
         # Pull image using ollama server and ollama cli
-        ollama_pull_start_time = time()
         ollama_server.pull_model(ollama_model)
-        ollama_pull_end_time = time()
-        ollama_pull_time = ollama_pull_end_time - ollama_pull_start_time
 
         # Pull image using ramalama cli
-        ramalama_pull_start_time = time()
-        ctx.check_call(ramalama_cli + ["pull", model])
-        ramalama_pull_end_time = time()
-        ramalama_pull_time = ramalama_pull_end_time - ramalama_pull_start_time
+        pull_output = ctx.check_output(ramalama_cli + ["pull", model], stderr=STDOUT)
+
+        assert 'Using cached ollama:' in pull_output
 
         # Check if the model pull is the expected
         model_list = json.loads(ctx.check_output(ramalama_cli + ["list", "--json", "--sort", "modified"]))
         assert model_list[0]["name"] == expected
-
-        # Compare the ollama pull time with the ramalama cached pull time
-        assert (ollama_pull_time / 2) > ramalama_pull_time
 
 
 @pytest.mark.e2e
