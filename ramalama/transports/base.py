@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
 from datetime import datetime, timezone
 
-import ramalama.chat as chat
 from ramalama.benchmarks.manager import BenchmarksManager
 from ramalama.benchmarks.schemas import BenchmarkRecord, BenchmarkRecordV1, get_benchmark_record
 from ramalama.benchmarks.utilities import parse_json, print_bench_results
@@ -512,8 +511,9 @@ class Transport(TransportBase):
         else:
             print_bench_results(results)
 
-        if not CONFIG.benchmarks.disable:
-            bench_manager = BenchmarksManager(CONFIG.benchmarks.storage_folder)
+        config = get_config()
+        if not config.benchmarks.disable:
+            bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
             bench_manager.save(results)
 
     def run(self, args, cmd: list[str]):
