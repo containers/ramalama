@@ -3,9 +3,9 @@ import urllib.request
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from ramalama.model_store.global_store import GlobalModelStore
-
 from ramalama_sdk.schemas import ChatMessage, ModelRecord
+
+from ramalama.model_store.global_store import GlobalModelStore
 
 if TYPE_CHECKING:
     from ramalama_sdk.main import RamalamaModelBase

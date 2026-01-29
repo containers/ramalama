@@ -1,5 +1,4 @@
 import pytest
-
 from ramalama_sdk.main import AsyncRamalamaModel, ModelStore, RamalamaModel
 from ramalama_sdk.schemas import ChatMessage
 

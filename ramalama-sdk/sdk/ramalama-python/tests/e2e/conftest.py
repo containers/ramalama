@@ -1,4 +1,5 @@
 import pytest
+
 from ramalama.config import CONFIG as ramalama_conf
 
 
