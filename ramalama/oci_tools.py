@@ -1,7 +1,8 @@
 import json
 import subprocess
+from collections.abc import Sequence
 from datetime import datetime
-from typing import TypedDict
+from typing import NotRequired, TypedDict, cast
 
 import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
@@ -12,16 +13,24 @@ ocilabeltype = "org.containers.type"
 
 
 def convert_from_human_readable_size(input) -> int:
+    """
+    Convert a human-readable size string (e.g. '1.5MB', '10KB', '42') to a size in bytes.
+    The return type is always an integer number of bytes. Fractional values are
+    rounded to the nearest integer instead of being truncated, to avoid silently
+    losing data (e.g. '1.5MB' is treated as 1_572_864 bytes).
+    """
     sizes = [("KB", 1024), ("MB", 1024**2), ("GB", 1024**3), ("TB", 1024**4), ("B", 1)]
-    input = input.lower()
+    value = str(input).strip()
+    lower_value = value.lower()
     for unit, size in sizes:
-        if input.endswith(unit) or input.endswith(unit.lower()):
-            return int(float(input[: -len(unit)]) * size)
+        if lower_value.endswith(unit.lower()):
+            number_part = value[: -len(unit)].strip()
+            return int(round(float(number_part) * size))
 
-    return int(input)
+    return int(round(float(value)))
 
 
-def isoformat_string(date_str: str) -> datetime | None:
+def parse_datetime(date_str: str) -> datetime | None:
     try:
         parsed_date = datetime.fromisoformat(date_str.replace(" UTC", "").replace("+0000", "+00:00").replace(" ", "T"))
     except ValueError:
@@ -83,7 +92,7 @@ def list_artifacts(args: EngineArgType) -> list[ListModelResponse]:
         models.append(
             {
                 "name": artifact["name"],
-                "modified": isoformat_string(artifact["created"]),
+                "modified": parse_datetime(artifact["created"]),
                 "size": convert_from_human_readable_size(artifact["size"]),
             }
         )
@@ -148,20 +157,33 @@ def list_manifests(args: EngineArgType) -> list[ListModelResponse]:
             models.append(
                 {
                     "name": manifest["name"],
-                    "modified": isoformat_string(manifest["modified"]),
+                    "modified": parse_datetime(manifest["modified"]),
                     "size": manifest["size"],
                 }
             )
     return models
 
 
-def list_models(args: EngineArgType) -> list[ListModelResponse]:
+class DockerModelResponse(TypedDict):
+    name: str
+    id: str
+    modified: str
+    size: NotRequired[str]
+
+
+class PodmanModelResponse(TypedDict):
+    name: str
+    modified: str
+    size: str
+
+
+def list_images(args: EngineArgType) -> list[ListModelResponse]:
+    # if engine is docker, size will be retrieved from the inspect command later
+    # if engine is podman use "size":{{ .VirtualSize }}
     conman = args.engine
     if conman is None:
         return []
 
-    # if engine is docker, size will be retrieved from the inspect command later
-    # if engine is podman use "size":{{ .VirtualSize }}
     formatLine = '{"name":"oci://{{ .Repository }}:{{ .Tag }}","modified":"{{ .CreatedAt }}"'
     if conman == "podman":
         formatLine += ',"size":{{ .VirtualSize }}},'
@@ -176,24 +198,53 @@ def list_models(args: EngineArgType) -> list[ListModelResponse]:
         "--format",
         formatLine,
     ]
-    oci_models = []
+
+    if conman == "docker":
+        conman_args.insert(2, "--no-trunc")
+
     output = run_cmd(conman_args, env={"TZ": "UTC"}).stdout.decode("utf-8").strip()
-    if output != "":
-        # exclude dangling images having no tag (i.e. <none>:<none>)
-        oci_models = [model for model in json.loads(f"[{output[:-1]}]") if model["name"] != "oci://<none>:<none>"]
+    if output == "":
+        return []
 
-        # Grab the size from the inspect command
-        if conman == "docker":
-            # grab the size from the inspect command
-            for model in oci_models:
-                conman_args = [conman, "image", "inspect", model["id"], "--format", "{{.Size}}"]
-                output = run_cmd(conman_args).stdout.decode("utf-8").strip()
-                # convert the number value from the string output
-                model["size"] = int(output)
-                # drop the id from the model
-                del model["id"]
+    # exclude dangling images having no tag (i.e. <none>:<none>)
+    model_list: list[DockerModelResponse | PodmanModelResponse] = [
+        model for model in json.loads(f"[{output[:-1]}]") if model["name"] != "oci://<none>:<none>"
+    ]
 
-    models: list[ListModelResponse] = oci_models
+    if conman == 'docker':
+        docker_models = cast(list[DockerModelResponse], model_list)
+        ids = [m["id"] for m in docker_models]
+        if ids:
+            inspect_args = [conman, "image", "inspect", *ids, "--format", "{{.Id}} {{.Size}}"]
+            inspect_out = run_cmd(inspect_args).stdout.decode("utf-8").strip()
+            size_by_id: dict[str, str] = {}
+            for line in inspect_out.splitlines():
+                if not line:
+                    continue
+                image_id, size = line.split(maxsplit=1)
+                size_by_id[image_id] = size
+
+            for model in docker_models:
+                model['size'] = size_by_id[model["id"]]
+
+    sized_models = cast(list[PodmanModelResponse], model_list)
+    models: list[ListModelResponse] = [
+        {
+            'name': model['name'],
+            'modified': parse_datetime(model['modified']),
+            'size': int(model['size']),
+        }
+        for model in sized_models
+    ]
+    return models
+
+
+def list_models(args: EngineArgType) -> list[ListModelResponse]:
+    conman = args.engine
+    if conman is None:
+        return []
+
+    models = list_images(args)
     models.extend(list_manifests(args))
     models.extend(list_artifacts(args))
 
