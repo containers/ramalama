@@ -4,11 +4,11 @@ from threading import Thread
 from unittest.mock import MagicMock
 
 import pytest
+from ramalama.model_store.global_store import ModelFile
+
 from ramalama_sdk.main import AsyncRamalamaModel, ModelStore, RamalamaModel, ServerAttributes
 from ramalama_sdk.schemas import ChatMessage
 from ramalama_sdk.utils import make_chat_request
-
-from ramalama.model_store.global_store import ModelFile
 
 
 class TestServerAttributes:

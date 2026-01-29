@@ -4,8 +4,8 @@
     <img alt="Project logo" src="assets/lockup-light.webp" style="width: 60%; height: auto;">
   </picture>
 </p>
-&nbsp
-&nbsp
+&nbsp;
+&nbsp;
 <p align="center">
   <strong>Programmable AI on any device.</strong><br/>
   Run LLMs locally on any hardware. If you can build a container you can deploy AI.
@@ -47,7 +47,7 @@ Ramalama lets you add AI features to your local application while running entire
 - Docker or Podman running locally.
 - Python 3.10+
   
-### pypi
+### PyPi
 
 ```bash
 pip install ramalama-sdk
@@ -121,7 +121,7 @@ from ramalama_sdk import RamalamaModel
 
 model = RamalamaModel(
     model="tinyllama",
-    base_image=artifactory.corp.com/llama-runtime:prod,
+    base_image="artifactory.corp.com/llama-runtime:prod",
     temp=0.7,
     ngl=20,
     max_tokens=256,
@@ -164,7 +164,7 @@ async with AsyncRamalamaModel(model="tinyllama") as model:
 | Platform | Status | Installation | Documentation |
 |----------|--------|--------------|---------------|
 | **python** | Active Development | [pypi](#python) | [docs.ramalama.com/sdk/python](https://docs.ramalama.com/sdk/python/introduction) |
-| **Typescript** | planned | -- | -- |
+| **TypeScript** | planned | -- | -- |
 | **Go** | planned | -- | -- |
 | **Rust** | planned | -- | -- |
 

@@ -3,9 +3,9 @@ import urllib.request
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from ramalama_sdk.schemas import ChatMessage, ModelRecord
-
 from ramalama.model_store.global_store import GlobalModelStore
+
+from ramalama_sdk.schemas import ChatMessage, ModelRecord
 
 if TYPE_CHECKING:
     from ramalama_sdk.main import RamalamaModelBase
@@ -98,8 +98,8 @@ def make_chat_request(
         method="POST",
     )
 
-    response = urllib.request.urlopen(request)
-    response = json.loads(response.read())
+    with urllib.request.urlopen(request) as response:
+        response = json.loads(response.read())
 
     result = ChatMessage(role="assistant", content=response["choices"][0]["message"]["content"])
     return result

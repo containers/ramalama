@@ -4,8 +4,8 @@
     <img alt="Project logo" src="../../assets/lockup-light.webp" style="width: 60%; height: auto;">
   </picture>
 </p>
-&nbsp
-&nbsp
+&nbsp;
+&nbsp;
 
 <p align="center">
   <strong>Programmable AI on any device.</strong><br/>
@@ -29,7 +29,7 @@ Build local-first AI apps on top of the Ramalama CLI. The SDK provisions models 
 - Docker or Podman running locally.
 - Python 3.10+
   
-### pypi
+### PyPi
 
 ```bash
 pip install ramalama-sdk
@@ -100,7 +100,7 @@ from ramalama_sdk import RamalamaModel
 
 model = RamalamaModel(
     model="tinyllama",
-    base_image=artifactory.corp.com/llama-runtime:prod,
+    base_image="artifactory.corp.com/llama-runtime:prod",
     temp=0.7,
     ngl=20,
     max_tokens=256,

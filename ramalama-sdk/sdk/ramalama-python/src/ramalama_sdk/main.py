@@ -3,6 +3,7 @@
 import asyncio
 import copy
 import json
+import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -10,16 +11,18 @@ from functools import cached_property
 from http.client import HTTPException
 from types import SimpleNamespace
 
-from ramalama_sdk.errors import RamalamaNoContainerManagerError, RamalamaServerTimeoutError
-from ramalama_sdk.schemas import ChatMessage, ModelRecord
-from ramalama_sdk.utils import is_server_healthy, list_models, make_chat_request
-
 from ramalama.command.factory import assemble_command
 from ramalama.config import CONFIG as ramalama_conf
 from ramalama.engine import stop_container
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.transports.base import Transport, compute_serving_port
 from ramalama.transports.transport_factory import New
+
+from ramalama_sdk.errors import RamalamaNoContainerManagerError, RamalamaServerTimeoutError
+from ramalama_sdk.schemas import ChatMessage, ModelRecord
+from ramalama_sdk.utils import is_server_healthy, list_models, make_chat_request
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -57,7 +60,7 @@ class ModelStore:
 
         if (resolved_engine := engine or ramalama_conf.engine) is None:
             message = "No container manager was provided or detected on the system. Please pass an `engine` value"
-            raise Exception(message)
+            raise RamalamaNoContainerManagerError(message)
 
         self.engine = resolved_engine
 
@@ -125,7 +128,7 @@ class RamalamaModelBase(ABC):
             threads=self.model_args.threads or ramalama_conf.threads,
             ngl=self.model_args.ngl or ramalama_conf.ngl,
             temp=self.model_args.temp or ramalama_conf.temp,
-            max_tokens=self.model_args.ngl or ramalama_conf.max_tokens,
+            max_tokens=self.model_args.max_tokens or ramalama_conf.max_tokens,
             cache_reuse=ramalama_conf.cache_reuse,
             webui="off",
             thinking=ramalama_conf.thinking,
@@ -191,13 +194,17 @@ class RamalamaModel(RamalamaModelBase):
         self.start_server()
 
         start_time = time.time()
+        last_error_log = 0.0
 
         while True:
             try:
                 if is_server_healthy(self.args.port):
                     break
-            except (ConnectionError, HTTPException, OSError, UnicodeDecodeError, json.JSONDecodeError):
-                pass
+            except (ConnectionError, HTTPException, OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                now = time.monotonic()
+                if now - last_error_log >= 5:
+                    logger.debug("Health check error: %s", exc)
+                    last_error_log = now
             if time.time() - start_time > self.timeout:
                 self.cleanup()
                 raise RamalamaServerTimeoutError(f"Server failed to become healthy within {self.timeout} seconds")
@@ -297,12 +304,16 @@ class AsyncRamalamaModel(RamalamaModelBase):
         await loop.run_in_executor(None, self.start_server)
 
         async def wait_healthy(interval: float = 0.1):
+            last_error_log = 0.0
             while True:
                 try:
                     if is_server_healthy(self.args.port):
                         break
-                except (ConnectionError, HTTPException, OSError, UnicodeDecodeError, json.JSONDecodeError):
-                    pass
+                except (ConnectionError, HTTPException, OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    now = time.monotonic()
+                    if now - last_error_log >= 5:
+                        logger.debug("Health check error: %s", exc)
+                        last_error_log = now
                 await asyncio.sleep(interval)
 
         try:
@@ -313,7 +324,8 @@ class AsyncRamalamaModel(RamalamaModelBase):
 
     async def stop(self):
         """Stop the server and release resources."""
-        self.cleanup()
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self.cleanup)
 
     async def download(self) -> bool:
         """Ensure the model is downloaded locally.
