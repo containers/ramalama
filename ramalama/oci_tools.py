@@ -1,6 +1,5 @@
 import json
 import subprocess
-from collections.abc import Sequence
 from datetime import datetime
 from typing import NotRequired, TypedDict, cast
 
@@ -57,10 +56,12 @@ def list_artifacts(args: EngineArgType) -> list[ListModelResponse]:
         "artifact",
         "ls",
         "--format",
-        ('{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
+        (
+            '{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
             "created":"{{ .CreatedAt }}", \
             "size":"{{ .Size }}", \
-            "ID":"{{ .Digest }}"},'),
+            "ID":"{{ .Digest }}"},'
+        ),
     ]
     try:
         if (output := run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()) == "":
@@ -89,13 +90,11 @@ def list_artifacts(args: EngineArgType) -> list[ListModelResponse]:
             continue
         if inspect["Manifest"]['artifactType'] != annotations.ArtifactTypeModelManifest:
             continue
-        models.append(
-            {
-                "name": artifact["name"],
-                "modified": parse_datetime(artifact["created"]),
-                "size": convert_from_human_readable_size(artifact["size"]),
-            }
-        )
+        models.append({
+            "name": artifact["name"],
+            "modified": parse_datetime(artifact["created"]),
+            "size": convert_from_human_readable_size(artifact["size"]),
+        })
     return models
 
 
@@ -154,13 +153,11 @@ def list_manifests(args: EngineArgType) -> list[ListModelResponse]:
         if 'annotations' not in img:
             continue
         if annotations.AnnotationModel in img['annotations']:
-            models.append(
-                {
-                    "name": manifest["name"],
-                    "modified": parse_datetime(manifest["modified"]),
-                    "size": manifest["size"],
-                }
-            )
+            models.append({
+                "name": manifest["name"],
+                "modified": parse_datetime(manifest["modified"]),
+                "size": manifest["size"],
+            })
     return models
 
 
