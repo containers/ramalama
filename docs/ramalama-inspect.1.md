@@ -4,7 +4,7 @@
 ramalama\-inspect - inspect the specified AI Model
 
 ## SYNOPSIS
-**ramalama inspect** [*options*] *model*
+**ramalama inspect** [*options*] [*model*]
 
 ## DESCRIPTION
 Inspect the specified AI Model about additional information
@@ -28,6 +28,9 @@ Print usage message
 
 #### **--json**
 Print the AI Model information in json format.
+
+#### **--shortnames**
+Print the available shortnames and exit. Can be used without a model.
 
 ## EXAMPLES
 
@@ -75,6 +78,13 @@ $ ramalama inspect smollm:135m --all --json
         ...
     ]
 }
+```
+
+List available shortnames
+```
+$ ramalama inspect --shortnames
+smollm:135m = ollama://smollm:135m
+tinyllama:latest = ollama://tinyllama:latest
 ```
 
 Use the autocomplete function of `--get` to view a list of fields:

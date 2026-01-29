@@ -15,6 +15,7 @@ from typing import Any, get_args
 from urllib.parse import urlparse
 
 from ramalama.benchmarks.manager import BenchmarksManager
+from ramalama.model_inspect.shortname_info import ShortNameInfo
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
@@ -1693,15 +1694,42 @@ def inspect_parser(subparsers):
         help="display specific metadata field of AI Model",
     )
     parser.add_argument("--json", dest="json", action="store_true", help="display AI Model information in JSON format")
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
+    parser.add_argument(
+        "--shortnames",
+        dest="shortnames",
+        action="store_true",
+        help="display available shortnames",
+    )
+    parser.add_argument("MODEL", nargs="?", completer=local_models)  # positional argument
     parser.set_defaults(func=inspect_cli)
 
 
 def inspect_cli(args):
+    if args.shortnames:
+        if args.json:
+            print(json.dumps(shortnames.shortnames))
+        else:
+            for name in sorted(shortnames.shortnames):
+                print(f"{name} = {shortnames.shortnames[name]}")
+        return
+
+    if not args.MODEL:
+        parser = get_parser()
+        parser.error("inspect requires MODEL unless --shortnames is set")
+
     args.pull = "never"
 
     model = New(args.MODEL, args)
-    print(model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun))
+    try:
+        inspect = model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)
+    except NoRefFileFound:
+        model_name = args.UNRESOLVED_MODEL
+        if model_name not in shortnames.shortnames:
+            raise
+        info = ShortNameInfo(name=model_name, source=shortnames.resolve(model_name))
+        inspect = info.serialize(args.json)
+
+    print(inspect)
 
 
 def main() -> None:

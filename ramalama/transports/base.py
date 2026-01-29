@@ -1,5 +1,4 @@
 import copy
-import json
 import os
 import platform
 import random
@@ -9,7 +8,7 @@ import sys
 import time
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from ramalama import chat
 from ramalama.common import ContainerEntryPoint
@@ -29,11 +28,15 @@ from ramalama.quadlet import Quadlet
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
 
+<<<<<<< HEAD
 from datetime import datetime, timezone
 
 from ramalama.benchmarks.manager import BenchmarksManager
 from ramalama.benchmarks.schemas import BenchmarkRecord, BenchmarkRecordV1, get_benchmark_record
 from ramalama.benchmarks.utilities import parse_json, print_bench_results
+=======
+import ramalama.chat as chat
+>>>>>>> be51e8bd (adds ability to inspect shortnames)
 from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
@@ -43,7 +46,6 @@ from ramalama.common import (
     is_split_file_model,
     perror,
     populate_volume_from_image,
-    run_cmd,
     set_accel_env_vars,
 )
 from ramalama.logger import logger
@@ -470,53 +472,7 @@ class Transport(TransportBase):
 
     def bench(self, args, cmd: list[str]):
         set_accel_env_vars()
-
-        output_format = getattr(args, "format", "table")
-
-        if args.dryrun:
-            if args.container:
-                self.engine.dryrun()
-            else:
-                dry_run(cmd)
-
-            return
-        elif args.container:
-            self.setup_container(args)
-            self.setup_mounts(args)
-            self.engine.add([args.image] + cmd)
-            result = self.engine.run_process()
-        else:
-            result = run_cmd(cmd, encoding="utf-8")
-
-        try:
-            bench_results = parse_json(result.stdout)
-        except (json.JSONDecodeError, ValueError):
-            message = f"Could not parse benchmark output. Expected JSON but got:\n{result.stdout}"
-            raise ValueError(message)
-
-        base_payload: dict = {
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "configuration": {
-                "container_image": args.image,
-                "container_runtime": args.engine,
-                "inference_engine": args.runtime,
-                "runtime_args": cmd,
-            },
-        }
-        results: list[BenchmarkRecord] = list()
-        for bench_result in bench_results:
-            result_record: BenchmarkRecordV1 = get_benchmark_record({"result": bench_result, **base_payload}, "v1")
-            results.append(result_record)
-
-        if output_format == "json":
-            print(result.stdout)
-        else:
-            print_bench_results(results)
-
-        config = get_config()
-        if not config.benchmarks.disable:
-            bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
-            bench_manager.save(results)
+        self.execute_command(cmd, args)
 
     def run(self, args, cmd: list[str]):
         # The Run command will first launch a daemonized service
@@ -818,7 +774,7 @@ class Transport(TransportBase):
         compose = Compose(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
         compose.generate().write(output_dir)
 
-    def inspect_metadata(self) -> dict[str, Any]:
+    def inspect_metadata(self) -> Dict[str, Any]:
         model_path = self._get_entry_model_path(False, False, False)
 
         if GGUFInfoParser.is_model_gguf(model_path):
