@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
 
-from ramalama.cli import configure_subcommands, create_argument_parser
+from ramalama.cli import configure_subcommands, create_argument_parser, default_image, default_rag_image
 from ramalama.common import (
     accel_image,
     check_nvidia,
@@ -145,28 +145,29 @@ image = "{config_override}"
 
         with patch.dict("os.environ", env, clear=True):
             config = default_config()
-            with patch("ramalama.cli.CONFIG", config):
+            with patch("ramalama.cli.get_config", return_value=config):
+                default_image.cache_clear()
+                default_rag_image.cache_clear()
                 parser = create_argument_parser("test_accel_image")
                 configure_subcommands(parser)
                 assert accel_image(config) == expected_result
 
 
-@patch("ramalama.config.CONFIG")
 @patch("ramalama.common.run_cmd")
 @patch("ramalama.common.handle_provider")
-def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd, mock_config):
+def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
     mock_run_cmd.return_value.stdout = b'[{"Name": "myvm"}]'
     mock_handle_provider.return_value = True
-    mock_config.user.no_missing_gpu_prompt = True
+    config = object()
     from ramalama.common import apple_vm
 
-    result = apple_vm("podman", mock_config)
+    result = apple_vm("podman", config)
 
     assert result is True
     mock_run_cmd.assert_called_once_with(
         ["podman", "machine", "list", "--format", "json", "--all-providers"], ignore_stderr=True, encoding="utf-8"
     )
-    mock_handle_provider.assert_called_once_with({"Name": "myvm"}, mock_config)
+    mock_handle_provider.assert_called_once_with({"Name": "myvm"}, config)
 
 
 class TestCheckNvidia:
@@ -200,6 +201,9 @@ class TestGetAccel:
         ("check_ascend", "cann"),
         ("check_asahi", "asahi"),
     ]
+
+    def setup_method(self):
+        get_accel.cache_clear()
 
     @pytest.mark.parametrize("accel,expected", accels)
     def test_get_accel(self, accel, expected):  # sourcery skip: no-loop-in-tests

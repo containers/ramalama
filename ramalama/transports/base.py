@@ -11,14 +11,26 @@ from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Optional
 
+from ramalama import chat
 from ramalama.common import ContainerEntryPoint
+from ramalama.compose import Compose
+from ramalama.config import get_config
+from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
+from ramalama.kube import Kube
+from ramalama.model_inspect.base_info import ModelInfoBase
+from ramalama.model_inspect.gguf_info import GGUFModelInfo
+from ramalama.model_inspect.gguf_parser import GGUFInfoParser
+from ramalama.model_inspect.safetensor_info import SafetensorModelInfo
+from ramalama.model_inspect.safetensor_parser import SafetensorInfoParser
+from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.model_store.store import ModelStore
+from ramalama.quadlet import Quadlet
 
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
 
 from datetime import datetime, timezone
 
-import ramalama.chat as chat
 from ramalama.benchmarks.manager import BenchmarksManager
 from ramalama.benchmarks.schemas import BenchmarkRecord, BenchmarkRecordV1, get_benchmark_record
 from ramalama.benchmarks.utilities import parse_json, print_bench_results
@@ -34,20 +46,8 @@ from ramalama.common import (
     run_cmd,
     set_accel_env_vars,
 )
-from ramalama.compose import Compose
-from ramalama.config import CONFIG, DEFAULT_PORT_RANGE
-from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
-from ramalama.kube import Kube
 from ramalama.logger import logger
-from ramalama.model_inspect.base_info import ModelInfoBase
-from ramalama.model_inspect.gguf_info import GGUFModelInfo
-from ramalama.model_inspect.gguf_parser import GGUFInfoParser
-from ramalama.model_inspect.safetensor_info import SafetensorModelInfo
-from ramalama.model_inspect.safetensor_parser import SafetensorInfoParser
-from ramalama.model_store.global_store import GlobalModelStore
-from ramalama.model_store.store import ModelStore
 from ramalama.path_utils import get_container_mount_path
-from ramalama.quadlet import Quadlet
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
 
@@ -162,9 +162,9 @@ class Transport(TransportBase):
         self._model_type = type(self).__name__.lower()
 
         self._model_store_path: str = model_store_path
-        self._model_store: Optional[ModelStore] = None
+        self._model_store: Optional["ModelStore"] = None
 
-        self.default_image = accel_image(CONFIG)
+        self.default_image = accel_image(get_config())
         self.draft_model: Transport | None = None
 
     @cached_property
@@ -208,7 +208,7 @@ class Transport(TransportBase):
         return self._model_type
 
     @property
-    def model_store(self) -> ModelStore:
+    def model_store(self) -> "ModelStore":
         if self._model_store is None:
             name, _, orga = self.extract_model_identifiers()
             self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
@@ -383,7 +383,7 @@ class Transport(TransportBase):
 
         return genname()
 
-    def new_engine(self, args):
+    def new_engine(self, args) -> Engine:
         return Engine(args)
 
     def base(self, args, name):
@@ -513,8 +513,9 @@ class Transport(TransportBase):
         else:
             print_bench_results(results)
 
-        if not CONFIG.benchmarks.disable:
-            bench_manager = BenchmarksManager(CONFIG.benchmarks.storage_folder)
+        config = get_config()
+        if not config.benchmarks.disable:
+            bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
             bench_manager.save(results)
 
     def run(self, args, cmd: list[str]):
@@ -533,9 +534,7 @@ class Transport(TransportBase):
         if args.container:
             args.name = self.get_container_name(args)
 
-        # Use subprocess.Popen for all platforms
-        # Prepare args for the server
-        args.host = CONFIG.host
+        args.host = get_config().host
         args.detach = True
 
         set_accel_env_vars()
@@ -596,6 +595,7 @@ class Transport(TransportBase):
 
     def _handle_container_chat(self, args, server_process):
         """Handle chat for container-based execution."""
+
         # Wait for the server process to complete (blocking)
         exit_code = server_process.wait()
         if exit_code != 0:
@@ -820,6 +820,7 @@ class Transport(TransportBase):
 
     def inspect_metadata(self) -> dict[str, Any]:
         model_path = self._get_entry_model_path(False, False, False)
+
         if GGUFInfoParser.is_model_gguf(model_path):
             return GGUFInfoParser.parse_metadata(model_path).data
         return {}
@@ -867,10 +868,12 @@ class Transport(TransportBase):
 
 def compute_ports(exclude: list[str] | None = None) -> list[int]:
     excluded = set() if exclude is None else set(map(int, exclude))
-    ports = [p for p in range(DEFAULT_PORT_RANGE[0], DEFAULT_PORT_RANGE[1] + 1) if p not in excluded]
+
+    port_range = get_config().default_port_range
+    ports = [p for p in range(port_range[0], port_range[1] + 1) if p not in excluded]
 
     if not ports:
-        raise ValueError("All ports in the DEFAULT_PORT_RANGE were exhausted by the exclusion list.")
+        raise ValueError("All ports in the default port range were exhausted by the exclusion list.")
 
     first_port = ports.pop(0)
     random.shuffle(ports)

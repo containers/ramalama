@@ -203,7 +203,8 @@ def test_is_healthy_vllm(mock_conn, status, ok):
     mock_resp = mock_conn.return_value.getresponse.return_value
     mock_resp.status = status
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False, runtime="vllm")
-    with patch.object(ramalama.engine.CONFIG, "runtime", "vllm"):
+    config = ramalama.engine.get_config()
+    with patch.object(config, "runtime", "vllm"):
         assert ramalama.engine.is_healthy(args) == ok
         assert mock_conn.return_value.mock_calls[0].args == ('GET', '/ping')
 

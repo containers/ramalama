@@ -28,7 +28,7 @@ from ramalama.chat_utils import (
     stream_response,
 )
 from ramalama.common import perror
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
@@ -39,6 +39,50 @@ from ramalama.proxy_support import setup_proxy_support
 
 # Setup proxy support on module import
 setup_proxy_support()
+
+
+def res(response, color):
+    color_default = ""
+    color_yellow = ""
+    if (color == "auto" and should_colorize()) or color == "always":
+        color_default = "\033[0m"
+        color_yellow = "\033[33m"
+
+    print("\r", end="")
+    assistant_response = ""
+    for line in response:
+        line = line.decode("utf-8").strip()
+        if line.startswith("data: {"):
+            choice = ""
+
+            json_line = json.loads(line[len("data: ") :])
+            if "choices" in json_line and json_line["choices"]:
+                choice = json_line["choices"][0]["delta"]
+            if "content" in choice:
+                choice = choice["content"]
+            else:
+                continue
+
+            if choice:
+                print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
+                assistant_response += choice
+
+    print("")
+    return assistant_response
+
+
+def add_api_key(args, headers=None):
+    # static analyzers suggest for dict, this is a safer way of setting
+    # a default value, rather than using the parameter directly
+    headers = headers or {}
+    if getattr(args, "api_key", None):
+        api_key_min = 20
+        if len(args.api_key) < api_key_min:
+            perror("Warning: Provided API key is invalid.")
+
+        headers["Authorization"] = f"Bearer {args.api_key}"
+
+    return headers
 
 
 @dataclass
@@ -756,7 +800,7 @@ def chat(
         monitor = ServerMonitor(server_process=server_process)
     elif container_name:
         # Monitor the container
-        conman = getattr(args, "engine", CONFIG.engine)
+        conman = getattr(args, "engine", get_config().engine)
         if not conman:
             raise ValueError("Container engine is required when monitoring a container")
         monitor = ServerMonitor(container_name=container_name, container_engine=conman)

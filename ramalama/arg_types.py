@@ -1,7 +1,7 @@
 from dataclasses import make_dataclass
 from typing import List, Protocol, get_type_hints
 
-from ramalama.config import COLOR_OPTIONS, SUPPORTED_ENGINES, SUPPORTED_RUNTIMES, PathStr
+from ramalama.config_types import COLOR_OPTIONS, SUPPORTED_ENGINES, SUPPORTED_RUNTIMES, PathStr
 
 
 def protocol_to_dataclass(proto_cls):

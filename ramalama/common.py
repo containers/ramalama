@@ -528,6 +528,7 @@ def check_mthreads() -> Literal["musa"] | None:
 AccelType: TypeAlias = Literal["asahi", "cuda", "cann", "hip", "intel", "musa"]
 
 
+@lru_cache(maxsize=1)
 def get_accel() -> AccelType | Literal["none"]:
     checks: tuple[Callable[[], AccelType | None], ...] = (
         check_asahi,
@@ -606,6 +607,7 @@ def tagged_image(image: str) -> str:
     return f"{image}:{minor_release()}"
 
 
+@lru_cache(maxsize=1)
 def check_cuda_version() -> tuple[int, int]:
     """
     Check the CUDA version installed on the system by parsing the output of nvidia-smi --version.
