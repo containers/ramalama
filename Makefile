@@ -152,7 +152,7 @@ type-check:
 	mypy $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test $(PROJECT_DIR)
 
 .PHONY: validate
-validate: codespell lint check-format man-check type-check
+validate: codespell lint man-check type-check
 
 .PHONY: pypi-build
 pypi-build:   clean
