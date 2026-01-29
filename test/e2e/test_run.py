@@ -273,16 +273,15 @@ def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_co
 
 
 @pytest.mark.e2e
-@skip_if_darwin  # test is broken on MAC --no-container right now
 def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     import platform
 
     ctx = shared_ctx_with_models
 
     run_cmd = ["ramalama", "run", "--temp", "0"]
-    if platform.system() == "Darwin":
-        # Reduce context size and limit output for faster macOS testing
-        run_cmd.extend(["-c", "512", "--runtime-args='-n 15'"])
+    if platform.system() in ["Darwin", "Windows"]:
+        # FIXME: continues rambling on Windows and macOS without --max-token
+        run_cmd.extend(["--max-tokens", "100"])
 
     run_cmd.extend([test_model, "Who is the primary writer of the declaration of independence?"])
     ctx.check_call(run_cmd)
