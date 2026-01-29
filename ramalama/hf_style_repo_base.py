@@ -4,6 +4,7 @@ import re
 import tempfile
 import urllib.request
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 from ramalama.common import (
     SPLIT_MODEL_PATH_RE,
@@ -80,6 +81,9 @@ class HFStyleRepository(ABC):
         self.model_hash = None
         self.mmproj_filename = None
         self.mmproj_hash = None
+        self.other_files: list[dict] = []
+        self.additional_safetensor_files: list[dict] = []
+        self.safetensors_index_file: str | None = None
         self.fetch_metadata()
 
     @abstractmethod
@@ -116,8 +120,69 @@ class HFStyleRepository(ABC):
                                 should_verify_checksum=False,
                             )
                         )
+
+        # Handle additional safetensors files (for sharded models)
+        for safetensor_file in self.additional_safetensor_files:
+            filename = safetensor_file['filename']
+            if filename not in cached_files:
+                logger.debug(f"Adding safetensors file: {filename}")
+                files.append(
+                    SnapshotFile(
+                        url=f"{self.blob_url}/{filename}",
+                        header=self.headers,
+                        hash=f"sha256:{safetensor_file['oid']}",
+                        type=SnapshotFileType.SafetensorModel,
+                        name=filename,
+                        should_show_progress=True,
+                        should_verify_checksum=True,
+                    )
+                )
+
+        # Other files
+        for other_file in self.other_files:
+            filename = other_file['filename']
+            if filename not in cached_files:
+                logger.debug(f"Adding other safetensors file: {filename}")
+                # The file's oid is either a verifiable SHA256 lfs hash or a SHA1 git
+                # hash, in which case generate a non-verifiable SHA256 hash.
+                # TODO: Calculate a verifiable content hash
+                oid = other_file['oid']
+                file_hash = (
+                    oid
+                    if len(oid) == 64
+                    else generate_sha256(f"{self.organization}/{self.name}/{filename}", with_sha_prefix=False)
+                )
+                files.append(
+                    SnapshotFile(
+                        url=f"{self.blob_url}/{filename}",
+                        header=self.headers,
+                        hash=f"sha256:{file_hash}",
+                        type=SnapshotFileType.Other,
+                        name=filename,
+                        should_show_progress=False,
+                        should_verify_checksum=len(oid) == 64,
+                    )
+                )
+
         if self.mmproj_filename and self.mmproj_filename not in cached_files:
             files.append(self.mmproj_file())
+
+        # Add safetensors index file if present
+        if self.safetensors_index_file and self.safetensors_index_file not in cached_files:
+            logger.debug(f"Adding safetensors index file: {self.safetensors_index_file}")
+            files.append(
+                SnapshotFile(
+                    url=f"{self.blob_url}/{self.safetensors_index_file}",
+                    header=self.headers,
+                    hash=generate_sha256(
+                        f"{self.organization}/{self.name}/{self.safetensors_index_file}", with_sha_prefix=False
+                    ),
+                    type=SnapshotFileType.Other,
+                    name=self.safetensors_index_file,
+                    required=False,
+                )
+            )
+
         if self.FILE_NAME_CONFIG not in cached_files:
             files.append(self.config_file())
         if self.FILE_NAME_GENERATION_CONFIG not in cached_files:
@@ -130,11 +195,17 @@ class HFStyleRepository(ABC):
     def model_file(self) -> SnapshotFile:
         assert self.model_filename
         assert self.model_hash
+
+        # Determine file type based on extension
+        file_type = SnapshotFileType.GGUFModel
+        if Path(self.model_filename).match('*.safetensors'):
+            file_type = SnapshotFileType.SafetensorModel
+
         return SnapshotFile(
             url=f"{self.blob_url}/{self.model_filename}",
             header=self.headers,
             hash=self.model_hash,
-            type=SnapshotFileType.GGUFModel,
+            type=file_type,
             name=self.model_filename,
             should_show_progress=True,
             should_verify_checksum=True,
