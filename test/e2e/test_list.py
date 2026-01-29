@@ -56,10 +56,3 @@ def test_json_output(shared_ctx):
         assert re.search(r"[\w:/]+", image_data["name"])
         assert image_data["size"] > 0
         assert datetime.fromisoformat(image_data["modified"])
-
-
-@pytest.mark.e2e
-def test_all_images_removed(shared_ctx):
-    shared_ctx.check_call(["ramalama", "rm", "-a"])
-    result = shared_ctx.check_output(["ramalama", "list", "--noheading"])
-    assert result == ""

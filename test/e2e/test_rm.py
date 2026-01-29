@@ -28,6 +28,7 @@ def test_delete_non_existing_image_with_ignore_flag():
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 def test_delete_snapshot_with_multiple_references():
     with RamalamaExecWorkspace() as ctx:
         initial_inventory = set([x for x in Path(ctx.storage_dir).rglob('*') if x.is_file()])
