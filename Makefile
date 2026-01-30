@@ -257,5 +257,6 @@ clean:
 	@find . -name \*# -delete
 	@find . -name \*.rej -delete
 	@find . -name \*.orig -delete
-	rm -rf $$(<.gitignore)
 	make -C docs clean
+	make -C docsite clean clean-generated
+	rm -rf $$(<.gitignore)
