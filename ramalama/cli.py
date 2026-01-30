@@ -210,6 +210,7 @@ def parse_args_from_cmd(cmd: list[str]) -> tuple[argparse.ArgumentParser, argpar
         if hasattr(config, arg):
             setattr(config, arg, getattr(initial_args, arg))
 
+    # Phase 2: Re-parse the arguments with the subcommands enabled
     parser = get_parser()
     args = parser.parse_args(cmd)
     post_parse_setup(args)
