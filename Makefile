@@ -10,7 +10,7 @@ PATH := $(PATH):$(HOME)/.local/bin
 MYPIP ?= pip
 IMAGE ?= ramalama
 PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-EXCLUDE_DIRS := .venv venv .tox build
+EXCLUDE_DIRS := .venv venv .tox build ramalama-sdk
 EXCLUDE_OPTS := $(addprefix --exclude-dir=,$(EXCLUDE_DIRS))
 PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" $(EXCLUDE_OPTS) $(PROJECT_DIR) || true)
 E2E_IMAGE ?= localhost/e2e:latest

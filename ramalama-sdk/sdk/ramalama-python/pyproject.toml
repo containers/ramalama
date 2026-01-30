@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ramalama-sdk"
+description = "An SDK for programmatically running local AI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Ramalama Labs" }]
+dependencies = [
+  "ramalama==0.16.0"
+]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/containers/ramalama/"
+Source = "https://github.com/containers/ramalama/tree/main/ramalama-sdk/sdk/ramalama-python"
+Documentation = "https://docs.ramalama.com/sdk/python"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ramalama_sdk"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/ramalama_sdk", "tests", "README.md", "pyproject.toml"]
+
+[tool.hatch.version]
+path = "src/ramalama_sdk/__init__.py"
+
+
+[dependency-groups]
+dev = [
+  "mkdocs>=1.5",
+  "mkdocstrings[python]>=0.24",
+  "pytest>=8.4.2",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.4",
+  "mypy>=1.9",
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["I"]
