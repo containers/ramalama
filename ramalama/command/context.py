@@ -12,6 +12,7 @@ class RamalamaArgsContext:
     def __init__(self) -> None:
         self.cache_reuse: Optional[int] = None
         self.container: Optional[bool] = None
+        self.context_shift: Optional[bool] = None
         self.ctx_size: Optional[int] = None
         self.debug: Optional[bool] = None
         self.host: Optional[str] = None
@@ -33,6 +34,7 @@ class RamalamaArgsContext:
         ctx = RamalamaArgsContext()
         ctx.cache_reuse = getattr(args, "cache_reuse", None)
         ctx.container = getattr(args, "container", None)
+        ctx.context_shift = getattr(args, "context_shift", None)
         ctx.ctx_size = getattr(args, "context", None)
         ctx.debug = getattr(args, "debug", None)
         ctx.host = getattr(args, "host", None)
