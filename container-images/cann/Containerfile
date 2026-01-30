@@ -10,8 +10,9 @@ WORKDIR /src/
 RUN ./build_llama.sh cann
 
 FROM quay.io/ascend/${ASCEND_VERSION}
-# Copy the entire installation directory from the builder
-COPY --from=builder /tmp/install /usr
+RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install \
+    cp -a /tmp/install/bin/ /usr/ && \
+    cp -a /tmp/install/lib64/*.so* /usr/lib64/
 ENTRYPOINT [ \
     "/bin/bash", \
     "-c", \

@@ -11,21 +11,25 @@ RUN ./build_llama.sh cuda
 # Final runtime image
 FROM docker.io/nvidia/cuda:${CUDA_VERSION}-runtime-ubi9
 
-# Copy the entire installation directory from the builder
-COPY --from=builder /tmp/install /usr
+RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install \
+    cp -a /tmp/install/bin/ /usr/ && \
+    cp -a /tmp/install/lib64/*.so* /usr/lib64/
+RUN --mount=type=bind,target=/src \
+    /src/container-images/scripts/build_llama.sh cuda runtime
 
-# Install python3.12 and ramalama to support a non-standard use-case
-RUN dnf -y install python3.12 && dnf -y clean all && ln -sf python3.12 /usr/bin/python3
-COPY . /src/ramalama
-WORKDIR /src/ramalama
-RUN python3 -m ensurepip && \
+# Install ramalama to support a non-standard use-case
+RUN --mount=type=bind,target=/src \
+    cp -a /src /var/tmp/ramalama && \
     python3 -m pip \
       --no-cache-dir \
       --disable-pip-version-check \
       install \
         --compile \
         --prefix=/usr \
-        .
+        --root-user-action ignore \
+        /var/tmp/ramalama && \
+    rm -rf /var/tmp/ramalama
+
 WORKDIR /
 ENTRYPOINT []
 CMD ["/bin/bash"]
