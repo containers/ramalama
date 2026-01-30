@@ -1314,7 +1314,9 @@ def run_cli(args):
         model = RagTransport(model, assemble_command_lazy(args.model_args), args)
         model.ensure_model_exists(args)
 
-    model.run(args, assemble_command_lazy(args))
+    # API transports connect directly to the provider and don't need a server command
+    server_cmd = [] if is_api_transport else assemble_command_lazy(args)
+    model.run(args, server_cmd)
 
 
 def serve_parser(subparsers):

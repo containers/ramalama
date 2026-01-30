@@ -291,9 +291,7 @@ class RamaLamaShell(cmd.Cmd):
                     perror(f"Failed to create MCP client for {url}: {e}")
 
             if clients:
-                # Use the same LLM URL as the chat for the agent
-                llm_url = self.args.url
-                self.mcp_agent = LLMAgent(clients, llm_url, self.args.model, self.args)
+                self.mcp_agent = LLMAgent(clients, self.provider, self.args.model)
 
                 # Set up proper streaming callback for MCP agent
                 def mcp_stream_callback(text):
@@ -365,7 +363,9 @@ class RamaLamaShell(cmd.Cmd):
 
         responses = []
         for tool in selected_tools:
-            response = self.mcp_agent.execute_specific_tool(question, tool['name'], manual=False)
+            # Use manual input if no question provided, otherwise auto-generate from question
+            use_manual = not question.strip()
+            response = self.mcp_agent.execute_specific_tool(question, tool['name'], manual=use_manual)
             responses.append({"tool": tool['name'], "output": response})
 
         # Display results

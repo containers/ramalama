@@ -54,6 +54,7 @@ class TransportFactory:
             self.draft_model = draft_model
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
+
         match self.model:
             case model if model.startswith(("huggingface://", "hf://", "hf.co/")):
                 return Huggingface, self.create_huggingface
@@ -67,7 +68,7 @@ class TransportFactory:
                 return RamalamaContainerRegistry, self.create_rlcr
             case model if model.startswith(("http://", "https://", "file:")):
                 return URL, self.create_url
-            case model if model.startswith(("openai://")):
+            case model if model.startswith(("openai://", "anthropic://")):
                 return APITransport, self.create_api_transport
 
         match self.transport:
@@ -164,6 +165,7 @@ class TransportFactory:
 
     def create_api_transport(self) -> APITransport:
         scheme = self.model.split("://", 1)[0]
+
         return APITransport(self.pruned_model, provider=get_chat_provider(scheme))
 
 
