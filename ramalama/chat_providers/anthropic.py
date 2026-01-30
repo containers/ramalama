@@ -1,3 +1,4 @@
+import base64
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from functools import singledispatch
@@ -35,8 +36,6 @@ def create_content_blocks(
                 }
             )
         elif isinstance(attachment, ImageBytesPart):
-            import base64
-
             content.append(
                 {
                     "type": "image",

@@ -1,10 +1,21 @@
+import base64
 from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
 
 import pytest
 
 from ramalama.chat_providers.anthropic import AnthropicChatProvider, message_to_anthropic_dict
-from ramalama.chat_providers.base import ChatRequestOptions
-from ramalama.chat_utils import AssistantMessage, ImageURLPart, SystemMessage, ToolCall, ToolMessage, UserMessage
+from ramalama.chat_providers.base import ChatProviderError, ChatRequestOptions
+from ramalama.chat_providers.errors import UnsupportedAnthropicMessageType
+from ramalama.chat_utils import (
+    AssistantMessage,
+    ImageBytesPart,
+    ImageURLPart,
+    SystemMessage,
+    ToolCall,
+    ToolMessage,
+    UserMessage,
+)
 
 
 def make_options(**overrides):
@@ -106,6 +117,33 @@ class TestAnthropicProvider:
         assert result["role"] == "user"
         assert result["content"] == [{"type": "tool_result", "tool_use_id": "toolu_01", "content": "72°F and sunny"}]
 
+    def test_message_to_anthropic_with_image_bytes_attachment(self):
+        raw_bytes = b"\x89PNG\r\n\x1a\n\x00test-image-bytes"
+        image_part = ImageBytesPart(data=raw_bytes, mime_type="image/png")
+
+        message = UserMessage(text="Here is an inline image", attachments=[image_part])
+
+        result = message_to_anthropic_dict(message)
+
+        assert result["role"] == "user"
+        image_blocks = [block for block in result["content"] if block.get("type") == "image"]
+        assert image_blocks, "Expected at least one image content block"
+
+        image_block = image_blocks[0]
+        source = image_block["source"]
+
+        assert source["type"] == "base64"
+        assert source["media_type"] == "image/png"
+        assert base64.b64decode(source["data"]) == raw_bytes
+
+    def test_message_to_anthropic_unsupported_message_type_raises(self):
+        with pytest.raises(UnsupportedAnthropicMessageType) as excinfo:
+            message_to_anthropic_dict(object())
+
+        msg = str(excinfo.value)
+        assert "Cannot convert message type" in msg
+        assert "object" in msg
+
     def test_merges_consecutive_user_messages(self):
         assistant = AssistantMessage(tool_calls=[ToolCall(id="toolu_01", name="search", arguments={"q": "test"})])
         tool_reply = ToolMessage(text="Result", tool_call_id="toolu_01")
@@ -133,6 +171,14 @@ class TestAnthropicProvider:
 
     def test_streaming_parses_message_stop(self):
         chunk = b'event: message_stop\ndata: {"type":"message_stop"}\n'
+
+        events = list(self.provider.parse_stream_chunk(chunk))
+
+        assert len(events) == 1
+        assert events[0].done is True
+
+    def test_streaming_parses_message_delta_stop_reason_marks_done(self):
+        chunk = b'event: message_delta\n' b'data: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}\n'
 
         events = list(self.provider.parse_stream_chunk(chunk))
 
@@ -167,6 +213,19 @@ class TestAnthropicProvider:
         assert events[0].text == "Hi"
         assert events[1].text == " there"
 
+    def test_streaming_handles_fragmented_sse_chunks(self):
+        first_chunk = (
+            b'event: content_block_delta\n' b'data: {"type":"content_block_delta","delta":{"type":"text_delta"'
+        )
+        second_chunk = b',"text":"Hello"}}\n'
+
+        events_first = list(self.provider.parse_stream_chunk(first_chunk))
+        assert events_first == []
+
+        events_second = list(self.provider.parse_stream_chunk(second_chunk))
+        assert len(events_second) == 1
+        assert events_second[0].text == "Hello"
+
     def test_list_models_fetches_from_api(self):
         mock_response = MagicMock()
         mock_response.read.return_value = b'{"data": [{"id": "claude-sonnet-4"}, {"id": "claude-opus-4"}]}'
@@ -177,6 +236,22 @@ class TestAnthropicProvider:
             models = self.provider.list_models()
 
         assert models == ["claude-sonnet-4", "claude-opus-4"]
+
+    def test_list_models_raises_chat_provider_error_on_http_error(self):
+        error = HTTPError(
+            url="https://api.anthropic.com/v1/models",
+            code=500,
+            msg="Internal Server Error",
+            hdrs=None,
+            fp=None,
+        )
+
+        with patch("urllib.request.urlopen", side_effect=error):
+            with pytest.raises(ChatProviderError) as exc_info:
+                self.provider.list_models()
+
+        assert exc_info.value.status_code == 500
+        assert "Internal Server Error" in str(exc_info.value)
 
     def test_provider_attribute(self):
         assert self.provider.provider == "anthropic"

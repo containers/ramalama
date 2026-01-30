@@ -84,3 +84,65 @@ class TestRunCliWithAPITransport:
             transport.run.assert_called_once()
             call_args = transport.run.call_args[0]
             assert call_args[1] == [], "API transport should receive empty server_cmd"
+
+    def test_run_cli_defaults_url_and_api_key_from_provider(self):
+        """If url/api_key are not provided, provider defaults should be used."""
+        provider = self.mock_provider()
+        provider.base_url = "https://fake.example.com"
+        provider.api_key = "fake-api-key"
+
+        transport = APITransport(self.model, provider)
+        captured = {}
+
+        def fake_chat(args, provider=None):
+            captured["url"] = args.url
+            captured["api_key"] = args.api_key
+            captured["provider_url"] = provider.base_url
+            captured["provider_api_key"] = provider.api_key
+
+        args = self.mock_args()
+        args.url = None
+        args.api_key = None
+
+        with (
+            patch("ramalama.cli.New", return_value=transport),
+            patch("ramalama.cli.compute_serving_port", return_value="8080"),
+            patch("ramalama.transports.api.chat", side_effect=fake_chat),
+        ):
+            run_cli(args)
+
+        assert captured["url"] == provider.base_url
+        assert captured["api_key"] == provider.api_key
+        assert captured["provider_url"] == provider.base_url
+        assert captured["provider_api_key"] == provider.api_key
+
+    def test_run_cli_allows_overriding_provider_defaults(self):
+        """Explicit url/api_key CLI flags should override provider defaults."""
+        provider = self.mock_provider()
+        provider.base_url = "https://fake.example.com"
+        provider.api_key = "fake-api-key"
+
+        transport = APITransport(self.model, provider)
+        captured = {}
+
+        def fake_chat(args, provider=None):
+            captured["url"] = args.url
+            captured["api_key"] = args.api_key
+            captured["provider_url"] = provider.base_url
+            captured["provider_api_key"] = provider.api_key
+
+        args = self.mock_args()
+        args.url = "https://override.example.com"
+        args.api_key = "override-api-key"
+
+        with (
+            patch("ramalama.cli.New", return_value=transport),
+            patch("ramalama.cli.compute_serving_port", return_value="8080"),
+            patch("ramalama.transports.api.chat", side_effect=fake_chat),
+        ):
+            run_cli(args)
+
+        assert captured["url"] == args.url
+        assert captured["api_key"] == args.api_key
+        assert captured["provider_url"] == args.url
+        assert captured["provider_api_key"] == args.api_key
