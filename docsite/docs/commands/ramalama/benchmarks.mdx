@@ -1,0 +1,51 @@
+---
+title: benchmarks
+description: view and interact with historical benchmark results
+# This file is auto-generated from manpages. Do not edit manually.
+# Source: ramalama-benchmarks.1.md
+---
+
+# benchmarks
+
+## Synopsis
+**ramalama benchmarks** [*options*] *command* [*args*...]
+
+## Description
+View and interact with historical benchmark results.
+Results are stored as newline-delimited JSON (JSONL) in a `benchmarks.jsonl` file.
+The storage folder is shown in `ramalama benchmarks --help` and can be
+overridden via `ramalama.benchmarks.storage_folder` in `ramalama.conf`.
+
+## Options
+
+#### **--help**, **-h**
+show this help message and exit
+
+## COMMANDS
+
+#### **list**
+list benchmark results
+
+## LIST OPTIONS
+
+#### **--limit**=LIMIT
+limit number of results to display
+
+#### **--offset**=OFFSET
+offset for pagination (default: 0)
+
+#### **--format**=\{table,json\}
+output format (table or json) (default: table)
+
+## Examples
+
+```text
+ramalama benchmarks list
+```
+
+## See Also
+[ramalama(1)](/docs/commands/ramalama/), [ramalama-bench(1)](/docs/commands/ramalama/bench), [ramalama.conf(5)](/docs/configuration/conf)
+
+---
+
+*Jan 2026, Originally compiled by Ian Eaves &lt;ian&#64;ramalama.com&gt;*

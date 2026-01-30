@@ -21,13 +21,17 @@ description: run specified AI Model as a chatbot
 | rlcr          | rlcr://   | [`ramalama.com`](https://registry.ramalama.com) |
 | OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
 |||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
+| Hosted API Providers | openai:// | [`api.openai.com`](https://api.openai.com)|
 
 RamaLama defaults to the Ollama registry transport. This default can be overridden in the `ramalama.conf` file or via the RAMALAMA_TRANSPORTS
 environment. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
-Modify individual model transports by specifying the `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, `file://` prefix to the model.
+Modify individual model transports by specifying the `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, `file://`, or hosted API
+prefix (`openai://`).
 
-URL support means if a model is on a web site or even on your local system, you can run it directly.
+Hosted API transports connect directly to the remote provider and bypass the local container runtime. In this mode, flags that tune local
+containers (for example `--image`, GPU settings, or `--network`) do not apply, and the provider's own capabilities and security posture govern
+the execution. URL support means if a model is on a web site or even on your local system, you can run it directly.
 
 ## Options
 
@@ -77,7 +81,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.16.0 of RamaLama pulls an image with a `:0.16` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.17.0 of RamaLama pulls an image with a `:0.17` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
