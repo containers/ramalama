@@ -1,6 +1,6 @@
 # requirements for convert_hf_to_gguf.py
 # Keep the tag below in sync with the tag used for convert_hf_to_gguf.py in Containerfile.rag
-git+https://github.com/ggml-org/llama.cpp@b6900#subdirectory=gguf-py
+git+https://github.com/ggml-org/llama.cpp@b7872#subdirectory=gguf-py
 mistral-common
 numpy
 protobuf
