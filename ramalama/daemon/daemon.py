@@ -16,7 +16,7 @@ from ramalama.log_levels import LogLevel
 class ShutdownHandler:
     def __init__(self, server: "RamalamaServer") -> None:
         self.server = server
-        self.idle_check_timer = None
+        self.idle_check_timer: threading.Timer | None = None
 
     def handle_kill(self, signum, frame):
         if self.idle_check_timer:
@@ -90,7 +90,7 @@ class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def check_model_expiration(self):
         curr_time = datetime.now()
         for name, m in self.model_runner.managed_models.items():
-            if m.expiration_date > curr_time:
+            if m.expiration_date is None or m.expiration_date > curr_time:
                 continue
 
             try:

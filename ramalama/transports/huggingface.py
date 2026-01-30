@@ -3,7 +3,7 @@ import os
 import urllib.request
 from pathlib import Path
 
-from ramalama.common import run_cmd
+from ramalama.common import available, run_cmd
 from ramalama.hf_style_repo_base import (
     HFStyleRepoFile,
     HFStyleRepoModel,
@@ -178,7 +178,7 @@ class HuggingfaceRepository(HFStyleRepository):
             return False
 
         # Find all safetensors files, config files and index files
-        safetensors_files = []
+        safetensors_files: list[dict] = []
         self.other_files = []
         index_file = None
 
@@ -315,7 +315,7 @@ class Huggingface(HFStyleRepoModel):
         return False
 
     def push(self, _, args):
-        if not self.hf_cli_available:
+        if not available(self.get_cli_command()):
             raise NotImplementedError(self.get_missing_message())
         proc = run_cmd(
             [

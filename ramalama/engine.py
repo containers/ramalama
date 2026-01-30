@@ -59,16 +59,16 @@ class BaseEngine(ABC):
                 run_cmd([str(self.args.engine), "pull", "-q", self.args.image], ignore_all=True)
             except Exception:  # Ignore errors, the run command will handle it.
                 pass
-        elif getattr(self.args, "pull", None):
-            self.add_pull(self.args.pull)
+        elif pull_value := getattr(self.args, "pull", None):
+            self.add_pull(pull_value)
 
     def add_network(self):
-        if getattr(self.args, "network", None):
-            self.exec_args += ["--network", self.args.network]
+        if network := getattr(self.args, "network", None):
+            self.exec_args += ["--network", network]
 
     def add_oci_runtime(self):
-        if getattr(self.args, "oci_runtime", None):
-            self.exec_args += ["--runtime", self.args.oci_runtime]
+        if oci_runtime := getattr(self.args, "oci_runtime", None):
+            self.exec_args += ["--runtime", oci_runtime]
             return
         if check_nvidia() == "cuda":
             if self.use_docker:
@@ -88,8 +88,8 @@ class BaseEngine(ABC):
         if request_no_device:
             return
 
-        if getattr(self.args, "device", None):
-            for device_arg in self.args.device:
+        if device_list := getattr(self.args, "device", None):
+            for device_arg in device_list:
                 self.exec_args += ["--device", device_arg]
 
         if ramalama.common.podman_machine_accel:

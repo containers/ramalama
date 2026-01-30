@@ -79,7 +79,14 @@ class APITransport(TransportBase):
     def exists(self) -> bool:
         return True
 
-    def inspect(self, args):
+    def inspect(
+        self,
+        show_all: bool = False,
+        show_all_metadata: bool = False,
+        get_field: str = "",
+        as_json: bool = False,
+        dryrun: bool = False,
+    ):
         return {
             "provider": self.provider.provider,
             "model": self.model_name,

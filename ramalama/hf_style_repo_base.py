@@ -76,11 +76,11 @@ class HFStyleRepository(ABC):
         self.organization = organization
         self.tag = tag
         self.headers: dict = {}
-        self.blob_url = None
-        self.model_filename = None
-        self.model_hash = None
-        self.mmproj_filename = None
-        self.mmproj_hash = None
+        self.blob_url: str | None = None
+        self.model_filename: str | None = None
+        self.model_hash: str | None = None
+        self.mmproj_filename: str | None = None
+        self.mmproj_hash: str | None = None
         self.other_files: list[dict] = []
         self.additional_safetensor_files: list[dict] = []
         self.safetensors_index_file: str | None = None
@@ -214,6 +214,8 @@ class HFStyleRepository(ABC):
     def mmproj_file(self) -> SnapshotFile:
         assert self.model_filename
         assert self.model_hash
+        assert self.mmproj_filename
+        assert self.mmproj_hash
         return SnapshotFile(
             url=f"{self.blob_url}/{self.mmproj_filename}",
             header=self.headers,

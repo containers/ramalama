@@ -57,6 +57,7 @@ from ramalama.transports.base import (
     NoGGUFModelFileFound,
     NoRefFileFound,
     SafetensorModelNotSupported,
+    Transport,
     compute_serving_port,
     trim_model_name,
 )
@@ -1311,6 +1312,7 @@ def run_cli(args):
             raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
         args = _rag_args(args)
 
+        assert isinstance(model, Transport), "RAG requires a Transport model, not APITransport"
         model = RagTransport(model, assemble_command_lazy(args.model_args), args)
         model.ensure_model_exists(args)
 

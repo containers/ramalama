@@ -25,7 +25,7 @@ class HttpClient:
         pass
 
     def init(self, url, headers, output_file, show_progress, response_bytes=None):
-        output_file_partial = None
+        output_file_partial: str | None = None
         if output_file:
             output_file_partial = output_file + ".partial"
 
@@ -49,7 +49,7 @@ class HttpClient:
             finally:
                 del out  # Ensure file is closed before rename
 
-        if output_file:
+        if output_file and output_file_partial:
             os.rename(output_file_partial, output_file)
 
     def urlopen(self, url, headers):

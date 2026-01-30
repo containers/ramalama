@@ -138,8 +138,22 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("exists")
 
     @abstractmethod
-    def inspect(self, args):
+    def inspect(
+        self,
+        show_all: bool = False,
+        show_all_metadata: bool = False,
+        get_field: str = "",
+        as_json: bool = False,
+        dryrun: bool = False,
+    ) -> Any:
         raise self.__not_implemented_error("inspect")
+
+    def inspect_metadata(self) -> dict[str, Any]:
+        """
+        Inspect metadata for the model.
+        Default implementation raises NotImplementedError.
+        """
+        raise self.__not_implemented_error("inspect_metadata")
 
 
 class Transport(TransportBase):
@@ -213,6 +227,20 @@ class Transport(TransportBase):
             name, _, orga = self.extract_model_identifiers()
             self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
         return self._model_store
+
+    def resolve_model(self) -> str:
+        """
+        Resolve the model name to a canonical form.
+        Only implemented by transports that need it (e.g., Ollama).
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement resolve_model()")
+
+    def mount_cmd(self) -> str:
+        """
+        Generate the mount command for OCI models.
+        Only implemented by transports that need it (e.g., OCI).
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement mount_cmd()")
 
     def _get_all_model_part_paths(
         self, use_container: bool, should_generate: bool, dry_run: bool

@@ -53,12 +53,12 @@ def res(response, color):
     for line in response:
         line = line.decode("utf-8").strip()
         if line.startswith("data: {"):
-            choice = ""
+            choice: str | dict[str, str] = ""
 
             json_line = json.loads(line[len("data: ") :])
             if "choices" in json_line and json_line["choices"]:
                 choice = json_line["choices"][0]["delta"]
-            if "content" in choice:
+            if isinstance(choice, dict) and "content" in choice:
                 choice = choice["content"]
             else:
                 continue
@@ -469,7 +469,7 @@ class RamaLamaShell(cmd.Cmd):
         request = self._make_request_data()
 
         i = 0.01
-        total_time_slept = 0
+        total_time_slept = 0.0
         response = None
 
         # Adjust timeout based on whether we're in initial connection phase
@@ -535,17 +535,17 @@ class RamaLamaShell(cmd.Cmd):
         if getattr(self.args, "initial_connection", False):
             return
 
-        if getattr(self.args, "server_process", False):
-            self.args.server_process.terminate()
+        if server_process := getattr(self.args, "server_process", None):
+            server_process.terminate()
             try:
-                self.args.server_process.wait(timeout=5)
+                server_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.args.server_process.kill()
-        elif getattr(self.args, "name", None):
+                server_process.kill()
+        elif container_name := getattr(self.args, "name", None):
             args = copy.copy(self.args)
             args.ignore = True
             # Remove containers on normal exit (remove=True)
-            stop_container(args, self.args.name, remove=True)
+            stop_container(args, container_name, remove=True)
             if extra_name := self.operational_args.name:
                 stop_container(args, extra_name, remove=True)
 

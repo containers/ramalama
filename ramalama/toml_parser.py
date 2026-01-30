@@ -1,11 +1,12 @@
 import re
+from typing import Any
 
 from ramalama.logger import logger
 
 
 class TOMLParser:
     def __init__(self):
-        self.data = {}
+        self.data: dict[str, Any] = {}
 
     def parse(self, toml_string):
         current_section = self.data
@@ -61,9 +62,9 @@ class TOMLParser:
             return value.lower() == "true"
         raise ValueError(f"Unsupported value type: {value}")
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any = None) -> Any:
         keys = key.split(".")
-        value = self.data
+        value: Any = self.data
         for k in keys:
             value = value.get(k)
             if value is None:

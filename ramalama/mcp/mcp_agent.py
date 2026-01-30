@@ -5,7 +5,7 @@ import logging
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 from ramalama.config import get_config
 from ramalama.logger import logger
@@ -33,7 +33,7 @@ class LLMAgent:
         self.args = args
         self.available_tools: List[Dict[str, Any]] = []
         self.tool_to_client: Dict[str, PureMCPClient] = {}
-        self._stream_callback = None
+        self._stream_callback: Callable[[str], None] | None = None
 
     def initialize(self):
         """Initialize the agent and get available tools from all clients."""

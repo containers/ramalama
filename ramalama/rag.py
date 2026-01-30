@@ -131,6 +131,7 @@ class RagEngine(Engine):
         self.add_label(f"ai.ramalama.rag.{self.sourcetype}={self.args.rag}")
 
     def add_rag(self):
+        assert self.args.rag is not None
         if self.sourcetype is RagSource.DB:
             # Convert to container-friendly path format (handles Windows path conversion)
             rag = get_container_mount_path(self.args.rag)

@@ -1,5 +1,6 @@
 from dataclasses import make_dataclass
-from typing import List, Protocol, get_type_hints
+from subprocess import Popen
+from typing import Any, List, Protocol, get_type_hints
 
 from ramalama.config_types import COLOR_OPTIONS, SUPPORTED_ENGINES, SUPPORTED_RUNTIMES, PathStr
 
@@ -49,6 +50,7 @@ class BaseEngineArgsType(Protocol):
     nocapdrop: bool | None
     device: list[str] | None
     podman_keep_groups: bool | None
+    rag: str | None
     # Optional attributes for labels
     MODEL: str | None
     runtime: str | None
@@ -91,6 +93,8 @@ ChatSubArgs = protocol_to_dataclass(ChatSubArgsType)
 
 class ChatArgsType(DefaultArgsType, ChatSubArgsType):
     ignore: bool | None  # runtime-only
+    server_process: Popen[Any] | None  # runtime-only
+    name: str | None  # runtime-only
 
 
 class ServeRunArgsType(DefaultArgsType, Protocol):
