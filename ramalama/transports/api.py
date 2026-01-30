@@ -64,9 +64,13 @@ class APITransport(TransportBase):
 
         if getattr(args, "url", None):
             self.provider.base_url = args.url
+        else:
+            args.url = self.provider.base_url
 
         if getattr(args, "api_key", None):
             self.provider.api_key = args.api_key
+        else:
+            args.api_key = self.provider.api_key
 
         chat(args, provider=self.provider)
 

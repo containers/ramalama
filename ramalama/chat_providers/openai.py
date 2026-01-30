@@ -4,6 +4,7 @@ from functools import singledispatch
 from typing import Any, TypedDict
 
 from ramalama.chat_providers.base import ChatProvider, ChatRequestOptions, ChatStreamEvent
+from ramalama.chat_providers.errors import UnsupportedOpenaiMessageType
 from ramalama.chat_utils import (
     AssistantMessage,
     AttachmentPart,
@@ -15,17 +16,13 @@ from ramalama.chat_utils import (
 )
 
 
-class UnsupportedMessageType(Exception):
-    """Raised when a provider request fails or returns an invalid payload."""
-
-
 @singledispatch
 def message_to_completions_dict(message: Any) -> dict[str, Any]:
     message = (
         f"Cannot convert message type `{type(message)}` to a completions dictionary.\n"
         "Please create an issue at: https://github.com/containers/ramalama/issues"
     )
-    raise UnsupportedMessageType(message)
+    raise UnsupportedOpenaiMessageType(message)
 
 
 @message_to_completions_dict.register

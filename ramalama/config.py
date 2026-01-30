@@ -165,8 +165,19 @@ class OpenaiProviderConfig:
 
 
 @dataclass
+class AnthropicProviderConfig:
+    api_key: str | None = None
+    default_max_tokens: int = 4096
+    anthropic_version: str = "2023-06-01"
+
+    def __post_init__(self):
+        self.default_max_tokens = int(self.default_max_tokens)
+
+
+@dataclass
 class ProviderConfig:
     openai: OpenaiProviderConfig = field(default_factory=OpenaiProviderConfig)
+    anthropic: AnthropicProviderConfig = field(default_factory=AnthropicProviderConfig)
 
 
 @dataclass

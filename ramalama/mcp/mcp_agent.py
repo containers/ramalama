@@ -5,11 +5,16 @@ import logging
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
+from ramalama.chat_providers.base import ChatRequestOptions
+from ramalama.chat_utils import SystemMessage, UserMessage
 from ramalama.config import get_config
 from ramalama.logger import logger
 from ramalama.mcp.mcp_client import PureMCPClient
+
+if TYPE_CHECKING:
+    from ramalama.chat_providers.base import ChatProvider
 
 
 class LLMAgent:
@@ -18,9 +23,8 @@ class LLMAgent:
     def __init__(
         self,
         clients: List[PureMCPClient],
-        llm_base_url: str = "http://localhost:8080",
+        provider: "ChatProvider",
         model: str | None = None,
-        args=None,
     ):
         config_level = get_config().log_level or logging.INFO
         if logging.getLogger().handlers:
@@ -28,9 +32,8 @@ class LLMAgent:
         else:
             logging.basicConfig(level=config_level)
         self.clients = clients if isinstance(clients, list) else [clients]
-        self.llm_base_url = llm_base_url.rstrip('/')
+        self.provider = provider
         self.model = model
-        self.args = args
         self.available_tools: List[Dict[str, Any]] = []
         self.tool_to_client: Dict[str, PureMCPClient] = {}
         self._stream_callback = None
@@ -126,87 +129,54 @@ Should this request use the available tools?"""
         return response is not None and response.upper().strip() == "YES"
 
     def _call_llm(self, messages: List[Dict[str, str]], console_stream: bool = False) -> str | None:
-        """
-        Call the LLM with the given messages.
-        """
-        request_data = {"messages": messages, "stream": True}
-        if self.model is not None:
-            request_data["model"] = self.model
-        data = json.dumps(request_data).encode("utf-8")
+        """Call the LLM using the configured provider."""
+        # Convert dict messages to chat message types
+        chat_messages = []
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "system":
+                chat_messages.append(SystemMessage(text=content))
+            else:
+                chat_messages.append(UserMessage(text=content))
 
-        headers = {"Content-Type": "application/json"}
+        options = ChatRequestOptions(model=self.model, stream=True)
+        request = self.provider.create_request(chat_messages, options)
 
-        # Add API key if available
-        if self.args and getattr(self.args, "api_key", None):
-            headers["Authorization"] = f"Bearer {self.args.api_key}"
-        request = urllib.request.Request(
-            f"{self.llm_base_url}/chat/completions",
-            data=data,
-            headers=headers,
-            method="POST",
-        )
+        max_retries = 10
+        retry_delay = 0.5
+        content = ""
 
-        if not console_stream:
-            content = ""
-            # Retry logic similar to regular chat system
-            max_retries = 10
-            retry_delay = 0.5
-
-            for attempt in range(max_retries):
-                try:
-                    with urllib.request.urlopen(request, timeout=30) as response:
-                        for raw_line in response:
-                            line = raw_line.decode("utf-8").strip()
-                            if line.startswith("data: "):
-                                payload = line[6:]
-                                if payload.strip() == "[DONE]":
-                                    break
-                                try:
-                                    event = json.loads(payload)
-                                    if "choices" in event and event["choices"]:
-                                        delta = event["choices"][0].get("delta", {})
-                                        if "content" in delta and delta["content"] is not None:
-                                            content += delta["content"]
-                                except json.JSONDecodeError:
-                                    logging.warning("Malformed SSE line: %s", payload)
-                        return content.strip()
-                except Exception as e:
-                    if attempt == max_retries - 1:
-                        # Last attempt failed, log error and return empty
-                        logging.error("LLM call failed after %d attempts: %s", max_retries, e)
-                        return ""
-                    else:
-                        # Retry after delay
-                        logging.debug("LLM call failed (attempt %d/%d), retrying: %s", attempt + 1, max_retries, e)
-                        time.sleep(retry_delay)
-                        retry_delay *= 2  # Exponential backoff
-            return ""
-        elif console_stream:
+        for attempt in range(max_retries):
             try:
                 with urllib.request.urlopen(request, timeout=30) as response:
-                    for raw_line in response:
-                        line = raw_line.decode("utf-8").strip()
-                        if line.startswith("data: "):
-                            payload = line[6:]
-                            if payload.strip() == "[DONE]":
-                                break
-                            try:
-                                event = json.loads(payload)
-                                if "choices" in event and event["choices"]:
-                                    delta = event["choices"][0].get("delta", {})
-                                    if "content" in delta and delta["content"] is not None:
-                                        if callable(self._stream_callback):
-                                            self._stream_callback(delta["content"])
-                                        else:
-                                            print(delta["content"], end="", flush=True)
-                            except json.JSONDecodeError:
-                                logging.warning("Malformed SSE line: %s", payload)
-                return None
+                    for chunk in response:
+                        for event in self.provider.parse_stream_chunk(chunk):
+                            if event.done:
+                                if console_stream:
+                                    return None
+                                return content.strip()
+                            if event.text:
+                                if console_stream:
+                                    if callable(self._stream_callback):
+                                        self._stream_callback(event.text)
+                                    else:
+                                        print(event.text, end="", flush=True)
+                                else:
+                                    content += event.text
+                    # Stream ended without done event
+                    if console_stream:
+                        return None
+                    return content.strip()
             except Exception as e:
-                logging.error("LLM streaming call failed: %s", e, exc_info=True)
-                return None
-        else:
-            raise ValueError(f"Unknown mode: {console_stream}")
+                if attempt == max_retries - 1:
+                    logging.error("LLM call failed after %d attempts: %s", max_retries, e)
+                    return "" if not console_stream else None
+                logging.debug("LLM call failed (attempt %d/%d), retrying: %s", attempt + 1, max_retries, e)
+                time.sleep(retry_delay)
+                retry_delay *= 2
+
+        return "" if not console_stream else None
 
     def _get_tool_arguments_manual(self, tool: dict) -> dict:
         """Prompt user based on inputSchema."""
