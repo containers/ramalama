@@ -3,12 +3,11 @@
 import json
 import logging
 import time
-import urllib.error
 import urllib.request
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
 from ramalama.chat_providers.base import ChatRequestOptions
-from ramalama.chat_utils import SystemMessage, UserMessage
+from ramalama.chat_utils import ChatMessageType, SystemMessage, UserMessage
 from ramalama.config import get_config
 from ramalama.logger import logger
 from ramalama.mcp.mcp_client import PureMCPClient
@@ -22,7 +21,7 @@ class LLMAgent:
 
     def __init__(
         self,
-        clients: List[PureMCPClient],
+        clients: list[PureMCPClient],
         provider: "ChatProvider",
         model: str | None = None,
     ):
@@ -34,8 +33,8 @@ class LLMAgent:
         self.clients = clients if isinstance(clients, list) else [clients]
         self.provider = provider
         self.model = model
-        self.available_tools: List[Dict[str, Any]] = []
-        self.tool_to_client: Dict[str, PureMCPClient] = {}
+        self.available_tools: list[dict[str, Any]] = []
+        self.tool_to_client: dict[str, PureMCPClient] = {}
         self._stream_callback = None
 
     def initialize(self):
@@ -105,41 +104,25 @@ class LLMAgent:
                 preview = msg['content'][:150] + "..." if len(msg['content']) > 150 else msg['content']
                 context_info += f"{role}: {preview}\n"
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are an intelligent assistant that determines whether a user's "
-                    "request should use the available tools.\n\n"
-                    "Answer ONLY \"YES\" if tools should be used or \"NO\" otherwise."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"""User request: {content}
+        system_message = (
+            "You are an intelligent assistant that determines whether a user's "
+            "request should use the available tools.\n\n"
+            "Answer ONLY \"YES\" if tools should be used or \"NO\" otherwise."
+        )
+
+        user_message = f"""User request: {content}
 {context_info}
 {tools_context}
 
 Should this request use the available tools?"""
-                ),
-            },
-        ]
+
+        messages: list[ChatMessageType] = [SystemMessage(text=system_message), UserMessage(text=user_message)]
         response = self._call_llm(messages)
         return response is not None and response.upper().strip() == "YES"
 
-    def _call_llm(self, messages: List[Dict[str, str]], console_stream: bool = False) -> str | None:
+    def _call_llm(self, chat_messages: list[ChatMessageType], console_stream: bool = False) -> str | None:
         """Call the LLM using the configured provider."""
         # Convert dict messages to chat message types
-        chat_messages = []
-        for msg in messages:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            if role == "system":
-                chat_messages.append(SystemMessage(text=content))
-            else:
-                chat_messages.append(UserMessage(text=content))
-
         options = ChatRequestOptions(model=self.model, stream=True)
         request = self.provider.create_request(chat_messages, options)
 
@@ -238,15 +221,13 @@ Arguments needed:
 
 Generate ONLY a JSON object with the arguments. Extract values from the task."""
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a JSON generator. Respond ONLY with valid JSON. "
-                    "No explanations, no markdown, just the JSON object."
-                ),
-            },
-            {"role": "user", "content": prompt},
+        system_message = (
+            "You are a JSON generator. Respond ONLY with valid JSON. "
+            "No explanations, no markdown, just the JSON object."
+        )
+        messages: list[ChatMessageType] = [
+            SystemMessage(text=system_message),
+            UserMessage(text=prompt),
         ]
 
         if stream:
@@ -364,7 +345,7 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
         except Exception as e:
             return f"Error executing tool: {e}"
 
-    def _select_tools(self, task: str) -> List[Dict[str, Any]]:
+    def _select_tools(self, task: str) -> list[dict[str, Any]]:
         """Select one or more tools that should be used for the task."""
         if not self.available_tools:
             return []
@@ -378,16 +359,14 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
             description = tool.get("description", "")
             tools_context += f"{i}. {name}: {description}\n"
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful assistant that selects ALL relevant tools for a given task. "
-                    "Respond ONLY with a comma-separated list of tool names. "
-                    "If none are useful, respond with NONE."
-                ),
-            },
-            {"role": "user", "content": f"Task: {task}\n\n{tools_context}"},
+        system_message = (
+            "You are a helpful assistant that selects ALL relevant tools for a given task. "
+            "Respond ONLY with a comma-separated list of tool names. "
+            "If none are useful, respond with NONE."
+        )
+        messages: list[ChatMessageType] = [
+            SystemMessage(text=system_message),
+            UserMessage(text=f"Task: {task}\n\n{tools_context}"),
         ]
 
         response = self._call_llm(messages)
@@ -401,16 +380,15 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
 
     def _result(self, task: str, content: str, stream: bool = False) -> str | None:
         """Format the tool result into a user-friendly response."""
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful assistant that formats and presents information clearly. "
-                    "Understand the user request, analyze the raw tool output, and provide a "
-                    "clear, well-structured answer."
-                ),
-            },
-            {"role": "user", "content": f"Request: {task}\n\nRaw tool output:\n{content}"},
+        system_message = (
+            "You are a helpful assistant that formats and presents information clearly. "
+            "Understand the user request, analyze the raw tool output, and provide a "
+            "clear, well-structured answer."
+        )
+
+        messages: list[ChatMessageType] = [
+            SystemMessage(text=system_message),
+            UserMessage(text=f"Request: {task}\n\nRaw tool output:\n{content}"),
         ]
         result = self._call_llm(messages, console_stream=stream)
         if stream and result is None:
