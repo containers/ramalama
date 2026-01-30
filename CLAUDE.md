@@ -49,9 +49,9 @@ RAMALAMA=$(pwd)/bin/ramalama bats -T test/system/030-run.bats
 ### Code Quality
 ```bash
 make validate                # Run all validation (codespell, lint, format check, man-check, type check)
-make lint                    # Run flake8 + shellcheck
-make check-format            # Check black + isort formatting
-make format                  # Auto-format with black + isort
+make lint                    # Run ruff + shellcheck
+make check-format            # Check ruff formatting + import sorting
+make format                  # Auto-format with ruff + import sorting
 make type-check              # Run mypy type checking
 make codespell               # Check spelling
 ```
@@ -102,6 +102,6 @@ Manages local model storage:
 
 - Python 3.10+ required
 - Line length: 120 characters
-- Formatting: black + isort
+- Formatting: ruff format + ruff check (I rules)
 - Type hints encouraged (mypy checked)
 - Commits require DCO sign-off (`git commit -s`)
