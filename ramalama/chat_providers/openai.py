@@ -55,6 +55,11 @@ def _(message: AssistantMessage) -> dict[str, Any]:
     if message.attachments:
         raise ValueError("Attachments are not supported by this provider.")
 
+    payload: dict[str, Any] = {
+        **message.metadata,
+        'content': message.text or "",
+        'role': message.role,
+    }
     tool_calls = [
         {
             "id": call.id,
@@ -66,7 +71,9 @@ def _(message: AssistantMessage) -> dict[str, Any]:
         }
         for call in message.tool_calls
     ]
-    return {**message.metadata, 'content': message.text or "", 'role': message.role, 'tool_calls': tool_calls}
+    if tool_calls:
+        payload['tool_calls'] = tool_calls
+    return payload
 
 
 class CompletionsPayload(TypedDict, total=False):

@@ -3,11 +3,14 @@ from collections.abc import Callable
 from ramalama.chat_providers.anthropic import AnthropicChatProvider
 from ramalama.chat_providers.base import ChatProvider
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
+from ramalama.chat_providers.ramalama_labs import RamalamaLabsChatProvider
 from ramalama.config import get_config
+
 
 PROVIDER_API_KEY_RESOLVERS: dict[str, Callable[[], str | None]] = {
     "openai": lambda: get_config().provider.openai.api_key,
     "anthropic": lambda: get_config().provider.anthropic.api_key,
+    "ramalamalabs": lambda: get_config().provider.ramalamalabs.api_key,
 }
 
 
@@ -16,6 +19,7 @@ def get_provider_api_key(scheme: str) -> str | None:
 
     if resolver := PROVIDER_API_KEY_RESOLVERS.get(scheme):
         return resolver()
+
     return get_config().api_key
 
 
@@ -25,6 +29,12 @@ DEFAULT_PROVIDERS = {
     ),
     "anthropic": lambda: AnthropicChatProvider(
         base_url="https://api.anthropic.com", api_key=get_provider_api_key("anthropic")
+    ),
+    "ramalamalabs": lambda: RamalamaLabsChatProvider(
+        base_url="https://gateway.ramalama.com", api_key=get_provider_api_key("ramalamalabs")
+    ),
+    "rl": lambda: RamalamaLabsChatProvider(
+        base_url="https://gateway.ramalama.com", api_key=get_provider_api_key("ramalamalabs")
     ),
 }
 

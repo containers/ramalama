@@ -163,9 +163,9 @@ class ChatProvider(ABC):
         except urllib_error.HTTPError as exc:
             if exc.code in (401, 403):
                 message = (
-                    f"Could not authenticate with {self.provider}."
+                    f"Could not authenticate with {self.provider}. "
                     "The provided API key was either missing or invalid.\n"
-                    f"Set RAMALAMA_API_KEY or ramalama.provider.<provider_name>.api_key."
+                    f"Set RAMALAMA_API_KEY or ramalama.provider.{self.provider}.api_key."
                 )
                 try:
                     payload = self.parse_response_body(exc.read())

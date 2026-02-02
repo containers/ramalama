@@ -4,11 +4,12 @@ from typing import TypeAlias
 from urllib.parse import urlparse
 
 from ramalama.arg_types import StoreArgType
-from ramalama.chat_providers.api_providers import get_chat_provider
+from ramalama.chat_providers.api_providers import get_chat_provider, DEFAULT_PROVIDERS
 from ramalama.common import rm_until_substring
 from ramalama.config import get_config
 from ramalama.path_utils import file_uri_to_path
 from ramalama.transports.api import APITransport
+
 from ramalama.transports.base import MODEL_TYPES, Transport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
@@ -68,7 +69,7 @@ class TransportFactory:
                 return RamalamaContainerRegistry, self.create_rlcr
             case model if model.startswith(("http://", "https://", "file:")):
                 return URL, self.create_url
-            case model if model.startswith(("openai://", "anthropic://")):
+            case model if model.startswith(tuple(DEFAULT_PROVIDERS.keys())):
                 return APITransport, self.create_api_transport
 
         match self.transport:
