@@ -44,17 +44,21 @@ def _get_default_config_dirs() -> list[Path]:
         # Windows-specific paths using APPDATA and LOCALAPPDATA
         appdata = os.getenv("APPDATA", os.path.expanduser("~/AppData/Roaming"))
         localappdata = os.getenv("LOCALAPPDATA", os.path.expanduser("~/AppData/Local"))
-        dirs.extend([
-            Path(os.path.join(localappdata, "ramalama")),
-            Path(os.path.join(appdata, "ramalama")),
-        ])
+        dirs.extend(
+            [
+                Path(os.path.join(localappdata, "ramalama")),
+                Path(os.path.join(appdata, "ramalama")),
+            ]
+        )
     else:
         # Unix-specific paths
-        dirs.extend([
-            Path("/etc/ramalama"),
-            Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
-            Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
-        ])
+        dirs.extend(
+            [
+                Path("/etc/ramalama"),
+                Path(os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))),
+                Path(os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama"))),
+            ]
+        )
 
     return dirs
 
@@ -166,19 +170,8 @@ class OpenaiProviderConfig:
 
 
 @dataclass
-class AnthropicProviderConfig:
-    api_key: str | None = None
-    default_max_tokens: int = 4096
-    anthropic_version: str = "2023-06-01"
-
-    def __post_init__(self):
-        self.default_max_tokens = int(self.default_max_tokens)
-
-
-@dataclass
 class ProviderConfig:
     openai: OpenaiProviderConfig = field(default_factory=OpenaiProviderConfig)
-    anthropic: AnthropicProviderConfig = field(default_factory=AnthropicProviderConfig)
     ramalamalabs: RamalamaLabsProviderConfig = field(default_factory=RamalamaLabsProviderConfig)
 
 

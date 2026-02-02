@@ -1,13 +1,14 @@
 import json
+from typing import Any
 
 import pytest
 
 from ramalama.chat_providers.base import ChatRequestOptions
 from ramalama.chat_providers.openai import OpenAICompletionsChatProvider, OpenAIResponsesChatProvider
-from ramalama.chat_utils import AssistantMessage, ImageURLPart, ToolCall, ToolMessage, UserMessage
+from ramalama.chat_utils import AssistantMessage, ImageURLPart, SystemMessage, ToolCall, ToolMessage, UserMessage
 
 
-def build_payload(content):
+def build_payload(content: Any) -> dict[str, Any]:
     return {
         "choices": [
             {
@@ -19,14 +20,14 @@ def build_payload(content):
     }
 
 
-def make_options(**overrides):
-    data = {"model": "test-model", "stream": True}
-    data.update(overrides)
-    return ChatRequestOptions(**data)
+def make_options(**overrides: Any) -> ChatRequestOptions:
+    return ChatRequestOptions(model="test-model", stream=True, **overrides)
 
 
-class OpenAICompletionsProviderTests:
-    def setup_method(self):
+class TestOpenAICompletionsProvider:
+    provider: OpenAICompletionsChatProvider
+
+    def setup_method(self) -> None:
         self.provider = OpenAICompletionsChatProvider("http://example.com")
 
     def test_extracts_string_and_structured_deltas(self):
@@ -65,6 +66,16 @@ class OpenAICompletionsProviderTests:
         with pytest.raises(ValueError):
             self.provider.build_payload([message], make_options())
 
+    def test_rejects_assistant_attachments(self):
+        message = AssistantMessage(text="hello", attachments=[ImageURLPart(url="http://img")])
+
+        with pytest.raises(ValueError):
+            self.provider.build_payload([message], make_options())
+
+    def test_serializes_system_message(self):
+        payload = self.provider.build_payload([SystemMessage(text="You are helpful.")], make_options())
+        assert payload["messages"][0] == {"role": "system", "content": "You are helpful."}
+
     def test_serializes_tool_calls_and_responses(self):
         tool_call = ToolCall(id="call-1", name="lookup", arguments={"query": "weather"})
         assistant = AssistantMessage(tool_calls=[tool_call])
@@ -77,9 +88,18 @@ class OpenAICompletionsProviderTests:
         assert messages[0]["tool_calls"][0]["function"]["arguments"] == '{"query": "weather"}'
         assert messages[1]["tool_call_id"] == "call-1"
 
+    def test_omits_empty_tool_calls(self):
+        assistant = AssistantMessage(text="Hello")
 
-class OpenAIResponsesProviderTests:
-    def setup_method(self):
+        payload = self.provider.build_payload([assistant], make_options())
+
+        assert "tool_calls" not in payload["messages"][0]
+
+
+class TestOpenAIResponsesProvider:
+    provider: OpenAIResponsesChatProvider
+
+    def setup_method(self) -> None:
         self.provider = OpenAIResponsesChatProvider("http://example.com")
 
     def test_serializes_structured_content(self):
@@ -96,6 +116,20 @@ class OpenAIResponsesProviderTests:
         assert serialized[1]["image_url"] == {"url": "http://img", "detail": "high"}
         assert payload["max_completion_tokens"] == 128
         assert "max_tokens" not in payload
+        assert "max_completion_tokens" in payload
+
+    def test_serializes_attachments_without_text(self):
+        message = UserMessage(text=None, attachments=[ImageURLPart(url="http://img")])
+
+        payload = self.provider.build_payload([message], make_options())
+        serialized = payload["input"][0]["content"]
+
+        assert serialized == [{"type": "image_url", "image_url": {"url": "http://img"}}]
+
+    def test_omits_max_completion_tokens_for_non_positive_values(self):
+        payload = self.provider.build_payload([UserMessage(text="hello")], make_options(max_tokens=0))
+
+        assert "max_completion_tokens" not in payload
 
     def test_streaming_emits_delta_and_completion_events(self):
         chunk = (
@@ -121,6 +155,13 @@ class OpenAIResponsesProviderTests:
         assert first_input["tool_calls"][0]["function"]["name"] == "lookup"
         assert first_input["tool_calls"][0]["function"]["arguments"] == '{"city": "NYC"}'
         assert payload["input"][1]["tool_call_id"] == "call-9"
+
+    def test_omits_empty_tool_calls(self):
+        assistant = AssistantMessage(text="Hello")
+
+        payload = self.provider.build_payload([assistant], make_options())
+
+        assert "tool_calls" not in payload["input"][0]
 
     def test_streaming_emits_done_event_for_done_marker(self):
         events = list(self.provider.parse_stream_chunk(b"data: [DONE]\n\n"))

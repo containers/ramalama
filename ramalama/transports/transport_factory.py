@@ -4,12 +4,11 @@ from typing import TypeAlias
 from urllib.parse import urlparse
 
 from ramalama.arg_types import StoreArgType
-from ramalama.chat_providers.api_providers import get_chat_provider, DEFAULT_PROVIDERS
+from ramalama.chat_providers.api_providers import DEFAULT_PROVIDERS, get_chat_provider
 from ramalama.common import rm_until_substring
 from ramalama.config import get_config
 from ramalama.path_utils import file_uri_to_path
 from ramalama.transports.api import APITransport
-
 from ramalama.transports.base import MODEL_TYPES, Transport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope

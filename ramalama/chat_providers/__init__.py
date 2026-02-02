@@ -1,4 +1,4 @@
-from ramalama.chat_providers import anthropic, api_providers, openai
+from ramalama.chat_providers import api_providers, openai
 from ramalama.chat_providers.base import (
     ChatProvider,
     ChatProviderError,
@@ -11,7 +11,6 @@ __all__ = [
     "ChatProviderError",
     "ChatRequestOptions",
     "ChatStreamEvent",
-    "anthropic",
     "api_providers",
     "openai",
 ]
