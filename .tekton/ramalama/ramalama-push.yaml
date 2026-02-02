@@ -32,7 +32,7 @@ spec:
   - name: dockerfile
     value: container-images/ramalama/Containerfile
   - name: test-image
-    value: quay.io/redhat-user-workloads/ramalama-tenant/bats:{{revision}}
+    value: quay.io/redhat-user-workloads/ramalama-tenant/e2e:{{revision}}
   - name: test-envs
     value:
     - RAMALAMA_IMAGE=quay.io/redhat-user-workloads/ramalama-tenant/ramalama:{{revision}}
