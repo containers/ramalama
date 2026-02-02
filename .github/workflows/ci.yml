@@ -154,6 +154,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install podman bash codespell git cmake libcurl4-openssl-dev
           sudo ./container-images/scripts/build_llama.sh
+          sudo cp -a /tmp/install/bin/ /usr/
+          sudo cp -a /tmp/install/lib/*.so* /usr/lib/
           uv tool install tox --with tox-uv
           uv pip install ".[dev]"
 
