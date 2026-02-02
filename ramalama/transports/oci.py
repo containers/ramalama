@@ -389,7 +389,7 @@ Tagging build instead
         as_json: bool = False,
         dryrun: bool = False,
     ) -> Tuple[str, str]:
-        out = super().inspect(show_all, show_all_metadata, get_field, dryrun, as_json)
+        out = super().inspect(show_all, show_all_metadata, get_field, as_json, dryrun)
         if as_json:
             out_data = json.loads(out)
         else:

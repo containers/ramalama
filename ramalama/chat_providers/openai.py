@@ -319,13 +319,13 @@ class OpenAIResponsesChatProvider(ChatProvider):
 
     @staticmethod
     def _is_completion_event(event_type: str, payload: Mapping[str, Any]) -> bool:
-        hinted_type = event_type or (payload.get("type") if isinstance(payload, Mapping) else "")
+        hinted_type = event_type or payload.get("type", "")
         return hinted_type == "response.completed"
 
     @staticmethod
     def _extract_responses_delta(event_type: str, payload: Mapping[str, Any]) -> str | None:
         if not event_type:
-            event_type = payload.get("type", "") if isinstance(payload, Mapping) else ""
+            event_type = payload.get("type", "")
 
         if event_type == "response.output_text.delta":
             delta = payload.get("delta")
