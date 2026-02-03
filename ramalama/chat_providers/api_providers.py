@@ -2,12 +2,15 @@ from collections.abc import Callable
 
 from ramalama.chat_providers.anthropic import AnthropicChatProvider
 from ramalama.chat_providers.base import ChatProvider
+from ramalama.chat_providers.bedrock import BedrockChatProvider
+from ramalama.chat_providers.gemini import GeminiChatProvider
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
 from ramalama.config import get_config
 
 PROVIDER_API_KEY_RESOLVERS: dict[str, Callable[[], str | None]] = {
     "openai": lambda: get_config().provider.openai.api_key,
     "anthropic": lambda: get_config().provider.anthropic.api_key,
+    "gemini": lambda: get_config().provider.gemini.api_key,
 }
 
 
@@ -26,6 +29,10 @@ DEFAULT_PROVIDERS = {
     "anthropic": lambda: AnthropicChatProvider(
         base_url="https://api.anthropic.com", api_key=get_provider_api_key("anthropic")
     ),
+    "gemini": lambda: GeminiChatProvider(
+        base_url="https://generativelanguage.googleapis.com", api_key=get_provider_api_key("gemini")
+    ),
+    "bedrock": lambda: BedrockChatProvider(),
 }
 
 

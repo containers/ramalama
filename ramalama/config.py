@@ -175,9 +175,26 @@ class AnthropicProviderConfig:
 
 
 @dataclass
+class GeminiProviderConfig:
+    api_key: str | None = None
+
+
+@dataclass
+class BedrockProviderConfig:
+    region: str | None = None
+    endpoint_url: str | None = None
+    control_plane_url: str | None = None
+    access_key_id: str | None = None
+    secret_access_key: str | None = None
+    session_token: str | None = None
+
+
+@dataclass
 class ProviderConfig:
     openai: OpenaiProviderConfig = field(default_factory=OpenaiProviderConfig)
     anthropic: AnthropicProviderConfig = field(default_factory=AnthropicProviderConfig)
+    gemini: GeminiProviderConfig = field(default_factory=GeminiProviderConfig)
+    bedrock: BedrockProviderConfig = field(default_factory=BedrockProviderConfig)
 
 
 @dataclass

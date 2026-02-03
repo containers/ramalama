@@ -267,6 +267,64 @@ Configuration settings for the openai hosted provider
 **api_key**=""
 
 Provider-specific API key used when invoking OpenAI-hosted transports. Overrides `RAMALAMA_API_KEY` when set.
+
+**anthropic**=""
+
+Configuration settings for the anthropic hosted provider
+
+`[[ramalama.provider.anthropic]]`
+
+**api_key**=""
+
+Provider-specific API key used when invoking Anthropic-hosted transports. Overrides `RAMALAMA_API_KEY` when set.
+
+**default_max_tokens**=4096
+
+Default maximum number of tokens used for Anthropic requests.
+
+**anthropic_version**="2023-06-01"
+
+Anthropic API version used when invoking Anthropic-hosted transports.
+
+**gemini**=""
+
+Configuration settings for the gemini hosted provider
+
+`[[ramalama.provider.gemini]]`
+
+**api_key**=""
+
+Provider-specific API key used when invoking Gemini-hosted transports. Overrides `RAMALAMA_API_KEY` when set.
+
+**bedrock**=""
+
+Configuration settings for the Bedrock hosted provider
+
+`[[ramalama.provider.bedrock]]`
+
+**region**=""
+
+AWS region used for Bedrock requests. Defaults to `AWS_REGION`/`AWS_DEFAULT_REGION` when set.
+
+**endpoint_url**=""
+
+Override the Bedrock runtime endpoint (e.g. `https://bedrock-runtime.us-east-1.amazonaws.com`).
+
+**control_plane_url**=""
+
+Override the Bedrock control plane endpoint (e.g. `https://bedrock.us-east-1.amazonaws.com`).
+
+**access_key_id**=""
+
+AWS access key id used for Bedrock requests.
+
+**secret_access_key**=""
+
+AWS secret access key used for Bedrock requests.
+
+**session_token**=""
+
+AWS session token for temporary credentials.
 ## RAMALAMA.BENCHMARKS TABLE
 The ramalama.benchmarks table contains benchmark related settings.
 
@@ -277,6 +335,10 @@ The ramalama.benchmarks table contains benchmark related settings.
 Manually specify where to save benchmark results.
 By default, this will be stored in the default model store directory under `benchmarks/`.
 Changing `ramalama.store` does not update this; set `ramalama.benchmarks.storage_folder` explicitly if needed.
+
+**disable**=false
+
+Disable writing benchmark results to disk when set to true.
 
 ## RAMALAMA.USER TABLE
 The ramalama.user table contains user preference settings.

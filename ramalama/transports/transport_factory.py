@@ -68,7 +68,7 @@ class TransportFactory:
                 return RamalamaContainerRegistry, self.create_rlcr
             case model if model.startswith(("http://", "https://", "file:")):
                 return URL, self.create_url
-            case model if model.startswith(("openai://", "anthropic://")):
+            case model if model.startswith(("openai://", "anthropic://", "gemini://", "bedrock://")):
                 return APITransport, self.create_api_transport
 
         match self.transport:

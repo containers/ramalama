@@ -511,6 +511,8 @@ def bench_cli(args):
 
     model = New(args.MODEL, args)
     model.ensure_model_exists(args)
+    if isinstance(model, APITransport):
+        raise ValueError("ramalama bench is not supported for hosted API transports.")
     model.bench(args, assemble_command_lazy(args))
 
 
@@ -1315,9 +1317,10 @@ def run_cli(args):
         model = RagTransport(model, assemble_command_lazy(args.model_args), args)
         model.ensure_model_exists(args)
 
-    # API transports connect directly to the provider and don't need a server command
-    server_cmd = [] if is_api_transport else assemble_command_lazy(args)
-    model.run(args, server_cmd)
+    if is_api_transport:
+        model.run(args, [])
+    else:
+        model.run(args, assemble_command_lazy(args))
 
 
 def serve_parser(subparsers):
@@ -1680,6 +1683,8 @@ def perplexity_cli(args):
 
     model = New(args.MODEL, args)
     model.ensure_model_exists(args)
+    if isinstance(model, APITransport):
+        raise ValueError("ramalama perplexity is not supported for hosted API transports.")
     model.perplexity(args, assemble_command_lazy(args))
 
 

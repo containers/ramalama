@@ -17,13 +17,13 @@ ramalama\-run - run specified AI Model as a chatbot
 | rlcr          | rlcr://   | [`ramalama.com`](https://registry.ramalama.com) |
 | OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
 |||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
-| Hosted API Providers | openai:// | [`api.openai.com`](https://api.openai.com)|
+| Hosted API Providers | openai://, gemini://, bedrock:// | [`api.openai.com`](https://api.openai.com), [`generativelanguage.googleapis.com`](https://generativelanguage.googleapis.com), [`bedrock-runtime.<region>.amazonaws.com`](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-runtime.html)|
 
 RamaLama defaults to the Ollama registry transport. This default can be overridden in the `ramalama.conf` file or via the RAMALAMA_TRANSPORTS
 environment. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
 
 Modify individual model transports by specifying the `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, `file://`, or hosted API
-prefix (`openai://`).
+prefixes (`openai://`, `gemini://`, `bedrock://`).
 
 Hosted API transports connect directly to the remote provider and bypass the local container runtime. In this mode, flags that tune local
 containers (for example `--image`, GPU settings, or `--network`) do not apply, and the provider's own capabilities and security posture govern

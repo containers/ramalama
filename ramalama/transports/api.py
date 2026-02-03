@@ -1,7 +1,7 @@
 from typing import Any
 
 from ramalama.chat import chat
-from ramalama.chat_providers.base import ChatProvider, ChatProviderError
+from ramalama.chat_providers.base import APIKeyChatProvider, ChatProvider, ChatProviderError
 from ramalama.common import perror
 from ramalama.transports.base import TransportBase
 
@@ -67,10 +67,11 @@ class APITransport(TransportBase):
         else:
             args.url = self.provider.base_url
 
-        if getattr(args, "api_key", None):
-            self.provider.api_key = args.api_key
-        else:
-            args.api_key = self.provider.api_key
+        if isinstance(self.provider, APIKeyChatProvider):
+            if getattr(args, "api_key", None):
+                self.provider.api_key = args.api_key
+            else:
+                args.api_key = self.provider.api_key
 
         chat(args, provider=self.provider)
 
@@ -93,10 +94,10 @@ class APITransport(TransportBase):
     def ensure_model_exists(self, args):
         args.container = False
         args.engine = None
-        if not self.provider.api_key:
+        if isinstance(self.provider, APIKeyChatProvider) and not self.provider.api_key:
             raise ValueError(
                 f'Missing API key for provider "{self.provider.provider}". '
-                "Set RAMALAMA_API_KEY or ramalama.provider.openai.api_key."
+                f"Set RAMALAMA_API_KEY or ramalama.provider.{self.provider.provider}.api_key."
             )
         try:
             models = self.provider.list_models()

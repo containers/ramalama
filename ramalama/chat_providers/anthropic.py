@@ -6,7 +6,7 @@ from typing import Any, TypedDict
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
-from ramalama.chat_providers.base import ChatProvider, ChatProviderError, ChatRequestOptions, ChatStreamEvent
+from ramalama.chat_providers.base import APIKeyChatProvider, ChatProviderError, ChatRequestOptions, ChatStreamEvent
 from ramalama.chat_providers.errors import UnsupportedAnthropicMessageType
 from ramalama.chat_utils import (
     AssistantMessage,
@@ -106,7 +106,7 @@ class AnthropicPayload(TypedDict, total=False):
     temperature: float
 
 
-class AnthropicChatProvider(ChatProvider):
+class AnthropicChatProvider(APIKeyChatProvider):
     """Chat provider for Anthropic's Messages API."""
 
     provider = "anthropic"

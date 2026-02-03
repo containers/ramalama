@@ -39,6 +39,7 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
     [
         (Input("", "", ""), None, KeyError),
         (Input("openai://gpt-4o-mini", "", ""), APITransport, None),
+        (Input("gemini://gemini-1.5-flash", "", ""), APITransport, None),
         (Input("huggingface://granite-code", "", ""), Huggingface, None),
         (Input("hf://granite-code", "", ""), Huggingface, None),
         (Input("hf.co/granite-code", "", ""), Huggingface, None),
@@ -118,6 +119,7 @@ def test_validate_oci_model_input(input: Input, error):
     "input,expected",
     [
         (Input("openai://gpt-4o-mini", "", ""), "gpt-4o-mini"),
+        (Input("gemini://gemini-1.5-flash", "", ""), "gemini-1.5-flash"),
         (Input("huggingface://granite-code", "", ""), "granite-code"),
         (
             Input("huggingface://ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", "", ""),

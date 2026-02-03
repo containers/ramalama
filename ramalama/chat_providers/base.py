@@ -45,7 +45,7 @@ class ChatProviderError(Exception):
         self.payload = payload
 
 
-class ChatProvider(ABC):
+class ChatProviderBase(ABC):
     """Abstract base class for hosted chat providers."""
 
     provider: str = "base"
@@ -54,14 +54,9 @@ class ChatProvider(ABC):
     def __init__(
         self,
         base_url: str,
-        api_key: str | None = None,
         default_headers: Mapping[str, str] | None = None,
     ) -> None:
-        if api_key is None:
-            api_key = get_config().api_key
-
         self.base_url = base_url.rstrip("/")
-        self.api_key = api_key
         self._default_headers: dict[str, str] = dict(default_headers or {})
 
     def build_url(self, path: str | None = None) -> str:
@@ -90,7 +85,7 @@ class ChatProvider(ABC):
         return headers
 
     def auth_headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        return {}
 
     def serialize_payload(self, payload: Mapping[str, Any]) -> bytes:
         return json.dumps(payload).encode("utf-8")
@@ -162,10 +157,68 @@ class ChatProvider(ABC):
                 payload = self.parse_response_body(response.read())
         except urllib_error.HTTPError as exc:
             if exc.code in (401, 403):
+                message = f"Could not authenticate with {self.provider}."
+                try:
+                    payload = self.parse_response_body(exc.read())
+                except Exception:
+                    payload = {}
+
+                if details := payload.get("error", {}).get("message", None):
+                    message = f"{message}\n\n{details}"
+
+                raise ChatProviderError(message, status_code=exc.code) from exc
+            raise
+
+        if not isinstance(payload, Mapping):
+            raise ChatProviderError("Invalid model list payload", payload=payload)
+
+        data = payload.get("data")
+        if not isinstance(data, list):
+            raise ChatProviderError("Invalid model list payload", payload=payload)
+
+        models: list[str] = []
+        for entry in data:
+            if isinstance(entry, Mapping) and (model_id := entry.get("id")):
+                models.append(str(model_id))
+
+        return models
+
+
+class APIKeyChatProvider(ChatProviderBase):
+    """Base class for providers that use API key authentication."""
+
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str | None = None,
+        default_headers: Mapping[str, str] | None = None,
+    ) -> None:
+        if api_key is None:
+            api_key = get_config().api_key
+
+        super().__init__(base_url, default_headers=default_headers)
+        self.api_key = api_key
+
+    def auth_headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+
+    def list_models(self) -> list[str]:
+        """Return available model identifiers exposed by the provider."""
+
+        request = urllib_request.Request(
+            self.build_url("/models"),
+            headers=self.prepare_headers(include_auth=True),
+            method="GET",
+        )
+        try:
+            with urllib_request.urlopen(request) as response:
+                payload = self.parse_response_body(response.read())
+        except urllib_error.HTTPError as exc:
+            if exc.code in (401, 403):
                 message = (
                     f"Could not authenticate with {self.provider}."
                     "The provided API key was either missing or invalid.\n"
-                    f"Set RAMALAMA_API_KEY or ramalama.provider.<provider_name>.api_key."
+                    f"Set RAMALAMA_API_KEY or ramalama.provider.{self.provider}.api_key."
                 )
                 try:
                     payload = self.parse_response_body(exc.read())
@@ -193,8 +246,12 @@ class ChatProvider(ABC):
         return models
 
 
+ChatProvider = ChatProviderBase
+
 __all__ = [
     "ChatProvider",
+    "ChatProviderBase",
+    "APIKeyChatProvider",
     "ChatProviderError",
     "ChatRequestOptions",
     "ChatStreamEvent",

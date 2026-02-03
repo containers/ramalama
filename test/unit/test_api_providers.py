@@ -5,6 +5,8 @@ import pytest
 
 from ramalama.chat_providers.anthropic import AnthropicChatProvider
 from ramalama.chat_providers.api_providers import get_chat_provider
+from ramalama.chat_providers.base import APIKeyChatProvider, ChatRequestOptions
+from ramalama.chat_providers.gemini import GeminiChatProvider
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
 from ramalama.cli import run_cli
 from ramalama.transports.api import APITransport
@@ -26,6 +28,14 @@ def test_get_chat_provider_returns_anthropic_provider():
     assert provider.provider == "anthropic"
 
 
+def test_get_chat_provider_returns_gemini_provider():
+    provider = get_chat_provider("gemini")
+
+    assert isinstance(provider, GeminiChatProvider)
+    assert provider.base_url == "https://generativelanguage.googleapis.com"
+    assert provider.provider == "gemini"
+
+
 def test_get_chat_provider_raises_for_unknown_scheme():
     with pytest.raises(ValueError):
         get_chat_provider("unknown_provider")
@@ -36,6 +46,23 @@ class TestRunCliWithAPITransport:
 
     provider = "anthropic"
     model = "claude-sonnet-4-20250514"
+
+    class DummyProvider(APIKeyChatProvider):
+        provider = "anthropic"
+        default_path = "/v1/messages"
+
+        def __init__(self, base_url: str, api_key: str | None = None, models: list[str] | None = None):
+            super().__init__(base_url, api_key=api_key)
+            self._models = models or []
+
+        def build_payload(self, messages, options: ChatRequestOptions):
+            return {}
+
+        def parse_stream_chunk(self, chunk: bytes):
+            return []
+
+        def list_models(self) -> list[str]:
+            return list(self._models)
 
     def mock_args(self) -> argparse.Namespace:
         args = argparse.Namespace(
@@ -52,11 +79,7 @@ class TestRunCliWithAPITransport:
         return args
 
     def mock_provider(self):
-        mock_provider = MagicMock()
-        mock_provider.provider = self.provider
-        mock_provider.api_key = "test-key"
-        mock_provider.list_models.return_value = [self.model]
-        return mock_provider
+        return self.DummyProvider("https://api.anthropic.com", api_key="test-key", models=[self.model])
 
     def mock_transport(self) -> APITransport:
         return APITransport(f"{self.provider}://{self.model}", self.mock_provider())

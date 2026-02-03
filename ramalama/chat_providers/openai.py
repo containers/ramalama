@@ -3,7 +3,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from functools import singledispatch
 from typing import Any, TypedDict
 
-from ramalama.chat_providers.base import ChatProvider, ChatRequestOptions, ChatStreamEvent
+from ramalama.chat_providers.base import APIKeyChatProvider, ChatRequestOptions, ChatStreamEvent
 from ramalama.chat_providers.errors import UnsupportedOpenaiMessageType
 from ramalama.chat_utils import (
     AssistantMessage,
@@ -77,7 +77,7 @@ class CompletionsPayload(TypedDict, total=False):
     stream: bool
 
 
-class OpenAICompletionsChatProvider(ChatProvider):
+class OpenAICompletionsChatProvider(APIKeyChatProvider):
     provider = "openai"
     default_path = "/chat/completions"
 
@@ -235,7 +235,7 @@ class ResponsesPayload(TypedDict, total=False):
     stream: bool
 
 
-class OpenAIResponsesChatProvider(ChatProvider):
+class OpenAIResponsesChatProvider(APIKeyChatProvider):
     provider = "openai"
     default_path: str = "/responses"
 
