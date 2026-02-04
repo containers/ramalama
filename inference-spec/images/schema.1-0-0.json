@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RamaLama schema for image compatibility matrix",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+      "description": "Schema version in semver format"
+    },
+    "default_image": {
+      "type": "string",
+      "description": "Default image to use when no match is found"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["image", "constraints"],
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "Container image URL (e.g., quay.io/ramalama/cuda)"
+          },
+          "priority": {
+            "type": "integer",
+            "default": 0,
+            "description": "Priority for image selection. Higher priority images are preferred when multiple match."
+          },
+          "constraints": {
+            "type": "object",
+            "properties": {
+              "architectures": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["x86_64", "aarch64"]
+                },
+                "description": "Supported CPU architectures"
+              },
+              "gpu_types": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["cuda", "hip", "intel", "asahi", "cann", "musa", "vulkan", "metal", "none"]
+                },
+                "description": "Supported GPU types"
+              },
+              "driver_version": {
+                "type": "string",
+                "description": "Driver version constraint (e.g., '>=12.4', '<13.0', '>=12.4,<13.0', '*')"
+              },
+              "runtimes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Supported inference runtimes (e.g., 'llama.cpp', 'vllm', 'mlx')"
+              },
+              "os_types": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["linux", "darwin", "windows"]
+                },
+                "description": "Supported operating systems"
+              }
+            },
+            "additionalProperties": false
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Version-specific image tags. Keys are driver versions (e.g., '12.4'), values are tags."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema_version", "default_image", "images"],
+  "additionalProperties": false
+}

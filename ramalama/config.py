@@ -123,6 +123,49 @@ def get_inference_schema_files() -> dict[str, Path]:
     return files
 
 
+def get_image_matrix_files() -> list[Path]:
+    """
+    Get paths to image compatibility matrix files.
+
+    Searches in order:
+    1. Development path (inference-spec/images/)
+    2. System config directories (/etc/ramalama/inference/images/)
+    3. User config directories (~/.config/ramalama/inference/images/)
+
+    Later paths take precedence over earlier ones.
+
+    Returns:
+        List of paths to images.yaml files that exist
+    """
+    files: list[Path] = []
+
+    for spec_dir in get_all_inference_spec_dirs("images"):
+        for file_extension in ["*.yaml", "*.yml"]:
+            for matrix_file in sorted(Path(spec_dir).glob(file_extension)):
+                if matrix_file.stem == "images":
+                    files.append(matrix_file)
+
+    return files
+
+
+def get_image_matrix_schema_files() -> dict[str, Path]:
+    """
+    Get paths to image matrix schema files.
+
+    Returns:
+        Dict mapping schema version to schema file path
+    """
+    files: dict[str, Path] = {}
+
+    for schema_dir in get_all_inference_spec_dirs("images"):
+        for spec_file in sorted(Path(schema_dir).glob("schema.*.json")):
+            file = Path(spec_file)
+            version = file.name.replace("schema.", "").replace(".json", "")
+            files[version] = file
+
+    return files
+
+
 def coerce_to_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value

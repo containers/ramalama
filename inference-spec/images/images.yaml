@@ -1,0 +1,203 @@
+# Image Compatibility Matrix for RamaLama
+#
+# This file defines the mapping between hardware configurations and container images.
+# Images are selected based on:
+#   - Architecture (x86_64, aarch64)
+#   - GPU type (cuda, hip, intel, asahi, cann, musa, vulkan, metal, none)
+#   - Driver version (with version constraints like >=12.4, <13.0)
+#   - Runtime (llama.cpp, vllm, mlx)
+#   - OS type (linux, darwin, windows)
+#
+# Version constraint syntax:
+#   >=12.4       - Greater than or equal to 12.4
+#   <13.0        - Less than 13.0
+#   ==12.4       - Exactly 12.4
+#   >=12.4,<13.0 - Range (AND logic)
+#   *            - Any version (default)
+
+schema_version: "1.0.0"
+default_image: "quay.io/ramalama/ramalama"
+
+images:
+  # =============================================================================
+  # CUDA (NVIDIA) Images
+  # =============================================================================
+
+  # CUDA for llama.cpp - supports CUDA 12.4+
+  - image: "quay.io/ramalama/cuda"
+    priority: 100
+    constraints:
+      architectures: ["x86_64"]
+      gpu_types: ["cuda"]
+      driver_version: ">=12.4"
+      runtimes: ["llama.cpp"]
+      os_types: ["linux"]
+    tags:
+      # CUDA 12.4-12.7 use the -12.4.1 suffix image
+      "12.4": "latest-12.4.1"
+      "12.5": "latest-12.4.1"
+      "12.6": "latest-12.4.1"
+      "12.7": "latest-12.4.1"
+      # CUDA 12.8+ use the standard image (no suffix needed)
+
+  # =============================================================================
+  # ROCm (AMD) Images
+  # =============================================================================
+
+  # ROCm for llama.cpp - x86_64 only (ROCm not available for ARM)
+  - image: "quay.io/ramalama/rocm"
+    priority: 100
+    constraints:
+      architectures: ["x86_64"]
+      gpu_types: ["hip"]
+      driver_version: "*"
+      runtimes: ["llama.cpp"]
+      os_types: ["linux"]
+
+  # =============================================================================
+  # Intel GPU Images
+  # =============================================================================
+
+  # Intel GPU for llama.cpp - supports Arc and integrated GPUs
+  - image: "quay.io/ramalama/intel-gpu"
+    priority: 100
+    constraints:
+      architectures: ["x86_64"]
+      gpu_types: ["intel"]
+      driver_version: "*"
+      runtimes: ["llama.cpp"]
+      os_types: ["linux"]
+
+  # =============================================================================
+  # Apple Silicon Images
+  # =============================================================================
+
+  # Asahi Linux (Apple Silicon on Linux)
+  - image: "quay.io/ramalama/asahi"
+    priority: 100
+    constraints:
+      architectures: ["aarch64"]
+      gpu_types: ["asahi"]
+      driver_version: "*"
+      runtimes: ["llama.cpp"]
+      os_types: ["linux"]
+
+  # =============================================================================
+  # Ascend (Huawei) NPU Images
+  # =============================================================================
+
+  # CANN for Ascend NPU
+  - image: "quay.io/ramalama/cann"
+    priority: 100
+    constraints:
+      architectures: ["x86_64", "aarch64"]
+      gpu_types: ["cann"]
+      driver_version: "*"
+      runtimes: ["llama.cpp"]
+      os_types: ["linux"]
+
+  # =============================================================================
+  # Mthreads (MUSA) Images
+  # =============================================================================
+
+  # MUSA for Mthreads GPUs
+  - image: "quay.io/ramalama/musa"
+    priority: 100
+    constraints:
+      architectures: ["x86_64"]
+      gpu_types: ["musa"]
+      driver_version: "*"
+      runtimes: ["llama.cpp"]
+      os_types: ["linux"]
+
+  # =============================================================================
+  # vLLM Runtime Images
+  # =============================================================================
+
+  # vLLM for CUDA GPUs
+  - image: "docker.io/vllm/vllm-openai"
+    priority: 50
+    constraints:
+      architectures: ["x86_64"]
+      gpu_types: ["cuda"]
+      driver_version: ">=12.0"
+      runtimes: ["vllm"]
+      os_types: ["linux"]
+
+  # vLLM for ROCm GPUs
+  - image: "docker.io/vllm/vllm-openai"
+    priority: 50
+    constraints:
+      architectures: ["x86_64"]
+      gpu_types: ["hip"]
+      driver_version: "*"
+      runtimes: ["vllm"]
+      os_types: ["linux"]
+
+  # vLLM fallback for other GPUs
+  - image: "docker.io/vllm/vllm-openai"
+    priority: 10
+    constraints:
+      architectures: ["x86_64", "aarch64"]
+      gpu_types: ["intel", "asahi", "cann", "musa", "none"]
+      driver_version: "*"
+      runtimes: ["vllm"]
+      os_types: ["linux"]
+
+  # =============================================================================
+  # RAG Images
+  # =============================================================================
+
+  # RAG with CUDA
+  - image: "quay.io/ramalama/cuda-rag"
+    priority: 100
+    constraints:
+      architectures: ["x86_64"]
+      gpu_types: ["cuda"]
+      driver_version: ">=12.4"
+      runtimes: ["llama.cpp-rag"]
+      os_types: ["linux"]
+
+  # RAG with ROCm
+  - image: "quay.io/ramalama/rocm-rag"
+    priority: 100
+    constraints:
+      architectures: ["x86_64"]
+      gpu_types: ["hip"]
+      driver_version: "*"
+      runtimes: ["llama.cpp-rag"]
+      os_types: ["linux"]
+
+  # RAG with Intel GPU
+  - image: "quay.io/ramalama/intel-gpu-rag"
+    priority: 100
+    constraints:
+      architectures: ["x86_64"]
+      gpu_types: ["intel"]
+      driver_version: "*"
+      runtimes: ["llama.cpp-rag"]
+      os_types: ["linux"]
+
+  # RAG fallback
+  - image: "quay.io/ramalama/ramalama-rag"
+    priority: 1
+    constraints:
+      architectures: ["x86_64", "aarch64"]
+      gpu_types: ["none", "vulkan", "asahi", "cann", "musa"]
+      driver_version: "*"
+      runtimes: ["llama.cpp-rag"]
+      os_types: ["linux"]
+
+  # =============================================================================
+  # Default CPU/Vulkan Fallback Images
+  # =============================================================================
+
+  # Default fallback for llama.cpp (CPU or Vulkan acceleration)
+  - image: "quay.io/ramalama/ramalama"
+    priority: 1
+    constraints:
+      architectures: ["x86_64", "aarch64"]
+      gpu_types: ["none", "vulkan"]
+      driver_version: "*"
+      runtimes: ["llama.cpp"]
+      os_types: ["linux", "darwin", "windows"]

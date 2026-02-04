@@ -691,13 +691,26 @@ AccelImageArgs: TypeAlias = (
 
 def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_key: str = "image") -> str:
     """
-    Selects and the appropriate image based on config, arguments, environment.
-    "images" is a mapping of environment variable names to image names. If not specified, the
-    mapping from default config will be used.
-    "conf_key" is the configuration key that holds the configured value of the selected image.
-    If not specified, it defaults to "image".
+    Selects the appropriate container image based on config, arguments, environment.
+
+    This function performs automatic hardware detection to select the best container image
+    for the current system. It considers CPU architecture, GPU type, and driver versions.
+
+    For the new compatibility matrix-based selection system, use:
+        from ramalama.image_selector import select_image
+        image = select_image(config, runtime="llama.cpp")
+
+    Args:
+        config: RamaLama configuration object
+        images: Optional mapping of environment variable names to image names.
+                If not specified, the mapping from default config will be used.
+        conf_key: Configuration key that holds the configured value of the selected image.
+                  Defaults to "image". Use "rag_image" for RAG operations.
+
+    Returns:
+        The fully qualified image name with tag (e.g., "quay.io/ramalama/cuda:0.17")
     """
-    # User provided an image via config
+    # User provided an image via config - honor explicit user choice
     if config.is_set(conf_key):
         return tagged_image(getattr(config, conf_key))
 
