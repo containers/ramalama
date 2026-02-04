@@ -73,10 +73,18 @@ const config: Config = {
         alt: 'RamaLama Logo',
         src: 'img/logo.svg',
         srcDark: 'img/logo.svg',
+        href: 'https://ramalama.ai',
+        target: '_self',
         width: 40,
         height: 40,
       },
       items: [
+        {
+          to: '/',
+          label: 'Home',
+          position: 'left',
+          activeBaseRegex: '^/docs/$',
+        },
         {
           type: 'docSidebar',
           sidebarId: 'docs',
