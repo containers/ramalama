@@ -83,7 +83,7 @@ const config: Config = {
           to: '/',
           label: 'Home',
           position: 'left',
-          activeBaseRegex: '^/docs/$',
+          activeBaseRegex: '^/docs/?$',
         },
         {
           type: 'docSidebar',
