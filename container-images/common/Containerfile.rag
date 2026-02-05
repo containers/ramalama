@@ -9,7 +9,8 @@ ENV VIRTUAL_ENV="/opt/venv" \
     UV_NO_MANAGED_PYTHON=1 \
     UV_TORCH_BACKEND=$TORCH_BACKEND \
     HF_HOME=/var/cache/huggingface \
-    FASTEMBED_CACHE_PATH=/var/cache/fastembed
+    FASTEMBED_CACHE_PATH=/var/cache/fastembed \
+    TORCHINDUCTOR_CACHE_DIR=/var/cache/torchinductor
 
 COPY container-images/scripts/doc2rag \
      container-images/scripts/rag_framework \
