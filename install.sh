@@ -32,18 +32,14 @@ dnf_install_podman() {
   fi
 }
 
-apt_install() {
-  apt install -y "$1"
-}
-
 apt_update_install() {
   if ! available podman; then
     $sudo apt update || true
 
     # only install docker if podman can't be
-    if ! $sudo apt_install podman; then
+    if ! $sudo apt install -y podman; then
       if ! available docker; then
-        $sudo apt_install docker || true
+        $sudo apt install -y docker || true
       fi
     fi
   fi
@@ -134,6 +130,17 @@ install_uv() {
   local install_uv_url="https://$host/containers/ramalama/s/install-uv.sh"
   curl -fsSL "$install_uv_url" | bash
   echo
+
+  # Add uv bin dir to PATH if not present
+  if [ -x "$HOME"/.local/bin/uv ]; then
+    case ":${PATH}:" in
+      *:${HOME}/.local/bin:*)
+        ;;
+      *)
+        export PATH="$HOME/.local/bin:$PATH"
+        ;;
+    esac
+  fi
 }
 
 main() {
