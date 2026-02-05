@@ -153,6 +153,9 @@ dnf_install_runtime_deps() {
         runtime_pkgs+=(vulkan-loader vulkan-tools "mesa-vulkan-drivers-$MESA_VULKAN_VERSION")
     fi
   fi
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
+      runtime_pkgs+=(gdb strace)
+  fi
 
   if [ ${#runtime_pkgs[@]} -eq 0 ]; then
       echo "No runtime dependency to install for '$containerfile'"
