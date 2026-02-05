@@ -268,6 +268,86 @@ images:
             assert len(matrix.entries) == 1
             assert matrix.entries[0].image == "quay.io/ramalama/cuda"
 
+    def test_load_empty_yaml_raises_valueerror(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write("")
+            f.flush()
+            with pytest.raises(ValueError, match="Expected top-level mapping"):
+                ImageCompatibilityMatrix.load(Path(f.name))
+
+    def test_load_yaml_list_raises_valueerror(self):
+        yaml_content = """
+- item1
+- item2
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(yaml_content)
+            f.flush()
+            with pytest.raises(ValueError, match="Expected top-level mapping"):
+                ImageCompatibilityMatrix.load(Path(f.name))
+
+    def test_select_image_with_tag_registry_port(self):
+        matrix = ImageCompatibilityMatrix(
+            schema_version="1.0.0",
+            default_image="localhost:5000/ramalama/ramalama",
+            entries=[
+                ImageEntry(
+                    image="localhost:5000/ramalama/cuda",
+                    constraints=ImageConstraints(gpu_types=["cuda"]),
+                    priority=100,
+                ),
+            ],
+        )
+        profile = HardwareProfile(
+            architecture="x86_64",
+            gpu=GpuInfo(gpu_type="cuda"),
+            os_type="linux",
+        )
+        result = matrix.select_image_with_tag(profile, "llama.cpp", default_tag="0.17")
+        assert result == "localhost:5000/ramalama/cuda:0.17"
+
+    def test_select_image_with_tag_fallback_tagging(self):
+        matrix = ImageCompatibilityMatrix(
+            schema_version="1.0.0",
+            default_image="quay.io/ramalama/ramalama",
+            entries=[],
+        )
+        profile = HardwareProfile(
+            architecture="x86_64",
+            gpu=GpuInfo(gpu_type="unknown_gpu"),
+            os_type="linux",
+        )
+        result = matrix.select_image_with_tag(profile, "llama.cpp", default_tag="0.17")
+        assert result == "quay.io/ramalama/ramalama:0.17"
+
+    def test_select_image_with_tag_pretagged_fallback_unchanged(self):
+        matrix = ImageCompatibilityMatrix(
+            schema_version="1.0.0",
+            default_image="quay.io/ramalama/ramalama:pretagged",
+            entries=[],
+        )
+        profile = HardwareProfile(
+            architecture="x86_64",
+            gpu=GpuInfo(gpu_type="unknown_gpu"),
+            os_type="linux",
+        )
+        result = matrix.select_image_with_tag(profile, "llama.cpp", default_tag="0.17")
+        assert result == "quay.io/ramalama/ramalama:pretagged"
+
+    def test_select_image_with_tag_digest_fallback_unchanged(self):
+        matrix = ImageCompatibilityMatrix(
+            schema_version="1.0.0",
+            default_image="quay.io/ramalama/ramalama@sha256:deadbeef",
+            entries=[],
+        )
+        profile = HardwareProfile(
+            architecture="x86_64",
+            gpu=GpuInfo(gpu_type="unknown_gpu"),
+            os_type="linux",
+        )
+        result = matrix.select_image_with_tag(profile, "llama.cpp", default_tag="0.17")
+        assert result == "quay.io/ramalama/ramalama@sha256:deadbeef"
+
 
 class TestDefaultMatrix:
     """Tests for the default compatibility matrix."""

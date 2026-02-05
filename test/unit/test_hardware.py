@@ -1,6 +1,5 @@
 """Unit tests for hardware module."""
 
-import platform
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,6 +7,7 @@ import pytest
 from ramalama.hardware import (
     GpuInfo,
     HardwareProfile,
+    _run_cmd,
     clear_detection_cache,
     detect_cuda_version,
     detect_gpu,
@@ -20,6 +20,31 @@ from ramalama.hardware import (
 from ramalama.version_constraints import Version
 
 
+class TestRunCmd:
+    """Tests for _run_cmd security features."""
+
+    def test_empty_command_raises(self):
+        with pytest.raises(ValueError, match="Empty command"):
+            _run_cmd([])
+
+    def test_disallowed_executable_raises(self):
+        with pytest.raises(ValueError, match="Executable not in allowlist"):
+            _run_cmd(["malicious-command", "--flag"])
+
+    @patch("subprocess.run")
+    def test_allowed_executable_nvidia_smi(self, mock_run):
+        mock_run.return_value = MagicMock(stdout="output")
+        _run_cmd(["nvidia-smi"])
+        mock_run.assert_called_once()
+        assert mock_run.call_args[1]["shell"] is False
+
+    @patch("subprocess.run")
+    def test_allowed_executable_rocm_smi(self, mock_run):
+        mock_run.return_value = MagicMock(stdout="output")
+        _run_cmd(["rocm-smi", "--showversion"])
+        mock_run.assert_called_once()
+
+
 class TestArchitectureDetection:
     """Tests for architecture detection."""
 
@@ -30,6 +55,8 @@ class TestArchitectureDetection:
             ("amd64", "x86_64"),
             ("arm64", "aarch64"),
             ("aarch64", "aarch64"),
+            ("ARM64", "aarch64"),
+            ("AARCH64", "aarch64"),
         ],
     )
     def test_get_architecture(self, machine: str, expected: str):
@@ -43,10 +70,17 @@ class TestArchitectureDetection:
             ("aarch64", True),
             ("x86_64", False),
             ("amd64", False),
+            ("AARCH64", True),
+            ("ARM64", True),
         ],
     )
     def test_is_arm(self, machine: str, expected: bool):
-        with patch("platform.machine", return_value=machine):
+        with patch("ramalama.hardware.get_architecture") as mock_arch:
+            machine_lower = machine.lower()
+            if machine_lower in ("arm64", "aarch64"):
+                mock_arch.return_value = "aarch64"
+            else:
+                mock_arch.return_value = "x86_64"
             assert is_arm() == expected
 
 

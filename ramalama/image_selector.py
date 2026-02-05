@@ -5,12 +5,30 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
-from ramalama.config import DEFAULT_IMAGE, get_image_matrix_files
-from ramalama.hardware import HardwareProfile, detect_hardware_profile
+from ramalama.config import get_image_matrix_files
+from ramalama.hardware import detect_hardware_profile
 from ramalama.image_compat import ImageCompatibilityMatrix, create_default_matrix
 
 if TYPE_CHECKING:
     from ramalama.config import Config
+
+
+def image_has_tag_or_digest(image: str) -> bool:
+    """
+    Check if an image reference already has a tag or digest.
+
+    Handles registry URLs with ports (e.g., localhost:5000/repo/image).
+
+    Args:
+        image: Image reference to check
+
+    Returns:
+        True if image has a tag or digest, False otherwise
+    """
+    if "@" in image:
+        return True
+    last_segment = image.split("/")[-1]
+    return ":" in last_segment
 
 
 @lru_cache(maxsize=1)
@@ -122,6 +140,8 @@ def _tag_image(image: str, default_tag: str) -> str:
     """
     Add version tag to image if not already tagged.
 
+    Handles registry URLs with ports (e.g., localhost:5000/repo/image).
+
     Args:
         image: Image URL (may or may not have tag)
         default_tag: Tag to use if image is untagged
@@ -129,8 +149,7 @@ def _tag_image(image: str, default_tag: str) -> str:
     Returns:
         Image URL with tag
     """
-    # Already has tag (colon in name) or digest (@ symbol)
-    if ":" in image or "@" in image:
+    if image_has_tag_or_digest(image):
         return image
     return f"{image}:{default_tag}"
 

@@ -31,26 +31,19 @@ images:
       gpu_types: ["cuda"]
       driver_version: ">=12.4"
       runtimes: ["llama.cpp"]
-      os_types: ["linux"]
-    tags:
-      # CUDA 12.4-12.7 use the -12.4.1 suffix image
-      "12.4": "latest-12.4.1"
-      "12.5": "latest-12.4.1"
-      "12.6": "latest-12.4.1"
-      "12.7": "latest-12.4.1"
-      # CUDA 12.8+ use the standard image (no suffix needed)
+      os_types: ["linux", "windows"]
 
   # =============================================================================
   # ROCm (AMD) Images
   # =============================================================================
 
-  # ROCm for llama.cpp - x86_64 only (ROCm not available for ARM)
+  # ROCm for llama.cpp - x86_64 only, requires ROCm to be detected
   - image: "quay.io/ramalama/rocm"
     priority: 100
     constraints:
       architectures: ["x86_64"]
       gpu_types: ["hip"]
-      driver_version: "*"
+      driver_version: ">=5.0"
       runtimes: ["llama.cpp"]
       os_types: ["linux"]
 
@@ -130,7 +123,7 @@ images:
     constraints:
       architectures: ["x86_64"]
       gpu_types: ["hip"]
-      driver_version: "*"
+      driver_version: ">=5.0"
       runtimes: ["vllm"]
       os_types: ["linux"]
 
@@ -164,7 +157,7 @@ images:
     constraints:
       architectures: ["x86_64"]
       gpu_types: ["hip"]
-      driver_version: "*"
+      driver_version: ">=5.0"
       runtimes: ["llama.cpp-rag"]
       os_types: ["linux"]
 

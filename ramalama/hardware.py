@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import glob
-import os
 import platform
 import re
 import subprocess
@@ -22,8 +21,13 @@ Architecture: TypeAlias = Literal["x86_64", "aarch64"]
 GpuType: TypeAlias = Literal["cuda", "hip", "intel", "asahi", "cann", "musa", "vulkan", "metal", "none"]
 OsType: TypeAlias = Literal["linux", "darwin", "windows"]
 
-# Minimum VRAM threshold for AMD GPU detection (1 GiB)
-MIN_VRAM_BYTES = 1073741824
+_ALLOWED_EXECUTABLES = frozenset({
+    "nvidia-smi",
+    "rocm-smi",
+    "rocminfo",
+    "npu-smi",
+    "mthreads-gmi",
+})
 
 
 @dataclass
@@ -76,17 +80,23 @@ def get_os_type() -> OsType:
 
 def is_arm() -> bool:
     """Check if the system is ARM architecture."""
-    return platform.machine() in ('arm64', 'aarch64')
+    return get_architecture() == "aarch64"
 
 
 def _run_cmd(args: list[str], encoding: str = "utf-8") -> subprocess.CompletedProcess[str]:
     """Run a command and return the result."""
+    if not args:
+        raise ValueError("Empty command")
+    executable = args[0]
+    if executable not in _ALLOWED_EXECUTABLES:
+        raise ValueError(f"Executable not in allowlist: {executable}")
     return subprocess.run(
         args,
         capture_output=True,
         text=True,
         encoding=encoding,
         check=True,
+        shell=False,
     )
 
 
@@ -221,23 +231,24 @@ def _detect_amd_gpus() -> tuple[int, int, int]:
                     # Count public and private framebuffer memory as VRAM
                     if bank_props.get('heap_type', 0) in [amdkfd.HEAP_TYPE_FB_PUBLIC, amdkfd.HEAP_TYPE_FB_PRIVATE]:
                         total_memory += int(bank_props.get('size_in_bytes', 0))
-                except (OSError, KeyError):
+                except (OSError, KeyError, ValueError):
                     pass
-    except Exception:
+    except (OSError, KeyError, ValueError):
         pass
 
     return count, total_memory, best_gfx_version
 
 
 def _detect_amd() -> GpuInfo | None:
-    """Detect AMD GPU and ROCm version."""
+    """Detect AMD GPU with ROCm support."""
     if is_arm():
-        # ROCm is not available for arm64
         return None
 
     count, memory, gfx_version = _detect_amd_gpus()
     if count > 0:
         rocm_version = detect_rocm_version()
+        if rocm_version is None:
+            return None
         return GpuInfo(
             gpu_type="hip",
             driver_version=rocm_version,

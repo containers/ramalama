@@ -9,7 +9,19 @@ from typing import Any
 import yaml
 
 from ramalama.hardware import Architecture, GpuType, HardwareProfile, OsType
-from ramalama.version_constraints import Version, VersionRange
+from ramalama.version_constraints import VersionRange
+
+
+def _image_has_tag_or_digest(image: str) -> bool:
+    """
+    Check if an image reference already has a tag or digest.
+
+    Handles registry URLs with ports (e.g., localhost:5000/repo/image).
+    """
+    if "@" in image:
+        return True
+    last_segment = image.split("/")[-1]
+    return ":" in last_segment
 
 
 @dataclass
@@ -152,9 +164,14 @@ class ImageCompatibilityMatrix:
         Raises:
             FileNotFoundError: If file doesn't exist
             yaml.YAMLError: If YAML is invalid
+            ValueError: If YAML content is not a mapping
         """
         with open(path) as f:
             data = yaml.safe_load(f)
+        if not isinstance(data, dict):
+            raise ValueError(
+                f"Expected top-level mapping in {path}, got {type(data).__name__}"
+            )
         return cls.from_dict(data)
 
     def select_image(
@@ -215,11 +232,16 @@ class ImageCompatibilityMatrix:
 
         if not matching:
             image = fallback or self.default_image
-            return f"{image}:{default_tag}" if ":" not in image else image
+            if _image_has_tag_or_digest(image):
+                return image
+            return f"{image}:{default_tag}"
 
         matching.sort(key=lambda e: e.priority, reverse=True)
         best = matching[0]
         image = best.image
+
+        if _image_has_tag_or_digest(image):
+            return image
 
         # Check for version-specific tags based on driver version
         if profile.gpu.driver_version and best.tags:
@@ -228,18 +250,15 @@ class ImageCompatibilityMatrix:
             version_key = f"{version.major}.{version.minor}"
             if version_key in best.tags:
                 tag = best.tags[version_key]
-                return f"{image}:{tag}" if ":" not in image else image
+                return f"{image}:{tag}"
 
             # Try major version only
             major_key = str(version.major)
             if major_key in best.tags:
                 tag = best.tags[major_key]
-                return f"{image}:{tag}" if ":" not in image else image
+                return f"{image}:{tag}"
 
-        # No version-specific tag found, use default
-        if ":" not in image:
-            return f"{image}:{default_tag}"
-        return image
+        return f"{image}:{default_tag}"
 
     def get_matching_entries(
         self,
@@ -286,10 +305,8 @@ def create_default_matrix() -> ImageCompatibilityMatrix:
                     gpu_types=["cuda"],
                     driver_version=VersionRange.from_string(">=12.4"),
                     runtimes=["llama.cpp"],
-                    os_types=["linux"],
+                    os_types=["linux", "windows"],
                 ),
-                tags={"12.4": "latest-12.4.1", "12.5": "latest-12.4.1",
-                      "12.6": "latest-12.4.1", "12.7": "latest-12.4.1"},
             ),
             # ROCm images
             ImageEntry(
@@ -298,7 +315,7 @@ def create_default_matrix() -> ImageCompatibilityMatrix:
                 constraints=ImageConstraints(
                     architectures=["x86_64"],
                     gpu_types=["hip"],
-                    driver_version=VersionRange.from_string("*"),
+                    driver_version=VersionRange.from_string(">=5.0"),
                     runtimes=["llama.cpp"],
                     os_types=["linux"],
                 ),
@@ -366,6 +383,7 @@ def create_default_matrix() -> ImageCompatibilityMatrix:
                 constraints=ImageConstraints(
                     architectures=["x86_64"],
                     gpu_types=["hip"],
+                    driver_version=VersionRange.from_string(">=5.0"),
                     runtimes=["vllm"],
                     os_types=["linux"],
                 ),
