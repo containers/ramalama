@@ -162,6 +162,10 @@ dnf_install_runtime_deps() {
     fi
   fi
 
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
+      runtime_pkgs+=(gdb strace)
+  fi
+
   if [ ${#runtime_pkgs[@]} -gt 0 ]; then
     local enablerepo_flag=""
     [ "$containerfile" = "openvino" ] && enablerepo_flag="--enablerepo=updates-testing"
