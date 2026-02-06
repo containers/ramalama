@@ -275,6 +275,9 @@ def test_rag(container_engine):
             [
                 "ramalama",
                 "rag",
+                "--image",
+                "quay.io/redhat-user-workloads/ramalama-tenant/"
+                "ramalama-rag:on-pr-8767ff458ec2aad150dbe532d75aad4def5257f4",
                 "README.md",
                 "https://github.com/containers/ramalama/blob/main/README.md",
                 "https://github.com/containers/podman/blob/main/README.md",
