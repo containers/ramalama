@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal, TypedDict, cast
 
 from ramalama.common import SemVer, engine_version
-from ramalama.config import CONFIG, SUPPORTED_ENGINES
+from ramalama.config import SUPPORTED_ENGINES, get_config
 from ramalama.model_store.store import ModelStore
 from ramalama.oci_tools import OciRef
 from ramalama.transports.oci import resolver as oci_resolver
@@ -60,7 +60,7 @@ class OCIStrategyFactory:
         engine: SUPPORTED_ENGINES | Path | str | None,
         model_store: ModelStore,
     ):
-        if (engine := engine or CONFIG.engine) is None:
+        if (engine := engine or get_config().engine) is None:
             raise Exception("OCIStrategyFactory require a valid engine")
 
         self.engine = str(engine)
