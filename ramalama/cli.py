@@ -710,10 +710,8 @@ def info_cli(args: DefaultArgsType) -> None:
             config_source = shortnames.config_sources.get(name)
             source = shortnames.shortnames[name]
 
-            print(f"{name}")
-            print(f"   Source: {source}")
-            if config_source:
-                print(f"   Config: {config_source}")
+            message = f"{name} = {source} ({config_source})"
+            print(message)
         return
 
     info: dict[str, Any] = {
