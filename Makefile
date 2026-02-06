@@ -9,10 +9,11 @@ DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 MYPIP ?= pip
 IMAGE ?= ramalama
-PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-EXCLUDE_DIRS := .venv venv .tox build
-EXCLUDE_OPTS := $(addprefix --exclude-dir=,$(EXCLUDE_DIRS))
-PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" $(EXCLUDE_OPTS) $(PROJECT_DIR) || true)
+PROJECT_DIR ?= $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+EXCLUDE_DIRS ?= .venv venv .tox build
+EXCLUDE_OPTS ?= $(addprefix --exclude-dir=,$(EXCLUDE_DIRS))
+PYTHON_SCRIPTS ?= $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" $(EXCLUDE_OPTS) $(PROJECT_DIR) || true)
+RUFF_TARGETS ?= ramalama scripts test bin/ramalama
 E2E_IMAGE ?= localhost/e2e:latest
 
 default: help
@@ -111,28 +112,23 @@ docs-manpages:
 docsite-docs:
 	$(MAKE) -C docsite convert
 
-ifeq (compile,$(findstring compile,$(INSIDE_EMACS)))
-FLAKE8_ARGS += --format=pylint
-endif
-
 .PHONY: lint
 lint:
 ifneq (,$(wildcard /usr/bin/python3))
 	${PYTHON} -m compileall -q -x '\.venv' .
 endif
-	! grep -ri $(EXCLUDE_OPTS) "#\!/usr/bin/python3" .
-	flake8 $(FLAKE8_ARGS) $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	! git grep -n -- '#!/usr/bin/python3' -- ':!Makefile'
+	ruff check $(RUFF_TARGETS)
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:
-	black --check --diff $(PROJECT_DIR) $(PYTHON_SCRIPTS)
-	isort --check --diff $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	ruff format --check $(RUFF_TARGETS)
 
 .PHONY: format
 format:
-	black $(PROJECT_DIR) $(PYTHON_SCRIPTS)
-	isort $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	ruff format $(RUFF_TARGETS)
+	ruff check --fix $(RUFF_TARGETS)
 
 .PHONY: codespell
 codespell:
@@ -155,7 +151,7 @@ type-check:
 	mypy $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test $(PROJECT_DIR)
 
 .PHONY: validate
-validate: codespell lint check-format man-check type-check
+validate: codespell lint man-check type-check
 
 .PHONY: pypi-build
 pypi-build:   clean
