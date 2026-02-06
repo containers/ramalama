@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:43
+FROM quay.io/fedora/fedora:45
 
 ENV HOME=/tmp \
     XDG_RUNTIME_DIR=/tmp \

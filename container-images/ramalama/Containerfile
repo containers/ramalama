@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:43 AS builder
+FROM quay.io/fedora/fedora:45 AS builder
 
 COPY container-images/scripts/build_llama.sh \
      container-images/scripts/lib.sh \
@@ -6,7 +6,7 @@ COPY container-images/scripts/build_llama.sh \
 WORKDIR /src/
 RUN ./build_llama.sh ramalama
 
-FROM quay.io/fedora/fedora:43
+FROM quay.io/fedora/fedora:45
 
 RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install \
     cp -a /tmp/install/bin/ /usr/ && \

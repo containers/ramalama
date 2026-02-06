@@ -1,4 +1,4 @@
-ARG PARENT=quay.io/fedora/fedora:43
+ARG PARENT=quay.io/fedora/fedora:45
 FROM $PARENT
 
 ARG TORCH_BACKEND=cpu

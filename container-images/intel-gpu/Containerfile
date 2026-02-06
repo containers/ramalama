@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:43 as builder
+FROM quay.io/fedora/fedora:45 as builder
 
 COPY container-images/intel-gpu/oneAPI.repo /etc/yum.repos.d/
 COPY container-images/scripts/build_llama.sh \
@@ -7,7 +7,7 @@ COPY container-images/scripts/build_llama.sh \
 WORKDIR /src/
 RUN ./build_llama.sh intel-gpu
 
-FROM quay.io/fedora/fedora:43
+FROM quay.io/fedora/fedora:45
 
 RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install \
     cp -a /tmp/install/bin/ /usr/ && \
