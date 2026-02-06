@@ -2,9 +2,9 @@ name: ci
 
 on:
   pull_request:
-  push:
     branches:
       - main
+  push:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,6 +12,10 @@ concurrency:
 
 jobs:
   lint:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.event.push.repository_owner != 'containers'
     name: Lint Code
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -42,6 +46,10 @@ jobs:
           uv run -- make type-check
 
   unit-test:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.event.push.repository_owner != 'containers'
     strategy:
       fail-fast: false
       matrix:
@@ -65,6 +73,10 @@ jobs:
           uv run -- make unit-tests
 
   e2e-tests:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.event.push.repository_owner != 'containers'
     needs:
       - lint
       - unit-test
@@ -123,6 +135,10 @@ jobs:
            make e2e-tests
 
   e2e-tests-nocontainer:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.event.push.repository_owner != 'containers'
     needs:
       - lint
       - unit-test
@@ -179,6 +195,10 @@ jobs:
            make e2e-tests-nocontainer
 
   e2e-tests-docker:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.event.push.repository_owner != 'containers'
     needs:
       - lint
       - unit-test
@@ -255,6 +275,10 @@ jobs:
            make e2e-tests-docker
 
   e2e-tests-macos:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.event.push.repository_owner != 'containers'
     needs:
       - lint
       - unit-test
@@ -296,6 +320,10 @@ jobs:
           make e2e-tests-nocontainer
 
   e2e-tests-windows:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.event.push.repository_owner != 'containers'
     needs:
       - lint
       - unit-test
