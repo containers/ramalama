@@ -24,12 +24,12 @@ DEFAULT_PROVIDERS = {
     "openai": lambda: OpenAIResponsesChatProvider(
         base_url="https://api.openai.com/v1", api_key=get_provider_api_key("openai")
     ),
-    "ramalamalabs": lambda: RamalamaLabsChatProvider(
-        base_url="https://gateway.ramalama.com", api_key=get_provider_api_key("ramalamalabs")
+    "ramalamalabs": (
+        rl_provider := lambda: RamalamaLabsChatProvider(
+            base_url="https://gateway.ramalama.com", api_key=get_provider_api_key("ramalamalabs")
+        )
     ),
-    "rl": lambda: RamalamaLabsChatProvider(
-        base_url="https://gateway.ramalama.com", api_key=get_provider_api_key("ramalamalabs")
-    ),
+    "rl": rl_provider,
 }
 
 
