@@ -44,7 +44,7 @@ class ListModelResponse(TypedDict):
     size: int
 
 
-def list_artifacts(args: EngineArgType) -> list[ListModelResponse]:
+def list_artifacts(args: EngineArgType):
     if args.engine is None:
         raise ValueError("Cannot list artifacts without a provided engine like podman or docker.")
 
@@ -184,7 +184,6 @@ def list_images(args: EngineArgType) -> list[ListModelResponse]:
         "--format",
         formatLine,
     ]
-
     if conman == "docker":
         conman_args.insert(2, "--no-trunc")
 
