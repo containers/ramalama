@@ -2,10 +2,10 @@ from collections.abc import Callable
 
 from ramalama.chat_providers.base import ChatProvider
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 
 PROVIDER_API_KEY_RESOLVERS: dict[str, Callable[[], str | None]] = {
-    "openai": lambda: CONFIG.provider.openai.api_key,
+    "openai": lambda: get_config().provider.openai.api_key,
 }
 
 
@@ -14,7 +14,7 @@ def get_provider_api_key(scheme: str) -> str | None:
 
     if resolver := PROVIDER_API_KEY_RESOLVERS.get(scheme):
         return resolver()
-    return CONFIG.api_key
+    return get_config().api_key
 
 
 DEFAULT_PROVIDERS = {

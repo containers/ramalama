@@ -8,17 +8,14 @@ from typing import Any, Literal, Mapping, TypeAlias
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import apple_vm, available
+from ramalama.config_types import SUPPORTED_ENGINES, SUPPORTED_RUNTIMES
 from ramalama.layered_config import LayeredMixin
 from ramalama.log_levels import LogLevel, coerce_log_level
 from ramalama.toml_parser import TOMLParser
 
-PathStr: TypeAlias = str
 DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
 DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
 DEFAULT_RAG_IMAGE: str = "quay.io/ramalama/ramalama-rag"
-SUPPORTED_ENGINES: TypeAlias = Literal["podman", "docker"]
-SUPPORTED_RUNTIMES: TypeAlias = Literal["llama.cpp", "vllm", "mlx"]
-COLOR_OPTIONS: TypeAlias = Literal["auto", "always", "never"]
 GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q2_K",
     "Q3_K_S",
@@ -290,6 +287,11 @@ class BaseConfig:
         self.pull = normalize_pull_arg(self.pull, self.engine)
         self.log_level = coerce_log_level(self.log_level) if self.log_level is not None else self.log_level
 
+    @property
+    def default_port_range(self) -> tuple[int, int]:
+        port = int(self.port)
+        return (port, port + 100)
+
 
 class Config(LayeredMixin, BaseConfig):
     """
@@ -394,6 +396,6 @@ def default_config(env: Mapping[str, str] | None = None) -> Config:
     return Config(load_env_config(env), load_file_config())
 
 
-CONFIG = default_config()
-DEFAULT_PORT: int = int(CONFIG.port)
-DEFAULT_PORT_RANGE: tuple[int, int] = (DEFAULT_PORT, DEFAULT_PORT + 100)
+@lru_cache(maxsize=1)
+def get_config() -> Config:
+    return default_config()

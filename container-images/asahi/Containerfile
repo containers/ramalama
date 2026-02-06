@@ -1,9 +1,15 @@
-FROM quay.io/fedora/fedora:43
+FROM quay.io/fedora/fedora:43 AS builder
 
-ENV ASAHI_VISIBLE_DEVICES 1
 COPY container-images/scripts/build_llama.sh \
      container-images/scripts/lib.sh \
      /src/
 WORKDIR /src/
 RUN ./build_llama.sh asahi
-WORKDIR /
+
+FROM quay.io/fedora/fedora:43
+
+RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install \
+    cp -a /tmp/install/bin/ /usr/ && \
+    cp -a /tmp/install/lib64/*.so* /usr/lib64/
+RUN --mount=type=bind,target=/src \
+    /src/container-images/scripts/build_llama.sh asahi runtime

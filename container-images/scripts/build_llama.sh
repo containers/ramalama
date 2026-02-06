@@ -1,6 +1,7 @@
 #!/bin/bash
 
-DEFAULT_LLAMA_CPP_COMMIT="091a46cb8d43c0e662d04b80a3d11320d25b7d49" # b7815
+DEFAULT_LLAMA_CPP_COMMIT="b45ef2702c262998d5db9887cd3c82f04761237a" # b7872
+MESA_VULKAN_VERSION=25.2.3-101.fc43
 
 dnf_install_intel_gpu() {
   local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel"
@@ -54,9 +55,9 @@ dnf_install_s390_ppc64le() {
 dnf_install_mesa() {
   if [ "${ID}" = "fedora" ]; then
     dnf copr enable -y slp/mesa-libkrun-vulkan
-    dnf install -y mesa-vulkan-drivers-25.2.3-101.fc43 virglrenderer \
+    dnf install -y mesa-vulkan-drivers-$MESA_VULKAN_VERSION virglrenderer \
       "${vulkan_rpms[@]}"
-    dnf versionlock add mesa-vulkan-drivers-25.2.3-101.fc43
+    dnf versionlock add mesa-vulkan-drivers-$MESA_VULKAN_VERSION
   elif [ "${ID}" = "openEuler" ]; then
     dnf install -y mesa-vulkan-drivers virglrenderer "${vulkan_rpms[@]}"
   else # virglrenderer not available on RHEL or EPEL
@@ -70,7 +71,7 @@ dnf_install() {
   local rpm_exclude_list="selinux-policy,container-selinux"
   local rpm_list=("python3-dnf-plugin-versionlock"
     "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
-    "dnf-plugins-core" "gawk")
+    "dnf-plugins-core" "gawk" "openssl-devel")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools"
     "spirv-tools" "glslc" "glslang")
   if is_rhel_based; then
@@ -104,13 +105,47 @@ dnf_install() {
   dnf -y clean all
 }
 
+dnf_install_runtime_deps() {
+  local runtime_pkgs=()
+  if [ "$containerfile" = "ramalama" ]; then
+    # install python3 in the ramalama container to support a non-standard use-case
+    runtime_pkgs+=(python3 python3-pip)
+    if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
+      dnf copr enable -y slp/mesa-libkrun-vulkan
+      runtime_pkgs+=(vulkan-loader vulkan-tools "mesa-vulkan-drivers-$MESA_VULKAN_VERSION")
+    else
+      runtime_pkgs+=(openblas)
+    fi
+  elif [[ "$containerfile" = rocm* ]]; then
+    runtime_pkgs+=(hipblas rocblas rocm-hip rocm-runtime rocsolver)
+  elif [ "$containerfile" = "asahi" ]; then
+    dnf copr enable -y @asahi/fedora-remix-branding
+    dnf install -y asahi-repos
+    runtime_pkgs+=(vulkan-loader vulkan-tools mesa-vulkan-drivers)
+  elif [ "$containerfile" = "cuda" ]; then
+    # install python3.12 in the cuda container to support a non-standard use-case
+    runtime_pkgs+=(python3.12 python3.12-pip)
+    ln -sf python3.12 /usr/bin/python3
+  elif [ "$containerfile" = "intel-gpu" ]; then
+    runtime_pkgs+=(
+      clinfo lspci procps-ng
+      intel-compute-runtime intel-level-zero
+      intel-oneapi-runtime-compilers intel-oneapi-runtime-dnnl intel-oneapi-runtime-mkl
+      intel-oneapi-mkl-core intel-oneapi-mkl-sycl-blas intel-oneapi-mkl-sycl-dft
+      oneapi-level-zero
+    )
+  fi
+  dnf install -y --setopt=install_weak_deps=false "${runtime_pkgs[@]}"
+  dnf -y clean all
+}
+
 cmake_check_warnings() {
   awk -v rc=0 '/CMake Warning:/ { rc=1 } 1; END {exit rc}'
 }
 
 setup_build_env() {
   # external scripts may reference unbound variables
-  set +u
+  set +ux
   if [ "$containerfile" = "cann" ]; then
     # source build env
     cann_in_sys_path=/usr/local/Ascend/ascend-toolkit
@@ -133,7 +168,7 @@ setup_build_env() {
     # shellcheck disable=SC1091
     source /opt/intel/oneapi/setvars.sh
   fi
-  set -u
+  set -ux
 }
 
 cmake_steps() {
@@ -152,17 +187,9 @@ cmake_steps() {
   )
 }
 
-set_install_prefix() {
-  if [ "$containerfile" = "cuda" ] || [ "$containerfile" = "intel-gpu" ] || [ "$containerfile" = "cann" ] || [ "$containerfile" = "musa" ] || [ "$containerfile" = "rocm" ]; then
-    echo "/tmp/install"
-  else
-    echo "/usr"
-  fi
-}
-
 configure_common_flags() {
   common_flags=(
-      "-DGGML_CCACHE=OFF" "-DGGML_RPC=ON" "-DCMAKE_INSTALL_PREFIX=${install_prefix}"
+      "-DGGML_CCACHE=OFF" "-DGGML_RPC=ON" "-DCMAKE_INSTALL_PREFIX=/tmp/install"
       "-DLLAMA_BUILD_TESTS=OFF" "-DLLAMA_BUILD_EXAMPLES=OFF" "-DGGML_BUILD_TESTS=OFF" "-DGGML_BUILD_EXAMPLES=OFF"
   )
   if [ "$containerfile" != "cann" ]; then
@@ -235,10 +262,14 @@ main() {
   source "$(dirname "$0")/lib.sh"
 
   local containerfile=${1-""}
-  local install_prefix
-  install_prefix=$(set_install_prefix)
   local uname_m
   uname_m="$(uname -m)"
+
+  if [ "${2-""}" == "runtime" ]; then
+      dnf_install_runtime_deps
+      exit
+  fi
+
   local common_flags
   configure_common_flags
 

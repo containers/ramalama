@@ -8,7 +8,7 @@ import urllib.request
 
 import ramalama.console as console
 from ramalama.common import perror
-from ramalama.config import CONFIG
+from ramalama.config import get_config
 from ramalama.file import File
 from ramalama.logger import logger
 from ramalama.proxy_support import setup_proxy_support
@@ -182,7 +182,7 @@ def download_file(url: str, dest_path: str, headers: dict[str, str] | None = Non
         show_progress = False
 
     http_client = HttpClient()
-    max_retries = CONFIG.http_client.max_retries
+    max_retries = get_config().http_client.max_retries
     retries = 0
 
     while retries <= max_retries:
@@ -231,5 +231,5 @@ def download_file(url: str, dest_path: str, headers: dict[str, str] | None = Non
             raise ConnectionError(error_message)
 
         time.sleep(
-            min(CONFIG.http_client.max_retry_delay, 2 ** (retries - 1) * 0.1)
+            min(get_config().http_client.max_retry_delay, 2 ** (retries - 1) * 0.1)
         )  # Exponential backoff (0.1s, 0.2s, 0.4s... max_retry_delay)
