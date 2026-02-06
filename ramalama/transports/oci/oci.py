@@ -128,12 +128,10 @@ class OCI(Transport):
         else:
             parent = "scratch"
 
-        footer = dedent(
-            f"""
+        footer = dedent(f"""
             FROM {parent}
             COPY --from=build /data/ /
-            """
-        ).strip()
+            """).strip()
         full_cfile = cfile + "\n\n" + footer + "\n"
         if args.debug:
             perror(f"Containerfile: \n{full_cfile}")
