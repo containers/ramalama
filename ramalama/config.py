@@ -165,8 +165,36 @@ class OpenaiProviderConfig:
 
 
 @dataclass
+class AnthropicProviderConfig:
+    api_key: str | None = None
+    default_max_tokens: int = 4096
+    anthropic_version: str = "2023-06-01"
+
+    def __post_init__(self):
+        self.default_max_tokens = int(self.default_max_tokens)
+
+
+@dataclass
+class GeminiProviderConfig:
+    api_key: str | None = None
+
+
+@dataclass
+class BedrockProviderConfig:
+    region: str | None = None
+    endpoint_url: str | None = None
+    control_plane_url: str | None = None
+    access_key_id: str | None = None
+    secret_access_key: str | None = None
+    session_token: str | None = None
+
+
+@dataclass
 class ProviderConfig:
     openai: OpenaiProviderConfig = field(default_factory=OpenaiProviderConfig)
+    anthropic: AnthropicProviderConfig = field(default_factory=AnthropicProviderConfig)
+    gemini: GeminiProviderConfig = field(default_factory=GeminiProviderConfig)
+    bedrock: BedrockProviderConfig = field(default_factory=BedrockProviderConfig)
 
 
 @dataclass
