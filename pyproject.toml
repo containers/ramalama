@@ -62,7 +62,7 @@ dev = [
     "black~=26.1",
     "codespell~=2.0",
     "flake8~=7.0",
-    "huggingface_hub~=1.4.0",
+    "huggingface_hub~=1.3.1",
     "hypothesis>=6.135.26",
     "isort~=7.0",
     "pytest~=9.0",
@@ -169,7 +169,7 @@ lcov.output = "coverage/coverage.lcov"
 [tool.pytest.ini_options]
 testpaths = ["test"]
 markers = ["e2e", "distro_integration"]
-addopts = "-m 'not e2e' --color=yes --durations=10"
+addopts = "-m 'not e2e' --color=yes"
 
 [tool.setuptools.packages.find]
 include = ["ramalama", "ramalama.*"]
@@ -219,7 +219,6 @@ commands = [
     "pytest",
     "-m", "e2e",
     "-vvv",
-    "--durations=10",
     "--basetemp={envtmpdir}",
     "--tb=short",
     { replace = "posargs", extend = true },

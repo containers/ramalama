@@ -31,12 +31,10 @@ install_pkgs() {
 }
 
 install_requirements() {
-    local script_dir
-    script_dir="$(dirname "$0")"
-    if [ -f "$script_dir/../common/requirements-rag-$backend-$(uname -m).txt" ]; then
-        uv pip install -r "$script_dir/../common/requirements-rag-$backend-$(uname -m).txt"
+    if [ -f "/var/tmp/requirements-rag-$backend-$(uname -m).txt" ]; then
+        uv pip install -r "/var/tmp/requirements-rag-$backend-$(uname -m).txt"
     else
-        uv pip install -r "$script_dir/../common/requirements-rag-$backend.txt"
+        uv pip install -r "/var/tmp/requirements-rag-$backend.txt"
     fi
 }
 

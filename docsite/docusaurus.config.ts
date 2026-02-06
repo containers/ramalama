@@ -4,9 +4,6 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
-// Define baseUrl as a constant to reuse in activeBaseRegex
-const siteBaseUrl = '/docs/';
-
 const config: Config = {
   title: 'RamaLama',
   tagline: 'Working with AI made simple, straightforward, and familiar',
@@ -21,7 +18,7 @@ const config: Config = {
   url: 'https://ramalama.ai',
   // Set the /<baseUrl>/ pathname under which your site is served
   // The docs live at https://ramalama.ai/docs
-  baseUrl: siteBaseUrl,
+  baseUrl: '/docs/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
@@ -76,18 +73,10 @@ const config: Config = {
         alt: 'RamaLama Logo',
         src: 'img/logo.svg',
         srcDark: 'img/logo.svg',
-        href: 'https://ramalama.ai',
-        target: '_self',
         width: 40,
         height: 40,
       },
       items: [
-        {
-          to: '/',
-          label: 'Home',
-          position: 'left',
-          activeBaseRegex: `^${siteBaseUrl}?$`,
-        },
         {
           type: 'docSidebar',
           sidebarId: 'docs',

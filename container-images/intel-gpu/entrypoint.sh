@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
 
-source /opt/intel/oneapi/setvars.sh > /dev/null
+source /opt/intel/oneapi/setvars.sh
 
-if [ $# -gt 0 ]; then
-    exec "$@"
-elif tty -s; then
-    exec /bin/bash
-fi
+exec "$@"
+

@@ -3,11 +3,9 @@ from types import SimpleNamespace
 import pytest
 
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
-from ramalama.config import get_config
+from ramalama.config import CONFIG
 from ramalama.transports import api as api_module
 from ramalama.transports.api import APITransport
-
-CONFIG = get_config()
 
 
 def make_provider(api_key: str = "provider-default") -> OpenAIResponsesChatProvider:

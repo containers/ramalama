@@ -73,6 +73,9 @@ verify_begin=".*run --rm"
 	run_ramalama -q --dryrun serve ${model}
 	assert "$output" =~ ".*--host 0.0.0.0" "Outside container sets host to 0.0.0.0"
 	is "$output" ".*--cache-reuse 256" "should use cache"
+	if is_darwin; then
+	   is "$output" ".*--flash-attn on" "use flash-attn on Darwin metal"
+	fi
 
 	run_ramalama -q --dryrun serve --seed abcd --host 127.0.0.1 ${model}
 	assert "$output" =~ ".*--host 127.0.0.1" "Outside container overrides host to 127.0.0.1"
@@ -198,7 +201,6 @@ verify_begin=".*run --rm"
 }
 
 @test "ramalama serve --generate=quadlet" {
-    skip_if_nocontainer
     model_file="smollm-135m-instruct"
     model_fullname="smollm-135M-instruct-v0.2-Q8_0-GGUF"
     model="smollm:135m"
@@ -213,7 +215,7 @@ verify_begin=".*run --rm"
     is "$output" ".*Exec=.*llama-server --host 0.0.0.0 --port 1234 --model .*" "Exec line should be correct"
     is "$output" ".*Mount=type=bind,.*$model_file" "Mount line should be correct"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --pull never --generate=quadlet $model
+    HIP_VISIBLE_DEVICES=99 run_ramalama -q serve --port 1234 --generate=quadlet $model
     is "$output" "Generating quadlet file: $quadlet" "generate $quadlet"
 
     run cat $quadlet
@@ -390,7 +392,6 @@ verify_begin=".*run --rm"
 # }
 
 @test "ramalama serve --generate=kube" {
-    skip_if_nocontainer
     model="smollm:135m"
     name=c_$(safename)
     run_ramalama pull $model
@@ -401,7 +402,7 @@ verify_begin=".*run --rm"
     is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --pull never --generate=kube $model
+    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=kube $model
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
@@ -417,7 +418,7 @@ verify_begin=".*run --rm"
     is "$output" ".*command: \[\".*serve.*\"\]" "Should command"
     is "$output" ".*containerPort: 1234" "Should container container port"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --pull never --generate=quadlet/kube $model
+    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=quadlet/kube $model
     is "$output" ".*Generating Kubernetes YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
@@ -432,7 +433,6 @@ verify_begin=".*run --rm"
 }
 
 @test "ramalama serve --generate=kube:/tmp" {
-    skip_if_nocontainer
     model=tiny
     name=c_$(safename)
     run_ramalama pull ${model}
@@ -447,7 +447,6 @@ verify_begin=".*run --rm"
 }
 
 @test  "ramalama serve --generate=compose" {
-    skip_if_nocontainer
     model="smollm:135m"
     name="docker-compose"
     run_ramalama pull $model
@@ -459,7 +458,7 @@ verify_begin=".*run --rm"
     is "$output" ".*ports:" "Should contain ports section"
     is "$output" ".*- \"1234:1234\"" "Should map the container port"
 
-    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --pull never --generate=compose $model
+    HIP_VISIBLE_DEVICES=99 run_ramalama serve --name=${name} --port 1234 --generate=compose $model
     is "$output" ".*Generating Compose YAML file: ${name}.yaml" "generate .yaml file"
 
     run cat $name.yaml
@@ -470,7 +469,6 @@ verify_begin=".*run --rm"
 }
 
 @test "ramalama serve --generate=compose:/tmp" {
-    skip_if_nocontainer
     model=tiny
     name="docker-compose"
     run_ramalama pull ${model}
