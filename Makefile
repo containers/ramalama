@@ -249,10 +249,7 @@ rag-requirements:
 
 .PHONY: clean
 clean:
-	@find . -name \*~ -delete
-	@find . -name \*# -delete
-	@find . -name \*.rej -delete
-	@find . -name \*.orig -delete
 	make -C docs clean
 	make -C docsite clean clean-generated
-	rm -rf $$(<.gitignore)
+	find . -depth -print0 | git check-ignore --stdin -z | xargs -0 rm -rf
+
