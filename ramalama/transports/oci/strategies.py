@@ -1,5 +1,6 @@
 import json
 import os
+import posixpath
 from abc import ABC, abstractmethod
 from typing import Generic, Literal, TypeVar
 
@@ -55,7 +56,7 @@ class BaseOCIStrategy(Generic[K], ABC):
         filenames = self.filenames(ref)
         if not filenames:
             raise ValueError(f"No model files found for {ref}")
-        return os.path.join(mount_dir, filenames[0])
+        return posixpath.join(mount_dir, filenames[0])
 
 
 class BaseArtifactStrategy(BaseOCIStrategy[Literal['artifact']]):
@@ -232,10 +233,10 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
         if not filenames:
             raise ValueError(f"No model files found for {str(ref)}")
         if len(filenames) == 1:
-            if os.path.dirname(filenames[0]):
-                return os.path.join(mount_dir, filenames[0])
+            if posixpath.dirname(filenames[0]):
+                return posixpath.join(mount_dir, filenames[0])
             return mount_dir
-        return os.path.join(mount_dir, filenames[0])
+        return posixpath.join(mount_dir, filenames[0])
 
     def inspect(self, ref: OciRef) -> str:
         result = run_cmd([self.engine, "artifact", "inspect", str(ref)], ignore_stderr=True)
