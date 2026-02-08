@@ -17,6 +17,8 @@ from ramalama.transports.oci.strategies import BaseOCIStrategy
 from ramalama.transports.oci.strategy import OCIStrategyFactory
 
 prefix = "oci://"
+ociimage_raw = "org.containers.type=ai.image.model.raw"
+ociimage_car = "org.containers.type=ai.image.model.car"
 
 
 class OCI(Transport):
@@ -125,11 +127,14 @@ class OCI(Transport):
     def build_image(self, cfile, contextdir, args):
         if args.type == "car":
             parent = args.carimage
+            label = ociimage_car
         else:
             parent = "scratch"
+            label = ociimage_raw
 
         footer = dedent(f"""
             FROM {parent}
+            LABEL {label}
             COPY --from=build /data/ /
             """).strip()
         full_cfile = cfile + "\n\n" + footer + "\n"
@@ -284,6 +289,10 @@ class OCI(Transport):
             self.conman,
             "manifest",
             "annotate",
+            "--annotation",
+            f"{annotations.AnnotationModel}=true",
+            "--annotation",
+            ociimage_car if args.type == "car" else ociimage_raw,
             "--annotation",
             f"{annotations.AnnotationTitle}={args.SOURCE}",
             target,

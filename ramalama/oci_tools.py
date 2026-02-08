@@ -51,12 +51,11 @@ def list_artifacts(args: EngineArgType):
     if args.engine is None:
         raise ValueError("Cannot list artifacts without a provided engine like podman or docker.")
 
-    engine = args.engine
-    if engine == "docker":
+    if args.engine == "docker":
         return []
 
     conman_args = [
-        engine,
+        args.engine,
         "artifact",
         "ls",
         "--format",
@@ -78,7 +77,7 @@ def list_artifacts(args: EngineArgType):
     models: list[ListModelResponse] = []
     for artifact in artifacts:
         conman_args = [
-            engine,
+            args.engine,
             "artifact",
             "inspect",
             artifact["ID"],
@@ -234,6 +233,7 @@ def list_models(args: EngineArgType) -> list[ListModelResponse]:
     models = list_images(args)
     models.extend(list_manifests(args))
     models.extend(list_artifacts(args))
+
     return models
 
 
