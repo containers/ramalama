@@ -39,10 +39,9 @@ def test_list_models_dedupes_labelled_and_manifest_entries(monkeypatch):
 
 
 def test_list_manifests_filters_by_annotation(monkeypatch):
-    manifests_output = (
-        '{"name":"oci://localhost/annotation-filtered:latest","modified":"',
-        '"2026-01-01 00:00:00 +0000","size":456,"ID":"sha256:c"},',
-    )
+    manifests_output = """\
+{"name":"oci://localhost/annotation-filtered:latest","modified":"2026-01-01 00:00:00 +0000","size":456,"ID":"sha256:c"},
+"""
     inspect_payload = {
         "manifests": [
             {
