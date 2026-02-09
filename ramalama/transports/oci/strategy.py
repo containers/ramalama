@@ -80,6 +80,6 @@ class OCIStrategyFactory:
     def resolve(self, model: OciRef) -> BaseArtifactStrategy | BaseImageStrategy:
         kind = self.resolve_kind(model)
         if kind is None:
-            raise Exception(f"Could not identify an artifact type for {model}")
+            raise ValueError(f"{model} does not exist.")
 
         return self.strategies(kind)
