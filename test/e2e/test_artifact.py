@@ -508,9 +508,10 @@ def test_artifact_overwrite_same_name():
         test_file2.write_text("Version 2 content - this is longer")
 
         artifact_name = "test-overwrite-artifact:latest"
+        artifact_ref = f"oci://localhost/{artifact_name}"
 
         # Create first version
-        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file1}", artifact_name])
+        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file1}", artifact_ref])
 
         # Get size of first version
         json_result1 = ctx.check_output(["ramalama", "list", "--json"])
@@ -523,7 +524,7 @@ def test_artifact_overwrite_same_name():
         assert size1 is not None
 
         # Create second version with same name
-        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file2}", artifact_name])
+        ctx.check_call(["ramalama", "convert", "--type", "raw", f"file://{test_file2}", artifact_ref])
 
         # Verify only one artifact with this name exists
         result = ctx.check_output(["ramalama", "list"])
@@ -545,4 +546,4 @@ def test_artifact_overwrite_same_name():
         assert size2 >= size1, "Second version should be at least as large"
 
         # Clean up
-        ctx.check_call(["ramalama", "rm", f"oci://localhost/{artifact_name}"])
+        ctx.check_call(["ramalama", "rm", artifact_ref])
