@@ -294,6 +294,7 @@ def genname():
     return "ramalama-" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
+@lru_cache
 def engine_version(engine: SUPPORTED_ENGINES | Path | str) -> SemVer:
     # Create manifest list for target with imageid
     cmd_args = [str(engine), "version", "--format", "{{ .Client.Version }}"]

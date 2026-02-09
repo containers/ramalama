@@ -277,7 +277,7 @@ def test_artifact_lifecycle_basic():
         assert found, "Artifact not found in JSON list output"
 
         # Step 4: Remove the artifact
-        ctx.check_call(["ramalama", "rm", artifact_name])
+        ctx.check_call(["ramalama", "rm", f"oci://localhost/{artifact_name}"])
 
         # Step 5: Verify it's gone
         result_after = ctx.check_output(["ramalama", "list"])
@@ -311,8 +311,8 @@ def test_artifact_multiple_types():
         assert found_car, "Car artifact not found in list"
 
         # Clean up
-        ctx.check_call(["ramalama", "rm", "test-raw-artifact-unique:v1"])
-        ctx.check_call(["ramalama", "rm", "test-car-artifact-unique:v1"])
+        ctx.check_call(["ramalama", "rm", "oci://localhost/test-raw-artifact-unique:v1"])
+        ctx.check_call(["ramalama", "rm", "oci://localhost/test-car-artifact-unique:v1"])
 
         # Verify both are gone using JSON
         json_result_after = ctx.check_output(["ramalama", "list", "--json"])
@@ -357,7 +357,7 @@ def test_artifact_list_json_with_size():
         assert "modified" in artifact
 
         # Clean up
-        ctx.check_call(["ramalama", "rm", artifact_name])
+        ctx.check_call(["ramalama", "rm", f"oci://localhost/{artifact_name}"])
 
 
 @pytest.mark.e2e
@@ -387,7 +387,7 @@ def test_artifact_rm_multiple():
 
         # Remove artifacts one at a time
         for artifact_name in artifacts:
-            ctx.check_call(["ramalama", "rm", artifact_name])
+            ctx.check_call(["ramalama", "rm", f"oci://localhost/{artifact_name}"])
 
         # Verify all are gone using JSON
         json_result_after = ctx.check_output(["ramalama", "list", "--json"])
@@ -429,7 +429,7 @@ def test_artifact_with_different_tags():
 
         # Clean up all tags
         for tag in tags:
-            ctx.check_call(["ramalama", "rm", f"test-tagged-artifact:{tag}"])
+            ctx.check_call(["ramalama", "rm", f"oci://localhost/test-tagged-artifact:{tag}"])
 
         # Verify all are gone
         result_after = ctx.check_output(["ramalama", "list"])
@@ -455,7 +455,7 @@ def test_artifact_list_empty_after_cleanup():
         assert "test-temp-artifact" in result_before
 
         # Remove it
-        ctx.check_call(["ramalama", "rm", artifact_name])
+        ctx.check_call(["ramalama", "rm", f"oci://localhost/{artifact_name}"])
 
         # Verify list doesn't contain it
         result_after = ctx.check_output(["ramalama", "list"])
@@ -493,7 +493,7 @@ def test_artifact_with_config_default_type():
         assert "test-config-default" in result
 
         # Clean up
-        ctx.check_call(["ramalama", "rm", artifact_name])
+        ctx.check_call(["ramalama", "rm", f"oci://localhost/{artifact_name}"])
 
 
 @pytest.mark.e2e
@@ -545,4 +545,4 @@ def test_artifact_overwrite_same_name():
         assert size2 >= size1, "Second version should be at least as large"
 
         # Clean up
-        ctx.check_call(["ramalama", "rm", artifact_name])
+        ctx.check_call(["ramalama", "rm", f"oci://localhost/{artifact_name}"])
