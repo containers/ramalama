@@ -6,8 +6,7 @@ import subprocess
 
 import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
-from ramalama.common import engine_version, run_cmd
-from ramalama.logger import logger
+from ramalama.common import SemVer, engine_version, run_cmd
 from ramalama.config import SUPPORTED_ENGINES
 from ramalama.transports.oci import spec as oci_spec
 
@@ -67,14 +66,18 @@ def list_artifacts(args: EngineArgType):
         ),
     ]
     try:
-        if (output := run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()) == "":
-            return []
-    except subprocess.CalledProcessError as e:
-        logger.debug(e)
+        output = run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+    except Exception:
+        return []
+    if output == "":
         return []
 
-    artifacts = json.loads(f"[{output[:-1]}]")
-    models: list[ListModelResponse] = []
+    try:
+        artifacts = json.loads(f"[{output[:-1]}]")
+    except json.JSONDecodeError:
+        return []
+
+    models = []
     for artifact in artifacts:
         conman_args = [
             args.engine,
@@ -82,11 +85,17 @@ def list_artifacts(args: EngineArgType):
             "inspect",
             artifact["ID"],
         ]
-        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+        try:
+            output = run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+        except Exception:
+            continue
 
         if output == "":
             continue
-        inspect = json.loads(output)
+        try:
+            inspect = json.loads(output)
+        except json.JSONDecodeError:
+            continue
         if "Manifest" not in inspect:
             continue
         if "artifactType" not in inspect["Manifest"]:
@@ -104,8 +113,12 @@ def list_artifacts(args: EngineArgType):
 def engine_supports_manifest_attributes(engine) -> bool:
     if not engine or engine == "" or engine == "docker":
         return False
-    if engine == "podman" and engine_version(engine) < "5":
-        return False
+    if engine == "podman":
+        try:
+            if engine_version(engine) < SemVer(5, 0, 0):
+                return False
+        except Exception:
+            return False
     return True
 
 

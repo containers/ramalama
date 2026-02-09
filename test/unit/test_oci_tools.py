@@ -1,9 +1,11 @@
 import json
+import subprocess
 from types import SimpleNamespace
 
 from ramalama import oci_tools
 from ramalama.annotations import AnnotationModel
 from ramalama.arg_types import EngineArgs
+from ramalama.common import SemVer
 
 
 def _result(text: str):
@@ -66,3 +68,24 @@ def test_list_manifests_filters_by_annotation(monkeypatch):
     assert len(models) == 1
     assert models[0]["name"] == "oci://localhost/annotation-filtered:latest"
     assert models[0]["size"] == 456
+
+
+def test_list_artifacts_handles_unsupported_format_flag(monkeypatch):
+    def fake_run_cmd(args, **kwargs):
+        if args[:3] == ["podman", "artifact", "ls"]:
+            raise subprocess.CalledProcessError(125, args)
+        raise AssertionError(f"Unexpected command: {args}")
+
+    monkeypatch.setattr(oci_tools, "run_cmd", fake_run_cmd)
+
+    models = oci_tools.list_artifacts(EngineArgs(engine="podman"))
+
+    assert models == []
+
+
+def test_engine_supports_manifest_attributes_uses_semver(monkeypatch):
+    monkeypatch.setattr(oci_tools, "engine_version", lambda engine: SemVer(10, 0, 0))
+    assert oci_tools.engine_supports_manifest_attributes("podman") is True
+
+    monkeypatch.setattr(oci_tools, "engine_version", lambda engine: SemVer(4, 9, 9))
+    assert oci_tools.engine_supports_manifest_attributes("podman") is False

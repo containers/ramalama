@@ -204,19 +204,24 @@ def _build_snapshot_files(client: OCIRegistryClient, manifest: dict[str, Any]) -
         digest = descriptor.get("digest")
         if not digest:
             continue
+
         annotations = descriptor.get("annotations") or {}
         filepath = annotations.get(oci_spec.LAYER_ANNOTATION_FILEPATH)
+
         metadata_value = annotations.get(oci_spec.LAYER_ANNOTATION_FILE_METADATA)
         if metadata_value is not None:
             metadata = oci_spec.FileMetadata.from_json(metadata_value)
             if filepath is None:
                 filepath = metadata.name
+
         if filepath is None:
             raise ValueError(f"Layer {digest} missing {oci_spec.LAYER_ANNOTATION_FILEPATH}")
         filepath = oci_spec.normalize_layer_filepath(filepath)
+
         mediatype_untested = annotations.get(oci_spec.LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED)
         if mediatype_untested is not None and mediatype_untested not in {"true", "false"}:
             raise ValueError("layer annotation mediatype.untested must be 'true' or 'false'")
+
         media_type = descriptor.get("mediaType", "")
         yield RegistryBlobSnapshotFile(client, digest, filepath, media_type)
 

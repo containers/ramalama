@@ -31,7 +31,7 @@ def get_engine_image_strategy(engine: str, engine_name: SUPPORTED_ENGINES) -> ty
 
 def get_engine_artifact_strategy(engine: str, engine_name: SUPPORTED_ENGINES) -> type[BaseArtifactStrategy]:
     if engine_name == "podman":
-        version = SemVer.parse(engine_version(engine))
+        version = engine_version(engine)
         if version >= PODMAN_MIN_ARTIFACT_VERSION:
             return PodmanArtifactStrategy
 

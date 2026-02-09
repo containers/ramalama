@@ -294,10 +294,10 @@ def genname():
     return "ramalama-" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
-def engine_version(engine: SUPPORTED_ENGINES | Path | str) -> str:
+def engine_version(engine: SUPPORTED_ENGINES | Path | str) -> SemVer:
     # Create manifest list for target with imageid
     cmd_args = [str(engine), "version", "--format", "{{ .Client.Version }}"]
-    return run_cmd(cmd_args, encoding="utf-8").stdout.strip()
+    return SemVer.parse(run_cmd(cmd_args, encoding="utf-8").stdout.strip())
 
 
 class CDI_DEVICE(TypedDict):
