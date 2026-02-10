@@ -22,7 +22,7 @@ jobs:
         id: min-python
         shell: bash
         run: |
-          req="$(sed -nE 's/^requires-python = "([^"]+)"/\1/p' pyproject.toml | head -n1)"
+          req="$(sed -nE "s/^requires-python\s*=\s*['\"]([^'\"]+)['\"]/\1/p" pyproject.toml | head -n1)"
           min="$(printf '%s\n' "$req" \
             | grep -oE '(>=|>)[[:space:]]*[0-9]+(\.[0-9]+){0,2}' \
             | sed -E 's/(>=|>)\s*//' \
