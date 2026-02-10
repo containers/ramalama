@@ -319,6 +319,7 @@ class RamaLamaShell(cmd.Cmd):
                 print("\nUsage:")
                 print("  - Ask questions naturally (automatic tool selection)")
                 print("  - Use '/tool [question]' to manually select which tool to use")
+                print("  - Use '/clear' to clear conversation history")
                 print("  - Use '/bye' or 'exit' to quit")
 
         except Exception as e:
@@ -421,18 +422,31 @@ class RamaLamaShell(cmd.Cmd):
         return True
 
     def default(self, user_content):
+        # Check for commands before processing multi-line input
+        # Normalize: strip whitespace and make case-insensitive
+        cmd = user_content.strip().lower()
+
+        # Exit commands
+        if cmd in ["/bye", "exit"]:
+            return True
+
+        # Clear command - reset conversation history and multi-line buffer
+        if cmd == "/clear":
+            self.conversation_history = []
+            self.content = []
+            print("Conversation history cleared.")
+            return False
+
+        # Handle multi-line input (backslash continuation)
         self.content.append(user_content.rstrip(" \\"))
         if user_content.endswith(" \\"):
             return False
 
-        if user_content in ["/bye", "exit"]:
-            return True
-
         content = "\n".join(self.content)
         self.content = []
 
-        # Check for manual tool selection command FIRST
-        if self.mcp_agent and content.strip().startswith("/tool"):
+        # Check for manual tool selection command FIRST (case-insensitive)
+        if self.mcp_agent and content.strip().lower().startswith("/tool"):
             self._handle_manual_tool_selection(content)
             return False
 
@@ -563,7 +577,7 @@ class RamaLamaShell(cmd.Cmd):
                 else:
                     print("")
                     if not self.request_in_process:
-                        print("Use Ctrl + d or /bye or exit to quit.")
+                        print("Use Ctrl + d or /bye or exit to quit. Use /clear to clear history.")
 
                 continue
 
