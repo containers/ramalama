@@ -5,6 +5,7 @@ import cmd
 import copy
 import itertools
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -400,9 +401,16 @@ class RamaLamaShell(cmd.Cmd):
             return None
 
     def handle_args(self, monitor):
+        """Process command-line arguments and/or stdin input.
+
+        Returns True if the program should exit, False if it should continue to interactive mode.
+        """
         prompt = " ".join(self.args.ARGS) if self.args.ARGS else None
+        stdin_was_pipe = False
+
         if not sys.stdin.isatty():
             stdin = sys.stdin.read()
+            stdin_was_pipe = True
             if prompt:
                 prompt += f"\n\n{stdin}"
             else:
@@ -410,6 +418,23 @@ class RamaLamaShell(cmd.Cmd):
 
         if prompt:
             self.default(prompt)
+            # Continue to interactive mode if --interactive flag is set
+            if getattr(self.args, 'interactive', False):
+                # If stdin was a pipe, we need to reopen the terminal for interactive input
+                if stdin_was_pipe:
+                    try:
+                        # Use platform-specific terminal device
+                        # Windows: 'CON', Unix/Linux: '/dev/tty'
+                        terminal_device = 'CON' if os.name == 'nt' else '/dev/tty'
+                        sys.stdin = open(terminal_device, 'r')
+                    except (OSError, FileNotFoundError) as e:
+                        perror(f"Cannot open terminal for interactive mode: {e}")
+                        monitor.stop()
+                        self.kills()
+                        return True
+                print("")
+                return False
+            # Default behavior: exit after displaying response
             monitor.stop()
             self.kills()
             return True
