@@ -146,7 +146,7 @@ class OCIRegistryClient:
     def _open(self, url: str, headers: dict[str, str] | None = None):
         req = urllib.request.Request(url, headers=self._prepare_headers(headers))
         try:
-            return urllib.request.urlopen(req)
+            return urllib.request.urlopen(req, timeout=60)
         except urllib.error.HTTPError as exc:
             if exc.code == 401:
                 www_authenticate = exc.headers.get("WWW-Authenticate", "")
@@ -155,7 +155,7 @@ class OCIRegistryClient:
                     if token:
                         self._bearer_token = token
                         req = urllib.request.Request(url, headers=self._prepare_headers(headers))
-                        return urllib.request.urlopen(req)
+                        return urllib.request.urlopen(req, timeout=60)
             raise
 
     def _request_bearer_token(self, challenge: str) -> str | None:
