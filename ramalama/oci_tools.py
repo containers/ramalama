@@ -241,9 +241,15 @@ def list_models(args: EngineArgType) -> list[ListModelResponse]:
         return []
 
     model_gen = chain(list_images(args), list_manifests(args), list_artifacts(args))
-    seen = set()
 
-    return [m for m in model_gen if m['name'] not in seen and not seen.add(m['name'])]
+    seen: set[str] = set()
+    models: list[ListModelResponse] = []
+    for m in model_gen:
+        if (name := m["name"]) in seen:
+            continue
+        seen.add(name)
+        models.append(m)
+    return models
 
 
 @dataclass(frozen=True)
