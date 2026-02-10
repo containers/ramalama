@@ -139,7 +139,8 @@ class OCIRegistryClient:
 
     def _prepare_headers(self, headers: dict[str, str] | None = None) -> dict[str, str]:
         final_headers = dict() if headers is None else headers.copy()
-        final_headers.setdefault("Authorization", f"Bearer {self._bearer_token}")
+        if self._bearer_token is not None:
+            final_headers.setdefault("Authorization", f"Bearer {self._bearer_token}")
 
         return final_headers
 
@@ -194,12 +195,12 @@ class OCIRegistryClient:
             token = data.get("token") or data.get("access_token")
             return token
         except urllib.error.URLError as exc:
-            perror(f"Failed to obtain registry token: {exc}")
+            perror(f"Failed to obtain registry token from {token_url}: {exc}")
             return None
 
 
 def _build_snapshot_files(client: OCIRegistryClient, manifest: dict[str, Any]) -> Iterable[SnapshotFile]:
-    descriptors = manifest.get("layers") or manifest.get("blobs") or []
+    descriptors = [*manifest.get("layers", []), *manifest.get("blobs", [])]
     for descriptor in descriptors:
         digest = descriptor.get("digest")
         if not digest:
