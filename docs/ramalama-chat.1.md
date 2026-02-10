@@ -8,10 +8,13 @@ ramalama\-chat - OpenAI chat with the specified REST API URL
 
 positional arguments:
   ARGS                  overrides the default prompt, and the output is
-                        returned without entering the chatbot
+                        returned without entering the chatbot (unless
+                        --interactive is specified)
 
 ## DESCRIPTION
-Chat with an OpenAI Rest API
+Chat with an OpenAI REST API. By default, if arguments or stdin are provided,
+the response is displayed and the command exits. Use **--interactive** to
+continue to an interactive chat session after processing the initial prompt.
 
 ## OPTIONS
 
@@ -25,6 +28,11 @@ Possible values are "never", "always" and "auto". (default: auto)
 
 #### **--help**, **-h**
 Show this help message and exit
+
+#### **--interactive**, **-i**
+Continue to interactive chat mode after processing stdin or prompt arguments.
+By default, when arguments or piped input are provided, the command exits after
+displaying the response. This flag allows you to continue chatting interactively.
 
 #### **--list**
 List the available models at an endpoint
@@ -77,6 +85,18 @@ $ ramalama chat
 🦭 > Hi \
 🦭 > tell me a funny story \
 🦭 > please
+
+Send an initial prompt via stdin and continue chatting
+$ echo "What is 2+2?" | ramalama chat --interactive
+4
+🦭 > Now multiply that by 3
+12
+🦭 > /bye
+
+Pass arguments and continue to interactive mode
+$ ramalama chat --interactive "Tell me about AI"
+[AI response...]
+🦭 > Can you elaborate on that?
 ```
 
 ## SEE ALSO

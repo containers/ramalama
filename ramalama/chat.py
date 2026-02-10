@@ -400,6 +400,10 @@ class RamaLamaShell(cmd.Cmd):
             return None
 
     def handle_args(self, monitor):
+        """Process command-line arguments and/or stdin input.
+
+        Returns True if the program should exit, False if it should continue to interactive mode.
+        """
         prompt = " ".join(self.args.ARGS) if self.args.ARGS else None
         if not sys.stdin.isatty():
             stdin = sys.stdin.read()
@@ -410,6 +414,11 @@ class RamaLamaShell(cmd.Cmd):
 
         if prompt:
             self.default(prompt)
+            # Continue to interactive mode if --interactive flag is set
+            if getattr(self.args, 'interactive', False):
+                print("")
+                return False
+            # Default behavior: exit after displaying response
             monitor.stop()
             self.kills()
             return True
