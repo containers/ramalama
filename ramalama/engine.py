@@ -487,7 +487,6 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
 
 def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     """Waits for a container to become healthy by polling its endpoint."""
-    config = get_config()
     if timeout is None:
         timeout = 180
     logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
