@@ -1,0 +1,17 @@
+site_name: Ramalama Python SDK
+
+nav:
+  - Home: index.md
+  - API Reference: api.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            members: true
+            merge_init_into_class: true
+            show_signature_annotations: true
+            show_source: false
