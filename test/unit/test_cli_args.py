@@ -81,9 +81,12 @@ def args_to_cli_args(args_obj, subcommand: str | None, special_cases: dict | Non
                 cli_args.append(flag)
             continue
 
-        # TODO: Handle list as positional arguments. This is hacky, maybe introspect the parser for nargs?
+        # Treat chat/run positional ARGS as pure positionals, even when items start with '-'.
+        # This mirrors shell usage with `--` and keeps hypothesis-generated values parseable.
         if isinstance(value, list):
-            cli_args.extend(value)
+            if f.name == "ARGS" and value:
+                cli_args.append("--")
+            cli_args.extend(str(v) for v in value)
             continue
 
         # Otherwise, add as --flag value

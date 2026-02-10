@@ -2,13 +2,11 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TypedDict
-import subprocess
 
 import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
 from ramalama.common import SemVer, engine_version, run_cmd
-from ramalama.config import SUPPORTED_ENGINES
-from ramalama.transports.oci import spec as oci_spec
+from itertools import chain
 
 ocilabeltype = "org.containers.type"
 
@@ -239,15 +237,13 @@ def list_images(args: EngineArgType) -> list[ListModelResponse]:
 
 
 def list_models(args: EngineArgType) -> list[ListModelResponse]:
-    conman = args.engine
-    if conman is None:
+    if args.engine is None:
         return []
 
-    models = list_images(args)
-    models.extend(list_manifests(args))
-    models.extend(list_artifacts(args))
+    model_gen = chain(list_images(args), list_manifests(args), list_artifacts(args))
+    seen = set()
 
-    return models
+    return [m for m in model_gen if m['name'] not in seen and not seen.add(m['name'])]
 
 
 @dataclass(frozen=True)
