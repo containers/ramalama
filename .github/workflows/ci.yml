@@ -18,8 +18,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Determine minimum supported Python
+        id: min-python
+        shell: bash
+        run: |
+          req="$(sed -nE 's/^requires-python = "([^"]+)"/\1/p' pyproject.toml | head -n1)"
+          min="$(printf '%s\n' "$req" \
+            | grep -oE '(>=|>)[[:space:]]*[0-9]+(\.[0-9]+){0,2}' \
+            | sed -E 's/(>=|>)\s*//' \
+            | sort -V \
+            | tail -n1)"
+          test -n "$min" || { echo "Failed to parse requires-python: $req"; exit 1; }
+          echo "version=$min" >> "$GITHUB_OUTPUT"
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ steps.min-python.outputs.version }}
 
       - name: Install dependencies
         run: |
