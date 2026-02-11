@@ -15,7 +15,7 @@ from ramalama.config import Config
 from ramalama.engine import BuildEngine, Engine, is_healthy, stop_container, wait_for_healthy
 from ramalama.path_utils import get_container_mount_path
 from ramalama.transports.base import Transport
-from ramalama.transports.oci import OCI
+from ramalama.transports.oci.oci import OCI
 
 INPUT_DIR = "/docs"
 

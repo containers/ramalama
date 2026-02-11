@@ -2,7 +2,7 @@ import os
 import subprocess
 
 from ramalama.common import MNT_DIR, run_cmd
-from ramalama.transports.oci import OCI
+from ramalama.transports.oci.oci import OCI
 
 
 def find_model_file_in_image(conman: str, model: str) -> str | None:
@@ -43,11 +43,19 @@ def find_model_file_in_image(conman: str, model: str) -> str | None:
 class RamalamaContainerRegistry(OCI):
     def __init__(self, model: str, *args, **kwargs):
         super().__init__(f"rlcr.io/ramalama/{model}", *args, **kwargs)
-        self._model_type = 'oci'
+        self._model_type = "oci"
 
-    def _get_entry_model_path(self, *args, **kwargs) -> str:
-        model_filename = find_model_file_in_image(self.conman, self.model)
-        if model_filename:
-            model_basename = os.path.basename(model_filename)
-            return os.path.join(MNT_DIR, model_basename)
-        return os.path.join(MNT_DIR, "model.file")
+    def _get_entry_model_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> str:
+        if dry_run:
+            return super()._get_entry_model_path(use_container, should_generate, dry_run)
+
+        if self.strategy.kind == 'artifact':
+            return super()._get_entry_model_path(use_container, should_generate, dry_run)
+
+        if use_container or should_generate:
+            model_filename = find_model_file_in_image(self.conman, self.model)
+            if model_filename:
+                model_basename = os.path.basename(model_filename)
+                return os.path.join(MNT_DIR, model_basename)
+
+        return super()._get_entry_model_path(use_container, should_generate, dry_run)

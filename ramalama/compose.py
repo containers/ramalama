@@ -2,7 +2,7 @@
 
 import os
 import shlex
-from typing import Optional, Tuple
+from typing import Optional
 
 from ramalama.common import RAG_DIR, get_accel_env_vars
 from ramalama.file import PlainFile
@@ -13,9 +13,9 @@ class Compose:
     def __init__(
         self,
         model_name: str,
-        model_paths: Tuple[str, str],
-        chat_template_paths: Optional[Tuple[str, str]],
-        mmproj_paths: Optional[Tuple[str, str]],
+        model_paths: tuple[str, str],
+        chat_template_paths: Optional[tuple[str, str]],
+        mmproj_paths: Optional[tuple[str, str]],
         args,
         exec_args,
     ):

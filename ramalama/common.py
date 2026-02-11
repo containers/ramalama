@@ -12,7 +12,9 @@ import string
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, Literal, Optional, Protocol, TypeAlias, TypedDict, cast, get_args
 
 import yaml
@@ -292,10 +294,11 @@ def genname():
     return "ramalama-" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
-def engine_version(engine: SUPPORTED_ENGINES) -> str:
+@lru_cache
+def engine_version(engine: SUPPORTED_ENGINES | Path | str) -> SemVer:
     # Create manifest list for target with imageid
     cmd_args = [str(engine), "version", "--format", "{{ .Client.Version }}"]
-    return run_cmd(cmd_args, encoding="utf-8").stdout.strip()
+    return SemVer.parse(run_cmd(cmd_args, encoding="utf-8").stdout.strip())
 
 
 class CDI_DEVICE(TypedDict):
@@ -710,3 +713,36 @@ class ContainerEntryPoint(str):
 
     def __repr__(self):
         return repr(self.entrypoint)
+
+
+SEMVER_RE = re.compile(
+    r"^(?P<major>0|[1-9]\d*)\."
+    r"(?P<minor>0|[1-9]\d*)\."
+    r"(?P<patch>0|[1-9]\d*)"
+    r"(?:-(?P<prerelease>"
+    r"(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
+    r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*"
+    r"))?"
+    r"(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+)
+
+
+def parse_semver(s: str) -> SemVer:
+    m = SEMVER_RE.fullmatch(s)
+    if not m:
+        raise ValueError(f"Not a valid SemVer 2.0.0: {s!r}")
+    major = int(m.group("major"))
+    minor = int(m.group("minor"))
+    patch = int(m.group("patch"))
+    return SemVer(major, minor, patch)
+
+
+@dataclass(frozen=True, order=True)
+class SemVer:
+    major: int
+    minor: int
+    patch: int
+
+    @classmethod
+    def parse(cls, s: str) -> "SemVer":
+        return parse_semver(s)

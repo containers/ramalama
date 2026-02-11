@@ -1,12 +1,12 @@
 import json
-import subprocess
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TypedDict
 
 import ramalama.annotations as annotations
 from ramalama.arg_types import EngineArgType
-from ramalama.common import engine_version, run_cmd
-from ramalama.logger import logger
+from ramalama.common import SemVer, engine_version, run_cmd
+from itertools import chain
 
 ocilabeltype = "org.containers.type"
 
@@ -56,20 +56,26 @@ def list_artifacts(args: EngineArgType):
         "artifact",
         "ls",
         "--format",
-        ('{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
+        (
+            '{"name":"oci://{{ .Repository }}:{{ .Tag }}",\
             "created":"{{ .CreatedAt }}", \
             "size":"{{ .Size }}", \
-            "ID":"{{ .Digest }}"},'),
+            "ID":"{{ .Digest }}"},'
+        ),
     ]
     try:
-        if (output := run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()) == "":
-            return []
-    except subprocess.CalledProcessError as e:
-        logger.debug(e)
+        output = run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+    except Exception:
+        return []
+    if output == "":
         return []
 
-    artifacts = json.loads(f"[{output[:-1]}]")
-    models: list[ListModelResponse] = []
+    try:
+        artifacts = json.loads(f"[{output[:-1]}]")
+    except json.JSONDecodeError:
+        return []
+
+    models = []
     for artifact in artifacts:
         conman_args = [
             args.engine,
@@ -77,32 +83,40 @@ def list_artifacts(args: EngineArgType):
             "inspect",
             artifact["ID"],
         ]
-        output = run_cmd(conman_args).stdout.decode("utf-8").strip()
+        try:
+            output = run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+        except Exception:
+            continue
 
         if output == "":
             continue
-        inspect = json.loads(output)
+        try:
+            inspect = json.loads(output)
+        except json.JSONDecodeError:
+            continue
         if "Manifest" not in inspect:
             continue
         if "artifactType" not in inspect["Manifest"]:
             continue
         if inspect["Manifest"]['artifactType'] != annotations.ArtifactTypeModelManifest:
             continue
-        models.append(
-            {
-                "name": artifact["name"],
-                "modified": parse_datetime(artifact["created"]),
-                "size": convert_from_human_readable_size(artifact["size"]),
-            }
-        )
+        models.append({
+            "name": artifact["name"],
+            "modified": parse_datetime(artifact["created"]),
+            "size": convert_from_human_readable_size(artifact["size"]),
+        })
     return models
 
 
 def engine_supports_manifest_attributes(engine) -> bool:
     if not engine or engine == "" or engine == "docker":
         return False
-    if engine == "podman" and engine_version(engine) < "5":
-        return False
+    if engine == "podman":
+        try:
+            if engine_version(engine) < SemVer(5, 0, 0):
+                return False
+        except Exception:
+            return False
     return True
 
 
@@ -153,13 +167,11 @@ def list_manifests(args: EngineArgType) -> list[ListModelResponse]:
         if 'annotations' not in img:
             continue
         if annotations.AnnotationModel in img['annotations']:
-            models.append(
-                {
-                    "name": manifest["name"],
-                    "modified": parse_datetime(manifest["modified"]),
-                    "size": manifest["size"],
-                }
-            )
+            models.append({
+                "name": manifest["name"],
+                "modified": parse_datetime(manifest["modified"]),
+                "size": manifest["size"],
+            })
     return models
 
 
@@ -225,12 +237,67 @@ def list_images(args: EngineArgType) -> list[ListModelResponse]:
 
 
 def list_models(args: EngineArgType) -> list[ListModelResponse]:
-    conman = args.engine
-    if conman is None:
+    if args.engine is None:
         return []
 
-    models = list_images(args)
-    models.extend(list_manifests(args))
-    models.extend(list_artifacts(args))
+    model_gen = chain(list_images(args), list_manifests(args), list_artifacts(args))
 
+    seen: set[str] = set()
+    models: list[ListModelResponse] = []
+    for m in model_gen:
+        if (name := m["name"]) in seen:
+            continue
+        seen.add(name)
+        models.append(m)
     return models
+
+
+@dataclass(frozen=True)
+class OciRef:
+    registry: str
+    repository: str
+    specifier: str  # Either the digest or the tag
+    tag: str | None = None
+    digest: str | None = None
+
+    def __str__(self) -> str:
+        if self.digest:
+            return f"{self.registry}/{self.repository}@{self.digest}"
+        return f"{self.registry}/{self.repository}:{self.tag or self.specifier}"
+
+    @staticmethod
+    def from_ref_string(ref: str) -> "OciRef":
+        return split_oci_reference(ref)
+
+
+def split_oci_reference(ref: str, default_registry: str = "docker.io") -> OciRef:
+    ref = ref.strip()
+
+    name, digest = ref.split("@", 1) if "@" in ref else (ref, None)
+
+    slash = name.rfind("/")
+    colon = name.rfind(":")
+    if colon > slash:
+        name, tag = name[:colon], name[colon + 1 :]
+    else:
+        tag = None
+
+    parts = name.split("/", 1)
+    if len(parts) == 1:
+        registry = default_registry
+        repository = parts[0]
+    else:
+        first, rest = parts[0], parts[1]
+        if first == "localhost" or "." in first or ":" in first:
+            registry = first
+            repository = rest
+        else:
+            registry = default_registry
+            repository = name  # keep full path
+
+    specifier = digest or tag
+    if specifier is None:
+        tag = "latest"
+        specifier = tag
+
+    return OciRef(registry=registry, repository=repository, tag=tag, digest=digest, specifier=specifier)

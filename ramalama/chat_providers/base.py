@@ -164,7 +164,7 @@ class ChatProvider(ABC):
             if exc.code in (401, 403):
                 message = (
                     f"Could not authenticate with {self.provider}."
-                    "The provided API key was either missing or invalid.\n"
+                    " The provided API key was either missing or invalid.\n"
                     f"Set RAMALAMA_API_KEY or ramalama.provider.<provider_name>.api_key."
                 )
                 try:

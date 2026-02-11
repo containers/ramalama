@@ -61,15 +61,22 @@ def test_model():
 
 def get_podman_version():
     """Get podman version as a tuple of integers (major, minor, patch)."""
+    if shutil.which("podman") is None:
+        return (0, 0, 0)
+
     try:
         result = subprocess.run(
-            ["podman", "version", "--format", "{{.Client.Version}}"], capture_output=True, text=True, check=True
+            ["podman", "version", "--format", "{{.Client.Version}}"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
         )
         version_str = result.stdout.strip()
         # Handle versions like "5.7.0-dev" by taking only the numeric part
         version_parts = version_str.split('-')[0].split('.')
         return tuple(int(x) for x in version_parts[:3])
-    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError, subprocess.TimeoutExpired):
         return (0, 0, 0)
 
 

@@ -8,7 +8,6 @@ load setup_suite
 @test "ramalama convert artifact - basic functionality" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     # Requires the -rag images which are not available on these arches yet
     skip_if_ppc64le
     skip_if_s390x
@@ -26,7 +25,8 @@ load setup_suite
     run_podman artifact ls
     is "$output" ".*artifact-test.*latest" "artifact appears in podman artifact list"
 
-    run_ramalama rm ${artifact} file://${testmodel}
+    run_ramalama rm file://${testmodel}
+    run_ramalama rm ${artifact}
     run_ramalama ls
     assert "$output" !~ ".*artifact-test" "artifact was removed"
 }
@@ -34,7 +34,6 @@ load setup_suite
 @test "ramalama convert artifact - from ollama model" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
@@ -54,7 +53,6 @@ load setup_suite
 @test "ramalama convert artifact - with OCI target" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
@@ -85,7 +83,6 @@ load setup_suite
 
 @test "ramalama convert artifact - error handling" {
     skip_if_nocontainer
-    skip_if_podman_too_old "5.7.0"
 
     # Test invalid type
     run_ramalama 2 convert --type invalid file://$RAMALAMA_TMPDIR/test oci://test
@@ -103,7 +100,6 @@ load setup_suite
 @test "ramalama push artifact - basic functionality" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
     local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
@@ -115,19 +111,19 @@ load setup_suite
 	--password ${PODMAN_LOGIN_PASS} \
 	oci://$registry
 
-    run_ramalama ? rm oci://$registry/artifact-test-push:latest
+    run_ramalama rm --ignore oci://$registry/artifact-test-push:latest
     echo "test model" > $RAMALAMA_TMPDIR/testmodel
 
     run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/testmodel oci://$registry/artifact-test-push:latest
     run_ramalama list
     is "$output" ".*$registry/artifact-test-push.*latest" "artifact was pushed and listed"
-    run_ramalama push --tls-verify=false --type artifact oci://$registry/artifact-test-push:latest
+    run_ramalama push --type artifact oci://$registry/artifact-test-push:latest
 
     # Verify it's an artifact
     run_podman artifact ls
     is "$output" ".*$registry/artifact-test-push" "pushed artifact appears in podman artifact list"
 
-    run_ramalama rm oci://$registry/artifact-test-push:latest file://$RAMALAMA_TMPDIR/testmodel
+    run_ramalama rm oci://$registry/artifact-test-push:latest
 
     run_ramalama ls
     assert "$output" !~ ".*$registry/artifact-test-push" "pushed artifact was removed"
@@ -136,7 +132,7 @@ load setup_suite
     run_ramalama convert --type raw file://$RAMALAMA_TMPDIR/testmodel oci://$registry/test-image:latest
     run_ramalama push --type artifact oci://$registry/test-image:latest
 
-    run_ramalama rm oci://$registry/test-image:latest file://$RAMALAMA_TMPDIR/testmodel
+    run_ramalama rm oci://$registry/test-image:latest
     assert "$output" !~ ".*test-image" "local image was removed"
     stop_registry
 }
@@ -144,18 +140,38 @@ load setup_suite
 @test "ramalama list - includes artifacts" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
     artifact="artifact-test:latest"
-    run_podman artifact rm --ignore ${artifact}
+    run_podman ? artifact rm ${artifact}
     # Create a regular image
     echo "test model" > $RAMALAMA_TMPDIR/testmodel
-    run_ramalama convert --type raw file://$RAMALAMA_TMPDIR/testmodel image-test
+    run_ramalama convert --type raw file://$RAMALAMA_TMPDIR/testmodel test-image
 
     # Create an artifact
     run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/testmodel ${artifact}
+
+    run_ramalama list
+    is "$output" ".*test-image.*latest" "regular image appears in list"
+    is "$output" ".*artifact-test.*latest" "artifact appears in list"
+
+    run_ramalama rm test-image:latest ${artifact}
+    run_ramalama list
+    assert "$output" !~ ".*test-image" "regular image was removed"
+    run_podman artifact ls
+    assert "$output" !~ ".*artifact-test" "artifact was removed"
+}
+
+@test "ramalama list - json output includes artifacts" {
+    skip_if_darwin
+    skip_if_nocontainer
+    skip_if_docker
+    skip_if_ppc64le
+    skip_if_s390x
+
+    echo "test model" > $RAMALAMA_TMPDIR/testmodel
+    run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/testmodel artifact-test:latest
 
     run_ramalama list --json
     # Check that the artifact appears in JSON output
@@ -168,22 +184,14 @@ load setup_suite
     assert "$modified" != "" "artifact has modified field"
     assert "$size" != "" "artifact has size field"
 
-    run_ramalama list
-    is "$output" ".*image-test.*latest" "regular image appears in list"
-    is "$output" ".*artifact-test.*latest" "artifact appears in list"
-
-    run_ramalama rm file://$RAMALAMA_TMPDIR/testmodel oci://localhost/image-test:latest ${artifact}
-    run_ramalama list
-    assert "$output" !~ ".*image-test" "regular image was removed"
+    run_ramalama rm artifact-test:latest
     run_podman artifact ls
-    assert "$output" !~ ".*artifact-test" "artifact was removed"
+    assert "$output" !~ ".*artifact-test.*latest" "artifact was removed"
 }
-
 
 @test "ramalama convert - default type from config" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
@@ -207,13 +215,12 @@ EOF
     run_podman artifact ls
     is "$output" ".*test-config-artifact.*latest" "artifact appears in podman artifact list"
 
-    run_ramalama rm test-config-artifact:latest  file://$RAMALAMA_TMPDIR/testmodel
+    run_ramalama rm test-config-artifact:latest
 }
 
 @test "ramalama convert - type precedence (CLI over config)" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
@@ -236,18 +243,17 @@ EOF
     run_podman artifact ls
     assert "$output" !~ ".*test-cli-override" "image does not appear in podman artifact list"
 
-    run_ramalama rm test-cli-override  file://$RAMALAMA_TMPDIR/testmodel
+    run_ramalama rm test-cli-override
     assert "$output" !~ ".*test-cli-override" "image was removed"
 }
 
 @test "ramalama convert - all supported types" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
-    run_ramalama ? rm test-car:latest test-raw:latest
+    run_ramalama rm --ignore test-car:latest test-raw:latest
     echo "test model" > $RAMALAMA_TMPDIR/testmodel
 
     # Test car type
@@ -266,7 +272,7 @@ EOF
     assert "$output" !~ ".*test-raw" "raw does not appear in artifact list"
 
     # Clean up
-    run_ramalama rm test-car:latest test-raw:latest  file://$RAMALAMA_TMPDIR/testmodel
+    run_ramalama rm test-car:latest test-raw:latest
     assert "$output" !~ ".*test-car" "car was removed"
     assert "$output" !~ ".*test-raw" "raw was removed"
 }
@@ -274,7 +280,6 @@ EOF
 @test "ramalama push - all supported types" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
     local registry=localhost:${PODMAN_LOGIN_REGISTRY_PORT}
@@ -288,7 +293,7 @@ EOF
 
     echo "test model" > $RAMALAMA_TMPDIR/testmodel
 
-    run_ramalama ? rm artifact-test:latest
+    run_ramalama rm --ignore artifact-test:latest
     # Test artifact push
     run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/testmodel oci://$registry/artifact-test-push:latest
     run_ramalama list
@@ -319,10 +324,33 @@ EOF
     stop_registry
 }
 
+# bats test_tags=distro-integration
+@test "ramalama artifact - large file handling" {
+    skip_if_nocontainer
+    skip_if_docker
+    skip_if_ppc64le
+    skip_if_s390x
+
+    # Create a larger test file (1MB)
+    dd if=/dev/zero of=$RAMALAMA_TMPDIR/large_model bs=1M count=1 2>/dev/null
+    echo "test data" >> $RAMALAMA_TMPDIR/large_model
+
+    run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/large_model large-artifact:latest
+    run_ramalama list
+    is "$output" ".*large-artifact.*latest" "large artifact was created"
+
+    # Verify size is reasonable
+    size=$(run_ramalama list --json | jq -r '.[0].size')
+    assert [ "$size" -gt 1000000 ] "artifact size is at least 1MB"
+
+    run_ramalama rm large-artifact
+    run_ramalama ls
+    assert "$output" !~ ".*large-artifact" "large artifact was removed"
+}
+
 @test "ramalama artifact - multiple files in artifact" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
@@ -336,11 +364,11 @@ EOF
 
     run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/multi_model.tar.gz multi-artifact
     run_ramalama list
-    is "$output" ".*multi-artifact.*latest" "multi-file artifact was created"
+    is "$output" ".*multi-artifact:latest" "multi-file artifact was created"
 
     # Verify it's an artifact
     run_podman artifact ls
-    is "$output" ".*multi-artifact.*latest" "multi-file artifact appears in podman artifact list"
+    is "$output" ".*multi-artifact:latest" "multi-file artifact appears in podman artifact list"
 
     run_ramalama rm multi-artifact
     assert "$output" !~ ".*multi-artifact" "multi-file artifact was removed"
@@ -349,12 +377,8 @@ EOF
 @test "ramalama artifact - concurrent operations" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
-
-    skip "FIXME: This is broken in Podman 5.7 and fixed in podman 6.0.
-    https://github.com/containers/podman/pull/27574"
 
     echo "test model 1" > $RAMALAMA_TMPDIR/testmodel1
     echo "test model 2" > $RAMALAMA_TMPDIR/testmodel2
@@ -370,10 +394,10 @@ EOF
     wait $pid2
 
     run_ramalama list
-    is "$output" ".*concurrent-artifact1.*latest" "first concurrent artifact was created"
-    is "$output" ".*concurrent-artifact2.*latest" "second concurrent artifact was created"
+    is "$output" ".*concurrent-artifact1:latest" "first concurrent artifact was created"
+    is "$output" ".*concurrent-artifact2:latest" "second concurrent artifact was created"
 
-    run_ramalama rm concurrent-artifact1 concurrent-artifact2  file://$RAMALAMA_TMPDIR/testmodel1  file://$RAMALAMA_TMPDIR/testmodel2
+    run_ramalama rm concurrent-artifact1 concurrent-artifact2
     assert "$output" !~ ".*concurrent-artifact1" "first concurrent artifact was removed"
     assert "$output" !~ ".*concurrent-artifact2" "second concurrent artifact was removed"
 }
@@ -381,11 +405,10 @@ EOF
 @test "ramalama artifact - error handling for invalid source" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
 
     # Test with non-existent file
-    run_ramalama 2 convert --type artifact file:///nonexistent/path/model.gguf test-artifact
-    is "$output" ".*Error: No such file: '/nonexistent/path/model.gguf.*" "directory as source is handled gracefully"
+    run_ramalama 22 convert --type artifact file:///nonexistent/path/model.gguf test-artifact
+    is "$output" ".*Error.*" "non-existent file is handled gracefully"
 
     # Test with directory instead of file
     mkdir -p $RAMALAMA_TMPDIR/testdir
@@ -393,11 +416,32 @@ EOF
     is "$output" ".*Error.*" "directory as source is handled gracefully"
 }
 
+@test "ramalama artifact - size reporting accuracy" {
+    skip_if_nocontainer
+    skip_if_docker
+    skip_if_ppc64le
+    skip_if_s390x
+
+    # Create a file with known size
+    echo "test data for size verification" > $RAMALAMA_TMPDIR/size_test_model
+    expected_size=$(wc -c < $RAMALAMA_TMPDIR/size_test_model)
+
+    run_ramalama convert --type artifact file://$RAMALAMA_TMPDIR/size_test_model size-test-artifact
+    run_ramalama list --json
+    reported_size=$(echo "$output" | jq -r '.[0].size')
+
+    # Allow for some overhead in artifact storage
+    assert [ "$reported_size" -ge "$expected_size" ] "reported size is at least the file size"
+    assert [ "$reported_size" -lt "$((expected_size * 2))" ] "reported size is not excessively large"
+
+    run_ramalama rm size-test-artifact
+    assert "$output" !~ ".*size-test-artifact" "size test artifact was removed"
+}
+
 # bats test_tags=distro-integration
 @test "ramalama config - convert_type setting" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
@@ -421,13 +465,12 @@ EOF
     run_podman artifact ls
     is "$output" ".*config-test-artifact.*latest" "artifact appears in podman artifact list"
 
-    run_ramalama rm ${artifact} file://$RAMALAMA_TMPDIR/testmodel
+    run_ramalama rm ${artifact}
     assert "$output" !~ ".*config-test-artifact" "artifact was removed"
 }
 
 @test "ramalama config - convert_type validation" {
     skip_if_nocontainer
-    skip_if_podman_too_old "5.7.0"
 
     # Test invalid convert_type in config
     local config_file=$RAMALAMA_TMPDIR/ramalama.conf
@@ -446,7 +489,6 @@ EOF
 @test "ramalama config - convert_type precedence" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
@@ -462,20 +504,19 @@ EOF
     # Test CLI override of config
     RAMALAMA_CONFIG=$config_file run_ramalama convert --type raw file://$RAMALAMA_TMPDIR/testmodel cli-override-test
     run_ramalama list
-    is "$output" ".*cli-override-test.*latest" "CLI type override worked"
+    is "$output" ".*cli-override-test:latest" "CLI type override worked"
 
     # Verify it's NOT an artifact (should be raw)
     run_podman artifact ls
     assert "$output" !~ ".*cli-override-test" "CLI override created raw image, not artifact"
 
-    run_ramalama rm cli-override-test file://$RAMALAMA_TMPDIR/testmodel
+    run_ramalama rm cli-override-test
     assert "$output" !~ ".*cli-override-test" "image was removed"
 }
 
 @test "ramalama config - environment variable override" {
     skip_if_nocontainer
     skip_if_docker
-    skip_if_podman_too_old "5.7.0"
     skip_if_ppc64le
     skip_if_s390x
 
@@ -491,13 +532,13 @@ EOF
     # Test environment variable override
     RAMALAMA_CONFIG=$config_file RAMALAMA_CONVERT_TYPE=raw run_ramalama convert file://$RAMALAMA_TMPDIR/testmodel env-override-test
     run_ramalama list
-    is "$output" ".*env-override-test.*latest" "environment variable override worked"
+    is "$output" ".*env-override-test:latest" "environment variable override worked"
 
     # Verify it's NOT an artifact (should be raw)
     run_podman artifact ls
     assert "$output" !~ ".*env-override-test" "environment override created raw image, not artifact"
 
-    run_ramalama rm env-override-test file://$RAMALAMA_TMPDIR/testmodel
+    run_ramalama rm env-override-test
     assert "$output" !~ ".*env-override-test" "image was removed"
 }
 

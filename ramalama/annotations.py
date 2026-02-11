@@ -3,15 +3,15 @@
 # https://github.com/CloudNativeAI/model-spec
 
 # ArtifactTypeModelManifest specifies the media type for a model manifest.
-ArtifactTypeModelManifest = "application/vnd.cnai.model.manifest.v1+json"
+ArtifactTypeModelManifest = "application/vnd.cncf.model.manifest.v1+json"
 
 # ArtifactTypeModelLayer is the media type used for layers referenced by the
 # manifest.
-ArtifactTypeModelLayer = "application/vnd.cnai.model.layer.v1.tar"
+ArtifactTypeModelLayer = "application/vnd.cncf.model.layer.v1.tar"
 
 # ArtifactTypeModelLayerGzip is the media type used for gzipped layers
 # referenced by the manifest.
-ArtifactTypeModelLayerGzip = "application/vnd.cnai.model.layer.v1.tar+gzip"
+ArtifactTypeModelLayerGzip = "application/vnd.cncf.model.layer.v1.tar+gzip"
 
 # AnnotationCreated is the annotation key for the date and time on which the
 # model was built (date-time string as defined by RFC 3339).
@@ -76,7 +76,7 @@ AnnotationBaseImageName = "org.opencontainers.image.base.name"
 # DEPRECATED: Migrate to AnnotationFilepath
 # AnnotationModel is the annotation key for the layer is a model file (boolean),
 # such as `true` or `false`.
-AnnotationModel = "org.cnai.model.model"
+AnnotationModel = "org.cncf.model.model"
 
 # AnnotationFilepath is the annotation key for the file path of the layer.
-AnnotationFilepath = "org.cnai.model.filepath"
+AnnotationFilepath = "org.cncf.model.filepath"

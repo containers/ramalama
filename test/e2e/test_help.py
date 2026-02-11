@@ -223,7 +223,7 @@ def test_default_runtime():
 @pytest.mark.e2e
 def test_default_runtime_variable_precedence():
     env_runtime = "mlx"
-    config_runtime = "lamma.cpp"
+    config_runtime = "llama.cpp"
     param_runtime = "vllm"
 
     config = f"""
