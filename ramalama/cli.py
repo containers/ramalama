@@ -989,6 +989,14 @@ def runtime_options(parser, command):
             help=argparse.SUPPRESS,
             completer=suppressCompleter,
         )
+    if command in ["run", "serve"]:
+        parser.add_argument(
+            "--context-shift",
+            dest="context_shift",
+            action="store_true",
+            default=False,
+            help="enable context shifting in llama.cpp when context is full",
+        )
     if command == "serve":
         parser.add_argument(
             "-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode"
