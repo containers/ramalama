@@ -4,7 +4,7 @@
 ramalama\-inspect - inspect the specified AI Model
 
 ## SYNOPSIS
-**ramalama inspect** [*options*] *model*
+**ramalama inspect** [*options*] [*model*]
 
 ## DESCRIPTION
 Inspect the specified AI Model about additional information

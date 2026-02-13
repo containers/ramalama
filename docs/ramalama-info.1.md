@@ -8,12 +8,15 @@ ramalama\-info - display RamaLama configuration information
 **ramalama info** [*options*]
 
 ## DESCRIPTION
-Display configuration information in a json format.
+Display configuration information in a json format. Use **--shortnames** to list available shortnames.
 
 ## OPTIONS
 
 #### **--help**, **-h**
 show this help message and exit
+
+#### **--shortnames**
+Print the available shortnames and exit. Each entry includes the source of the configuration file.
 
 ## FIELDS
 
@@ -34,7 +37,7 @@ For example:
 
 The `Selinux` field indicates if SELinux is activated or not.
 
-The `Shortnames` field shows the used list of configuration files specifying AI Model short names as well as the merged list of shortnames.
+The `Shortnames` field shows the used list of configuration files specifying AI Model short names as well as the merged list of shortnames. The `Shortnames.Sources` map indicates which configuration file provided each shortname.
 
 The `Store` field indicates the directory path where RamaLama stores its persistent data, including downloaded models, configuration files, and cached data. By default, this is located in the user's local share directory.
 
@@ -118,6 +121,13 @@ $ ramalama info
     "UseContainer": true,
     "Version": "0.7.5"
 }
+```
+
+List available shortnames
+```
+$ ramalama info --shortnames
+smollm:135m=ollama://smollm:135m (/usr/share/ramalama/shortnames.conf)
+tinyllama:latest=ollama://tinyllama:latest (/home/dwalsh/.config/ramalama/shortnames.conf)
 ```
 
 Info with Podman engine
