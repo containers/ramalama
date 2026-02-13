@@ -215,6 +215,29 @@ registry if it does not exist in local storage. By default a prompt for a chat
 bot is started. When arguments are specified, the arguments will be given
 to the AI Model and the output returned without entering the chatbot.
 
+## INTERACTIVE COMMANDS
+
+When running in interactive chat mode (without arguments), the following commands are available.
+All commands are case-insensitive (e.g., `/CLEAR`, `/Clear`, and `/clear` all work).
+
+#### **/clear**
+Clear the conversation history without exiting the chat session. This resets the context
+and allows starting a fresh conversation without restarting the container or connection.
+A confirmation message will be displayed when the history is cleared.
+
+#### **/bye**, **exit**
+Exit the chat session and close the connection.
+
+#### **/tool** [question]
+(Only available when using --mcp) Manually select which MCP tool to use for a question.
+Without this command, the AI automatically decides whether to use tools based on the question.
+
+#### **Ctrl + D**
+Exit the chat session (EOF signal).
+
+#### **\\** (backslash at end of line)
+Continue input on the next line, allowing multi-line prompts.
+
 ## EXAMPLES
 
 Run command without arguments starts a chatbot
@@ -250,10 +273,23 @@ This program is a Python script that allows the user to interact with a terminal
 
 Run command and send multiple lines at once to the chatbot by adding a backslash `\`
 at the end of the line
+```
 $ ramalama run granite
 🦭 > Hi \
 🦭 > tell me a funny story \
 🦭 > please
+```
+
+Clear conversation history during a chat session
+```
+$ ramalama run granite
+🦭 > What is the capital of France?
+Paris
+🦭 > /clear
+Conversation history cleared.
+🦭 > What is 2+2?
+4
+```
 
 ## Exit Codes:
 
