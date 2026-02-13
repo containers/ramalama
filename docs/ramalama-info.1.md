@@ -16,8 +16,7 @@ Display configuration information in a json format. Use **--shortnames** to list
 show this help message and exit
 
 #### **--shortnames**
-Print the available shortnames and exit. Each entry includes the source
-configuration file.
+Print the available shortnames and exit. Each entry includes the source of the configuration file.
 
 ## FIELDS
 
@@ -127,10 +126,8 @@ $ ramalama info
 List available shortnames
 ```
 $ ramalama info --shortnames
-smollm:135m = ollama://smollm:135m
-   Source: /usr/share/ramalama/shortnames.conf
-tinyllama:latest = ollama://tinyllama:latest
-   Source: /home/dwalsh/.config/ramalama/shortnames.conf
+smollm:135m=ollama://smollm:135m (/usr/share/ramalama/shortnames.conf)
+tinyllama:latest=ollama://tinyllama:latest (/home/dwalsh/.config/ramalama/shortnames.conf)
 ```
 
 Info with Podman engine
