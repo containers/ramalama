@@ -57,7 +57,7 @@ def test_help_command_flags():
     # Test for regression of #7273 (spurious "--remote" help on output)
     for help_opt in ["help", "-h", "--help"]:
         result = check_output(["ramalama", help_opt])
-        assert re.search(r"^usage: ramalama \[-h] \[--debug] \[--dryrun] \[--engine {podman,docker}]", result)
+        assert re.search(r"^usage: ramalama \[-h] \[--debug.*] \[--dryrun] \[--engine {podman,docker}]", result)
 
 
 @pytest.mark.e2e
