@@ -114,9 +114,6 @@ docsite-docs:
 
 .PHONY: lint
 lint:
-ifneq (,$(wildcard /usr/bin/python3))
-	${PYTHON} -m compileall -q -x '\.venv' .
-endif
 	! git grep -n -- '#!/usr/bin/python3' -- ':!Makefile'
 	ruff check $(RUFF_TARGETS)
 	shellcheck *.sh */*.sh */*/*.sh
