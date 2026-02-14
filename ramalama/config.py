@@ -16,6 +16,7 @@ from ramalama.toml_parser import TOMLParser
 DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
 DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
 DEFAULT_RAG_IMAGE: str = "quay.io/ramalama/ramalama-rag"
+DEFAULT_TRANSPORT: str = "ollama"
 GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q2_K",
     "Q3_K_S",
@@ -276,7 +277,7 @@ class BaseConfig:
     temp: str = "0.8"
     thinking: bool = True
     threads: int = -1
-    transport: str = "ollama"
+    transport: str = DEFAULT_TRANSPORT
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
     provider: ProviderConfig = field(default_factory=ProviderConfig)

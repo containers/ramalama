@@ -1,17 +1,25 @@
+import logging
 from dataclasses import dataclass
 from typing import Union
+from unittest.mock import patch
 
 import pytest
 
 import ramalama.transports.transport_factory as transport_factory_module
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
+from ramalama.config import DEFAULT_TRANSPORT
 from ramalama.transports.api import APITransport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
 from ramalama.transports.oci import OCI
 from ramalama.transports.ollama import Ollama
 from ramalama.transports.rlcr import RamalamaContainerRegistry
-from ramalama.transports.transport_factory import TransportFactory
+from ramalama.transports.transport_factory import (
+    New,
+    TransportFactory,
+    _has_explicit_transport_prefix,
+    _warn_implicit_default_transport,
+)
 from ramalama.transports.url import URL
 
 
@@ -169,6 +177,95 @@ def test_prune_model_input(input: Input, expected: str):
     args = ARGS(input.Engine)
     pruned_model_input = TransportFactory(input.Model, args, input.Transport).prune_model_input()
     assert pruned_model_input == expected
+
+
+@pytest.fixture(autouse=False)
+def reset_warning_state():
+    """Reset the once-per-process warning guard between tests."""
+    transport_factory_module._default_transport_warned = False
+    yield
+    transport_factory_module._default_transport_warned = False
+
+
+class TestHasExplicitTransportPrefix:
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "huggingface://org/model",
+            "hf://org/model",
+            "hf.co/org/model",
+            "ollama://granite-code",
+            "ollama.com/library/granite-code",
+            "oci://granite-code",
+            "docker://granite-code",
+            "rlcr://granite-code",
+            "modelscope://org/model",
+            "ms://org/model",
+            "http://example.com/model.gguf",
+            "https://example.com/model.gguf",
+            "file:///tmp/model.gguf",
+            "openai://gpt-4o-mini",
+        ],
+    )
+    def test_returns_true_for_prefixed_models(self, model):
+        assert _has_explicit_transport_prefix(model) is True
+
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "granite-code",
+            "ibm-granite/granite-3b-code-base-2k-GGUF",
+            "",
+        ],
+    )
+    def test_returns_false_for_unprefixed_models(self, model):
+        assert _has_explicit_transport_prefix(model) is False
+
+
+class TestWarnImplicitDefaultTransport:
+    def test_warning_emitted_on_implicit_default(self, caplog, reset_warning_state):
+        """Warning fires when transport is not set in config/env and model has no prefix."""
+        with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
+            mock_cfg.return_value.is_set.return_value = False
+            mock_cfg.return_value.transport = DEFAULT_TRANSPORT
+            with caplog.at_level(logging.WARNING, logger="ramalama"):
+                _warn_implicit_default_transport("granite-code")
+        assert "currently defaults to" in caplog.text
+        assert DEFAULT_TRANSPORT in caplog.text
+
+    def test_no_warning_when_transport_set_in_config(self, caplog, reset_warning_state):
+        """No warning when user explicitly set transport in config or env."""
+        with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
+            mock_cfg.return_value.is_set.return_value = True
+            with caplog.at_level(logging.WARNING, logger="ramalama"):
+                _warn_implicit_default_transport("granite-code")
+        assert caplog.text == ""
+
+    def test_no_warning_when_model_has_prefix(self, caplog, reset_warning_state):
+        """No warning when model uses an explicit transport prefix."""
+        with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
+            mock_cfg.return_value.is_set.return_value = False
+            with caplog.at_level(logging.WARNING, logger="ramalama"):
+                _warn_implicit_default_transport("ollama://granite-code")
+        assert caplog.text == ""
+
+    def test_no_warning_when_hf_prefix_used(self, caplog, reset_warning_state):
+        """No warning when model uses hf:// prefix."""
+        with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
+            mock_cfg.return_value.is_set.return_value = False
+            with caplog.at_level(logging.WARNING, logger="ramalama"):
+                _warn_implicit_default_transport("hf://org/model")
+        assert caplog.text == ""
+
+    def test_warning_emitted_only_once(self, caplog, reset_warning_state):
+        """Warning fires at most once per process."""
+        with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
+            mock_cfg.return_value.is_set.return_value = False
+            mock_cfg.return_value.transport = DEFAULT_TRANSPORT
+            with caplog.at_level(logging.WARNING, logger="ramalama"):
+                _warn_implicit_default_transport("granite-code")
+                _warn_implicit_default_transport("another-model")
+        assert caplog.text.count("currently defaults to") == 1
 
 
 def test_transport_factory_passes_scheme_to_get_chat_provider(monkeypatch):

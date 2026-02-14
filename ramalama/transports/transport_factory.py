@@ -1,4 +1,5 @@
 import copy
+import logging
 from collections.abc import Callable
 from typing import TypeAlias
 from urllib.parse import urlparse
@@ -6,7 +7,7 @@ from urllib.parse import urlparse
 from ramalama.arg_types import StoreArgType
 from ramalama.chat_providers.api_providers import get_chat_provider
 from ramalama.common import rm_until_substring
-from ramalama.config import get_config
+from ramalama.config import DEFAULT_TRANSPORT, get_config
 from ramalama.path_utils import file_uri_to_path
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import MODEL_TYPES, Transport
@@ -19,13 +20,34 @@ from ramalama.transports.url import URL
 
 CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry | APITransport
 
+KNOWN_TRANSPORT_PREFIXES = (
+    "huggingface://",
+    "hf://",
+    "hf.co/",
+    "modelscope://",
+    "ms://",
+    "ollama://",
+    "ollama.com/library/",
+    "oci://",
+    "docker://",
+    "rlcr://",
+    "http://",
+    "https://",
+    "file:",
+    "openai://",
+)
+
+_default_transport_warned = False
+
+logger = logging.getLogger("ramalama")
+
 
 class TransportFactory:
     def __init__(
         self,
         model: str,
         args: StoreArgType,
-        transport: str = "ollama",
+        transport: str = DEFAULT_TRANSPORT,
         ignore_stderr: bool = False,
     ):
 
@@ -167,7 +189,30 @@ class TransportFactory:
         return APITransport(self.pruned_model, provider=get_chat_provider(scheme))
 
 
+def _has_explicit_transport_prefix(model: str) -> bool:
+    return any(model.startswith(prefix) for prefix in KNOWN_TRANSPORT_PREFIXES)
+
+
+def _warn_implicit_default_transport(model: str) -> None:
+    global _default_transport_warned
+    if _default_transport_warned:
+        return
+    cfg = get_config()
+    if cfg.is_set("transport") or _has_explicit_transport_prefix(model):
+        return
+    _default_transport_warned = True
+    logger.warning(
+        "Notice: RamaLama currently defaults to '%s' when no transport is specified. "
+        "This will change to 'huggingface' in a future major release. "
+        "To keep today's behavior, set transport='ollama' in ramalama.conf or "
+        "set RAMALAMA_TRANSPORT=ollama. To opt in now, use hf://... or "
+        "set transport='huggingface'.",
+        DEFAULT_TRANSPORT,
+    )
+
+
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
     if transport is None:
         transport = get_config().transport
+        _warn_implicit_default_transport(name)
     return TransportFactory(name, args, transport=transport).create()
