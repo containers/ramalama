@@ -263,15 +263,17 @@ RamaLama supports multiple AI model registries types called transports.
 |                          |Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), [`Pulp`](https://pulpproject.org), and [`Artifactory`](https://jfrog.com/artifactory/)|
 
 ### Default Transport
-RamaLama uses the Ollama registry transport by default
+RamaLama defaults to the Ollama registry transport. This will change to Hugging Face in a future major release.
 
 <details>
 <summary>
-How to change transports.
+How to change or pin transports.
 </summary>
 <br>
 
-Use the RAMALAMA_TRANSPORT environment variable to modify the default. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
+To keep today's behavior after the future switch, set `transport = "ollama"` in your `ramalama.conf` or `export RAMALAMA_TRANSPORT=ollama`.
+
+To opt in to Hugging Face now, use `export RAMALAMA_TRANSPORT=huggingface` or prefix models with `hf://`.
 
 Individual model transports can be modified when specifying a model via the `huggingface://`, `oci://`, `modelscope://`, `ollama://`, or `rlcr://` prefix.
 

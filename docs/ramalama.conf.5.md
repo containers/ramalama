@@ -239,6 +239,8 @@ The default -1, uses the default of the underlying implementation
 
 Specify the default transport to be used for pulling and pushing of AI Models.
 Options: oci, ollama, huggingface.
+The default is Ollama today but will change to Hugging Face in a future major release.
+To keep today's behavior, explicitly set `transport = "ollama"`.
 RAMALAMA_TRANSPORT environment variable overrides this field.
 
 `[[ramalama.http_client]]`
