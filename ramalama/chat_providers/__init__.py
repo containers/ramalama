@@ -6,4 +6,11 @@ from ramalama.chat_providers.base import (
     ChatStreamEvent,
 )
 
-__all__ = ["ChatProvider", "ChatProviderError", "ChatRequestOptions", "ChatStreamEvent", "openai", "api_providers"]
+__all__ = [
+    "ChatProvider",
+    "ChatProviderError",
+    "ChatRequestOptions",
+    "ChatStreamEvent",
+    "api_providers",
+    "openai",
+]

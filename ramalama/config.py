@@ -160,6 +160,11 @@ class UserConfig:
 
 
 @dataclass
+class RamalamaLabsProviderConfig:
+    api_key: str | None = None
+
+
+@dataclass
 class OpenaiProviderConfig:
     api_key: str | None = None
 
@@ -167,6 +172,7 @@ class OpenaiProviderConfig:
 @dataclass
 class ProviderConfig:
     openai: OpenaiProviderConfig = field(default_factory=OpenaiProviderConfig)
+    ramalamalabs: RamalamaLabsProviderConfig = field(default_factory=RamalamaLabsProviderConfig)
 
 
 @dataclass

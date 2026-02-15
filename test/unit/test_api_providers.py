@@ -14,4 +14,4 @@ def test_get_chat_provider_returns_openai_provider():
 
 def test_get_chat_provider_raises_for_unknown_scheme():
     with pytest.raises(ValueError):
-        get_chat_provider("anthropic")
+        get_chat_provider("unknown_provider")

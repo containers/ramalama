@@ -4,6 +4,7 @@ from functools import singledispatch
 from typing import Any, TypedDict
 
 from ramalama.chat_providers.base import ChatProvider, ChatRequestOptions, ChatStreamEvent
+from ramalama.chat_providers.errors import UnsupportedOpenaiMessageType
 from ramalama.chat_utils import (
     AssistantMessage,
     AttachmentPart,
@@ -15,17 +16,13 @@ from ramalama.chat_utils import (
 )
 
 
-class UnsupportedMessageType(Exception):
-    """Raised when a provider request fails or returns an invalid payload."""
-
-
 @singledispatch
 def message_to_completions_dict(message: Any) -> dict[str, Any]:
     message = (
         f"Cannot convert message type `{type(message)}` to a completions dictionary.\n"
         "Please create an issue at: https://github.com/containers/ramalama/issues"
     )
-    raise UnsupportedMessageType(message)
+    raise UnsupportedOpenaiMessageType(message)
 
 
 @message_to_completions_dict.register
@@ -58,6 +55,11 @@ def _(message: AssistantMessage) -> dict[str, Any]:
     if message.attachments:
         raise ValueError("Attachments are not supported by this provider.")
 
+    payload: dict[str, Any] = {
+        **message.metadata,
+        'content': message.text or "",
+        'role': message.role,
+    }
     tool_calls = [
         {
             "id": call.id,
@@ -69,15 +71,20 @@ def _(message: AssistantMessage) -> dict[str, Any]:
         }
         for call in message.tool_calls
     ]
-    return {**message.metadata, 'content': message.text or "", 'role': message.role, 'tool_calls': tool_calls}
+    if tool_calls:
+        payload['tool_calls'] = tool_calls
+    return payload
 
 
-class CompletionsPayload(TypedDict, total=False):
+class CompletionsPayloadRequired(TypedDict):
     messages: list[dict[str, Any]]
-    model: str | None
+    model: str
+    stream: bool
+
+
+class CompletionsPayload(CompletionsPayloadRequired, total=False):
     temperature: float | None
     max_tokens: int | None
-    stream: bool
 
 
 class OpenAICompletionsChatProvider(ChatProvider):
@@ -89,13 +96,18 @@ class OpenAICompletionsChatProvider(ChatProvider):
         self._stream_buffer: str = ""
 
     def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> CompletionsPayload:
+        if options.model is None:
+            raise ValueError("Chat options require a model value")
+
         payload: CompletionsPayload = {
             "messages": [message_to_completions_dict(m) for m in messages],
             "model": options.model,
-            "temperature": options.temperature,
-            "max_tokens": options.max_tokens,
             "stream": options.stream,
         }
+        if options.temperature is not None:
+            payload["temperature"] = options.temperature
+        if options.max_tokens is not None:
+            payload["max_tokens"] = options.max_tokens
         return payload
 
     def parse_stream_chunk(self, chunk: bytes) -> Iterable[ChatStreamEvent]:
@@ -230,12 +242,15 @@ def _(message: AssistantMessage) -> dict[str, Any]:
     return payload
 
 
-class ResponsesPayload(TypedDict, total=False):
+class ResponsesPayloadRequired(TypedDict):
     input: list[dict[str, Any]]
     model: str
+    stream: bool
+
+
+class ResponsesPayload(ResponsesPayloadRequired, total=False):
     temperature: float | None
     max_completion_tokens: int
-    stream: bool
 
 
 class OpenAIResponsesChatProvider(ChatProvider):
@@ -253,9 +268,10 @@ class OpenAIResponsesChatProvider(ChatProvider):
         payload: ResponsesPayload = {
             "input": [message_to_responses_dict(m) for m in messages],
             "model": options.model,
-            "temperature": options.temperature,
             "stream": options.stream,
         }
+        if options.temperature is not None:
+            payload["temperature"] = options.temperature
 
         if options.max_tokens is not None and options.max_tokens > 0:
             payload["max_completion_tokens"] = options.max_tokens
@@ -303,13 +319,13 @@ class OpenAIResponsesChatProvider(ChatProvider):
 
     @staticmethod
     def _is_completion_event(event_type: str, payload: Mapping[str, Any]) -> bool:
-        hinted_type = event_type or (payload.get("type") if isinstance(payload, Mapping) else "")
+        hinted_type = event_type or payload.get("type", "")
         return hinted_type == "response.completed"
 
     @staticmethod
     def _extract_responses_delta(event_type: str, payload: Mapping[str, Any]) -> str | None:
         if not event_type:
-            event_type = payload.get("type", "") if isinstance(payload, Mapping) else ""
+            event_type = payload.get("type", "")
 
         if event_type == "response.output_text.delta":
             delta = payload.get("delta")
