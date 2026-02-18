@@ -665,11 +665,9 @@ def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_
         return image if ":" in image else f"{image}:latest"
 
     if config.runtime == "whisper.cpp":
-        from ramalama.config import DEFAULT_WHISPER_IMAGE
+        from ramalama.config import get_whisper_image
 
-        image = config.images.get("WHISPER", DEFAULT_WHISPER_IMAGE)
-        # If the image from the config is specified by tag or digest, return it unmodified
-        return image if ":" in image else f"{image}:main"
+        return get_whisper_image(config)
 
     # Get image based on detected GPU type
     image = images.get(gpu_type, getattr(config, f"default_{conf_key}"))

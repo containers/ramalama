@@ -31,12 +31,12 @@ from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
 from ramalama.common import MNT_AUDIO_DIR, accel_image, exec_cmd, get_accel, perror
 from ramalama.config import (
-    DEFAULT_WHISPER_IMAGE,
     GGUF_QUANTIZATION_MODES,
     SUPPORTED_ENGINES,
     SUPPORTED_RUNTIMES,
     coerce_to_bool,
     get_config,
+    get_whisper_image,
     get_inference_schema_files,
     get_inference_spec_files,
     load_file_config,
@@ -81,9 +81,7 @@ def default_rag_image() -> str:
 
 @lru_cache(maxsize=1)
 def default_whisper_image() -> str:
-    config = get_config()
-    image = config.images.get("WHISPER", DEFAULT_WHISPER_IMAGE)
-    return image if ":" in image else f"{image}:main"
+    return get_whisper_image(get_config())
 
 
 @lru_cache(maxsize=1)
@@ -1043,19 +1041,20 @@ def runtime_options(parser, command):
         )
     parser.add_argument(
         "--image",
-        default=default_image(),
+        default=default_whisper_image() if command == "transcribe" else default_image(),
         help="OCI container image to run with the specified AI model",
         action=OverrideDefaultAction,
         completer=local_images,
     )
-    parser.add_argument(
-        "--keep-groups",
-        dest="podman_keep_groups",
-        default=config.keep_groups,
-        action="store_true",
-        help="""pass `--group-add keep-groups` to podman.
+    if command != "transcribe":
+        parser.add_argument(
+            "--keep-groups",
+            dest="podman_keep_groups",
+            default=config.keep_groups,
+            action="store_true",
+            help="""pass `--group-add keep-groups` to podman.
 If GPU device on host is accessible to via group access, this option leaks the user groups into the container.""",
-    )
+        )
     if command == "run":
         parser.add_argument(
             "--keepalive", type=str, help="duration to keep a model loaded (e.g. 5m)", completer=suppressCompleter
@@ -1087,12 +1086,13 @@ If GPU device on host is accessible to via group access, this option leaks the u
         help="number of layers to offload to the gpu, if available",
         completer=suppressCompleter,
     )
-    parser.add_argument(
-        "--thinking",
-        default=config.thinking,
-        help="enable/disable thinking mode in reasoning models",
-        action=CoerceToBool,
-    )
+    if command != "transcribe":
+        parser.add_argument(
+            "--thinking",
+            default=config.thinking,
+            help="enable/disable thinking mode in reasoning models",
+            action=CoerceToBool,
+        )
     parser.add_argument(
         "--oci-runtime",
         help="override the default OCI runtime used to launch the container",
@@ -1130,7 +1130,7 @@ If GPU device on host is accessible to via group access, this option leaks the u
             action=OverrideDefaultAction,
             completer=local_images,
         )
-    if command in ["perplexity", "run", "serve"]:
+    if command in ["perplexity", "run", "serve", "transcribe"]:
         parser.add_argument(
             "--runtime-args",
             dest="runtime_args",
@@ -1139,20 +1139,22 @@ If GPU device on host is accessible to via group access, this option leaks the u
             help="arguments to add to runtime invocation",
             completer=suppressCompleter,
         )
-    parser.add_argument("--seed", help="override random seed", completer=suppressCompleter)
+    if command != "transcribe":
+        parser.add_argument("--seed", help="override random seed", completer=suppressCompleter)
     parser.add_argument(
         "--selinux",
         default=config.selinux,
         action=CoerceToBool,
         help="Enable SELinux container separation",
     )
-    parser.add_argument(
-        "--temp",
-        type=float,
-        default=config.temp,
-        help="temperature of the response from the AI model",
-        completer=suppressCompleter,
-    )
+    if command != "transcribe":
+        parser.add_argument(
+            "--temp",
+            type=float,
+            default=config.temp,
+            help="temperature of the response from the AI model",
+            completer=suppressCompleter,
+        )
     def_threads = default_threads()
     parser.add_argument(
         "-t",
@@ -1506,102 +1508,17 @@ def daemon_run_cli(args):
 
 
 def transcribe_parser(subparsers):
-    config = get_config()
     parser = subparsers.add_parser(
         "transcribe",
         help="transcribe audio to text using a speech-to-text model",
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument("--authfile", help="path of the authentication file")
-    parser.add_argument(
-        "--device",
-        dest="device",
-        action="append",
-        type=str,
-        help="device to leak in to the running container (or 'none' to pass no device)",
-    )
-    parser.add_argument(
-        "--env",
-        dest="env",
-        action="append",
-        type=str,
-        default=config.env,
-        help="environment variables to add to the running container",
-        completer=local_env,
-    )
-    parser.add_argument(
-        "--image",
-        default=default_whisper_image(),
-        help="OCI container image to run with the specified AI model",
-        action=OverrideDefaultAction,
-        completer=local_images,
-    )
+    runtime_options(parser, "transcribe")
     parser.add_argument(
         "--language",
         default=None,
         help="language of the audio (e.g. 'en', 'fr'); auto-detected if not specified",
         completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "-n",
-        "--name",
-        dest="name",
-        help="name of container in which the Model will be run",
-        completer=suppressCompleter,
-    )
-    add_network_argument(parser, dflt=None)
-    parser.add_argument(
-        "--ngl",
-        dest="ngl",
-        type=int,
-        default=config.ngl,
-        help="number of layers to offload to the GPU, if available",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--oci-runtime",
-        help="override the default OCI runtime used to launch the container",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
-    )
-    parser.add_argument(
-        "--pull",
-        dest="pull",
-        type=str,
-        default=config.pull,
-        choices=["always", "missing", "never", "newer"],
-        help="pull image policy",
-    )
-    parser.add_argument(
-        "--runtime-args",
-        dest="runtime_args",
-        default="",
-        type=str,
-        help="arguments to add to runtime invocation",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--selinux",
-        default=config.selinux,
-        action=CoerceToBool,
-        help="enable SELinux container separation",
-    )
-    def_threads = default_threads()
-    parser.add_argument(
-        "-t",
-        "--threads",
-        type=int,
-        default=def_threads,
-        help=f"number of CPU threads to use, the default is {def_threads} on this system",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--tls-verify",
-        dest="tlsverify",
-        default=True,
-        help="require HTTPS and verify certificates when contacting registries",
     )
     parser.add_argument(
         "--translate",
@@ -1615,6 +1532,8 @@ def transcribe_parser(subparsers):
 
 
 def transcribe_cli(args):
+    if getattr(args, "runtime", None) not in (None, get_config().runtime, "whisper.cpp"):
+        raise ValueError(f"transcribe only supports --runtime whisper.cpp, got '{args.runtime}'")
     args.runtime = "whisper.cpp"
 
     if not args.dryrun and not os.path.exists(args.AUDIO):

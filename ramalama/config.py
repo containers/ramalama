@@ -401,3 +401,8 @@ def default_config(env: Mapping[str, str] | None = None) -> Config:
 @lru_cache(maxsize=1)
 def get_config() -> Config:
     return default_config()
+
+
+def get_whisper_image(config: "Config") -> str:
+    image = config.images.get("WHISPER", DEFAULT_WHISPER_IMAGE)
+    return image if ":" in image else f"{image}:main"
