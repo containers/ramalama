@@ -145,7 +145,7 @@ endif
 
 .PHONY: type-check
 type-check:
-	mypy $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test $(PROJECT_DIR)
+	ty check $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test
 
 .PHONY: validate
 validate: codespell lint man-check type-check
@@ -249,4 +249,3 @@ clean:
 	make -C docs clean
 	make -C docsite clean clean-generated
 	find . -depth -print0 | git check-ignore --stdin -z | xargs -0 rm -rf
-

@@ -52,7 +52,7 @@ jobs:
         run: |
           uv run -- make man-check
 
-      - name: Run type checking
+      - name: Run ty type checking
         run: |
           uv run -- make type-check
 

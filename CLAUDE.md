@@ -52,7 +52,7 @@ make validate                # Run all validation (codespell, lint, format check
 make lint                    # Run ruff + shellcheck
 make check-format            # Check ruff formatting + import sorting
 make format                  # Auto-format with ruff + import sorting
-make type-check              # Run mypy type checking
+make type-check              # Run ty type checking
 make codespell               # Check spelling
 ```
 
@@ -103,5 +103,5 @@ Manages local model storage:
 - Python 3.10+ required
 - Line length: 120 characters
 - Formatting: ruff format + ruff check (I rules)
-- Type hints encouraged (mypy checked)
+- Type hints encouraged (ty checked)
 - Commits require DCO sign-off (`git commit -s`)

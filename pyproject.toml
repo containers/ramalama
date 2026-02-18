@@ -64,7 +64,7 @@ dev = [
     "pytest~=9.0",
     "ruff>=0.14.14",
     "wheel~=0.46.3",
-    "mypy",
+    "ty",
     "types-PyYAML",
     "types-jsonschema",
     "tox",
@@ -254,5 +254,14 @@ dev = { features = ["dev"], solve-group = "default" }
 [tool.pixi.dependencies]
 tox = ">=4.30.2,<5"
 
-[tool.mypy]
-python_version = "3.10"
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.rules]
+# invalid-argument-type = "warn"
+# invalid-method-override = "warn"
+# no-matching-overload = "warn"
+# not-iterable = "warn"
+# too-many-positional-arguments = "warn"
+# unresolved-attribute = "warn"
+# unsupported-operator = "warn"
