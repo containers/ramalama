@@ -1,4 +1,4 @@
-import logging
+import warnings
 from dataclasses import dataclass
 from typing import Union
 from unittest.mock import patch
@@ -7,7 +7,6 @@ import pytest
 
 import ramalama.transports.transport_factory as transport_factory_module
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
-from ramalama.config import DEFAULT_TRANSPORT
 from ramalama.transports.api import APITransport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
@@ -223,49 +222,51 @@ class TestHasExplicitTransportPrefix:
 
 
 class TestWarnImplicitDefaultTransport:
-    def test_warning_emitted_on_implicit_default(self, caplog, reset_warning_state):
-        """Warning fires when transport is not set in config/env and model has no prefix."""
+    def test_warning_emitted_on_implicit_default(self, reset_warning_state):
+        """FutureWarning fires when transport is not set in config/env and model has no prefix."""
         with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
             mock_cfg.return_value.is_set.return_value = False
-            mock_cfg.return_value.transport = DEFAULT_TRANSPORT
-            with caplog.at_level(logging.WARNING, logger="ramalama"):
+            with pytest.warns(FutureWarning, match="Defaulting to 'ollama' transport is deprecated"):
                 _warn_implicit_default_transport("granite-code")
-        assert "currently defaults to" in caplog.text
-        assert DEFAULT_TRANSPORT in caplog.text
 
-    def test_no_warning_when_transport_set_in_config(self, caplog, reset_warning_state):
+    def test_no_warning_when_transport_set_in_config(self, reset_warning_state):
         """No warning when user explicitly set transport in config or env."""
         with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
             mock_cfg.return_value.is_set.return_value = True
-            with caplog.at_level(logging.WARNING, logger="ramalama"):
+            with warnings.catch_warnings(record=True) as captured:
+                warnings.simplefilter("always")
                 _warn_implicit_default_transport("granite-code")
-        assert caplog.text == ""
+        assert not captured
 
-    def test_no_warning_when_model_has_prefix(self, caplog, reset_warning_state):
+    def test_no_warning_when_model_has_prefix(self, reset_warning_state):
         """No warning when model uses an explicit transport prefix."""
         with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
             mock_cfg.return_value.is_set.return_value = False
-            with caplog.at_level(logging.WARNING, logger="ramalama"):
+            with warnings.catch_warnings(record=True) as captured:
+                warnings.simplefilter("always")
                 _warn_implicit_default_transport("ollama://granite-code")
-        assert caplog.text == ""
+        assert not captured
 
-    def test_no_warning_when_hf_prefix_used(self, caplog, reset_warning_state):
+    def test_no_warning_when_hf_prefix_used(self, reset_warning_state):
         """No warning when model uses hf:// prefix."""
         with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
             mock_cfg.return_value.is_set.return_value = False
-            with caplog.at_level(logging.WARNING, logger="ramalama"):
+            with warnings.catch_warnings(record=True) as captured:
+                warnings.simplefilter("always")
                 _warn_implicit_default_transport("hf://org/model")
-        assert caplog.text == ""
+        assert not captured
 
-    def test_warning_emitted_only_once(self, caplog, reset_warning_state):
-        """Warning fires at most once per process."""
+    def test_warning_emitted_only_once(self, reset_warning_state):
+        """FutureWarning fires at most once per process."""
         with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
             mock_cfg.return_value.is_set.return_value = False
-            mock_cfg.return_value.transport = DEFAULT_TRANSPORT
-            with caplog.at_level(logging.WARNING, logger="ramalama"):
+            with warnings.catch_warnings(record=True) as captured:
+                warnings.simplefilter("always")
                 _warn_implicit_default_transport("granite-code")
                 _warn_implicit_default_transport("another-model")
-        assert caplog.text.count("currently defaults to") == 1
+        deprecation_warnings = [w for w in captured if issubclass(w.category, FutureWarning)]
+        assert len(deprecation_warnings) == 1
+        assert "Defaulting to 'ollama' transport is deprecated" in str(deprecation_warnings[0].message)
 
 
 def test_transport_factory_passes_scheme_to_get_chat_provider(monkeypatch):

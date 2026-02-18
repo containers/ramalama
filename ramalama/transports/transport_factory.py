@@ -1,7 +1,7 @@
 import copy
-import logging
+import warnings
 from collections.abc import Callable
-from typing import TypeAlias
+from typing import TypeAlias, cast
 from urllib.parse import urlparse
 
 from ramalama.arg_types import StoreArgType
@@ -20,26 +20,24 @@ from ramalama.transports.url import URL
 
 CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry | APITransport
 
-KNOWN_TRANSPORT_PREFIXES = (
-    "huggingface://",
-    "hf://",
-    "hf.co/",
-    "modelscope://",
-    "ms://",
-    "ollama://",
-    "ollama.com/library/",
-    "oci://",
-    "docker://",
-    "rlcr://",
-    "http://",
-    "https://",
-    "file:",
-    "openai://",
+MODEL_TRANSPORT_PREFIXES: tuple[tuple[tuple[str, ...], type[CLASS_MODEL_TYPES], str], ...] = (
+    (("huggingface://", "hf://", "hf.co/"), Huggingface, "create_huggingface"),
+    (("modelscope://", "ms://"), ModelScope, "create_modelscope"),
+    (("ollama://", "ollama.com/library/"), Ollama, "create_ollama"),
+    (("oci://", "docker://"), OCI, "create_oci"),
+    (("rlcr://",), RamalamaContainerRegistry, "create_rlcr"),
+    (("http://", "https://", "file:"), URL, "create_url"),
+    (("openai://",), APITransport, "create_api_transport"),
 )
 
 _default_transport_warned = False
 
-logger = logging.getLogger("ramalama")
+
+def _detect_prefixed_model_model_type(model: str) -> tuple[type[CLASS_MODEL_TYPES], str] | None:
+    for prefixes, model_cls, creator_name in MODEL_TRANSPORT_PREFIXES:
+        if model.startswith(prefixes):
+            return model_cls, creator_name
+    return None
 
 
 class TransportFactory:
@@ -76,21 +74,11 @@ class TransportFactory:
             self.draft_model = draft_model
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
-        match self.model:
-            case model if model.startswith(("huggingface://", "hf://", "hf.co/")):
-                return Huggingface, self.create_huggingface
-            case model if model.startswith(("modelscope://", "ms://")):
-                return ModelScope, self.create_modelscope
-            case model if model.startswith(("ollama://", "ollama.com/library/")):
-                return Ollama, self.create_ollama
-            case model if model.startswith(("oci://", "docker://")):
-                return OCI, self.create_oci
-            case model if model.startswith("rlcr://"):
-                return RamalamaContainerRegistry, self.create_rlcr
-            case model if model.startswith(("http://", "https://", "file:")):
-                return URL, self.create_url
-            case model if model.startswith(("openai://")):
-                return APITransport, self.create_api_transport
+        explicit_match = _detect_prefixed_model_model_type(self.model)
+        if explicit_match:
+            model_cls, creator_name = explicit_match
+            create = cast(Callable[[], CLASS_MODEL_TYPES], getattr(self, creator_name))
+            return model_cls, create
 
         match self.transport:
             case "huggingface":
@@ -190,24 +178,24 @@ class TransportFactory:
 
 
 def _has_explicit_transport_prefix(model: str) -> bool:
-    return any(model.startswith(prefix) for prefix in KNOWN_TRANSPORT_PREFIXES)
+    return _detect_prefixed_model_model_type(model) is not None
 
 
 def _warn_implicit_default_transport(model: str) -> None:
     global _default_transport_warned
     if _default_transport_warned:
         return
+    if DEFAULT_TRANSPORT != "ollama":
+        return
     cfg = get_config()
     if cfg.is_set("transport") or _has_explicit_transport_prefix(model):
         return
     _default_transport_warned = True
-    logger.warning(
-        "Notice: RamaLama currently defaults to '%s' when no transport is specified. "
-        "This will change to 'huggingface' in a future major release. "
-        "To keep today's behavior, set transport='ollama' in ramalama.conf or "
-        "set RAMALAMA_TRANSPORT=ollama. To opt in now, use hf://... or "
-        "set transport='huggingface'.",
-        DEFAULT_TRANSPORT,
+    warnings.warn(
+        "Defaulting to 'ollama' transport is deprecated and will change in a future release. "
+        "See https://github.com/containers/ramalama?tab=readme-ov-file#default-transport",
+        FutureWarning,
+        stacklevel=2,
     )
 
 
