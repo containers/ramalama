@@ -16,6 +16,7 @@ from ramalama.toml_parser import TOMLParser
 DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
 DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
 DEFAULT_RAG_IMAGE: str = "quay.io/ramalama/ramalama-rag"
+DEFAULT_WHISPER_IMAGE: str = "ghcr.io/ggml-org/whisper.cpp:main"
 GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q2_K",
     "Q3_K_S",
@@ -213,6 +214,7 @@ class RamalamaImages(RamalamaImageConfig):
     VLLM_HIP_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
     VLLM_INTEL_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
     VLLM_MUSA_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
+    WHISPER: str = DEFAULT_WHISPER_IMAGE
 
 
 @dataclass

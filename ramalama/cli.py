@@ -29,8 +29,9 @@ from ramalama.arg_types import DefaultArgsType
 from ramalama.benchmarks.utilities import print_bench_results
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
-from ramalama.common import accel_image, exec_cmd, get_accel, perror
+from ramalama.common import MNT_AUDIO_DIR, accel_image, exec_cmd, get_accel, perror
 from ramalama.config import (
+    DEFAULT_WHISPER_IMAGE,
     GGUF_QUANTIZATION_MODES,
     SUPPORTED_ENGINES,
     SUPPORTED_RUNTIMES,
@@ -76,6 +77,13 @@ def default_image() -> str:
 @lru_cache(maxsize=1)
 def default_rag_image() -> str:
     return rag_image(get_config())
+
+
+@lru_cache(maxsize=1)
+def default_whisper_image() -> str:
+    config = get_config()
+    image = config.images.get("WHISPER", DEFAULT_WHISPER_IMAGE)
+    return image if ":" in image else f"{image}:main"
 
 
 @lru_cache(maxsize=1)
@@ -305,7 +313,7 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         "--runtime",
         default=config.runtime,
         choices=get_args(SUPPORTED_RUNTIMES),
-        help="specify the runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx'",
+        help="specify the runtime to use; valid options are 'llama.cpp', 'vllm', 'mlx', and 'whisper.cpp'",
     )
     parser.add_argument(
         "--store",
@@ -342,6 +350,7 @@ def configure_subcommands(parser):
     run_parser(subparsers)
     serve_parser(subparsers)
     stop_parser(subparsers)
+    transcribe_parser(subparsers)
     version_parser(subparsers)
     daemon_parser(subparsers)
 
@@ -406,6 +415,10 @@ def post_parse_setup(args):
         if getattr(args, "container", None) is True:
             logger.info("MLX runtime automatically uses --nocontainer mode")
         args.container = False
+
+    # whisper.cpp: use the whisper container image unless the user specified --image explicitly
+    if getattr(args, "runtime", None) == "whisper.cpp" and not getattr(args, "image_override", False):
+        args.image = default_whisper_image()
 
     if hasattr(args, 'pull'):
         args.pull = normalize_pull_arg(args.pull, getattr(args, 'engine', None))
@@ -1490,6 +1503,136 @@ def daemon_run_cli(args):
     from ramalama.daemon.daemon import run
 
     run(host=args.host, port=int(args.port), model_store_path=args.store)
+
+
+def transcribe_parser(subparsers):
+    config = get_config()
+    parser = subparsers.add_parser(
+        "transcribe",
+        help="transcribe audio to text using a speech-to-text model",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument("--authfile", help="path of the authentication file")
+    parser.add_argument(
+        "--device",
+        dest="device",
+        action="append",
+        type=str,
+        help="device to leak in to the running container (or 'none' to pass no device)",
+    )
+    parser.add_argument(
+        "--env",
+        dest="env",
+        action="append",
+        type=str,
+        default=config.env,
+        help="environment variables to add to the running container",
+        completer=local_env,
+    )
+    parser.add_argument(
+        "--image",
+        default=default_whisper_image(),
+        help="OCI container image to run with the specified AI model",
+        action=OverrideDefaultAction,
+        completer=local_images,
+    )
+    parser.add_argument(
+        "--language",
+        default=None,
+        help="language of the audio (e.g. 'en', 'fr'); auto-detected if not specified",
+        completer=suppressCompleter,
+    )
+    parser.add_argument(
+        "-n",
+        "--name",
+        dest="name",
+        help="name of container in which the Model will be run",
+        completer=suppressCompleter,
+    )
+    add_network_argument(parser, dflt=None)
+    parser.add_argument(
+        "--ngl",
+        dest="ngl",
+        type=int,
+        default=config.ngl,
+        help="number of layers to offload to the GPU, if available",
+        completer=suppressCompleter,
+    )
+    parser.add_argument(
+        "--oci-runtime",
+        help="override the default OCI runtime used to launch the container",
+        completer=suppressCompleter,
+    )
+    parser.add_argument(
+        "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
+    )
+    parser.add_argument(
+        "--pull",
+        dest="pull",
+        type=str,
+        default=config.pull,
+        choices=["always", "missing", "never", "newer"],
+        help="pull image policy",
+    )
+    parser.add_argument(
+        "--runtime-args",
+        dest="runtime_args",
+        default="",
+        type=str,
+        help="arguments to add to runtime invocation",
+        completer=suppressCompleter,
+    )
+    parser.add_argument(
+        "--selinux",
+        default=config.selinux,
+        action=CoerceToBool,
+        help="enable SELinux container separation",
+    )
+    def_threads = default_threads()
+    parser.add_argument(
+        "-t",
+        "--threads",
+        type=int,
+        default=def_threads,
+        help=f"number of CPU threads to use, the default is {def_threads} on this system",
+        completer=suppressCompleter,
+    )
+    parser.add_argument(
+        "--tls-verify",
+        dest="tlsverify",
+        default=True,
+        help="require HTTPS and verify certificates when contacting registries",
+    )
+    parser.add_argument(
+        "--translate",
+        action="store_true",
+        default=False,
+        help="translate audio output to English",
+    )
+    parser.add_argument("MODEL", completer=local_models)
+    parser.add_argument("AUDIO", help="path to the input audio file (WAV, MP3, FLAC, OGG, etc.)")
+    parser.set_defaults(func=transcribe_cli)
+
+
+def transcribe_cli(args):
+    args.runtime = "whisper.cpp"
+
+    if not args.dryrun and not os.path.exists(args.AUDIO):
+        raise FileNotFoundError(f"Audio file not found: {args.AUDIO}")
+
+    if not args.dryrun and args.container and not (os.stat(args.AUDIO).st_mode & 0o004):
+        raise PermissionError(
+            f"Audio file '{args.AUDIO}' must be world-readable for container mode.\n"
+            f"Fix with: chmod o+r {args.AUDIO}"
+        )
+
+    args.input_file = (
+        f"{MNT_AUDIO_DIR}/{os.path.basename(args.AUDIO)}" if args.container else os.path.abspath(args.AUDIO)
+    )
+
+    model = New(args.MODEL, args)
+    model.ensure_model_exists(args)
+    model.transcribe(args, assemble_command_lazy(args))
 
 
 def version_parser(subparsers):

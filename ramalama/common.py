@@ -33,6 +33,7 @@ MNT_FILE = f"{MNT_DIR}/model.file"
 MNT_MMPROJ_FILE = f"{MNT_DIR}/mmproj.file"
 MNT_FILE_DRAFT = f"{MNT_DIR}/draft_model.file"
 MNT_CHAT_TEMPLATE_FILE = f"{MNT_DIR}/chat_template.file"
+MNT_AUDIO_DIR = "/mnt/audio"
 
 RAG_DIR = "/rag"
 RAG_CONTENT = f"{MNT_DIR}/vector.db"
@@ -662,6 +663,14 @@ def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_
 
         # If the image from the config is specified by tag or digest, return it unmodified
         return image if ":" in image else f"{image}:latest"
+
+    if config.runtime == "whisper.cpp":
+        from ramalama.config import DEFAULT_WHISPER_IMAGE
+
+        image = config.images.get("WHISPER", DEFAULT_WHISPER_IMAGE)
+        # If the image from the config is specified by tag or digest, return it unmodified
+        return image if ":" in image else f"{image}:main"
+
     # Get image based on detected GPU type
     image = images.get(gpu_type, getattr(config, f"default_{conf_key}"))
 

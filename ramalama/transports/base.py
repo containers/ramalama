@@ -35,6 +35,7 @@ from ramalama.benchmarks.manager import BenchmarksManager
 from ramalama.benchmarks.schemas import BenchmarkRecord, BenchmarkRecordV1, get_benchmark_record
 from ramalama.benchmarks.utilities import parse_json, print_bench_results
 from ramalama.common import (
+    MNT_AUDIO_DIR,
     MNT_DIR,
     MNT_FILE_DRAFT,
     accel_image,
@@ -132,6 +133,9 @@ class TransportBase(ABC):
     @abstractmethod
     def serve(self, args, cmd: list[str]):
         raise self.__not_implemented_error("serve")
+
+    def transcribe(self, args, cmd: list[str]):
+        raise self.__not_implemented_error("transcribe")
 
     @abstractmethod
     def exists(self) -> bool:
@@ -418,6 +422,8 @@ class Transport(TransportBase):
             cmd_args = cmd_args[1:]
 
         self.setup_container(args)
+        if getattr(args, "runtime", None) == "whisper.cpp":
+            self.engine.add(["--entrypoint", ""])
         self.setup_mounts(args)
 
         # Make sure Image precedes cmd_args
@@ -465,6 +471,16 @@ class Transport(TransportBase):
             # Convert path to container-friendly format (handles Windows path conversion)
             container_draft_model = get_container_mount_path(draft_model)
             mount_opts = f"--mount=type=bind,src={container_draft_model},destination={MNT_FILE_DRAFT}"
+            mount_opts += f",ro{self.engine.relabel()}"
+            self.engine.add([mount_opts])
+
+        # Mount audio file for transcription if provided
+        audio_input = getattr(args, "AUDIO", None)
+        if audio_input:
+            audio_path = os.path.abspath(audio_input)
+            audio_name = os.path.basename(audio_path)
+            container_audio_path = get_container_mount_path(audio_path)
+            mount_opts = f"--mount=type=bind,src={container_audio_path},destination={MNT_AUDIO_DIR}/{audio_name}"
             mount_opts += f",ro{self.engine.relabel()}"
             self.engine.add([mount_opts])
 
@@ -671,6 +687,10 @@ class Transport(TransportBase):
             process.kill()
 
     def perplexity(self, args, cmd: list[str]):
+        set_accel_env_vars()
+        self.execute_command(cmd, args)
+
+    def transcribe(self, args, cmd: list[str]):
         set_accel_env_vars()
         self.execute_command(cmd, args)
 

@@ -16,6 +16,8 @@ class RamalamaArgsContext:
         self.debug: Optional[bool] = None
         self.host: Optional[str] = None
         self.gguf: Optional[str] = None
+        self.input_file: Optional[str] = None
+        self.language: Optional[str] = None
         self.logfile: Optional[str] = None
         self.max_tokens: Optional[int] = None
         self.model_draft: Optional[str] = None
@@ -26,6 +28,7 @@ class RamalamaArgsContext:
         self.temp: Optional[float] = None
         self.thinking: Optional[bool] = None
         self.threads: Optional[int] = None
+        self.translate: Optional[bool] = None
         self.webui: Optional[bool] = None
 
     @staticmethod
@@ -37,6 +40,8 @@ class RamalamaArgsContext:
         ctx.debug = getattr(args, "debug", None)
         ctx.host = getattr(args, "host", None)
         ctx.gguf = getattr(args, "gguf", None)
+        ctx.input_file = getattr(args, "input_file", None)
+        ctx.language = getattr(args, "language", None)
         ctx.logfile = getattr(args, "logfile", None)
         ctx.max_tokens = getattr(args, "max_tokens", None)
         ctx.model_draft = getattr(args, "model_draft", None)
@@ -47,6 +52,7 @@ class RamalamaArgsContext:
         ctx.temp = getattr(args, "temp", None)
         ctx.thinking = getattr(args, "thinking", None)
         ctx.threads = getattr(args, "threads", None)
+        ctx.translate = getattr(args, "translate", None)
         ctx.webui = getattr(args, "webui", None)
         return ctx
 
