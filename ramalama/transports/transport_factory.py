@@ -2,7 +2,7 @@ import copy
 import threading
 import warnings
 from collections.abc import Callable
-from typing import TypeAlias, cast
+from typing import TypeAlias
 from urllib.parse import urlparse
 
 from ramalama.arg_types import StoreArgType
@@ -21,24 +21,32 @@ from ramalama.transports.url import URL
 
 CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry | APITransport
 
-MODEL_TRANSPORT_PREFIXES: tuple[tuple[tuple[str, ...], type[CLASS_MODEL_TYPES], str], ...] = (
-    (("huggingface://", "hf://", "hf.co/"), Huggingface, "create_huggingface"),
-    (("modelscope://", "ms://"), ModelScope, "create_modelscope"),
-    (("ollama://", "ollama.com/library/"), Ollama, "create_ollama"),
-    (("oci://", "docker://"), OCI, "create_oci"),
-    (("rlcr://",), RamalamaContainerRegistry, "create_rlcr"),
-    (("http://", "https://", "file:"), URL, "create_url"),
-    (("openai://",), APITransport, "create_api_transport"),
+MODEL_TRANSPORT_PREFIXES: tuple[tuple[tuple[str, ...], type[CLASS_MODEL_TYPES]], ...] = (
+    (("huggingface://", "hf://", "hf.co/"), Huggingface),
+    (("modelscope://", "ms://"), ModelScope),
+    (("ollama://", "ollama.com/library/"), Ollama),
+    (("oci://", "docker://"), OCI),
+    (("rlcr://",), RamalamaContainerRegistry),
+    (("http://", "https://", "file:"), URL),
+    (("openai://",), APITransport),
 )
+
+TRANSPORT_MODEL_CLASSES: dict[str, type[CLASS_MODEL_TYPES]] = {
+    "huggingface": Huggingface,
+    "modelscope": ModelScope,
+    "ollama": Ollama,
+    "rlcr": RamalamaContainerRegistry,
+    "oci": OCI,
+}
 
 _default_transport_warned = False
 _default_transport_warned_lock = threading.Lock()
 
 
-def _detect_prefixed_transport(model: str) -> tuple[type[CLASS_MODEL_TYPES], str] | None:
-    for prefixes, model_cls, creator_name in MODEL_TRANSPORT_PREFIXES:
+def _detect_prefixed_transport(model: str) -> type[CLASS_MODEL_TYPES] | None:
+    for prefixes, model_cls in MODEL_TRANSPORT_PREFIXES:
         if model.startswith(prefixes):
-            return model_cls, creator_name
+            return model_cls
     return None
 
 
@@ -76,25 +84,28 @@ class TransportFactory:
             self.draft_model = draft_model
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
-        explicit_match = _detect_prefixed_transport(self.model)
-        if explicit_match:
-            model_cls, creator_name = explicit_match
-            create = cast(Callable[[], CLASS_MODEL_TYPES], getattr(self, creator_name))
-            return model_cls, create
+        model_cls = _detect_prefixed_transport(self.model)
+        if model_cls:
+            return model_cls, self._creator_for_model_cls(model_cls)
 
-        match self.transport:
-            case "huggingface":
-                return Huggingface, self.create_huggingface
-            case "modelscope":
-                return ModelScope, self.create_modelscope
-            case "ollama":
-                return Ollama, self.create_ollama
-            case "rlcr":
-                return RamalamaContainerRegistry, self.create_rlcr
-            case "oci":
-                return OCI, self.create_oci
+        model_cls = TRANSPORT_MODEL_CLASSES.get(self.transport)
+        if model_cls is None:
+            raise KeyError(
+                f'transport "{self.transport}" not supported. Must be oci, huggingface, modelscope, or ollama.'
+            )
+        return model_cls, self._creator_for_model_cls(model_cls)
 
-        raise KeyError(f'transport "{self.transport}" not supported. Must be oci, huggingface, modelscope, or ollama.')
+    def _creator_for_model_cls(self, model_cls: type[CLASS_MODEL_TYPES]) -> Callable[[], CLASS_MODEL_TYPES]:
+        creators: dict[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]] = {
+            Huggingface: self.create_huggingface,
+            ModelScope: self.create_modelscope,
+            Ollama: self.create_ollama,
+            RamalamaContainerRegistry: self.create_rlcr,
+            OCI: self.create_oci,
+            URL: self.create_url,
+            APITransport: self.create_api_transport,
+        }
+        return creators[model_cls]
 
     def prune_model_input(self) -> str:
 
@@ -183,14 +194,15 @@ def _has_explicit_transport_prefix(model: str) -> bool:
     return _detect_prefixed_transport(model) is not None
 
 
-def _warn_implicit_default_transport(model: str) -> None:
+def _warn_implicit_default_transport(model: str, *, is_transport_set: bool | None = None) -> None:
     global _default_transport_warned
     if _default_transport_warned:
         return
     if DEFAULT_TRANSPORT != "ollama":
         return
-    cfg = get_config()
-    if cfg.is_set("transport") or _has_explicit_transport_prefix(model):
+    if is_transport_set is None:
+        is_transport_set = get_config().is_set("transport")
+    if is_transport_set or _has_explicit_transport_prefix(model):
         return
     with _default_transport_warned_lock:
         if _default_transport_warned:
@@ -206,6 +218,7 @@ def _warn_implicit_default_transport(model: str) -> None:
 
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
     if transport is None:
-        transport = get_config().transport
-        _warn_implicit_default_transport(name)
+        cfg = get_config()
+        transport = cfg.transport
+        _warn_implicit_default_transport(name, is_transport_set=cfg.is_set("transport"))
     return TransportFactory(name, args, transport=transport).create()

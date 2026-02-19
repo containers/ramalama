@@ -222,6 +222,37 @@ class TestHasExplicitTransportPrefix:
 
 
 class TestWarnImplicitDefaultTransport:
+    def test_new_warns_on_implicit_default_unprefixed_model(self, reset_warning_state):
+        """FutureWarning is emitted when New() falls back to implicit default transport."""
+        with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
+            mock_cfg.return_value.transport = "ollama"
+            mock_cfg.return_value.is_set.return_value = False
+            with pytest.warns(FutureWarning, match="Defaulting to 'ollama' transport is deprecated"):
+                transport = New("granite-code", ARGS(), transport=None)
+        assert isinstance(transport, Ollama)
+        assert mock_cfg.call_count == 1
+
+    def test_new_no_warning_with_explicit_transport(self, reset_warning_state):
+        """No FutureWarning when New() receives an explicit transport argument."""
+        with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
+            with warnings.catch_warnings(record=True) as captured:
+                warnings.simplefilter("always")
+                transport = New("granite-code", ARGS(), transport="ollama")
+        assert isinstance(transport, Ollama)
+        assert not [w for w in captured if issubclass(w.category, FutureWarning)]
+        mock_cfg.assert_not_called()
+
+    def test_new_no_warning_with_prefixed_model(self, reset_warning_state):
+        """No FutureWarning when New() is called with explicit model transport prefix."""
+        with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
+            mock_cfg.return_value.transport = "ollama"
+            mock_cfg.return_value.is_set.return_value = False
+            with warnings.catch_warnings(record=True) as captured:
+                warnings.simplefilter("always")
+                transport = New("hf://org/model", ARGS(), transport=None)
+        assert isinstance(transport, Huggingface)
+        assert not [w for w in captured if issubclass(w.category, FutureWarning)]
+
     def test_warning_emitted_on_implicit_default(self, reset_warning_state):
         """FutureWarning fires when transport is not set in config/env and model has no prefix."""
         with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
