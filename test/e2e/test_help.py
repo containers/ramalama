@@ -328,7 +328,7 @@ def test_unsupported_transport_message():
 
     assert exc_info.value.returncode == 22
     assert re.search(
-        f"Error: transport \"{test_transport}\" not supported. Must be oci, huggingface, modelscope, or ollama.",
+        f"Error: transport \"{test_transport}\" not supported. Must be one of: huggingface, modelscope, oci, ollama, rlcr.",
         exc_info.value.output.decode("utf-8"),
     )
 

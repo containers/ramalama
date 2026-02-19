@@ -216,7 +216,7 @@ EOF
 @test "ramalama verify transport" {
     transport=e_$(safename)
     RAMALAMA_TRANSPORT=${transport} run_ramalama 22 pull foobar
-    is "$output" "Error: transport \"${transport}\" not supported. Must be oci, huggingface, modelscope, or ollama."  "Verify bogus transport throws error"
+    is "$output" "Error: transport \"${transport}\" not supported. Must be one of: huggingface, modelscope, oci, ollama, rlcr."  "Verify bogus transport throws error"
 
 }
 
