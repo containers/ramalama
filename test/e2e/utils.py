@@ -8,6 +8,8 @@ import tempfile
 from pathlib import Path
 from test.conftest import ramalama_container, ramalama_container_engine
 
+CONTAINER_ENGINE_UNAVAILABLE_RE = re.compile(r"No such file or directory: '(podman|docker)'")
+
 
 class RamalamaExecWorkspace:
     def __init__(
@@ -118,3 +120,10 @@ def get_full_model_name(model_name):
     }
 
     return models[model_name].split("/")[-1]
+
+
+def skip_if_container_engine_unavailable(output: str) -> None:
+    if CONTAINER_ENGINE_UNAVAILABLE_RE.search(output):
+        import pytest
+
+        pytest.skip("container engine unavailable in test environment")

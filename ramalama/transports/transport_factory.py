@@ -2,6 +2,7 @@ import copy
 import threading
 import warnings
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TypeAlias
 from urllib.parse import urlparse
 
@@ -21,32 +22,83 @@ from ramalama.transports.url import URL
 
 CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry | APITransport
 
-MODEL_TRANSPORT_PREFIXES: tuple[tuple[tuple[str, ...], type[CLASS_MODEL_TYPES]], ...] = (
-    (("huggingface://", "hf://", "hf.co/"), Huggingface),
-    (("modelscope://", "ms://"), ModelScope),
-    (("ollama://", "ollama.com/library/"), Ollama),
-    (("oci://", "docker://"), OCI),
-    (("rlcr://",), RamalamaContainerRegistry),
-    (("http://", "https://", "file:"), URL),
-    (("openai://",), APITransport),
-)
+@dataclass(frozen=True)
+class TransportRegistryEntry:
+    model_cls: type[CLASS_MODEL_TYPES]
+    prefixes: tuple[str, ...]
+    creator: Callable[["TransportFactory"], Callable[[], CLASS_MODEL_TYPES]]
+    transport_name: str | None = None
 
-TRANSPORT_MODEL_CLASSES: dict[str, type[CLASS_MODEL_TYPES]] = {
-    "huggingface": Huggingface,
-    "modelscope": ModelScope,
-    "ollama": Ollama,
-    "rlcr": RamalamaContainerRegistry,
-    "oci": OCI,
-}
+
+TRANSPORT_REGISTRY: tuple[TransportRegistryEntry, ...] = (
+    TransportRegistryEntry(
+        model_cls=Huggingface,
+        prefixes=("huggingface://", "hf://", "hf.co/"),
+        creator=lambda factory: factory.create_huggingface,
+        transport_name="huggingface",
+    ),
+    TransportRegistryEntry(
+        model_cls=ModelScope,
+        prefixes=("modelscope://", "ms://"),
+        creator=lambda factory: factory.create_modelscope,
+        transport_name="modelscope",
+    ),
+    TransportRegistryEntry(
+        model_cls=Ollama,
+        prefixes=("ollama://", "ollama.com/library/"),
+        creator=lambda factory: factory.create_ollama,
+        transport_name="ollama",
+    ),
+    TransportRegistryEntry(
+        model_cls=OCI,
+        prefixes=("oci://", "docker://"),
+        creator=lambda factory: factory.create_oci,
+        transport_name="oci",
+    ),
+    TransportRegistryEntry(
+        model_cls=RamalamaContainerRegistry,
+        prefixes=("rlcr://",),
+        creator=lambda factory: factory.create_rlcr,
+        transport_name="rlcr",
+    ),
+    TransportRegistryEntry(
+        model_cls=URL,
+        prefixes=("http://", "https://", "file:"),
+        creator=lambda factory: factory.create_url,
+    ),
+    TransportRegistryEntry(
+        model_cls=APITransport,
+        prefixes=("openai://",),
+        creator=lambda factory: factory.create_api_transport,
+    ),
+)
 
 _default_transport_warned = False
 _default_transport_warned_lock = threading.Lock()
 
 
-def _detect_prefixed_transport(model: str) -> type[CLASS_MODEL_TYPES] | None:
-    for prefixes, model_cls in MODEL_TRANSPORT_PREFIXES:
-        if model.startswith(prefixes):
-            return model_cls
+def _set_default_transport_warned(value: bool) -> None:
+    """Test helper for resetting warning state with the same lock as production code."""
+    global _default_transport_warned
+    with _default_transport_warned_lock:
+        _default_transport_warned = value
+
+
+def _supported_named_transports() -> tuple[str, ...]:
+    return tuple(sorted(entry.transport_name for entry in TRANSPORT_REGISTRY if entry.transport_name))
+
+
+def _detect_prefixed_transport(model: str) -> TransportRegistryEntry | None:
+    for entry in TRANSPORT_REGISTRY:
+        if model.startswith(entry.prefixes):
+            return entry
+    return None
+
+
+def _detect_named_transport(transport: str) -> TransportRegistryEntry | None:
+    for entry in TRANSPORT_REGISTRY:
+        if entry.transport_name == transport:
+            return entry
     return None
 
 
@@ -84,28 +136,17 @@ class TransportFactory:
             self.draft_model = draft_model
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
-        model_cls = _detect_prefixed_transport(self.model)
-        if model_cls:
-            return model_cls, self._creator_for_model_cls(model_cls)
+        entry = _detect_prefixed_transport(self.model)
+        if entry:
+            return entry.model_cls, entry.creator(self)
 
-        model_cls = TRANSPORT_MODEL_CLASSES.get(self.transport)
-        if model_cls is None:
+        entry = _detect_named_transport(self.transport)
+        if entry is None:
+            supported = ", ".join(_supported_named_transports())
             raise KeyError(
-                f'transport "{self.transport}" not supported. Must be oci, huggingface, modelscope, or ollama.'
+                f'transport "{self.transport}" not supported. Must be one of: {supported}.'
             )
-        return model_cls, self._creator_for_model_cls(model_cls)
-
-    def _creator_for_model_cls(self, model_cls: type[CLASS_MODEL_TYPES]) -> Callable[[], CLASS_MODEL_TYPES]:
-        creators: dict[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]] = {
-            Huggingface: self.create_huggingface,
-            ModelScope: self.create_modelscope,
-            Ollama: self.create_ollama,
-            RamalamaContainerRegistry: self.create_rlcr,
-            OCI: self.create_oci,
-            URL: self.create_url,
-            APITransport: self.create_api_transport,
-        }
-        return creators[model_cls]
+        return entry.model_cls, entry.creator(self)
 
     def prune_model_input(self) -> str:
 
@@ -213,6 +254,8 @@ def _warn_implicit_default_transport(model: str, *, is_transport_set: bool | Non
             FutureWarning,
             stacklevel=2,
         )
+        # Keep the write colocated with warning emission in the same critical section.
+        # Tests use _set_default_transport_warned() to reset this flag safely.
         _default_transport_warned = True
 
 

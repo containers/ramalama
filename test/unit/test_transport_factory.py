@@ -121,6 +121,18 @@ def test_validate_oci_model_input(input: Input, error):
     TransportFactory(input.Model, args, input.Transport).validate_oci_model_input()
 
 
+def test_unknown_transport_error_lists_named_transports():
+    with pytest.raises(KeyError) as exc_info:
+        TransportFactory("granite-code", ARGS(), "unknown-transport")
+    message = str(exc_info.value)
+    assert "Must be one of:" in message
+    assert "huggingface" in message
+    assert "modelscope" in message
+    assert "oci" in message
+    assert "ollama" in message
+    assert "rlcr" in message
+
+
 @pytest.mark.parametrize(
     "input,expected",
     [
@@ -181,9 +193,9 @@ def test_prune_model_input(input: Input, expected: str):
 @pytest.fixture(autouse=False)
 def reset_warning_state():
     """Reset the once-per-process warning guard between tests."""
-    transport_factory_module._default_transport_warned = False
+    transport_factory_module._set_default_transport_warned(False)
     yield
-    transport_factory_module._default_transport_warned = False
+    transport_factory_module._set_default_transport_warned(False)
 
 
 class TestHasExplicitTransportPrefix:

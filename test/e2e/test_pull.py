@@ -11,7 +11,7 @@ from test.conftest import (
     skip_if_no_container,
     skip_if_no_ollama,
 )
-from test.e2e.utils import RamalamaExecWorkspace
+from test.e2e.utils import RamalamaExecWorkspace, skip_if_container_engine_unavailable
 
 import pytest
 
@@ -41,8 +41,7 @@ def test_pull_non_existing_model():
             ctx.check_output(["ramalama", "pull", random_model_name], stderr=STDOUT)
     assert exc_info.value.returncode != 0
     output = exc_info.value.output.decode("utf-8")
-    if re.search(r"No such file or directory: '(podman|docker)'", output):
-        pytest.skip("container engine unavailable in test environment")
+    skip_if_container_engine_unavailable(output)
     assert random_model_name in output
     assert re.search(r".*Error:.*(not found|404).*", output, re.IGNORECASE)
 

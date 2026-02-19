@@ -1,8 +1,7 @@
 import random
-import re
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.e2e.utils import RamalamaExecWorkspace, check_output
+from test.e2e.utils import RamalamaExecWorkspace, check_output, skip_if_container_engine_unavailable
 
 import pytest
 
@@ -14,8 +13,7 @@ def test_delete_non_existing_image():
         check_output(["ramalama", "rm", image_name], stderr=STDOUT)
 
     output = exc_info.value.output.decode("utf-8")
-    if re.search(r"No such file or directory: '(podman|docker)'", output):
-        pytest.skip("container engine unavailable in test environment")
+    skip_if_container_engine_unavailable(output)
 
     assert exc_info.value.returncode == 22
     assert f"Error: Model '{image_name}' not found" in output
