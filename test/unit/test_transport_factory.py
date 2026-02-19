@@ -256,6 +256,16 @@ class TestWarnImplicitDefaultTransport:
                 _warn_implicit_default_transport("hf://org/model")
         assert not captured
 
+    def test_no_warning_when_default_transport_is_not_ollama(self, reset_warning_state):
+        """No warning when DEFAULT_TRANSPORT no longer points to ollama."""
+        with patch("ramalama.transports.transport_factory.DEFAULT_TRANSPORT", "huggingface"):
+            with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:
+                mock_cfg.return_value.is_set.return_value = False
+                with warnings.catch_warnings(record=True) as captured:
+                    warnings.simplefilter("always")
+                    _warn_implicit_default_transport("granite-code")
+        assert not captured
+
     def test_warning_emitted_only_once(self, reset_warning_state):
         """FutureWarning fires at most once per process."""
         with patch("ramalama.transports.transport_factory.get_config") as mock_cfg:

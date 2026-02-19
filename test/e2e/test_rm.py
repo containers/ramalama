@@ -14,7 +14,7 @@ def test_delete_non_existing_image():
         check_output(["ramalama", "rm", image_name], stderr=STDOUT)
 
     output = exc_info.value.output.decode("utf-8")
-    if re.search(r"No such file or directory: '(podman|docker)", output):
+    if re.search(r"No such file or directory: '(podman|docker)'", output):
         pytest.skip("container engine unavailable in test environment")
 
     assert exc_info.value.returncode == 22

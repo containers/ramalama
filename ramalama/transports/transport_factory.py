@@ -1,4 +1,5 @@
 import copy
+import threading
 import warnings
 from collections.abc import Callable
 from typing import TypeAlias, cast
@@ -31,9 +32,10 @@ MODEL_TRANSPORT_PREFIXES: tuple[tuple[tuple[str, ...], type[CLASS_MODEL_TYPES], 
 )
 
 _default_transport_warned = False
+_default_transport_warned_lock = threading.Lock()
 
 
-def _detect_prefixed_model_model_type(model: str) -> tuple[type[CLASS_MODEL_TYPES], str] | None:
+def _detect_prefixed_transport(model: str) -> tuple[type[CLASS_MODEL_TYPES], str] | None:
     for prefixes, model_cls, creator_name in MODEL_TRANSPORT_PREFIXES:
         if model.startswith(prefixes):
             return model_cls, creator_name
@@ -74,7 +76,7 @@ class TransportFactory:
             self.draft_model = draft_model
 
     def detect_model_model_type(self) -> tuple[type[CLASS_MODEL_TYPES], Callable[[], CLASS_MODEL_TYPES]]:
-        explicit_match = _detect_prefixed_model_model_type(self.model)
+        explicit_match = _detect_prefixed_transport(self.model)
         if explicit_match:
             model_cls, creator_name = explicit_match
             create = cast(Callable[[], CLASS_MODEL_TYPES], getattr(self, creator_name))
@@ -178,7 +180,7 @@ class TransportFactory:
 
 
 def _has_explicit_transport_prefix(model: str) -> bool:
-    return _detect_prefixed_model_model_type(model) is not None
+    return _detect_prefixed_transport(model) is not None
 
 
 def _warn_implicit_default_transport(model: str) -> None:
@@ -190,13 +192,16 @@ def _warn_implicit_default_transport(model: str) -> None:
     cfg = get_config()
     if cfg.is_set("transport") or _has_explicit_transport_prefix(model):
         return
-    _default_transport_warned = True
-    warnings.warn(
-        "Defaulting to 'ollama' transport is deprecated and will change in a future release. "
-        "See https://github.com/containers/ramalama?tab=readme-ov-file#default-transport",
-        FutureWarning,
-        stacklevel=2,
-    )
+    with _default_transport_warned_lock:
+        if _default_transport_warned:
+            return
+        warnings.warn(
+            "Defaulting to 'ollama' transport is deprecated and will change in a future release. "
+            "See https://github.com/containers/ramalama?tab=readme-ov-file#default-transport",
+            FutureWarning,
+            stacklevel=2,
+        )
+        _default_transport_warned = True
 
 
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
