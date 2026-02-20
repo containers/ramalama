@@ -41,7 +41,7 @@ def test_pull_non_existing_model():
             ctx.check_output(["ramalama", "pull", random_model_name], stderr=STDOUT)
     assert exc_info.value.returncode != 0
     output = exc_info.value.output.decode("utf-8")
-    skip_if_container_engine_unavailable(output)
+    skip_if_container_engine_unavailable(output, returncode=exc_info.value.returncode)
     assert random_model_name in output
     assert re.search(r".*Error:.*(not found|404).*", output, re.IGNORECASE)
 

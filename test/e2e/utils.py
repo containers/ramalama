@@ -1,3 +1,4 @@
+import errno
 import ntpath
 import os
 import platform
@@ -8,7 +9,23 @@ import tempfile
 from pathlib import Path
 from test.conftest import ramalama_container, ramalama_container_engine
 
-CONTAINER_ENGINE_UNAVAILABLE_RE = re.compile(r"No such file or directory: '(podman|docker)'")
+CONTAINER_ENGINE_RE = re.compile(r"\b(?:podman|docker)\b", re.IGNORECASE)
+CONTAINER_ENGINE_UNAVAILABLE_RE = re.compile(
+    r"""
+    (
+        No\ such\ file\ or\ directory
+        |
+        command\ not\ found
+        |
+        executable\ file\ not\ found(?:\ in\ \$PATH)?
+        |
+        system\ cannot\ find\ the\ file\ specified
+        |
+        is\ not\ recognized\ as\ an\ internal\ or\ external\ command
+    )
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
 
 
 class RamalamaExecWorkspace:
@@ -122,8 +139,20 @@ def get_full_model_name(model_name):
     return models[model_name].split("/")[-1]
 
 
-def skip_if_container_engine_unavailable(output: str) -> None:
-    if CONTAINER_ENGINE_UNAVAILABLE_RE.search(output):
+def is_container_engine_unavailable(output: str, *, returncode: int | None = None, err_no: int | None = None) -> bool:
+    has_engine_name = bool(CONTAINER_ENGINE_RE.search(output))
+    has_missing_engine_message = bool(CONTAINER_ENGINE_UNAVAILABLE_RE.search(output))
+    if has_engine_name and has_missing_engine_message:
+        return True
+    if has_engine_name and (returncode == 127 or err_no == errno.ENOENT):
+        return True
+    return False
+
+
+def skip_if_container_engine_unavailable(
+    output: str, *, returncode: int | None = None, err_no: int | None = None
+) -> None:
+    if is_container_engine_unavailable(output, returncode=returncode, err_no=err_no):
         import pytest
 
         pytest.skip("container engine unavailable in test environment")

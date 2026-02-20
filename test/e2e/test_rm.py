@@ -13,7 +13,7 @@ def test_delete_non_existing_image():
         check_output(["ramalama", "rm", image_name], stderr=STDOUT)
 
     output = exc_info.value.output.decode("utf-8")
-    skip_if_container_engine_unavailable(output)
+    skip_if_container_engine_unavailable(output, returncode=exc_info.value.returncode)
 
     assert exc_info.value.returncode == 22
     assert f"Error: Model '{image_name}' not found" in output
