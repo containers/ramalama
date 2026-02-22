@@ -32,6 +32,8 @@ spec:
           name: model
         - mountPath: /rag
           name: rag
+        - mountPath: /dev/accel
+          name: accel
         - mountPath: /dev/dri
           name: dri
         - mountPath: /dev/kfd
@@ -44,6 +46,9 @@ spec:
           reference: registry.redhat.io/ubi9/ubi:latest
           pullPolicy: IfNotPresent
         name: rag
+      - hostPath:
+          path: /dev/accel
+        name: accel
       - hostPath:
           path: /dev/dri
         name: dri
