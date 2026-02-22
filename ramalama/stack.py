@@ -53,9 +53,11 @@ class Stack:
           name: model"""
 
         if self.args.dri == "on" and platform.system() != "Windows":
-            volume_mounts += """
-        - mountPath: /dev/dri
-          name: dri"""
+            for dev in ["dri", "kfd"]:
+                if os.path.exists("/dev/" + dev):
+                    volume_mounts += f"""
+        - mountPath: /dev/{dev}
+          name: {dev}"""
 
         return volume_mounts
 
@@ -69,10 +71,12 @@ class Stack:
           path: {host_model_path}
         name: model"""
         if self.args.dri == "on":
-            volumes += """
+            for dev in ["dri", "kfd"]:
+                if os.path.exists("/dev/" + dev):
+                    volumes += f"""
       - hostPath:
-          path: /dev/dri
-        name: dri"""
+          path: /dev/{dev}
+        name: {dev}"""
         return volumes
 
     def _gen_server_env(self):
