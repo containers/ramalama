@@ -78,9 +78,18 @@ function skip_if_no_mlx() {
     skip_if_not_apple_silicon
     skip_if_no_mlx
     
+    run_ramalama --runtime=mlx --dryrun run --max-tokens 1024 ${MODEL} "test"
+    is "$status" "0" "MLX run with max-tokens should work"
+    is "$output" ".*--max-tokens.*1024.*" "should include max tokens setting"
+}
+
+@test "ramalama --runtime=mlx --dryrun run with ctx-size does not set max tokens" {
+    skip_if_not_apple_silicon
+    skip_if_no_mlx
+
     run_ramalama --runtime=mlx --dryrun run --ctx-size 1024 ${MODEL} "test"
     is "$status" "0" "MLX run with ctx-size should work"
-    is "$output" ".*--max-tokens.*1024.*" "should include max tokens setting"
+    assert "$output" !~ "--max-tokens.*1024" "ctx-size should not map to max tokens in MLX"
 }
 
 @test "ramalama --runtime=mlx --dryrun serve shows MLX server command" {

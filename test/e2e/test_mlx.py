@@ -76,10 +76,22 @@ def test_runtime_mlx_dryrun_run_with_temperature():
 @skip_if_not_apple_silicon
 @skip_if_no_mlx
 def test_runtime_mlx_dryrun_run_with_max_tokens():
-    """ramalama --runtime=mlx --dryrun run with ctx-size should include max-tokens setting"""
+    """ramalama --runtime=mlx --dryrun run with max-tokens should include max-tokens setting"""
+    with RamalamaExecWorkspace() as ctx:
+        result = ctx.check_output(
+            ["ramalama", "--runtime=mlx", "--dryrun", "run", "--max-tokens", "1024", MODEL, "test"]
+        )
+        assert re.search(r"--max-tokens\s+1024", result), "should include max tokens setting"
+
+
+@pytest.mark.e2e
+@skip_if_not_apple_silicon
+@skip_if_no_mlx
+def test_runtime_mlx_dryrun_run_with_ctx_size_does_not_set_max_tokens():
+    """ramalama --runtime=mlx --dryrun run with ctx-size should not set max-tokens"""
     with RamalamaExecWorkspace() as ctx:
         result = ctx.check_output(["ramalama", "--runtime=mlx", "--dryrun", "run", "--ctx-size", "1024", MODEL, "test"])
-        assert re.search(r"--max-tokens\s+1024", result), "should include max tokens setting"
+        assert not re.search(r"--max-tokens\s+1024", result), "ctx-size should not map to max tokens in MLX"
 
 
 @pytest.mark.e2e
