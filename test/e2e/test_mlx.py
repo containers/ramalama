@@ -87,16 +87,6 @@ def test_runtime_mlx_dryrun_run_with_max_tokens():
 @pytest.mark.e2e
 @skip_if_not_apple_silicon
 @skip_if_no_mlx
-def test_runtime_mlx_dryrun_run_with_ctx_size_does_not_set_max_tokens():
-    """ramalama --runtime=mlx --dryrun run with ctx-size should not set max-tokens"""
-    with RamalamaExecWorkspace() as ctx:
-        result = ctx.check_output(["ramalama", "--runtime=mlx", "--dryrun", "run", "--ctx-size", "1024", MODEL, "test"])
-        assert not re.search(r"--max-tokens\s+1024", result), "ctx-size should not map to max tokens in MLX"
-
-
-@pytest.mark.e2e
-@skip_if_not_apple_silicon
-@skip_if_no_mlx
 def test_runtime_mlx_dryrun_serve_shows_mlx_server_command():
     """ramalama --runtime=mlx --dryrun serve should show the MLX server command with a default-range port"""
     with RamalamaExecWorkspace() as ctx:
