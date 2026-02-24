@@ -168,7 +168,7 @@ def run_cmd(
     if env:
         env = os.environ | env
 
-    result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr, encoding=encoding, env=env)
+    result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr, stdin=subprocess.DEVNULL, encoding=encoding, env=env)
     logger.debug(f"Command finished with return code: {result.returncode}")
 
     return result
