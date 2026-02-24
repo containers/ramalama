@@ -1,11 +1,10 @@
 import os
 import re
-import shutil
 from pathlib import Path
 
 from ramalama.common import SPLIT_MODEL_PATH_RE, generate_sha256, is_split_file_model
 from ramalama.model_store.snapshot_file import SnapshotFile, SnapshotFileType
-from ramalama.path_utils import normalize_host_path_for_container
+from ramalama.path_utils import create_file_link, normalize_host_path_for_container
 from ramalama.transports.base import Transport
 from ramalama.transports.huggingface import HuggingfaceRepository
 from ramalama.transports.modelscope import ModelScopeRepository
@@ -36,8 +35,8 @@ class LocalModelFile(SnapshotFile):
     def download(self, blob_file_path, snapshot_dir):
         if not os.path.exists(self.url):
             raise FileNotFoundError(f"No such file: '{self.url}'")
-        # moving from the local location to blob directory so the model store "owns" the data
-        shutil.copy(self.url, blob_file_path)
+        # Use hardlink first (space-efficient), fallback to symlink, then copy if needed
+        create_file_link(self.url, blob_file_path)
         return os.path.relpath(blob_file_path, start=snapshot_dir)
 
 
