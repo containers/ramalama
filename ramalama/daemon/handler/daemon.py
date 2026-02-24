@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 
 from ramalama.arg_types import StoreArgs
 from ramalama.cli import parse_args_from_cmd
-from ramalama.command.factory import assemble_command
 from ramalama.common import generate_sha256
 from ramalama.config import get_config
 from ramalama.daemon.dto.model import ModelDetailsResponse, ModelResponse, model_list_to_dict
@@ -14,6 +13,7 @@ from ramalama.daemon.handler.proxy import ModelProxyHandler
 from ramalama.daemon.logging import DEFAULT_LOG_DIR, logger
 from ramalama.daemon.service.model_runner import ManagedModel, ModelRunner, generate_model_id
 from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.plugins.loader import assemble_command
 from ramalama.transports.transport_factory import TransportFactory
 
 

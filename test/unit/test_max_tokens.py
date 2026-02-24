@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 import pytest
 
-from ramalama.command.context import RamalamaArgsContext
 from ramalama.config import default_config
 
 
@@ -143,35 +142,3 @@ class TestMaxTokensCLI:
 
         args = parser.parse_args(["--max-tokens", "-1"])
         assert args.max_tokens == -1
-
-
-class TestMaxTokensContext:
-    """Test RamalamaArgsContext max_tokens handling."""
-
-    def test_max_tokens_context_from_argparse(self):
-        """Test that max_tokens is properly extracted from argparse namespace."""
-        args = argparse.Namespace(max_tokens=512)
-        ctx = RamalamaArgsContext.from_argparse(args)
-
-        assert ctx.max_tokens == 512
-
-    def test_max_tokens_context_default_none(self):
-        """Test that max_tokens defaults to None when not provided."""
-        args = argparse.Namespace()
-        ctx = RamalamaArgsContext.from_argparse(args)
-
-        assert ctx.max_tokens is None
-
-    def test_max_tokens_context_zero_value(self):
-        """Test that max_tokens can be set to 0."""
-        args = argparse.Namespace(max_tokens=0)
-        ctx = RamalamaArgsContext.from_argparse(args)
-
-        assert ctx.max_tokens == 0
-
-    def test_max_tokens_context_negative_value(self):
-        """Test that max_tokens can be set to negative values."""
-        args = argparse.Namespace(max_tokens=-1)
-        ctx = RamalamaArgsContext.from_argparse(args)
-
-        assert ctx.max_tokens == -1

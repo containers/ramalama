@@ -178,7 +178,7 @@ class RamaLamaShell(cmd.Cmd):
         print()
 
     def prep_rag_message(self):
-        if (context := self.args.rag) is None:
+        if (context := getattr(self.args, 'rag', None)) is None:
             return
 
         builder = OpanAIChatAPIMessageBuilder()
@@ -273,8 +273,12 @@ class RamaLamaShell(cmd.Cmd):
         return self.provider.create_request(messages, options)
 
     def _resolve_model_name(self) -> str | None:
-        if getattr(self.args, "runtime", None) == "mlx":
-            return None
+        from ramalama.plugins.interface import InferenceRuntimePlugin
+        from ramalama.plugins.loader import get_runtime
+
+        plugin = get_runtime(getattr(self.args, "runtime", "") or "")
+        if isinstance(plugin, InferenceRuntimePlugin):
+            return plugin.api_model_name(self.args)
         return getattr(self.args, "model", None)
 
     def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:

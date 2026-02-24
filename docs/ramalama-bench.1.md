@@ -134,19 +134,6 @@ Specify seed rather than using random seed model interaction
 #### **--selinux**=*true*
 Enable SELinux container separation
 
-#### **--temp**="0.8"
-Temperature of the response from the AI Model
-llama.cpp explains this as:
-
-    The lower the number is, the more deterministic the response.
-
-    The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
-
-        Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
-
-#### **--thinking**=*true*
-Enable or disable thinking mode in reasoning models
-
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.
 The default is to use half the cores available on this system for the number of threads.

@@ -122,7 +122,7 @@ class Stack:
                 '--alias',
                 self.model.model_name,
                 '--ctx-size',
-                str(self.args.context),
+                str(self.args.ctx_size),
                 '--temp',
                 str(self.args.temp),
                 '--jinja',

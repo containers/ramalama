@@ -437,49 +437,18 @@ def add_labels(args, add_label: Callable[[str], None]):
 
 
 def is_healthy(args, timeout: int = 3, model_name: str | None = None):
-    """Check if the response from the container indicates a healthy status."""
+    """Check if the runtime server is healthy by delegating to the runtime plugin."""
+    from ramalama.plugins.loader import get_runtime
+
     conn = None
-    config = get_config()
     try:
         conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
         if getattr(args, "debug", False):
             conn.set_debuglevel(1)
-        if config.runtime == 'vllm':
-            conn.request("GET", "/ping")
-            vllm_ping_resp = conn.getresponse()
-            return vllm_ping_resp.status == 200
-        conn.request("GET", "/health")
-        health_resp = conn.getresponse()
-        health_resp.read()
-        if health_resp.status not in (200, 404):
-            logger.debug(f"Container {args.name} /health status code: {health_resp.status}: {health_resp.reason}")
+        plugin = get_runtime(get_config().runtime)
+        if plugin is None:
             return False
-        conn.request("GET", "/models")
-        models_resp = conn.getresponse()
-        if models_resp.status != 200:
-            logger.debug(f"Container {args.name} /models status code {models_resp.status}: {models_resp.reason}")
-            return False
-        content = models_resp.read()
-        if not content:
-            logger.debug(f"Container {args.name} /models returned an empty response")
-            return False
-        body = json.loads(content)
-        if "models" not in body:
-            logger.debug(f"Container {args.name} /models does not include a model list in the response")
-            return False
-        model_names = [m["name"] for m in body["models"]]
-        if not model_name:
-            # FIXME: modules have a circular dependency so inline import here
-            from ramalama.transports.transport_factory import New
-
-            model_name = New(args.MODEL, args).model_alias
-        if not any(model_name in name for name in model_names):
-            logger.debug(
-                f'Container {args.name} /models does not include "{model_name}" in the model list: {model_names}'
-            )
-            return False
-        logger.debug(f"Container {args.name} is healthy")
-        return True
+        return plugin.is_healthy(conn, args, model_name)
     finally:
         if conn:
             conn.close()
@@ -488,7 +457,10 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
 def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     """Waits for a container to become healthy by polling its endpoint."""
     if timeout is None:
-        timeout = 180
+        from ramalama.plugins.loader import get_runtime
+
+        plugin = get_runtime(get_config().runtime)
+        timeout = plugin.health_check_timeout if plugin is not None else 20
     logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()
 

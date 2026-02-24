@@ -100,6 +100,11 @@ Matrix = "https://matrix.to/#/#ramalama:fedoraproject.org"
 [project.scripts]
 ramalama = "ramalama.cli:main"
 
+[project.entry-points."ramalama.runtimes"]
+"llama.cpp" = "ramalama.plugins.runtimes.llama_cpp:LlamaCppPlugin"
+"vllm" = "ramalama.plugins.runtimes.vllm:VllmPlugin"
+"mlx" = "ramalama.plugins.runtimes.mlx:MlxPlugin"
+
 [tool.setuptools]
 include-package-data = true
 license-files = ["LICENSE"]
@@ -165,10 +170,6 @@ include = ["ramalama", "ramalama.*"]
 
 [tool.setuptools.data-files]
 "share/ramalama" = ["shortnames/shortnames.conf", "docs/ramalama.conf"]
-"share/ramalama/inference" = [
-  "inference-spec/schema/*.json",
-  "inference-spec/engines/*",
-]
 "share/man/man1" = ["docs/*.1"]
 "share/man/man5" = ["docs/*.5"]
 "share/man/man7" = ["docs/*.7"]

@@ -1,0 +1,132 @@
+import argparse
+from http.client import HTTPConnection
+from typing import Any
+
+from ramalama.common import ContainerEntryPoint
+from ramalama.logger import logger
+from ramalama.plugins.runtimes.common import ContainerizedInferenceRuntimePlugin
+
+_VLLM_DEFAULT_IMAGE = "docker.io/vllm/vllm-openai"
+
+
+class VllmPlugin(ContainerizedInferenceRuntimePlugin):
+    @property
+    def name(self) -> str:
+        return "vllm"
+
+    def _cmd_run(self, args: argparse.Namespace) -> list[str]:
+        from ramalama.transports.transport_factory import New
+
+        cmd: list[str] = []
+
+        is_container = args.container
+        should_generate = getattr(args, 'generate', None) is not None
+        dry_run = getattr(args, 'dryrun', False)
+
+        model = New(args.MODEL, args) if hasattr(args, 'MODEL') else None
+
+        if is_container:
+            cmd.append(ContainerEntryPoint())
+        else:
+            cmd += ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+
+        if model is not None:
+            model_path = model._get_entry_model_path(is_container, should_generate, dry_run)
+            cmd += ["--model", model_path]
+            cmd += ["--served-model-name", model.model_alias]
+
+        ctx_size = getattr(args, 'ctx_size', None)
+        if ctx_size:
+            cmd += ["--max-model-len", str(ctx_size)]
+
+        # --host: use 0.0.0.0 in container, or the configured host otherwise
+        host = '0.0.0.0' if is_container else getattr(args, 'host', None)
+        if host is not None:
+            cmd += ["--host", str(host)]
+
+        port = getattr(args, 'port', None)
+        if port is not None:
+            cmd += ["--port", str(port)]
+
+        seed = getattr(args, 'seed', None)
+        if seed is not None:
+            cmd += ["--seed", str(seed)]
+
+        temp = getattr(args, 'temp', None)
+        if temp is not None:
+            cmd += ["--temperature", str(temp)]
+
+        runtime_args = getattr(args, 'runtime_args', None)
+        if runtime_args:
+            cmd.extend(runtime_args)
+
+        return cmd
+
+    _cmd_serve = _cmd_run
+
+    def _cmd_rag(self, args: argparse.Namespace) -> list[str]:
+        cmd = ["doc2rag"]
+
+        if getattr(args, 'debug', None):
+            cmd.append("--debug")
+
+        if getattr(args, 'format', None):
+            cmd += ["--format", str(args.format)]
+
+        if getattr(args, 'ocr', None):
+            cmd.append("--ocr")
+
+        cmd.append("/output")
+
+        if getattr(args, 'PATHS', None) and getattr(args, 'inputdir', None):
+            cmd.append(str(args.inputdir))
+
+        if getattr(args, 'urls', None):
+            cmd.extend(args.urls)
+
+        return cmd
+
+    def _add_max_model_len_arg(self, parser: "argparse.ArgumentParser") -> None:
+        from ramalama.cli import suppressCompleter
+        from ramalama.config import get_config
+
+        config = get_config()
+        # --ctx-size is already registered by runtime_options(); add --max-model-len as a vllm-specific alias
+        parser.add_argument(
+            "--max-model-len",
+            dest="ctx_size",
+            type=int,
+            default=config.ctx_size,
+            help="model context length (sequence length); alias for --ctx-size",
+            completer=suppressCompleter,
+        )
+
+    def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
+        parser = super()._register_run_subcommand(subparsers)
+        self._add_max_model_len_arg(parser)
+        return parser
+
+    def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
+        parser = super()._register_serve_subcommand(subparsers)
+        self._add_max_model_len_arg(parser)
+        return parser
+
+    def get_container_image(self, config: Any, gpu_type: str) -> str | None:
+        # GPU-specific user override (e.g., VLLM_CUDA_VISIBLE_DEVICES)
+        if gpu_type and (override := config.images.get(f"VLLM_{gpu_type}")):
+            image = override
+        # General vllm user override (VLLM key, any GPU)
+        elif override := config.images.get("VLLM"):
+            image = override
+        else:
+            image = _VLLM_DEFAULT_IMAGE
+        return image if ":" in image else f"{image}:latest"
+
+    def is_healthy(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+        conn.request("GET", "/ping")
+        resp = conn.getresponse()
+        if resp.status != 200:
+            logger.debug(f"Container {args.name} /ping status code: {resp.status}: {resp.reason}")
+            return False
+        logger.debug(f"Container {args.name} is healthy")
+        return True

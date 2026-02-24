@@ -75,10 +75,6 @@ OCI model car image
 
 Image to be used when building and pushing --type=car models
 
-**cache_reuse**=256
-
-Min chunk size to attempt reusing from the cache via KV shifting
-
 **container**=true
 
 Run RamaLama in the default container.
@@ -125,16 +121,25 @@ OCI container image to run with the specified AI model
 RAMALAMA_IMAGE environment variable overrides this field.
 
 `[[ramalama.images]]`
+
+User-override entries for runtime-specific container images. Each runtime plugin
+defines its own built-in defaults; entries here override those defaults.
+
+For the llama.cpp runtime, set GPU env var names to override the image for that
+accelerator:
+
   HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm"
   CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda"
   ASAHI_VISIBLE_DEVICES  = "quay.io/ramalama/asahi"
   INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu"
   ASCEND_VISIBLE_DEVICES = "quay.io/ramalama/cann"
   MUSA_VISIBLE_DEVICES   = "quay.io/ramalama/musa"
-  VLLM                   = "registry.redhat.io/rhelai1/ramalama-vllm"
 
-Alternative images to use when RamaLama recognizes specific hardware or user
-specified vllm model runtime.
+For the vllm runtime, use `VLLM` to override the image regardless of GPU, or
+`VLLM_<GPU_ENV_VAR>` to override for a specific accelerator:
+
+  VLLM                        = "registry.redhat.io/rhelai1/ramalama-vllm"
+  VLLM_CUDA_VISIBLE_DEVICES   = "docker.io/vllm/vllm-openai"
 
 **keep_groups**=false
 
@@ -151,11 +156,6 @@ Note: --debug option overrides this field and forces the system to debug
 
 Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
 This parameter is mapped to the appropriate runtime-specific parameter when executing models.
-
-**ngl**=-1
-
-number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
-The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
 **prefix**=""
 Specify default prefix for chat and run command. By default the prefix
@@ -190,10 +190,13 @@ Options: qdrant, json, markdown, milvus.
 OCI container image to run with the specified AI model when using RAG content.
 
 `[[ramalama.rag_images]]`
+
+User-override entries for GPU-specific RAG container images. Built-in GPU defaults
+(CUDA, ROCm, Intel) are defined internally; entries here override those defaults:
+
   CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda-rag"
   HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm-rag"
   INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu-rag"
-  GGML_VK_VISIBLE_DEVICES = "quay.io/ramalama/ramalama"
 
 
 **runtime**="llama.cpp"
@@ -225,15 +228,6 @@ llama.cpp explains this as:
     The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
-
-**thinking**=true
-
-Enable thinking mode on reasoning models
-
-**threads**=-1
-
-maximum number of cpu threads to use for inferencing
-The default -1, uses the default of the underlying implementation
 
 **transport**="ollama"
 

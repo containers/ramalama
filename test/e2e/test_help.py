@@ -28,7 +28,7 @@ DEFAULT_CONTAINER_ENGINE_PATTERN = re.compile(
 )
 
 DEFAULT_RUNTIME_PATTERN = re.compile(
-    r"\s+specify the runtime to use; valid options are.*\s+\(default: (?P<runtime>[\w.]+)\)",
+    r"\s+specify the inference engine runtime to use \(default: (?P<runtime>[\w.]+)\)",
     re.MULTILINE,
 )
 
