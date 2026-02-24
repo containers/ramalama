@@ -88,6 +88,7 @@ class Rag:
             dbdir = os.path.join(ragdb.name, "vectordb")
             os.makedirs(dbdir)
         else:
+            ragdb = None
             dbdir = self.target
 
         engine.add_volume(dbdir, "/output", opts="rw")
@@ -103,7 +104,7 @@ class Rag:
         except subprocess.CalledProcessError as e:
             raise e
         finally:
-            if self.oci:
+            if self.oci and ragdb:
                 ragdb.cleanup()
 
 
@@ -116,12 +117,12 @@ class RagSource(StrEnum):
     IMAGE = "image"
 
 
-class RagEngine(Engine):
+class RagEngine(Engine[RagArgsType]):
     """Engine for executing a RAG proxy"""
 
     sourcetype: RagSource
 
-    def __init__(self, args, /, *, sourcetype: RagSource):
+    def __init__(self, args: RagArgsType, /, *, sourcetype: RagSource):
         self.sourcetype = sourcetype
         super().__init__(args)
         self.add_rag()
@@ -150,15 +151,18 @@ class RagTransport(OCI):
     """Run a RAG proxy, dispatching to a backend LLM"""
 
     type: str = "Model+RAG"
+    kind: RagSource
 
     def __init__(self, imodel: Transport, cmd: list[str], args: RagArgsType):
+        if args.engine is None:
+            raise ValueError("RAG transport requires a container engine.")
         super().__init__(args.rag, args.store, args.engine)
         self.imodel = imodel
         self.model_cmd = cmd
         if os.path.exists(args.rag):
-            self.kind = RagSource.DB
+            self.kind = cast(RagSource, RagSource.DB)
         else:
-            self.kind = RagSource.IMAGE
+            self.kind = cast(RagSource, RagSource.IMAGE)
 
     def exists(self) -> bool:
         if self.kind is RagSource.DB:

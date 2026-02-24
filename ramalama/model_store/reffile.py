@@ -52,7 +52,7 @@ class RefFile:
                 filename = file.readline().strip()
         return ref_file
 
-    def remove_file(self, name: str):
+    def remove_file(self, name: str) -> None:
         if name in self.filenames:
             self.filenames.remove(name)
 
@@ -76,7 +76,7 @@ class RefFile:
             lines.append(line)
         return "\n".join(lines)
 
-    def write_to_file(self):
+    def write_to_file(self) -> None:
         with open(self.path, "w") as file:
             file.write(self.serialize())
             file.flush()

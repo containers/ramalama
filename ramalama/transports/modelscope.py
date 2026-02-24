@@ -1,6 +1,8 @@
 import json
 import os
+from typing import Sequence
 
+from ramalama.arg_types import SourceTargetArgsType
 from ramalama.common import available, run_cmd
 from ramalama.hf_style_repo_base import (
     HFStyleRepoFile,
@@ -10,6 +12,7 @@ from ramalama.hf_style_repo_base import (
 )
 from ramalama.model_store.snapshot_file import SnapshotFileType
 from ramalama.path_utils import create_file_link
+from ramalama.transports.base import Transport
 
 missing_modelscope = """This operation requires modelscope which is not available.
 
@@ -19,12 +22,12 @@ pip install modelscope
 """
 
 
-def is_modelscope_available():
+def is_modelscope_available() -> bool:
     """Check if modelscope is available on the system."""
     return available("modelscope")
 
 
-def extract_modelscope_checksum(data):
+def extract_modelscope_checksum(data: str) -> str:
     """Extract SHA-256 checksum from ModelScope API response."""
     parsed_data = json.loads(data)
     if sha256_checksum := parsed_data.get("Data", {}).get("MetaContent", {}).get("Sha256"):
@@ -33,7 +36,7 @@ def extract_modelscope_checksum(data):
         raise ValueError("SHA-256 checksum not found in the API response.")
 
 
-def fetch_checksum_from_api(organization, file):
+def fetch_checksum_from_api(organization: str, file: str) -> str:
     """Fetch the SHA-256 checksum from the model's metadata API for a given file."""
     checksum_api_url = (
         f"{ModelScopeRepository.REGISTRY_URL}/api/v1/models/{organization}/repo/raw"
@@ -46,7 +49,7 @@ def fetch_checksum_from_api(organization, file):
 class ModelScopeRepository(HFStyleRepository):
     REGISTRY_URL = "https://modelscope.cn"
 
-    def fetch_metadata(self):
+    def fetch_metadata(self) -> None:
         self.blob_url = f"{ModelScopeRepository.REGISTRY_URL}/{self.organization}/resolve/master"
         self.model_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
         self.model_filename = self.name
@@ -56,43 +59,43 @@ class ModelScope(HFStyleRepoModel):
     REGISTRY_URL = "https://modelscope.cn/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
-    def __init__(self, model, model_store_path):
+    def __init__(self, model: str, model_store_path: str) -> None:
         super().__init__(model, model_store_path)
 
         self.type = "modelscope"
         self.ms_available = is_modelscope_available()
 
-    def get_cli_command(self):
+    def get_cli_command(self) -> str:
         return "modelscope"
 
-    def get_missing_message(self):
+    def get_missing_message(self) -> str:
         return missing_modelscope
 
-    def get_registry_url(self):
+    def get_registry_url(self) -> str:
         return self.REGISTRY_URL
 
-    def get_accept_header(self):
+    def get_accept_header(self) -> str:
         return self.ACCEPT
 
-    def get_repo_type(self):
+    def get_repo_type(self) -> str:
         return "modelscope"
 
-    def fetch_checksum_from_api(self, organization, file):
+    def fetch_checksum_from_api(self, organization: str, file: str) -> str:
         return fetch_checksum_from_api(organization, file)
 
-    def create_repository(self, name, organization, tag):
+    def create_repository(self, name: str, organization: str, tag: str) -> ModelScopeRepository:
         return ModelScopeRepository(name, organization, tag)
 
-    def get_cli_download_args(self, directory_path, model):
+    def get_cli_download_args(self, directory_path: str, model: str) -> Sequence[str]:
         return ["modelscope", "download", "--local_dir", directory_path, model]
 
-    def _fetch_cache_path(self, cache_dir, namespace, repo):
-        def normalize_repo_name(repo):
+    def _fetch_cache_path(self, cache_dir: str, namespace: str, repo: str) -> str:
+        def normalize_repo_name(repo: str) -> str:
             return repo.replace(".", "___")
 
         return os.path.join(cache_dir, 'models', namespace, normalize_repo_name(repo))
 
-    def in_existing_cache(self, args, target_path, sha256_checksum):
+    def in_existing_cache(self, args: object, target_path: str, sha256_checksum: str) -> bool:
         if not self.ms_available:
             return False
 
@@ -113,7 +116,7 @@ class ModelScope(HFStyleRepoModel):
             return True
         return False
 
-    def push(self, _, args):
+    def push(self, source_model: Transport, args: SourceTargetArgsType) -> str:
         if not self.ms_available:
             raise NotImplementedError(self.get_missing_message())
         proc = run_cmd(
@@ -132,7 +135,7 @@ class ModelScope(HFStyleRepoModel):
         )
         return proc.stdout.decode("utf-8")
 
-    def _collect_cli_files(self, tempdir: str) -> tuple[str, list[HFStyleRepoFile]]:
+    def _collect_cli_files(self, tempdir: str) -> tuple[str, Sequence[HFStyleRepoFile]]:
         cache_dir = os.path.join(tempdir, ".cache", "modelscope", "download")
         files: list[HFStyleRepoFile] = []
         snapshot_hash = ""

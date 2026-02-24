@@ -66,7 +66,7 @@ def get_jinja_variables(template: str) -> set[str]:
     return meta.find_undeclared_variables(ast)
 
 
-def is_openai_jinja(template: str):
+def is_openai_jinja(template: str) -> bool:
     return "messages" in get_jinja_variables(template)
 
 

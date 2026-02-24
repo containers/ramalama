@@ -5,9 +5,9 @@ import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from http.client import HTTPConnection, HTTPException
-from typing import Any
+from typing import Any, Generic, TypeVar, cast
 
 # Live reference for checking global vars
 import ramalama.common
@@ -18,16 +18,19 @@ from ramalama.config import get_config
 from ramalama.logger import logger
 from ramalama.path_utils import normalize_host_path_for_container
 
+ArgsT = TypeVar("ArgsT")
 
-class BaseEngine(ABC):
+
+class BaseEngine(ABC, Generic[ArgsT]):
     """General-purpose engine for running podman or docker commands"""
 
-    def __init__(self, args: BaseEngineArgsType) -> None:
-        base = os.path.basename(args.engine)
+    def __init__(self, args: ArgsT) -> None:
+        self.args: ArgsT = args
+        self._base_args: BaseEngineArgsType = cast(BaseEngineArgsType, args)
+        base = os.path.basename(self._base_args.engine)
         self.use_docker: bool = base == "docker"
         self.use_podman: bool = base == "podman"
-        self.args = args
-        self.exec_args: list[str] = [self.args.engine]
+        self.exec_args: list[str] = [self._base_args.engine]
         self.base_args()
         self.add_labels()
         self.add_network()
@@ -39,36 +42,37 @@ class BaseEngine(ABC):
     @abstractmethod
     def base_args(self): ...
 
-    def add_label(self, label: str):
+    def add_label(self, label: str) -> None:
         self.add(["--label", label])
 
-    def add_name(self, name: str):
+    def add_name(self, name: str) -> None:
         self.add(["--name", name])
 
-    def add_labels(self):
-        add_labels(self.args, self.add_label)
+    def add_labels(self) -> None:
+        add_labels(self._base_args, self.add_label)
 
     def add_pull(self, value: str) -> None:
         self.add_args("--pull", value)
 
-    def add_pull_newer(self):
-        if not self.args.dryrun and self.use_docker and getattr(self.args, "pull", None) == "newer":
+    def add_pull_newer(self) -> None:
+        pull = getattr(self.args, "pull", None)
+        if not self._base_args.dryrun and self.use_docker and pull == "newer":
             try:
-                if not self.args.quiet:
-                    perror(f"Checking for newer image {self.args.image}")
-                run_cmd([str(self.args.engine), "pull", "-q", self.args.image], ignore_all=True)
+                if not self._base_args.quiet:
+                    perror(f"Checking for newer image {self._base_args.image}")
+                run_cmd([str(self._base_args.engine), "pull", "-q", self._base_args.image], ignore_all=True)
             except Exception:  # Ignore errors, the run command will handle it.
                 pass
-        elif getattr(self.args, "pull", None):
-            self.add_pull(self.args.pull)
+        elif pull is not None:
+            self.add_pull(pull)
 
-    def add_network(self):
-        if getattr(self.args, "network", None):
-            self.exec_args += ["--network", self.args.network]
+    def add_network(self) -> None:
+        if network := getattr(self.args, "network", None):
+            self.exec_args += ["--network", network]
 
-    def add_oci_runtime(self):
-        if getattr(self.args, "oci_runtime", None):
-            self.exec_args += ["--runtime", self.args.oci_runtime]
+    def add_oci_runtime(self) -> None:
+        if oci_runtime := getattr(self.args, "oci_runtime", None):
+            self.exec_args += ["--runtime", oci_runtime]
             return
         if check_nvidia() == "cuda":
             if self.use_docker:
@@ -76,20 +80,20 @@ class BaseEngine(ABC):
             elif os.access("/usr/bin/nvidia-container-runtime", os.X_OK):
                 self.exec_args += ["--runtime", "/usr/bin/nvidia-container-runtime"]
 
-    def add_privileged_options(self):
+    def add_privileged_options(self) -> None:
         if not getattr(self.args, "selinux", False):
             self.add_args("--security-opt=label=disable")
         if not getattr(self.args, "nocapdrop", False):
             self.add_args("--cap-drop=all")
             self.add_args("--security-opt=no-new-privileges")
 
-    def add_device_options(self):
+    def add_device_options(self) -> None:
         request_no_device = getattr(self.args, "device", None) == ['none']
         if request_no_device:
             return
 
-        if getattr(self.args, "device", None):
-            for device_arg in self.args.device:
+        if devices := getattr(self.args, "device", None):
+            for device_arg in devices:
                 self.exec_args += ["--device", device_arg]
 
         if ramalama.common.podman_machine_accel:
@@ -112,42 +116,42 @@ class BaseEngine(ABC):
 
             self.exec_args += ["-e", f"{k}={v}"]
 
-    def handle_podman_specifics(self):
+    def handle_podman_specifics(self) -> None:
         if getattr(self.args, "podman_keep_groups", None):
             self.exec_args += ["--group-add", "keep-groups"]
 
-    def add(self, newargs: Sequence[str]):
+    def add(self, newargs: Sequence[str]) -> None:
         self.exec_args.extend(newargs)
 
     def add_args(self, *args: str) -> None:
         self.add(args)
 
-    def add_volume(self, src: str, dest: str, *, opts="ro"):
+    def add_volume(self, src: str, dest: str, *, opts="ro") -> None:
         self.add_args("-v", f"{normalize_host_path_for_container(src)}:{dest}:{opts}{self.relabel()}")
 
-    def dryrun(self):
+    def dryrun(self) -> None:
         dry_run(self.exec_args)
 
-    def run(self):
+    def run(self) -> None:
         run_cmd(self.exec_args, stdout=None)
 
     def run_process(self) -> subprocess.CompletedProcess:
         """Run the command and return the CompletedProcess."""
         return run_cmd(self.exec_args, encoding="utf-8")
 
-    def exec(self, stdout2null: bool = False, stderr2null: bool = False):
+    def exec(self, stdout2null: bool = False, stderr2null: bool = False) -> None:
         exec_cmd(self.exec_args, stdout2null, stderr2null)
 
-    def relabel(self):
+    def relabel(self) -> str:
         if getattr(self.args, "selinux", False) and self.use_podman:
             return ",z"
         return ""
 
 
-class Engine(BaseEngine):
+class Engine(BaseEngine[ArgsT], Generic[ArgsT]):
     """Engine for executing 'podman run'"""
 
-    def __init__(self, args: BaseEngineArgsType) -> None:
+    def __init__(self, args: ArgsT) -> None:
         super().__init__(args)
         self.add_detach_option()
         self.add_device_options()
@@ -209,7 +213,7 @@ class Engine(BaseEngine):
             self.add_args("-t")
 
 
-class BuildEngine(BaseEngine):
+class BuildEngine(BaseEngine[ArgsT], Generic[ArgsT]):
     """Engine for executing 'podman build'"""
 
     def base_args(self) -> None:
@@ -244,12 +248,12 @@ class BuildEngine(BaseEngine):
         if tag:
             self.add_args("-t", tag)
         self.add_args("-f", cfile, context)
-        if self.args.dryrun:
+        if self._base_args.dryrun:
             self.dryrun()
             return ""
         return self.run_process().stdout.strip()
 
-    def build_containerfile(self, content: str, context: str, /, *, tag: str | None = None):
+    def build_containerfile(self, content: str, context: str, /, *, tag: str | None = None) -> str:
         """
         Build an image using the provided Containerfile content and context dir.
         If tag is provided, the image will be tagged.
@@ -261,7 +265,7 @@ class BuildEngine(BaseEngine):
             return self.build(tfile.name, context, tag=tag)
 
 
-def dry_run(args):
+def dry_run(args: Iterable) -> None:
     for arg in args:
         if not arg:
             continue
@@ -272,7 +276,7 @@ def dry_run(args):
     print()
 
 
-def images(args):
+def images(args) -> list:
     conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
@@ -297,7 +301,7 @@ def images(args):
         raise (e)
 
 
-def containers(args):
+def containers(args) -> list:
     conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
@@ -341,7 +345,7 @@ def info(args) -> list[Any] | str | dict[str, Any]:
         return str(e)
 
 
-def inspect(args, name: str, format: str | None = None, ignore_stderr: bool = False):
+def inspect(args, name: str, format: str | None = None, ignore_stderr: bool = False) -> str:
     if not name:
         raise ValueError("must specify a container name")
     conman = str(args.engine) if args.engine is not None else None
@@ -356,7 +360,7 @@ def inspect(args, name: str, format: str | None = None, ignore_stderr: bool = Fa
     return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
 
 
-def logs(args, name: str, ignore_stderr: bool = False):
+def logs(args, name: str, ignore_stderr: bool = False) -> str:
     if not name:
         raise ValueError("must specify a container name")
     conman = str(args.engine) if args.engine is not None else None
@@ -367,7 +371,7 @@ def logs(args, name: str, ignore_stderr: bool = False):
     return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
 
 
-def stop_container(args, name: str, remove: bool = False):
+def stop_container(args, name: str, remove: bool = False) -> None:
     if not name:
         raise ValueError("must specify a container name")
     conman = str(args.engine) if args.engine is not None else None
@@ -423,7 +427,7 @@ def stop_container(args, name: str, remove: bool = False):
                 raise
 
 
-def add_labels(args, add_label: Callable[[str], None]):
+def add_labels(args, add_label: Callable[[str], None]) -> None:
     label_map = {
         "MODEL": "ai.ramalama.model",
         "engine": "ai.ramalama.engine",
@@ -436,7 +440,7 @@ def add_labels(args, add_label: Callable[[str], None]):
             add_label(f"{label_prefix}={value}")
 
 
-def is_healthy(args, timeout: int = 3, model_name: str | None = None):
+def is_healthy(args, timeout: int = 3, model_name: str | None = None) -> bool:
     """Check if the response from the container indicates a healthy status."""
     conn = None
     config = get_config()
@@ -485,7 +489,7 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
             conn.close()
 
 
-def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
+def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None) -> None:
     """Waits for a container to become healthy by polling its endpoint."""
     config = get_config()
     if timeout is None:

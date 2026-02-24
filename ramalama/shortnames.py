@@ -9,7 +9,7 @@ class Shortnames:
     shortnames: dict[str, str] = {}
     config_sources: dict[str, str] = {}
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.shortnames = {}
         self.config_sources = {}
         data_path = sysconfig.get_path("data")
@@ -55,7 +55,7 @@ class Shortnames:
                     self.shortnames[name] = target
                     self.config_sources[name] = real_path
 
-    def _strip_quotes(self, s) -> str:
+    def _strip_quotes(self, s: str) -> str:
         return s.strip("'\"")
 
     def resolve(self, model: str) -> str:

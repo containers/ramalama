@@ -16,7 +16,7 @@ from ramalama.log_levels import LogLevel
 class ShutdownHandler:
     def __init__(self, server: "RamalamaServer") -> None:
         self.server = server
-        self.idle_check_timer = None
+        self.idle_check_timer: threading.Timer | None = None
 
     def handle_kill(self, signum, frame):
         if self.idle_check_timer:
@@ -49,7 +49,7 @@ class ShutdownHandler:
             # On Windows, use a background thread for idle checks
             self._start_idle_check_thread()
 
-    def _start_idle_check_thread(self, interval_seconds=300):
+    def _start_idle_check_thread(self, interval_seconds: int = 300):
         """Start a background thread for idle checking on Windows (no SIGALRM support)."""
 
         def check_and_reschedule():
@@ -66,7 +66,7 @@ class ShutdownHandler:
         self.idle_check_timer.daemon = True
         self.idle_check_timer.start()
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type, value, traceback) -> None:
         if self.idle_check_timer:
             self.idle_check_timer.cancel()
 
@@ -74,7 +74,7 @@ class ShutdownHandler:
 class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(
         self, host: str, port: int, model_store_path: str, idle_check_interval: timedelta, bind_and_activate=True
-    ):
+    ) -> None:
         # Do not pass a RequestHandlerClass here, we will create a custom handler in finish_request
         super().__init__((host, port), None, bind_and_activate)  # type: ignore
 
@@ -87,10 +87,10 @@ class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def finish_request(self, request, client_address):
         RamalamaHandler(self.model_store_path, self.model_runner, request, client_address, self)
 
-    def check_model_expiration(self):
+    def check_model_expiration(self) -> None:
         curr_time = datetime.now()
         for name, m in self.model_runner.managed_models.items():
-            if m.expiration_date > curr_time:
+            if m.expiration_date is None or m.expiration_date > curr_time:
                 continue
 
             try:
@@ -99,7 +99,7 @@ class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
             except Exception as e:
                 logger.error(f"Failed to stop expired model '{name}': {e}")
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         logger.info("Shutting down ramalama daemon...")
 
         for name, managed_model in self.model_runner.managed_models.items():

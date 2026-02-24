@@ -1,6 +1,6 @@
 import os
 import shlex
-from typing import Optional, Tuple
+from typing import Optional
 
 from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel, get_accel_env_vars
 from ramalama.file import UnitFile
@@ -10,13 +10,13 @@ class Quadlet:
     def __init__(
         self,
         model_name: str,
-        model_paths: Tuple[str, str],
-        chat_template_paths: Optional[Tuple[str, str]],
-        mmproj_path: Optional[Tuple[str, str]],
+        model_paths: tuple[str, str],
+        chat_template_paths: Optional[tuple[str, str]],
+        mmproj_path: Optional[tuple[str, str]],
         args,
         exec_args,
         artifact: bool,
-        model_parts: Optional[list[Tuple[str, str]]] = None,
+        model_parts: Optional[list[tuple[str, str]]] = None,
     ):
         self.src_model_path, self.dest_model_path = model_paths
         self.src_chat_template_path, self.dest_chat_template_path = (
@@ -128,18 +128,18 @@ class Quadlet:
             quadlet_file.add("Container", "Environment", f"{e}")
         return env_var_string
 
-    def _gen_image(self, name, image):
+    def _gen_image(self, name: str, image: str) -> UnitFile:
         image_file_name = f"{name}.image"
         print(f"Generating quadlet file: {image_file_name} ")
         image_file = UnitFile(image_file_name)
         image_file.add("Image", "Image", f"{image}")
         return image_file
 
-    def _gen_name(self, quadlet_file: UnitFile):
+    def _gen_name(self, quadlet_file: UnitFile) -> None:
         if getattr(self.args, "name", None):
             quadlet_file.add("Container", "ContainerName", f"{self.args.name}")
 
-    def _gen_model_volume(self, quadlet_file: UnitFile):
+    def _gen_model_volume(self, quadlet_file: UnitFile) -> list[UnitFile]:
         files: list[UnitFile] = []
 
         # Check if any model part exists as a file (non-OCI model from store)
@@ -176,12 +176,12 @@ class Quadlet:
             )
         return files
 
-    def _gen_port(self, quadlet_file: UnitFile):
+    def _gen_port(self, quadlet_file: UnitFile) -> None:
         if getattr(self.args, "port", "") != "":
             host = getattr(self.args, "host", None) or "0.0.0.0"
             quadlet_file.add("Container", "PublishPort", f"{host}:{self.args.port}:{self.args.port}")
 
-    def _gen_rag_volume(self, quadlet_file: UnitFile):
+    def _gen_rag_volume(self, quadlet_file: UnitFile) -> list[UnitFile]:
         files: list[UnitFile] = []
 
         if not getattr(self.args, "rag", None):

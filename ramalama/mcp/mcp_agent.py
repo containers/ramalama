@@ -5,7 +5,7 @@ import logging
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Dict, List
+from typing import Any
 
 from ramalama.config import get_config
 from ramalama.logger import logger
@@ -17,7 +17,7 @@ class LLMAgent:
 
     def __init__(
         self,
-        clients: List[PureMCPClient],
+        clients: list[PureMCPClient],
         llm_base_url: str = "http://localhost:8080",
         model: str | None = None,
         args=None,
@@ -31,8 +31,8 @@ class LLMAgent:
         self.llm_base_url = llm_base_url.rstrip('/')
         self.model = model
         self.args = args
-        self.available_tools: List[Dict[str, Any]] = []
-        self.tool_to_client: Dict[str, PureMCPClient] = {}
+        self.available_tools: list[dict[str, Any]] = []
+        self.tool_to_client: dict[str, PureMCPClient] = {}
         self._stream_callback = None
 
     def initialize(self):
@@ -69,7 +69,7 @@ class LLMAgent:
 
         return all_init_results, self.available_tools
 
-    def print_tools(self):
+    def print_tools(self) -> None:
         print("\nAvailable tools:\n")
         for i, tool in enumerate(self.available_tools, 1):
             name = tool.get("name", "unknown")
@@ -125,11 +125,11 @@ Should this request use the available tools?"""
         response = self._call_llm(messages)
         return response is not None and response.upper().strip() == "YES"
 
-    def _call_llm(self, messages: List[Dict[str, str]], console_stream: bool = False) -> str | None:
+    def _call_llm(self, messages: list[dict[str, str]], console_stream: bool = False) -> str | None:
         """
         Call the LLM with the given messages.
         """
-        request_data = {"messages": messages, "stream": True}
+        request_data: dict[str, Any] = {"messages": messages, "stream": True}
         if self.model is not None:
             request_data["model"] = self.model
         data = json.dumps(request_data).encode("utf-8")
@@ -315,7 +315,7 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
                 logging.warning("LLM failed to produce valid JSON for tool arguments: %s", response)
                 return {}
 
-    def execute_task(self, task: str, manual: bool = False, stream: bool = False) -> str | None:
+    def execute_task(self, task: str, manual: bool = False, stream: bool = False) -> str | None | list[dict]:
         """Execute one or more relevant tools for a task and combine results."""
         if not self.available_tools:
             return "No tools available."
@@ -394,7 +394,7 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
         except Exception as e:
             return f"Error executing tool: {e}"
 
-    def _select_tools(self, task: str) -> List[Dict[str, Any]]:
+    def _select_tools(self, task: str) -> list[dict[str, Any]]:
         """Select one or more tools that should be used for the task."""
         if not self.available_tools:
             return []

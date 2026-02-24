@@ -199,7 +199,7 @@ class ModelStore:
         return (ref_file.hash, cached_files, len(cached_files) == len(ref_file.files))
 
     def _prepare_new_snapshot(
-        self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile]
+        self, model_tag: str, snapshot_hash: str, snapshot_files: Sequence[SnapshotFile]
     ) -> RefJSONFile:
         validate_snapshot_files(snapshot_files)
         self.ensure_directory_setup()
@@ -351,7 +351,9 @@ class ModelStore:
         self._verify_endianness(model_tag)
         self._store.verify_snapshot()
 
-    def new_snapshot(self, model_tag: str, snapshot_hash: str, snapshot_files: list[SnapshotFile], verify: bool = True):
+    def new_snapshot(
+        self, model_tag: str, snapshot_hash: str, snapshot_files: Sequence[SnapshotFile], verify: bool = True
+    ):
         snapshot_hash = sanitize_filename(snapshot_hash)
 
         try:

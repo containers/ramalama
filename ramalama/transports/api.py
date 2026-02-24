@@ -1,5 +1,6 @@
 from typing import Any
 
+from ramalama.arg_types import ChatArgsType, ServeRunArgsType, narrow_args
 from ramalama.chat import chat
 from ramalama.chat_providers.base import ChatProvider, ChatProviderError
 from ramalama.common import perror
@@ -11,7 +12,7 @@ class APITransport(TransportBase):
 
     type: str = "api"
 
-    def __init__(self, model: str, provider: ChatProvider):
+    def __init__(self, model: str, provider: ChatProvider) -> None:
         self.model = model
         self.provider = provider
 
@@ -54,37 +55,39 @@ class APITransport(TransportBase):
     def bench(self, args, cmd: list[str]):
         raise NotImplementedError("bench is not supported for hosted API transports.")
 
-    def run(self, args, server_cmd: list[str]):
+    def run(self, args: ServeRunArgsType, cmd: list[str]) -> None:
         """Connect directly to the provider instead of launching a local server."""
-        args.container = False
-        args.engine = None
-        args.model = self.model
+        chat_args: ChatArgsType = narrow_args(args)
+        chat_args.container = False
+        chat_args.engine = None
+        chat_args.model = self.model
+        chat_args.list = getattr(chat_args, "list", False)
+        chat_args.url = getattr(chat_args, "url", None) or self.provider.base_url
+        self.provider.base_url = chat_args.url
+        chat_args.api_key = getattr(chat_args, "api_key", None) or self.provider.api_key
+        self.provider.api_key = chat_args.api_key
+        chat_args.initial_connection = getattr(chat_args, "initial_connection", False)
+        chat_args.server_process = getattr(chat_args, "server_process", None)
 
-        if getattr(args, "url", None):
-            self.provider.base_url = args.url
+        chat(chat_args, provider=self.provider)
 
-        if getattr(args, "api_key", None):
-            self.provider.api_key = args.api_key
-
-        chat(args, provider=self.provider)
-
-    def perplexity(self, args, cmd: list[str]):
+    def perplexity(self, args: Any, cmd: list[str]):
         raise NotImplementedError("perplexity is not supported for hosted API transports.")
 
-    def serve(self, args, cmd: list[str]):
+    def serve(self, args: Any, cmd: list[str]):
         raise NotImplementedError("Hosted API transports cannot be served locally.")
 
     def exists(self) -> bool:
         return True
 
-    def inspect(self, args):
+    def inspect(self, args: Any) -> dict:
         return {
             "provider": self.provider.provider,
             "model": self.model_name,
             "base_url": self.provider.base_url,
         }
 
-    def ensure_model_exists(self, args):
+    def ensure_model_exists(self, args) -> None:
         args.container = False
         args.engine = None
         if not self.provider.api_key:
@@ -106,5 +109,5 @@ class APITransport(TransportBase):
                 f"Available models: {available}"
             )
 
-    def pull(self, args: Any):
+    def pull(self, args: Any) -> None:
         perror(f"{self.model} is provided over a hosted API preventing direct pulling of the model file.")

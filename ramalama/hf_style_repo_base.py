@@ -2,10 +2,14 @@ import json
 import os
 import re
 import tempfile
+import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any
 
+from ramalama.arg_types import ConvertArgsType, ModelArgsType, RegistryArgsType, SourceTargetArgsType
 from ramalama.common import (
     SPLIT_MODEL_PATH_RE,
     available,
@@ -35,7 +39,9 @@ class HFStyleRepoFile(SnapshotFile):
         return os.path.relpath(blob_file_path, start=snapshot_dir)
 
 
-def fetch_checksum_from_api_base(checksum_api_url, headers=None, extractor_func=None):
+def fetch_checksum_from_api_base(
+    checksum_api_url: str, headers: dict | None = None, extractor_func: Callable[[str], str] | None = None
+) -> str:
     """
     Base function for fetching checksums from API endpoints.
 
@@ -76,11 +82,11 @@ class HFStyleRepository(ABC):
         self.organization = organization
         self.tag = tag
         self.headers: dict = {}
-        self.blob_url = None
-        self.model_filename = None
-        self.model_hash = None
-        self.mmproj_filename = None
-        self.mmproj_hash = None
+        self.blob_url: str | None = None
+        self.model_filename: str | None = None
+        self.model_hash: str | None = None
+        self.mmproj_filename: str | None = None
+        self.mmproj_hash: str | None = None
         self.other_files: list[dict] = []
         self.additional_safetensor_files: list[dict] = []
         self.safetensors_index_file: str | None = None
@@ -90,7 +96,7 @@ class HFStyleRepository(ABC):
     def fetch_metadata(self):
         pass
 
-    def get_file_list(self, cached_files: list[str]) -> list[SnapshotFile]:
+    def get_file_list(self, cached_files: list[str]) -> Sequence[SnapshotFile]:
         files = []
         if self.model_filename not in cached_files:
             files.append(self.model_file())
@@ -214,6 +220,8 @@ class HFStyleRepository(ABC):
     def mmproj_file(self) -> SnapshotFile:
         assert self.model_filename
         assert self.model_hash
+        assert self.mmproj_hash
+        assert self.mmproj_filename
         return SnapshotFile(
             url=f"{self.blob_url}/{self.mmproj_filename}",
             header=self.headers,
@@ -257,84 +265,86 @@ class HFStyleRepository(ABC):
 
 
 class HFStyleRepoModel(Transport, ABC):
-    def __init__(self, model, model_store_path):
+    def __init__(self, model: str, model_store_path: str) -> None:
         super().__init__(model, model_store_path)
 
     @abstractmethod
-    def get_cli_command(self):
+    def get_cli_command(self) -> str:
         """Return the CLI command name (e.g., 'hf', 'modelscope')"""
         pass
 
     @abstractmethod
-    def get_missing_message(self):
+    def get_missing_message(self) -> str:
         """Return the missing CLI message"""
         pass
 
     @abstractmethod
-    def get_registry_url(self):
+    def get_registry_url(self) -> str:
         """Return the registry URL"""
         pass
 
     @abstractmethod
-    def get_accept_header(self):
+    def get_accept_header(self) -> str:
         """Return the accept header"""
         pass
 
     @abstractmethod
-    def get_repo_type(self):
+    def get_repo_type(self) -> str:
         """Return the repo type name (e.g., 'huggingface', 'modelscope')"""
         pass
 
     @abstractmethod
-    def fetch_checksum_from_api(self, organization, file):
+    def fetch_checksum_from_api(self, organization: str, file: str) -> str:
         """Fetch checksum from API"""
         pass
 
     @abstractmethod
-    def create_repository(self, name, organization, tag):
+    def create_repository(self, name: str, organization: str, tag: str) -> HFStyleRepository:
         """Create repository instance"""
         pass
 
     @abstractmethod
-    def get_cli_download_args(self, directory_path, model):
+    def get_cli_download_args(self, directory_path: str, model: str) -> Sequence[str]:
         """Get CLI download arguments"""
         pass
 
     @abstractmethod
-    def in_existing_cache(self, args, target_path, sha256_checksum):
+    def in_existing_cache(self, args: object, target_path: str, sha256_checksum: str) -> bool:
         """Check if file exists in existing cache"""
         pass
 
     @abstractmethod
-    def _collect_cli_files(self, tempdir: str):
+    def _collect_cli_files(self, tempdir: str) -> tuple[str, Sequence[HFStyleRepoFile]]:
         """Collect files from CLI download"""
         pass
 
-    def get_login_args(self):
+    def get_login_args(self) -> Sequence[str]:
         """Return the login subcommand arguments. Can be overridden for different CLI structures."""
         return ["login"]
 
-    def get_logout_args(self):
+    def get_logout_args(self) -> Sequence[str]:
         """Return the logout subcommand arguments. Can be overridden for different CLI structures."""
         return ["logout"]
 
-    def login(self, args):
+    def login(self, args: RegistryArgsType) -> None:
         if not available(self.get_cli_command()):
             raise NotImplementedError(self.get_missing_message())
-        conman_args = [self.get_cli_command()] + self.get_login_args()
-        if args.token:
-            conman_args.extend(["--token", args.token])
+        conman_args = [self.get_cli_command(), *self.get_login_args()]
+        token = getattr(args, "token", None)
+        if token:
+            conman_args.extend(["--token", token])
         self.exec(conman_args, args)
 
-    def logout(self, args):
+    def logout(self, args: RegistryArgsType) -> None:
         if not available(self.get_cli_command()):
             raise NotImplementedError(self.get_missing_message())
-        conman_args = [self.get_cli_command()] + self.get_logout_args()
-        if args.token:
-            conman_args.extend(["--token", args.token])
+        conman_args = [self.get_cli_command(), *self.get_logout_args()]
+        token = getattr(args, "token", None)
+        if token:
+            conman_args.extend(["--token", token])
         self.exec(conman_args, args)
 
-    def pull(self, args):
+    def pull(self, args: ModelArgsType | SourceTargetArgsType | ConvertArgsType) -> None:
         name, tag, organization = self.extract_model_identifiers()
         _, cached_files, all = self.model_store.get_cached_files(tag)
         if all:
@@ -349,13 +359,17 @@ class HFStyleRepoModel(Transport, ABC):
             repo = self.create_repository(name, organization, tag)
             snapshot_hash = repo.model_hash
             files = repo.get_file_list(cached_files)
+
+            if snapshot_hash is None:
+                raise Exception("Repo missing model hash.")
+
             self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
 
         except EndianMismatchError:
             # No use pulling again
             raise
         except Exception as e:
-            if isinstance(e, OSError) and hasattr(e, "winerror") and e.winerror == 206:
+            if isinstance(e, OSError) and getattr(e, "winerror", None) == 206:
                 raise  # Path too long on Windows
             if not available(self.get_cli_command()):
                 perror(f"URL pull failed and {self.get_cli_command()} not available")
@@ -372,7 +386,7 @@ class HFStyleRepoModel(Transport, ABC):
                 snapshot_hash, files = self._collect_cli_files(tempdir)
                 self.model_store.new_snapshot(tag, snapshot_hash, files, verify=getattr(args, "verify", True))
 
-    def exec(self, cmd_args, args):
+    def exec(self, cmd_args: list[str], args: Any) -> None:
         try:
             exec_cmd(cmd_args)
         except FileNotFoundError as e:

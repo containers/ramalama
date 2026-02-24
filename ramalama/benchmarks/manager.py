@@ -12,7 +12,7 @@ BENCHMARKS_FILENAME = "benchmarks.jsonl"
 
 
 class BenchmarksManager:
-    def __init__(self, storage_folder: str | Path | None):
+    def __init__(self, storage_folder: str | Path | None) -> None:
         if storage_folder is None:
             raise MissingStorageFolderError
 

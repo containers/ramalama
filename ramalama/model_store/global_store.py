@@ -1,6 +1,5 @@
 import os
 from dataclasses import dataclass
-from typing import Dict, List
 
 from ramalama import oci_tools
 from ramalama.arg_types import EngineArgs
@@ -27,8 +26,8 @@ class GlobalModelStore:
     def path(self) -> str:
         return self._store_base_path
 
-    def list_models(self, engine: str, show_container: bool) -> Dict[str, List[ModelFile]]:
-        models: Dict[str, List[ModelFile]] = {}
+    def list_models(self, engine: str, show_container: bool) -> dict[str, list[ModelFile]]:
+        models: dict[str, list[ModelFile]] = {}
 
         for root, subdirs, _ in os.walk(self.path):
             if DIRECTORY_NAME_REFS in subdirs:

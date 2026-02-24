@@ -11,7 +11,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from functools import lru_cache
 from textwrap import dedent
-from typing import Any, get_args
+from typing import Any, TypedDict, cast, get_args
 from urllib.parse import urlparse
 
 from ramalama.benchmarks.manager import BenchmarksManager
@@ -24,8 +24,8 @@ try:
 except Exception:
     suppressCompleter = None
 
-from ramalama import engine
-from ramalama.arg_types import DefaultArgsType
+from ramalama import arg_types, engine
+from ramalama.arg_types import narrow_args, narrow_by_schema
 from ramalama.benchmarks.utilities import print_bench_results
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.command.factory import assemble_command
@@ -57,6 +57,7 @@ from ramalama.transports.base import (
     NoGGUFModelFileFound,
     NoRefFileFound,
     SafetensorModelNotSupported,
+    Transport,
     compute_serving_port,
     trim_model_name,
 )
@@ -79,12 +80,12 @@ def default_rag_image() -> str:
 
 
 @lru_cache(maxsize=1)
-def get_shortnames():
+def get_shortnames() -> Shortnames:
     return Shortnames()
 
 
-def assemble_command_lazy(cli_args: argparse.Namespace) -> list[str]:
-    return assemble_command(cli_args)
+def assemble_command_lazy(cli_args: object) -> list[str]:
+    return assemble_command(cast(argparse.Namespace, cli_args))
 
 
 class ParsedGenerateInput:
@@ -139,7 +140,7 @@ def local_env(**kwargs):
     return os.environ
 
 
-def local_models(prefix, parsed_args, **kwargs):
+def local_models(prefix, parsed_args, **kwargs) -> list[str]:
     return [model['name'] for model in _list_models(parsed_args)]
 
 
@@ -161,7 +162,10 @@ def available_metadata(prefix, parsed_args, **kwargs):
         # Therefore it needs to be done explicitly here in order to support it
         resolved_model = get_shortnames().resolve(parsed_args.MODEL)
 
-        metadata = New(resolved_model, parsed_args).inspect_metadata()
+        model = New(resolved_model, parsed_args)
+        if isinstance(model, APITransport):
+            return []
+        metadata = model.inspect_metadata()
         return [field for field in metadata.keys() if field.startswith(parsed_args.get)]
     return []
 
@@ -193,7 +197,7 @@ def get_parser():
     return parser
 
 
-def init_cli():
+def init_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     """Initialize the RamaLama CLI and parse command line arguments."""
     return parse_args_from_cmd(sys.argv[1:])
 
@@ -346,10 +350,11 @@ def configure_subcommands(parser):
     daemon_parser(subparsers)
 
 
-def post_parse_setup(args):
+def post_parse_setup(args: argparse.Namespace):
     """Perform additional setup after parsing arguments."""
+    core_args: arg_types.PostParseCoreArgsType = narrow_args(args)
     if getattr(args, "subcommand", None) == "benchmark":
-        args.subcommand = "bench"
+        core_args.subcommand = "bench"
 
     def map_https_to_transport(input: str) -> str:
         if input.startswith("https://") or input.startswith("http://"):
@@ -367,53 +372,63 @@ def post_parse_setup(args):
     # First, map https:// inputs to ollama or huggingface based on url domain
     # Then resolve the input based on the available shortname list
     if getattr(args, "MODEL", None):
+        raw_model_args: arg_types.PostParseModelInputRawArgsType = narrow_args(args)
+        normalized_model_args: arg_types.PostParseModelInputNormalizedArgsType = narrow_args(args)
         shortnames = get_shortnames()
-        if isinstance(args.MODEL, str):
-            args.INITIAL_MODEL = args.MODEL
-            args.MODEL = map_https_to_transport(args.MODEL)
+        if isinstance(raw_model_args.MODEL, str):
+            normalized_model_args.INITIAL_MODEL = raw_model_args.MODEL
+            normalized_model_args.MODEL = map_https_to_transport(raw_model_args.MODEL)
 
-            args.UNRESOLVED_MODEL = args.MODEL
-            args.MODEL = shortnames.resolve(args.MODEL)
+            normalized_model_args.UNRESOLVED_MODEL = normalized_model_args.MODEL
+            normalized_model_args.MODEL = shortnames.resolve(normalized_model_args.MODEL)
 
-        if isinstance(args.MODEL, list):
-            args.INITIAL_MODEL = [m for m in args.MODEL]
-            for i in range(len(args.MODEL)):
-                args.MODEL[i] = map_https_to_transport(args.MODEL[i])
+        if isinstance(raw_model_args.MODEL, list):
+            normalized_model_args.INITIAL_MODEL = [m for m in raw_model_args.MODEL]
+            for i in range(len(raw_model_args.MODEL)):
+                raw_model_args.MODEL[i] = map_https_to_transport(raw_model_args.MODEL[i])
 
-            args.UNRESOLVED_MODEL = [m for m in args.MODEL]
-            for i in range(len(args.MODEL)):
-                args.MODEL[i] = shortnames.resolve(args.MODEL[i])
+            normalized_model_args.UNRESOLVED_MODEL = [m for m in raw_model_args.MODEL]
+            for i in range(len(raw_model_args.MODEL)):
+                raw_model_args.MODEL[i] = shortnames.resolve(raw_model_args.MODEL[i])
 
         # TODO: This is a hack. Once we have more typing in place these special cases
         # _should_ be removed.
         if not hasattr(args, "model"):
-            args.model = args.MODEL
+            normalized_model_args.model = normalized_model_args.MODEL
 
     # Validate that --add-to-unit is only used with --generate and its format is <section>:<key>:<value>
-    if hasattr(args, "add_to_unit") and (add_to_units := args.add_to_unit):
-        if getattr(args, "generate", None) is None:
+    if hasattr(args, "add_to_unit"):
+        add_to_unit_args: arg_types.PostParseAddToUnitArgsType = narrow_args(args)
+        add_to_units = add_to_unit_args.add_to_unit
+        if add_to_units and add_to_unit_args.generate is None:
             parser = get_parser()
             parser.error("--add-to-unit can only be used with --generate")
-        if not (all(len([value for value in unit_to_add.split(":", 2) if value]) == 3 for unit_to_add in add_to_units)):
+        if add_to_units and not (
+            all(len([value for value in unit_to_add.split(":", 2) if value]) == 3 for unit_to_add in add_to_units)
+        ):
             parser = get_parser()
             parser.error("--add-to-unit parameters must be of the form <section>:<key>:<value>")
 
     if hasattr(args, "runtime_args"):
-        args.runtime_args = shlex.split(args.runtime_args)
+        runtime_args_raw: arg_types.PostParseRuntimeArgsRawType = narrow_args(args)
+        runtime_args_normalized: arg_types.PostParseRuntimeArgsNormalizedType = narrow_args(args)
+        runtime_args_normalized.runtime_args = shlex.split(runtime_args_raw.runtime_args)
 
     # MLX runtime automatically requires --nocontainer
     if getattr(args, "runtime", None) == "mlx":
         if getattr(args, "container", None) is True:
             logger.info("MLX runtime automatically uses --nocontainer mode")
-        args.container = False
+        core_args.container = False
 
     if hasattr(args, 'pull'):
-        args.pull = normalize_pull_arg(args.pull, getattr(args, 'engine', None))
+        pull_args: arg_types.PostParsePullArgsType = narrow_args(args)
+        if pull_args.pull is not None:
+            pull_args.pull = normalize_pull_arg(pull_args.pull, pull_args.engine)
 
     # Determine log level: debug > quiet > config > default
-    if args.debug:
+    if getattr(args, "debug", False):
         log_level = LogLevel.DEBUG
-    elif getattr(args, 'quiet', False):
+    elif getattr(args, "quiet", False):
         log_level = LogLevel.ERROR
     else:
         log_level = get_config().log_level or LogLevel.WARNING
@@ -453,11 +468,12 @@ def normalize_registry(registry):
     return "oci://" + registry
 
 
-def login_cli(args):
-    registry = normalize_registry(args.REGISTRY)
+def login_cli(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.LoginArgsType)
+    registry = normalize_registry(cli_args.REGISTRY)
 
-    model = New(registry, args)
-    return model.login(args)
+    model = New(registry, cli_args)
+    return model.login(cli_args)
 
 
 def logout_parser(subparsers):
@@ -470,11 +486,12 @@ def logout_parser(subparsers):
     parser.set_defaults(func=logout_cli)
 
 
-def logout_cli(args):
-    registry = normalize_registry(args.REGISTRY)
+def logout_cli(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.RegistryArgsType)
+    registry = normalize_registry(cli_args.REGISTRY)
 
-    model = New(registry, args)
-    return model.logout(args)
+    model = New(registry, cli_args)
+    return model.logout(cli_args)
 
 
 def human_duration(d):
@@ -654,7 +671,7 @@ def list_parser(subparsers):
     parser.set_defaults(func=list_cli)
 
 
-def human_readable_size(size):
+def human_readable_size(size: int | float) -> str:
     for unit in ["B", "KB", "MB", "GB", "TB"]:
         if size < 1024:
             size = round(size, 2)
@@ -665,11 +682,18 @@ def human_readable_size(size):
     return f"{size} PB"
 
 
-def _list_models_from_store(args):
+class ModelDict(TypedDict):
+    name: str
+    modified: str
+    size: int
 
-    models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
 
-    ret = []
+def _list_models_from_store(args: arg_types.ListArgsType) -> list[ModelDict]:
+
+    engine_name = args.engine or "podman"
+    models = GlobalModelStore(args.store).list_models(engine=engine_name, show_container=args.container)
+
+    ret: list[ModelDict] = []
     local_timezone = datetime.now().astimezone().tzinfo
 
     # map the listed models to the proper output structure for display
@@ -699,11 +723,11 @@ def _list_models_from_store(args):
     return ret
 
 
-def _list_models(args):
+def _list_models(args: arg_types.ListArgsType) -> list[ModelDict]:
     return _list_models_from_store(args)
 
 
-def info_cli(args: DefaultArgsType) -> None:
+def info_cli(args: arg_types.DefaultArgsType) -> None:
     shortnames = get_shortnames()
     if getattr(args, 'shortnames', None):
         for name in sorted(shortnames.shortnames):
@@ -745,11 +769,12 @@ def info_cli(args: DefaultArgsType) -> None:
     print(json.dumps(info, sort_keys=True, indent=4))
 
 
-def list_cli(args):
-    models = _list_models(args)
+def list_cli(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.ListArgsType)
+    models = _list_models(cli_args)
 
     # If JSON output is requested
-    if args.json:
+    if cli_args.json:
         print(json.dumps(models))
         return
 
@@ -757,6 +782,7 @@ def list_cli(args):
     name_width = len("NAME")
     modified_width = len("MODIFIED")
     size_width = len("SIZE")
+    size_strings: list[str] = []
     for model in sorted(models, key=lambda d: d['name']):
         try:
             delta = int(datetime.now(timezone.utc).timestamp() - datetime.fromisoformat(model["modified"]).timestamp())
@@ -765,20 +791,20 @@ def list_cli(args):
         except TypeError:
             pass
         # update the size to be human readable
-        model["size"] = human_readable_size(model["size"])
+        size_strings.append(human_readable_size(model["size"]))
         name_width = max(name_width, len(model["name"]))
         modified_width = max(modified_width, len(model["modified"]))
-        size_width = max(size_width, len(model["size"]))
+        size_width = max(size_width, len(size_strings[-1]))
 
-    if not args.quiet and not args.noheading and not args.json:
+    if not cli_args.quiet and not cli_args.noheading and not cli_args.json:
         print(f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} {'SIZE':<{size_width}}")
 
-    for model in models:
-        if args.quiet:
+    for model, size_str in zip(models, size_strings):
+        if cli_args.quiet:
             print(model["name"])
         else:
             modified = model['modified']
-            print(f"{model['name']:<{name_width}} {modified:<{modified_width}} {model['size'].upper():<{size_width}}")
+            print(f"{model['name']:<{name_width}} {modified:<{modified_width}} {size_str.upper():<{size_width}}")
 
 
 def help_parser(subparsers):
@@ -811,10 +837,11 @@ def pull_parser(subparsers):
     parser.set_defaults(func=pull_cli)
 
 
-def pull_cli(args):
+def pull_cli(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.ModelArgsType)
 
-    model = New(args.MODEL, args)
-    model.pull(args)
+    model = New(cli_args.MODEL, cli_args)
+    model.pull(cli_args)
 
 
 def convert_parser(subparsers):
@@ -876,18 +903,21 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
     parser.set_defaults(func=convert_cli)
 
 
-def convert_cli(args):
-    if not args.container:
+def convert_cli(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.ConvertArgsType)
+    if not cli_args.container:
         raise ValueError("convert command cannot be run with the --nocontainer option.")
+    if cli_args.TARGET is None:
+        raise ValueError("convert command requires a TARGET.")
 
-    target = args.TARGET
+    target = cli_args.TARGET
     shortnames = get_shortnames()
     tgt = shortnames.resolve(target)
 
-    model = TransportFactory(tgt, args).create_oci()
+    model = TransportFactory(tgt, cli_args).create_oci()
 
-    source_model = _get_source_model(args)
-    model.convert(source_model, args)
+    source_model = _get_source_model(cli_args)
+    model.convert(source_model, cli_args)
 
 
 def push_parser(subparsers):
@@ -926,11 +956,13 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
     parser.set_defaults(func=push_cli)
 
 
-def _get_source_model(args, transport=None):
+def _get_source_model(args: arg_types.SourceTargetArgsType, transport: str | None = None) -> Transport:
     shortnames = get_shortnames()
     src = shortnames.resolve(args.SOURCE)
 
     smodel = New(src, args, transport=transport)
+    if not isinstance(smodel, Transport):
+        raise ValueError("Hosted API transports are not supported as push/convert source models.")
     if smodel.type == "OCI":
         if not args.TARGET:
             return smodel
@@ -940,30 +972,31 @@ def _get_source_model(args, transport=None):
     return smodel
 
 
-def push_cli(args):
+def push_cli(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.SourceTargetArgsType)
 
-    target = args.SOURCE
+    target = cli_args.SOURCE
     transport = None
-    if not args.TARGET:
+    if not cli_args.TARGET:
         transport = "oci"
-    source_model = _get_source_model(args, transport=transport)
+    source_model = _get_source_model(cli_args, transport=transport)
 
-    if args.TARGET:
+    if cli_args.TARGET:
         shortnames = get_shortnames()
-        target = shortnames.resolve(args.TARGET)
+        target = shortnames.resolve(cli_args.TARGET)
 
-    target_model = New(target, args)
+    target_model = New(target, cli_args)
 
     try:
-        target_model.push(source_model, args)
+        target_model.push(source_model, cli_args)
     except NotImplementedError as e:
         for mtype in MODEL_TYPES:
             if target.startswith(mtype + "://"):
                 raise e
         try:
             # attempt to push as a container image
-            m = TransportFactory(target, args).create_oci()
-            m.push(source_model, args)
+            m = TransportFactory(target, cli_args).create_oci()
+            m.push(source_model, cli_args)
         except Exception as e1:
             logger.debug(e1)
             raise e
@@ -1221,10 +1254,11 @@ def chat_run_options(parser):
     )
 
 
-def _chat_cli(args):
+def _chat_cli(args: argparse.Namespace):
     from ramalama import chat as chat_module
 
-    return chat_module.chat(args)
+    chat_args = narrow_by_schema(args, arg_types.ChatArgsType)
+    return chat_module.chat(chat_args)
 
 
 def chat_parser(subparsers):
@@ -1262,12 +1296,24 @@ def chat_parser(subparsers):
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"
     )
-    parser.set_defaults(func=_chat_cli)
+    parser.set_defaults(
+        func=_chat_cli,
+        ignore=None,
+        initial_connection=False,
+        keepalive=None,
+        name=None,
+        server_process=None,
+    )
 
 
-def _rag_args(args):
+def _rag_args(args: arg_types.ServeRunArgsType) -> arg_types.RagArgsType:
+    if args.rag is None:
+        raise ValueError("ramalama --rag requires a model or image reference.")
+    if args.engine is None:
+        raise ValueError("ramalama --rag requires a container engine.")
+
     args.noout = not args.debug
-    rag_args = copy.copy(args)
+    rag_args: arg_types.RagArgsType = narrow_args(copy.copy(args))
     rag_args.subcommand = f"{args.subcommand} --rag"
     rag_args.MODEL = args.rag
     rag_args.image = args.rag_image
@@ -1280,7 +1326,8 @@ def _rag_args(args):
     # If --port was specified, use it for the RAG proxy, and
     # select a random port for the model
     args.port = None
-    rag_args.model_port = args.port = compute_serving_port(args, exclude=[rag_args.port])
+    exclude_port = [str(rag_args.port)] if rag_args.port is not None else None
+    rag_args.model_port = args.port = compute_serving_port(args, exclude=exclude_port)
     rag_args.model_args = args
     rag_args.generate = ""
     return rag_args
@@ -1299,39 +1346,48 @@ def run_parser(subparsers):
         completer=suppressCompleter,
     )
     parser._actions.sort(key=lambda x: x.option_strings)
-    parser.set_defaults(func=run_cli)
+    parser.set_defaults(
+        func=run_cli,
+        api_key=get_config().api_key,
+        initial_connection=False,
+        list=False,
+        server_process=None,
+    )
 
 
-def run_cli(args):
+def run_cli(args: argparse.Namespace):
+    cli_args: arg_types.ServeRunArgsType = narrow_args(args)
 
     try:
         # detect available port and update arguments
-        args.port = compute_serving_port(args)
-        model = New(args.MODEL, args)
-        model.ensure_model_exists(args)
+        cli_args.port = compute_serving_port(cli_args)
+        model = New(cli_args.MODEL, cli_args)
+        model.ensure_model_exists(cli_args)
     except KeyError as e:
         logger.debug(e)
         try:
-            args.quiet = True
-            model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-            model.ensure_model_exists(args)
+            cli_args.quiet = True
+            model = TransportFactory(cli_args.MODEL, cli_args, ignore_stderr=True).create_oci()
+            model.ensure_model_exists(cli_args)
         except Exception as exc:
             raise e from exc
 
     is_api_transport = isinstance(model, APITransport)
 
-    if args.rag and is_api_transport:
+    if cli_args.rag and is_api_transport:
         raise ValueError("ramalama run --rag is not supported for hosted API transports.")
 
-    if args.rag:
-        if not args.container:
+    if cli_args.rag:
+        if not cli_args.container:
             raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
-        args = _rag_args(args)
+        active_args = _rag_args(cli_args)
 
-        model = RagTransport(model, assemble_command_lazy(args.model_args), args)
-        model.ensure_model_exists(args)
+        model = RagTransport(cast(Transport, model), assemble_command_lazy(active_args.model_args), active_args)
+        model.ensure_model_exists(active_args)
+        model.run(active_args, assemble_command_lazy(active_args))
+        return
 
-    model.run(args, assemble_command_lazy(args))
+    model.run(cli_args, assemble_command_lazy(cli_args))
 
 
 def serve_parser(subparsers):
@@ -1341,33 +1397,34 @@ def serve_parser(subparsers):
     parser.set_defaults(func=serve_cli)
 
 
-def serve_cli(args):
+def serve_cli(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.ServeRunArgsType)
 
-    if not args.container:
-        args.detach = False
+    if not cli_args.container:
+        cli_args.detach = False
 
-    if args.api == "llama-stack":
-        if not args.container:
+    if cli_args.api == "llama-stack":
+        if not cli_args.container:
             raise ValueError("ramalama serve --api llama-stack command cannot be run with the --nocontainer option.")
 
-        stack = Stack(args)
+        stack = Stack(cli_args)
         return stack.serve()
 
     try:
         # detect available port and update arguments
-        args.port = compute_serving_port(args)
+        cli_args.port = compute_serving_port(cli_args)
 
-        model = New(args.MODEL, args)
-        model.ensure_model_exists(args)
+        model = New(cli_args.MODEL, cli_args)
+        model.ensure_model_exists(cli_args)
     except KeyError as e:
         try:
-            if "://" in args.MODEL:
+            if "://" in cli_args.MODEL:
                 raise e
-            args.quiet = True
-            model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-            model.ensure_model_exists(args)
+            cli_args.quiet = True
+            model = TransportFactory(cli_args.MODEL, cli_args, ignore_stderr=True).create_oci()
+            model.ensure_model_exists(cli_args)
             # Since this is a OCI model, prepend oci://
-            args.MODEL = f"oci://{args.MODEL}"
+            cli_args.MODEL = f"oci://{cli_args.MODEL}"
 
         except Exception:
             raise e
@@ -1375,15 +1432,17 @@ def serve_cli(args):
     if isinstance(model, APITransport):
         raise ValueError("ramalama serve is not supported for hosted API transports.")
 
-    if args.rag:
-        if not args.container:
+    if cli_args.rag:
+        if not cli_args.container:
             raise ValueError("ramalama serve --rag cannot be run with the --nocontainer option.")
-        args = _rag_args(args)
+        active_args = _rag_args(cli_args)
 
-        model = RagTransport(model, assemble_command_lazy(args.model_args), args)
-        model.ensure_model_exists(args)
+        model = RagTransport(cast(Transport, model), assemble_command_lazy(active_args.model_args), active_args)
+        model.ensure_model_exists(active_args)
+        model.serve(active_args, assemble_command_lazy(active_args))
+        return
 
-    model.serve(args, assemble_command_lazy(args))
+    model.serve(cli_args, assemble_command_lazy(cli_args))
 
 
 def stop_parser(subparsers):
@@ -1396,19 +1455,22 @@ def stop_parser(subparsers):
     parser.set_defaults(func=stop_container)
 
 
-def stop_container(args):
+def stop_container(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.StopArgsType)
     from ramalama import engine
 
-    if not args.all:
-        engine.stop_container(args, args.NAME)
+    if not cli_args.all:
+        if cli_args.NAME is None:
+            raise ValueError("must specify a container name")
+        engine.stop_container(cli_args, cli_args.NAME)
         return
 
-    if args.NAME:
-        raise ValueError(f"specifying --all and container name, {args.NAME}, not allowed")
-    args.ignore = True
-    args.format = "{{ .Names }}"
-    for i in engine.containers(args):
-        engine.stop_container(args, i)
+    if cli_args.NAME:
+        raise ValueError(f"specifying --all and container name, {cli_args.NAME}, not allowed")
+    cli_args.ignore = True
+    cli_args.format = "{{ .Names }}"
+    for i in engine.containers(cli_args):
+        engine.stop_container(cli_args, i)
 
 
 def daemon_parser(subparsers) -> None:
@@ -1468,26 +1530,28 @@ def daemon_parser(subparsers) -> None:
     run_parser.set_defaults(func=daemon_run_cli)
 
 
-def daemon_start_cli(args):
+def daemon_start_cli(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.DaemonStartArgsType)
     daemon_cmd = []
-    daemon_model_store_dir = args.store
-    is_daemon_in_container = args.container and args.engine in get_args(SUPPORTED_ENGINES)
+    daemon_model_store_dir = cli_args.store
+    is_daemon_in_container = cli_args.container and cli_args.engine in get_args(SUPPORTED_ENGINES)
 
     if is_daemon_in_container:
+        assert cli_args.engine is not None
         # If run inside a container, map the model store to the container internal directory
         daemon_model_store_dir = "/ramalama/models"
 
         daemon_cmd += [
-            args.engine,
+            cli_args.engine,
             "run",
             "--pull",
-            args.pull,
+            cli_args.pull,
             "-d",
             "-p",
-            f"{args.port}:8080",
+            f"{str(cli_args.port)}:8080",
             "-v",
-            f"{args.store}:{daemon_model_store_dir}",
-            args.image,
+            f"{cli_args.store}:{daemon_model_store_dir}",
+            cli_args.image,
         ]
 
     daemon_cmd += [
@@ -1497,17 +1561,18 @@ def daemon_start_cli(args):
         "daemon",
         "run",
         "--port",
-        "8080" if is_daemon_in_container else args.port,
+        "8080" if is_daemon_in_container else str(cli_args.port),
         "--host",
-        get_config().host if is_daemon_in_container else args.host,
+        get_config().host if is_daemon_in_container else cli_args.host,
     ]
     exec_cmd(daemon_cmd)
 
 
-def daemon_run_cli(args):
+def daemon_run_cli(args: argparse.Namespace):
+    cli_args = narrow_by_schema(args, arg_types.DaemonRunArgsType)
     from ramalama.daemon.daemon import run
 
-    run(host=args.host, port=int(args.port), model_store_path=args.store)
+    run(host=cli_args.host, port=int(cli_args.port), model_store_path=cli_args.store)
 
 
 def version_parser(subparsers):
@@ -1618,7 +1683,7 @@ def rm_parser(subparsers):
     parser.set_defaults(func=rm_cli)
 
 
-def _rm_oci_model(model, args) -> bool:
+def _rm_oci_model(model: str, args: arg_types.RmArgsType) -> bool:
     # attempt to remove as a container image
     try:
         m = TransportFactory(model, args, ignore_stderr=True).create_oci()
@@ -1627,7 +1692,7 @@ def _rm_oci_model(model, args) -> bool:
         return False
 
 
-def _rm_model(models, args):
+def _rm_model(models: list[str], args: arg_types.RmArgsType):
     exceptions = []
     shortnames = get_shortnames()
 
@@ -1658,22 +1723,24 @@ def _rm_model(models, args):
         raise exceptions[0]
 
 
-def rm_cli(args):
-    if not args.all:
-        if len(args.MODEL) == 0:
+def rm_cli(args: argparse.Namespace):
+    cli_args: arg_types.RmArgsType = narrow_by_schema(args, arg_types.RmArgsType)
+    if not cli_args.all:
+        if len(cli_args.MODEL) == 0:
             raise IndexError("one MODEL or --all must be specified")
 
-        return _rm_model(args.MODEL, args)
+        return _rm_model(cli_args.MODEL, cli_args)
 
-    if len(args.MODEL) > 0:
+    if len(cli_args.MODEL) > 0:
         raise IndexError("can not specify --all as well MODEL")
 
-    models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
+    engine_name = cli_args.engine or "podman"
+    models = GlobalModelStore(cli_args.store).list_models(engine=engine_name, show_container=cli_args.container)
 
     failed_models = []
     for model in models.keys():
         try:
-            _rm_model([model], args)
+            _rm_model([model], cli_args)
         except Exception as e:
             failed_models.append((model, str(e)))
     if failed_models:
@@ -1690,11 +1757,12 @@ def perplexity_parser(subparsers):
     parser.set_defaults(func=perplexity_cli)
 
 
-def perplexity_cli(args):
+def perplexity_cli(args: argparse.Namespace):
+    cli_args: arg_types.ModelArgsType = narrow_by_schema(args, arg_types.ModelArgsType)
 
-    model = New(args.MODEL, args)
-    model.ensure_model_exists(args)
-    model.perplexity(args, assemble_command_lazy(args))
+    model = New(cli_args.MODEL, cli_args)
+    model.ensure_model_exists(cli_args)
+    model.perplexity(cli_args, assemble_command_lazy(cli_args))
 
 
 def inspect_parser(subparsers):
@@ -1709,21 +1777,19 @@ def inspect_parser(subparsers):
         help="display specific metadata field of AI Model",
     )
     parser.add_argument("--json", dest="json", action="store_true", help="display AI Model information in JSON format")
-    parser.add_argument("MODEL", nargs="?", completer=local_models)  # positional argument
+    parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.set_defaults(func=inspect_cli)
 
 
-def inspect_cli(args):
-    if not args.MODEL:
-        parser = get_parser()
-        parser.error("inspect requires MODEL")
+def inspect_cli(args: argparse.Namespace):
+    cli_args: arg_types.InspectArgsType = narrow_by_schema(args, arg_types.InspectArgsType)
+    cli_args.pull = "never"
 
-    args.pull = "never"
-
-    model = New(args.MODEL, args)
-    inspect = model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)
-
-    print(inspect)
+    model = New(cli_args.MODEL, cli_args)
+    if isinstance(model, APITransport):
+        print(model.inspect(cli_args))
+        return
+    print(model.inspect(cli_args.all, cli_args.get == "all", cli_args.get, cli_args.json, cli_args.dryrun))
 
 
 def main() -> None:
@@ -1736,7 +1802,7 @@ def main() -> None:
         perror("Error: " + str(e).strip("'\""))
         sys.exit(exit_code)
 
-    parser: ArgumentParserWithDefaults
+    parser: argparse.ArgumentParser
     args: argparse.Namespace
     try:
         parser, args = init_cli()
@@ -1785,7 +1851,7 @@ def main() -> None:
     except NoGGUFModelFileFound:
         eprint(f"No GGUF model file found for downloaded model '{args.model}'", errno.ENOENT)  # type: ignore
     except Exception as e:
-        if isinstance(e, OSError) and hasattr(e, "winerror") and e.winerror == 206:
+        if isinstance(e, OSError) and getattr(e, "winerror", None) == 206:
             eprint("Path too long, please enable long path support in the Windows registry", errno.ENAMETOOLONG)
         else:
             raise

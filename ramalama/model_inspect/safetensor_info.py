@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict
+from typing import Any
 
 from ramalama.model_inspect.base_info import ModelInfoBase, adjust_new_line
 
@@ -10,11 +10,11 @@ class SafetensorModelInfo(ModelInfoBase):
         Name: str,
         Registry: str,
         Path: str,
-        header_data: Dict[str, Any],
+        header_data: dict[str, Any],
     ):
         super().__init__(Name, Registry, Path)
 
-        self.Header: Dict[str, Any] = header_data
+        self.Header: dict[str, Any] = header_data
 
     def serialize(self, json: bool = False, all: bool = False) -> str:
         if json:

@@ -15,6 +15,7 @@ import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Any, cast
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.chat_providers import ChatProvider, ChatRequestOptions
@@ -41,37 +42,7 @@ from ramalama.proxy_support import setup_proxy_support
 setup_proxy_support()
 
 
-def res(response, color):
-    color_default = ""
-    color_yellow = ""
-    if (color == "auto" and should_colorize()) or color == "always":
-        color_default = "\033[0m"
-        color_yellow = "\033[33m"
-
-    print("\r", end="")
-    assistant_response = ""
-    for line in response:
-        line = line.decode("utf-8").strip()
-        if line.startswith("data: {"):
-            choice = ""
-
-            json_line = json.loads(line[len("data: ") :])
-            if "choices" in json_line and json_line["choices"]:
-                choice = json_line["choices"][0]["delta"]
-            if "content" in choice:
-                choice = choice["content"]
-            else:
-                continue
-
-            if choice:
-                print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
-                assistant_response += choice
-
-    print("")
-    return assistant_response
-
-
-def add_api_key(args, headers=None):
+def add_api_key(args, headers: dict | None = None) -> dict:
     # static analyzers suggest for dict, this is a safer way of setting
     # a default value, rather than using the parameter directly
     headers = headers or {}
@@ -118,7 +89,7 @@ class Spinner:
         self._thread.start()
         return self
 
-    def stop(self):
+    def stop(self) -> None:
         if self._thread is None:
             return
 
@@ -128,7 +99,7 @@ class Spinner:
         self._thread = None
         self._stop_event = threading.Event()
 
-    def _spinner_loop(self):
+    def _spinner_loop(self) -> None:
         frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 
         for frame in itertools.cycle(frames):
@@ -154,7 +125,7 @@ class RamaLamaShell(cmd.Cmd):
         self.operational_args = operational_args
         self.request_in_process = False
         self.prompt = args.prefix
-        self.provider = provider or OpenAICompletionsChatProvider(args.url, getattr(args, "api_key", None))
+        self.provider = provider or OpenAICompletionsChatProvider(args.url, args.api_key)
         self.url = self.provider.build_url()
 
         self.prep_rag_message()
@@ -184,7 +155,7 @@ class RamaLamaShell(cmd.Cmd):
         messages = builder.load(context)
         self.conversation_history.extend(messages)
 
-    def _summarize_conversation(self):
+    def _summarize_conversation(self) -> None:
         """Summarize the conversation history to prevent context growth."""
         if len(self.conversation_history) < 10:
             # Need at least a few messages to summarize
@@ -240,9 +211,9 @@ class RamaLamaShell(cmd.Cmd):
             # Clear the "Summarizing..." message
             print("\r" + " " * 60 + "\r", end="", flush=True)
 
-    def _check_and_summarize(self):
+    def _check_and_summarize(self) -> None:
         """Check if conversation needs summarization and trigger it."""
-        summarize_after = getattr(self.args, "summarize_after", 0)
+        summarize_after = self.args.summarize_after
         if summarize_after > 0:
             self.message_count += 2  # user + assistant messages
             if self.message_count >= summarize_after:
@@ -265,19 +236,19 @@ class RamaLamaShell(cmd.Cmd):
 
         return f"{msg.role}: {content}".strip()
 
-    def _make_api_request(self, messages: Sequence[ChatMessageType], stream: bool = True):
+    def _make_api_request(self, messages: Sequence[ChatMessageType], stream: bool = True) -> urllib.request.Request:
         """Create a provider request for arbitrary message lists."""
-        max_tokens = self.args.max_tokens if stream and getattr(self.args, "max_tokens", None) else None
+        max_tokens = self.args.max_tokens if stream and self.args.max_tokens else None
         options = self._build_request_options(stream=stream, max_tokens=max_tokens)
         return self.provider.create_request(messages, options)
 
     def _resolve_model_name(self) -> str | None:
-        if getattr(self.args, "runtime", None) == "mlx":
+        if self.args.runtime == "mlx":
             return None
-        return getattr(self.args, "model", None)
+        return self.args.model
 
     def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:
-        temperature = getattr(self.args, "temp", None)
+        temperature = self.args.temp
         if max_tokens is not None and max_tokens <= 0:
             max_tokens = None
         return ChatRequestOptions(
@@ -287,9 +258,9 @@ class RamaLamaShell(cmd.Cmd):
             stream=stream,
         )
 
-    def initialize_mcp(self):
+    def initialize_mcp(self) -> None:
         """Initialize MCP servers if specified."""
-        if not hasattr(self.args, 'mcp') or not self.args.mcp:
+        if not self.args.mcp:
             return
 
         try:
@@ -316,7 +287,7 @@ class RamaLamaShell(cmd.Cmd):
                         color_yellow = "\033[33m"
                     print(f"{color_yellow}{text}{color_default}", end="", flush=True)
 
-                self.mcp_agent._stream_callback = mcp_stream_callback
+                cast(Any, self.mcp_agent)._stream_callback = mcp_stream_callback
 
                 # Initialize the agent and get available tools
                 init_results, tools = self.mcp_agent.initialize()
@@ -360,7 +331,7 @@ class RamaLamaShell(cmd.Cmd):
             logger.debug(f"MCP request handling error: {e}", exc_info=True)
             return f"Error using MCP tools: {e}"
 
-    def _handle_manual_tool_selection(self, content: str):
+    def _handle_manual_tool_selection(self, content: str) -> None:
         if not self.mcp_agent or not self.mcp_agent.available_tools:
             perror("No MCP tools available.")
             return
@@ -385,7 +356,7 @@ class RamaLamaShell(cmd.Cmd):
         self.conversation_history.append(UserMessage(text=f"/tool {question}"))
         self.conversation_history.append(AssistantMessage(text=str(responses)))
 
-    def _select_tools(self):
+    def _select_tools(self) -> list[dict[str, Any]] | None:
         """Interactive multi-tool selection without prompting for arguments."""
         if not self.mcp_agent or not self.mcp_agent.available_tools:
             return None
@@ -408,7 +379,7 @@ class RamaLamaShell(cmd.Cmd):
             perror("\nCancelled.")
             return None
 
-    def handle_args(self, monitor):
+    def handle_args(self, monitor) -> bool:
         prompt = " ".join(self.args.ARGS) if self.args.ARGS else None
         if not sys.stdin.isatty():
             stdin = sys.stdin.read()
@@ -425,11 +396,11 @@ class RamaLamaShell(cmd.Cmd):
 
         return False
 
-    def do_EOF(self, user_content):
+    def do_EOF(self, user_content) -> bool:
         print("")
         return True
 
-    def default(self, user_content):
+    def default(self, user_content: str) -> bool:  # type: ignore[override]
         # Check for commands before processing multi-line input
         # Normalize: strip whitespace and make case-insensitive
         cmd = user_content.strip().lower()
@@ -450,7 +421,6 @@ class RamaLamaShell(cmd.Cmd):
             print("Conversation history cleared.")
             return False
 
-        # Handle multi-line input (backslash continuation)
         self.content.append(user_content.rstrip(" \\"))
         if user_content.endswith(" \\"):
             return False
@@ -477,30 +447,31 @@ class RamaLamaShell(cmd.Cmd):
 
         self.conversation_history.append(UserMessage(text=content))
         self.request_in_process = True
-        response = self._req()
-        if response:
-            self.conversation_history.append(AssistantMessage(text=response))
+        new_response = self._req()
+        if new_response is not None:
+            self.conversation_history.append(AssistantMessage(text=new_response))
         self.request_in_process = False
         self._check_and_summarize()
+        return False
 
-    def _make_request_data(self):
+    def _make_request_data(self) -> urllib.request.Request:
         options = self._build_request_options(
             stream=True,
-            max_tokens=getattr(self.args, "max_tokens", None),
+            max_tokens=self.args.max_tokens,
         )
         request = self.provider.create_request(self.conversation_history, options)
         logger.debug("Request: URL=%s, Data=%s, Headers=%s", request.full_url, request.data, request.headers)
         return request
 
-    def _req(self):
+    def _req(self) -> str | None:
         request = self._make_request_data()
 
         i = 0.01
-        total_time_slept = 0
+        total_time_slept = 0.0
         response = None
 
         # Adjust timeout based on whether we're in initial connection phase
-        max_timeout = 30 if getattr(self.args, "initial_connection", False) else 16
+        max_timeout = 30 if self.args.initial_connection else 16
 
         last_error: Exception | None = None
 
@@ -537,7 +508,7 @@ class RamaLamaShell(cmd.Cmd):
             return stream_response(response, self.args.color, self.provider)
 
         # Only show error and kill if not in initial connection phase
-        if not getattr(self.args, "initial_connection", False):
+        if not self.args.initial_connection:
             error_suffix = ""
             if last_error:
                 error_suffix = f" ({last_error})"
@@ -548,7 +519,7 @@ class RamaLamaShell(cmd.Cmd):
 
         return None
 
-    def kills(self):
+    def kills(self) -> None:
         # Clean up MCP connections first
         if self.mcp_agent:
             try:
@@ -559,24 +530,25 @@ class RamaLamaShell(cmd.Cmd):
                 logger.debug(f"Error closing MCP connections: {e}")
 
         # Don't kill the server if we're still in the initial connection phase
-        if getattr(self.args, "initial_connection", False):
+        if self.args.initial_connection:
             return
 
-        if getattr(self.args, "server_process", False):
-            self.args.server_process.terminate()
+        server_process = self.args.server_process
+        if server_process is not None:
+            server_process.terminate()
             try:
-                self.args.server_process.wait(timeout=5)
+                server_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.args.server_process.kill()
-        elif getattr(self.args, "name", None):
+                server_process.kill()
+        elif (container_name := self.args.name) is not None:
             args = copy.copy(self.args)
             args.ignore = True
             # Remove containers on normal exit (remove=True)
-            stop_container(args, self.args.name, remove=True)
+            stop_container(args, container_name, remove=True)
             if extra_name := self.operational_args.name:
                 stop_container(args, extra_name, remove=True)
 
-    def loop(self):
+    def loop(self) -> None:
         while True:
             self.request_in_process = False
             try:
@@ -601,7 +573,7 @@ class TimeoutException(Exception):
     pass
 
 
-def alarm_handler(signum, frame):
+def alarm_handler(signum, frame) -> None:
     """
     Signal handler for SIGALRM. Raises TimeoutException when invoked.
     Note: SIGALRM is Unix-only and not available on Windows.
@@ -614,12 +586,12 @@ class ServerMonitor:
 
     def __init__(
         self,
-        server_process=None,
-        container_name=None,
-        container_engine=None,
-        join_timeout=3.0,
-        check_interval=0.5,
-        inspect_timeout=30.0,
+        server_process: subprocess.Popen | None = None,
+        container_name: str | None = None,
+        container_engine: str | None = None,
+        join_timeout: float = 3.0,
+        check_interval: float = 0.5,
+        inspect_timeout: float = 30.0,
     ):
         """
         Initialize the server monitor.
@@ -643,8 +615,8 @@ class ServerMonitor:
         self.inspect_timeout = inspect_timeout
         self._stop_event = threading.Event()
         self._exited_event = threading.Event()
-        self._exit_info = {}
-        self._monitor_thread = None
+        self._exit_info: dict = {}
+        self._monitor_thread: threading.Thread | None = None
 
         # Determine monitoring mode
         if self.server_process:
@@ -693,6 +665,9 @@ class ServerMonitor:
 
     def _monitor_process(self):
         """Monitor the server process and report if it exits."""
+        if self.server_process is None:
+            raise Exception("No server process available to monitor.")
+
         while not self._stop_event.is_set():
             try:
                 exit_code = self.server_process.poll()
@@ -716,8 +691,12 @@ class ServerMonitor:
             # Use wait() instead of sleep() for responsive shutdown
             self._stop_event.wait(self.check_interval)
 
-    def _monitor_container(self):
+    def _monitor_container(self) -> None:
         """Monitor the container and report if it exits."""
+        if self.container_name is None:
+            raise Exception("Container name was not set for monitoring")
+        if self.container_engine is None:
+            raise Exception("Container engine was not defined. Cannot proceed with monitoring")
         while not self._stop_event.is_set():
             try:
                 # Check if container is still running and get its state and exit code in one go
@@ -811,23 +790,23 @@ def chat(
         return
 
     if provider is None:
-        provider = OpenAICompletionsChatProvider(args.url, getattr(args, "api_key", None))
+        provider = OpenAICompletionsChatProvider(args.url, args.api_key)
 
     # SIGALRM is Unix-only, skip keepalive timeout handling on Windows
-    if getattr(args, "keepalive", False) and hasattr(signal, 'SIGALRM'):
+    if args.keepalive and hasattr(signal, 'SIGALRM'):
         signal.signal(signal.SIGALRM, alarm_handler)
-        signal.alarm(convert_to_seconds(args.keepalive))  # type: ignore
+        signal.alarm(convert_to_seconds(args.keepalive))
 
     # Start server process or container monitoring
-    server_process = getattr(args, "server_process", None)
-    container_name = getattr(args, "name", None)
+    server_process = args.server_process
+    container_name = args.name
 
     if server_process:
         # Monitor the server process
         monitor = ServerMonitor(server_process=server_process)
     elif container_name:
         # Monitor the container
-        conman = getattr(args, "engine", get_config().engine)
+        conman = args.engine or get_config().engine
         if not conman:
             raise ValueError("Container engine is required when monitoring a container")
         monitor = ServerMonitor(container_name=container_name, container_engine=conman)
@@ -836,7 +815,7 @@ def chat(
         monitor = ServerMonitor()
 
     monitor.start()
-    list_models = getattr(args, "list", False)
+    list_models = args.list
     if list_models:
         for model_id in provider.list_models():
             print(model_id)
@@ -853,6 +832,7 @@ def chat(
     operational_args.monitor = monitor
 
     successful_exit = True
+    shell = None
     try:
         shell = RamaLamaShell(args, operational_args, provider=provider)
         if shell.handle_args(monitor):
@@ -872,8 +852,8 @@ def chat(
             perror("=" * 60)
             exit_info = monitor.get_exit_info()
             exit_code = exit_info.get('code', 1)
-            if exit_info.get('type') == 'signal' and isinstance(exit_info.get('signal'), int):
-                exit_code = 128 + exit_info.get('signal')
+            if exit_info.get('type') == 'signal' and isinstance(signal_val := exit_info.get('signal'), int):
+                exit_code = 128 + signal_val
             raise SystemExit(exit_code)
         raise
     except TimeoutException as e:
@@ -890,7 +870,7 @@ def chat(
 
     # Only clean up resources on successful exit
     # If server/container crashed, leave it for log inspection
-    if successful_exit:
+    if successful_exit and shell is not None:
         try:
             shell.kills()
         except Exception as e:
@@ -900,10 +880,12 @@ def chat(
 UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
 
 
-def convert_to_seconds(s):
+def convert_to_seconds(s: int | float | str) -> int:
     if isinstance(s, int):
         # We are dealing with a raw number
         return s
+    if isinstance(s, float):
+        return int(s)
 
     try:
         seconds = int(s)

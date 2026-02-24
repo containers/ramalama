@@ -452,7 +452,14 @@ def test_artifact_with_different_tags():
         tags = ["v1.0", "v2.0", "latest"]
         for tag in tags:
             ctx.check_call(
-                ["ramalama", "convert", "--type", "raw", path_to_uri(test_file), f"test-tagged-artifact:{tag}"]
+                [
+                    "ramalama",
+                    "convert",
+                    "--type",
+                    "raw",
+                    path_to_uri(test_file),
+                    f"test-tagged-artifact:{tag}",
+                ]
             )
 
         # Verify all tags appear in list

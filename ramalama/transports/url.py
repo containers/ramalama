@@ -33,7 +33,7 @@ class LocalModelFile(SnapshotFile):
             required,
         )
 
-    def download(self, blob_file_path, snapshot_dir):
+    def download(self, blob_file_path: str, snapshot_dir: str) -> str:
         if not os.path.exists(self.url):
             raise FileNotFoundError(f"No such file: '{self.url}'")
         # moving from the local location to blob directory so the model store "owns" the data
@@ -42,7 +42,7 @@ class LocalModelFile(SnapshotFile):
 
 
 class URL(Transport):
-    def __init__(self, model, model_store_path, scheme):
+    def __init__(self, model: str, model_store_path: str, scheme: str) -> None:
         self.type = scheme
         super().__init__(model, model_store_path)
 
@@ -54,12 +54,12 @@ class URL(Transport):
         self.directory = split[0].removeprefix("/") if len(split) > 1 else ""
 
     @property
-    def model_alias(self):
+    def model_alias(self) -> str:
         if self.type == "file":
             return self.model
-        return super().model_alias()
+        return super().model_alias
 
-    def extract_model_identifiers(self):
+    def extract_model_identifiers(self) -> tuple[str, str, str]:
         if self.type == "file":
             return (
                 Path(self.model).name,

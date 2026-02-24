@@ -2,6 +2,7 @@ import argparse
 import os
 from typing import Optional
 
+from ramalama.arg_types import ContainerArgs
 from ramalama.common import check_metal, check_nvidia
 from ramalama.console import should_colorize
 from ramalama.transports.transport_factory import CLASS_MODEL_TYPES, New
@@ -167,7 +168,7 @@ class RamalamaCommandContext:
         host = RamalamaHostContext(
             is_container,
             check_nvidia() is not None,
-            check_metal(argparse.Namespace(**{"container": is_container})),
+            check_metal(ContainerArgs(container=is_container)),
             should_colorize(),
             os.getenv("RAMALAMA_LLAMACPP_RPC_NODES", None),
         )
