@@ -33,8 +33,12 @@ class Shortnames:
             # Unix-specific paths using XDG conventions
             file_paths.extend(
                 [
-                    os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama/shortnames.conf")),
-                    os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama/shortnames.conf")),
+                    os.path.expanduser(
+                        os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama/shortnames.conf")
+                    ),
+                    os.path.expanduser(
+                        os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama/shortnames.conf")
+                    ),
                     os.path.expanduser("~/.local/pipx/venvs/ramalama/share/ramalama/shortnames.conf"),
                     "/etc/ramalama/shortnames.conf",
                     "/usr/share/ramalama/shortnames.conf",
