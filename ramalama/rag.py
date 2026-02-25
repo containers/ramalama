@@ -7,7 +7,7 @@ from functools import partial
 from textwrap import dedent
 from typing import Literal, cast
 
-from ramalama.arg_types import RagArgsType, ServeRunArgsType
+from ramalama.arg_types import RagArgsType, ServeRunArgsType, narrow_args
 from ramalama.chat import ChatOperationalArgs
 from ramalama.common import accel_image, perror, set_accel_env_vars
 from ramalama.compat import StrEnum
@@ -197,8 +197,9 @@ class RagTransport(OCI):
             super().serve(args, cmd)
         finally:
             if getattr(args.model_args, "name", None):
-                args.model_args.ignore = True
-                stop_container(args.model_args, args.model_args.name, remove=True)
+                model_args = narrow_args(args.model_args)
+                model_args.ignore = True
+                stop_container(model_args, model_args.name, remove=True)
 
     def run(self, args: RagArgsType, cmd: list[str]):
 

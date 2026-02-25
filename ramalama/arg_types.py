@@ -230,6 +230,60 @@ class ServeRunArgsType(DefaultArgsType, Protocol):
 ServeRunArgs = protocol_to_dataclass(ServeRunArgsType)
 
 
+class RunArgsType(DefaultArgsType, Protocol):
+    """Validated parser args for `ramalama run`."""
+
+    MODEL: str
+    port: str | int | None
+    name: str | None
+    rag: str | None
+    subcommand: str
+    api: str | None
+    image: str
+    context: int
+    cache_reuse: int
+    authfile: str | None
+    device: list[str] | None
+    env: list[str]
+    ARGS: list[str] | None
+    mcp: list[str] | None
+    summarize_after: int
+    color: COLOR_OPTIONS
+    prefix: str
+    rag_image: str
+    runtime_args: list[str]
+    keepalive: str | None
+    list: bool
+    api_key: str | None
+    initial_connection: bool
+    server_process: subprocess.Popen[Any] | None
+
+
+class ServeArgsType(DefaultArgsType, Protocol):
+    """Validated parser args for `ramalama serve`."""
+
+    MODEL: str
+    port: str | int | None
+    name: str | None
+    rag: str | None
+    subcommand: str
+    detach: bool | None
+    api: str | None
+    image: str
+    host: str | None
+    generate: GenerateArgType | str | None
+    context: int
+    cache_reuse: int
+    authfile: str | None
+    device: list[str] | None
+    env: list[str]
+    rag_image: str
+    runtime_args: list[str]
+    add_to_unit: list[str] | None
+    webui: str
+    dri: str
+
+
 class ModelArgsType(DefaultArgsType, Protocol):
     MODEL: str
 
@@ -310,7 +364,7 @@ class DaemonRunArgsType(DefaultArgsType, Protocol):
 class RagArgsType(ServeRunArgsType, Protocol):
     """Args when using RAG functionality - wraps model args"""
 
-    model_args: ServeRunArgsType
+    model_args: RunArgsType | ServeArgsType
     model_host: str
     model_port: str | int
     rag: str  # type: ignore

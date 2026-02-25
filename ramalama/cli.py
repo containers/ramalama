@@ -1306,7 +1306,7 @@ def chat_parser(subparsers):
     )
 
 
-def _rag_args(args: arg_types.ServeRunArgsType) -> arg_types.RagArgsType:
+def _rag_args(args: arg_types.RunArgsType | arg_types.ServeArgsType) -> arg_types.RagArgsType:
     if args.rag is None:
         raise ValueError("ramalama --rag requires a model or image reference.")
     if args.engine is None:
@@ -1356,24 +1356,23 @@ def run_parser(subparsers):
 
 
 def run_cli(args: argparse.Namespace):
-    cli_args: arg_types.ServeRunArgsType = narrow_args(args)
-
     try:
         # detect available port and update arguments
-        cli_args.port = compute_serving_port(cli_args)
-        model = New(cli_args.MODEL, cli_args)
-        model.ensure_model_exists(cli_args)
+        args.port = compute_serving_port(args)
+        model = New(args.MODEL, args)
+        model.ensure_model_exists(args)
     except KeyError as e:
         logger.debug(e)
         try:
-            cli_args.quiet = True
-            model = TransportFactory(cli_args.MODEL, cli_args, ignore_stderr=True).create_oci()
-            model.ensure_model_exists(cli_args)
+            args.quiet = True
+            model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
+            model.ensure_model_exists(args)
         except Exception as exc:
             raise e from exc
 
     is_api_transport = isinstance(model, APITransport)
 
+    cli_args = narrow_by_schema(args, arg_types.RunArgsType)
     if cli_args.rag and is_api_transport:
         raise ValueError("ramalama run --rag is not supported for hosted API transports.")
 
@@ -1398,7 +1397,7 @@ def serve_parser(subparsers):
 
 
 def serve_cli(args: argparse.Namespace):
-    cli_args = narrow_by_schema(args, arg_types.ServeRunArgsType)
+    cli_args = narrow_by_schema(args, arg_types.ServeArgsType)
 
     if not cli_args.container:
         cli_args.detach = False

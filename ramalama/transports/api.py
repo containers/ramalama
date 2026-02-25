@@ -1,6 +1,6 @@
 from typing import Any
 
-from ramalama.arg_types import ChatArgsType, ServeRunArgsType, narrow_args
+from ramalama.arg_types import ChatArgsType, RunArgsType, narrow_args
 from ramalama.chat import chat
 from ramalama.chat_providers.base import ChatProvider, ChatProviderError
 from ramalama.common import perror
@@ -55,7 +55,7 @@ class APITransport(TransportBase):
     def bench(self, args, cmd: list[str]):
         raise NotImplementedError("bench is not supported for hosted API transports.")
 
-    def run(self, args: ServeRunArgsType, cmd: list[str]) -> None:
+    def run(self, args: RunArgsType, cmd: list[str]) -> None:
         """Connect directly to the provider instead of launching a local server."""
         chat_args: ChatArgsType = narrow_args(args)
         chat_args.container = False
