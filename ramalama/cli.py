@@ -9,7 +9,6 @@ import sys
 import urllib.error
 from dataclasses import asdict
 from datetime import datetime, timezone
-from email.policy import default
 from functools import lru_cache
 from textwrap import dedent
 from typing import Any, TypedDict, cast, get_args
