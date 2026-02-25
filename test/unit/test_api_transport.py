@@ -113,6 +113,7 @@ def test_run_cli_api_transport_does_not_call_pull(monkeypatch):
         engine="podman",
         api="none",
         pull="always",
+        runtime="llama.cpp",
         dryrun=False,
         quiet=True,
         url=None,

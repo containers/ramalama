@@ -305,7 +305,7 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         "--runtime",
         default=config.runtime,
         choices=get_args(SUPPORTED_RUNTIMES),
-        help="specify the runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx'",
+        help="specify the runtime to use; valid options are 'llama.cpp', 'vllm', 'mlx', and 'stable-diffusion'",
     )
     parser.add_argument(
         "--store",
@@ -1189,6 +1189,82 @@ If GPU device on host is accessible to via group access, this option leaks the u
             help="mount /dev/dri into the container when running llama-stack (default: on)",
         )
 
+    # Image generation options (stable-diffusion runtime)
+    if command == "run":
+        parser.add_argument(
+            "--output",
+            type=str,
+            default=None,
+            help="output file path for generated image (used with --runtime stable-diffusion)",
+            completer=suppressCompleter,
+        )
+        parser.add_argument(
+            "--negative-prompt",
+            dest="negative_prompt",
+            type=str,
+            default=None,
+            help="negative prompt for image generation (used with --runtime stable-diffusion)",
+            completer=suppressCompleter,
+        )
+        parser.add_argument(
+            "--height",
+            type=int,
+            default=None,
+            help="image height in pixels (used with --runtime stable-diffusion)",
+            completer=suppressCompleter,
+        )
+        parser.add_argument(
+            "--width",
+            type=int,
+            default=None,
+            help="image width in pixels (used with --runtime stable-diffusion)",
+            completer=suppressCompleter,
+        )
+        parser.add_argument(
+            "--steps",
+            type=int,
+            default=None,
+            help="number of sample steps (used with --runtime stable-diffusion)",
+            completer=suppressCompleter,
+        )
+        parser.add_argument(
+            "--cfg-scale",
+            dest="cfg_scale",
+            type=float,
+            default=None,
+            help="unconditional guidance scale (used with --runtime stable-diffusion)",
+            completer=suppressCompleter,
+        )
+        parser.add_argument(
+            "--sampling-method",
+            dest="sampling_method",
+            type=str,
+            default=None,
+            choices=[
+                "euler",
+                "euler_a",
+                "heun",
+                "dpm2",
+                "dpm++2s_a",
+                "dpm++2m",
+                "dpm++2mv2",
+                "ipndm",
+                "ipndm_v",
+                "lcm",
+                "ddim_trailing",
+                "tcd",
+            ],
+            help="sampling method (used with --runtime stable-diffusion)",
+        )
+        parser.add_argument(
+            "--batch-count",
+            dest="batch_count",
+            type=int,
+            default=None,
+            help="number of images to generate (used with --runtime stable-diffusion)",
+            completer=suppressCompleter,
+        )
+
 
 def default_threads():
     config = get_config()
@@ -1302,7 +1378,22 @@ def run_parser(subparsers):
     parser.set_defaults(func=run_cli)
 
 
+def _prepare_stable_diffusion_args(args):
+    """Transform CLI arguments for stable-diffusion runtime."""
+    if not args.ARGS:
+        raise ValueError(
+            "stable-diffusion runtime requires a prompt.\n"
+            "Usage: ramalama run --runtime stable-diffusion MODEL 'a lovely cat'"
+        )
+    args.prompt = " ".join(args.ARGS)
+    if not args.output:
+        args.output = "output.png"
+
+
 def run_cli(args):
+
+    if args.runtime == "stable-diffusion":
+        _prepare_stable_diffusion_args(args)
 
     try:
         # detect available port and update arguments
@@ -1342,6 +1433,11 @@ def serve_parser(subparsers):
 
 
 def serve_cli(args):
+
+    if args.runtime == "stable-diffusion":
+        raise ValueError(
+            "ramalama serve is not supported for the stable-diffusion runtime. Use 'ramalama run' instead."
+        )
 
     if not args.container:
         args.detach = False

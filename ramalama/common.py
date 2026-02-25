@@ -662,6 +662,9 @@ def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_
 
         # If the image from the config is specified by tag or digest, return it unmodified
         return image if ":" in image else f"{image}:latest"
+
+    if config.runtime == "stable-diffusion":
+        return tagged_image("quay.io/ramalama/stable-diffusion")
     # Get image based on detected GPU type
     image = images.get(gpu_type, getattr(config, f"default_{conf_key}"))
 

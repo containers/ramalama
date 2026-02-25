@@ -519,16 +519,29 @@ class Transport(TransportBase):
             bench_manager.save(results)
 
     def run(self, args, cmd: list[str]):
-        # The Run command will first launch a daemonized service
-        # and run chat to communicate with it.
-
         if len(cmd) > 0 and isinstance(cmd[0], ContainerEntryPoint):
             # Ignore entrypoint
             cmd = cmd[1:]
 
+        # One-shot runtimes (e.g. stable-diffusion) execute a command and exit
+        # rather than launching a persistent server with an interactive chat.
+        if getattr(args, "runtime", None) == "stable-diffusion":
+            return self._run_oneshot(args, cmd)
+
+        # Server-based runtimes: launch a daemonized service
+        # and run chat to communicate with it.
         process = self.serve_nonblocking(args, cmd)
         if process:
             return self._connect_and_chat(args, process)
+
+    def _run_oneshot(self, args, cmd: list[str]):
+        """Execute a one-shot command (not a server) and handle its output."""
+        set_accel_env_vars()
+        self.execute_command(cmd, args)
+        output = getattr(args, "output", None)
+        if output and not args.dryrun:
+            print(f"Image saved to: {output}")
+        return 0
 
     def serve_nonblocking(self, args, cmd: list[str]) -> subprocess.Popen | None:
         if args.container:

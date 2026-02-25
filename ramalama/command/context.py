@@ -9,44 +9,62 @@ from ramalama.transports.transport_factory import CLASS_MODEL_TYPES, New
 
 class RamalamaArgsContext:
     def __init__(self) -> None:
+        self.batch_count: Optional[int] = None
         self.cache_reuse: Optional[int] = None
+        self.cfg_scale: Optional[float] = None
         self.container: Optional[bool] = None
         self.ctx_size: Optional[int] = None
         self.debug: Optional[bool] = None
+        self.height: Optional[int] = None
         self.host: Optional[str] = None
         self.gguf: Optional[str] = None
         self.logfile: Optional[str] = None
         self.max_tokens: Optional[int] = None
         self.model_draft: Optional[str] = None
+        self.negative_prompt: Optional[str] = None
         self.ngl: Optional[int] = None
+        self.output: Optional[str] = None
         self.port: Optional[int] = None
+        self.prompt: Optional[str] = None
         self.runtime_args: Optional[str] = None
+        self.sampling_method: Optional[str] = None
         self.seed: Optional[int] = None
+        self.steps: Optional[int] = None
         self.temp: Optional[float] = None
         self.thinking: Optional[bool] = None
         self.threads: Optional[int] = None
         self.webui: Optional[bool] = None
+        self.width: Optional[int] = None
 
     @staticmethod
     def from_argparse(args: argparse.Namespace) -> "RamalamaArgsContext":
         ctx = RamalamaArgsContext()
+        ctx.batch_count = getattr(args, "batch_count", None)
         ctx.cache_reuse = getattr(args, "cache_reuse", None)
+        ctx.cfg_scale = getattr(args, "cfg_scale", None)
         ctx.container = getattr(args, "container", None)
         ctx.ctx_size = getattr(args, "context", None)
         ctx.debug = getattr(args, "debug", None)
+        ctx.height = getattr(args, "height", None)
         ctx.host = getattr(args, "host", None)
         ctx.gguf = getattr(args, "gguf", None)
         ctx.logfile = getattr(args, "logfile", None)
         ctx.max_tokens = getattr(args, "max_tokens", None)
         ctx.model_draft = getattr(args, "model_draft", None)
+        ctx.negative_prompt = getattr(args, "negative_prompt", None)
         ctx.ngl = getattr(args, "ngl", None)
+        ctx.output = getattr(args, "output", None)
         ctx.port = getattr(args, "port", None)
+        ctx.prompt = getattr(args, "prompt", None)
         ctx.runtime_args = getattr(args, "runtime_args", None)
+        ctx.sampling_method = getattr(args, "sampling_method", None)
         ctx.seed = getattr(args, "seed", None)
+        ctx.steps = getattr(args, "steps", None)
         ctx.temp = getattr(args, "temp", None)
         ctx.thinking = getattr(args, "thinking", None)
         ctx.threads = getattr(args, "threads", None)
         ctx.webui = getattr(args, "webui", None)
+        ctx.width = getattr(args, "width", None)
         return ctx
 
 
