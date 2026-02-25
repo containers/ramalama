@@ -20,9 +20,7 @@ from ramalama.transports.ollama import Ollama
 from ramalama.transports.rlcr import RamalamaContainerRegistry
 from ramalama.transports.url import URL
 
-CLASS_MODEL_TYPES: TypeAlias = (
-    Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry | APITransport
-)
+CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry | APITransport
 
 
 @dataclass(frozen=True)
@@ -146,9 +144,7 @@ class TransportFactory:
         entry = _detect_named_transport(self.transport)
         if entry is None:
             supported = ", ".join(_supported_named_transports())
-            raise KeyError(
-                f'transport "{self.transport}" not supported. Must be one of: {supported}.'
-            )
+            raise KeyError(f'transport "{self.transport}" not supported. Must be one of: {supported}.')
         return entry.model_cls, entry.creator(self)
 
     def prune_model_input(self) -> str:
