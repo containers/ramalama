@@ -1782,8 +1782,8 @@ def inspect_parser(subparsers):
 
 
 def inspect_cli(args: argparse.Namespace):
+    args.pull = "never"
     cli_args: arg_types.InspectArgsType = narrow_by_schema(args, arg_types.InspectArgsType)
-    cli_args.pull = "never"
 
     model = New(cli_args.MODEL, cli_args)
     if isinstance(model, APITransport):
