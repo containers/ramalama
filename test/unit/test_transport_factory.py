@@ -8,7 +8,7 @@ from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
 from ramalama.transports.api import APITransport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
-from ramalama.transports.oci import OCI
+from ramalama.transports.oci.oci import OCI
 from ramalama.transports.ollama import Ollama
 from ramalama.transports.rlcr import RamalamaContainerRegistry
 from ramalama.transports.transport_factory import TransportFactory
