@@ -1,5 +1,6 @@
 import subprocess
 from dataclasses import is_dataclass, make_dataclass
+from types import UnionType
 from typing import Any, Literal, Protocol, TypeVar, Union, cast, get_args, get_origin, get_type_hints
 
 from ramalama.config_types import COLOR_OPTIONS, SUPPORTED_ENGINES, SUPPORTED_RUNTIMES, PathStr
@@ -12,6 +13,26 @@ class SchemaFactory(Protocol[T_co]):
     def __call__(self, *args: Any, **kwargs: Any) -> T_co: ...
 
 
+def _is_protocol_type(anno: Any) -> bool:
+    return isinstance(anno, type) and anno is not Protocol and getattr(anno, "_is_protocol", False)
+
+
+def _matches_protocol(value: Any, proto: type[Any]) -> bool:
+    try:
+        hints = get_type_hints(proto)
+    except Exception:
+        # Fall back to permissive behavior for unresolved typing forms.
+        return True
+
+    for field, field_anno in hints.items():
+        if not hasattr(value, field):
+            return False
+        if not _matches_type(getattr(value, field), field_anno):
+            return False
+
+    return True
+
+
 def _matches_type(value: Any, anno: Any) -> bool:
     if anno is Any:
         return True
@@ -19,7 +40,7 @@ def _matches_type(value: Any, anno: Any) -> bool:
     origin = get_origin(anno)
     args = get_args(anno)
 
-    if origin is Union:
+    if origin in (Union, UnionType):
         return any(_matches_type(value, a) for a in args)
 
     if origin is Literal:
@@ -36,6 +57,9 @@ def _matches_type(value: Any, anno: Any) -> bool:
             return False
         k_t, v_t = args or (Any, Any)
         return all(_matches_type(k, k_t) and _matches_type(v, v_t) for k, v in value.items())
+
+    if _is_protocol_type(anno):
+        return _matches_protocol(value, anno)
 
     if isinstance(anno, type):
         return isinstance(value, anno)
