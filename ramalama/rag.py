@@ -197,6 +197,7 @@ class RagTransport(OCI):
                 stop_container(args.model_args, args.model_args.name, remove=True)
 
     def run(self, args: RagArgsType, cmd: list[str]):
+
         args.model_args.name = self.imodel.get_container_name(args.model_args)
         process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd)
         rag_process = self.serve_nonblocking(args, cmd)

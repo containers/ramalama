@@ -40,9 +40,7 @@ class APITransport(TransportBase):
         return f"{self.model_organization}/{self.model_name}"
 
     def _get_entry_model_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> str:
-        raise NotImplementedError(
-            f"{self.model} is provided over a hosted API preventing direct pulling of the model file."
-        )
+        return ''
 
     def _get_mmproj_path(self, use_container: bool, should_generate: bool, dry_run: bool):
         return None

@@ -164,6 +164,18 @@ class RamaLamaShell(cmd.Cmd):
         self.content: list[str] = []
         self.message_count = 0  # Track messages for summarization
 
+    def do_help(self, args):
+        """Display help information about available commands."""
+        print("\nAvailable commands:")
+        print("  /help, help, ?    - Show this help message")
+        print("  /clear            - Clear conversation history")
+        print("  /bye, exit        - Exit the chat session")
+        if self.mcp_agent:
+            print("  /tool [question]  - Manually select which MCP tool to use")
+        print("  \\                 - End a line with backslash to continue on next line")
+        print("  Ctrl+D            - Exit the chat session (EOF)")
+        print()
+
     def prep_rag_message(self):
         if (context := self.args.rag) is None:
             return
@@ -316,10 +328,7 @@ class RamaLamaShell(cmd.Cmd):
                     logger.debug(f"Connected to: {server_name}")
                     print(f"Found {len(server_tools)} tool(s) from {server_name}")
 
-                print("\nUsage:")
-                print("  - Ask questions naturally (automatic tool selection)")
-                print("  - Use '/tool [question]' to manually select which tool to use")
-                print("  - Use '/bye' or 'exit' to quit")
+                self.do_help("")
 
         except Exception as e:
             perror(f"Failed to initialize MCP: {e}")
@@ -421,18 +430,36 @@ class RamaLamaShell(cmd.Cmd):
         return True
 
     def default(self, user_content):
+        # Check for commands before processing multi-line input
+        # Normalize: strip whitespace and make case-insensitive
+        cmd = user_content.strip().lower()
+
+        # Help command - show available commands
+        if cmd in ["/help", "help", "?"]:
+            self.do_help("")
+            return False
+
+        # Exit commands
+        if cmd in ["/bye", "exit"]:
+            return True
+
+        # Clear command - reset conversation history and multi-line buffer
+        if cmd == "/clear":
+            self.conversation_history = []
+            self.content = []
+            print("Conversation history cleared.")
+            return False
+
+        # Handle multi-line input (backslash continuation)
         self.content.append(user_content.rstrip(" \\"))
         if user_content.endswith(" \\"):
             return False
 
-        if user_content in ["/bye", "exit"]:
-            return True
-
         content = "\n".join(self.content)
         self.content = []
 
-        # Check for manual tool selection command FIRST
-        if self.mcp_agent and content.strip().startswith("/tool"):
+        # Check for manual tool selection command FIRST (case-insensitive)
+        if self.mcp_agent and content.strip().lower().startswith("/tool"):
             self._handle_manual_tool_selection(content)
             return False
 
@@ -563,7 +590,7 @@ class RamaLamaShell(cmd.Cmd):
                 else:
                     print("")
                     if not self.request_in_process:
-                        print("Use Ctrl + d or /bye or exit to quit.")
+                        print("Use /help for commands. Ctrl+d, /bye or exit to quit.")
 
                 continue
 

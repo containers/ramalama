@@ -607,62 +607,6 @@ def tagged_image(image: str) -> str:
     return f"{image}:{minor_release()}"
 
 
-@lru_cache(maxsize=1)
-def check_cuda_version() -> tuple[int, int]:
-    """
-    Check the CUDA version installed on the system by parsing the output of nvidia-smi --version.
-
-    Returns:
-        tuple: A tuple of (major, minor) version numbers, or (0, 0) if CUDA is not found or version can't be determined.
-    """
-    try:
-        # Run nvidia-smi --version to get version info
-        command = ['nvidia-smi']
-        output = run_cmd(command, encoding="utf-8").stdout.strip()
-
-        # Look for CUDA Version in the output
-        cuda_match = re.search(r'CUDA Version\s*:\s*(\d+)\.(\d+)', output)
-        if cuda_match:
-            major = int(cuda_match.group(1))
-            minor = int(cuda_match.group(2))
-            return (major, minor)
-    except Exception:
-        pass
-
-    return (0, 0)
-
-
-def select_cuda_image(config: Config) -> str:
-    """
-    Select appropriate CUDA image based on the detected CUDA version.
-
-    Args:
-        config: The configuration object containing the CUDA image reference
-
-    Returns:
-        str: The appropriate CUDA image name
-
-    Raises:
-        NotImplementedError: If CUDA version is less than 12.4
-    """
-    # Get the default CUDA image from config
-    cuda_image = config.images.get("CUDA_VISIBLE_DEVICES")
-
-    if cuda_image is None:
-        raise NotImplementedError("No image repository found for CUDA_VISIBLE_DEVICES in config.")
-
-    # Check CUDA version and select appropriate image
-    cuda_version = check_cuda_version()
-
-    # Select appropriate image based on CUDA version
-    if cuda_version >= (12, 8):
-        return cuda_image  # Use the standard image for CUDA 12.8+
-    elif cuda_version >= (12, 4):
-        return f"{cuda_image}-12.4.1"  # Use the specific version for older CUDA
-    else:
-        raise NotImplementedError(f"CUDA version {cuda_version} is not supported. Minimum required version is 12.4.")
-
-
 class AccelImageArgsWithImage(Protocol):
     image: str
 
@@ -724,14 +668,6 @@ def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_
     # If the image from the config is specified by tag or digest, return it unmodified
     if ":" in image:
         return image
-
-    # Special handling for CUDA images based on version - only if the image is the default CUDA image
-    if conf_key == "image" and image == images.get("CUDA_VISIBLE_DEVICES"):
-        try:
-            image = select_cuda_image(config)
-        except NotImplementedError as e:
-            logger.warning(f"{e}: Falling back to default image.")
-            image = config.default_image
 
     vers = minor_release()
 

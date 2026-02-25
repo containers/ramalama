@@ -60,6 +60,29 @@ Lower numbers are more deterministic, higher numbers are more creative.
 The host to send requests to (default: http://127.0.0.1:8080)
 
 
+## INTERACTIVE COMMANDS
+
+When running in interactive chat mode, the following commands are available.
+All commands are case-insensitive (e.g., `/CLEAR`, `/Clear`, and `/clear` all work).
+
+#### **/help**, **help**, **?**
+Display help information showing all available commands and their descriptions.
+
+#### **/clear**
+Clear the conversation history without exiting the chat session. This resets the context
+and allows starting a fresh conversation without restarting the container or connection.
+A confirmation message will be displayed when the history is cleared.
+
+#### **/bye**, **exit**
+Exit the chat session and close the connection.
+
+#### **/tool** [question]
+(Only available when using --mcp) Manually select which MCP tool to use for a question.
+Without this command, the AI automatically decides whether to use tools based on the question.
+
+#### **Ctrl + D**
+Exit the chat session (EOF signal).
+
 ## EXAMPLES
 
 Communicate with the default local OpenAI REST API. (http://127.0.0.1:8080)
@@ -67,16 +90,30 @@ With Podman containers.
 ```
 $ ramalama chat
 🦭 >
+```
 
 Communicate with an alternative OpenAI REST API URL. With Docker containers.
+```
 $ ramalama chat --url http://localhost:1234
 🐋 >
+```
 
 Send multiple lines at once
+```
 $ ramalama chat
 🦭 > Hi \
 🦭 > tell me a funny story \
 🦭 > please
+```
+
+Clear conversation history during a chat session (commands are case-insensitive)
+```
+$ ramalama chat
+🦭 > What is 2+2?
+4
+🦭 > /CLEAR
+Conversation history cleared.
+🦭 >
 ```
 
 ## SEE ALSO

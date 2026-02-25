@@ -1,12 +1,12 @@
 import json
 import tempfile
 from pathlib import Path
-from test.conftest import skip_if_gh_actions_darwin
-from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 import pytest
 
 from ramalama.version import version
+from test.conftest import skip_if_gh_actions_darwin
+from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 
 @pytest.mark.e2e

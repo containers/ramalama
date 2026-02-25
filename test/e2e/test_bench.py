@@ -1,8 +1,9 @@
 import re
-from test.conftest import skip_if_no_llama_bench
-from test.e2e.utils import check_output
 
 import pytest
+
+from test.conftest import skip_if_no_llama_bench
+from test.e2e.utils import check_output
 
 
 @pytest.mark.e2e

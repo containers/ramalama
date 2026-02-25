@@ -46,7 +46,7 @@ Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)
 
 #### **--ctx-size**, **-c**
-size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 4096, 0 = loaded from model)
+size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 0, 0 = loaded from model)
 
 #### **--device**
 Add a host device to the container. Optional permissions parameter  can
@@ -77,7 +77,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.17.0 of RamaLama pulls an image with a `:0.17` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.17.1 of RamaLama pulls an image with a `:0.17` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -215,6 +215,29 @@ registry if it does not exist in local storage. By default a prompt for a chat
 bot is started. When arguments are specified, the arguments will be given
 to the AI Model and the output returned without entering the chatbot.
 
+## INTERACTIVE COMMANDS
+
+When running in interactive chat mode (without arguments), the following commands are available.
+All commands are case-insensitive (e.g., `/CLEAR`, `/Clear`, and `/clear` all work).
+
+#### **/help**, **help**, **?**
+Display help information showing all available commands and their descriptions.
+
+#### **/clear**
+Clear the conversation history without exiting the chat session. This resets the context
+and allows starting a fresh conversation without restarting the container or connection.
+A confirmation message will be displayed when the history is cleared.
+
+#### **/bye**, **exit**
+Exit the chat session and close the connection.
+
+#### **/tool** [question]
+(Only available when using --mcp) Manually select which MCP tool to use for a question.
+Without this command, the AI automatically decides whether to use tools based on the question.
+
+#### **Ctrl + D**
+Exit the chat session (EOF signal).
+
 ## EXAMPLES
 
 Run command without arguments starts a chatbot
@@ -250,10 +273,23 @@ This program is a Python script that allows the user to interact with a terminal
 
 Run command and send multiple lines at once to the chatbot by adding a backslash `\`
 at the end of the line
+```
 $ ramalama run granite
 🦭 > Hi \
 🦭 > tell me a funny story \
 🦭 > please
+```
+
+Clear conversation history during a chat session
+```
+$ ramalama run granite
+🦭 > What is the capital of France?
+Paris
+🦭 > /clear
+Conversation history cleared.
+🦭 > What is 2+2?
+4
+```
 
 ## Exit Codes:
 

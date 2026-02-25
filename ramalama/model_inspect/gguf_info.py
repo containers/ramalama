@@ -6,7 +6,6 @@ from ramalama.model_inspect.base_info import ModelInfoBase, Tensor, adjust_new_l
 
 
 class GGUFModelMetadata:
-
     def __init__(self, data: Dict[str, Any]):
         self.data = data
 

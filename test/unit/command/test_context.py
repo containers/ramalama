@@ -54,9 +54,9 @@ def test_ramalama_args_context(args_dict: dict[str, Any]):
         )
         if ctx_field in args_dict:
             expected_value = args_dict[ctx_field]
-            assert (
-                ctx_value == expected_value
-            ), f"Field '{ctx_field}' expected to be '{expected_value}', but got '{ctx_value}'"
+            assert ctx_value == expected_value, (
+                f"Field '{ctx_field}' expected to be '{expected_value}', but got '{ctx_value}'"
+            )
         else:
             assert ctx_value is None, f"Field '{ctx_field}' expected to be None in args context"
 

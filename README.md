@@ -1224,7 +1224,7 @@ $ cat /usr/share/ramalama/shortnames.conf
     |           +------------------+           +------------------+
     |           | Pull inferencing |           | Pull model layer |
     +-----------| runtime (cuda)   |---------->| granite3-moe     |
-            +------------------+           +------------------+
+                +------------------+           +------------------+
                            | Repo options:    |
                            +-+-------+------+-+
                              |       |      |

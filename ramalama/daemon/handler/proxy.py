@@ -9,7 +9,6 @@ from ramalama.transports.transport_factory import CLASS_MODEL_TYPES
 
 
 class ModelProxyHandler(APIHandler):
-
     PATH_PREFIX = "/model"
 
     def __init__(self, model_runner: ModelRunner):

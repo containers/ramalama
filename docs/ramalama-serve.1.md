@@ -62,7 +62,7 @@ Path of the authentication file for OCI registries
 Min chunk size to attempt reusing from the cache via KV shifting
 
 #### **--ctx-size**, **-c**
-size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 4096, 0 = loaded from model)
+size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 0, 0 = loaded from model)
 
 #### **--detach**, **-d**
 Run the container in the background and print the new container ID.
@@ -120,7 +120,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table above for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.17.0 of RamaLama pulls an image with a `:0.17` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.17.1 of RamaLama pulls an image with a `:0.17` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells

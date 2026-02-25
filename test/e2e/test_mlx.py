@@ -1,10 +1,11 @@
 import re
 import subprocess
 from subprocess import CalledProcessError
-from test.conftest import skip_if_apple_silicon, skip_if_no_mlx, skip_if_not_apple_silicon
-from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 import pytest
+
+from test.conftest import skip_if_apple_silicon, skip_if_no_mlx, skip_if_not_apple_silicon
+from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 MODEL = "hf://mlx-community/SmolLM-135M-4bit"
 
@@ -33,9 +34,9 @@ def test_runtime_mlx_container_shows_warning_but_works():
     """When --container is explicitly used with MLX, it should warn but auto-switch to --nocontainer"""
     with RamalamaExecWorkspace() as ctx:
         result = ctx.check_output(["ramalama", "--runtime=mlx", "--container", "--dryrun", "run", MODEL])
-        assert (
-            "podman" not in result and "docker" not in result
-        ), "should not use container runtime even with --container flag"
+        assert "podman" not in result and "docker" not in result, (
+            "should not use container runtime even with --container flag"
+        )
 
 
 @pytest.mark.e2e
@@ -120,9 +121,9 @@ def test_runtime_mlx_run_fails_on_non_apple_silicon():
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(["ramalama", "--runtime=mlx", "run", MODEL], stderr=subprocess.STDOUT)
         assert exc_info.value.returncode == 22
-        assert re.search(
-            r"MLX.*Apple Silicon", exc_info.value.output.decode("utf-8")
-        ), "should show Apple Silicon requirement error"
+        assert re.search(r"MLX.*Apple Silicon", exc_info.value.output.decode("utf-8")), (
+            "should show Apple Silicon requirement error"
+        )
 
 
 @pytest.mark.e2e
@@ -133,9 +134,9 @@ def test_runtime_mlx_serve_fails_on_non_apple_silicon():
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(["ramalama", "--runtime=mlx", "serve", MODEL], stderr=subprocess.STDOUT)
         assert exc_info.value.returncode == 22
-        assert re.search(
-            r"MLX.*Apple Silicon", exc_info.value.output.decode("utf-8")
-        ), "should show Apple Silicon requirement error"
+        assert re.search(r"MLX.*Apple Silicon", exc_info.value.output.decode("utf-8")), (
+            "should show Apple Silicon requirement error"
+        )
 
 
 @pytest.mark.e2e
@@ -169,9 +170,9 @@ def test_runtime_mlx_rejects_name_option():
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(["ramalama", "--runtime=mlx", "run", "--name", "test", MODEL], stderr=subprocess.STDOUT)
         assert exc_info.value.returncode == 22
-        assert re.search(
-            r"--nocontainer.*--name.*conflict", exc_info.value.output.decode("utf-8")
-        ), "should show conflict error"
+        assert re.search(r"--nocontainer.*--name.*conflict", exc_info.value.output.decode("utf-8")), (
+            "should show conflict error"
+        )
 
 
 @pytest.mark.e2e
@@ -183,6 +184,6 @@ def test_runtime_mlx_rejects_privileged_option():
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(["ramalama", "--runtime=mlx", "run", "--privileged", MODEL], stderr=subprocess.STDOUT)
         assert exc_info.value.returncode == 22
-        assert re.search(
-            r"--nocontainer.*--privileged.*conflict", exc_info.value.output.decode("utf-8")
-        ), "should show conflict error"
+        assert re.search(r"--nocontainer.*--privileged.*conflict", exc_info.value.output.decode("utf-8")), (
+            "should show conflict error"
+        )

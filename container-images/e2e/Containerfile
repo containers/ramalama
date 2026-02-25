@@ -8,7 +8,7 @@ WORKDIR /src
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
 RUN dnf -y --setopt=install_weak_deps=false install \
-    make podman openssl \
+    make podman openssl git-core \
     # for building python dependencies on ppc64le and s390x
     gcc rust cargo \
     $([ $(uname -m) == "x86_64" ] && echo ollama) \

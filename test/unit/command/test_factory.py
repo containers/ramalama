@@ -42,7 +42,6 @@ def schema_files() -> dict[str, Path]:
 
 @dataclass
 class CLIArgs:
-
     runtime: str = "llama.cpp"
     subcommand: str = "serve"
     MODEL: str = "smollm:135m"
@@ -72,7 +71,6 @@ class CLIArgs:
 
 @dataclass
 class FactoryInput:
-
     cli_args: CLIArgs = field(default_factory=CLIArgs)
     has_mmproj: bool = False
     has_chat_template: bool = True
@@ -87,7 +85,7 @@ class FactoryInput:
         ),
         (
             FactoryInput(has_mmproj=True),
-            "llama-server --host 0.0.0.0 --port 1337 --log-file /var/tmp/ramalama.log --model /path/to/model --mmproj /path/to/mmproj --no-warmup --reasoning-budget 0 --alias library/smollm --ctx-size 512 --temp 11 --cache-reuse 1024 -v -ngl 44 --model-draft /path/to/draft-model -ngld 44 --threads 8 --seed 12345 --log-colors on --another-arg 44 --more-args",  # noqa: E501
+            "llama-server --host 0.0.0.0 --port 1337 --log-file /var/tmp/ramalama.log --model /path/to/model --mmproj /path/to/mmproj --no-jinja --no-warmup --reasoning-budget 0 --alias library/smollm --ctx-size 512 --temp 11 --cache-reuse 1024 -v -ngl 44 --model-draft /path/to/draft-model -ngld 44 --threads 8 --seed 12345 --log-colors on --another-arg 44 --more-args",  # noqa: E501
         ),
         (
             FactoryInput(has_chat_template=False),
@@ -100,6 +98,14 @@ class FactoryInput:
         (
             FactoryInput(cli_args=CLIArgs(max_tokens=99, runtime_args="")),
             "llama-server --host 0.0.0.0 --port 1337 --log-file /var/tmp/ramalama.log --model /path/to/model --chat-template-file /path/to/chat-template --jinja --no-warmup --reasoning-budget 0 --alias library/smollm --ctx-size 512 --temp 11 --cache-reuse 1024 -v -ngl 44 --model-draft /path/to/draft-model -ngld 44 --threads 8 --seed 12345 --log-colors on -n 99",  # noqa: E501
+        ),
+        (
+            FactoryInput(cli_args=CLIArgs(runtime="vllm", container=False, context=0, runtime_args="")),
+            "python3 -m vllm.entrypoints.openai.api_server --model /path/to/model --served-model-name library/smollm --port 1337 --seed 12345",  # noqa: E501
+        ),
+        (
+            FactoryInput(cli_args=CLIArgs(runtime="vllm", container=False, context=4096, runtime_args="")),
+            "python3 -m vllm.entrypoints.openai.api_server --model /path/to/model --served-model-name library/smollm --max_model_len 4096 --port 1337 --seed 12345",  # noqa: E501
         ),
     ],
 )

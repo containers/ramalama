@@ -2,6 +2,10 @@ import platform
 import re
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
+
+import pytest
+
+from ramalama.path_utils import normalize_host_path_for_container
 from test.conftest import (
     skip_if_docker,
     skip_if_no_container,
@@ -10,10 +14,6 @@ from test.conftest import (
     skip_if_s390x,
 )
 from test.e2e.utils import RamalamaExecWorkspace
-
-import pytest
-
-from ramalama.path_utils import normalize_host_path_for_container
 
 RAG_DRY_RUN = ["ramalama", "--dryrun", "rag"]
 RUN_DRY_RUN = ["ramalama", "--dryrun", "run"]
@@ -24,12 +24,12 @@ OLLAMA_MODEL = "ollama://smollm:135m"
 WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
 
 
+# fmt: off
 @pytest.mark.e2e
 @skip_if_no_container
 @pytest.mark.parametrize(
     "file, params, expected, expected_regex",
     [
-        # fmt: off
         pytest.param(
             HTTP_FILE, [], False, ".*--network none",
             id="check --network is not set by default"
@@ -63,9 +63,9 @@ WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
             ".*doc2rag --format markdown --ocr /output /docs",
             id="check --ocr flag with local file"
         ),
-        # fmt: on
     ],
 )
+# fmt: on
 def test_rag_dry_run(file, params, expected, expected_regex):
     with RamalamaExecWorkspace() as ctx:
         if isinstance(file, Path):
@@ -187,12 +187,12 @@ def test_rag_error_when_file_is_missing():
         assert re.search(r".*Error: BOGUS does not exist", exc_info.value.output.decode("utf-8"))
 
 
+# fmt: off
 @pytest.mark.e2e
 @skip_if_no_container
 @pytest.mark.parametrize(
     "model, params, expected, expected_regex",
     [
-        # fmt: off
         pytest.param(
             OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*llama-server --host [\w\.]+ --port 8081",
             id="check llama-server"
@@ -222,9 +222,9 @@ def test_rag_error_when_file_is_missing():
             ".*quay.io/ramalama/rag-image:latest.*",
             id="check --rag-image overrides --rag"
         ),
-        # fmt: on
     ],
 )
+# fmt: on
 def test_run_dry_run(model, params, expected, expected_regex):
     with RamalamaExecWorkspace() as ctx:
         result = ctx.check_output(RUN_DRY_RUN + params + [OLLAMA_MODEL])

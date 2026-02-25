@@ -5,7 +5,6 @@ from ramalama.model_inspect.base_info import ModelInfoBase, adjust_new_line
 
 
 class SafetensorModelInfo(ModelInfoBase):
-
     def __init__(
         self,
         Name: str,

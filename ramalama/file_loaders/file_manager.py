@@ -71,7 +71,8 @@ def unsupported_files_warning(unsupported_files: list[str], supported_extensions
     supported_extensions = sorted(supported_extensions)
     formatted_supported = ", ".join(supported_extensions)
     formatted_unsupported = "- " + "\n- ".join(unsupported_files)
-    warn(f"""
+    warn(
+        f"""
 ⚠️  Unsupported file types detected!
 
 Ramalama supports the following file types:
@@ -79,7 +80,8 @@ Ramalama supports the following file types:
 
 The following unsupported files were found and ignored:
 {formatted_unsupported}
-    """.strip())
+    """.strip()
+    )
 
 
 class OpanAIChatAPIMessageBuilder:

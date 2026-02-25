@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+
 from test.conftest import ramalama_container, ramalama_container_engine
 
 CONTAINER_ENGINE_RE = re.compile(r"\b(?:podman|docker)\b", re.IGNORECASE)

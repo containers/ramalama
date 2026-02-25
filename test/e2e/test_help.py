@@ -5,12 +5,12 @@ import re
 import string
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.conftest import skip_if_no_container
-from test.e2e.utils import RamalamaExecWorkspace, check_output, get_ramalama_subcommands
 
 import pytest
 
 from ramalama.version import version as ramalama_version
+from test.conftest import skip_if_no_container
+from test.e2e.utils import RamalamaExecWorkspace, check_output, get_ramalama_subcommands
 
 DEFAULT_IMAGE_PATTERN = re.compile(
     r"--image IMAGE\s+(?P<help_msg>[\w\s]+)\s\(default:\s+(?P<image>[^:]+):(?P<image_tag>[^)]+)",
@@ -57,7 +57,7 @@ def test_help_command_flags():
     # Test for regression of #7273 (spurious "--remote" help on output)
     for help_opt in ["help", "-h", "--help"]:
         result = check_output(["ramalama", help_opt])
-        assert re.search(r"^usage: ramalama \[-h] \[--debug] \[--dryrun] \[--engine {podman,docker}]", result)
+        assert re.search(r"^usage: ramalama \[-h] \[--debug.*] \[--dryrun] \[--engine {podman,docker}]", result)
 
 
 @pytest.mark.e2e
@@ -390,5 +390,7 @@ def test_default_api_key():
     with RamalamaExecWorkspace(config=config, env_vars={"RAMALAMA_API_KEY": api_key}) as ctx:
         result = ctx.check_output(["ramalama", "chat", "--help"])
         match = f"default: {api_key}" in result
-        assert match, f"Environment variable should override config file: expected \
+        assert match, (
+            f"Environment variable should override config file: expected \
         {api_key}"
+        )

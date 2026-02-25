@@ -12,10 +12,11 @@ import platform
 import re
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.conftest import skip_if_docker, skip_if_no_container, skip_if_podman_too_old, skip_if_windows
-from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 import pytest
+
+from test.conftest import skip_if_docker, skip_if_no_container, skip_if_podman_too_old, skip_if_windows
+from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 
 def path_to_uri(path):
@@ -431,9 +432,9 @@ def test_artifact_rm_multiple():
         models_after = json.loads(json_result_after)
         for model in models_after:
             for i in range(3):
-                assert f"test-multi-rm-unique-{i}" not in model.get(
-                    "name", ""
-                ), f"Artifact test-multi-rm-unique-{i} still present after removal"
+                assert f"test-multi-rm-unique-{i}" not in model.get("name", ""), (
+                    f"Artifact test-multi-rm-unique-{i} still present after removal"
+                )
 
 
 @pytest.mark.e2e

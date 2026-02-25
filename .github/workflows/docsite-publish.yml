@@ -18,6 +18,8 @@ env:
   PUBLISH_TOKEN: ${{ secrets.DOCSITE_PUBLISH_TOKEN }}
 jobs:
   publish:
+    if: |
+      github.repository_owner == 'containers'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout RamaLama

@@ -1,5 +1,4 @@
 class InvalidInferenceEngineSpecError(RuntimeError):
-
     def __init__(self, spec_file: str, reason: str, *args):
         super().__init__(*args)
 

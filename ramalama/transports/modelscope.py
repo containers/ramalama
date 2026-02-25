@@ -44,7 +44,6 @@ def fetch_checksum_from_api(organization, file):
 
 
 class ModelScopeRepository(HFStyleRepository):
-
     REGISTRY_URL = "https://modelscope.cn"
 
     def fetch_metadata(self):
@@ -54,7 +53,6 @@ class ModelScopeRepository(HFStyleRepository):
 
 
 class ModelScope(HFStyleRepoModel):
-
     REGISTRY_URL = "https://modelscope.cn/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 

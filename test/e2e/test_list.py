@@ -1,9 +1,10 @@
 import json
 import re
 from datetime import datetime
-from test.e2e.utils import RamalamaExecWorkspace
 
 import pytest
+
+from test.e2e.utils import RamalamaExecWorkspace
 
 HEADING_REGEX = "NAME *MODIFIED *SIZE"
 

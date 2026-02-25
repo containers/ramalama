@@ -8,7 +8,6 @@ from ramalama.transports.transport_factory import CLASS_MODEL_TYPES, New
 
 
 class RamalamaArgsContext:
-
     def __init__(self) -> None:
         self.cache_reuse: Optional[int] = None
         self.container: Optional[bool] = None
@@ -52,7 +51,6 @@ class RamalamaArgsContext:
 
 
 class RamalamaRagGenArgsContext:
-
     def __init__(self) -> None:
         self.debug: bool | None = None
         self.format: str | None = None
@@ -74,7 +72,6 @@ class RamalamaRagGenArgsContext:
 
 
 class RamalamaRagArgsContext:
-
     def __init__(self) -> None:
         self.debug: bool | None = None
         self.port: str | None = None
@@ -92,7 +89,6 @@ class RamalamaRagArgsContext:
 
 
 class RamalamaModelContext:
-
     def __init__(self, model: CLASS_MODEL_TYPES, is_container: bool, should_generate: bool, dry_run: bool):
         self.model = model
         self.is_container = is_container
@@ -128,7 +124,6 @@ class RamalamaModelContext:
 
 
 class RamalamaHostContext:
-
     def __init__(
         self, is_container: bool, uses_nvidia: bool, uses_metal: bool, should_colorize: bool, rpc_nodes: Optional[str]
     ):
@@ -140,7 +135,6 @@ class RamalamaHostContext:
 
 
 class RamalamaCommandContext:
-
     def __init__(
         self,
         args: RamalamaArgsContext | RamalamaRagGenArgsContext | RamalamaRagArgsContext,

@@ -4,7 +4,6 @@ VERSION_FIELD = "schema_version"
 
 
 class CommandSpecV1:
-
     class Option:
         name: str
         description: Optional[str]

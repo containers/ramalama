@@ -7,7 +7,6 @@ from ramalama.daemon.service.model_runner import ModelRunner
 
 
 class APIHandler(ABC):
-
     def __init__(self, model_runner: ModelRunner):
         super().__init__()
 

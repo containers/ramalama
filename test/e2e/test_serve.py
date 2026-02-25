@@ -10,6 +10,10 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
+
+import pytest
+import yaml
+
 from test.conftest import (
     skip_if_container,
     skip_if_darwin,
@@ -20,9 +24,6 @@ from test.conftest import (
     skip_if_s390x,
 )
 from test.e2e.utils import RamalamaExecWorkspace, check_output, get_full_model_name
-
-import pytest
-import yaml
 
 
 @contextmanager
@@ -61,11 +62,11 @@ def test_basic_dry_run():
     assert not re.search(r".*-t -i", result), "run without terminal"
 
 
+# fmt: off
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "extra_params, pattern, config, env_vars, expected",
     [
-        # fmt: off
         pytest.param(
             [], f".*{DRY_RUN_TEST_MODEL}.*", None, None, True,
             id="check model name", marks=skip_if_no_container
@@ -215,20 +216,20 @@ def test_basic_dry_run():
             [], r".*--reasoning-budget", None, None, False,
             id="check --reasoning-budget not passed by default",
         ),
-        # fmt: on
     ],
 )
+# fmt: on
 def test_params(extra_params, pattern, config, env_vars, expected):
     with RamalamaExecWorkspace(config=config, env_vars=env_vars) as ctx:
         result = ctx.check_output(RAMALAMA_DRY_RUN + extra_params + [DRY_RUN_TEST_MODEL])
         assert bool(re.search(pattern, result)) is expected
 
 
+# fmt: off
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "extra_params, pattern, config, env_vars, expected_exit_code, expected",
     [
-        # fmt: off
         pytest.param(
             ["--pull", "bogus"], r".*error: argument --pull: invalid choice: 'bogus'", None, None, 2, True,
             id="raise error when --pull value is not valid", marks=skip_if_no_container,
@@ -241,9 +242,9 @@ def test_params(extra_params, pattern, config, env_vars, expected):
             ["--selinux", "100"], r".*Error: Cannot coerce '100' to bool", None, None, 22, True,
             id="raise error when --selinux has non boolean value", marks=skip_if_no_container,
         )
-        # fmt: on
     ],
 )
+# fmt: on
 def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_code, expected):
     with RamalamaExecWorkspace(config=config, env_vars=env_vars) as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -552,8 +553,6 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
                 "/mnt/models/model.file",
                 "--served-model-name",
                 f"{model_alias}",
-                "--max_model_len",
-                "2048",
                 "--port",
                 "1234",
             ]

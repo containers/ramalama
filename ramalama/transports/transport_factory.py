@@ -20,7 +20,10 @@ from ramalama.transports.ollama import Ollama
 from ramalama.transports.rlcr import RamalamaContainerRegistry
 from ramalama.transports.url import URL
 
-CLASS_MODEL_TYPES: TypeAlias = Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry | APITransport
+CLASS_MODEL_TYPES: TypeAlias = (
+    Huggingface | Ollama | OCI | URL | ModelScope | RamalamaContainerRegistry | APITransport
+)
+
 
 @dataclass(frozen=True)
 class TransportRegistryEntry:

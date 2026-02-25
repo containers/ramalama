@@ -2,6 +2,9 @@ import json
 import re
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
+
+import pytest
+
 from test.conftest import (
     skip_if_container,
     skip_if_docker,
@@ -10,8 +13,6 @@ from test.conftest import (
     skip_if_s390x,
 )
 from test.e2e.utils import RamalamaExecWorkspace
-
-import pytest
 
 
 @pytest.mark.e2e
@@ -26,6 +27,7 @@ def test_convert_custom_gguf_config():
         assert re.search("GGUF quantization format. If specified without value, Q5_0 is used", result)
 
 
+# fmt: off
 @pytest.mark.e2e
 @skip_if_docker
 @skip_if_no_container
@@ -34,7 +36,6 @@ def test_convert_custom_gguf_config():
 @pytest.mark.parametrize(
     "in_model, out_model, extra_params, expected",
     [
-        # fmt: off
         pytest.param(
             Path("aimodel"), "foobar", None,
             "oci://localhost/foobar:latest",
@@ -66,9 +67,9 @@ def test_convert_custom_gguf_config():
             "oci://quay.io/ramalama/tiny-q4-0:latest",
             id="hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 -> oci://quay.io/ramalama/tiny-q4-0 (--gguf Q4_0)",
         ),
-        # fmt: on
     ],
 )
+# fmt: on
 def test_convert(in_model, out_model, extra_params, expected):
     with RamalamaExecWorkspace() as ctx:
         ramalama_cli = ["ramalama", "--store", ctx.storage_dir]
@@ -100,11 +101,11 @@ def test_convert(in_model, out_model, extra_params, expected):
             ctx.check_call(ramalama_cli + ["rm", "--ignore", expected.replace("oci://", "")])
 
 
+# fmt: off
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "in_model, out_model, expected_exit_code, expected",
     [
-        # fmt: off
         pytest.param(
             None, None, 2, ".*ramalama convert: error: the following arguments are required: SOURCE, TARGET",
             id="raise error if no models",
@@ -138,9 +139,9 @@ def test_convert(in_model, out_model, extra_params, expected):
             id="raise error when --nocontainer flag",
             marks=[skip_if_container]
         ),
-        # fmt: on
     ],
 )
+# fmt: on
 def test_convert_errors(in_model, out_model, expected_exit_code, expected):
     with RamalamaExecWorkspace() as ctx:
         # Ensure a local model exists if it is provided

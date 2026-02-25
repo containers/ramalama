@@ -1,9 +1,10 @@
 import random
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.e2e.utils import RamalamaExecWorkspace, check_output, skip_if_container_engine_unavailable
 
 import pytest
+
+from test.e2e.utils import RamalamaExecWorkspace, check_output, skip_if_container_engine_unavailable
 
 
 @pytest.mark.e2e

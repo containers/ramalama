@@ -166,7 +166,7 @@ REGEX_NODE_CONTINUE = f"{REGEX_NODE_START_BLOCK}continue{REGEX_NODE_END_BLOCK}" 
 REGEX_NODE_BREAK = f"{REGEX_NODE_START_BLOCK}break{REGEX_NODE_END_BLOCK}"  # noqa: E275
 REGEX_NODE_STMT = f"{REGEX_NODE_START_BLOCK}({REGEX_VARIABLE}|{REGEX_LOCAL_VARIABLE}){REGEX_NODE_END_BLOCK}"
 REGEX_NODE_ASSIGNMENT = (
-    f"{REGEX_NODE_START_BLOCK}" f"{REGEX_LOCAL_VARIABLE}\\s*:?=\\s*{REGEX_NODE_PIPELINE}" f"{REGEX_NODE_END_BLOCK}"
+    f"{REGEX_NODE_START_BLOCK}{REGEX_LOCAL_VARIABLE}\\s*:?=\\s*{REGEX_NODE_PIPELINE}{REGEX_NODE_END_BLOCK}"
 )
 GO_KEYWORDS: Dict[NodeType, re.Pattern] = {
     NodeType.IF: re.compile(R"{}".format(REGEX_NODE_IF), re.S),
@@ -211,7 +211,6 @@ def parse_go_template(content: str) -> list[Node]:
     start_pos = content.find(GO_SYMBOL_OPEN_BRACKETS)
     end_pos = 0
     while start_pos != -1:
-
         if end_pos == 0 and start_pos != 0:
             content_node = Node(
                 end_pos,
@@ -531,7 +530,7 @@ def tree_structure(nodes: list[Node], level: int) -> str:
     res = ""
     for node in nodes:
         parent_type = "--" if node.parent is None else node.parent.type
-        res += level * "\t" + f"{node.type}: {node.start},{node.end} - " f"{parent_type} - {node.content}\n"
+        res += level * "\t" + f"{node.type}: {node.start},{node.end} - {parent_type} - {node.content}\n"
         res += tree_structure(node.children, level + 1)
 
     return res

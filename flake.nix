@@ -35,8 +35,8 @@
                   (llama-cpp.override llamaCppOverrides)
                 ];
                 nativeBuildInputs =
-                  (with pkgs; [ codespell shellcheck isort bats jq apacheHttpd ]) ++
-                  (with pkgs.python3Packages; [ flake8 black pytest ]);
+                  (with pkgs; [ codespell shellcheck ruff bats jq apacheHttpd ]) ++
+                  (with pkgs.python3Packages; [ pytest ]);
               } // ramalamaOverrides)
           )
           { llamaCppOverrides.vulkanSupport = true; }

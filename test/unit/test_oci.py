@@ -24,7 +24,6 @@ class Args:
 
 
 class Input:
-
     def __init__(
         self,
         source_model: Union[Ollama, URL, Huggingface],

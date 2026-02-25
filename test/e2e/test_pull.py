@@ -4,6 +4,10 @@ import re
 import string
 from pathlib import Path, PurePosixPath
 from subprocess import STDOUT, CalledProcessError
+
+import pytest
+
+from ramalama.path_utils import normalize_host_path_for_container
 from test.conftest import (
     skip_if_big_endian_machine,
     skip_if_darwin,
@@ -12,10 +16,6 @@ from test.conftest import (
     skip_if_no_ollama,
 )
 from test.e2e.utils import RamalamaExecWorkspace, skip_if_container_engine_unavailable
-
-import pytest
-
-from ramalama.path_utils import normalize_host_path_for_container
 
 
 @pytest.mark.e2e
@@ -46,12 +46,12 @@ def test_pull_non_existing_model():
     assert re.search(r".*Error:.*(not found|404).*", output, re.IGNORECASE)
 
 
+# fmt: off
 @pytest.mark.e2e
 @pytest.mark.distro_integration
 @pytest.mark.parametrize(
     "model, env_vars, expected",
     [
-        # fmt: off
         pytest.param(
             "ollama://tinyllama", None, "ollama://library/tinyllama:latest",
             id="tinyllama model with ollama:// url"
@@ -100,9 +100,9 @@ def test_pull_non_existing_model():
             Path("mymodel.gguf"), None, Path("mymodel.gguf"),
             id="{workspace_dir}/mymodel.gguf model with file:// url",
         )
-        # fmt: on
     ],
 )
+# fmt: on
 def test_pull(model, env_vars, expected):
     with RamalamaExecWorkspace(env_vars=env_vars) as ctx:
         ramalama_cli = ["ramalama", "--store", str(ctx.storage_path)]
