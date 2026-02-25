@@ -1144,7 +1144,7 @@ If GPU device on host is accessible to via group access, this option leaks the u
             help="arguments to add to runtime invocation",
             completer=suppressCompleter,
         )
-    parser.add_argument("--seed", help="override random seed", completer=suppressCompleter)
+    parser.add_argument("--seed", type=int, help="override random seed", completer=suppressCompleter)
     parser.add_argument(
         "--selinux",
         default=config.selinux,
