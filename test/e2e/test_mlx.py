@@ -7,7 +7,7 @@ import pytest
 from test.conftest import skip_if_apple_silicon, skip_if_no_mlx, skip_if_not_apple_silicon
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
-MODEL = "hf://mlx-community/SmolLM-135M-4bit"
+MODEL = "hf://mlx-community/Llama-3.2-1B-Instruct-4bit"
 
 
 @pytest.mark.e2e
@@ -189,3 +189,19 @@ def test_runtime_mlx_rejects_privileged_option():
         assert re.search(r"--nocontainer.*--privileged.*conflict", exc_info.value.output.decode("utf-8")), (
             "should show conflict error"
         )
+
+
+@pytest.mark.e2e
+@skip_if_not_apple_silicon
+@skip_if_no_mlx
+def test_runtime_mlx_run_model_with_prompt():
+    with RamalamaExecWorkspace() as ctx:
+        run_cmd = [
+            "ramalama",
+            "--runtime=mlx",
+            "run",
+            MODEL,
+            "what is the capital of France?",
+        ]
+        result = ctx.check_output(run_cmd)
+        assert "paris" in result.lower()
