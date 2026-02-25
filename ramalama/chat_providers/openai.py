@@ -72,12 +72,15 @@ def _(message: AssistantMessage) -> dict[str, Any]:
     return {**message.metadata, 'content': message.text or "", 'role': message.role, 'tool_calls': tool_calls}
 
 
-class CompletionsPayload(TypedDict, total=False):
+class RequiredCompletionsPayload(TypedDict):
     messages: list[dict[str, Any]]
-    model: str | None
-    temperature: float | None
-    max_tokens: int | None
     stream: bool
+
+
+class CompletionsPayload(RequiredCompletionsPayload, total=False):
+    model: str
+    temperature: float
+    max_tokens: int
 
 
 class OpenAICompletionsChatProvider(ChatProvider):
@@ -91,10 +94,7 @@ class OpenAICompletionsChatProvider(ChatProvider):
     def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> CompletionsPayload:
         payload: CompletionsPayload = {
             "messages": [message_to_completions_dict(m) for m in messages],
-            "model": options.model,
-            "temperature": options.temperature,
-            "max_tokens": options.max_tokens,
-            "stream": options.stream,
+            **options.to_dict(),
         }
         return payload
 
