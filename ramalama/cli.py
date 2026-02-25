@@ -1,5 +1,6 @@
 import argparse
 import copy
+from email.policy import default
 import errno
 import json
 import os
@@ -1451,7 +1452,7 @@ def stop_parser(subparsers):
         "--ignore", action="store_true", help="ignore errors when specified RamaLama container is missing"
     )
     parser.add_argument("NAME", nargs="?", completer=local_containers)
-    parser.set_defaults(func=stop_container)
+    parser.set_defaults(func=stop_container, format="{{ .NAMES }}")
 
 
 def stop_container(args: argparse.Namespace):
