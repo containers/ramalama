@@ -1,21 +1,17 @@
 FROM quay.io/fedora/fedora:43
 
-ARG RAMALAMA_STACK_VERSION=0.2.5
-
-# hack that should be removed when the following bug is addressed
-# https://github.com/containers/ramalama-stack/issues/53
-RUN curl --create-dirs --output ~/.llama/providers.d/remote/inference/ramalama.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v${RAMALAMA_STACK_VERSION}/src/ramalama_stack/providers.d/remote/inference/ramalama.yaml && \
-    curl --create-dirs --output /etc/ramalama/ramalama-run.yaml https://raw.githubusercontent.com/containers/ramalama-stack/refs/tags/v${RAMALAMA_STACK_VERSION}/src/ramalama_stack/ramalama-run.yaml
+ARG RAMALAMA_STACK_VERSION=0.2.6
+COPY ramalama_stack-0.2.6.dev* /
 
 RUN dnf -y install uv gcc python3-devel && \
     dnf -y clean all
 
-RUN uv venv && \
-    uv pip install ramalama-stack==${RAMALAMA_STACK_VERSION} \
-                   milvus-lite
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv && \
+    uv pip install ramalama_stack-${RAMALAMA_STACK_VERSION}.dev26.tar.gz
 
-COPY --chmod=755 container-images/llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
+COPY --chmod=755 entrypoint.sh /usr/bin/entrypoint.sh
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
 
-CMD [ "llama",  "stack",  "run", "--image-type", "venv", "/etc/ramalama/ramalama-run.yaml" ]
+CMD [ "llama",  "stack",  "run", "--image-type", "venv", "/root/.llama/distributions/ramalama/ramalama-run.yaml" ]

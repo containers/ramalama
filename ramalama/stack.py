@@ -70,7 +70,7 @@ class Stack:
       - hostPath:
           path: {host_model_path}
         name: model"""
-        if self.args.dri == "on":
+        if self.args.dri == "on" and platform.system() != "Windows":
             for dev in ["dri", "kfd"]:
                 if os.path.exists("/dev/" + dev):
                     volumes += f"""
