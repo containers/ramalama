@@ -78,8 +78,8 @@ function skip_if_no_mlx() {
     skip_if_not_apple_silicon
     skip_if_no_mlx
     
-    run_ramalama --runtime=mlx --dryrun run --ctx-size 1024 ${MODEL} "test"
-    is "$status" "0" "MLX run with ctx-size should work"
+    run_ramalama --runtime=mlx --dryrun run --max-tokens 1024 ${MODEL} "test"
+    is "$status" "0" "MLX run with max-tokens should work"
     is "$output" ".*--max-tokens.*1024.*" "should include max tokens setting"
 }
 
