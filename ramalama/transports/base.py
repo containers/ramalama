@@ -9,7 +9,7 @@ import sys
 import time
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, TypeGuard
 
 from ramalama import chat
 from ramalama.common import ContainerEntryPoint
@@ -28,6 +28,8 @@ from ramalama.quadlet import Quadlet
 
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
+    from ramalama.transports.oci import OCI
+    from ramalama.transports.ollama import Ollama
 
 from datetime import datetime, timezone
 
@@ -84,7 +86,7 @@ class NoRefFileFound(Exception):
         return f"No ref file found for '{self.model}'. Please pull model."
 
 
-def trim_model_name(model):
+def trim_model_name(model) -> str:
     if model.startswith("huggingface://"):
         model = model.replace("huggingface://", "hf://", 1)
 
@@ -92,6 +94,14 @@ def trim_model_name(model):
         model = model.removesuffix(":latest")
 
     return model
+
+
+def is_ollama_transport(transport: "Transport") -> TypeGuard["Ollama"]:
+    return transport.type == "Ollama"
+
+
+def is_oci_transport(transport: "Transport") -> TypeGuard["OCI"]:
+    return transport.model_type == "oci"
 
 
 class TransportBase(ABC):
@@ -138,7 +148,7 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("exists")
 
     @abstractmethod
-    def inspect(self, args):
+    def inspect(self, *args, **kwargs):
         raise self.__not_implemented_error("inspect")
 
 
@@ -171,7 +181,7 @@ class Transport(TransportBase):
     def artifact(self) -> bool:
         return self.is_artifact()
 
-    def extract_model_identifiers(self):
+    def extract_model_identifiers(self) -> tuple[str, str, str]:
         model_name = self.model
         model_tag = "latest"
         model_organization = ""
@@ -192,7 +202,7 @@ class Transport(TransportBase):
         return self._model_name
 
     @property
-    def model_alias(self):
+    def model_alias(self) -> str:
         return f"{self.model_organization}/{self.model_name}"
 
     @property
@@ -387,7 +397,7 @@ class Transport(TransportBase):
         return Engine(args)
 
     def base(self, args, name):
-        if self.type == "Ollama":
+        if is_ollama_transport(self):
             args.UNRESOLVED_MODEL = args.MODEL
             args.MODEL = self.resolve_model()
         self.engine = self.new_engine(args)
@@ -433,7 +443,7 @@ class Transport(TransportBase):
         if args.dryrun:
             return
 
-        if self.model_type == 'oci':
+        if is_oci_transport(self):
             if self.engine.use_podman:
                 mount_cmd = self.mount_cmd()
             elif self.engine.use_docker:

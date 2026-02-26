@@ -3,9 +3,9 @@ import json
 import logging
 import time
 import urllib.error
-import urllib.parse
 import urllib.request
-from typing import Any, Dict, Optional, cast
+from http.client import HTTPResponse
+from typing import Any, Optional, cast
 
 from ramalama.proxy_support import setup_proxy_support
 
@@ -29,18 +29,21 @@ class PureMCPClient:
         self.request_id += 1
         return self.request_id
 
-    def _do_request(self, request: urllib.request.Request):
+    def _do_request(self, request: urllib.request.Request) -> HTTPResponse:
         """Perform HTTP request with retries and timeout."""
-        for attempt in range(1, self.retries + 1):
+        total_attempts = max(self.retries, 1)
+        for attempt in range(1, total_attempts + 1):
             try:
                 return urllib.request.urlopen(request, timeout=self.timeout)
             except (urllib.error.URLError, TimeoutError) as e:
-                logging.warning("Request failed (attempt %s/%s): %s", attempt, self.retries, e)
-                if attempt == self.retries:
+                logging.warning("Request failed (attempt %s/%s): %s", attempt, total_attempts, e)
+                if attempt == total_attempts:
                     raise
                 time.sleep(2**attempt)  # exponential backoff
 
-    def _send_request(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        raise RuntimeError("Unreachable: request loop exited without return")
+
+    def _send_request(self, method: str, params: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Send a JSON-RPC request via HTTP POST."""
         message = {"jsonrpc": "2.0", "id": self._get_next_request_id(), "method": method, "params": params or {}}
 
@@ -74,7 +77,7 @@ class PureMCPClient:
             logging.error("Error response %s: %s", e.code, error_body)
             raise
 
-    def _validate_response(self, response: Dict[str, Any], expected_id: int) -> Dict[str, Any]:
+    def _validate_response(self, response: dict[str, Any], expected_id: int) -> dict[str, Any]:
         """Ensure response is valid JSON-RPC."""
         if response.get("jsonrpc") != "2.0":
             raise ValueError(f"Invalid JSON-RPC version: {response}")
@@ -82,7 +85,7 @@ class PureMCPClient:
             raise ValueError(f"Mismatched response ID: {response}")
         return response
 
-    def _parse_sse_stream(self, response) -> Dict[str, Any]:
+    def _parse_sse_stream(self, response) -> dict[str, Any]:
         collected = ""
         for raw_line in response:
             line = raw_line.decode("utf-8").strip()
@@ -98,7 +101,7 @@ class PureMCPClient:
             logging.warning("Malformed SSE JSON: %s", collected)
             return {}
 
-    def _send_notification(self, method: str, params: Optional[Dict[str, Any]] = None):
+    def _send_notification(self, method: str, params: Optional[dict[str, Any]] = None):
         """Send a JSON-RPC notification (no response expected)."""
         message = {"jsonrpc": "2.0", "method": method, "params": params or {}}
 
@@ -119,7 +122,7 @@ class PureMCPClient:
 
     # --- Public API ---
 
-    def initialize(self) -> Dict[str, Any]:
+    def initialize(self) -> dict[str, Any]:
         result = self._send_request(
             "initialize",
             {
@@ -131,27 +134,27 @@ class PureMCPClient:
         self._send_notification("notifications/initialized")
         return result
 
-    def shutdown(self) -> Dict[str, Any]:
+    def shutdown(self) -> dict[str, Any]:
         """Shut down the MCP session cleanly."""
         return self._send_request("shutdown", {})
 
-    def list_tools(self) -> Dict[str, Any]:
+    def list_tools(self) -> dict[str, Any]:
         return self._send_request("tools/list", {})
 
-    def call_tool(self, name: str, arguments: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def call_tool(self, name: str, arguments: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         return self._send_request("tools/call", {"name": name, "arguments": arguments or {}})
 
-    def list_resources(self) -> Dict[str, Any]:
+    def list_resources(self) -> dict[str, Any]:
         return self._send_request("resources/list", {})
 
-    def read_resource(self, uri: str) -> Dict[str, Any]:
+    def read_resource(self, uri: str) -> dict[str, Any]:
         return self._send_request("resources/read", {"uri": uri})
 
-    def list_prompts(self) -> Dict[str, Any]:
+    def list_prompts(self) -> dict[str, Any]:
         return self._send_request("prompts/list", {})
 
-    def get_prompt(self, name: str, arguments: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def get_prompt(self, name: str, arguments: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         return self._send_request("prompts/get", {"name": name, "arguments": arguments or {}})
 
-    def close(self):
+    def close(self) -> None:
         self.session_id = None

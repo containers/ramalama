@@ -1,13 +1,15 @@
 import json
 import os
 import urllib.request
+from collections.abc import Callable
+from typing import Any
 
 from ramalama.common import perror, run_cmd, verify_checksum
 from ramalama.http_client import download_file
 from ramalama.logger import logger
 
 
-def fetch_manifest_data(registry_head, model_tag, accept):
+def fetch_manifest_data(registry_head: str, model_tag: str, accept: str) -> dict:
     """
     Fetch manifest data for a model from a registry.
 
@@ -29,7 +31,7 @@ def fetch_manifest_data(registry_head, model_tag, accept):
     return manifest_data
 
 
-def pull_config_blob(repos, accept, registry_head, manifest_data):
+def pull_config_blob(repos: str, accept: str, registry_head: str, manifest_data: dict[str, Any]) -> None:
     """
     Pull configuration blob for a model.
 
@@ -51,15 +53,15 @@ def pull_config_blob(repos, accept, registry_head, manifest_data):
 
 
 def pull_blob(
-    repos,
-    layer_digest,
-    accept,
-    registry_head,
-    model_name,
-    model_tag,
-    model_path,
-    show_progress,
-    in_existing_cache_fn=None,
+    repos: str,
+    layer_digest: str,
+    accept: str,
+    registry_head: str,
+    model_name: str,
+    model_tag: str,
+    model_path: str,
+    show_progress: bool,
+    in_existing_cache_fn: Callable | None = None,
 ):
     """
     Pull a blob for a model layer.

@@ -1,6 +1,6 @@
 import os
+from collections.abc import Sequence
 from enum import IntEnum
-from typing import Dict, Sequence
 
 from ramalama.common import generate_sha256_binary, perror
 from ramalama.http_client import download_file
@@ -19,7 +19,7 @@ class SnapshotFile:
     def __init__(
         self,
         url: str,
-        header: Dict,
+        header: dict,
         hash: str,
         name: str,
         type: SnapshotFileType,
@@ -28,7 +28,7 @@ class SnapshotFile:
         required: bool = True,
     ):
         self.url: str = url
-        self.header: Dict = header
+        self.header: dict = header
         self.hash: str = hash
         self.name: str = name
         self.type: SnapshotFileType = type

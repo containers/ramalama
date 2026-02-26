@@ -1,12 +1,12 @@
 from json import dumps
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional
 
 from ramalama.endian import GGUFEndian
 from ramalama.model_inspect.base_info import ModelInfoBase, Tensor, adjust_new_line
 
 
 class GGUFModelMetadata:
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         self.data = data
 
     def get(self, key: str) -> Any:
@@ -31,8 +31,8 @@ class GGUFModelInfo(ModelInfoBase):
         Name: str,
         Registry: str,
         Path: str,
-        Version: Union[int, float],
-        metadata: Dict[str, Any],
+        Version: int | float,
+        metadata: dict[str, Any],
         tensors: list[Tensor],
         endianness: GGUFEndian,
     ):

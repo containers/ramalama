@@ -1,6 +1,7 @@
 """utilities for working with AMDKFD driver"""
 
 import glob
+from typing import Generator
 
 # Heap types in memory properties
 #
@@ -13,13 +14,13 @@ HEAP_TYPE_GPU_LDS = 4
 HEAP_TYPE_GPU_SCRATCH = 5
 
 
-def parse_props(path):
+def parse_props(path: str) -> dict[str, int]:
     """Returns a dict corresponding to a KFD properties file"""
     with open(path) as file:
         return {key: int(value) for key, _, value in (line.partition(' ') for line in file)}
 
 
-def gpus():
+def gpus() -> Generator[tuple[str, dict[str, int]], None, None]:
     """Yields GPU nodes within KFD topology and their properties"""
     for np in sorted(glob.glob('/sys/devices/virtual/kfd/kfd/topology/nodes/*')):
         props = parse_props(np + '/properties')

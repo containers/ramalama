@@ -1,13 +1,14 @@
 import re
+from typing import Any
 
 from ramalama.logger import logger
 
 
 class TOMLParser:
-    def __init__(self):
-        self.data = {}
+    def __init__(self) -> None:
+        self.data: dict[str, Any] = {}
 
-    def parse(self, toml_string):
+    def parse(self, toml_string: str) -> dict[str, Any]:
         current_section = self.data
         for line in toml_string.splitlines():
             line = line.strip()
@@ -31,14 +32,14 @@ class TOMLParser:
 
         return self.data
 
-    def parse_file(self, file_path):
+    def parse_file(self, file_path: str):
         with open(file_path, "r", encoding="utf8") as f:
             toml_string = f.read()
         self.parse(toml_string)
 
         return self.data
 
-    def _create_section(self, section_name):
+    def _create_section(self, section_name: str) -> dict[str, Any]:
         keys = section_name.split(".")
         section = self.data
         for key in keys:
@@ -48,7 +49,7 @@ class TOMLParser:
 
         return section
 
-    def _parse_value(self, value):
+    def _parse_value(self, value: str) -> Any:
         if value.startswith('"') and value.endswith('"'):
             return value[1:-1]
         if value.startswith("[") and value.endswith("]"):
@@ -61,10 +62,14 @@ class TOMLParser:
             return value.lower() == "true"
         raise ValueError(f"Unsupported value type: {value}")
 
-    def get(self, key, default=None):
+    def get(self, key: str, default=None) -> Any | None:
+        value: Any | None = self.data
+
         keys = key.split(".")
-        value = self.data
         for k in keys:
+            if not isinstance(value, dict):
+                return default
+
             value = value.get(k)
             if value is None:
                 return default

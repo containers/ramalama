@@ -2,25 +2,30 @@
 
 import os
 import platform
+from types import ModuleType
+from typing import BinaryIO, cast
 
 # Import platform-specific locking mechanisms
-if platform.system() != "Windows":
+fcntl: ModuleType | None = None
+if not_windows := (platform.system() != "Windows"):
     import fcntl
 
 
 class File:
-    def __init__(self):
-        self.file = None
-        self.fd = -1
+    def __init__(self) -> None:
+        self.file: BinaryIO | None = None
+        self.fd: int = -1
 
-    def open(self, filename, mode):
-        self.file = open(filename, mode)
+    def open(self, filename: str, mode: str) -> BinaryIO:
+        if "b" not in mode:
+            raise ValueError("File.open requires binary mode")
+        self.file = cast(BinaryIO, open(filename, mode))
         return self.file
 
-    def lock(self):
+    def lock(self) -> int:
         if self.file:
             self.fd = self.file.fileno()
-            if platform.system() != "Windows":
+            if fcntl is not None:
                 try:
                     # Unix file locking using fcntl
                     fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -31,7 +36,7 @@ class File:
 
     def __del__(self):
         if self.fd >= 0:
-            if platform.system() != "Windows":
+            if fcntl is not None:
                 try:
                     # Unlock on Unix
                     fcntl.flock(self.fd, fcntl.LOCK_UN)

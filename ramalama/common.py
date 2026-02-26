@@ -54,7 +54,7 @@ def sanitize_filename(filename: str) -> str:
 podman_machine_accel = False
 
 
-def confirm_no_gpu(name, provider) -> bool:
+def confirm_no_gpu(name: str, provider: str) -> bool:
     while True:
         user_input = (
             input(
@@ -73,10 +73,16 @@ def confirm_no_gpu(name, provider) -> bool:
         print("Invalid input. Please enter 'yes' or 'no'.")
 
 
-def handle_provider(machine, config: Config | None = None) -> bool | None:
+def handle_provider(machine: dict[str, Any], config: Config | None = None) -> bool | None:
     global podman_machine_accel
     name = machine.get("Name")
+    if not isinstance(name, str):
+        raise ValueError(f"Received a malformed 'Name' value for machine. Expected a string ang got {type(name)}.")
+
     provider = machine.get("VMType")
+    if not isinstance(provider, str):
+        raise ValueError(f"Received a malformed 'VMType' value for machine. Expected a str and got {type(provider)}.")
+
     running = machine.get("Running")
     if running:
         if provider == "applehv":
@@ -113,12 +119,12 @@ def available(cmd: str) -> bool:
     return shutil.which(cmd) is not None
 
 
-def quoted(arr) -> str:
+def quoted(arr: Sequence[str]) -> str:
     """Return string with quotes around elements containing spaces."""
     return " ".join(['"' + element + '"' if ' ' in element else element for element in arr])
 
 
-def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
+def exec_cmd(args: Sequence[str], stdout2null: bool = False, stderr2null: bool = False):
     logger.debug(f"exec_cmd: {quoted(args)}")
 
     stdout_target = subprocess.DEVNULL if stdout2null else None
@@ -288,7 +294,7 @@ def verify_checksum(filename: str) -> bool:
     return sha256_hash.hexdigest() == expected_checksum
 
 
-def genname():
+def genname() -> str:
     return "ramalama-" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
@@ -544,14 +550,14 @@ def get_accel() -> AccelType | Literal["none"]:
     return "none"
 
 
-def set_accel_env_vars():
+def set_accel_env_vars() -> None:
     if get_accel_env_vars():
         return
 
     get_accel()
 
 
-def set_gpu_type_env_vars():
+def set_gpu_type_env_vars() -> None:
     if get_gpu_type_env_vars():
         return
 

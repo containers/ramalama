@@ -52,53 +52,61 @@ def test_pull_non_existing_model():
     "model, env_vars, expected",
     [
         pytest.param(
-            "ollama://tinyllama", None, "ollama://library/tinyllama:latest",
-            id="tinyllama model with ollama:// url"
+            "ollama://tinyllama", None, "ollama://library/tinyllama:latest", id="tinyllama model with ollama:// url"
         ),
         pytest.param(
-            "smollm:360m", {"RAMALAMA_TRANSPORT": "ollama"}, "ollama://library/smollm:360m",
-            id="smollm:360m model with RAMALAMA_TRANSPORT=ollama"
+            "smollm:360m",
+            {"RAMALAMA_TRANSPORT": "ollama"},
+            "ollama://library/smollm:360m",
+            id="smollm:360m model with RAMALAMA_TRANSPORT=ollama",
         ),
         pytest.param(
-            "ollama://smollm:360m", None, "ollama://library/smollm:360m",
-            id="smollm:360m model with ollama:// url"
+            "ollama://smollm:360m", None, "ollama://library/smollm:360m", id="smollm:360m model with ollama:// url"
         ),
         pytest.param(
-            "https://ollama.com/library/smollm:135m", None, "ollama://library/smollm:135m",
-            id="smollm:135m model with http url from ollama"
+            "https://ollama.com/library/smollm:135m",
+            None,
+            "ollama://library/smollm:135m",
+            id="smollm:135m model with http url from ollama",
         ),
         pytest.param(
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             None,
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            id="hf://Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model"
+            id="hf://Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model",
         ),
         pytest.param(
             "huggingface://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             None,
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            id="huggingface://Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model"
+            id="huggingface://Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model",
         ),
         pytest.param(
             "Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
             {"RAMALAMA_TRANSPORT": "huggingface"},
             "hf://Felladrin/gguf-smollm-360M-instruct-add-basics/smollm-360M-instruct-add-basics.IQ2_XXS.gguf",
-            id="Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model with RAMALAMA_TRANSPORT=huggingface"
+            id="Felladrin/../smollm-360M-instruct-add-basics.IQ2_XXS.gguf model with RAMALAMA_TRANSPORT=huggingface",
         ),
         pytest.param(
-            "oci://quay.io/ramalama/smollm:135m", None, "oci://quay.io/ramalama/smollm:135m",
+            "oci://quay.io/ramalama/smollm:135m",
+            None,
+            "oci://quay.io/ramalama/smollm:135m",
             id="smollm:135m model with oci:// url",
-            marks=skip_if_no_container
+            marks=skip_if_no_container,
         ),
         pytest.param(
-            "quay.io/ramalama/smollm:135m", {"RAMALAMA_TRANSPORT": "oci"}, "oci://quay.io/ramalama/smollm:135m",
+            "quay.io/ramalama/smollm:135m",
+            {"RAMALAMA_TRANSPORT": "oci"},
+            "oci://quay.io/ramalama/smollm:135m",
             id="smollm:135m model with RAMALAMA_TRANSPORT=oci",
-            marks=skip_if_no_container
+            marks=skip_if_no_container,
         ),
         pytest.param(
-            Path("mymodel.gguf"), None, Path("mymodel.gguf"),
+            Path("mymodel.gguf"),
+            None,
+            Path("mymodel.gguf"),
             id="{workspace_dir}/mymodel.gguf model with file:// url",
-        )
+        ),
     ],
 )
 # fmt: on

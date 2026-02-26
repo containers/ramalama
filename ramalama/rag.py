@@ -7,7 +7,7 @@ from functools import partial
 from textwrap import dedent
 from typing import Literal, cast
 
-from ramalama.arg_types import RagArgsType, ServeRunArgsType
+from ramalama.arg_types import RagArgsType, ServeRunArgsType, narrow_args
 from ramalama.chat import ChatOperationalArgs
 from ramalama.common import accel_image, perror, set_accel_env_vars
 from ramalama.compat import StrEnum
@@ -88,6 +88,7 @@ class Rag:
             dbdir = os.path.join(ragdb.name, "vectordb")
             os.makedirs(dbdir)
         else:
+            ragdb = None
             dbdir = self.target
 
         engine.add_volume(dbdir, "/output", opts="rw")
@@ -103,7 +104,7 @@ class Rag:
         except subprocess.CalledProcessError as e:
             raise e
         finally:
-            if self.oci:
+            if self.oci and ragdb:
                 ragdb.cleanup()
 
 
@@ -116,12 +117,12 @@ class RagSource(StrEnum):
     IMAGE = "image"
 
 
-class RagEngine(Engine):
+class RagEngine(Engine[RagArgsType]):
     """Engine for executing a RAG proxy"""
 
     sourcetype: RagSource
 
-    def __init__(self, args, /, *, sourcetype: RagSource):
+    def __init__(self, args: RagArgsType, /, *, sourcetype: RagSource):
         self.sourcetype = sourcetype
         super().__init__(args)
         self.add_rag()
@@ -150,15 +151,18 @@ class RagTransport(OCI):
     """Run a RAG proxy, dispatching to a backend LLM"""
 
     type: str = "Model+RAG"
+    kind: RagSource
 
     def __init__(self, imodel: Transport, cmd: list[str], args: RagArgsType):
+        if args.engine is None:
+            raise ValueError("RAG transport requires a container engine.")
         super().__init__(args.rag, args.store, args.engine)
         self.imodel = imodel
         self.model_cmd = cmd
         if os.path.exists(args.rag):
-            self.kind = RagSource.DB
+            self.kind = cast(RagSource, RagSource.DB)
         else:
-            self.kind = RagSource.IMAGE
+            self.kind = cast(RagSource, RagSource.IMAGE)
 
     def exists(self) -> bool:
         if self.kind is RagSource.DB:
@@ -193,8 +197,9 @@ class RagTransport(OCI):
             super().serve(args, cmd)
         finally:
             if getattr(args.model_args, "name", None):
-                args.model_args.ignore = True
-                stop_container(args.model_args, args.model_args.name, remove=True)
+                model_args = narrow_args(args.model_args)
+                model_args.ignore = True
+                stop_container(model_args, model_args.name, remove=True)
 
     def run(self, args: RagArgsType, cmd: list[str]):
 

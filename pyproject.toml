@@ -86,7 +86,8 @@ cov-detailed = [
 
 [dependency-groups]
 dev = [
-    "ramalama[cov-detailed]"
+    "ramalama[cov-detailed]",
+    "typing-extensions>=4.15.0",
 ]
 
 [project.urls]

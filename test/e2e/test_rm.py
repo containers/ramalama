@@ -35,7 +35,13 @@ def test_delete_snapshot_with_multiple_references():
         ctx.check_call(["ramalama", "--store", ctx.storage_dir, "pull", "hf://ggml-org/SmolVLM-256M-Instruct-GGUF"])
         inventory_a = set([x for x in Path(ctx.storage_dir).rglob('*') if x.is_file()])
         ctx.check_call(
-            ["ramalama", "--store", ctx.storage_dir, "pull", "hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0"]
+            [
+                "ramalama",
+                "--store",
+                ctx.storage_dir,
+                "pull",
+                "hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0",
+            ]
         )
         inventory_b = set([x for x in Path(ctx.storage_dir).rglob('*') if x.is_file()])
         ctx.check_call(["ramalama", "--store", ctx.storage_dir, "rm", "hf://ggml-org/SmolVLM-256M-Instruct-GGUF:Q8_0"])

@@ -1,9 +1,14 @@
 import json
 import os
+import urllib.error
 import urllib.request
+from collections.abc import Sequence
+from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from ramalama.common import run_cmd
+from ramalama.arg_types import SourceTargetArgsType
+from ramalama.common import available, run_cmd
 from ramalama.hf_style_repo_base import (
     HFStyleRepoFile,
     HFStyleRepoModel,
@@ -11,6 +16,7 @@ from ramalama.hf_style_repo_base import (
     fetch_checksum_from_api_base,
 )
 from ramalama.logger import logger
+from ramalama.transports.base import Transport
 
 missing_huggingface = """This operation requires huggingface-cli which is not available.
 
@@ -24,7 +30,12 @@ sudo dnf install python3-huggingface-hub
 """
 
 
-def huggingface_token():
+@lru_cache(maxsize=1)
+def has_hf_cli() -> bool:
+    return available("hf") or available("huggingface-cli")
+
+
+def huggingface_token() -> str | None:
     """Return cached Hugging Face token if it exists otherwise None"""
     token_path = os.path.expanduser(os.path.join("~", ".cache", "huggingface", "token"))
     if os.path.exists(token_path):
@@ -33,9 +44,10 @@ def huggingface_token():
                 return tokenfile.read().strip()
         except OSError:
             pass
+    return None
 
 
-def extract_huggingface_checksum(data):
+def extract_huggingface_checksum(data) -> str:
     """Extract SHA-256 checksum from Hugging Face API response."""
     # Extract the SHA-256 checksum from the `oid sha256` line
     for line in data.splitlines():
@@ -44,7 +56,7 @@ def extract_huggingface_checksum(data):
     raise ValueError("SHA-256 checksum not found in the API response.")
 
 
-def fetch_checksum_from_api(organization, file):
+def fetch_checksum_from_api(organization: str, file: str) -> str:
     """Fetch the SHA-256 checksum from the model's metadata API for a given file."""
     checksum_api_url = f"{HuggingfaceRepository.REGISTRY_URL}/{organization}/raw/main/{file}"
     headers = {}
@@ -76,7 +88,7 @@ def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
         return json.loads(repo_manifest)
 
 
-def fetch_repo_files(repo_name: str, revision: str = "main"):
+def fetch_repo_files(repo_name: str, revision: str = "main") -> list:
     """Fetch the list of files in a HuggingFace repository using the Files API with pagination support."""
     token = huggingface_token()
     base_api_url = f"https://huggingface.co/api/models/{repo_name}/tree/{revision}"
@@ -141,7 +153,7 @@ class HuggingfaceCLIFile(HFStyleRepoFile):
 class HuggingfaceRepository(HFStyleRepository):
     REGISTRY_URL = "https://huggingface.co"
 
-    def _fetch_manifest_metadata(self):
+    def _fetch_manifest_metadata(self) -> bool:
         # Repo org/name. Fetch repo manifest to determine model/mmproj file
         self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/{self.name}/resolve/main"
 
@@ -161,14 +173,14 @@ class HuggingfaceRepository(HFStyleRepository):
             # No ggufFile in manifest
             return False
 
-    def _collect_file(self, file_list, file_info):
+    def _collect_file(self, file_list: list[dict], file_info: dict) -> None:
         path = file_info['path']
         oid = file_info.get('oid', '')
         if 'lfs' in file_info and 'oid' in file_info['lfs']:
             oid = file_info['lfs']['oid']
         file_list.append({'filename': path, 'oid': oid})
 
-    def _fetch_safetensors_metadata(self):
+    def _fetch_safetensors_metadata(self) -> bool:
         """Fetch metadata for safetensors models from HuggingFace API."""
         repo_name = f"{self.organization}/{self.name}"
         try:
@@ -178,7 +190,7 @@ class HuggingfaceRepository(HFStyleRepository):
             return False
 
         # Find all safetensors files, config files and index files
-        safetensors_files = []
+        safetensors_files: list[dict] = []
         self.other_files = []
         index_file = None
 
@@ -228,7 +240,7 @@ class HuggingfaceRepository(HFStyleRepository):
 
         return True
 
-    def fetch_metadata(self):
+    def fetch_metadata(self) -> None:
         # Try to fetch GGUF manifest first, then safetensors metadata
         if not self._fetch_manifest_metadata() and not self._fetch_safetensors_metadata():
             raise KeyError("No metadata found")
@@ -239,7 +251,7 @@ class HuggingfaceRepository(HFStyleRepository):
 
 
 class HuggingfaceRepositoryModel(HuggingfaceRepository):
-    def fetch_metadata(self):
+    def fetch_metadata(self) -> None:
         # Model url. organization is <org>/<repo>, name is model file path
         self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/resolve/main"
         self.model_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
@@ -253,47 +265,47 @@ class Huggingface(HFStyleRepoModel):
     REGISTRY_URL = "https://huggingface.co/v2/"
     ACCEPT = "Accept: application/vnd.docker.distribution.manifest.v2+json"
 
-    def __init__(self, model, model_store_path):
+    def __init__(self, model: str, model_store_path: str):
         super().__init__(model, model_store_path)
 
         self.type = "huggingface"
 
-    def get_cli_command(self):
+    def get_cli_command(self) -> Literal["hf"]:
         return "hf"
 
-    def get_login_args(self):
+    def get_login_args(self) -> list[str]:
         """HuggingFace CLI uses 'hf auth login' instead of 'hf login'"""
         return ["auth", "login"]
 
-    def get_logout_args(self):
+    def get_logout_args(self) -> list[str]:
         """HuggingFace CLI uses 'hf auth logout' instead of 'hf logout'"""
         return ["auth", "logout"]
 
-    def get_missing_message(self):
+    def get_missing_message(self) -> str:
         return missing_huggingface
 
-    def get_registry_url(self):
+    def get_registry_url(self) -> str:
         return self.REGISTRY_URL
 
-    def get_accept_header(self):
+    def get_accept_header(self) -> str:
         return self.ACCEPT
 
-    def get_repo_type(self):
+    def get_repo_type(self) -> Literal["huggingface"]:
         return "huggingface"
 
-    def fetch_checksum_from_api(self, organization, file):
+    def fetch_checksum_from_api(self, organization: str, file: str) -> str:
         return fetch_checksum_from_api(organization, file)
 
-    def create_repository(self, name, organization, tag):
+    def create_repository(self, name: str, organization: str, tag: str) -> HFStyleRepository:
         if '/' in organization:
             return HuggingfaceRepositoryModel(name, organization, tag)
         else:
             return HuggingfaceRepository(name, organization, tag)
 
-    def get_cli_download_args(self, directory_path, model):
+    def get_cli_download_args(self, directory_path: str, model: str) -> Sequence[str]:
         raise NotImplementedError("huggingface cli download not available")
 
-    def extract_model_identifiers(self):
+    def extract_model_identifiers(self) -> tuple[str, str, str]:
         model_name, model_tag, model_organization = super().extract_model_identifiers()
         if '/' not in model_organization:
             # if it is a repo then normalize the case insensitive quantization tag
@@ -301,7 +313,7 @@ class Huggingface(HFStyleRepoModel):
                 model_tag = model_tag.upper()
         return model_name, model_tag, model_organization
 
-    def _fetch_snapshot_path(self, cache_dir, namespace, repo):
+    def _fetch_snapshot_path(self, cache_dir: str, namespace: str, repo: str) -> tuple[str, str] | tuple[None, None]:
         cache_path = os.path.join(cache_dir, f'models--{namespace}--{repo}')
         main_ref_path = os.path.join(cache_path, 'refs', 'main')
         if not (os.path.exists(cache_path) and os.path.exists(main_ref_path)):
@@ -311,11 +323,11 @@ class Huggingface(HFStyleRepoModel):
         snapshot_path = os.path.join(cache_path, 'snapshots', snapshot)
         return snapshot_path, cache_path
 
-    def in_existing_cache(self, args, target_path, sha256_checksum):
+    def in_existing_cache(self, args: object, target_path: str, sha256_checksum: str) -> bool:
         return False
 
-    def push(self, _, args):
-        if not self.hf_cli_available:
+    def push(self, source_model: Transport, args: SourceTargetArgsType) -> str:
+        if not has_hf_cli():
             raise NotImplementedError(self.get_missing_message())
         proc = run_cmd(
             [

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from ramalama.arg_types import ChatSubArgs, DefaultArgs
-from ramalama.cli import get_parser
+from ramalama.cli import _rag_args, get_parser
 from ramalama.config import SUPPORTED_ENGINES
 
 try:
@@ -128,3 +128,55 @@ def test_chat_endpoint(chatargs):
 
     for field in ChatSubArgs.__dataclass_fields__:
         assert hasattr(args, field), f"Missing attribute: {field}"
+
+
+def test_chat_runtime_defaults():
+    args = parser.parse_args(["chat"])
+
+    assert hasattr(args, "ignore")
+    assert hasattr(args, "initial_connection")
+    assert hasattr(args, "keepalive")
+    assert hasattr(args, "name")
+    assert hasattr(args, "server_process")
+
+    assert args.ignore is None
+    assert args.initial_connection is False
+    assert args.keepalive is None
+    assert args.name is None
+    assert args.server_process is None
+
+
+def test_run_chat_compat_defaults():
+    args = parser.parse_args(["run", "example/model"])
+
+    assert hasattr(args, "api_key")
+    assert hasattr(args, "list")
+    assert hasattr(args, "initial_connection")
+    assert hasattr(args, "server_process")
+
+    assert args.list is False
+    assert args.initial_connection is False
+    assert args.server_process is None
+
+
+def test_rag_args_transformation(monkeypatch):
+    args = parser.parse_args(["run", "--rag", "oci://my-rag", "--port", "8081", "example/model"])
+
+    observed_exclude: dict[str, list[str] | None] = {"value": None}
+
+    def fake_compute_serving_port(_args, quiet=False, exclude=None):
+        observed_exclude["value"] = exclude
+        return "9000"
+
+    monkeypatch.setattr("ramalama.cli.compute_serving_port", fake_compute_serving_port)
+
+    rag_args = _rag_args(args)
+
+    assert rag_args.subcommand == "run --rag"
+    assert rag_args.MODEL == "oci://my-rag"
+    assert rag_args.model_args is args
+    assert rag_args.model_port == "9000"
+    assert args.port == "9000"
+    assert args.name is None
+    assert rag_args.generate == ""
+    assert observed_exclude["value"] == ["8081"]

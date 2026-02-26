@@ -1,3 +1,4 @@
+from argparse import Namespace
 from types import SimpleNamespace
 from unittest import mock
 
@@ -106,18 +107,11 @@ def test_run_cli_api_transport_does_not_call_pull(monkeypatch):
     transport.pull = mock.Mock()
     transport.run = mock.Mock()
 
-    args = SimpleNamespace(
-        MODEL="openai://gpt-4o-mini",
-        rag=None,
-        container=True,
-        engine="podman",
-        api="none",
-        pull="always",
-        dryrun=False,
-        quiet=True,
-        url=None,
-        api_key=None,
-    )
+    _, args = cli_module.parse_args_from_cmd(["run", "openai://gpt-4o-mini"])
+    args = Namespace(**vars(args))
+    args.quiet = True
+    args.url = None
+    args.api_key = None
 
     cli_module.run_cli(args)
 

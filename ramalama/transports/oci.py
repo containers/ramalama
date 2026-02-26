@@ -1,3 +1,4 @@
+import argparse
 import copy
 import json
 import os
@@ -5,9 +6,17 @@ import shutil
 import subprocess
 import tempfile
 from textwrap import dedent
-from typing import Tuple
+from typing import cast
 
 import ramalama.annotations as annotations
+from ramalama.arg_types import (
+    ConvertArgsType,
+    LoginArgsType,
+    ModelArgsType,
+    RegistryArgsType,
+    RmArgsType,
+    SourceTargetArgsType,
+)
 from ramalama.common import MNT_DIR, engine_version, exec_cmd, perror, run_cmd, set_accel_env_vars
 from ramalama.engine import BuildEngine, Engine, dry_run
 from ramalama.oci_tools import engine_supports_manifest_attributes
@@ -22,7 +31,7 @@ ociimage_car = "org.containers.type=ai.image.model.car"
 class OCI(Transport):
     type = "OCI"
 
-    def __init__(self, model: str, model_store_path: str, conman: str, ignore_stderr: bool = False):
+    def __init__(self, model: str, model_store_path: str, conman: str, ignore_stderr: bool = False) -> None:
         # Must fix the tag before the base class parses the name
         model_name = model.split('/')[-1]
         if ":" not in model_name:
@@ -34,7 +43,7 @@ class OCI(Transport):
         self.conman = conman
         self.ignore_stderr = ignore_stderr
 
-    def login(self, args):
+    def login(self, args: LoginArgsType) -> None:
         conman_args = [self.conman, "login"]
         if str(args.tlsverify).lower() == "false":
             conman_args.extend([f"--tls-verify={args.tlsverify}"])
@@ -50,33 +59,35 @@ class OCI(Transport):
             conman_args.append(args.REGISTRY.removeprefix(prefix))
         return exec_cmd(conman_args)
 
-    def logout(self, args):
+    def logout(self, args: RegistryArgsType) -> None:
         conman_args = [self.conman, "logout"]
         conman_args.append(self.model)
         return exec_cmd(conman_args)
 
-    def _convert_to_gguf(self, outdir, source_model, args):
+    def _convert_to_gguf(self, outdir: str | os.PathLike[str], source_model: Transport, args: ConvertArgsType) -> str:
         with tempfile.TemporaryDirectory(prefix="RamaLama_convert_src_") as srcdir:
             ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
+            if ref_file is None:
+                raise Exception("Could not create ref file in temporary directory.")
             for file in ref_file.files:
                 blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
                 shutil.copyfile(blob_file_path, os.path.join(srcdir, file.name))
             engine = Engine(args)
             engine.add_volume(srcdir, "/model")
-            engine.add_volume(outdir.name, "/output", opts="rw")
-            args.model = source_model
+            engine.add_volume(os.fspath(outdir), "/output", opts="rw")
+            setattr(args, "model", source_model)
             engine.add_args(args.rag_image)
             # import here to avoid circular references
             from ramalama.command.factory import assemble_command
 
-            engine.add_args(*assemble_command(args))
+            engine.add_args(*assemble_command(cast(argparse.Namespace, args)))
             if args.dryrun:
                 engine.dryrun()
             else:
                 engine.run()
-        return self._quantize(source_model, args, outdir.name)
+        return self._quantize(source_model, args, os.fspath(outdir))
 
-    def _quantize(self, source_model, args, model_dir):
+    def _quantize(self, source_model: Transport, args: ConvertArgsType, model_dir: str) -> str:
         engine = Engine(args)
         engine.add_volume(model_dir, "/model", opts="rw")
         engine.add_args(args.image)
@@ -85,14 +96,14 @@ class OCI(Transport):
 
         args = copy.copy(args)
         args.subcommand = "quantize"
-        engine.add_args(*assemble_command(args))
+        engine.add_args(*assemble_command(cast(argparse.Namespace, args)))
         if args.dryrun:
             engine.dryrun()
         else:
             engine.run()
         return f"{source_model.model_name}-{args.gguf}.gguf"
 
-    def build_image(self, cfile, contextdir, args):
+    def build_image(self, cfile: str, contextdir: str, args: ConvertArgsType | SourceTargetArgsType) -> str:
         if args.type == "car":
             parent = args.carimage
             label = ociimage_car
@@ -110,14 +121,14 @@ class OCI(Transport):
         engine = BuildEngine(args)
         return engine.build_containerfile(full_cfile, contextdir)
 
-    def _gguf_containerfile(self, model_file_name, args):
+    def _gguf_containerfile(self, model_file_name: str, args: ConvertArgsType | SourceTargetArgsType) -> str:
         return dedent(f"""
             FROM {args.carimage} AS build
             COPY {model_file_name} /data/models/{model_file_name}
             RUN ln -s {model_file_name} /data/models/model.file
             """).strip()
 
-    def _generate_containerfile(self, source_model, args):
+    def _generate_containerfile(self, source_model: Transport, args: ConvertArgsType | SourceTargetArgsType) -> str:
         # Generate the containerfile content
         # Keep this in sync with docs/ramalama-oci.5.md !
         is_car = args.type == "car"
@@ -129,7 +140,8 @@ class OCI(Transport):
         content = [f"FROM {args.carimage} AS build"]
         model_name = source_model.model_name
         ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
-
+        if ref_file is None:
+            raise Exception("Could not create ref file in temporary directory.")
         for file in ref_file.files:
             blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
             blob_file_path = os.path.relpath(blob_file_path, source_model.model_store.blobs_directory)
@@ -139,13 +151,14 @@ class OCI(Transport):
 
         return "\n".join(content)
 
-    def build(self, source_model, args):
+    def build(self, source_model: Transport, args: ConvertArgsType | SourceTargetArgsType) -> str:
         gguf_dir = None
         if getattr(args, "gguf", None):
             perror("Converting to gguf ...")
             gguf_dir = tempfile.TemporaryDirectory(prefix="RamaLama_convert_")
             contextdir = gguf_dir.name
-            model_file_name = self._convert_to_gguf(gguf_dir, source_model, args)
+            convert_args = cast(ConvertArgsType, args)
+            model_file_name = self._convert_to_gguf(contextdir, source_model, convert_args)
             content = self._gguf_containerfile(model_file_name, args)
         else:
             # use blobs directory as context since paths in Containerfile are relative to it
@@ -157,7 +170,7 @@ class OCI(Transport):
             if gguf_dir:
                 gguf_dir.cleanup()
 
-    def tag(self, imageid, target, args):
+    def tag(self, imageid: str, target: str, args: ConvertArgsType | SourceTargetArgsType) -> None:
         # Tag imageid with target
         cmd_args = [
             self.conman,
@@ -170,7 +183,7 @@ class OCI(Transport):
         else:
             run_cmd(cmd_args)
 
-    def _rm_artifact(self, ignore):
+    def _rm_artifact(self, ignore: bool) -> None:
         rm_cmd = [
             self.conman,
             "artifact",
@@ -185,7 +198,7 @@ class OCI(Transport):
             ignore_all=True,
         )
 
-    def _add_artifact(self, create, name, path, file_name) -> None:
+    def _add_artifact(self, create: bool, name: str, path: str, file_name: str) -> None:
         cmd = [
             self.conman,
             "artifact",
@@ -206,9 +219,13 @@ class OCI(Transport):
             ignore_stderr=True,
         )
 
-    def _create_artifact(self, source_model, target, args) -> None:
+    def _create_artifact(
+        self, source_model: Transport, target: str, args: ConvertArgsType | SourceTargetArgsType
+    ) -> None:
         model_name = source_model.model_name
         ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
+        if ref_file is None:
+            raise Exception("Could not create ref file in temporary directory.")
         name = ref_file.model_files[0].name if ref_file.model_files else model_name
         create = True
         for file in ref_file.files:
@@ -216,7 +233,9 @@ class OCI(Transport):
             self._add_artifact(create, name, blob_file_path, file.name)
             create = False
 
-    def _create_manifest_without_attributes(self, target, imageid, args):
+    def _create_manifest_without_attributes(
+        self, target: str, imageid: str, args: ConvertArgsType | SourceTargetArgsType
+    ) -> None:
         # Create manifest list for target with imageid
         cmd_args = [
             self.conman,
@@ -230,7 +249,7 @@ class OCI(Transport):
         else:
             run_cmd(cmd_args)
 
-    def _create_manifest(self, target, imageid, args):
+    def _create_manifest(self, target: str, imageid: str, args: ConvertArgsType | SourceTargetArgsType) -> None:
         if not engine_supports_manifest_attributes(args.engine):
             return self._create_manifest_without_attributes(target, imageid, args)
 
@@ -266,7 +285,7 @@ class OCI(Transport):
         else:
             run_cmd(cmd_args, stdout=None)
 
-    def _convert(self, source_model, args):
+    def _convert(self, source_model: Transport, args: ConvertArgsType | SourceTargetArgsType) -> None:
         set_accel_env_vars()
         perror(
             f"Converting {source_model.model_store.model_name} ({source_model.model_store.model_type}) to "
@@ -298,10 +317,10 @@ Tagging build instead
                 """)
             self.tag(imageid, self.model, args)
 
-    def convert(self, source_model, args):
+    def convert(self, source_model: Transport, args: ConvertArgsType) -> None:
         self._convert(source_model, args)
 
-    def push(self, source_model, args):
+    def push(self, source_model: Transport, args: SourceTargetArgsType) -> None:
         target = self.model
         source = source_model.model
         conman_args = [self.conman, "push"]
@@ -311,10 +330,12 @@ Tagging build instead
             conman_args.insert(1, "artifact")
 
         perror(f"Pushing {type} {self.model} ...")
-        if args.authfile:
-            conman_args.extend([f"--authfile={args.authfile}"])
-        if str(args.tlsverify).lower() == "false":
-            conman_args.extend([f"--tls-verify={args.tlsverify}"])
+        authfile = getattr(args, "authfile", None)
+        if authfile:
+            conman_args.extend([f"--authfile={authfile}"])
+        tlsverify = getattr(args, "tlsverify", True)
+        if str(tlsverify).lower() == "false":
+            conman_args.extend([f"--tls-verify={tlsverify}"])
         conman_args.extend([target])
         if source != target:
             self._convert(source_model, args)
@@ -330,7 +351,7 @@ Tagging build instead
                 perror(f"Failed to push OCI {target} : {e}")
                 raise e
 
-    def pull(self, args):
+    def pull(self, args: ModelArgsType | SourceTargetArgsType | ConvertArgsType) -> None:
         if not args.engine:
             raise NotImplementedError("OCI images require a container engine like Podman or Docker")
 
@@ -340,14 +361,16 @@ Tagging build instead
         else:
             # Write message to stderr
             perror(f"Downloading {self.model} ...")
-        if str(args.tlsverify).lower() == "false":
-            conman_args.extend([f"--tls-verify={args.tlsverify}"])
-        if args.authfile:
-            conman_args.extend([f"--authfile={args.authfile}"])
+        tlsverify = getattr(args, "tlsverify", True)
+        if str(tlsverify).lower() == "false":
+            conman_args.extend([f"--tls-verify={tlsverify}"])
+        authfile = getattr(args, "authfile", None)
+        if authfile:
+            conman_args.extend([f"--authfile={authfile}"])
         conman_args.extend([self.model])
         run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
 
-    def remove(self, args) -> bool:
+    def remove(self, args: RmArgsType) -> bool:
         if self.conman is None:
             raise NotImplementedError("OCI Images require a container engine")
 
@@ -388,7 +411,7 @@ Tagging build instead
         get_field: str = "",
         as_json: bool = False,
         dryrun: bool = False,
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         out = super().inspect(show_all, show_all_metadata, get_field, dryrun, as_json)
         if as_json:
             out_data = json.loads(out)
@@ -451,7 +474,7 @@ Tagging build instead
             return False
         return oci_type == "Artifact"
 
-    def mount_cmd(self):
+    def mount_cmd(self) -> str:
         if self.artifact:
             return f"--mount=type=artifact,src={self.model},destination={MNT_DIR}"
         else:

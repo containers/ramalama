@@ -235,3 +235,27 @@ def test_post_parse_setup_model_input(
     assert input_args.UNRESOLVED_MODEL == expected_unresolved
     assert input_args.MODEL == expected_resolved
     assert input_args.model == input_args.MODEL
+
+
+def test_post_parse_setup_splits_runtime_args():
+    input_args = Namespace(runtime_args="--foo 1 --bar two", debug=False)
+
+    post_parse_setup(input_args)
+
+    assert input_args.runtime_args == ["--foo", "1", "--bar", "two"]
+
+
+def test_post_parse_setup_mlx_forces_nocontainer():
+    input_args = Namespace(runtime="mlx", container=True, debug=False)
+
+    post_parse_setup(input_args)
+
+    assert input_args.container is False
+
+
+def test_post_parse_setup_normalizes_pull_for_docker():
+    input_args = Namespace(pull="newer", engine="docker", debug=False)
+
+    post_parse_setup(input_args)
+
+    assert input_args.pull == "always"

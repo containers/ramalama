@@ -11,7 +11,7 @@ from ramalama.path_utils import create_file_link
 from ramalama.transports.base import Transport
 
 
-def in_existing_cache(organization, model_name, model_tag):
+def in_existing_cache(organization: str, model_name: str, model_tag: str) -> str | None:
     if not available("ollama"):
         return None
     default_ollama_caches = [
@@ -49,7 +49,7 @@ class OllamaRepository:
         self.blob_url = f"{self.registry_head}/blobs"
         self.headers = {"Accept": OllamaRepository.ACCEPT}
 
-    def fetch_manifest(self, tag: str):
+    def fetch_manifest(self, tag: str) -> dict:
         try:
             return fetch_manifest_data(self.registry_head, tag, OllamaRepository.ACCEPT)
         except urllib.error.HTTPError as e:
@@ -59,7 +59,9 @@ class OllamaRepository:
             err = str(e).strip("'")
             raise KeyError(f"failed to fetch manifest: {err}")
 
-    def get_file_list(self, tag, cached_files, is_model_in_ollama_cache, manifest=None) -> list[SnapshotFile]:
+    def get_file_list(
+        self, tag: str, cached_files: list[str], is_model_in_ollama_cache: bool, manifest: dict | None = None
+    ) -> list[SnapshotFile]:
         if manifest is None:
             manifest = self.fetch_manifest(tag)
 
@@ -77,14 +79,14 @@ class OllamaRepository:
 
         return files
 
-    def get_model_hash(self, manifest) -> str:
+    def get_model_hash(self, manifest: dict) -> str:
         for layer in manifest["layers"]:
             layer_digest = layer["digest"]
             if layer["mediaType"] == "application/vnd.ollama.image.model":
                 return layer_digest
         return ""
 
-    def model_file(self, tag, manifest=None) -> Optional[SnapshotFile]:
+    def model_file(self, tag: str, manifest: dict | None = None) -> Optional[SnapshotFile]:
         if manifest is None:
             manifest = self.fetch_manifest(tag)
 
@@ -102,7 +104,7 @@ class OllamaRepository:
             should_verify_checksum=True,
         )
 
-    def config_file(self, tag, manifest=None) -> SnapshotFile:
+    def config_file(self, tag: str, manifest=None) -> SnapshotFile:
         if manifest is None:
             manifest = self.fetch_manifest(tag)
 
@@ -116,14 +118,14 @@ class OllamaRepository:
             name=OllamaRepository.FILE_NAME_CONFIG,
         )
 
-    def get_chat_template_hash(self, manifest) -> str:
+    def get_chat_template_hash(self, manifest: dict) -> str:
         for layer in manifest["layers"]:
             layer_digest = layer["digest"]
             if layer["mediaType"] == "application/vnd.ollama.image.template":
                 return layer_digest
         return ""
 
-    def chat_template_file(self, tag, manifest=None) -> Optional[SnapshotFile]:
+    def chat_template_file(self, tag: str, manifest=None) -> Optional[SnapshotFile]:
         if manifest is None:
             manifest = self.fetch_manifest(tag)
 
@@ -141,7 +143,7 @@ class OllamaRepository:
 
 
 class Ollama(Transport):
-    def __init__(self, model, model_store_path) -> None:
+    def __init__(self, model: str, model_store_path: str) -> None:
         super().__init__(model, model_store_path)
 
         self.type = "Ollama"
@@ -193,7 +195,7 @@ class Ollama(Transport):
         self.model_store.new_snapshot(tag, model_hash, files, verify=getattr(args, "verify", True))
 
         # If a model has been downloaded via ollama cli, only create link in the snapshots directory
-        if is_model_in_ollama_cache:
+        if ollama_cache_path is not None:
             if not args.quiet:
                 perror(f"Using cached ollama://{name}{tag} ...")
             snapshot_model_path = self.model_store.get_snapshot_file_path(model_hash, self.model_store.model_name)

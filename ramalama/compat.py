@@ -22,16 +22,30 @@ if sys.version_info >= (3, 12):
 else:
     # Python 3.10 doesn't have NamedTemporaryFile delete_on_close
     @contextmanager
-    def NamedTemporaryFile(*args, **kwargs):  # type: ignore[no-redef]
-        if 'delete_on_close' in kwargs:
-            delete_on_close = kwargs.pop('delete_on_close')
-        else:
-            delete_on_close = True
-        if 'delete' in kwargs:
-            delete = kwargs.pop('delete')
-        else:
-            delete = True
-        f = _NamedTemporaryFile(*args, **kwargs, delete=delete and delete_on_close)
+    def NamedTemporaryFile(
+        mode: str = "w+b",
+        buffering: int = -1,
+        encoding: str | None = None,
+        newline: str | None = None,
+        suffix: str | None = None,
+        prefix: str | None = None,
+        dir: str | os.PathLike[str] | None = None,
+        delete: bool = True,
+        *,
+        errors: str | None = None,
+        delete_on_close: bool = True,
+    ):
+        f = _NamedTemporaryFile(
+            mode=mode,
+            buffering=buffering,
+            encoding=encoding,
+            newline=newline,
+            suffix=suffix,
+            prefix=prefix,
+            dir=dir,
+            delete=delete and delete_on_close,
+            errors=errors,
+        )
         try:
             yield f
         finally:

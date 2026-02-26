@@ -17,7 +17,7 @@ class Stack:
 
     type = "Stack"
 
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         self.args = args
         self.name = getattr(args, "name", None) or genname()
         if not os.path.basename(args.engine).startswith("podman"):
@@ -29,11 +29,11 @@ class Stack:
         self.stack_image = tagged_image(get_config().stack_image)
         self.labels = ""
 
-    def add_label(self, label):
+    def add_label(self, label: str) -> None:
         cleanlabel = label.replace("=", ": ", 1)
         self.labels = f"{self.labels}\n        {cleanlabel}"
 
-    def _gen_resources(self):
+    def _gen_resources(self) -> str:
         if check_nvidia() == "cuda":
             return """
         resources:
@@ -41,7 +41,7 @@ class Stack:
              'nvidia.com/gpu=all': 1"""
         return ""
 
-    def _gen_volume_mounts(self):
+    def _gen_volume_mounts(self) -> str:
         if self.model_type == "OCI":
             volume_mounts = """
         - mountPath: /mnt/models
@@ -59,7 +59,7 @@ class Stack:
 
         return volume_mounts
 
-    def _gen_volumes(self):
+    def _gen_volumes(self) -> str:
         host_model_path = normalize_host_path_for_container(self.model._get_entry_model_path(False, False, False))
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
@@ -75,7 +75,7 @@ class Stack:
         name: dri"""
         return volumes
 
-    def _gen_server_env(self):
+    def _gen_server_env(self) -> str:
         server_env = ""
         if hasattr(self.args, "env"):
             for env in self.args.env:
@@ -90,7 +90,7 @@ class Stack:
           value: {v}"""
         return server_env
 
-    def _gen_security_context(self):
+    def _gen_security_context(self) -> str:
         return """
         securityContext:
           allowPrivilegeEscalation: false
@@ -111,7 +111,7 @@ class Stack:
           seLinuxOptions:
             type: spc_t"""
 
-    def _gen_llama_args(self):
+    def _gen_llama_args(self) -> str:
         return "\n        - ".join(
             [
                 'llama-server',
@@ -136,7 +136,7 @@ class Stack:
             ]
         )
 
-    def generate(self):
+    def generate(self) -> str:
         add_labels(self.args, self.add_label)
         llama_args = self._gen_llama_args()
         resources = self._gen_resources()
@@ -192,7 +192,7 @@ spec:
       volumes:{volumes}"""
         return self.stack_yaml
 
-    def serve(self):
+    def serve(self) -> None:
         self.args.port = compute_serving_port(self.args, quiet=self.args.generate)
         yaml = self.generate()
         if self.args.dryrun:
@@ -233,7 +233,7 @@ spec:
             exec_args.append(yaml_file.name)
             exec_cmd(exec_args)
 
-    def stop(self):
+    def stop(self) -> None:
         with NamedTemporaryFile(
             mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
         ) as yaml_file:

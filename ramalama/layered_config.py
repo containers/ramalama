@@ -1,6 +1,6 @@
 from dataclasses import MISSING, fields, is_dataclass
 from functools import reduce
-from typing import Any, Type, get_type_hints
+from typing import Any, get_type_hints
 
 
 def deep_merge(left: dict, right: dict) -> dict:
@@ -23,14 +23,14 @@ def extract_defaults(cls) -> dict[str, Any]:
     return result
 
 
-def build_subconfigs(values: dict, obj: Type) -> dict:
+def build_subconfigs(values: dict, obj: type) -> dict:
     """Facilitates nesting configs by instantiating the child typed object from a dict
 
     NOTE: This implementation does not automatically coerce more complicated config structures
     involving types like (ConfigObj | None), or list[ConfigObj], etc...
     """
 
-    dtypes: dict[str, Type] = get_type_hints(obj)
+    dtypes: dict[str, type] = get_type_hints(obj)
     for k, v in values.items():
         if isinstance(v, dict) and (subconfig_type := dtypes.get(k)) and is_dataclass(subconfig_type):
             values[k] = subconfig_type(**build_subconfigs(v, dtypes[k]))

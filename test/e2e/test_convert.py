@@ -37,32 +37,43 @@ def test_convert_custom_gguf_config():
     "in_model, out_model, extra_params, expected",
     [
         pytest.param(
-            Path("aimodel"), "foobar", None,
+            Path("aimodel"),
+            "foobar",
+            None,
             "oci://localhost/foobar:latest",
             id="{workspace_uri}/aimodel -> foobar",
         ),
         pytest.param(
-            Path("aimodel"), "oci://foobar", None,
+            Path("aimodel"),
+            "oci://foobar",
+            None,
             "oci://localhost/foobar:latest",
             id="{workspace_uri}/aimodel -> oci://foobar",
         ),
         pytest.param(
-            "tiny", "oci://quay.io/ramalama/tiny", None,
+            "tiny",
+            "oci://quay.io/ramalama/tiny",
+            None,
             "oci://quay.io/ramalama/tiny:latest",
             id="tiny -> oci://quay.io/ramalama/tiny",
         ),
         pytest.param(
-            "ollama://tinyllama", "oci://quay.io/ramalama/tinyllama", None,
+            "ollama://tinyllama",
+            "oci://quay.io/ramalama/tinyllama",
+            None,
             "oci://quay.io/ramalama/tinyllama:latest",
             id="ollama://tinyllama -> oci://quay.io/ramalama/tinyllama",
         ),
         pytest.param(
-            "hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0", "oci://quay.io/ramalama/tinyllama", None,
+            "hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+            "oci://quay.io/ramalama/tinyllama",
+            None,
             "oci://quay.io/ramalama/tinyllama:latest",
             id="hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 -> oci://quay.io/ramalama/tinyllama",
         ),
         pytest.param(
-            "hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0", "oci://quay.io/ramalama/tiny-q4-0",
+            "hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+            "oci://quay.io/ramalama/tiny-q4-0",
             ["--gguf", "Q4_0"],
             "oci://quay.io/ramalama/tiny-q4-0:latest",
             id="hf://TinyLlama/TinyLlama-1.1B-Chat-v1.0 -> oci://quay.io/ramalama/tiny-q4-0 (--gguf Q4_0)",
@@ -107,37 +118,52 @@ def test_convert(in_model, out_model, extra_params, expected):
     "in_model, out_model, expected_exit_code, expected",
     [
         pytest.param(
-            None, None, 2, ".*ramalama convert: error: the following arguments are required: SOURCE, TARGET",
+            None,
+            None,
+            2,
+            ".*ramalama convert: error: the following arguments are required: SOURCE, TARGET",
             id="raise error if no models",
-            marks=[skip_if_no_container]
+            marks=[skip_if_no_container],
         ),
         pytest.param(
-            "tiny", None, 2, ".*ramalama convert: error: the following arguments are required: TARGET",
+            "tiny",
+            None,
+            2,
+            ".*ramalama convert: error: the following arguments are required: TARGET",
             id="raise error if target model is missing",
-            marks=[skip_if_no_container]
+            marks=[skip_if_no_container],
         ),
         pytest.param(
-            "bogus", "foobar", 22, ".*Error: Manifest for bogus:latest was not found in the Ollama registry",
+            "bogus",
+            "foobar",
+            22,
+            ".*Error: Manifest for bogus:latest was not found in the Ollama registry",
             id="raise error if model doesn't exist",
-            marks=[skip_if_no_container]
+            marks=[skip_if_no_container],
         ),
         pytest.param(
-            "oci://quay.io/ramalama/smollm:135m", "oci://foobar", 22,
+            "oci://quay.io/ramalama/smollm:135m",
+            "oci://foobar",
+            22,
             "Error: converting from an OCI based image oci://quay.io/ramalama/smollm:135m is not supported",
             id="raise error when models are oci (not supported)",
-            marks=[skip_if_no_container]
+            marks=[skip_if_no_container],
         ),
         pytest.param(
-            "file://{workspace_dir}/aimodel", "ollama://foobar", 22,
+            "file://{workspace_dir}/aimodel",
+            "ollama://foobar",
+            22,
             "Error: ollama://foobar invalid: Only OCI Model types supported",
             id="raise error when target model is ollama and source mode is not OCI",
-            marks=[skip_if_no_container]
+            marks=[skip_if_no_container],
         ),
         pytest.param(
-            "tiny", "quay.io/ramalama/foobar", 22,
+            "tiny",
+            "quay.io/ramalama/foobar",
+            22,
             "Error: convert command cannot be run with the --nocontainer option.",
             id="raise error when --nocontainer flag",
-            marks=[skip_if_container]
+            marks=[skip_if_container],
         ),
     ],
 )

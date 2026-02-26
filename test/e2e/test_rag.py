@@ -30,38 +30,43 @@ WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
 @pytest.mark.parametrize(
     "file, params, expected, expected_regex",
     [
+        pytest.param(HTTP_FILE, [], False, ".*--network none", id="check --network is not set by default"),
+        pytest.param(HTTP_FILE, [], True, f".*doc2rag --format qdrant /output {HTTP_FILE}", id="check with http file"),
         pytest.param(
-            HTTP_FILE, [], False, ".*--network none",
-            id="check --network is not set by default"
+            HTTP_FILE,
+            ["--format", "json"],
+            True,
+            f".*doc2rag --format json /output {HTTP_FILE}",
+            id="check with http file + json format",
         ),
         pytest.param(
-            HTTP_FILE, [], True, f".*doc2rag --format qdrant /output {HTTP_FILE}",
-            id="check with http file"
+            HTTP_FILE,
+            ["--format", "milvus"],
+            True,
+            f".*doc2rag --format milvus /output {HTTP_FILE}",
+            id="check with http file + milvus format",
+        ),
+        pytest.param(HTTP_FILE, [], False, ".*/docs.*", id="check no /docs when no local files"),
+        pytest.param(
+            Path("README.md"),
+            [],
+            True,
+            ".*-v \"?{workspace_dir}/README.md:/docs/README.md:ro\"?",
+            id="check with local file",
         ),
         pytest.param(
-            HTTP_FILE, ["--format", "json"], True, f".*doc2rag --format json /output {HTTP_FILE}",
-            id="check with http file + json format"
+            Path("README.md"),
+            [],
+            True,
+            ".*doc2rag --format qdrant /output /docs",
+            id="check doc2rag existence with local file",
         ),
         pytest.param(
-            HTTP_FILE, ["--format", "milvus"], True, f".*doc2rag --format milvus /output {HTTP_FILE}",
-            id="check with http file + milvus format"
-        ),
-        pytest.param(
-            HTTP_FILE, [], False, ".*/docs.*",
-            id="check no /docs when no local files"
-        ),
-        pytest.param(
-            Path("README.md"), [], True, ".*-v \"?{workspace_dir}/README.md:/docs/README.md:ro\"?",
-            id="check with local file"
-        ),
-        pytest.param(
-            Path("README.md"), [], True, ".*doc2rag --format qdrant /output /docs",
-            id="check doc2rag existence with local file"
-        ),
-        pytest.param(
-            Path("README.md"), ["--format", "markdown", "--ocr"], True,
+            Path("README.md"),
+            ["--format", "markdown", "--ocr"],
+            True,
             ".*doc2rag --format markdown --ocr /output /docs",
-            id="check --ocr flag with local file"
+            id="check --ocr flag with local file",
         ),
     ],
 )
@@ -111,7 +116,7 @@ def test_rag_dry_run_with_file_uri(scheme, relative_path):
         result = ctx.check_output(RAG_DRY_RUN + [file_uri, RAG_MODEL])
 
         assert re.search(
-            fr".*-v \"?{normalize_host_path_for_container(Path(ctx.workspace_dir, 'README.md'))}\"?:/docs/README.md:ro",
+            rf".*-v \"?{normalize_host_path_for_container(Path(ctx.workspace_dir, 'README.md'))}\"?:/docs/README.md:ro",
             result,
         )
 
@@ -127,7 +132,7 @@ def test_rag_dry_run_with_file_network_uri():
 
         result = ctx.check_output(RAG_DRY_RUN + [file_uri, RAG_MODEL])
         assert re.search(
-            fr".*-v \"?{normalize_host_path_for_container(file_path)}\"?:/docs/README.md:ro",
+            rf".*-v \"?{normalize_host_path_for_container(file_path)}\"?:/docs/README.md:ro",
             result,
         )
 
@@ -161,7 +166,7 @@ def test_rag_dry_run_pull_policy(container_engine):
 
         result = ctx.check_output(RAG_DRY_RUN + [str(file_path), RAG_MODEL])
         policy = "always" if container_engine == "docker" else "newer"
-        assert re.search(fr".*--pull {policy}", result)
+        assert re.search(rf".*--pull {policy}", result)
 
 
 @pytest.mark.e2e
@@ -172,7 +177,7 @@ def test_rag_error_when_image_has_invalid_format():
             ctx.check_output(RAG_DRY_RUN + ["README.md", RAG_MODEL.upper()], stderr=STDOUT)
         assert exc_info.value.returncode == 22
         assert re.search(
-            fr".*Error: invalid reference format: repository name '{RAG_MODEL.upper()}' must be lowercase",
+            rf".*Error: invalid reference format: repository name '{RAG_MODEL.upper()}' must be lowercase",
             exc_info.value.output.decode("utf-8"),
         )
 
@@ -194,33 +199,37 @@ def test_rag_error_when_file_is_missing():
     "model, params, expected, expected_regex",
     [
         pytest.param(
-            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*llama-server --host [\w\.]+ --port 8081",
-            id="check llama-server"
+            OLLAMA_MODEL,
+            ["--rag", RAG_MODEL],
+            True,
+            r".*llama-server --host [\w\.]+ --port 8081",
+            id="check llama-server",
         ),
+        pytest.param(OLLAMA_MODEL, ["--rag", RAG_MODEL], True, ".*quay.io/.*-rag", id="check rag image"),
         pytest.param(
-            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, ".*quay.io/.*-rag",
-            id="check rag image"
-        ),
-        pytest.param(
-            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, ".*rag_framework serve --port 8080",
-            id="check rag_framework"
-        ),
-        pytest.param(
-            OLLAMA_MODEL, ["--rag", RAG_MODEL], True,
-            ".*--mount=type=image,source=quay.io/ramalama/myrag:1.2,destination=/rag,rw=true",
-            marks=skip_if_docker,
-            id="check mount"
-        ),
-        pytest.param(
-            OLLAMA_MODEL, ["--image", "quay.io/ramalama/bogus", "--rag", RAG_MODEL], False,
-            ".*quay.io/ramalama/bogus-rag.*",
-            id="check --image flag is ignored"
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, ".*rag_framework serve --port 8080", id="check rag_framework"
         ),
         pytest.param(
             OLLAMA_MODEL,
-            ["--rag", RAG_MODEL, "--rag-image", "quay.io/ramalama/rag-image:latest"],True,
+            ["--rag", RAG_MODEL],
+            True,
+            ".*--mount=type=image,source=quay.io/ramalama/myrag:1.2,destination=/rag,rw=true",
+            marks=skip_if_docker,
+            id="check mount",
+        ),
+        pytest.param(
+            OLLAMA_MODEL,
+            ["--image", "quay.io/ramalama/bogus", "--rag", RAG_MODEL],
+            False,
+            ".*quay.io/ramalama/bogus-rag.*",
+            id="check --image flag is ignored",
+        ),
+        pytest.param(
+            OLLAMA_MODEL,
+            ["--rag", RAG_MODEL, "--rag-image", "quay.io/ramalama/rag-image:latest"],
+            True,
             ".*quay.io/ramalama/rag-image:latest.*",
-            id="check --rag-image overrides --rag"
+            id="check --rag-image overrides --rag",
         ),
     ],
 )
@@ -247,7 +256,7 @@ def test_run_dry_run_with_local_folder():
         rag_path.mkdir()
         result = ctx.check_output(["ramalama", "--dryrun", "run", "--rag", str(rag_path), OLLAMA_MODEL])
         assert re.search(
-            fr".*--mount=type=bind,source={normalize_host_path_for_container(rag_path)},destination=/rag/vector.db.*",
+            rf".*--mount=type=bind,source={normalize_host_path_for_container(rag_path)},destination=/rag/vector.db.*",
             result,
         )
 
@@ -261,7 +270,7 @@ def test_run_dry_run_pull_policy(container_engine):
 
         result = ctx.check_output(["ramalama", "--dryrun", "run", "--rag", str(rag_path), OLLAMA_MODEL])
         policy = "always" if container_engine == "docker" else "newer"
-        assert re.search(fr".*--pull {policy}", result)
+        assert re.search(rf".*--pull {policy}", result)
 
 
 @pytest.mark.e2e
@@ -271,16 +280,14 @@ def test_run_dry_run_pull_policy(container_engine):
 def test_rag(container_engine):
     with RamalamaExecWorkspace() as ctx:
         (Path(ctx.workspace_dir) / "README.md").touch()
-        ctx.check_call(
-            [
-                "ramalama",
-                "rag",
-                "README.md",
-                "https://github.com/containers/ramalama/blob/main/README.md",
-                "https://github.com/containers/podman/blob/main/README.md",
-                RAG_MODEL,
-            ]
-        )
+        ctx.check_call([
+            "ramalama",
+            "rag",
+            "README.md",
+            "https://github.com/containers/ramalama/blob/main/README.md",
+            "https://github.com/containers/podman/blob/main/README.md",
+            RAG_MODEL,
+        ])
         ctx.check_call([container_engine, "rmi", RAG_MODEL])
 
 
