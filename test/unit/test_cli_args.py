@@ -1,3 +1,4 @@
+import string
 import sys
 from dataclasses import fields
 from typing import get_args
@@ -120,6 +121,7 @@ def test_default_endpoint(chatargs):
             st.none(),
             st.floats(min_value=0, allow_nan=False, allow_infinity=False).map(lambda v: 0.0 if v == 0 else v),
         ),
+        ARGS=st.lists(st.text(alphabet=string.ascii_letters)),
     )
 )
 def test_chat_endpoint(chatargs):
