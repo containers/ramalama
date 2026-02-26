@@ -1219,6 +1219,12 @@ def chat_run_options(parser):
         metavar="N",
         help="automatically summarize conversation history after N messages to prevent context growth (0=disabled)",
     )
+    parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="continue to interactive chat mode after processing stdin or prompt arguments",
+    )
 
 
 def _chat_cli(args):

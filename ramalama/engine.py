@@ -487,9 +487,8 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
 
 def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     """Waits for a container to become healthy by polling its endpoint."""
-    config = get_config()
     if timeout is None:
-        timeout = 180 if config.runtime == "vllm" else 20
+        timeout = 180
     logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()
 
@@ -503,7 +502,7 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
                 if display_dots:
                     perror('\r' + n * ' ' + '\r', end='', flush=True)
                 return
-        except (ConnectionError, HTTPException, UnicodeDecodeError, json.JSONDecodeError) as e:
+        except (ConnectionError, HTTPException, UnicodeDecodeError, json.JSONDecodeError, TimeoutError) as e:
             logger.debug(f"Health check of container {args.name} failed, retrying... Error: {e}")
             n += 1
         time.sleep(1)
