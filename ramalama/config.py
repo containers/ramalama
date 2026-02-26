@@ -83,7 +83,7 @@ def get_default_store() -> str:
     if hasattr(os, 'geteuid') and os.geteuid() == 0:
         return "/var/lib/ramalama"
 
-    return os.path.expanduser("~/.local/share/ramalama")
+    return os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))
 
 
 def get_all_inference_spec_dirs(subdir: str) -> list[Path]:

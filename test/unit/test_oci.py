@@ -6,7 +6,7 @@ import pytest
 from ramalama.model_store.reffile import RefJSONFile, StoreFile, StoreFileType
 from ramalama.model_store.store import ModelStore
 from ramalama.transports.huggingface import Huggingface
-from ramalama.transports.oci.oci import OCI
+from ramalama.transports.oci import OCI
 from ramalama.transports.ollama import Ollama
 from ramalama.transports.url import URL
 

@@ -13,8 +13,7 @@ def get_provider_api_key(scheme: str) -> str | None:
     """Return a configured API key for the given provider scheme, if any."""
 
     if resolver := PROVIDER_API_KEY_RESOLVERS.get(scheme):
-        if key := resolver():
-            return key
+        return resolver()
     return get_config().api_key
 
 
@@ -27,7 +26,7 @@ DEFAULT_PROVIDERS = {
 
 def get_chat_provider(scheme: str) -> ChatProvider:
     if (resolver := DEFAULT_PROVIDERS.get(scheme, None)) is None:
-        raise ValueError(f"No supported chat provider for {scheme}")
+        raise ValueError(f"No support chat providers for {scheme}")
     return resolver()
 
 

@@ -15,7 +15,7 @@ from ramalama.config import Config
 from ramalama.engine import BuildEngine, Engine, is_healthy, stop_container, wait_for_healthy
 from ramalama.path_utils import get_container_mount_path
 from ramalama.transports.base import Transport
-from ramalama.transports.oci.oci import OCI
+from ramalama.transports.oci import OCI
 
 INPUT_DIR = "/docs"
 
@@ -197,6 +197,7 @@ class RagTransport(OCI):
                 stop_container(args.model_args, args.model_args.name, remove=True)
 
     def run(self, args: RagArgsType, cmd: list[str]):
+
         args.model_args.name = self.imodel.get_container_name(args.model_args)
         process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd)
         rag_process = self.serve_nonblocking(args, cmd)
