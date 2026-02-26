@@ -621,12 +621,6 @@ def list_containers(args):
 
 def info_parser(subparsers):
     parser = subparsers.add_parser("info", help="display information pertaining to setup of RamaLama.")
-    parser.add_argument(
-        "--shortnames",
-        dest="shortnames",
-        action="store_true",
-        help="display available shortnames",
-    )
     parser.set_defaults(func=info_cli)
 
 
@@ -705,15 +699,6 @@ def _list_models(args):
 
 def info_cli(args: DefaultArgsType) -> None:
     shortnames = get_shortnames()
-    if getattr(args, 'shortnames', None):
-        for name in sorted(shortnames.shortnames):
-            config_source = shortnames.config_sources.get(name)
-            source = shortnames.shortnames[name]
-
-            message = f"{name}={source} ({config_source})"
-            print(message)
-        return
-
     info: dict[str, Any] = {
         "Accelerator": get_accel(),
         "Config": load_file_config(),
@@ -731,7 +716,6 @@ def info_cli(args: DefaultArgsType) -> None:
         "Shortnames": {
             "Files": shortnames.paths,
             "Names": shortnames.shortnames,
-            "Sources": list(set(shortnames.config_sources.values())),
         },
         "Store": args.store,
         "UseContainer": args.container,
@@ -950,6 +934,8 @@ def push_cli(args):
 
     if args.TARGET:
         shortnames = get_shortnames()
+        if source_model.type == "OCI":
+            raise ValueError(f"converting from an OCI based image {args.SOURCE} is not supported")
         target = shortnames.resolve(args.TARGET)
 
     target_model = New(target, args)
@@ -1642,12 +1628,7 @@ def _rm_model(models, args):
 
         try:
             m = New(model, args)
-            if m.remove(args):
-                continue
-            # Failed to remove and might be OCI so attempt to remove OCI
-            if args.ignore:
-                _rm_oci_model(model, args)
-                continue
+            m.remove(args)
         except (KeyError, subprocess.CalledProcessError) as e:
             for prefix in MODEL_TYPES:
                 if model.startswith(prefix + "://"):
@@ -1715,21 +1696,15 @@ def inspect_parser(subparsers):
         help="display specific metadata field of AI Model",
     )
     parser.add_argument("--json", dest="json", action="store_true", help="display AI Model information in JSON format")
-    parser.add_argument("MODEL", nargs="?", completer=local_models)  # positional argument
+    parser.add_argument("MODEL", completer=local_models)  # positional argument
     parser.set_defaults(func=inspect_cli)
 
 
 def inspect_cli(args):
-    if not args.MODEL:
-        parser = get_parser()
-        parser.error("inspect requires MODEL")
-
     args.pull = "never"
 
     model = New(args.MODEL, args)
-    inspect = model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)
-
-    print(inspect)
+    print(model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun))
 
 
 def main() -> None:
