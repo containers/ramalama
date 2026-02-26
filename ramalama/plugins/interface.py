@@ -63,19 +63,6 @@ class InferenceRuntimePlugin(RuntimePlugin, ABC):
     def _cmd_run(self, args: argparse.Namespace) -> list[str]:
         """Build the command list for the 'run' subcommand."""
 
-    def chat_prefix(self) -> str | None:
-        """Return the chat prompt prefix for this runtime, or None to use the default."""
-        return None
-
-    def handle_nocontainer_chat(self, args: Any, transport: Any) -> "int | None":
-        """Handle the non-container chat path.
-
-        Return an exit code if the plugin handled chat, or None to fall through
-        to the default chat.chat() call.  transport exposes _is_server_ready(port)
-        and _cleanup_server_process(process).
-        """
-        return None
-
     def api_model_name(self, args: Any) -> "str | None":
         """Return the model name to include in API requests, or None to omit it."""
         return getattr(args, "model", None)

@@ -1,6 +1,7 @@
 import argparse
 import platform
-import time
+from http.client import HTTPConnection
+from typing import Any
 
 from ramalama.logger import logger
 from ramalama.plugins.runtimes.common import BaseInferenceRuntime
@@ -65,42 +66,14 @@ class MlxPlugin(BaseInferenceRuntime):
         if not is_apple_silicon:
             raise ValueError("MLX runtime is only supported on macOS with Apple Silicon.")
 
-    def chat_prefix(self) -> str | None:
-        return "🍏 > "
-
-    def handle_nocontainer_chat(self, args, transport) -> int | None:
-        from typing import cast
-
-        from ramalama import chat
-        from ramalama.arg_types import ChatArgsType
-        from ramalama.common import perror
-
-        args.ignore = getattr(args, "dryrun", False)
-        args.initial_connection = True
-        max_retries = 10
-
-        for i in range(max_retries):
-            try:
-                if transport._is_server_ready(args.port):
-                    args.initial_connection = False
-                    time.sleep(1)  # Give server time to stabilize
-                    chat.chat(cast(ChatArgsType, args))
-                    break
-                else:
-                    logger.debug(f"MLX server not ready, waiting... (attempt {i + 1}/{max_retries})")
-                    time.sleep(3)
-                    continue
-
-            except Exception as e:
-                if i >= max_retries - 1:
-                    perror(f"Error: Failed to connect to MLX server after {max_retries} attempts: {e}")
-                    transport._cleanup_server_process(args.server_process)
-                    raise e
-                logger.debug(f"Connection attempt failed, retrying... (attempt {i + 1}/{max_retries}): {e}")
-                time.sleep(3)
-
-        args.initial_connection = False
-        return 0
+    def is_healthy(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+        conn.request("GET", "/health")
+        resp = conn.getresponse()
+        if resp.status != 200:
+            logger.debug(f"MLX server /health status code: {resp.status}: {resp.reason}")
+            return False
+        logger.debug("MLX server is healthy")
+        return True
 
     def api_model_name(self, args) -> str | None:
         return None

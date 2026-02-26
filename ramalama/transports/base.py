@@ -484,16 +484,8 @@ class Transport(TransportBase):
 
     def _connect_and_chat(self, args, server_process):
         """Connect to the server and start chat in the parent process."""
-        from ramalama.plugins.interface import InferenceRuntimePlugin
-        from ramalama.plugins.loader import get_runtime
 
         args.url = f"http://127.0.0.1:{args.port}/v1"
-
-        plugin = get_runtime(getattr(args, "runtime", None))
-        if isinstance(plugin, InferenceRuntimePlugin):
-            prefix = plugin.chat_prefix()
-            if prefix:
-                args.prefix = prefix
 
         # Model name in the chat request must match RamalamaModelContext.alias()
         chat_args = copy.deepcopy(args)
@@ -504,11 +496,6 @@ class Transport(TransportBase):
         else:
             # Store the Popen object for monitoring
             chat_args.server_process = server_process
-
-            if isinstance(plugin, InferenceRuntimePlugin):
-                result = plugin.handle_nocontainer_chat(chat_args, self)
-                if result is not None:
-                    return result
             chat.chat(chat_args)
             return 0
 
