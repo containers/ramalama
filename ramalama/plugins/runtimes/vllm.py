@@ -64,28 +64,6 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
 
     _cmd_serve = _cmd_run
 
-    def _cmd_rag(self, args: argparse.Namespace) -> list[str]:
-        cmd = ["doc2rag"]
-
-        if getattr(args, 'debug', None):
-            cmd.append("--debug")
-
-        if getattr(args, 'format', None):
-            cmd += ["--format", str(args.format)]
-
-        if getattr(args, 'ocr', None):
-            cmd.append("--ocr")
-
-        cmd.append("/output")
-
-        if getattr(args, 'PATHS', None) and getattr(args, 'inputdir', None):
-            cmd.append(str(args.inputdir))
-
-        if getattr(args, 'urls', None):
-            cmd.extend(args.urls)
-
-        return cmd
-
     def _add_max_model_len_arg(self, parser: "argparse.ArgumentParser") -> None:
         from ramalama.cli import suppressCompleter
         from ramalama.config import get_config

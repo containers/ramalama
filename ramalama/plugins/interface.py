@@ -12,13 +12,12 @@ class RuntimePlugin(ABC):
     def build_command(self, command: str, args: argparse.Namespace) -> list[str]:
         """Dispatch to the appropriate _cmd_<command> method.
 
-        Command strings map to method names by replacing ' --' with '_' and '-' with '_',
+        Command strings map to method names by replacing '-' with '_',
         then prefixing with '_cmd_'.  Examples:
           'run'       → _cmd_run
           'serve'     → _cmd_serve
-          'run --rag' → _cmd_run_rag
         """
-        method_name = "_cmd_" + command.replace(" --", "_").replace("-", "_")
+        method_name = "_cmd_" + command.replace("-", "_")
         method = getattr(self, method_name, None)
         if method is None:
             raise NotImplementedError(f"{self.name} plugin does not implement command '{command}'")

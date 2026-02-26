@@ -42,6 +42,9 @@ class LlamaCppCommands:
         return ''
 
     def _cmd_run(self, args: argparse.Namespace) -> list[str]:
+        if getattr(args, 'rag', None):
+            return self._cmd_run_rag(args)
+
         from ramalama.transports.transport_factory import New
 
         cmd = ["llama-server"]
@@ -255,8 +258,6 @@ class LlamaCppCommands:
         cmd.append("/rag/vector.db")
 
         return cmd
-
-    _cmd_serve_rag = _cmd_run_rag
 
     def _cmd_convert(self, args: argparse.Namespace) -> list[str]:
         model_name = self._get_model_name(args)

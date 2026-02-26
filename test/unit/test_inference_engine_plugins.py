@@ -353,8 +353,10 @@ class TestLlamaCppPlugin:
         assert "http://other.com" in cmd
 
     def test_run_rag(self):
+        # RAG routing is internal: _cmd_run dispatches to _cmd_run_rag when args.rag is set
         ns = make_rag_ns(port="9090", model_host="host.containers.internal", model_port="8080")
-        cmd = self.plugin.build_command("run --rag", ns)
+        ns.rag = "some/path"
+        cmd = self.plugin.build_command("run", ns)
 
         assert cmd[0] == "rag_framework"
         assert "serve" in cmd
@@ -366,8 +368,10 @@ class TestLlamaCppPlugin:
         assert "/rag/vector.db" in cmd
 
     def test_serve_rag_same_as_run_rag(self):
+        # _cmd_serve = _cmd_run, so both dispatch to _cmd_run_rag when args.rag is set
         ns = make_rag_ns()
-        assert self.plugin.build_command("run --rag", ns) == self.plugin.build_command("serve --rag", ns)
+        ns.rag = "some/path"
+        assert self.plugin.build_command("run", ns) == self.plugin.build_command("serve", ns)
 
     @patch("ramalama.transports.transport_factory.New")
     def test_convert(self, mock_new):
@@ -525,18 +529,15 @@ class TestVllmPlugin:
         image = self.plugin.get_container_image(config, "")
         assert image == "docker.io/vllm/vllm-openai:v0.5.0"
 
-    def test_rag_generate(self):
-        ns = make_rag_gen_ns(format="json")
-        cmd = self.plugin.build_command("rag", ns)
-
-        assert cmd[0] == "doc2rag"
-        assert "--format" in cmd
-        assert "/output" in cmd
-
     def test_unsupported_command_raises(self):
         ns = make_ns()
         with pytest.raises(NotImplementedError):
             self.plugin.build_command("bench", ns)
+
+    def test_rag_command_unsupported(self):
+        ns = make_rag_gen_ns()
+        with pytest.raises(NotImplementedError):
+            self.plugin.build_command("rag", ns)
 
 
 class TestMlxPlugin:
@@ -621,6 +622,7 @@ class TestPluginClassHierarchy:
         assert isinstance(LlamaCppPlugin(), ContainerizedInferenceRuntimePlugin)
 
     def test_vllm_is_containerized(self):
+        assert isinstance(VllmPlugin(), InferenceRuntimePlugin)
         assert isinstance(VllmPlugin(), ContainerizedInferenceRuntimePlugin)
 
     def test_mlx_is_not_containerized(self):
@@ -677,7 +679,7 @@ class TestConfigureSubcommandsFiltering:
         assert "run" in name_map
         assert "serve" in name_map
 
-    def test_vllm_runtime_includes_rag_with_container(self, monkeypatch):
+    def test_vllm_runtime_excludes_rag_with_container(self, monkeypatch):
         from ramalama.cli import configure_subcommands
         from ramalama.config import get_config
 
@@ -686,7 +688,7 @@ class TestConfigureSubcommandsFiltering:
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
-        assert "rag" in name_map
+        assert "rag" not in name_map
         assert "run" in name_map
         assert "serve" in name_map
 
