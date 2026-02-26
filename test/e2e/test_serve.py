@@ -396,6 +396,7 @@ def test_stop_failures():
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_quadlet_generation(shared_ctx, test_model):
     ctx = shared_ctx
     test_model_full_name = get_full_model_name(test_model)
@@ -413,6 +414,7 @@ def test_quadlet_generation(shared_ctx, test_model):
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_quadlet_generation_with_add_to_unit_flag(test_model):
     with RamalamaExecWorkspace() as ctx:
         test_model_full_name = get_full_model_name(test_model)
@@ -426,6 +428,7 @@ def test_quadlet_generation_with_add_to_unit_flag(test_model):
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_generation_with_bad_id(test_model):
     with RamalamaExecWorkspace() as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -438,6 +441,7 @@ def test_generation_with_bad_id(test_model):
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_generation_with_bad_add_to_unit_flag_value(test_model):
     with RamalamaExecWorkspace() as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -567,6 +571,7 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 @pytest.mark.parametrize(
     "generate, env_vars",
     [
