@@ -445,10 +445,7 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
         conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
         if getattr(args, "debug", False):
             conn.set_debuglevel(1)
-        plugin = get_runtime(get_config().runtime)
-        if plugin is None:
-            return False
-        return plugin.is_healthy(conn, args, model_name)
+        return get_runtime(get_config().runtime).service_ready_check(conn, args, model_name)
     finally:
         if conn:
             conn.close()
@@ -459,9 +456,9 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     if timeout is None:
         from ramalama.plugins.loader import get_runtime
 
-        plugin = get_runtime(get_config().runtime)
-        timeout = plugin.health_check_timeout if plugin is not None else 20
-    logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
+        timeout = get_runtime(get_config().runtime).service_ready_check_timeout
+    container_name = f"container {args.name}" if getattr(args, 'container', None) else 'server'
+    logger.debug(f"Waiting for {container_name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()
 
     display_dots = not getattr(args, "debug", False) and sys.stdin.isatty()
@@ -475,10 +472,10 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
                     perror('\r' + n * ' ' + '\r', end='', flush=True)
                 return
         except (ConnectionError, HTTPException, UnicodeDecodeError, json.JSONDecodeError, TimeoutError) as e:
-            logger.debug(f"Health check of container {args.name} failed, retrying... Error: {e}")
+            logger.debug(f"Health check of {container_name} failed, retrying... Error: {e}")
             n += 1
         time.sleep(1)
 
     raise subprocess.TimeoutExpired(
-        f"health check of container {args.name}", timeout, output=logs(args, args.name, ignore_stderr=not args.debug)
+        f"health check of {container_name}", timeout, output=logs(args, args.name, ignore_stderr=not args.debug)
     )

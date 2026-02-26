@@ -8,8 +8,8 @@ from urllib.parse import urlparse
 
 from ramalama.logger import logger
 from ramalama.path_utils import file_uri_to_path
-from ramalama.plugins.runtimes.common import ContainerizedInferenceRuntimePlugin
-from ramalama.plugins.runtimes.llama_cpp_commands import (
+from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
+from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
     _CACHE_REUSE_DEFAULT,
     _NGL_DEFAULT,
     _THINKING_DEFAULT,
@@ -92,28 +92,30 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             engine.run()
         return f"{source_model.model_name}-{args.gguf}.gguf"
 
-    def is_healthy(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+        container_name = f"container {args.name}" if getattr(args, 'container', None) else 'server'
         conn.request("GET", "/health")
         health_resp = conn.getresponse()
         health_resp.read()
         if health_resp.status not in (200, 404):
-            logger.debug(f"Container {args.name} /health status code: {health_resp.status}: {health_resp.reason}")
+            logger.debug(f"{self.name} {container_name} /health {health_resp.status}: {health_resp.reason}")
+
             return False
 
         conn.request("GET", "/models")
         models_resp = conn.getresponse()
         if models_resp.status != 200:
-            logger.debug(f"Container {args.name} /models status code {models_resp.status}: {models_resp.reason}")
+            logger.debug(f"{self.name} {container_name} /models status code {models_resp.status}: {models_resp.reason}")
             return False
 
         content = models_resp.read()
         if not content:
-            logger.debug(f"Container {args.name} /models returned an empty response")
+            logger.debug(f"{self.name} {container_name} /models returned an empty response")
             return False
 
         body = json.loads(content)
         if "models" not in body:
-            logger.debug(f"Container {args.name} /models does not include a model list in the response")
+            logger.debug(f"{self.name} {container_name} /models does not include a model list in the response")
             return False
 
         model_names = [m["name"] for m in body["models"]]
@@ -125,11 +127,11 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         if not any(model_name in name for name in model_names):
             logger.debug(
-                f'Container {args.name} /models does not include "{model_name}" in the model list: {model_names}'
+                f'{self.name} {container_name} /models does not include "{model_name}" in the model list: {model_names}'
             )
             return False
 
-        logger.debug(f"Container {args.name} is healthy")
+        logger.debug(f"{self.name} {container_name} is ready")
         return True
 
     def get_container_image(self, config: Any, gpu_type: str) -> str | None:

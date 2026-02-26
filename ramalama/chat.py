@@ -275,9 +275,11 @@ class RamaLamaShell(cmd.Cmd):
         from ramalama.plugins.interface import InferenceRuntimePlugin
         from ramalama.plugins.loader import get_runtime
 
-        plugin = get_runtime(getattr(self.args, "runtime", "") or "")
-        if isinstance(plugin, InferenceRuntimePlugin):
-            return plugin.api_model_name(self.args)
+        runtime = getattr(self.args, "runtime", None)
+        if runtime:
+            plugin = get_runtime(runtime)
+            if isinstance(plugin, InferenceRuntimePlugin) and not plugin.chat_include_model_name:
+                return None
         return getattr(self.args, "model", None)
 
     def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:

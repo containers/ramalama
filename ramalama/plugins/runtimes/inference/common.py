@@ -1,4 +1,5 @@
 import argparse
+from abc import abstractmethod
 from typing import Any
 
 from ramalama.plugins.interface import InferenceRuntimePlugin
@@ -8,9 +9,31 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
     """Concrete base: registers run/serve subcommands and provides their handlers.
 
     Plugins that need only run/serve (e.g. MLX) inherit directly from this class.
-    Plugins that also need RAG or other container-dependent subcommands inherit
+    Plugins that also need container-dependent subcommands inherit
     from ContainerizedInferenceRuntimePlugin instead.
     """
+
+    @abstractmethod
+    def _cmd_run(self, args: argparse.Namespace) -> list[str]:
+        """Build the command list for the 'run' subcommand."""
+
+    @abstractmethod
+    def _cmd_serve(self, args: argparse.Namespace) -> list[str]:
+        """Build the command list for the 'serve' subcommand."""
+
+    def handle_subcommand(self, command: str, args: argparse.Namespace) -> list[str]:
+        """Dispatch to the appropriate _cmd_<command> method.
+
+        Command strings map to method names by replacing '-' with '_',
+        then prefixing with '_cmd_'.  Examples:
+          'run'    → _cmd_run
+          'serve'  → _cmd_serve
+        """
+        method_name = "_cmd_" + command.replace("-", "_")
+        method = getattr(self, method_name, None)
+        if method is None:
+            raise NotImplementedError(f"{self.name} plugin does not implement command '{command}'")
+        return method(args)
 
     def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         """Add inference-specific args shared across all runtimes for run/serve/perplexity."""
@@ -208,12 +231,7 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
 
 
 class ContainerizedInferenceRuntimePlugin(BaseInferenceRuntime):
-    """Base class for inference plugins that support container-dependent subcommands.
-
-    Extends BaseInferenceRuntime with the 'rag' subcommand. 'rag' requires a
-    container engine to run the RAG pipeline alongside the model, so it is only
-    registered when containers are enabled (i.e. not --nocontainer).
-    """
+    """Base class for inference plugins that support container-dependent args"""
 
     def _add_containerized_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         from ramalama.cli import GENERATE_OPTIONS, parse_generate_option

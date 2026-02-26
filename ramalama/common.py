@@ -651,11 +651,9 @@ def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: 
         # No explicit images provided: ask the runtime plugin for the image
         from ramalama.plugins.loader import get_runtime
 
-        plugin = get_runtime(config.runtime)
-        if plugin is not None:
-            plugin_image = plugin.get_container_image(config, gpu_type)
-            if plugin_image is not None:
-                return plugin_image if ":" in plugin_image else f"{plugin_image}:latest"
+        plugin_image = get_runtime(config.runtime).get_container_image(config, gpu_type)
+        if plugin_image is not None:
+            return plugin_image if ":" in plugin_image else f"{plugin_image}:latest"
         images = config.images  # plugin returned None (e.g., MLX); fall back to user dict
 
     # Get image based on detected GPU type

@@ -312,10 +312,7 @@ def configure_subcommands(parser):
     # get_config().runtime is already set by Phase 1 of parse_args_from_cmd
     # before configure_subcommands() is called in Phase 2.
     runtime = get_config().runtime
-    selected_plugin = get_runtime(runtime)
-    if selected_plugin is None:
-        raise ValueError(f"Unknown runtime '{runtime}'. Available runtimes: {list(get_all_runtimes().keys())}")
-    selected_plugin.register_subcommands(subparsers)
+    get_runtime(runtime).register_subcommands(subparsers)
     chat_parser(subparsers)
     containers_parser(subparsers)
     help_parser(subparsers)
@@ -387,14 +384,6 @@ def post_parse_setup(args):
     if hasattr(args, "runtime_args"):
         args.runtime_args = shlex.split(args.runtime_args)
 
-    # Allow the runtime plugin to perform engine-specific arg post-processing
-    # (e.g. MlxPlugin sets args.container = False)
-    runtime = getattr(args, "runtime", None)
-    if runtime is not None:
-        plugin = get_runtime(runtime)
-        if plugin is not None:
-            plugin.setup_args(args)
-
     if hasattr(args, 'pull'):
         args.pull = normalize_pull_arg(args.pull, getattr(args, 'engine', None))
 
@@ -406,6 +395,12 @@ def post_parse_setup(args):
     else:
         log_level = get_config().log_level or LogLevel.WARNING
     configure_logger(log_level)
+
+    # Allow the runtime plugin to mutate and validate args after logger is configured
+    # (e.g. MlxPlugin enforces Apple Silicon and sets args.container = False)
+    runtime = getattr(args, "runtime", None)
+    if runtime is not None:
+        get_runtime(runtime).post_process_args(args)
 
 
 def login_parser(subparsers):

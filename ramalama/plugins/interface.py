@@ -9,29 +9,8 @@ class RuntimePlugin(ABC):
     @abstractmethod
     def name(self) -> str: ...
 
-    def build_command(self, command: str, args: argparse.Namespace) -> list[str]:
-        """Dispatch to the appropriate _cmd_<command> method.
-
-        Command strings map to method names by replacing '-' with '_',
-        then prefixing with '_cmd_'.  Examples:
-          'run'       → _cmd_run
-          'serve'     → _cmd_serve
-        """
-        method_name = "_cmd_" + command.replace("-", "_")
-        method = getattr(self, method_name, None)
-        if method is None:
-            raise NotImplementedError(f"{self.name} plugin does not implement command '{command}'")
-        return method(args)
-
     def get_container_image(self, config: Any, gpu_type: str) -> str | None:
         return None
-
-    def setup_args(self, args: argparse.Namespace) -> None:
-        pass
-
-    def validate_args(self, args: Any) -> None:
-        """Validate runtime-specific argument constraints. Raise ValueError if invalid."""
-        pass
 
     def register_subcommands(self, subparsers: "argparse._SubParsersAction") -> None:
         """Register runtime-specific subcommand parsers.
@@ -41,27 +20,28 @@ class RuntimePlugin(ABC):
         """
         pass
 
+    def post_process_args(self, args: argparse.Namespace) -> None:
+        """Mutate and validate args after parsing. Override in concrete plugins."""
+        pass
+
+    def handle_subcommand(self, command: str, args: argparse.Namespace) -> list[str]:
+        """Handle the given subcommand. Override in concrete plugins."""
+        raise NotImplementedError(f"{self.name} plugin does not implement handle_subcommand()")
+
     @property
-    def health_check_timeout(self) -> int:
-        """Seconds to wait for the runtime server to become healthy."""
+    def service_ready_check_timeout(self) -> int:
+        """Seconds to wait for the runtime server to become ready."""
         return 180
 
-    def is_healthy(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
-        """Check server health. Override to implement runtime-specific health checks."""
-        raise NotImplementedError(f"Runtime plugin '{self.name}' does not implement is_healthy()")
+    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+        """Check if the service is ready to receive requests."""
+        return True
 
 
 class InferenceRuntimePlugin(RuntimePlugin, ABC):
-    """Abstract base class for runtime plugins that support 'run' and 'serve' subcommands.
+    """Abstract base class for inference runtime plugins."""
 
-    Concrete subclasses must implement _cmd_run.  The hooks below have safe
-    no-op defaults and can be overridden to customise per-runtime behaviour.
-    """
-
-    @abstractmethod
-    def _cmd_run(self, args: argparse.Namespace) -> list[str]:
-        """Build the command list for the 'run' subcommand."""
-
-    def api_model_name(self, args: Any) -> "str | None":
-        """Return the model name to include in API requests, or None to omit it."""
-        return getattr(args, "model", None)
+    @property
+    def chat_include_model_name(self) -> bool:
+        """Whether to include the model name in chat API requests."""
+        return True

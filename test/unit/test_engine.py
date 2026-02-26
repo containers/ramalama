@@ -187,7 +187,7 @@ def test_is_healthy_success(mock_conn, mock_debug, health_status):
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
     assert ramalama.engine.is_healthy(args, model_name="themodel")
     assert mock_conn.return_value.getresponse.call_count == 2
-    assert mock_debug.call_args.args[0] == "Container thecontainer is healthy"
+    assert mock_debug.call_args.args[0] == "llama.cpp server is ready"
 
 
 @pytest.mark.parametrize(

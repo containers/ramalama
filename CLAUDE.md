@@ -82,22 +82,18 @@ Manages local model storage:
 - `store.py` - Low-level storage operations
 - `reffile.py` - Reference file handling for tracking model origins
 
-### Command System (`ramalama/command/`)
-- `factory.py` - `assemble_command()` dispatches to the active runtime plugin to build the inference command
-- `context.py` - Command execution context
-
 ### Runtime Plugin System (`ramalama/plugins/`)
 Each inference engine is a self-contained Python plugin:
-- `base.py` - `RuntimePlugin` base class defining the plugin interface
-- `loader.py` - Plugin discovery and `get_all_runtimes()` / `get_runtime()`
+- `interface.py` - Abstract base classes: `RuntimePlugin` and `InferenceRuntimePlugin`
+- `loader.py` - Plugin discovery and `get_all_runtimes()` / `get_runtime()`; entry point group `ramalama.runtimes.v1alpha`
 - `registry.py` - Plugin registration
-- `runtimes/common.py` - Plugin base classes:
-  - `InferenceRuntimePlugin` — registers `run` and `serve`
-  - `ContainerizedInferenceRuntimePlugin` — extends the above with `rag`,
-    but only when containers are enabled (`rag` requires a container engine)
-- `runtimes/llama_cpp.py` - `LlamaCppPlugin(ContainerizedInferenceRuntimePlugin)` (default)
-- `runtimes/vllm.py` - `VllmPlugin(ContainerizedInferenceRuntimePlugin)`
-- `runtimes/mlx.py` - `MlxPlugin(InferenceRuntimePlugin)` (macOS only; always --nocontainer)
+- `runtimes/inference/common.py` - Concrete base classes:
+  - `BaseInferenceRuntime` — registers `run` and `serve`, implements `handle_subcommand()` dispatch
+  - `ContainerizedInferenceRuntimePlugin` — extends the above with container-specific args (`--api`, `--generate`)
+- `runtimes/inference/llama_cpp.py` - `LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin)` (default); owns all RAG subcommand logic
+- `runtimes/inference/llama_cpp_commands.py` - `LlamaCppCommands` mixin providing `_cmd_run`, `_cmd_serve`, and other llama.cpp command builders
+- `runtimes/inference/vllm.py` - `VllmPlugin(ContainerizedInferenceRuntimePlugin)`
+- `runtimes/inference/mlx.py` - `MlxPlugin(BaseInferenceRuntime)` (macOS only; always --nocontainer)
 
 `configure_subcommands()` in `cli.py` calls `register_subcommands()` on only the
 selected runtime plugin, so `--help` output is filtered to the active runtime's
@@ -106,7 +102,7 @@ supported subcommands.
 ### Key Patterns
 - **GPU Detection**: `get_accel()` in `common.py` detects GPU type (CUDA, ROCm, Vulkan, etc.) and selects appropriate container image
 - **Container Images**: GPU-specific images at `quay.io/ramalama/{ramalama,cuda,rocm,intel-gpu,...}`
-- **Inference Engines**: llama.cpp (default), vllm, mlx (macOS only) - each implemented as a runtime plugin under `ramalama/plugins/runtimes/`
+- **Inference Engines**: llama.cpp (default), vllm, mlx (macOS only) - each implemented as a runtime plugin under `ramalama/plugins/runtimes/inference/`
 
 ## Test Structure
 

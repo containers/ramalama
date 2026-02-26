@@ -4,7 +4,7 @@ from typing import Any
 
 from ramalama.common import ContainerEntryPoint
 from ramalama.logger import logger
-from ramalama.plugins.runtimes.common import ContainerizedInferenceRuntimePlugin
+from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
 
 _VLLM_DEFAULT_IMAGE = "docker.io/vllm/vllm-openai"
 
@@ -100,11 +100,12 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
             image = _VLLM_DEFAULT_IMAGE
         return image if ":" in image else f"{image}:latest"
 
-    def is_healthy(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
         conn.request("GET", "/ping")
         resp = conn.getresponse()
+        container_name = f"container {args.name}" if getattr(args, 'container', None) else 'server'
         if resp.status != 200:
-            logger.debug(f"Container {args.name} /ping status code: {resp.status}: {resp.reason}")
+            logger.debug(f"{self.name} {container_name} /ping status code: {resp.status}: {resp.reason}")
             return False
-        logger.debug(f"Container {args.name} is healthy")
+        logger.debug(f"{self.name} {container_name} is ready")
         return True

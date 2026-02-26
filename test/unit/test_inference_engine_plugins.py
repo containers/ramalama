@@ -7,10 +7,10 @@ import pytest
 
 from ramalama.common import ContainerEntryPoint
 from ramalama.plugins.interface import InferenceRuntimePlugin
-from ramalama.plugins.runtimes.common import ContainerizedInferenceRuntimePlugin
-from ramalama.plugins.runtimes.llama_cpp import LlamaCppPlugin
-from ramalama.plugins.runtimes.mlx import MlxPlugin
-from ramalama.plugins.runtimes.vllm import VllmPlugin
+from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
+from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin
+from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
+from ramalama.plugins.runtimes.inference.vllm import VllmPlugin
 
 
 def make_ns(
@@ -119,13 +119,13 @@ class TestLlamaCppPlugin:
         assert self.plugin.name == "llama.cpp"
 
     @patch("ramalama.transports.transport_factory.New")
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_basic(self, mock_colorize, mock_new):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(container=True, MODEL="ollama://mymodel")
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert cmd[0] == "llama-server"
         assert "--host" in cmd
@@ -139,22 +139,22 @@ class TestLlamaCppPlugin:
         assert "--alias" in cmd
         assert "-ngl" in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_nocontainer_uses_configured_host(self, mock_colorize):
         ns = make_ns(container=False, host="127.0.0.1")
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--host" in cmd
         assert cmd[cmd.index("--host") + 1] == "127.0.0.1"
 
     @patch("ramalama.transports.transport_factory.New")
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_with_mmproj(self, mock_colorize, mock_new):
         mock_model = make_transport_model(mmproj_path="/mnt/models/mmproj.file")
         mock_new.return_value = mock_model
 
         ns = make_ns(MODEL="ollama://mymodel")
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--mmproj" in cmd
         assert "--no-jinja" in cmd
@@ -162,137 +162,137 @@ class TestLlamaCppPlugin:
         assert "--chat-template-file" not in cmd
 
     @patch("ramalama.transports.transport_factory.New")
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_with_chat_template(self, mock_colorize, mock_new):
         mock_model = make_transport_model(chat_template_path="/mnt/models/chat_template.file")
         mock_new.return_value = mock_model
 
         ns = make_ns(MODEL="ollama://mymodel")
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--chat-template-file" in cmd
         assert "--jinja" in cmd
         assert "--no-jinja" not in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_thinking_disabled(self, mock_colorize):
         ns = make_ns(thinking=False)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--reasoning-budget" in cmd
         assert cmd[cmd.index("--reasoning-budget") + 1] == "0"
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_thinking_enabled(self, mock_colorize):
         ns = make_ns(thinking=True)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--reasoning-budget" not in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_ctx_size(self, mock_colorize):
         ns = make_ns(ctx_size=4096)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--ctx-size" in cmd
         assert cmd[cmd.index("--ctx-size") + 1] == "4096"
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_ctx_size_zero_not_added(self, mock_colorize):
         ns = make_ns(ctx_size=0)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--ctx-size" not in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_webui_off(self, mock_colorize):
         ns = make_ns(webui="off")
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--no-webui" in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_webui_on_not_added(self, mock_colorize):
         ns = make_ns(webui="on")
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--no-webui" not in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_ngl_positive(self, mock_colorize):
         ns = make_ns(ngl=40)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "-ngl" in cmd
         assert cmd[cmd.index("-ngl") + 1] == "40"
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_ngl_negative_uses_999(self, mock_colorize):
         ns = make_ns(ngl=-1)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "-ngl" in cmd
         assert cmd[cmd.index("-ngl") + 1] == "999"
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_max_tokens(self, mock_colorize):
         ns = make_ns(max_tokens=512)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "-n" in cmd
         assert cmd[cmd.index("-n") + 1] == "512"
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_max_tokens_zero_not_added(self, mock_colorize):
         ns = make_ns(max_tokens=0)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "-n" not in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=True)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=True)
     def test_serve_log_colors(self, mock_colorize):
         ns = make_ns()
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--log-colors" in cmd
         assert cmd[cmd.index("--log-colors") + 1] == "on"
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.os.getenv", return_value="192.168.1.1:50052")
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.os.getenv", return_value="192.168.1.1:50052")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_rpc_nodes(self, mock_colorize, mock_getenv):
         ns = make_ns()
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--rpc" in cmd
         assert cmd[cmd.index("--rpc") + 1] == "192.168.1.1:50052"
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_runtime_args(self, mock_colorize):
         ns = make_ns(runtime_args=["--extra", "flag"])
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--extra" in cmd
         assert "flag" in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_seed(self, mock_colorize):
         ns = make_ns(seed=42)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--seed" in cmd
         assert cmd[cmd.index("--seed") + 1] == "42"
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_debug(self, mock_colorize):
         ns = make_ns(debug=True)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "-v" in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_run_same_as_serve(self, mock_colorize):
         ns = make_ns()
-        assert self.plugin.build_command("serve", ns) == self.plugin.build_command("run", ns)
+        assert self.plugin.handle_subcommand("serve", ns) == self.plugin.handle_subcommand("run", ns)
 
     @patch("ramalama.transports.transport_factory.New")
     def test_perplexity(self, mock_new):
@@ -300,7 +300,7 @@ class TestLlamaCppPlugin:
         mock_new.return_value = mock_model
 
         ns = make_ns(ngl=20, threads=8, MODEL="ollama://mymodel")
-        cmd = self.plugin.build_command("perplexity", ns)
+        cmd = self.plugin.handle_subcommand("perplexity", ns)
 
         assert cmd[0] == "llama-perplexity"
         assert "--model" in cmd
@@ -315,7 +315,7 @@ class TestLlamaCppPlugin:
         mock_new.return_value = mock_model
 
         ns = make_ns(ngl=30, MODEL="ollama://mymodel")
-        cmd = self.plugin.build_command("bench", ns)
+        cmd = self.plugin.handle_subcommand("bench", ns)
 
         assert cmd[0] == "llama-bench"
         assert "--model" in cmd
@@ -325,7 +325,7 @@ class TestLlamaCppPlugin:
 
     def test_rag_generate(self):
         ns = make_rag_gen_ns(format="qdrant", paths=["/some/path"], inputdir="/input")
-        cmd = self.plugin.build_command("rag", ns)
+        cmd = self.plugin.handle_subcommand("rag", ns)
 
         assert cmd[0] == "doc2rag"
         assert "--format" in cmd
@@ -335,19 +335,19 @@ class TestLlamaCppPlugin:
 
     def test_rag_generate_with_debug(self):
         ns = make_rag_gen_ns(debug=True)
-        cmd = self.plugin.build_command("rag", ns)
+        cmd = self.plugin.handle_subcommand("rag", ns)
 
         assert "--debug" in cmd
 
     def test_rag_generate_with_ocr(self):
         ns = make_rag_gen_ns(ocr=True)
-        cmd = self.plugin.build_command("rag", ns)
+        cmd = self.plugin.handle_subcommand("rag", ns)
 
         assert "--ocr" in cmd
 
     def test_rag_generate_with_urls(self):
         ns = make_rag_gen_ns(urls=["http://example.com", "http://other.com"])
-        cmd = self.plugin.build_command("rag", ns)
+        cmd = self.plugin.handle_subcommand("rag", ns)
 
         assert "http://example.com" in cmd
         assert "http://other.com" in cmd
@@ -356,7 +356,7 @@ class TestLlamaCppPlugin:
         # RAG routing is internal: _cmd_run dispatches to _cmd_run_rag when args.rag is set
         ns = make_rag_ns(port="9090", model_host="host.containers.internal", model_port="8080")
         ns.rag = "some/path"
-        cmd = self.plugin.build_command("run", ns)
+        cmd = self.plugin.handle_subcommand("run", ns)
 
         assert cmd[0] == "rag_framework"
         assert "serve" in cmd
@@ -371,7 +371,7 @@ class TestLlamaCppPlugin:
         # _cmd_serve = _cmd_run, so both dispatch to _cmd_run_rag when args.rag is set
         ns = make_rag_ns()
         ns.rag = "some/path"
-        assert self.plugin.build_command("run", ns) == self.plugin.build_command("serve", ns)
+        assert self.plugin.handle_subcommand("run", ns) == self.plugin.handle_subcommand("serve", ns)
 
     @patch("ramalama.transports.transport_factory.New")
     def test_convert(self, mock_new):
@@ -379,7 +379,7 @@ class TestLlamaCppPlugin:
         mock_new.return_value = mock_model
 
         ns = make_ns(MODEL="ollama://mymodel")
-        cmd = self.plugin.build_command("convert", ns)
+        cmd = self.plugin.handle_subcommand("convert", ns)
 
         assert cmd[0] == "convert_hf_to_gguf.py"
         assert "--outfile" in cmd
@@ -392,18 +392,18 @@ class TestLlamaCppPlugin:
         mock_new.return_value = mock_model
 
         ns = make_ns(gguf="Q4_K_M", MODEL="ollama://mymodel")
-        cmd = self.plugin.build_command("quantize", ns)
+        cmd = self.plugin.handle_subcommand("quantize", ns)
 
         assert cmd[0] == "llama-quantize"
         assert "/model/mymodel.gguf" in cmd
         assert "/model/mymodel-Q4_K_M.gguf" in cmd
         assert "Q4_K_M" in cmd
 
-    @patch("ramalama.plugins.runtimes.llama_cpp_commands.should_colorize", return_value=False)
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_unsupported_command_raises(self, mock_colorize):
         ns = make_ns()
         with pytest.raises(NotImplementedError):
-            self.plugin.build_command("unknown_cmd", ns)
+            self.plugin.handle_subcommand("unknown_cmd", ns)
 
     def test_get_container_image_cuda(self):
         config = MagicMock()
@@ -440,7 +440,7 @@ class TestVllmPlugin:
         mock_new.return_value = mock_model
 
         ns = make_ns(container=True, MODEL="ollama://mymodel")
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert isinstance(cmd[0], ContainerEntryPoint)
         assert "--model" in cmd
@@ -449,7 +449,7 @@ class TestVllmPlugin:
 
     def test_serve_nocontainer(self):
         ns = make_ns(container=False)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert cmd[0] == "python3"
         assert cmd[1] == "-m"
@@ -457,47 +457,47 @@ class TestVllmPlugin:
 
     def test_serve_no_max_model_len_when_unset(self):
         ns = make_ns(ctx_size=0)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--max-model-len" not in cmd
 
     def test_serve_custom_ctx_size(self):
         ns = make_ns(ctx_size=8192)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--max-model-len" in cmd
         assert cmd[cmd.index("--max-model-len") + 1] == "8192"
 
     def test_serve_temperature(self):
         ns = make_ns(temp=0.5)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--temperature" in cmd
         assert cmd[cmd.index("--temperature") + 1] == "0.5"
 
     def test_serve_seed(self):
         ns = make_ns(seed=123)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--seed" in cmd
         assert cmd[cmd.index("--seed") + 1] == "123"
 
     def test_serve_seed_not_added_when_none(self):
         ns = make_ns(seed=None)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--seed" not in cmd
 
     def test_serve_runtime_args(self):
         ns = make_ns(runtime_args=["--tensor-parallel-size", "2"])
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--tensor-parallel-size" in cmd
         assert "2" in cmd
 
     def test_run_same_as_serve(self):
         ns = make_ns()
-        assert self.plugin.build_command("serve", ns) == self.plugin.build_command("run", ns)
+        assert self.plugin.handle_subcommand("serve", ns) == self.plugin.handle_subcommand("run", ns)
 
     def test_get_container_image_with_gpu(self):
         config = MagicMock()
@@ -532,12 +532,12 @@ class TestVllmPlugin:
     def test_unsupported_command_raises(self):
         ns = make_ns()
         with pytest.raises(NotImplementedError):
-            self.plugin.build_command("bench", ns)
+            self.plugin.handle_subcommand("bench", ns)
 
     def test_rag_command_unsupported(self):
         ns = make_rag_gen_ns()
         with pytest.raises(NotImplementedError):
-            self.plugin.build_command("rag", ns)
+            self.plugin.handle_subcommand("rag", ns)
 
 
 class TestMlxPlugin:
@@ -553,7 +553,7 @@ class TestMlxPlugin:
         mock_new.return_value = mock_model
 
         ns = make_ns(temp=0.7, port="8080", host="0.0.0.0", MODEL="ollama://mymodel")
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert cmd[0] == "mlx_lm.server"
         assert "--model" in cmd
@@ -563,42 +563,46 @@ class TestMlxPlugin:
 
     def test_serve_with_max_tokens(self):
         ns = make_ns(max_tokens=2048)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--max-tokens" in cmd
         assert cmd[cmd.index("--max-tokens") + 1] == "2048"
 
     def test_serve_max_tokens_zero_not_added(self):
         ns = make_ns(max_tokens=0)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--max-tokens" not in cmd
 
     def test_serve_seed(self):
         ns = make_ns(seed=99)
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--seed" in cmd
         assert cmd[cmd.index("--seed") + 1] == "99"
 
     def test_serve_runtime_args(self):
         ns = make_ns(runtime_args=["--verbose"])
-        cmd = self.plugin.build_command("serve", ns)
+        cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--verbose" in cmd
 
     def test_run_same_as_serve(self):
         ns = make_ns()
-        assert self.plugin.build_command("serve", ns) == self.plugin.build_command("run", ns)
+        assert self.plugin.handle_subcommand("serve", ns) == self.plugin.handle_subcommand("run", ns)
 
-    def test_setup_args_forces_nocontainer(self):
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system', return_value='Darwin')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine', return_value='arm64')
+    def test_post_process_args_forces_nocontainer(self, _machine, _system):
         args = argparse.Namespace(container=True)
-        self.plugin.setup_args(args)
+        self.plugin.post_process_args(args)
         assert args.container is False
 
-    def test_setup_args_keeps_nocontainer(self):
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system', return_value='Darwin')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine', return_value='arm64')
+    def test_post_process_args_keeps_nocontainer(self, _machine, _system):
         args = argparse.Namespace(container=False)
-        self.plugin.setup_args(args)
+        self.plugin.post_process_args(args)
         assert args.container is False
 
     def test_no_container_image_override(self):
@@ -608,7 +612,7 @@ class TestMlxPlugin:
     def test_unsupported_command_raises(self):
         ns = make_ns()
         with pytest.raises(NotImplementedError):
-            self.plugin.build_command("bench", ns)
+            self.plugin.handle_subcommand("bench", ns)
 
     def test_is_inference_runtime_plugin_not_containerized(self):
         assert isinstance(self.plugin, InferenceRuntimePlugin)
@@ -711,7 +715,7 @@ class TestConfigureSubcommandsFiltering:
 
         monkeypatch.setattr(get_config(), "runtime", "no-such-runtime")
         parser = self._make_parser()
-        with pytest.raises(ValueError, match="Unknown runtime 'no-such-runtime'"):
+        with pytest.raises(ValueError, match="Unknown runtime: 'no-such-runtime'"):
             configure_subcommands(parser)
 
     def _subparser_option_strings(self, parser, subcommand):

@@ -4,7 +4,7 @@ from http.client import HTTPConnection
 from typing import Any
 
 from ramalama.logger import logger
-from ramalama.plugins.runtimes.common import BaseInferenceRuntime
+from ramalama.plugins.runtimes.inference.common import BaseInferenceRuntime
 
 
 class MlxPlugin(BaseInferenceRuntime):
@@ -56,24 +56,24 @@ class MlxPlugin(BaseInferenceRuntime):
 
     _cmd_serve = _cmd_run
 
-    def setup_args(self, args: argparse.Namespace) -> None:
+    def post_process_args(self, args: argparse.Namespace) -> None:
+        is_apple_silicon = platform.system() == "Darwin" and platform.machine() == "arm64"
+        if not is_apple_silicon:
+            raise ValueError("MLX runtime is only supported on macOS with Apple Silicon.")
         if getattr(args, "container", None) is True:
             logger.info("MLX runtime automatically uses --nocontainer mode")
         args.container = False
 
-    def validate_args(self, args) -> None:
-        is_apple_silicon = platform.system() == "Darwin" and platform.machine() == "arm64"
-        if not is_apple_silicon:
-            raise ValueError("MLX runtime is only supported on macOS with Apple Silicon.")
-
-    def is_healthy(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
         conn.request("GET", "/health")
         resp = conn.getresponse()
         if resp.status != 200:
-            logger.debug(f"MLX server /health status code: {resp.status}: {resp.reason}")
+            logger.debug(f"{self.name} server /health status code: {resp.status}: {resp.reason}")
             return False
-        logger.debug("MLX server is healthy")
+        logger.debug(f"{self.name} server is ready")
         return True
 
-    def api_model_name(self, args) -> str | None:
-        return None
+    @property
+    def chat_include_model_name(self) -> bool:
+        # Do not include the model name in the request. Otherwise MLX will try to refetch it from HF
+        return False

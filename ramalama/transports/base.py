@@ -569,12 +569,6 @@ class Transport(TransportBase):
         self.pull(args)
 
     def validate_args(self, args):
-        from ramalama.plugins.loader import get_runtime
-
-        plugin = get_runtime(getattr(args, "runtime", None))
-        if plugin:
-            plugin.validate_args(args)
-
         # If --nocontainer=False was specified return valid
         if args.container:
             return
