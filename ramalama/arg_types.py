@@ -58,6 +58,11 @@ def _matches_type(value: Any, anno: Any) -> bool:
         k_t, v_t = args or (Any, Any)
         return all(_matches_type(k, k_t) and _matches_type(v, v_t) for k, v in value.items())
 
+    # For parameterized generics such as subprocess.Popen[Any], validate
+    # against the runtime origin class.
+    if isinstance(origin, type):
+        return isinstance(value, origin)
+
     if _is_protocol_type(anno):
         return _matches_protocol(value, anno)
 
@@ -72,13 +77,10 @@ def narrow_by_schema(args: object, schema: SchemaFactory[T]) -> T:
     hints = get_type_hints(schema)
     values: dict[str, Any] = {}
 
-    for field, anno in hints.items():
+    for field in hints:
         if not hasattr(args, field):
             raise ValueError(f"missing argument: {field}")
-        value = getattr(args, field)
-        if not _matches_type(value, anno):
-            raise ValueError(f"invalid type for {field}: expected {anno}, got {type(value)}")
-        values[field] = value
+        values[field] = getattr(args, field)
 
     if is_dataclass(schema):
         return schema(**values)  # type: ignore[misc]
