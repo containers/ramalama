@@ -25,7 +25,7 @@ def make_options(**overrides):
     return ChatRequestOptions(**data)
 
 
-class TestOpenAICompletionsProvider:
+class OpenAICompletionsProviderTests:
     def setup_method(self):
         self.provider = OpenAICompletionsChatProvider("http://example.com")
 
@@ -78,7 +78,7 @@ class TestOpenAICompletionsProvider:
         assert messages[1]["tool_call_id"] == "call-1"
 
 
-class TestOpenAIResponsesProvider:
+class OpenAIResponsesProviderTests:
     def setup_method(self):
         self.provider = OpenAIResponsesChatProvider("http://example.com")
 

@@ -128,8 +128,8 @@ sudo rm /usr/local/bin/ramalama
 sudo rm -rf /Applications/ramalama.app
 
 # Remove configuration and data files (optional)
-rm -rf ~/.local/share/ramalama
-rm -rf ~/.config/ramalama
+rm -rf -- "${XDG_DATA_HOME:-~/.local/share}/ramalama"
+rm -rf -- "${XDG_CONFIG_HOME:-~/.config}/ramalama"
 
 # Remove man pages (optional)
 sudo rm /usr/local/share/man/man1/ramalama*.1
