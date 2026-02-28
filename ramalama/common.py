@@ -568,6 +568,14 @@ GPUEnvVar: TypeAlias = Literal[
     "MUSA_VISIBLE_DEVICES",
 ]
 
+def get_gpu_devices():
+    devices = {}
+    for dev in ["dri", "kfd", "accel"]:
+        path = "/dev/" + dev
+        if os.path.exists(path):
+            devices[dev] = path
+    return devices
+
 
 def get_gpu_type_env_vars() -> dict[GPUEnvVar, str]:
     return {k: v for k in get_args(GPUEnvVar) if (v := os.environ.get(k))}

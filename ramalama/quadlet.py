@@ -2,7 +2,7 @@ import os
 import shlex
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel, get_accel_env_vars
+from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel, get_accel_env_vars, get_gpu_devices
 from ramalama.file import UnitFile
 
 
@@ -59,9 +59,8 @@ class Quadlet:
         quadlet_file = UnitFile(container_file_name)
         quadlet_file.add("Unit", "Description", f"RamaLama {self.name} AI Model Service")
         quadlet_file.add("Unit", "After", "local-fs.target")
-        quadlet_file.add("Container", "AddDevice", "-/dev/accel")
-        quadlet_file.add("Container", "AddDevice", "-/dev/dri")
-        quadlet_file.add("Container", "AddDevice", "-/dev/kfd")
+        for dev in get_gpu_devices().values():
+            quadlet_file.add("Container", "AddDevice", dev)
         if get_accel() == "cuda":
             quadlet_file.add("Container", "AddDevice", "nvidia.com/gpu=all")
         quadlet_file.add("Container", "Image", f"{self.image}")
