@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import urllib.error
+import pathlib
 from typing import Optional
 
 from ramalama.common import available, perror
@@ -11,7 +12,7 @@ from ramalama.path_utils import create_file_link
 from ramalama.transports.base import Transport
 
 
-def in_existing_cache(organization, model_name, model_tag):
+def in_existing_cache(organization, model_name, model_tag) -> Optional[pathlib.Path]:
     if not available("ollama"):
         return None
     default_ollama_caches = [
@@ -30,8 +31,9 @@ def in_existing_cache(organization, model_name, model_tag):
                     if layer["mediaType"] == "application/vnd.ollama.image.model":
                         layer_digest = layer["digest"]
                         ollama_digest_path = os.path.join(cache_dir, 'blobs', layer_digest)
-                        if os.path.exists(str(ollama_digest_path).replace(':', '-')):
-                            return str(ollama_digest_path).replace(':', '-')
+                        sanitized_digest = pathlib.Path(ollama_digest_path.replace(':', '-'))
+                        if sanitized_digest.exists():
+                            return sanitized_digest
     return None
 
 
@@ -183,8 +185,7 @@ class Ollama(Transport):
         ollama_repo = OllamaRepository(name, organization)
         manifest = ollama_repo.fetch_manifest(tag)
         ollama_cache_path = in_existing_cache(organization, self.model_name, tag)
-        is_model_in_ollama_cache = ollama_cache_path is not None
-        files: list[SnapshotFile] = ollama_repo.get_file_list(tag, cached_files, is_model_in_ollama_cache)
+        files: list[SnapshotFile] = ollama_repo.get_file_list(tag, cached_files, ollama_cache_path is not None)
 
         if not args.quiet:
             self.print_pull_message(f"ollama://{organization}/{name}:{tag}")
@@ -193,7 +194,7 @@ class Ollama(Transport):
         self.model_store.new_snapshot(tag, model_hash, files, verify=getattr(args, "verify", True))
 
         # If a model has been downloaded via ollama cli, only create link in the snapshots directory
-        if is_model_in_ollama_cache:
+        if ollama_cache_path is not None:
             if not args.quiet:
                 perror(f"Using cached ollama://{name}{tag} ...")
             snapshot_model_path = self.model_store.get_snapshot_file_path(model_hash, self.model_store.model_name)

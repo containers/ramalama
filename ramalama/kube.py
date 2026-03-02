@@ -1,5 +1,6 @@
 import os
 import platform
+import pathlib
 from typing import Optional, Tuple
 
 from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel_env_vars
@@ -92,10 +93,10 @@ class Kube:
         return mounts, volumes
 
     def _gen_path_volume(self):
-        host_model_path = normalize_host_path_for_container(self.src_model_path)
+        host_model_path = normalize_host_path_for_container(pathlib.Path(self.src_model_path))
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
-            host_model_path = '/mnt' + host_model_path
+            host_model_path = f"/mnt{host_model_path}"
         mount = f"""
         - mountPath: {self.dest_model_path}
           name: model"""
@@ -126,10 +127,10 @@ class Kube:
         return mounts, volumes
 
     def _gen_chat_template_volume(self):
-        host_chat_template_path = normalize_host_path_for_container(self.src_chat_template_path)
+        host_chat_template_path = normalize_host_path_for_container(pathlib.Path(self.src_chat_template_path))
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
-            host_chat_template_path = '/mnt' + host_chat_template_path
+            host_chat_template_path = f"/mnt{host_chat_template_path}"
         mount = f"""
         - mountPath: {self.dest_chat_template_path}
           name: chat_template"""
@@ -140,10 +141,10 @@ class Kube:
         return mount, volume
 
     def _gen_mmproj_volume(self):
-        host_mmproj_path = normalize_host_path_for_container(self.src_mmproj_path)
+        host_mmproj_path = normalize_host_path_for_container(pathlib.Path(self.src_mmproj_path))
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
-            host_mmproj_path = '/mnt' + host_mmproj_path
+            host_mmproj_path = f"/mnt{host_mmproj_path}"
         mount = f"""
         - mountPath: {self.dest_mmproj_path}
           name: mmproj"""

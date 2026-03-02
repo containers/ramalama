@@ -77,7 +77,7 @@ def test_rag_dry_run(file, params, expected, expected_regex):
         assert (
             bool(
                 re.search(
-                    expected_regex.format(workspace_dir=normalize_host_path_for_container(ctx.workspace_dir)), result
+                    expected_regex.format(workspace_dir=normalize_host_path_for_container(Path(ctx.workspace_dir))), result
                 )
             )
             is expected

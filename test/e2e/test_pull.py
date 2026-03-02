@@ -123,7 +123,7 @@ def test_pull(model, env_vars, expected):
         elif isinstance(expected, Path):
             expected_name = (
                 "file://"
-                + PurePosixPath(normalize_host_path_for_container(str(ctx.workspace_path)))
+                + PurePosixPath(normalize_host_path_for_container(ctx.workspace_path))
                 .joinpath(PurePosixPath(expected))
                 .as_posix()
             )
