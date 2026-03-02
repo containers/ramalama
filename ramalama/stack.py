@@ -3,7 +3,7 @@ import platform
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image
+from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, set_accel_env_vars, tagged_image
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import get_config
 from ramalama.engine import add_labels
@@ -193,6 +193,7 @@ spec:
         return self.stack_yaml
 
     def serve(self):
+        set_accel_env_vars()
         self.args.port = compute_serving_port(self.args, quiet=self.args.generate)
         yaml = self.generate()
         if self.args.dryrun:
