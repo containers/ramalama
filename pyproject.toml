@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=69.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -32,7 +32,6 @@ maintainers = [
    { name = "Mike Bonnet", email = "mikeb@redhat.com" },
 ]
 classifiers = [
-  "License :: OSI Approved :: MIT License",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
@@ -50,9 +49,8 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Utilities",
 ]
-
-[project.license]
-text = "MIT"
+license = "MIT"
+license-files = ["LICENSE"]
 
 [project.optional-dependencies]
 dev = [
@@ -102,7 +100,6 @@ ramalama = "ramalama.cli:main"
 
 [tool.setuptools]
 include-package-data = true
-license-files = ["LICENSE"]
 
 [tool.setuptools.package-data]
 "ramalama" = ["py.typed"]
