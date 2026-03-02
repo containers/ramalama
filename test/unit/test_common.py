@@ -17,6 +17,7 @@ from ramalama.common import (
     load_cdi_config,
     populate_volume_from_image,
     rm_until_substring,
+    store_disk_stats,
     verify_checksum,
 )
 from ramalama.compat import NamedTemporaryFile
@@ -512,3 +513,20 @@ class TestPopulateVolumeFromImage:
 
             result = populate_volume_from_image(mock_model, Mock(engine="docker"), "test.gguf")
             assert result == expected_volume
+
+
+class TestStoreDiskStats:
+    @patch("ramalama.common.shutil.disk_usage")
+    def test_store_disk_stats(self, mock_disk_usage):
+        mock_disk_usage.return_value = (1000, 200, 800)
+        assert store_disk_stats(Mock(store="/tmp/store")) == {"total": 1000, "used": 200, "free": 800}
+
+    @patch("ramalama.common.shutil.disk_usage")
+    def test_store_disk_stats_no_store_dir(self, mock_disk_usage):
+        mock_disk_usage.side_effect = [FileNotFoundError, FileNotFoundError, (1000, 200, 800)]
+        assert store_disk_stats(Mock(store="/tmp/store")) == {"total": 1000, "used": 200, "free": 800}
+
+    @patch("ramalama.common.shutil.disk_usage")
+    def test_store_disk_stats_root_not_found(self, mock_disk_usage):
+        mock_disk_usage.side_effect = [FileNotFoundError, FileNotFoundError, FileNotFoundError]
+        assert store_disk_stats(Mock(store="/tmp/store")) == {"total": None, "used": None, "free": None}
