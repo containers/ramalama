@@ -1,13 +1,41 @@
 import argparse
+import copy
 import json
 import os
+import shutil
+import tempfile
 from dataclasses import asdict
+from datetime import datetime, timezone
 from http.client import HTTPConnection
-from typing import Any
+from textwrap import dedent
+from typing import Any, get_args
 from urllib.parse import urlparse
 
+from ramalama import rag as rag_module
+from ramalama.benchmarks.manager import BenchmarksManager
+from ramalama.benchmarks.schemas import BenchmarkRecord, get_benchmark_record
+from ramalama.benchmarks.utilities import parse_json, print_bench_results
+from ramalama.cli import (
+    CoerceToBool,
+    OverrideDefaultAction,
+    _get_source_model,
+    _rag_args,
+    add_network_argument,
+    default_image,
+    default_rag_image,
+    get_shortnames,
+    local_env,
+    local_images,
+    local_models,
+    runtime_options,
+    suppressCompleter,
+)
+from ramalama.common import run_cmd, set_accel_env_vars
+from ramalama.config import GGUF_QUANTIZATION_MODES, get_config
+from ramalama.engine import Engine, dry_run
 from ramalama.logger import logger
 from ramalama.path_utils import file_uri_to_path
+from ramalama.plugins.loader import assemble_command
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
 from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
     _CACHE_REUSE_DEFAULT,
@@ -16,6 +44,9 @@ from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
     LlamaCppCommands,
     _default_threads,
 )
+from ramalama.rag import RagTransport
+from ramalama.transports.api import APITransport
+from ramalama.transports.transport_factory import New, TransportFactory
 
 
 class AddPathOrUrl(argparse.Action):
@@ -50,12 +81,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     def _convert_to_gguf(self, outdir, source_model, args):
         """Run convert_hf_to_gguf.py inside a container to produce a GGUF file."""
-        import copy
-        import shutil
-        import tempfile
-
-        from ramalama.engine import Engine
-
         with tempfile.TemporaryDirectory(prefix="RamaLama_convert_src_") as srcdir:
             ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
             for file in ref_file.files:
@@ -76,10 +101,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     def _quantize(self, source_model, args, model_dir):
         """Run llama-quantize inside a container to quantize a GGUF model."""
-        import copy
-
-        from ramalama.engine import Engine
-
         engine = Engine(args)
         engine.add_volume(model_dir, "/model", opts="rw")
         engine.add_args(args.image)
@@ -120,9 +141,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         model_names = [m["name"] for m in body["models"]]
         if not model_name:
-            # Inline import to avoid circular dependency
-            from ramalama.transports.transport_factory import New
-
             model_name = New(args.MODEL, args).model_alias
 
         if not any(model_name in name for name in model_names):
@@ -144,12 +162,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     def _add_llama_cpp_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         """Add llama.cpp-specific inference args to an already-created parser."""
-        from ramalama.cli import (
-            CoerceToBool,
-            local_models,
-            suppressCompleter,
-        )
-
         parser.add_argument(
             "--cache-reuse",
             dest="cache_reuse",
@@ -202,8 +214,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             )
 
     def _do_run(self, args: argparse.Namespace, model: Any) -> None:
-        from ramalama.transports.api import APITransport
-
         if getattr(args, "rag", None):
             if isinstance(model, APITransport):
                 raise ValueError("ramalama run --rag is not supported for hosted API transports.")
@@ -218,8 +228,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         super()._do_serve(args, model)
 
     def _add_rag_args(self, parser: "argparse.ArgumentParser") -> None:
-        from ramalama.cli import OverrideDefaultAction, default_rag_image, local_images, local_models
-
         parser.add_argument(
             "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
         )
@@ -232,10 +240,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         )
 
     def _run_rag(self, args: argparse.Namespace, model: Any) -> None:
-        from ramalama.cli import _rag_args
-        from ramalama.plugins.loader import assemble_command
-        from ramalama.rag import RagTransport
-
         if not args.container:
             raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
         args = _rag_args(args)
@@ -244,10 +248,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         model.run(args, assemble_command(args))
 
     def _serve_rag(self, args: argparse.Namespace, model: Any) -> None:
-        from ramalama.cli import _rag_args
-        from ramalama.plugins.loader import assemble_command
-        from ramalama.rag import RagTransport
-
         if not args.container:
             raise ValueError("ramalama serve --rag cannot be run with the --nocontainer option.")
         args = _rag_args(args)
@@ -269,19 +269,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     def register_subcommands(self, subparsers: "argparse._SubParsersAction") -> None:
         super().register_subcommands(subparsers)
-        # Function-level imports avoid circular dependency: cli.py imports plugins at
-        # module level, but register_subcommands() is only called after cli.py is fully
-        # initialized (from configure_subcommands()), so these imports are always safe.
-        from ramalama.cli import (
-            OverrideDefaultAction,
-            add_network_argument,
-            default_image,
-            default_rag_image,
-            local_images,
-            local_models,
-            runtime_options,
-            suppressCompleter,
-        )
 
         # bench / benchmark
         bench_parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
@@ -350,10 +337,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         perplexity_parser.set_defaults(func=self._perplexity_handler)
 
         # convert
-        from typing import get_args
-
-        from ramalama.config import GGUF_QUANTIZATION_MODES, get_config
-
         config = get_config()
         convert_parser = subparsers.add_parser(
             "convert",
@@ -408,8 +391,6 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         convert_parser.set_defaults(func=self._convert_handler)
 
         # benchmarks (manage stored results)
-        from ramalama.config import get_config
-
         config = get_config()
         storage_folder = config.benchmarks.storage_folder
         epilog = f"Storage folder: {storage_folder}" if storage_folder else "Storage folder: not configured"
@@ -436,19 +417,6 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
             self._register_rag_subcommand(subparsers)
 
     def _register_rag_subcommand(self, subparsers: "argparse._SubParsersAction") -> None:
-        from textwrap import dedent
-
-        from ramalama.cli import (
-            CoerceToBool,
-            OverrideDefaultAction,
-            add_network_argument,
-            default_rag_image,
-            local_env,
-            local_images,
-            suppressCompleter,
-        )
-        from ramalama.config import get_config
-
         config = get_config()
         parser = subparsers.add_parser(
             "rag",
@@ -524,17 +492,11 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         parser.set_defaults(func=self._rag_handler)
 
     def _rag_handler(self, args: argparse.Namespace) -> None:
-        from ramalama import rag as rag_module
-        from ramalama.plugins.loader import assemble_command
-
         rag = rag_module.Rag(args.DESTINATION)
         args.inputdir = rag_module.INPUT_DIR
         rag.generate(args, assemble_command(args))
 
     def _convert_handler(self, args: argparse.Namespace) -> None:
-        from ramalama.cli import _get_source_model, get_shortnames
-        from ramalama.transports.transport_factory import TransportFactory
-
         if not args.container:
             raise ValueError("convert command cannot be run with the --nocontainer option.")
 
@@ -545,19 +507,6 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         model.convert(source_model, args)
 
     def _bench_handler(self, args: argparse.Namespace) -> None:
-        import json
-        from datetime import datetime, timezone
-
-        from ramalama.benchmarks.manager import BenchmarksManager
-        from ramalama.benchmarks.schemas import BenchmarkRecord, get_benchmark_record
-        from ramalama.benchmarks.utilities import parse_json, print_bench_results
-        from ramalama.common import run_cmd, set_accel_env_vars
-        from ramalama.config import get_config
-        from ramalama.engine import dry_run
-        from ramalama.plugins.loader import assemble_command
-        from ramalama.transports.api import APITransport
-        from ramalama.transports.transport_factory import New
-
         model = New(args.MODEL, args)
         model.ensure_model_exists(args)
 
@@ -614,11 +563,6 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
             BenchmarksManager(config.benchmarks.storage_folder).save(results)
 
     def _perplexity_handler(self, args: argparse.Namespace) -> None:
-        from ramalama.common import set_accel_env_vars
-        from ramalama.plugins.loader import assemble_command
-        from ramalama.transports.api import APITransport
-        from ramalama.transports.transport_factory import New
-
         model = New(args.MODEL, args)
         model.ensure_model_exists(args)
 
@@ -629,10 +573,6 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         model.execute_command(assemble_command(args), args)
 
     def _benchmarks_list_handler(self, args: argparse.Namespace) -> None:
-        from ramalama.benchmarks.manager import BenchmarksManager
-        from ramalama.benchmarks.utilities import print_bench_results
-        from ramalama.config import get_config
-
         config = get_config()
         bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
         results = bench_manager.list()

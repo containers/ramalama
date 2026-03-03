@@ -2,6 +2,7 @@ import argparse
 import os
 
 from ramalama.console import should_colorize
+from ramalama.transports.transport_factory import New
 
 # llama.cpp-specific defaults — not part of global config
 _NGL_DEFAULT: int = -1
@@ -33,8 +34,6 @@ class LlamaCppCommands:
     def _get_model_name(self, args: argparse.Namespace) -> str:
         """Return the model name from args, checking both MODEL (CLI) and model (internal) attributes."""
         if hasattr(args, 'MODEL'):
-            from ramalama.transports.transport_factory import New
-
             return New(args.MODEL, args).model_name
         model = getattr(args, 'model', None)
         if model is not None:
@@ -44,8 +43,6 @@ class LlamaCppCommands:
     def _cmd_run(self, args: argparse.Namespace) -> list[str]:
         if getattr(args, 'rag', None):
             return self._cmd_run_rag(args)
-
-        from ramalama.transports.transport_factory import New
 
         cmd = ["llama-server"]
 
@@ -154,8 +151,6 @@ class LlamaCppCommands:
     _cmd_serve = _cmd_run
 
     def _cmd_perplexity(self, args: argparse.Namespace) -> list[str]:
-        from ramalama.transports.transport_factory import New
-
         cmd = ["llama-perplexity"]
 
         is_container = args.container
@@ -183,8 +178,6 @@ class LlamaCppCommands:
         return cmd
 
     def _cmd_bench(self, args: argparse.Namespace) -> list[str]:
-        from ramalama.transports.transport_factory import New
-
         cmd = ["llama-bench"]
 
         is_container = args.container

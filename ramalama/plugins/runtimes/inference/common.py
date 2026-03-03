@@ -2,7 +2,25 @@ import argparse
 from abc import abstractmethod
 from typing import Any
 
+from ramalama.cli import (
+    GENERATE_OPTIONS,
+    OverrideDefaultAction,
+    chat_run_options,
+    local_models,
+    parse_generate_option,
+    parse_port_option,
+    runtime_options,
+    suppressCompleter,
+)
+from ramalama.common import ContainerEntryPoint, set_accel_env_vars
+from ramalama.config import get_config
+from ramalama.logger import logger
 from ramalama.plugins.interface import InferenceRuntimePlugin
+from ramalama.plugins.loader import assemble_command
+from ramalama.stack import Stack
+from ramalama.transports.api import APITransport
+from ramalama.transports.base import compute_serving_port
+from ramalama.transports.transport_factory import New, TransportFactory
 
 
 class BaseInferenceRuntime(InferenceRuntimePlugin):
@@ -37,9 +55,6 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
 
     def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         """Add inference-specific args shared across all runtimes for run/serve/perplexity."""
-        from ramalama.cli import OverrideDefaultAction, parse_port_option, suppressCompleter
-        from ramalama.config import get_config
-
         config = get_config()
         parser.add_argument(
             "-c",
@@ -101,8 +116,6 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             self._register_serve_subcommand(subparsers)
 
     def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
-        from ramalama.cli import chat_run_options, local_models, runtime_options, suppressCompleter
-
         parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
         runtime_options(parser, "run")
         self._add_inference_args(parser, "run")
@@ -124,8 +137,6 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         return parser
 
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
-        from ramalama.cli import local_models, runtime_options
-
         parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
         runtime_options(parser, "serve")
         self._add_inference_args(parser, "serve")
@@ -135,10 +146,6 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
 
     def _do_run(self, args: argparse.Namespace, model: "Any") -> None:
         """Execute run after the model is resolved. Override to inject pre-run logic."""
-        from ramalama.common import ContainerEntryPoint
-        from ramalama.plugins.loader import assemble_command
-        from ramalama.transports.api import APITransport
-
         if isinstance(model, APITransport):
             model.run(args, [])
             return
@@ -152,9 +159,6 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
 
     def _do_serve(self, args: argparse.Namespace, model: "Any") -> None:
         """Execute serve after the model is resolved. Override to inject pre-serve logic."""
-        from ramalama.common import set_accel_env_vars
-        from ramalama.plugins.loader import assemble_command
-
         set_accel_env_vars()
         cmd = assemble_command(args)
         if getattr(args, "generate", None):
@@ -167,10 +171,6 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             raise e
 
     def _run_handler(self, args: argparse.Namespace) -> None:
-        from ramalama.logger import logger
-        from ramalama.transports.base import compute_serving_port
-        from ramalama.transports.transport_factory import New, TransportFactory
-
         try:
             # detect available port and update arguments
             args.port = compute_serving_port(args)
@@ -188,11 +188,6 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         self._do_run(args, model)
 
     def _serve_handler(self, args: argparse.Namespace) -> None:
-        from ramalama.stack import Stack
-        from ramalama.transports.api import APITransport
-        from ramalama.transports.base import compute_serving_port
-        from ramalama.transports.transport_factory import New, TransportFactory
-
         if not args.container:
             args.detach = False
 
@@ -234,9 +229,6 @@ class ContainerizedInferenceRuntimePlugin(BaseInferenceRuntime):
     """Base class for inference plugins that support container-dependent args"""
 
     def _add_containerized_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
-        from ramalama.cli import GENERATE_OPTIONS, parse_generate_option
-        from ramalama.config import get_config
-
         config = get_config()
         parser.add_argument(
             "--api",
@@ -268,16 +260,12 @@ class ContainerizedInferenceRuntimePlugin(BaseInferenceRuntime):
             )
 
     def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
-        from ramalama.config import get_config
-
         parser = super()._register_run_subcommand(subparsers)
         if get_config().container:
             self._add_containerized_inference_args(parser, "run")
         return parser
 
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
-        from ramalama.config import get_config
-
         parser = super()._register_serve_subcommand(subparsers)
         if get_config().container:
             self._add_containerized_inference_args(parser, "serve")

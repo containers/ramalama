@@ -118,7 +118,7 @@ class TestLlamaCppPlugin:
     def test_name(self):
         assert self.plugin.name == "llama.cpp"
 
-    @patch("ramalama.transports.transport_factory.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_basic(self, mock_colorize, mock_new):
         mock_model = make_transport_model()
@@ -147,7 +147,7 @@ class TestLlamaCppPlugin:
         assert "--host" in cmd
         assert cmd[cmd.index("--host") + 1] == "127.0.0.1"
 
-    @patch("ramalama.transports.transport_factory.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_with_mmproj(self, mock_colorize, mock_new):
         mock_model = make_transport_model(mmproj_path="/mnt/models/mmproj.file")
@@ -161,7 +161,7 @@ class TestLlamaCppPlugin:
         assert "--jinja" not in cmd
         assert "--chat-template-file" not in cmd
 
-    @patch("ramalama.transports.transport_factory.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_with_chat_template(self, mock_colorize, mock_new):
         mock_model = make_transport_model(chat_template_path="/mnt/models/chat_template.file")
@@ -294,7 +294,7 @@ class TestLlamaCppPlugin:
         ns = make_ns()
         assert self.plugin.handle_subcommand("serve", ns) == self.plugin.handle_subcommand("run", ns)
 
-    @patch("ramalama.transports.transport_factory.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     def test_perplexity(self, mock_new):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
@@ -309,7 +309,7 @@ class TestLlamaCppPlugin:
         assert "--threads" in cmd
         assert cmd[cmd.index("--threads") + 1] == "8"
 
-    @patch("ramalama.transports.transport_factory.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     def test_bench(self, mock_new):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
@@ -373,7 +373,7 @@ class TestLlamaCppPlugin:
         ns.rag = "some/path"
         assert self.plugin.handle_subcommand("run", ns) == self.plugin.handle_subcommand("serve", ns)
 
-    @patch("ramalama.transports.transport_factory.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     def test_convert(self, mock_new):
         mock_model = make_transport_model(model_name="mymodel")
         mock_new.return_value = mock_model
@@ -386,7 +386,7 @@ class TestLlamaCppPlugin:
         assert "/output/mymodel.gguf" in cmd
         assert "/model" in cmd
 
-    @patch("ramalama.transports.transport_factory.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     def test_quantize(self, mock_new):
         mock_model = make_transport_model(model_name="mymodel")
         mock_new.return_value = mock_model
@@ -434,7 +434,7 @@ class TestVllmPlugin:
     def test_name(self):
         assert self.plugin.name == "vllm"
 
-    @patch("ramalama.transports.transport_factory.New")
+    @patch("ramalama.plugins.runtimes.inference.vllm.New")
     def test_serve_in_container(self, mock_new):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
@@ -547,7 +547,7 @@ class TestMlxPlugin:
     def test_name(self):
         assert self.plugin.name == "mlx"
 
-    @patch("ramalama.transports.transport_factory.New")
+    @patch("ramalama.plugins.runtimes.inference.mlx.New")
     def test_serve_basic(self, mock_new):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model

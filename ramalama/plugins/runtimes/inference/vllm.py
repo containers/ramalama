@@ -2,9 +2,12 @@ import argparse
 from http.client import HTTPConnection
 from typing import Any
 
+from ramalama.cli import suppressCompleter
 from ramalama.common import ContainerEntryPoint
+from ramalama.config import get_config
 from ramalama.logger import logger
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
+from ramalama.transports.transport_factory import New
 
 _VLLM_DEFAULT_IMAGE = "docker.io/vllm/vllm-openai"
 
@@ -15,8 +18,6 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         return "vllm"
 
     def _cmd_run(self, args: argparse.Namespace) -> list[str]:
-        from ramalama.transports.transport_factory import New
-
         cmd: list[str] = []
 
         is_container = args.container
@@ -65,9 +66,6 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
     _cmd_serve = _cmd_run
 
     def _add_max_model_len_arg(self, parser: "argparse.ArgumentParser") -> None:
-        from ramalama.cli import suppressCompleter
-        from ramalama.config import get_config
-
         config = get_config()
         # --ctx-size is already registered by runtime_options(); add --max-model-len as a vllm-specific alias
         parser.add_argument(

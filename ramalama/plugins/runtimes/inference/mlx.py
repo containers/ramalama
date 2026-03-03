@@ -5,6 +5,7 @@ from typing import Any
 
 from ramalama.logger import logger
 from ramalama.plugins.runtimes.inference.common import BaseInferenceRuntime
+from ramalama.transports.transport_factory import New
 
 
 class MlxPlugin(BaseInferenceRuntime):
@@ -13,8 +14,6 @@ class MlxPlugin(BaseInferenceRuntime):
         return "mlx"
 
     def _cmd_run(self, args: argparse.Namespace) -> list[str]:
-        from ramalama.transports.transport_factory import New
-
         cmd = ["mlx_lm.server"]
 
         is_container = args.container

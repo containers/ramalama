@@ -36,6 +36,8 @@ from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
 from ramalama.mcp.mcp_agent import LLMAgent
 from ramalama.mcp.mcp_client import PureMCPClient
+from ramalama.plugins.interface import InferenceRuntimePlugin
+from ramalama.plugins.loader import get_runtime
 from ramalama.proxy_support import setup_proxy_support
 
 # Setup proxy support on module import
@@ -272,9 +274,6 @@ class RamaLamaShell(cmd.Cmd):
         return self.provider.create_request(messages, options)
 
     def _resolve_model_name(self) -> str | None:
-        from ramalama.plugins.interface import InferenceRuntimePlugin
-        from ramalama.plugins.loader import get_runtime
-
         runtime = getattr(self.args, "runtime", None)
         if runtime:
             plugin = get_runtime(runtime)

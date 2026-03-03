@@ -95,16 +95,15 @@ def test_api_transport_ensure_exists_raises_if_model_missing(monkeypatch):
 def test_run_cli_api_transport_does_not_call_pull(monkeypatch):
     from ramalama.plugins import loader as factory_module
     from ramalama.plugins.loader import get_runtime
-    from ramalama.transports import base as base_module
-    from ramalama.transports import transport_factory as tf_module
+    from ramalama.plugins.runtimes.inference import common as common_module
 
     provider = make_provider()
     transport = APITransport("gpt-4o-mini", provider)
 
     monkeypatch.setattr(provider, "list_models", lambda: ["gpt-4o-mini"])
-    monkeypatch.setattr(base_module, "compute_serving_port", lambda args: "8080")
+    monkeypatch.setattr(common_module, "compute_serving_port", lambda args: "8080")
     monkeypatch.setattr(factory_module, "assemble_command", lambda args: [])
-    monkeypatch.setattr(tf_module, "New", lambda model, args: transport)
+    monkeypatch.setattr(common_module, "New", lambda model, args: transport)
 
     transport.pull = mock.Mock()
     transport.run = mock.Mock()
