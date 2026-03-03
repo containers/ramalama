@@ -1167,7 +1167,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 </details>
 
 ### [`ramalama-version`](https://github.com/containers/ramalama/blob/main/docs/ramalama-version.1.md)
-#### Display version of the AI Model.
+#### Display version of RamaLama.
 - <details>
     <summary>
         Print the version of RamaLama.
