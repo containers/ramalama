@@ -241,7 +241,7 @@ def _(message: ToolMessage) -> list[dict[str, Any]]:
             **message.metadata,
             "type": "function_call_output",
             "call_id": message.tool_call_id,
-            "output": message.text,
+            "output": message.text or "",
         }
     ]
 

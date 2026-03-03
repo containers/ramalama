@@ -112,16 +112,54 @@ class TestOpenAIResponsesProvider:
 
     def test_serializes_tool_calls(self):
         tool_call = ToolCall(id="call-9", name="lookup", arguments={"city": "NYC"})
-        assistant = AssistantMessage(tool_calls=[tool_call])
+        assistant = AssistantMessage(text="Checking that for you.", tool_calls=[tool_call])
         tool_reply = ToolMessage(text="Clear skies", tool_call_id="call-9")
 
         payload = self.provider.build_payload([assistant, tool_reply], make_options())
-        function_call = next(item for item in payload["input"] if item.get("type") == "function_call")
-        function_call_output = next(item for item in payload["input"] if item.get("type") == "function_call_output")
+        assert len(payload["input"]) == 3
 
+        assistant_item = payload["input"][0]
+        function_call = payload["input"][1]
+        function_call_output = payload["input"][2]
+
+        assert assistant_item["role"] == "assistant"
+        assert assistant_item["content"] == [{"type": "output_text", "text": "Checking that for you."}]
+
+        assert function_call["type"] == "function_call"
+        assert function_call["call_id"] == "call-9"
         assert function_call["name"] == "lookup"
         assert function_call["arguments"] == '{"city": "NYC"}'
+
+        assert function_call_output["type"] == "function_call_output"
         assert function_call_output["call_id"] == "call-9"
+        assert function_call_output["output"] == "Clear skies"
+
+    def test_serializes_multiple_tool_calls(self):
+        assistant = AssistantMessage(
+            tool_calls=[
+                ToolCall(id="call-9", name="lookup", arguments={"city": "NYC"}),
+                ToolCall(id="call-10", name="lookup", arguments={"city": "SF"}),
+            ]
+        )
+        tool_reply_1 = ToolMessage(text="Clear skies", tool_call_id="call-9")
+        tool_reply_2 = ToolMessage(text="Foggy", tool_call_id="call-10")
+
+        payload = self.provider.build_payload([assistant, tool_reply_1, tool_reply_2], make_options())
+
+        function_calls = [item for item in payload["input"] if item.get("type") == "function_call"]
+        assert len(function_calls) == 2
+
+        calls_by_id = {call["call_id"]: call for call in function_calls}
+        assert set(calls_by_id) == {"call-9", "call-10"}
+        assert calls_by_id["call-9"]["name"] == "lookup"
+        assert calls_by_id["call-9"]["arguments"] == '{"city": "NYC"}'
+        assert calls_by_id["call-10"]["name"] == "lookup"
+        assert calls_by_id["call-10"]["arguments"] == '{"city": "SF"}'
+
+        function_outputs = [item for item in payload["input"] if item.get("type") == "function_call_output"]
+        outputs_by_id = {item["call_id"]: item for item in function_outputs}
+        assert outputs_by_id["call-9"]["output"] == "Clear skies"
+        assert outputs_by_id["call-10"]["output"] == "Foggy"
 
     def test_streaming_emits_done_event_for_done_marker(self):
         events = list(self.provider.parse_stream_chunk(b"data: [DONE]\n\n"))
