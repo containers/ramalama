@@ -119,7 +119,7 @@ class TestOpenAIResponsesProvider:
         first_input = payload["input"][0]
 
         assert first_input["tool_calls"][0]["function"]["name"] == "lookup"
-        assert first_input["tool_calls"][0]["function"]["arguments"] == {"city": "NYC"}
+        assert first_input["tool_calls"][0]["function"]["arguments"] == '{"city": "NYC"}'
         assert payload["input"][1]["tool_call_id"] == "call-9"
 
     def test_streaming_emits_done_event_for_done_marker(self):

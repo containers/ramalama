@@ -9,7 +9,6 @@ from ramalama.chat_utils import (
     AttachmentPart,
     ChatMessageType,
     SystemMessage,
-    ToolCall,
     ToolMessage,
     UserMessage,
     serialize_part,
@@ -18,17 +17,6 @@ from ramalama.chat_utils import (
 
 class UnsupportedMessageType(Exception):
     """Raised when a provider request fails or returns an invalid payload."""
-
-
-def serialize_tool_call(call: ToolCall) -> dict[str, Any]:
-    return {
-        "id": call.id,
-        "type": "function",
-        "function": {
-            "name": call.name,
-            "arguments": json.dumps(call.arguments, ensure_ascii=False),
-        },
-    }
 
 
 @singledispatch
@@ -234,7 +222,10 @@ def _(message: AssistantMessage) -> dict[str, Any]:
         {
             "id": call.id,
             "type": "function",
-            "function": {"name": call.name, "arguments": call.arguments},
+            "function": {
+                "name": call.name,
+                "arguments": json.dumps(call.arguments, ensure_ascii=False),
+            },
         }
         for call in message.tool_calls
     ]
