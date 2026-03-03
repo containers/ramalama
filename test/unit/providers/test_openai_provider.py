@@ -94,7 +94,7 @@ class TestOpenAIResponsesProvider:
         assert serialized[0] == {"type": "input_text", "text": "hello"}
         assert serialized[1]["type"] == "image_url"
         assert serialized[1]["image_url"] == {"url": "http://img", "detail": "high"}
-        assert payload["max_completion_tokens"] == 128
+        assert payload["max_output_tokens"] == 128
         assert "max_tokens" not in payload
 
     def test_streaming_emits_delta_and_completion_events(self):
@@ -116,11 +116,12 @@ class TestOpenAIResponsesProvider:
         tool_reply = ToolMessage(text="Clear skies", tool_call_id="call-9")
 
         payload = self.provider.build_payload([assistant, tool_reply], make_options())
-        first_input = payload["input"][0]
+        function_call = next(item for item in payload["input"] if item.get("type") == "function_call")
+        function_call_output = next(item for item in payload["input"] if item.get("type") == "function_call_output")
 
-        assert first_input["tool_calls"][0]["function"]["name"] == "lookup"
-        assert first_input["tool_calls"][0]["function"]["arguments"] == '{"city": "NYC"}'
-        assert payload["input"][1]["tool_call_id"] == "call-9"
+        assert function_call["name"] == "lookup"
+        assert function_call["arguments"] == '{"city": "NYC"}'
+        assert function_call_output["call_id"] == "call-9"
 
     def test_streaming_emits_done_event_for_done_marker(self):
         events = list(self.provider.parse_stream_chunk(b"data: [DONE]\n\n"))
