@@ -713,7 +713,6 @@ def info_cli(args: DefaultArgsType) -> None:
             message = f"{name}={source} ({config_source})"
             print(message)
         return
-
     info: dict[str, Any] = {
         "Accelerator": get_accel(),
         "Config": load_file_config(),
@@ -950,6 +949,8 @@ def push_cli(args):
 
     if args.TARGET:
         shortnames = get_shortnames()
+        if source_model.type == "OCI":
+            raise ValueError(f"converting from an OCI based image {args.SOURCE} is not supported")
         target = shortnames.resolve(args.TARGET)
 
     target_model = New(target, args)
@@ -1642,12 +1643,7 @@ def _rm_model(models, args):
 
         try:
             m = New(model, args)
-            if m.remove(args):
-                continue
-            # Failed to remove and might be OCI so attempt to remove OCI
-            if args.ignore:
-                _rm_oci_model(model, args)
-                continue
+            m.remove(args)
         except (KeyError, subprocess.CalledProcessError) as e:
             for prefix in MODEL_TYPES:
                 if model.startswith(prefix + "://"):
@@ -1723,7 +1719,6 @@ def inspect_cli(args):
     if not args.MODEL:
         parser = get_parser()
         parser.error("inspect requires MODEL")
-
     args.pull = "never"
 
     model = New(args.MODEL, args)
