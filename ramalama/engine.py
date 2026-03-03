@@ -12,7 +12,7 @@ from typing import Any
 # Live reference for checking global vars
 import ramalama.common
 from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
+from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd, get_gpu_devices
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import get_config
 from ramalama.logger import logger
@@ -93,9 +93,10 @@ class BaseEngine(ABC):
                 self.exec_args += ["--device", device_arg]
 
         if ramalama.common.podman_machine_accel:
-            self.exec_args += ["--device", "/dev/dri"]
+            for dev in get_gpu_devices().values():
+                self.exec_args += ["--device", dev]
 
-        for path in ["/dev/dri", "/dev/kfd", "/dev/accel", "/dev/davinci*", "/dev/devmm_svm", "/dev/hisi_hdc"]:
+        for path in ["/dev/davinci*", "/dev/devmm_svm", "/dev/hisi_hdc"]:
             for dev in glob.glob(path):
                 self.exec_args += ["--device", dev]
 

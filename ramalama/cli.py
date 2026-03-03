@@ -1179,14 +1179,14 @@ If GPU device on host is accessible to via group access, this option leaks the u
             dest="webui",
             choices=["on", "off"],
             default="on",
-            help="enable or disable the web UI (default: on)",
+            help="enable or disable the web UI",
         )
         parser.add_argument(
             "--dri",
             dest="dri",
             choices=["on", "off"],
             default="on",
-            help="mount /dev/dri into the container when running llama-stack (default: on)",
+            help="mount /dev/dri into the container when running llama-stack",
         )
 
 

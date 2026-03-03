@@ -141,7 +141,6 @@ def get_storage_folder(base_path: str | None = None):
 
     return os.path.join(base_path, "benchmarks")
 
-
 @dataclass
 class Benchmarks:
     storage_folder: str = field(default_factory=get_storage_folder)

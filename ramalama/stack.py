@@ -3,7 +3,7 @@ import platform
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image
+from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image, perror, get_gpu_devices
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import get_config
 from ramalama.engine import add_labels
@@ -53,9 +53,10 @@ class Stack:
           name: model"""
 
         if self.args.dri == "on" and platform.system() != "Windows":
-            volume_mounts += """
-        - mountPath: /dev/dri
-          name: dri"""
+            for name, path in get_gpu_devices().items():
+                volume_mounts += f"""
+        - mountPath: {path}
+          name: {name}"""
 
         return volume_mounts
 
@@ -68,11 +69,12 @@ class Stack:
       - hostPath:
           path: {host_model_path}
         name: model"""
-        if self.args.dri == "on":
-            volumes += """
+        if self.args.dri == "on" and platform.system() != "Windows":
+            for name, path in get_gpu_devices().items():
+                volumes += f"""
       - hostPath:
-          path: /dev/dri
-        name: dri"""
+          path: {path}
+        name: {name}"""
         return volumes
 
     def _gen_server_env(self):
@@ -204,15 +206,20 @@ spec:
                 kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
                 return
 
-            if self.args.generate.gen_type == "quadlet/kube":
+            if self.args.generate.gen_type == "quadlet/kube" or self.args.generate.gen_type == "quadlet":
                 kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
-                k = quadlet.kube(self.name, f"RamaLama {self.model} Kubernetes YAML - llama Stack AI Model Service")
+                model=getattr(self.args, "MODEL")
+                k = quadlet.kube(self.name, f"RamaLama {model} Kubernetes YAML - llama Stack AI Model Service")
                 openai = f"http://localhost:{self.args.port}"
-                k.add("comment", f"# RamaLama service for {self.model}")
+                k.add("comment", f"# RamaLama service for {model}")
                 k.add("comment", "# Serving RESTAPIs:")
                 k.add("comment", f"#    Llama Stack: {openai}")
                 k.add("comment", f"#    OpenAI:      {openai}/v1/openai\n")
                 k.write(self.args.generate.output_dir)
+                return
+
+            if self.args.generate.gen_type == "compose":
+                perror("Error: The compose file generation for llama-stack is not implemented.")
                 return
 
         with NamedTemporaryFile(
