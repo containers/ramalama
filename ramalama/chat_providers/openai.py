@@ -9,6 +9,7 @@ from ramalama.chat_utils import (
     AttachmentPart,
     ChatMessageType,
     SystemMessage,
+    ToolCall,
     ToolMessage,
     UserMessage,
     serialize_part,
@@ -17,6 +18,17 @@ from ramalama.chat_utils import (
 
 class UnsupportedMessageType(Exception):
     """Raised when a provider request fails or returns an invalid payload."""
+
+
+def serialize_tool_call(call: ToolCall) -> dict[str, Any]:
+    return {
+        "id": call.id,
+        "type": "function",
+        "function": {
+            "name": call.name,
+            "arguments": json.dumps(call.arguments, ensure_ascii=False),
+        },
+    }
 
 
 @singledispatch
@@ -58,18 +70,22 @@ def _(message: AssistantMessage) -> dict[str, Any]:
     if message.attachments:
         raise ValueError("Attachments are not supported by this provider.")
 
-    tool_calls = [
-        {
-            "id": call.id,
-            "type": "function",
-            "function": {
-                "name": call.name,
-                "arguments": json.dumps(call.arguments, ensure_ascii=False),
-            },
-        }
-        for call in message.tool_calls
-    ]
-    return {**message.metadata, 'content': message.text or "", 'role': message.role, 'tool_calls': tool_calls}
+    payload = {**message.metadata, 'content': message.text or "", 'role': message.role}
+
+    if message.tool_calls:
+        payload['tool_calls'] = [
+            {
+                "id": call.id,
+                "type": "function",
+                "function": {
+                    "name": call.name,
+                    "arguments": json.dumps(call.arguments, ensure_ascii=False),
+                },
+            }
+            for call in message.tool_calls
+        ]
+
+    return payload
 
 
 class RequiredCompletionsPayload(TypedDict):
@@ -218,10 +234,7 @@ def _(message: AssistantMessage) -> dict[str, Any]:
         {
             "id": call.id,
             "type": "function",
-            "function": {
-                "name": call.name,
-                "arguments": json.dumps(call.arguments, ensure_ascii=False),
-            },
+            "function": {"name": call.name, "arguments": call.arguments},
         }
         for call in message.tool_calls
     ]
