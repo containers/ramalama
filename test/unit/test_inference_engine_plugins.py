@@ -115,19 +115,29 @@ class TestLlamaCppPlugin:
     def setup_method(self):
         self.plugin = LlamaCppPlugin()
 
+    @pytest.fixture(params=[False, True])
+    def container_image_is_ggml(self, request):
+        return request.param
+
+    @pytest.fixture(autouse=True)
+    def _patch_container_image_is_ggml(self, container_image_is_ggml):
+        with patch.object(self.plugin, "_container_image_is_ggml", return_value=container_image_is_ggml):
+            yield
+
     def test_name(self):
         assert self.plugin.name == "llama.cpp"
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
-    def test_serve_basic(self, mock_colorize, mock_new):
+    def test_serve_basic(self, mock_colorize, mock_new, container_image_is_ggml):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(container=True, MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("serve", ns)
 
-        assert cmd[0] == "llama-server"
+        expected_entry = "--server" if container_image_is_ggml else "llama-server"
+        assert cmd[0] == expected_entry
         assert "--host" in cmd
         assert cmd[cmd.index("--host") + 1] == "0.0.0.0"
         assert "--port" in cmd
@@ -295,14 +305,15 @@ class TestLlamaCppPlugin:
         assert self.plugin.handle_subcommand("serve", ns) == self.plugin.handle_subcommand("run", ns)
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_perplexity(self, mock_new):
+    def test_perplexity(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(ngl=20, threads=8, MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("perplexity", ns)
 
-        assert cmd[0] == "llama-perplexity"
+        expected_entry = "--perplexity" if container_image_is_ggml else "llama-perplexity"
+        assert cmd[0] == expected_entry
         assert "--model" in cmd
         assert "-ngl" in cmd
         assert cmd[cmd.index("-ngl") + 1] == "20"
@@ -310,14 +321,15 @@ class TestLlamaCppPlugin:
         assert cmd[cmd.index("--threads") + 1] == "8"
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_bench(self, mock_new):
+    def test_bench(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(ngl=30, MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("bench", ns)
 
-        assert cmd[0] == "llama-bench"
+        expected_entry = "--bench" if container_image_is_ggml else "llama-bench"
+        assert cmd[0] == expected_entry
         assert "--model" in cmd
         assert "-ngl" in cmd
         assert "-o" in cmd
@@ -374,27 +386,29 @@ class TestLlamaCppPlugin:
         assert self.plugin.handle_subcommand("run", ns) == self.plugin.handle_subcommand("serve", ns)
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_convert(self, mock_new):
+    def test_convert(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model(model_name="mymodel")
         mock_new.return_value = mock_model
 
         ns = make_ns(MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("convert", ns)
 
-        assert cmd[0] == "convert_hf_to_gguf.py"
+        expected_entry = "--convert" if container_image_is_ggml else "convert_hf_to_gguf.py"
+        assert cmd[0] == expected_entry
         assert "--outfile" in cmd
         assert "/output/mymodel.gguf" in cmd
         assert "/model" in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_quantize(self, mock_new):
+    def test_quantize(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model(model_name="mymodel")
         mock_new.return_value = mock_model
 
         ns = make_ns(gguf="Q4_K_M", MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("quantize", ns)
 
-        assert cmd[0] == "llama-quantize"
+        expected_entry = "--quantize" if container_image_is_ggml else "llama-quantize"
+        assert cmd[0] == expected_entry
         assert "/model/mymodel.gguf" in cmd
         assert "/model/mymodel-Q4_K_M.gguf" in cmd
         assert "Q4_K_M" in cmd

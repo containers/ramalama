@@ -297,6 +297,24 @@ def images(args):
         raise (e)
 
 
+def image_inspect(args, name: str, format: str | None = None):
+    if not name:
+        raise ValueError("must specify an image name")
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "image", "inspect"]
+    if format:
+        conman_args += ["--format", format]
+
+    conman_args += [name]
+    try:
+        return run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+    except Exception:
+        return ''
+
+
 def containers(args):
     conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:

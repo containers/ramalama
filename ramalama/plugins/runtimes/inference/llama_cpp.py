@@ -30,9 +30,9 @@ from ramalama.cli import (
     runtime_options,
     suppressCompleter,
 )
-from ramalama.common import ensure_image, run_cmd, set_accel_env_vars, version_tagged_image
-from ramalama.config import GGUF_QUANTIZATION_MODES, ActiveConfig
-from ramalama.engine import Engine, dry_run
+from ramalama.common import accel_image, ensure_image, run_cmd, set_accel_env_vars, version_tagged_image
+from ramalama.config import GGUF_QUANTIZATION_MODES, ActiveConfig, DefaultConfig
+from ramalama.engine import Engine, dry_run, image_inspect
 from ramalama.logger import logger
 from ramalama.path_utils import file_uri_to_path
 from ramalama.plugins.loader import assemble_command
@@ -160,6 +160,21 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         # User override from [ramalama.images] takes precedence
         override = config.images.get(gpu_type) if gpu_type else None
         return override if override else _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
+
+    def _container_image_is_ggml(self, args: argparse.Namespace) -> bool:
+        if not args.container or args.dryrun:
+            return False
+        image = accel_image(ActiveConfig())
+        default_image = accel_image(DefaultConfig())
+        if image == default_image:
+            return False
+        try:
+            image_entrypoint = image_inspect(args, image, format="{{ .Config.Entrypoint }}")
+        except Exception as e:
+            logger.debug(f"Error inspecting image {image}: {e}")
+            return False  # Assume default image (non-ggml)
+        # Upstream llama.cpp full image uses a wrapper script as the entrypoint
+        return "tools.sh" in image_entrypoint
 
     # --- subcommand registration ---
 

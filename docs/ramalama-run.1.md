@@ -95,6 +95,13 @@ Accelerated images:
 |  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
 |  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
 
+Upstream llama.cpp "full" images from `ghcr.io/ggml-org/llama.cpp` are also supported.
+RamaLama automatically detects the image type and adjusts the container CLI accordingly.
+
+```
+ramalama run --image ghcr.io/ggml-org/llama.cpp:full-vulkan MODEL
+```
+
 #### **--interactive**, **-i**
 Continue to interactive chat mode after processing stdin or prompt arguments.
 By default, when arguments or piped input are provided, the command exits after
