@@ -4,7 +4,7 @@ import platform
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, get_gpu_devices, tagged_image
+from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, get_gpu_devices, version_tagged_image
 from ramalama.compat import NamedTemporaryFile
 from ramalama.compose import Compose
 from ramalama.config import ActiveConfig
@@ -27,7 +27,7 @@ class Stack:
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
         self.model_port = str(int(self.args.port) + 1)
-        self.stack_image = tagged_image(ActiveConfig().stack_image)
+        self.stack_image = version_tagged_image(ActiveConfig().stack_image)
         self.labels = ""
 
     def add_label(self, label):

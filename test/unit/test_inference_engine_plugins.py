@@ -406,17 +406,21 @@ class TestLlamaCppPlugin:
             self.plugin.handle_subcommand("unknown_cmd", ns)
 
     def test_get_container_image_cuda(self):
+        from ramalama.common import version_tagged_image
+
         config = MagicMock()
         config.images.get.return_value = None
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
-        assert image == "quay.io/ramalama/cuda:latest"
+        assert image == version_tagged_image("quay.io/ramalama/cuda")
 
     def test_get_container_image_no_gpu(self):
+        from ramalama.common import version_tagged_image
+
         config = MagicMock()
         config.images.get.return_value = None
-        config.default_image = "quay.io/ramalama/ramalama"
+        config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
         image = self.plugin.get_container_image(config, "")
-        assert image == "quay.io/ramalama/ramalama:latest"
+        assert image == version_tagged_image("quay.io/ramalama/ramalama")
 
     def test_get_container_image_user_override(self):
         config = MagicMock()

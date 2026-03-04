@@ -9,7 +9,7 @@ from ramalama.logger import logger
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
 from ramalama.transports.transport_factory import New
 
-_VLLM_DEFAULT_IMAGE = "docker.io/vllm/vllm-openai"
+_VLLM_DEFAULT_IMAGE = "docker.io/vllm/vllm-openai:latest"
 
 
 class VllmPlugin(ContainerizedInferenceRuntimePlugin):
@@ -90,13 +90,11 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
     def get_container_image(self, config: Any, gpu_type: str) -> str | None:
         # GPU-specific user override (e.g., VLLM_CUDA_VISIBLE_DEVICES)
         if gpu_type and (override := config.images.get(f"VLLM_{gpu_type}")):
-            image = override
+            return override
         # General vllm user override (VLLM key, any GPU)
-        elif override := config.images.get("VLLM"):
-            image = override
-        else:
-            image = _VLLM_DEFAULT_IMAGE
-        return image if ":" in image else f"{image}:latest"
+        if override := config.images.get("VLLM"):
+            return override
+        return _VLLM_DEFAULT_IMAGE
 
     def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
         conn.request("GET", "/ping")

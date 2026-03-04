@@ -629,10 +629,16 @@ def minor_release() -> str:
     return vers
 
 
-def tagged_image(image: str) -> str:
+def version_tagged_image(image: str) -> str:
     if len(image.split(":")) > 1:
         return image
     return f"{image}:{minor_release()}"
+
+
+def latest_tagged_image(image: str) -> str:
+    if len(image.split(":")) > 1:
+        return image
+    return f"{image}:latest"
 
 
 class AccelImageArgsWithImage(Protocol):
@@ -657,15 +663,18 @@ AccelImageArgs: TypeAlias = None | AccelImageArgsOtherRuntime | AccelImageArgsOt
 
 def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: str = "image") -> str:
     """
-    Selects and the appropriate image based on config, arguments, environment.
+    Selects the appropriate image based on config, arguments, environment.
     "images" is a mapping of environment variable names to image names. If not specified, the
     mapping from default config will be used.
     "conf_key" is the configuration key that holds the configured value of the selected image.
     If not specified, it defaults to "image".
+
+    Never pulls images; callers that need pulling should pass the result to ensure_image().
     """
-    # User provided an image via config
+
+    # User provided an image via config; tag with :latest if no tag given
     if config.is_set(conf_key):
-        return tagged_image(getattr(config, conf_key))
+        return latest_tagged_image(getattr(config, conf_key))
 
     set_gpu_type_env_vars()
     gpu_type = next(iter(get_gpu_type_env_vars()), "")
@@ -676,46 +685,53 @@ def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: 
 
         plugin_image = get_runtime(config.runtime).get_container_image(config, gpu_type)
         if plugin_image is not None:
-            return plugin_image if ":" in plugin_image else f"{plugin_image}:latest"
+            return latest_tagged_image(plugin_image)
         images = config.images  # plugin returned None (e.g., MLX); fall back to user dict
 
-    # Get image based on detected GPU type
-    image = images.get(gpu_type, getattr(config, f"default_{conf_key}"))
+    # Get image based on detected GPU type; tag user overrides with :latest if untagged
+    return latest_tagged_image(images.get(gpu_type, getattr(config, f"default_{conf_key}")))
 
-    # If the image from the config is specified by tag or digest, return it unmodified
-    if ":" in image:
+
+def ensure_image(conman: str | None, image: str, should_pull: bool = False) -> str:
+    """Check if image exists locally; optionally pull it.
+
+    Returns the image string on success. If conman is falsy, returns image unchanged.
+    Raises ValueError if the image cannot be pulled.
+    """
+    if not conman:
         return image
 
-    vers = minor_release()
+    if ":" not in image:
+        image = f"{image}:latest"
 
-    should_pull = config.pull in ["always", "missing"] and not config.dryrun
-    if config.engine and attempt_to_use_versioned(config.engine, image, vers, True, should_pull):
-        return f"{image}:{vers}"
-
-    return f"{image}:latest"
-
-
-def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, should_pull: bool) -> bool:
     try:
-        # check if versioned image exists locally
-        if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True):
-            return True
-
+        if run_cmd([conman, "inspect", image], ignore_all=True):
+            return image
     except Exception:
         pass
 
     if not should_pull:
-        return False
+        return image
 
     try:
-        # attempt to pull the versioned image
-        if not quiet:
-            perror(f"Attempting to pull {image}:{vers} ...")
-        run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True)
-        return True
-
+        run_cmd([conman, "pull", image], ignore_stderr=True)
+        return image
     except Exception:
-        return False
+        pass
+
+    # This is a fallback for main when the version has been bumped but the
+    # tagged image for the version has not been pushed yet
+    # Only try this for quay.io/ramalama/ images
+    base, _, _ = image.rpartition(":")
+    if base and base.startswith("quay.io/ramalama/"):
+        latest = latest_tagged_image(base)
+        try:
+            run_cmd([conman, "pull", latest], ignore_stderr=True)
+            return latest
+        except Exception as e:
+            raise ValueError(f"Failed to pull image {image} or {latest}: {e}")
+
+    raise ValueError(f"Failed to pull image {image}")
 
 
 class ContainerEntryPoint(str):

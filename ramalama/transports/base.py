@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
-    accel_image,
     exec_cmd,
     genname,
     is_split_file_model,
@@ -150,7 +149,6 @@ class Transport(TransportBase):
         self._model_store_path: str = model_store_path
         self._model_store: Optional["ModelStore"] = None
 
-        self.default_image = accel_image(ActiveConfig())
         self.draft_model: Transport | None = None
 
     def extract_model_identifiers(self):

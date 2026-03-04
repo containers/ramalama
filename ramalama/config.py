@@ -7,15 +7,15 @@ from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import apple_vm, available
+from ramalama.common import apple_vm, available, version_tagged_image
 from ramalama.config_types import SUPPORTED_ENGINES, SUPPORTED_RUNTIMES
 from ramalama.layered_config import LayeredMixin
 from ramalama.log_levels import LogLevel, coerce_log_level
 from ramalama.toml_parser import TOMLParser
 
-DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
-DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
-DEFAULT_RAG_IMAGE: str = "quay.io/ramalama/ramalama-rag"
+DEFAULT_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama")
+DEFAULT_STACK_IMAGE: str = version_tagged_image("quay.io/ramalama/llama-stack")
+DEFAULT_RAG_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-rag")
 GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q2_K",
     "Q3_K_S",

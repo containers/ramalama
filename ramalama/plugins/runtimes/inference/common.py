@@ -12,7 +12,7 @@ from ramalama.cli import (
     runtime_options,
     suppressCompleter,
 )
-from ramalama.common import ContainerEntryPoint, set_accel_env_vars
+from ramalama.common import ContainerEntryPoint, accel_image, ensure_image, set_accel_env_vars
 from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.plugins.interface import InferenceRuntimePlugin
@@ -150,6 +150,11 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             model.run(args, [])
             return
 
+        if args.container and not args.dryrun:
+            config = ActiveConfig()
+            should_pull = config.pull in ["always", "missing", "newer"]
+            args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
+
         cmd = assemble_command(args)
         if len(cmd) > 0 and isinstance(cmd[0], ContainerEntryPoint):
             cmd = cmd[1:]
@@ -160,6 +165,12 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
     def _do_serve(self, args: argparse.Namespace, model: "Any") -> None:
         """Execute serve after the model is resolved. Override to inject pre-serve logic."""
         set_accel_env_vars()
+        if args.container and not args.dryrun:
+            config = ActiveConfig()
+            generate = getattr(args, "generate", None)
+            should_pull = False if generate else config.pull in ["always", "missing", "newer"]
+            args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
+
         cmd = assemble_command(args)
         if getattr(args, "generate", None):
             model.generate_container_config(args, cmd)

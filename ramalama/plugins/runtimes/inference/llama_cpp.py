@@ -30,7 +30,7 @@ from ramalama.cli import (
     runtime_options,
     suppressCompleter,
 )
-from ramalama.common import run_cmd, set_accel_env_vars
+from ramalama.common import ensure_image, run_cmd, set_accel_env_vars, version_tagged_image
 from ramalama.config import GGUF_QUANTIZATION_MODES, ActiveConfig
 from ramalama.engine import Engine, dry_run
 from ramalama.logger import logger
@@ -64,13 +64,13 @@ class AddPathOrUrl(argparse.Action):
 
 
 _LLAMA_CPP_IMAGES: dict[str, str] = {
-    "ASAHI_VISIBLE_DEVICES": "quay.io/ramalama/asahi",
-    "ASCEND_VISIBLE_DEVICES": "quay.io/ramalama/cann",
-    "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda",
-    "GGML_VK_VISIBLE_DEVICES": "quay.io/ramalama/ramalama",
-    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm",
-    "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu",
-    "MUSA_VISIBLE_DEVICES": "quay.io/ramalama/musa",
+    "ASAHI_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/asahi"),
+    "ASCEND_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/cann"),
+    "CUDA_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/cuda"),
+    "GGML_VK_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/ramalama"),
+    "HIP_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/rocm"),
+    "INTEL_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/intel-gpu"),
+    "MUSA_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/musa"),
 }
 
 
@@ -91,6 +91,10 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             engine.add_volume(outdir.name, "/output", opts="rw")
             args = copy.copy(args)
             args.model = source_model
+            if not args.dryrun:
+                config = ActiveConfig()
+                should_pull = config.pull in ["always", "missing", "newer"]
+                args.rag_image = ensure_image(args.engine, args.rag_image, should_pull=should_pull)
             engine.add_args(args.rag_image)
             engine.add_args(*self._cmd_convert(args))
             if args.dryrun:
@@ -155,8 +159,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def get_container_image(self, config: Any, gpu_type: str) -> str | None:
         # User override from [ramalama.images] takes precedence
         override = config.images.get(gpu_type) if gpu_type else None
-        image = override if override else _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
-        return image if ":" in image else f"{image}:latest"
+        return override if override else _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
 
     # --- subcommand registration ---
 
