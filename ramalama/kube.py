@@ -57,7 +57,7 @@ class Kube:
           name: model"""
             volumes += self._gen_oci_volume()
 
-        if self.args.rag:
+        if getattr(self.args, 'rag', None):
             m, v = self._gen_rag_volume()
             mounts += m
             volumes += v

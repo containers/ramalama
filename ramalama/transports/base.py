@@ -1,7 +1,5 @@
 import copy
-import json
 import os
-import platform
 import random
 import socket
 import subprocess
@@ -29,11 +27,6 @@ if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
     from ramalama.transports.oci.oci import OCI
 
-from datetime import datetime, timezone
-
-from ramalama.benchmarks.manager import BenchmarksManager
-from ramalama.benchmarks.schemas import BenchmarkRecord, BenchmarkRecordV1, get_benchmark_record
-from ramalama.benchmarks.utilities import parse_json, print_bench_results
 from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
@@ -43,7 +36,6 @@ from ramalama.common import (
     is_split_file_model,
     perror,
     populate_volume_from_image,
-    run_cmd,
     set_accel_env_vars,
 )
 from ramalama.logger import logger
@@ -126,22 +118,6 @@ class TransportBase(ABC):
     @abstractmethod
     def remove(self, args) -> bool:
         raise self.__not_implemented_error("rm")
-
-    @abstractmethod
-    def bench(self, args, cmd: list[str]):
-        raise self.__not_implemented_error("bench")
-
-    @abstractmethod
-    def run(self, args, cmd: list[str]):
-        raise self.__not_implemented_error("run")
-
-    @abstractmethod
-    def perplexity(self, args, cmd: list[str]):
-        raise self.__not_implemented_error("perplexity")
-
-    @abstractmethod
-    def serve(self, args, cmd: list[str]):
-        raise self.__not_implemented_error("serve")
 
     @abstractmethod
     def exists(self) -> bool:
@@ -467,68 +443,6 @@ class Transport(TransportBase):
             mount_opts += f",ro{self.engine.relabel()}"
             self.engine.add([mount_opts])
 
-    def bench(self, args, cmd: list[str]):
-        set_accel_env_vars()
-
-        output_format = getattr(args, "format", "table")
-
-        if args.dryrun:
-            if args.container:
-                self.engine.dryrun()
-            else:
-                dry_run(cmd)
-
-            return
-        elif args.container:
-            self.setup_container(args)
-            self.setup_mounts(args)
-            self.engine.add([args.image] + cmd)
-            result = self.engine.run_process()
-        else:
-            result = run_cmd(cmd, encoding="utf-8")
-
-        try:
-            bench_results = parse_json(result.stdout)
-        except (json.JSONDecodeError, ValueError):
-            message = f"Could not parse benchmark output. Expected JSON but got:\n{result.stdout}"
-            raise ValueError(message)
-
-        base_payload: dict = {
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "configuration": {
-                "container_image": args.image,
-                "container_runtime": args.engine,
-                "inference_engine": args.runtime,
-                "runtime_args": cmd,
-            },
-        }
-        results: list[BenchmarkRecord] = list()
-        for bench_result in bench_results:
-            result_record: BenchmarkRecordV1 = get_benchmark_record({"result": bench_result, **base_payload}, "v1")
-            results.append(result_record)
-
-        if output_format == "json":
-            print(result.stdout)
-        else:
-            print_bench_results(results)
-
-        config = get_config()
-        if not config.benchmarks.disable:
-            bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
-            bench_manager.save(results)
-
-    def run(self, args, cmd: list[str]):
-        # The Run command will first launch a daemonized service
-        # and run chat to communicate with it.
-
-        if len(cmd) > 0 and isinstance(cmd[0], ContainerEntryPoint):
-            # Ignore entrypoint
-            cmd = cmd[1:]
-
-        process = self.serve_nonblocking(args, cmd)
-        if process:
-            return self._connect_and_chat(args, process)
-
     def serve_nonblocking(self, args, cmd: list[str]) -> subprocess.Popen | None:
         if args.container:
             args.name = self.get_container_name(args)
@@ -570,9 +484,8 @@ class Transport(TransportBase):
 
     def _connect_and_chat(self, args, server_process):
         """Connect to the server and start chat in the parent process."""
+
         args.url = f"http://127.0.0.1:{args.port}/v1"
-        if getattr(args, "runtime", None) == "mlx":
-            args.prefix = "🍏 > "
 
         # Model name in the chat request must match RamalamaModelContext.alias()
         chat_args = copy.deepcopy(args)
@@ -583,9 +496,6 @@ class Transport(TransportBase):
         else:
             # Store the Popen object for monitoring
             chat_args.server_process = server_process
-
-            if getattr(chat_args, "runtime", None) == "mlx":
-                return self._handle_mlx_chat(chat_args)
             chat.chat(chat_args)
             return 0
 
@@ -622,35 +532,6 @@ class Transport(TransportBase):
                 time.sleep(1)
         return 0
 
-    def _handle_mlx_chat(self, args):
-        """Handle chat for MLX runtime with connection retries."""
-        args.ignore = getattr(args, "dryrun", False)
-        args.initial_connection = True
-        max_retries = 10
-
-        for i in range(max_retries):
-            try:
-                if self._is_server_ready(args.port):
-                    args.initial_connection = False
-                    time.sleep(1)  # Give server time to stabilize
-                    chat.chat(args)
-                    break
-                else:
-                    logger.debug(f"MLX server not ready, waiting... (attempt {i + 1}/{max_retries})")
-                    time.sleep(3)
-                    continue
-
-            except Exception as e:
-                if i >= max_retries - 1:
-                    perror(f"Error: Failed to connect to MLX server after {max_retries} attempts: {e}")
-                    self._cleanup_server_process(args.server_process)
-                    raise e
-                logger.debug(f"Connection attempt failed, retrying... (attempt {i + 1}/{max_retries}): {e}")
-                time.sleep(3)
-
-        args.initial_connection = False
-        return 0
-
     def _is_server_ready(self, port):
         """Check if the server is ready to accept connections."""
         try:
@@ -672,10 +553,6 @@ class Transport(TransportBase):
         except subprocess.TimeoutExpired:
             process.kill()
 
-    def perplexity(self, args, cmd: list[str]):
-        set_accel_env_vars()
-        self.execute_command(cmd, args)
-
     def exists(self) -> bool:
         _, _, all = self.model_store.get_cached_files(self.model_tag)
         return all
@@ -692,12 +569,6 @@ class Transport(TransportBase):
         self.pull(args)
 
     def validate_args(self, args):
-        # MLX validation
-        if getattr(args, "runtime", None) == "mlx":
-            is_apple_silicon = platform.system() == "Darwin" and platform.machine() == "arm64"
-            if not is_apple_silicon:
-                raise ValueError("MLX runtime is only supported on macOS with Apple Silicon.")
-
         # If --nocontainer=False was specified return valid
         if args.container:
             return
@@ -780,19 +651,6 @@ class Transport(TransportBase):
                     file_not_found_in_container % {"cmd": exec_args[0], "error": str(e).strip("'")}
                 )
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
-
-    def serve(self, args, cmd: list[str]):
-        set_accel_env_vars()
-
-        if args.generate:
-            self.generate_container_config(args, cmd)
-            return
-
-        try:
-            self.execute_command(cmd, args)
-        except Exception as e:
-            self._cleanup_server_process(getattr(args, 'server_process', None))
-            raise e
 
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None):
         quadlet = Quadlet(
@@ -919,7 +777,7 @@ def compute_serving_port(args, quiet: bool = False, exclude: list[str] | None = 
         raise IOError("no available port could be detected. Please ensure you have enough free ports.")
     if not quiet:
         openai = f"http://localhost:{target_port}"
-        if args.api == "llama-stack":
+        if getattr(args, "api", None) == "llama-stack":
             perror(f"Llama Stack RESTAPI: {openai}")
             openai = openai + "/v1/openai"
             perror(f"OpenAI RESTAPI: {openai}")

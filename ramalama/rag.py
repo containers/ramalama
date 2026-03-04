@@ -5,9 +5,9 @@ import subprocess
 import tempfile
 from functools import partial
 from textwrap import dedent
-from typing import Literal, cast
+from typing import Literal
 
-from ramalama.arg_types import RagArgsType, ServeRunArgsType
+from ramalama.arg_types import RagArgsType
 from ramalama.chat import ChatOperationalArgs
 from ramalama.common import accel_image, perror, set_accel_env_vars
 from ramalama.compat import StrEnum
@@ -18,6 +18,12 @@ from ramalama.transports.base import Transport
 from ramalama.transports.oci.oci import OCI
 
 INPUT_DIR = "/docs"
+
+_DEFAULT_RAG_IMAGES: dict[str, str] = {
+    "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda-rag",
+    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm-rag",
+    "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu-rag",
+}
 
 
 class VectorDBEngine(Engine):
@@ -108,7 +114,8 @@ class Rag:
 
 
 def rag_image(config: Config) -> str:
-    return accel_image(config, images=config.rag_images, conf_key="rag_image")
+    images = _DEFAULT_RAG_IMAGES | config.rag_images  # user overrides win
+    return accel_image(config, images=images, conf_key="rag_image")
 
 
 class RagSource(StrEnum):
@@ -176,9 +183,8 @@ class RagTransport(OCI):
 
     def _handle_container_chat(self, args: RagArgsType, server_process: int) -> Literal[0]:
         # Clear args.rag so RamaLamaShell doesn't treat it as local data for RAG context
-        chat_args = cast(ServeRunArgsType, args)
-        chat_args.rag = None
-        return super()._handle_container_chat(chat_args, server_process)
+        args.rag = None  # type: ignore[assignment]
+        return super()._handle_container_chat(args, server_process)
 
     def serve(self, args: RagArgsType, cmd: list[str]):
         args.model_args.name = self.imodel.get_container_name(args.model_args)
@@ -190,7 +196,7 @@ class RagTransport(OCI):
                     " ".join(self.model_cmd),
                 )
         try:
-            super().serve(args, cmd)
+            self.execute_command(cmd, args)
         finally:
             if getattr(args.model_args, "name", None):
                 args.model_args.ignore = True

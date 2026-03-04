@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
@@ -86,43 +86,6 @@ def get_default_store() -> str:
     return os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))
 
 
-def get_all_inference_spec_dirs(subdir: str) -> list[Path]:
-    ramalama_root = Path(__file__).parent.parent
-    development_spec_dir = ramalama_root / "inference-spec" / subdir
-    all_dirs = [development_spec_dir, *[conf_dir / "inference" for conf_dir in DEFAULT_CONFIG_DIRS]]
-
-    return [d for d in all_dirs if d.exists()]
-
-
-def get_inference_spec_files() -> dict[str, Path]:
-    files: dict[str, Path] = {}
-
-    for spec_dir in get_all_inference_spec_dirs("engines"):
-        # Give preference to .yaml, then .json spec files
-        file_extensions = ["*.yaml", "*.yml", "*.json"]
-        for file_extension in file_extensions:
-            # On naming collisions, i.e. muliple specs for one inference engine, prefer the
-            # spec files discovered later (i.e. user-level > system-level)
-            for spec_file in sorted(Path(spec_dir).glob(file_extension)):
-                file = Path(spec_file)
-                runtime = file.stem
-                files[runtime] = file
-
-    return files
-
-
-def get_inference_schema_files() -> dict[str, Path]:
-    files: dict[str, Path] = {}
-
-    for schema_dir in get_all_inference_spec_dirs("schema"):
-        for spec_file in sorted(Path(schema_dir).glob("schema.*.json")):
-            file = Path(spec_file)
-            version = file.name.replace("schema.", "").replace(".json", "")
-            files[version] = file
-
-    return files
-
-
 def coerce_to_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
@@ -177,52 +140,6 @@ class RamalamaSettings:
 
 
 @dataclass
-class RamalamaImageConfig:
-    def get(self, key: str, default: Any = None) -> Any:
-        return getattr(self, key, default)
-
-    def __getitem__(self, key: str) -> Any:
-        return getattr(self, key)
-
-    def __setitem__(self, key: str, value: Any):
-        setattr(self, key, value)
-
-    def __contains__(self, key: str) -> bool:
-        return key in {f.name for f in fields(self)}
-
-    def __iter__(self):
-        return iter(f.name for f in fields(self))
-
-    def __len__(self) -> int:
-        return len(fields(self))
-
-
-@dataclass
-class RamalamaImages(RamalamaImageConfig):
-    ASAHI_VISIBLE_DEVICES: str = "quay.io/ramalama/asahi"
-    ASCEND_VISIBLE_DEVICES: str = "quay.io/ramalama/cann"
-    CUDA_VISIBLE_DEVICES: str = "quay.io/ramalama/cuda"
-    GGML_VK_VISIBLE_DEVICES: str = "quay.io/ramalama/ramalama"
-    HIP_VISIBLE_DEVICES: str = "quay.io/ramalama/rocm"
-    INTEL_VISIBLE_DEVICES: str = "quay.io/ramalama/intel-gpu"
-    MUSA_VISIBLE_DEVICES: str = "quay.io/ramalama/musa"
-    VLLM_ASAHI_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_ASCEND_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_CUDA_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_GGML_VK_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_HIP_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_INTEL_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_MUSA_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-
-
-@dataclass
-class RamalamaRagImages(RamalamaImageConfig):
-    CUDA_VISIBLE_DEVICES: str = "quay.io/ramalama/cuda-rag"
-    HIP_VISIBLE_DEVICES: str = "quay.io/ramalama/rocm-rag"
-    INTEL_VISIBLE_DEVICES: str = "quay.io/ramalama/intel-gpu-rag"
-
-
-@dataclass
 class HTTPClientConfig:
     max_retries: int = 5
     max_retry_delay: int = 30
@@ -241,7 +158,6 @@ class BaseConfig:
     api: str = "none"
     api_key: str | None = None
     benchmarks: Benchmarks = field(default_factory=Benchmarks)
-    cache_reuse: int = 256
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
     container: bool = None  # type: ignore
     ctx_size: int = 0
@@ -255,13 +171,12 @@ class BaseConfig:
     host: str = "0.0.0.0"
     http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
     image: str = None  # type: ignore
-    images: RamalamaImages = field(default_factory=RamalamaImages)
+    images: dict[str, str] = field(default_factory=dict)
     rag_image: str | None = None
-    rag_images: RamalamaRagImages = field(default_factory=RamalamaRagImages)
+    rag_images: dict[str, str] = field(default_factory=dict)
     keep_groups: bool = False
     log_level: LogLevel | None = None
     max_tokens: int = 0
-    ngl: int = -1
     ocr: bool = False
     port: str = "8080"
     prefix: str = None  # type: ignore
@@ -274,8 +189,6 @@ class BaseConfig:
     store: str = field(default_factory=get_default_store)
     summarize_after: int = 4
     temp: str = "0.8"
-    thinking: bool = True
-    threads: int = -1
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
@@ -383,7 +296,7 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
         if key in config:
             config[key] = coerce_to_bool(config[key])
 
-    for key in ['threads', 'ctx_size', 'ngl', 'summarize_after']:
+    for key in ['ctx_size', 'summarize_after']:
         if key in config:
             config[key] = int(config[key])
     if log_level := config.get("log_level"):

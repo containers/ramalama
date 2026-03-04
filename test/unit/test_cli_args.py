@@ -9,6 +9,7 @@ import pytest
 from ramalama.arg_types import ChatSubArgs, DefaultArgs
 from ramalama.cli import get_parser
 from ramalama.config import SUPPORTED_ENGINES
+from ramalama.plugins.loader import get_all_runtimes
 
 try:
     from hypothesis import given
@@ -98,6 +99,7 @@ def args_to_cli_args(args_obj, subcommand: str | None, special_cases: dict | Non
     st.builds(
         DefaultArgs,
         engine=st.sampled_from(get_args(SUPPORTED_ENGINES)),
+        runtime=st.sampled_from(list(get_all_runtimes().keys())),
         store=st.sampled_from(['/', '/tmp']),
         debug=st.just(False),
         quiet=st.just(False),

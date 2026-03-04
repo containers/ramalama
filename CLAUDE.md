@@ -82,15 +82,27 @@ Manages local model storage:
 - `store.py` - Low-level storage operations
 - `reffile.py` - Reference file handling for tracking model origins
 
-### Command System (`ramalama/command/`)
-- `factory.py` - `assemble_command()` builds runtime commands (llama.cpp, vllm, mlx)
-- `context.py` - Command execution context
-- `schema.py` - Inference spec schema handling
+### Runtime Plugin System (`ramalama/plugins/`)
+Each inference engine is a self-contained Python plugin:
+- `interface.py` - Abstract base classes: `RuntimePlugin` and `InferenceRuntimePlugin`
+- `loader.py` - Plugin discovery and `get_all_runtimes()` / `get_runtime()`; entry point group `ramalama.runtimes.v1alpha`
+- `registry.py` - Plugin registration
+- `runtimes/inference/common.py` - Concrete base classes:
+  - `BaseInferenceRuntime` — registers `run` and `serve`, implements `handle_subcommand()` dispatch
+  - `ContainerizedInferenceRuntimePlugin` — extends the above with container-specific args (`--api`, `--generate`)
+- `runtimes/inference/llama_cpp.py` - `LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin)` (default); owns all RAG subcommand logic
+- `runtimes/inference/llama_cpp_commands.py` - `LlamaCppCommands` mixin providing `_cmd_run`, `_cmd_serve`, and other llama.cpp command builders
+- `runtimes/inference/vllm.py` - `VllmPlugin(ContainerizedInferenceRuntimePlugin)`
+- `runtimes/inference/mlx.py` - `MlxPlugin(BaseInferenceRuntime)` (macOS only; always --nocontainer)
+
+`configure_subcommands()` in `cli.py` calls `register_subcommands()` on only the
+selected runtime plugin, so `--help` output is filtered to the active runtime's
+supported subcommands.
 
 ### Key Patterns
 - **GPU Detection**: `get_accel()` in `common.py` detects GPU type (CUDA, ROCm, Vulkan, etc.) and selects appropriate container image
 - **Container Images**: GPU-specific images at `quay.io/ramalama/{ramalama,cuda,rocm,intel-gpu,...}`
-- **Inference Engines**: llama.cpp (default), vllm, mlx (macOS only) - configured via YAML specs in `inference-spec/engines/`
+- **Inference Engines**: llama.cpp (default), vllm, mlx (macOS only) - each implemented as a runtime plugin under `ramalama/plugins/runtimes/inference/`
 
 ## Test Structure
 
