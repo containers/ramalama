@@ -29,7 +29,7 @@ from ramalama.chat_utils import (
     stream_response,
 )
 from ramalama.common import perror
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
@@ -847,7 +847,7 @@ def chat(
         monitor = ServerMonitor(server_process=server_process)
     elif container_name:
         # Monitor the container
-        conman = getattr(args, "engine", get_config().engine)
+        conman = getattr(args, "engine", ActiveConfig().engine)
         if not conman:
             raise ValueError("Container engine is required when monitoring a container")
         monitor = ServerMonitor(container_name=container_name, container_engine=conman)

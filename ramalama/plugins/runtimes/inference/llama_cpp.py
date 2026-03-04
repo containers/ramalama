@@ -31,7 +31,7 @@ from ramalama.cli import (
     suppressCompleter,
 )
 from ramalama.common import run_cmd, set_accel_env_vars
-from ramalama.config import GGUF_QUANTIZATION_MODES, get_config
+from ramalama.config import GGUF_QUANTIZATION_MODES, ActiveConfig
 from ramalama.engine import Engine, dry_run
 from ramalama.logger import logger
 from ramalama.path_utils import file_uri_to_path
@@ -337,7 +337,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         perplexity_parser.set_defaults(func=self._perplexity_handler)
 
         # convert
-        config = get_config()
+        config = ActiveConfig()
         convert_parser = subparsers.add_parser(
             "convert",
             help="convert AI Model from local storage to OCI Image",
@@ -391,7 +391,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         convert_parser.set_defaults(func=self._convert_handler)
 
         # benchmarks (manage stored results)
-        config = get_config()
+        config = ActiveConfig()
         storage_folder = config.benchmarks.storage_folder
         epilog = f"Storage folder: {storage_folder}" if storage_folder else "Storage folder: not configured"
         benchmarks_parser = subparsers.add_parser(
@@ -413,11 +413,11 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
 
         # rag
         name_map = getattr(subparsers, "_name_parser_map", {})
-        if "rag" not in name_map and get_config().container:
+        if "rag" not in name_map and ActiveConfig().container:
             self._register_rag_subcommand(subparsers)
 
     def _register_rag_subcommand(self, subparsers: "argparse._SubParsersAction") -> None:
-        config = get_config()
+        config = ActiveConfig()
         parser = subparsers.add_parser(
             "rag",
             help="generate and convert retrieval augmented generation (RAG) data from provided "
@@ -558,7 +558,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         else:
             print_bench_results(results)
 
-        config = get_config()
+        config = ActiveConfig()
         if not config.benchmarks.disable:
             BenchmarksManager(config.benchmarks.storage_folder).save(results)
 
@@ -573,7 +573,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         model.execute_command(assemble_command(args), args)
 
     def _benchmarks_list_handler(self, args: argparse.Namespace) -> None:
-        config = get_config()
+        config = ActiveConfig()
         bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
         results = bench_manager.list()
 

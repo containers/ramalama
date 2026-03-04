@@ -304,11 +304,20 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     return config
 
 
-def default_config(env: Mapping[str, str] | None = None) -> Config:
-    """Returns a default Config object with all layers initialized."""
-    return Config(load_env_config(env), load_file_config())
+def load_config(env: Mapping[str, str] | None = None) -> Config:
+    """Returns a Config object with layers initialized from config file and environment."""
+    return Config(load_file_config(), load_env_config(env))
 
 
-@lru_cache(maxsize=1)
-def get_config() -> Config:
-    return default_config()
+def ActiveConfig() -> Config:
+    """Returns the active Config object with layers initialized from config file and environment."""
+    if not hasattr(ActiveConfig, "_singleton"):
+        ActiveConfig._singleton = load_config()  # type: ignore[attr-defined]
+    return ActiveConfig._singleton  # type: ignore[attr-defined]
+
+
+def DefaultConfig() -> Config:
+    """Returns the default Config object with no layer initialized from config file or environment."""
+    if not hasattr(DefaultConfig, "_singleton"):
+        DefaultConfig._singleton = Config()  # type: ignore[attr-defined]
+    return DefaultConfig._singleton  # type: ignore[attr-defined]

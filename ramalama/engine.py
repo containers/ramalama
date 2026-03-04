@@ -14,7 +14,7 @@ import ramalama.common
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.path_utils import normalize_host_path_for_container
 
@@ -445,7 +445,7 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
         conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
         if getattr(args, "debug", False):
             conn.set_debuglevel(1)
-        return get_runtime(get_config().runtime).service_ready_check(conn, args, model_name)
+        return get_runtime(ActiveConfig().runtime).service_ready_check(conn, args, model_name)
     finally:
         if conn:
             conn.close()
@@ -456,7 +456,7 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     if timeout is None:
         from ramalama.plugins.loader import get_runtime
 
-        timeout = get_runtime(get_config().runtime).service_ready_check_timeout
+        timeout = get_runtime(ActiveConfig().runtime).service_ready_check_timeout
     container_name = f"container {args.name}" if getattr(args, 'container', None) else 'server'
     logger.debug(f"Waiting for {container_name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()

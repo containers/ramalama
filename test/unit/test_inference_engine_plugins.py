@@ -647,9 +647,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_runtime_excludes_rag(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -659,10 +659,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_runtime_includes_rag_with_container(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -672,10 +672,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_runtime_excludes_rag_nocontainer(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
-        monkeypatch.setattr(get_config(), "container", False)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "container", False)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -685,10 +685,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_runtime_excludes_rag_with_container(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -698,10 +698,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_runtime_excludes_rag_nocontainer(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", False)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", False)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -711,9 +711,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_unknown_runtime_raises(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "no-such-runtime")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "no-such-runtime")
         parser = self._make_parser()
         with pytest.raises(ValueError, match="Unknown runtime: 'no-such-runtime'"):
             configure_subcommands(parser)
@@ -725,9 +725,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_run_has_ngl(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -735,9 +735,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_no_ngl(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -745,9 +745,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_has_max_tokens(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -755,10 +755,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_serve_has_max_model_len(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -766,9 +766,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_max_model_len(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -776,9 +776,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_serve_has_webui(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -786,9 +786,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_webui(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -796,9 +796,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_has_ctx_size(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -806,9 +806,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_has_keepalive(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -816,11 +816,11 @@ class TestConfigureSubcommandsFiltering:
 
     def test_all_runtimes_serve_has_temp(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
         for runtime in ("llama.cpp", "mlx", "vllm"):
-            monkeypatch.setattr(get_config(), "runtime", runtime)
-            monkeypatch.setattr(get_config(), "container", True)
+            monkeypatch.setattr(ActiveConfig(), "runtime", runtime)
+            monkeypatch.setattr(ActiveConfig(), "container", True)
             parser = self._make_parser()
             configure_subcommands(parser)
             opts = self._subparser_option_strings(parser, "serve")
@@ -828,10 +828,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_serve_has_api(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -839,9 +839,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_api(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -849,10 +849,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_serve_has_generate(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -860,9 +860,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_generate(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")

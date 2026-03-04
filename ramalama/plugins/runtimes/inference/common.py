@@ -13,7 +13,7 @@ from ramalama.cli import (
     suppressCompleter,
 )
 from ramalama.common import ContainerEntryPoint, set_accel_env_vars
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.plugins.interface import InferenceRuntimePlugin
 from ramalama.plugins.loader import assemble_command
@@ -55,7 +55,7 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
 
     def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         """Add inference-specific args shared across all runtimes for run/serve/perplexity."""
-        config = get_config()
+        config = ActiveConfig()
         parser.add_argument(
             "-c",
             "--ctx-size",
@@ -229,7 +229,7 @@ class ContainerizedInferenceRuntimePlugin(BaseInferenceRuntime):
     """Base class for inference plugins that support container-dependent args"""
 
     def _add_containerized_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
-        config = get_config()
+        config = ActiveConfig()
         parser.add_argument(
             "--api",
             default=config.api,
@@ -261,12 +261,12 @@ class ContainerizedInferenceRuntimePlugin(BaseInferenceRuntime):
 
     def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_run_subcommand(subparsers)
-        if get_config().container:
+        if ActiveConfig().container:
             self._add_containerized_inference_args(parser, "run")
         return parser
 
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_serve_subcommand(subparsers)
-        if get_config().container:
+        if ActiveConfig().container:
             self._add_containerized_inference_args(parser, "serve")
         return parser

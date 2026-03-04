@@ -153,7 +153,10 @@ def test_default_image_by_env_variable_and_config(command):
 def test_default_container_engine():
     result = check_output(["ramalama", "--help"])
     match = DEFAULT_CONTAINER_ENGINE_PATTERN.search(result.replace("\n", ""))
-    assert match.group("engine") in ['podman', 'docker']
+    if platform.system() == "Darwin":
+        assert match is None
+    else:
+        assert match.group("engine") in ['podman', 'docker']
 
 
 @pytest.mark.e2e

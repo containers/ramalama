@@ -20,7 +20,7 @@ from ramalama.common import (
     verify_checksum,
 )
 from ramalama.compat import NamedTemporaryFile
-from ramalama.config import DEFAULT_IMAGE, default_config
+from ramalama.config import DEFAULT_IMAGE, load_config
 
 
 @pytest.mark.parametrize(
@@ -144,8 +144,8 @@ image = "{config_override}"
             env["RAMALAMA_IMAGE"] = env_override
 
         with patch.dict("os.environ", env, clear=True):
-            config = default_config()
-            with patch("ramalama.cli.get_config", return_value=config):
+            config = load_config()
+            with patch("ramalama.cli.ActiveConfig", return_value=config):
                 default_image.cache_clear()
                 default_rag_image.cache_clear()
                 parser = create_argument_parser("test_accel_image")
