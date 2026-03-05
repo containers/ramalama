@@ -167,6 +167,7 @@ class BaseConfig:
     default_rag_image: str = DEFAULT_RAG_IMAGE
     dryrun: bool = False
     engine: SUPPORTED_ENGINES | None = field(default_factory=get_default_engine)
+    engine_args: list[str] = field(default_factory=list)
     env: list[str] = field(default_factory=list)
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
     host: str = "0.0.0.0"

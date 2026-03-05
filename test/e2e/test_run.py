@@ -224,6 +224,14 @@ def test_basic_dry_run():
         pytest.param(
             ["--device", "none", "--pull", "never"], r".*--device.*", None, None, False, None,
             id="check --device with unsupported value", marks=skip_if_no_container),
+        pytest.param(
+            ["--engine-args", "\\--read-only"], r".*--read-only.*", None, None, True, None,
+            id="check --engine-args with single arg", marks=skip_if_no_container),
+        pytest.param(
+            ["--engine-args", "--mount type=bind,src=/data,dst=/data",
+             "--engine-args", "--env CUSTOM_VAR=value"],
+            r".*--mount type=bind,src=/data,dst=/data.*--env CUSTOM_VAR=value.*", None, None, True, None,
+            id="check --engine-args with multiple args", marks=skip_if_no_container),
     ],
 )
 # fmt: on
