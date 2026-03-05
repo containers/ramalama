@@ -85,6 +85,41 @@ running a CPU-only performance comparison.
 #### **--dri**=*on* | *off*
 Enable or disable mounting `/dev/dri` into the container when running with `--api=llama-stack` (enabled by default). Use to prevent access to the host device when not required, or avoid errors in environments where `/dev/dri` is not available.
 
+#### **--engine-args**=*ARG*
+Additional arguments to pass to the container engine (podman or docker).
+This option can be specified multiple times to add multiple arguments.
+
+This is useful for passing custom container options like additional mounts,
+environment variables, or other container-specific flags that RamaLama doesn't
+directly expose.
+
+**Note**: This option conflicts with `--nocontainer` and can only be used when
+running with a container engine.
+
+The default can be overridden in the `ramalama.conf` file:
+
+```toml
+[ramalama]
+engine_args = ["--read-only", "--tmpfs /tmp"]
+```
+
+Examples:
+```bash
+# Add a custom mount
+ramalama serve --engine-args='--mount type=bind,src=/data,dst=/data' granite
+
+# Add security options
+ramalama serve --engine-args='--security-opt label=disable' granite
+
+# Read-only root filesystem
+ramalama serve --engine-args=--read-only granite
+```
+
+Note: These arguments are passed directly to the container engine, so they must
+use the syntax expected by podman or docker. For values that start with a dash
+(e.g. `--read-only`), use the form `--engine-args=ARG` so the value is not
+treated as a separate option.
+
 #### **--env**=
 
 Set environment variables inside of the container.

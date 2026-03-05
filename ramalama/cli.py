@@ -331,8 +331,21 @@ def configure_subcommands(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
+    from ramalama.config import get_config
+
     if getattr(args, "subcommand", None) == "benchmark":
         args.subcommand = "bench"
+
+    # Merge config engine_args with CLI engine_args (CLI takes precedence)
+    if getattr(args, "engine_args", None) is None:
+        # No CLI args provided, use config defaults
+        config = get_config()
+        args.engine_args = config.engine_args.copy() if config.engine_args else []
+    # else: CLI args were provided via --engine-args, use them (argparse already created the list)
+
+    # Validate that --engine-args is only used with containers
+    if getattr(args, "engine_args", None) and not getattr(args, "container", True):
+        raise ValueError("--engine-args can only be used with container mode (conflicts with --nocontainer)")
 
     def map_https_to_transport(input: str) -> str:
         if input.startswith("https://") or input.startswith("http://"):
@@ -844,6 +857,17 @@ def runtime_options(parser, command):
         action="store_true",
         help="""pass `--group-add keep-groups` to podman.
 If GPU device on host is accessible to via group access, this option leaks the user groups into the container.""",
+    )
+    parser.add_argument(
+        "--engine-args",
+        dest="engine_args",
+        action='append',
+        type=str,
+        default=None,
+        help="""additional arguments to pass to the container engine
+(e.g. --engine-args=--read-only or --engine-args '--mount type=bind,src=/path,dst=/path').
+For values that start with a dash, use the form --engine-args=ARG to avoid argparse
+treating them as separate options. Only valid when using containers (conflicts with --nocontainer)""",
     )
     parser.add_argument(
         "-n",

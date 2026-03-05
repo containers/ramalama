@@ -102,6 +102,26 @@ Run RamaLama using the specified container engine.
 Valid options are: Podman and Docker
 This field can be overridden by the RAMALAMA_CONTAINER_ENGINE environment variable.
 
+**engine_args**=[]
+
+Additional arguments to pass directly to the container engine (Podman or Docker).
+This option allows specifying custom container engine flags that RamaLama doesn't
+directly expose as CLI options. Multiple arguments can be specified as an array.
+Only valid when using containers (conflicts with --nocontainer).
+
+Examples:
+```toml
+engine_args = ["--read-only", "--tmpfs /tmp"]
+```
+
+Or:
+```toml
+engine_args = [
+    "--mount type=bind,src=/data,dst=/data",
+    "--env CUSTOM_VAR=value"
+]
+```
+
 **env**=[]
 
 Environment variables to be added to the environment used when running in a container engine (e.g., Podman, Docker). For example "LLAMA_ARG_THREADS=10".
