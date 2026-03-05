@@ -179,62 +179,78 @@ def create_responses_content(
     return content or ""
 
 
-@message_to_responses_dict.register
-def _(message: SystemMessage) -> dict[str, Any]:
-    return {**message.metadata, 'content': message.text or "", 'role': message.role}
+@singledispatch
+def message_to_responses_items(message: Any) -> list[dict[str, Any]]:
+    raise ValueError(f"Undefined message type {type(message)}")
 
 
-@message_to_responses_dict.register
-def _(message: ToolMessage) -> dict[str, Any]:
-    response = {
-        **message.metadata,
-        'content': message.text or "",
-        'role': message.role,
-    }
-    if message.tool_call_id:
-        response['tool_call_id'] = message.tool_call_id
-
-    return response
+@message_to_responses_items.register
+def _(message: SystemMessage) -> list[dict[str, Any]]:
+    return [{**message.metadata, "content": message.text or "", "role": message.role}]
 
 
-@message_to_responses_dict.register
-def _(message: UserMessage) -> dict[str, Any]:
-    return {
-        **message.metadata,
-        'content': create_responses_content(message.text, message.attachments, "input_text"),
-        'role': message.role,
-    }
-
-
-@message_to_responses_dict.register
-def _(message: AssistantMessage) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        **message.metadata,
-        'content': create_responses_content(message.text, message.attachments, "output_text"),
-        'role': message.role,
-    }
-
-    tool_calls = [
+@message_to_responses_items.register
+def _(message: UserMessage) -> list[dict[str, Any]]:
+    return [
         {
-            "id": call.id,
-            "type": "function",
-            "function": {
-                "name": call.name,
-                "arguments": json.dumps(call.arguments, ensure_ascii=False),
-            },
+            **message.metadata,
+            "content": create_responses_content(message.text, message.attachments, "input_text"),
+            "role": message.role,
+        }
+    ]
+
+
+@message_to_responses_items.register
+def _(message: AssistantMessage) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+
+    # Assistant history content must be output_text/refusal, not input_text.
+    if message.text is not None or message.attachments:
+        items.append(
+            {
+                **message.metadata,
+                "role": "assistant",
+                "content": create_responses_content(message.text, message.attachments, "output_text"),
+            }
+        )
+
+    # Tool calls in Responses are separate input items.
+    items.extend(
+        {
+            "type": "function_call",
+            "call_id": call.id,
+            "name": call.name,
+            "arguments": json.dumps(call.arguments, ensure_ascii=False),
         }
         for call in message.tool_calls
+    )
+
+    if not items:
+        items.append({**message.metadata, "role": "assistant", "content": ""})
+
+    return items
+
+
+@message_to_responses_items.register
+def _(message: ToolMessage) -> list[dict[str, Any]]:
+    if not message.tool_call_id:
+        raise ValueError("Responses tool output requires tool_call_id (mapped to call_id).")
+
+    return [
+        {
+            **message.metadata,
+            "type": "function_call_output",
+            "call_id": message.tool_call_id,
+            "output": message.text or "",
+        }
     ]
-    if tool_calls:
-        payload['tool_calls'] = tool_calls
-    return payload
 
 
 class ResponsesPayload(TypedDict, total=False):
     input: list[dict[str, Any]]
     model: str
     temperature: float | None
-    max_completion_tokens: int
+    max_output_tokens: int
     stream: bool
 
 
@@ -251,14 +267,15 @@ class OpenAIResponsesChatProvider(ChatProvider):
             raise ValueError("Chat options require a model value")
 
         payload: ResponsesPayload = {
-            "input": [message_to_responses_dict(m) for m in messages],
+            "input": [item for m in messages for item in message_to_responses_items(m)],
             "model": options.model,
             "temperature": options.temperature,
             "stream": options.stream,
         }
 
         if options.max_tokens is not None and options.max_tokens > 0:
-            payload["max_completion_tokens"] = options.max_tokens
+            payload["max_output_tokens"] = options.max_tokens
+
         return payload
 
     def parse_stream_chunk(self, chunk: bytes) -> Iterable[ChatStreamEvent]:
