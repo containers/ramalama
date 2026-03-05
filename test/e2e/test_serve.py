@@ -7,6 +7,7 @@ import random
 import re
 import string
 import sys
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -293,6 +294,23 @@ def test_full_model_name_expansion():
 
 @pytest.mark.e2e
 @pytest.mark.slow
+@skip_if_no_container
+def test_dryrun_serve_chat_template_file(shared_ctx, test_model):
+    """Dry-run serve with --chat-template-file shows container path in assembled command."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        f.write("{}")
+        template_path = f.name
+    try:
+        result = shared_ctx.check_output(
+            ["ramalama", "-q", "--dryrun", "serve", "--chat-template-file", template_path, test_model]
+        )
+        assert "--chat-template-file" in result
+        assert "/mnt/models/chat_template.file" in result
+    finally:
+        os.unlink(template_path)
+
+
+@pytest.mark.e2e
 @skip_if_no_container
 def test_serve_and_stop(shared_ctx, test_model):
     ctx = shared_ctx

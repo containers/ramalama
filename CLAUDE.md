@@ -48,6 +48,8 @@ make type-check              # Run mypy type checking
 make codespell               # Check spelling
 ```
 
+**When creating a PR:** Always run `make validate` before submitting. Validation includes `man-check`, which verifies that CLI options are documented in the man page sources under `docs/*.md.in` (via `@@option` includes in `docs/options/`).
+
 ### Documentation
 ```bash
 make docs                    # Build manpages and docsite

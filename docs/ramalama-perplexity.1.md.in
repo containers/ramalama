@@ -16,6 +16,8 @@ ramalama\-perplexity - calculate the perplexity value of an AI Model
 
 @@option cache-reuse
 
+@@option chat-template-file
+
 @@option ctx-size
 
 @@option device

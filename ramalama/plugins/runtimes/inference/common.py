@@ -94,6 +94,15 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             help="arguments to add to runtime invocation",
             completer=suppressCompleter,
         )
+        if command in ("run", "serve", "perplexity"):
+            parser.add_argument(
+                "--chat-template-file",
+                dest="chat_template_file",
+                default=None,
+                type=str,
+                help="path to a chat template file on the host (mounted into the container and passed to the runtime)",
+                completer=suppressCompleter,
+            )
         if command == "serve":
             parser.add_argument(
                 "--host",

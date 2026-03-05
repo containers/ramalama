@@ -27,6 +27,8 @@ exits, the model server container is automatically stopped and removed.
 
 @@option cache-reuse
 
+@@option chat-template-file
+
 @@option ctx-size
 
 @@option device

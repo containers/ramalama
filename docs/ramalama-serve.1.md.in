@@ -42,6 +42,8 @@ Section, key and value are required and must be separated by colons.
 
 @@option cache-reuse
 
+@@option chat-template-file
+
 @@option ctx-size
 
 #### **--detach**, **-d**

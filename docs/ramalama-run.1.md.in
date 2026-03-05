@@ -22,6 +22,8 @@ the execution. URL support means if a model is on a web site or even on your loc
 
 @@option cache-reuse
 
+@@option chat-template-file
+
 @@option color
 
 @@option ctx-size

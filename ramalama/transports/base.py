@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from ramalama.transports.oci.oci import OCI
 
 from ramalama.common import (
+    MNT_CHAT_TEMPLATE_FILE,
     MNT_DIR,
     exec_cmd,
     genname,
@@ -415,6 +416,15 @@ class Transport(TransportBase):
         self.engine.exec(stdout2null=args.noout)
         return True
 
+    def _add_chat_template_file_mount(self, args):
+        """Bind-mount --chat-template-file from host path into MNT_CHAT_TEMPLATE_FILE when set."""
+        chat_template_file = getattr(args, "chat_template_file", None)
+        if not chat_template_file or not os.path.isfile(chat_template_file):
+            return
+        # Host path (resolved and normalized for container engine, e.g. /c/Users/... on Windows)
+        src = get_container_mount_path(chat_template_file)
+        self.engine.add([f"--mount=type=bind,src={src},destination={MNT_CHAT_TEMPLATE_FILE},ro{self.engine.relabel()}"])
+
     def setup_mounts(self, args):
         if args.dryrun:
             return
@@ -433,6 +443,7 @@ class Transport(TransportBase):
             else:
                 raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
             self.engine.add([mount_cmd])
+            self._add_chat_template_file_mount(args)
             return None
 
         ref_file = self.model_store.get_ref_file(self.model_tag)
@@ -467,6 +478,8 @@ class Transport(TransportBase):
                 self.engine.add(
                     [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
                 )
+
+        self._add_chat_template_file_mount(args)
 
     def serve_nonblocking(self, args, cmd: list[str]) -> Optional[subprocess.Popen]:
         if args.container:
@@ -614,10 +627,15 @@ class Transport(TransportBase):
     def generate_container_config(self, args, exec_args):
         # Get the blob paths (src) and mounted paths (dest)
         model_src_path = self._get_entry_model_path(False, False, args.dryrun)
-        chat_template_src_path = self._get_chat_template_path(False, False, args.dryrun)
+        # Prefer --chat-template-file when set so quadlet/kube/compose get the user's mount
+        if getattr(args, "chat_template_file", None) and os.path.isfile(args.chat_template_file):
+            chat_template_src_path = args.chat_template_file
+            chat_template_dest_path = MNT_CHAT_TEMPLATE_FILE
+        else:
+            chat_template_src_path = self._get_chat_template_path(False, False, args.dryrun)
+            chat_template_dest_path = str(self._get_chat_template_path(True, True, args.dryrun))
         mmproj_src_path = self._get_mmproj_path(False, False, args.dryrun)
         model_dest_path = self._get_entry_model_path(True, True, args.dryrun)
-        chat_template_dest_path = self._get_chat_template_path(True, True, args.dryrun)
         mmproj_dest_path = self._get_mmproj_path(True, True, args.dryrun)
 
         # Get all model parts (for multi-part models)
