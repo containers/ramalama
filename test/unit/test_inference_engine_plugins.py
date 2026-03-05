@@ -42,6 +42,7 @@ def make_ns(
     dryrun=False,
     generate=None,
     MODEL=None,
+    chat_template_file=None,
 ) -> argparse.Namespace:
     ns = argparse.Namespace(
         container=container,
@@ -63,6 +64,7 @@ def make_ns(
         gguf=gguf,
         dryrun=dryrun,
         generate=generate,
+        chat_template_file=chat_template_file,
     )
     if MODEL is not None:
         ns.MODEL = MODEL
@@ -191,6 +193,67 @@ class TestLlamaCppPlugin:
         assert "--chat-template-file" in cmd
         assert "--jinja" in cmd
         assert "--no-jinja" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_with_chat_template_file_container_uses_mount_path(self, mock_colorize, mock_new):
+        """With --chat-template-file and container=True, dry-run command uses MNT_CHAT_TEMPLATE_FILE."""
+        from ramalama.common import MNT_CHAT_TEMPLATE_FILE
+
+        mock_model = make_transport_model(chat_template_path=None)
+        mock_new.return_value = mock_model
+
+        ns = make_ns(container=True, MODEL="ollama://mymodel", chat_template_file="/host/path/template.json")
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--chat-template-file" in cmd
+        idx = cmd.index("--chat-template-file")
+        assert cmd[idx + 1] == MNT_CHAT_TEMPLATE_FILE
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_with_chat_template_file_nocontainer_uses_host_path(self, mock_colorize, mock_new):
+        """With --chat-template-file and container=False, dry-run command uses host path."""
+        mock_model = make_transport_model(chat_template_path=None)
+        mock_new.return_value = mock_model
+
+        host_path = "/home/user/my-chat-template.json"
+        ns = make_ns(container=False, MODEL="ollama://mymodel", chat_template_file=host_path)
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--chat-template-file" in cmd
+        idx = cmd.index("--chat-template-file")
+        assert cmd[idx + 1] == host_path
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_run_with_chat_template_file_container_uses_mount_path(self, mock_colorize, mock_new):
+        """run with --chat-template-file and container uses MNT path in dry-run."""
+        from ramalama.common import MNT_CHAT_TEMPLATE_FILE
+
+        mock_model = make_transport_model(chat_template_path=None)
+        mock_new.return_value = mock_model
+
+        ns = make_ns(container=True, MODEL="ollama://mymodel", chat_template_file="/host/template.json")
+        cmd = self.plugin.handle_subcommand("run", ns)
+
+        assert "--chat-template-file" in cmd
+        assert cmd[cmd.index("--chat-template-file") + 1] == MNT_CHAT_TEMPLATE_FILE
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_chat_template_file_overrides_model_template(self, mock_colorize, mock_new):
+        """When --chat-template-file is set, it overrides model's chat template (container path)."""
+        from ramalama.common import MNT_CHAT_TEMPLATE_FILE
+
+        mock_model = make_transport_model(chat_template_path="/mnt/models/model_template.file")
+        mock_new.return_value = mock_model
+
+        ns = make_ns(container=True, MODEL="ollama://mymodel", chat_template_file="/host/custom.json")
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--chat-template-file" in cmd
+        assert cmd[cmd.index("--chat-template-file") + 1] == MNT_CHAT_TEMPLATE_FILE
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_thinking_disabled(self, mock_colorize):
