@@ -141,7 +141,11 @@ class OCI(Transport):
             contextdir = gguf_dir.name
             from ramalama.plugins.loader import get_runtime
 
-            model_file_name = get_runtime(args.runtime)._convert_to_gguf(gguf_dir, source_model, args)
+            runtime = get_runtime(args.runtime)
+            convert_fn = getattr(runtime, "_convert_to_gguf", None)
+            if convert_fn is None:
+                raise NotImplementedError("Runtime does not support _convert_to_gguf")
+            model_file_name = convert_fn(gguf_dir, source_model, args)
             content = self._gguf_containerfile(model_file_name, args)
         else:
             # use blobs directory as context since paths in Containerfile are relative to it
