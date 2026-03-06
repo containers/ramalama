@@ -39,10 +39,10 @@ dnf_install_cann() {
 dnf_install_rocm() {
   if [ "${ID}" = "fedora" ]; then
     dnf update -y
-    dnf install -y rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel
+    dnf install -y --releasever 44 rocm-core-devel hipblas-devel rocblas-devel rocm-hip-devel rocwmma-devel
   else
     add_stream_repo "AppStream"
-    dnf install -y rocm-dev hipblas-devel rocblas-devel
+    dnf install -y rocm-dev hipblas-devel rocblas-devel rocwmma-dev
   fi
 
   rm_non_ubi_repos
@@ -217,7 +217,7 @@ configure_common_flags() {
       common_flags+=("-DCMAKE_HIP_COMPILER_ROCM_ROOT=/usr")
     fi
 
-    common_flags+=("-DGGML_HIP=ON" "-DGPU_TARGETS=${GPU_TARGETS:-gfx1010,gfx1012,gfx1030,gfx1032,gfx1100,gfx1101,gfx1102,gfx1103,gfx1151,gfx1200,gfx1201}")
+    common_flags+=("-DGGML_HIP=ON" "-DGGML_HIP_ROCWMMA_FATTN=ON" "-DGPU_TARGETS=${GPU_TARGETS:-gfx803;gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1010;gfx1030;gfx1032;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201;gfx1151}")
     ;;
   cuda)
     common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
