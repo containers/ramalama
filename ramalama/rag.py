@@ -135,22 +135,27 @@ class RagEngine(Engine):
 
     def add_labels(self):
         super().add_labels()
-        self.add_label(f"ai.ramalama.rag.{self.sourcetype}={self.args.rag}")
+        rag = getattr(self.args, "rag", None)
+        if rag is not None:
+            self.add_label(f"ai.ramalama.rag.{self.sourcetype}={rag}")
 
     def add_rag(self):
+        rag = getattr(self.args, "rag", None)
+        if rag is None:
+            return
         if self.sourcetype is RagSource.DB:
             # Convert to container-friendly path format (handles Windows path conversion)
-            rag = get_container_mount_path(self.args.rag)
+            rag_path = get_container_mount_path(rag)
             # Read-write is the default behaviour for bind mounts in both Docker and Podman
-            self.add_args(f"--mount=type=bind,source={rag},destination=/rag/vector.db{self.relabel()}")
+            self.add_args(f"--mount=type=bind,source={rag_path},destination=/rag/vector.db{self.relabel()}")
         else:
             # Image mounts default to read-only in Podman, so we need rw=true for write access
             # Docker does not support type=image mounts
             if self.use_podman:
-                self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
+                self.add_args(f"--mount=type=image,source={rag},destination=/rag,rw=true")
             else:
                 # Docker falls back to using volumes or other mechanisms
-                self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag")
+                self.add_args(f"--mount=type=image,source={rag},destination=/rag")
 
 
 class RagTransport(OCI):
