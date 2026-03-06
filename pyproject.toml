@@ -59,7 +59,7 @@ dev = [
     "argcomplete~=3.0",
     "bcrypt",
     "codespell~=2.0",
-    "huggingface_hub~=1.5.0",
+    "huggingface_hub~=1.6.0",
     "hypothesis>=6.135.26",
     "pytest~=9.0",
     "ruff>=0.14.14",
