@@ -60,6 +60,43 @@ The device specification is passed directly to the underlying container engine. 
 Pass '--device=none' explicitly add no device to the container, eg for
 running a CPU-only performance comparison.
 
+#### **--engine-args**=*ARG*
+Additional arguments to pass to the container engine (Podman or Docker).
+This option can be specified multiple times to add multiple arguments.
+
+This is useful for passing custom container options like additional mounts,
+environment variables, or other container-specific flags that RamaLama doesn't
+directly expose.
+
+**Note**: This option conflicts with `--nocontainer` and can only be used when
+running with a container engine.
+
+The default can be overridden in the `ramalama.conf` file:
+
+```toml
+[ramalama]
+engine_args = ["--read-only", "--tmpfs /tmp"]
+```
+
+Examples:
+```bash
+# Add a custom mount
+ramalama run --engine-args='--mount type=bind,src=/data,dst=/data' granite
+
+# Add multiple environment variables
+ramalama run --engine-args='--env CUSTOM_VAR=value' \
+             --engine-args='--env ANOTHER_VAR=test' granite
+
+# Combine multiple options
+ramalama run --engine-args=--read-only \
+             --engine-args='--tmpfs /tmp' granite
+```
+
+Note: These arguments are passed directly to the container engine, so they must
+use the syntax expected by podman or docker. For values that start with a dash
+(e.g. `--read-only`), use the form `--engine-args=ARG` so the value is not
+treated as a separate option.
+
 #### **--env**=
 
 Set environment variables inside of the container.
