@@ -60,6 +60,14 @@ The ramalama table contains settings to configure and manage the OCI runtime.
 
 `[[ramalama]]`
 
+**agent_image** = "ghcr.io/block/goose:latest"
+
+Image used by `ramalama agent`.
+
+**agent_model** = "hf://Qwen/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q8_0.gguf"
+
+Model used by `ramalama agent`.
+
 **api**="none"
 
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.

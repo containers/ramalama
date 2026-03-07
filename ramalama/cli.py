@@ -313,6 +313,7 @@ def configure_subcommands(parser):
     # before configure_subcommands() is called in Phase 2.
     runtime = get_config().runtime
     get_runtime(runtime).register_subcommands(subparsers)
+    agent_parser(subparsers)
     chat_parser(subparsers)
     containers_parser(subparsers)
     help_parser(subparsers)
@@ -972,6 +973,51 @@ def _rag_args(args):
     rag_args.model_args = args
     rag_args.generate = ""
     return rag_args
+
+
+def agent_parser(subparsers):
+    config = get_config()
+    runtime = get_runtime(config.runtime)
+    parser = subparsers.add_parser("agent", help="run an AI agent backed by a local AI Model")
+    runtime_options(parser, "agent")
+    if getattr(runtime, "_add_inference_args", None):
+        # Consider adding this to the plugin interface for commands which need to run an
+        # inference server
+        runtime._add_inference_args(parser, "serve")
+    parser.add_argument(
+        "--model",
+        dest="MODEL",
+        default=config.agent_model,
+        completer=local_models,
+        help="AI Model to serve as the agent backend",
+    )
+    parser.add_argument(
+        "--agent-image",
+        default=config.agent_image,
+        completer=local_images,
+        help="agent container image",
+    )
+    parser.add_argument(
+        "-w",
+        "--workdir",
+        help="local directory to mount into the agent container at /work",
+    )
+    parser.add_argument(
+        "ARGS",
+        nargs="*",
+        help="instructions for the agent to process non-interactively",
+        completer=suppressCompleter,
+    )
+    parser.set_defaults(func=agent_cli)
+
+
+def agent_cli(args):
+    if not args.container:
+        raise ValueError("ramalama agent requires a container engine")
+
+    from ramalama.agent import run_agent
+
+    run_agent(args)
 
 
 def stop_parser(subparsers):
