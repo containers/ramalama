@@ -50,6 +50,11 @@ class HttpClient:
                 del out  # Ensure file is closed before rename
 
         if output_file:
+            if output_file_partial is None:
+                raise RuntimeError(
+                    "output_file is set but output_file_partial is None; "
+                    "temporary output file was never created"
+                )
             os.rename(output_file_partial, output_file)
 
     def urlopen(self, url, headers):
