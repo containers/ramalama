@@ -136,6 +136,7 @@ The default can be overridden in the ramalama.conf file.
 
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
+| [ramalama-agent(1)](ramalama-agent.1.md)          |run an AI agent backed by a local AI Model|
 | [ramalama-bench(1)](ramalama-bench.1.md)          |benchmark specified AI Model|
 | [ramalama-benchmarks(1)](ramalama-benchmarks.1.md)|view and interact with historical benchmark results|
 | [ramalama-chat(1)](ramalama-chat.1.md)            |OpenAI chat with the specified REST API URL|

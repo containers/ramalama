@@ -31,6 +31,8 @@ GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q8_0",
 ]
 DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"
+DEFAULT_AGENT_IMAGE: str = "ghcr.io/block/goose:1.27.1"
+DEFAULT_AGENT_MODEL: str = "hf://Qwen/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q8_0.gguf"
 
 
 def _get_default_config_dirs() -> list[Path]:
@@ -155,6 +157,8 @@ class HTTPClientConfig:
 
 @dataclass
 class BaseConfig:
+    agent_image: str = DEFAULT_AGENT_IMAGE
+    agent_model: str = DEFAULT_AGENT_MODEL
     api: str = "none"
     api_key: str | None = None
     benchmarks: Benchmarks = field(default_factory=Benchmarks)

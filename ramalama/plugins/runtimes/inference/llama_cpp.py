@@ -160,21 +160,15 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     # --- subcommand registration ---
 
-    def _add_llama_cpp_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
+    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         """Add llama.cpp-specific inference args to an already-created parser."""
+        super()._add_inference_args(parser, command)
         parser.add_argument(
             "--cache-reuse",
             dest="cache_reuse",
             type=int,
             default=_CACHE_REUSE_DEFAULT,
             help="min chunk size to attempt reusing from the cache via KV shifting",
-            completer=suppressCompleter,
-        )
-        parser.add_argument(
-            "--logfile",
-            dest="logfile",
-            type=str,
-            help="log output to a file",
             completer=suppressCompleter,
         )
         parser.add_argument(
@@ -185,12 +179,20 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             help="number of layers to offload to the gpu, if available",
             completer=suppressCompleter,
         )
-        parser.add_argument(
-            "--thinking",
-            default=_THINKING_DEFAULT,
-            help="enable/disable thinking mode in reasoning models",
-            action=CoerceToBool,
-        )
+        if command in ["run", "serve"]:
+            parser.add_argument(
+                "--logfile",
+                dest="logfile",
+                type=str,
+                help="log output to a file",
+                completer=suppressCompleter,
+            )
+            parser.add_argument(
+                "--thinking",
+                default=_THINKING_DEFAULT,
+                help="enable/disable thinking mode in reasoning models",
+                action=CoerceToBool,
+            )
         def_threads = _default_threads()
         parser.add_argument(
             "-t",
@@ -257,13 +259,11 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_run_subcommand(subparsers)
-        self._add_llama_cpp_inference_args(parser, "run")
         self._add_rag_args(parser)
         return parser
 
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_serve_subcommand(subparsers)
-        self._add_llama_cpp_inference_args(parser, "serve")
         self._add_rag_args(parser)
         return parser
 
@@ -306,33 +306,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         perplexity_parser = subparsers.add_parser("perplexity", help="calculate perplexity for specified AI Model")
         runtime_options(perplexity_parser, "perplexity")
         self._add_inference_args(perplexity_parser, "perplexity")
-        # llama.cpp-specific perplexity args
-        perplexity_parser.add_argument(
-            "--ngl",
-            dest="ngl",
-            type=int,
-            default=_NGL_DEFAULT,
-            help="number of layers to offload to the gpu, if available",
-            completer=suppressCompleter,
-        )
-        perplexity_parser.add_argument(
-            "-t",
-            "--threads",
-            type=int,
-            default=def_threads,
-            help=(
-                f"number of cpu threads to use, the default is {def_threads} on this system, -1 means use this default"
-            ),
-            completer=suppressCompleter,
-        )
-        perplexity_parser.add_argument(
-            "--cache-reuse",
-            dest="cache_reuse",
-            type=int,
-            default=_CACHE_REUSE_DEFAULT,
-            help="min chunk size to attempt reusing from the cache via KV shifting",
-            completer=suppressCompleter,
-        )
         perplexity_parser.add_argument("MODEL", completer=local_models)
         perplexity_parser.set_defaults(func=self._perplexity_handler)
 
