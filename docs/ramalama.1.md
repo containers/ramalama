@@ -153,6 +153,7 @@ The default can be overridden in the ramalama.conf file.
 | [ramalama-rag(1)](ramalama-rag.1.md)              |generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image|
 | [ramalama-rm(1)](ramalama-rm.1.md)                |remove AI Models from local storage|
 | [ramalama-run(1)](ramalama-run.1.md)              |run specified AI Model as a chatbot|
+| [ramalama-sandbox(1)](ramalama-sandbox.1.md)      |run an AI agent in a sandbox, backed by a local AI Model|
 | [ramalama-serve(1)](ramalama-serve.1.md)          |serve REST API on specified AI Model|
 | [ramalama-stop(1)](ramalama-stop.1.md)            |stop named container that is running AI Model|
 | [ramalama-version(1)](ramalama-version.1.md)      |display version of RamaLama|

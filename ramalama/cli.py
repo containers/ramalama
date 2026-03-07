@@ -331,6 +331,7 @@ def configure_subcommands(parser):
     pull_parser(subparsers)
     push_parser(subparsers)
     rm_parser(subparsers)
+    sandbox_parser(subparsers)
     stop_parser(subparsers)
     version_parser(subparsers)
     daemon_parser(subparsers)
@@ -979,6 +980,51 @@ def _rag_args(args):
     rag_args.model_args = args
     rag_args.generate = ""
     return rag_args
+
+
+def sandbox_parser(subparsers):
+    parser = subparsers.add_parser("sandbox", help="run an AI agent in a sandbox, backed by a local AI Model")
+    parser.set_defaults(func=lambda _: parser.print_help())
+    sandbox_subparsers = parser.add_subparsers(dest="sandbox_agent")
+    goose_parser(sandbox_subparsers)
+
+
+def goose_parser(subparsers):
+    runtime = get_runtime(ActiveConfig().runtime)
+    parser = subparsers.add_parser("goose", help="run Goose in a sandbox, backed by a local AI Model")
+    runtime_options(parser, "sandbox")
+    if getattr(runtime, "_add_inference_args", None):
+        # Consider adding this to the plugin interface for commands which need to run an
+        # inference server
+        runtime._add_inference_args(parser, "serve")
+    parser.add_argument("MODEL", completer=local_models)  # positional argument
+    parser.add_argument(
+        "--goose-image",
+        default="ghcr.io/block/goose:1.28.0",
+        completer=local_images,
+        help="Goose container image",
+    )
+    parser.add_argument(
+        "-w",
+        "--workdir",
+        help="local directory to mount into the sandbox container at /work",
+    )
+    parser.add_argument(
+        "ARGS",
+        nargs="*",
+        help="instructions for the sandbox to process non-interactively",
+        completer=suppressCompleter,
+    )
+    parser.set_defaults(func=sandbox_cli)
+
+
+def sandbox_cli(args):
+    if not args.container:
+        raise ValueError("ramalama sandbox requires a container engine")
+
+    from ramalama.sandbox import run_sandbox
+
+    run_sandbox(args)
 
 
 def stop_parser(subparsers):
