@@ -41,6 +41,9 @@ path of the authentication file for OCI registries
 #### **--cache-reuse**=256
 Min chunk size to attempt reusing from the cache via KV shifting
 
+#### **--chat-template-file**=*path*
+Path to a chat template file on the host. The file is mounted into the container and passed to the runtime (e.g. llama-server), so you can use a custom or fixed template without redownloading the model. Only valid when using containers.
+
 #### **--color**
 Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)

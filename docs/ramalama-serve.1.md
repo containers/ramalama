@@ -61,6 +61,9 @@ Path of the authentication file for OCI registries
 #### **--cache-reuse**=256
 Min chunk size to attempt reusing from the cache via KV shifting
 
+#### **--chat-template-file**=*path*
+Path to a chat template file on the host. The file is mounted into the container and passed to the runtime (e.g. llama-server), so you can use a custom or fixed template without redownloading the model. Only valid when using containers.
+
 #### **--ctx-size**, **-c**
 size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 0, 0 = loaded from model)
 

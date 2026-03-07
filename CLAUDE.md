@@ -56,6 +56,8 @@ make type-check              # Run mypy type checking
 make codespell               # Check spelling
 ```
 
+**When creating a PR:** Always run `make validate` before submitting. Validation includes `man-check`, which verifies that the docs (man page sources in `docs/*.md`) stay in sync with the CLI. When you add or change a CLI option (e.g. run, serve, perplexity), update the corresponding man page(s): `docs/ramalama-run.1.md`, `docs/ramalama-serve.1.md`, `docs/ramalama-perplexity.1.md`, etc.
+
 ### Documentation
 ```bash
 make docs                    # Build manpages and docsite
