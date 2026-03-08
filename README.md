@@ -68,6 +68,14 @@ RamaLama is available in [Fedora](https://fedoraproject.org/) and later. To inst
 sudo dnf install ramalama
 ```
 
+### Fedora Silverblue and Toolbox
+On [Fedora Silverblue](https://docs.fedoraproject.org/en-US/fedora-silverblue/) and other immutable variants, the system is read-only. You can run RamaLama in either of these ways:
+
+- **Toolbox**: Create a [Toolbox](https://docs.fedoraproject.org/en-US/fedora-silverblue/toolbox/) container and install RamaLama inside it (`pip install ramalama` or `dnf install ramalama` if available). Use the same Podman (or Docker) from the host so that RamaLama can start model containers; ensure the container engine is installed and that the toolbox has access to the host's container engine (e.g., by bind-mounting the socket or by configuring the toolbox to use the host's `podman` command).
+- **Host Installation or Toolbox with Host Access**: Install RamaLama on the host via `rpm-ostree install ramalama` if the package is available for your image, or run RamaLama from a toolbox, ensuring Podman/Docker is available and the model store is on a writable location (e.g., your home directory).
+
+The model store defaults to `~/.local/share/ramalama`, which is writable on Silverblue.
+
 ### Install via PyPI
 RamaLama is available via PyPI at [https://pypi.org/project/ramalama](https://pypi.org/project/ramalama)
 ```
