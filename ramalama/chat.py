@@ -16,6 +16,8 @@ import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
+from http.client import HTTPConnection
+from urllib.parse import urlparse
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.chat_providers import ChatProvider, ChatRequestOptions
@@ -819,6 +821,38 @@ def _report_server_exit(monitor):
         perror("Check server logs for more details about why the service exited.")
 
 
+def wait_for_server(args, timeout: int = 30):
+    """Wait for the llama.cpp server to be ready before starting chat."""
+    parsed = urlparse(args.url)
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or 8080
+    start_time = time.time()
+    spinner = Spinner().start()
+    last_error: Exception | None = None
+    while time.time() - start_time < timeout:
+        conn = None
+        try:
+            conn = HTTPConnection(host, port, timeout=3)
+            conn.request("GET", "/health")
+            resp = conn.getresponse()
+            resp.read()
+            if resp.status == 200:
+                spinner.stop()
+                return
+        except Exception as exc:
+            last_error = exc
+        finally:
+            if conn:
+                conn.close()
+        time.sleep(1)
+    spinner.stop()
+
+    if last_error:
+        logger.debug(f"Error waiting for {args.url} /health: {last_error}")
+    else:
+        logger.debug(f"Time out waiting for {args.url} /health")
+
+
 def chat(
     args: ChatArgsType,
     operational_args: ChatOperationalArgs | None = None,
@@ -871,6 +905,9 @@ def chat(
 
     # Assign monitor to operational_args
     operational_args.monitor = monitor
+
+    # Wait until server reports healthy
+    wait_for_server(args)
 
     successful_exit = True
     try:
