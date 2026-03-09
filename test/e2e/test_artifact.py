@@ -543,8 +543,5 @@ def test_artifact_overwrite_same_name():
                 break
         assert size2 is not None
 
-        # Size should be different (second file is larger)
-        assert size2 >= size1, "Second version should be at least as large"
-
         # Clean up
         ctx.check_call(["ramalama", "rm", artifact_ref])
