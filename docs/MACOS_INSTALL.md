@@ -40,7 +40,7 @@ The installer places files in:
 
 ```bash
 # Check version
-ramalama --version
+ramalama version
 
 # Get help
 ramalama --help
@@ -182,7 +182,7 @@ Once installed, try these commands:
 
 ```bash
 # Check version
-ramalama --version
+ramalama version
 
 # Pull a model
 ramalama pull tinyllama
