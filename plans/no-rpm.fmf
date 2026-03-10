@@ -31,6 +31,6 @@ provision:
     discover+:
         test: /test/tmt/no-rpm/unit
 
-/bats-nocontainer:
+/e2e-nocontainer:
     discover+:
-        test: /test/tmt/no-rpm/bats-nocontainer
+        test: /test/tmt/no-rpm/e2e-nocontainer
