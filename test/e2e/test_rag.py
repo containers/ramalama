@@ -276,8 +276,8 @@ def test_rag(container_engine):
                 "ramalama",
                 "rag",
                 "README.md",
-                "https://github.com/containers/ramalama/blob/main/README.md",
-                "https://github.com/containers/podman/blob/main/README.md",
+                "https://raw.githubusercontent.com/containers/ramalama/refs/heads/main/README.md",
+                "https://raw.githubusercontent.com/containers/podman/refs/heads/main/README.md",
                 RAG_MODEL,
             ]
         )

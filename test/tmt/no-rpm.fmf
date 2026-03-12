@@ -6,7 +6,6 @@ adjust:
     when: initiator != packit
 
 require:
-    - bats
     - ruff
     - codespell
     - jq
@@ -37,7 +36,7 @@ require:
     summary: Run unit tests
     test: make -C $TMT_TREE unit-tests
 
-/bats-nocontainer:
-    summary: Run system tests on host
-    test: bash ./bats-tests.sh nocontainer
+/e2e-nocontainer:
+    summary: Run e2e tests on host
+    test: make -C $TMT_TREE e2e-tests-nocontainer
     duration: 30m

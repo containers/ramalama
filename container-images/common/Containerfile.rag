@@ -19,5 +19,5 @@ COPY container-images/scripts/doc2rag \
 ADD --chmod=755 https://github.com/ggml-org/llama.cpp/raw/refs/tags/b7872/convert_hf_to_gguf.py \
     /usr/bin/
 
-RUN --mount=type=bind,target=/src\
+RUN --mount=type=bind,target=/src,relabel=private \
     /src/container-images/scripts/build_rag.sh $TORCH_BACKEND
