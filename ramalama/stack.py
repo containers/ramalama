@@ -23,8 +23,6 @@ class Stack:
     def __init__(self, args):
         self.args = args
         self.name = getattr(args, "name", None) or genname()
-        if not os.path.basename(args.engine).startswith("podman"):
-            raise ValueError("llama-stack requires use of the Podman container engine")
         self.host = "0.0.0.0"
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
@@ -255,6 +253,8 @@ spec:
                 file.write(self.args.generate.output_dir)
                 return
 
+        if not os.path.basename(args.engine).startswith("podman"):
+            raise ValueError("llama-stack requires use of the Podman container engine")
         with NamedTemporaryFile(
             mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
         ) as yaml_file:
@@ -274,6 +274,8 @@ spec:
             exec_cmd(exec_args)
 
     def stop(self):
+        if not os.path.basename(args.engine).startswith("podman"):
+            raise ValueError("llama-stack requires use of the Podman container engine")
         with NamedTemporaryFile(
             mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
         ) as yaml_file:
