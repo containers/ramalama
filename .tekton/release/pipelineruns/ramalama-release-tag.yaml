@@ -19,7 +19,7 @@ metadata:
 spec:
   params:
   - name: skip-components
-    value: bats e2e ramalama-llama-server ramalama-whisper-server cuda-llama-server
+    value: e2e
   pipelineRef:
     name: create-release-snapshot
   timeouts:
