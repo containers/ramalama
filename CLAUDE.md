@@ -108,3 +108,8 @@ supported subcommands.
 - Formatting: ruff format + ruff check (I rules)
 - Type hints encouraged (mypy checked)
 - Commits require DCO sign-off (`git commit -s`)
+- **Commit messages for PRs**:
+  - Use exactly one sign-off, added via `git commit -s` only.
+  - Do not manually add a "Signed-off-by:" line in the message body.
+  - Do not add any trailers (e.g. "Made-with: Cursor") after the sign-off.
+  - The author's `Signed-off-by` must be the last line of the commit message.
