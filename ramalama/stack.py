@@ -209,7 +209,9 @@ spec:
 
             if self.args.generate.gen_type == "quadlet/kube" or self.args.generate.gen_type == "quadlet":
                 kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
-                k = quadlet.kube(self.name, f"RamaLama {self.model.model_alias} Kubernetes YAML - llama Stack AI Model Service")
+                k = quadlet.kube(
+                    self.name, f"RamaLama {self.model.model_alias} Kubernetes YAML - llama Stack AI Model Service"
+                )
                 openai = f"http://localhost:{self.args.port}"
                 k.add("comment", f"# RamaLama service for {self.model.model_alias}")
                 k.add("comment", "# Serving RESTAPIs:")
@@ -234,7 +236,9 @@ spec:
                     (model_src_path, model_dest_path),
                     (chat_template_src_path, chat_template_dest_path),
                     (mmproj_src_path, mmproj_dest_path),
-                    compose_args, exec_args)
+                    compose_args,
+                    exec_args,
+                )
                 file = compose.generate()
                 file.content += f"""
   {self.model.model_name}-stack:
