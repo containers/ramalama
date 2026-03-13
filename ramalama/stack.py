@@ -4,13 +4,13 @@ import platform
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.command.factory import assemble_command
 from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image
 from ramalama.compat import NamedTemporaryFile
 from ramalama.compose import Compose
 from ramalama.config import get_config
 from ramalama.engine import add_labels
 from ramalama.path_utils import normalize_host_path_for_container
+from ramalama.plugins.loader import assemble_command
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
 
@@ -253,7 +253,7 @@ spec:
                 file.write(self.args.generate.output_dir)
                 return
 
-        if not os.path.basename(args.engine).startswith("podman"):
+        if not os.path.basename(self.args.engine).startswith("podman"):
             raise ValueError("llama-stack requires use of the Podman container engine")
         with NamedTemporaryFile(
             mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
@@ -274,7 +274,7 @@ spec:
             exec_cmd(exec_args)
 
     def stop(self):
-        if not os.path.basename(args.engine).startswith("podman"):
+        if not os.path.basename(self.args.engine).startswith("podman"):
             raise ValueError("llama-stack requires use of the Podman container engine")
         with NamedTemporaryFile(
             mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
