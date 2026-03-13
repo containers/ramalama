@@ -1,3 +1,4 @@
+import copy
 import os
 import platform
 
@@ -5,9 +6,11 @@ import ramalama.kube as kube
 import ramalama.quadlet as quadlet
 from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image
 from ramalama.compat import NamedTemporaryFile
+from ramalama.compose import Compose
 from ramalama.config import get_config
 from ramalama.engine import add_labels
 from ramalama.path_utils import normalize_host_path_for_container
+from ramalama.plugins.loader import assemble_command
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
 
@@ -20,8 +23,6 @@ class Stack:
     def __init__(self, args):
         self.args = args
         self.name = getattr(args, "name", None) or genname()
-        if not os.path.basename(args.engine).startswith("podman"):
-            raise ValueError("llama-stack requires use of the Podman container engine")
         self.host = "0.0.0.0"
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
@@ -204,17 +205,56 @@ spec:
                 kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
                 return
 
-            if self.args.generate.gen_type == "quadlet/kube":
+            if self.args.generate.gen_type == "quadlet/kube" or self.args.generate.gen_type == "quadlet":
                 kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
-                k = quadlet.kube(self.name, f"RamaLama {self.model} Kubernetes YAML - llama Stack AI Model Service")
+                k = quadlet.kube(
+                    self.name, f"RamaLama {self.model.model_alias} Kubernetes YAML - llama Stack AI Model Service"
+                )
                 openai = f"http://localhost:{self.args.port}"
-                k.add("comment", f"# RamaLama service for {self.model}")
+                k.add("comment", f"# RamaLama service for {self.model.model_alias}")
                 k.add("comment", "# Serving RESTAPIs:")
                 k.add("comment", f"#    Llama Stack: {openai}")
                 k.add("comment", f"#    OpenAI:      {openai}/v1/openai\n")
                 k.write(self.args.generate.output_dir)
                 return
 
+            if self.args.generate.gen_type == "compose":
+                model_src_path = self.model._get_entry_model_path(False, False, False)
+                chat_template_src_path = self.model._get_chat_template_path(False, False, False)
+                mmproj_src_path = self.model._get_mmproj_path(False, False, False)
+                model_dest_path = self.model._get_entry_model_path(True, True, False)
+                chat_template_dest_path = self.model._get_chat_template_path(True, True, False)
+                mmproj_dest_path = self.model._get_mmproj_path(True, True, False)
+                stack_port = self.args.port
+                compose_args = copy.copy(self.args)
+                compose_args.port = self.model_port
+                exec_args = assemble_command(compose_args)
+                compose = Compose(
+                    self.model.model_name,
+                    (model_src_path, model_dest_path),
+                    (chat_template_src_path, chat_template_dest_path),
+                    (mmproj_src_path, mmproj_dest_path),
+                    compose_args,
+                    exec_args,
+                )
+                file = compose.generate()
+                file.content += f"""
+  {self.model.model_name}-stack:
+    image: {self.stack_image}
+    container_name: {self.name}-stack
+    ports:
+      - "{stack_port}:8123"
+    environment:
+      RAMALAMA_URL: http://{self.name}:{self.model_port}
+      INFERENCE_MODEL: "{self.model.model_alias}"
+    depends_on:
+      - {self.model.model_name}
+    restart: unless-stopped"""
+                file.write(self.args.generate.output_dir)
+                return
+
+        if not os.path.basename(self.args.engine).startswith("podman"):
+            raise ValueError("llama-stack requires use of the Podman container engine")
         with NamedTemporaryFile(
             mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
         ) as yaml_file:
@@ -234,6 +274,8 @@ spec:
             exec_cmd(exec_args)
 
     def stop(self):
+        if not os.path.basename(self.args.engine).startswith("podman"):
+            raise ValueError("llama-stack requires use of the Podman container engine")
         with NamedTemporaryFile(
             mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
         ) as yaml_file:

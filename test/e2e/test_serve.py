@@ -708,6 +708,43 @@ def test_kube_generation_with_llama_api(test_model):
             assert re.search(r".*/llama-stack", content)
 
 
+@pytest.mark.e2e
+@skip_if_no_container
+def test_compose_generation_with_llama_api(test_model):
+    with RamalamaExecWorkspace() as ctx:
+        # Pull model
+        ctx.check_call(["ramalama", "pull", test_model])
+
+        # Exec ramalama serve
+        result = ctx.check_output(
+            [
+                "ramalama",
+                "serve",
+                "--name",
+                "test",
+                "--port",
+                "1234",
+                "--generate",
+                "compose",
+                "--api",
+                "llama-stack",
+                "--dri",
+                "off",
+                test_model,
+            ]
+        )
+
+        # Test the expected output of the command execution
+        assert re.search(r".*Generating Compose YAML file: docker-compose.yaml", result)
+
+        # Check "docker-compose.yaml" contents
+        with (Path(ctx.workspace_dir) / "docker-compose.yaml").open("r") as f:
+            content = f.read()
+            assert re.search(r".*llama-server", content)
+            assert re.search(r".*\"1234:8123\"", content)
+            assert re.search(r".*/llama-stack", content)
+
+
 @pytest.mark.skip(reason="pulls very large image")
 @pytest.mark.e2e
 @skip_if_docker
