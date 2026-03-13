@@ -4,7 +4,7 @@ import platform
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, tagged_image
+from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, get_gpu_devices, tagged_image
 from ramalama.compat import NamedTemporaryFile
 from ramalama.compose import Compose
 from ramalama.config import get_config
@@ -54,9 +54,10 @@ class Stack:
           name: model"""
 
         if self.args.dri == "on" and platform.system() != "Windows":
-            volume_mounts += """
-        - mountPath: /dev/dri
-          name: dri"""
+            for name, path in get_gpu_devices().items():
+                volume_mounts += f"""
+        - mountPath: {path}
+          name: {name}"""
 
         return volume_mounts
 
@@ -69,11 +70,12 @@ class Stack:
       - hostPath:
           path: {host_model_path}
         name: model"""
-        if self.args.dri == "on":
-            volumes += """
+        if self.args.dri == "on" and platform.system() != "Windows":
+            for name, path in get_gpu_devices().items():
+                volumes += f"""
       - hostPath:
-          path: /dev/dri
-        name: dri"""
+          path: {path}
+        name: {name}"""
         return volumes
 
     def _gen_server_env(self):

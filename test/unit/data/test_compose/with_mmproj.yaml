@@ -13,7 +13,7 @@ services:
     environment:
       - ACCEL_ENV=true
     devices:
+      - "/dev/accel:/dev/accel"
       - "/dev/dri:/dev/dri"
       - "/dev/kfd:/dev/kfd"
-      - "/dev/accel:/dev/accel"
     restart: unless-stopped
