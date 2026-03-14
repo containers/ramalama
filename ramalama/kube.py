@@ -166,9 +166,12 @@ class Kube:
 
         return ports
 
-    @staticmethod
-    def __gen_env_vars():
+    def __gen_env_vars(self):
         env_vars = get_accel_env_vars()
+
+        if hasattr(self.args, "env"):
+            extra_env = dict(i.split("=", 1) for i in self.args.env)
+            env_vars |= extra_env
 
         if not env_vars:
             return ""
@@ -176,7 +179,7 @@ class Kube:
         env_spec = """\
         env:"""
 
-        for k, v in env_vars.items():
+        for k, v in sorted(env_vars.items()):
             env_spec += f"""
         - name: {k}
           value: \"{v}\""""
