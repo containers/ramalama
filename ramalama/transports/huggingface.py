@@ -312,7 +312,14 @@ class Huggingface(HFStyleRepoModel):
             return HuggingfaceRepository(name, organization, tag)
 
     def get_cli_download_args(self, directory_path, model):
-        raise NotImplementedError("huggingface cli download not available")
+        # The hf CLI does not support direct GGUF file downloads. This method
+        # is intentionally unimplemented; callers should not reach this point
+        # because fetch_metadata raises FileNotFoundError before the CLI
+        # fallback path is attempted.
+        raise NotImplementedError(
+            "CLI fallback is not supported for HuggingFace GGUF file downloads. "
+            "The requested file may not exist in the repository."
+        )
 
     def extract_model_identifiers(self):
         model_name, model_tag, model_organization = super().extract_model_identifiers()
