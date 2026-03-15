@@ -134,6 +134,15 @@ def fetch_repo_files(repo_name: str, revision: str = "main"):
     return all_files
 
 
+def fetch_gguf_files(repo_name: str, revision: str = "main") -> list[str]:
+    """Return a sorted list of .gguf filenames present in a HuggingFace repository."""
+    try:
+        all_files = fetch_repo_files(repo_name, revision)
+    except Exception:
+        return []
+    return sorted(f['path'] for f in all_files if isinstance(f, dict) and f.get('path', '').endswith('.gguf'))
+
+
 class HuggingfaceCLIFile(HFStyleRepoFile):
     pass
 
