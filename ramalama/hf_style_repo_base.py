@@ -359,6 +359,10 @@ class HFStyleRepoModel(Transport, ABC):
         except EndianMismatchError:
             # No use pulling again
             raise
+        except FileNotFoundError:
+            # The file does not exist on the server; the CLI fallback cannot
+            # help here, and falling through would produce a misleading error.
+            raise
         except Exception as e:
             if isinstance(e, OSError) and hasattr(e, "winerror") and e.winerror == 206:
                 raise  # Path too long on Windows
