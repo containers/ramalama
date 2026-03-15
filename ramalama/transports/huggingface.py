@@ -251,7 +251,19 @@ class HuggingfaceRepositoryModel(HuggingfaceRepository):
     def fetch_metadata(self):
         # Model url. organization is <org>/<repo>, name is model file path
         self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/resolve/main"
-        self.model_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
+        try:
+            self.model_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
+        except FileNotFoundError:
+            repo_name = self.organization
+            requested_file = self.name
+            available = fetch_gguf_files(repo_name)
+            msg = f"'{requested_file}' not found in '{repo_name}'."
+            if available:
+                files_list = "\n  ".join(available)
+                msg += f"\n\nAvailable GGUF files in this repository:\n  {files_list}"
+            else:
+                msg += f"\n\nBrowse the repository at: https://huggingface.co/{repo_name}"
+            raise FileNotFoundError(msg)
         self.model_filename = self.name
         token = huggingface_token()
         if token is not None:
