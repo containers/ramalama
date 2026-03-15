@@ -2,6 +2,7 @@ import json
 import os
 import re
 import tempfile
+import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -62,7 +63,11 @@ def fetch_checksum_from_api_base(checksum_api_url, headers=None, extractor_func=
 
         return extractor_func(data) if extractor_func else data.strip()
 
-    except (json.JSONDecodeError, urllib.error.HTTPError, urllib.error.URLError) as e:
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise FileNotFoundError(checksum_api_url)
+        raise KeyError(f"failed to pull {checksum_api_url}: {str(e).strip()}")
+    except (json.JSONDecodeError, urllib.error.URLError) as e:
         raise KeyError(f"failed to pull {checksum_api_url}: {str(e).strip()}")
 
 
