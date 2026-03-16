@@ -171,6 +171,11 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             raise e
 
     def _run_handler(self, args: argparse.Namespace) -> None:
+        # Prevent unsupported runtime mode
+        if getattr(args, "runtime", None) == "vllm":
+            raise RuntimeError(
+                "vLLM runtime does not support 'run'. Use `ramalama serve --runtime vllm`."
+            )
         try:
             # detect available port and update arguments
             args.port = compute_serving_port(args)
