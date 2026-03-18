@@ -7,15 +7,15 @@ from pathlib import Path
 from typing import Any, Literal, Mapping, TypeAlias
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import apple_vm, available
+from ramalama.common import apple_vm, available, version_tagged_image
 from ramalama.config_types import SUPPORTED_ENGINES, SUPPORTED_RUNTIMES
 from ramalama.layered_config import LayeredMixin
 from ramalama.log_levels import LogLevel, coerce_log_level
 from ramalama.toml_parser import TOMLParser
 
-DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
-DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
-DEFAULT_RAG_IMAGE: str = "quay.io/ramalama/ramalama-rag"
+DEFAULT_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama")
+DEFAULT_STACK_IMAGE: str = version_tagged_image("quay.io/ramalama/llama-stack")
+DEFAULT_RAG_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-rag")
 GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q2_K",
     "Q3_K_S",
@@ -304,11 +304,20 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     return config
 
 
-def default_config(env: Mapping[str, str] | None = None) -> Config:
-    """Returns a default Config object with all layers initialized."""
-    return Config(load_env_config(env), load_file_config())
+def load_config(env: Mapping[str, str] | None = None) -> Config:
+    """Returns a Config object with layers initialized from config file and environment."""
+    return Config(load_file_config(), load_env_config(env))
 
 
-@lru_cache(maxsize=1)
-def get_config() -> Config:
-    return default_config()
+def ActiveConfig() -> Config:
+    """Returns the active Config object with layers initialized from config file and environment."""
+    if not hasattr(ActiveConfig, "_singleton"):
+        ActiveConfig._singleton = load_config()  # type: ignore[attr-defined]
+    return ActiveConfig._singleton  # type: ignore[attr-defined]
+
+
+def DefaultConfig() -> Config:
+    """Returns the default Config object with no layer initialized from config file or environment."""
+    if not hasattr(DefaultConfig, "_singleton"):
+        DefaultConfig._singleton = Config()  # type: ignore[attr-defined]
+    return DefaultConfig._singleton  # type: ignore[attr-defined]

@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 from typing import Any, Dict, List
 
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.mcp.mcp_client import PureMCPClient
 
@@ -22,7 +22,7 @@ class LLMAgent:
         model: str | None = None,
         args=None,
     ):
-        config_level = get_config().log_level or logging.INFO
+        config_level = ActiveConfig().log_level or logging.INFO
         if logging.getLogger().handlers:
             logging.getLogger().setLevel(config_level)
         else:

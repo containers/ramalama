@@ -43,8 +43,7 @@ class LlamaCppCommands:
     def _cmd_run(self, args: argparse.Namespace) -> list[str]:
         if getattr(args, 'rag', None):
             return self._cmd_run_rag(args)
-
-        cmd = ["llama-server"]
+        cmd = ["llama-server"] if not self._container_image_is_ggml(args) else ["--server"]  # type: ignore[attr-defined]
 
         is_container = args.container
         should_generate = getattr(args, 'generate', None) is not None
@@ -151,7 +150,7 @@ class LlamaCppCommands:
     _cmd_serve = _cmd_run
 
     def _cmd_perplexity(self, args: argparse.Namespace) -> list[str]:
-        cmd = ["llama-perplexity"]
+        cmd = ["llama-perplexity"] if not self._container_image_is_ggml(args) else ["--perplexity"]  # type: ignore[attr-defined]
 
         is_container = args.container
         should_generate = getattr(args, 'generate', None) is not None
@@ -178,7 +177,7 @@ class LlamaCppCommands:
         return cmd
 
     def _cmd_bench(self, args: argparse.Namespace) -> list[str]:
-        cmd = ["llama-bench"]
+        cmd = ["llama-bench"] if not self._container_image_is_ggml(args) else ["--bench"]  # type: ignore[attr-defined]
 
         is_container = args.container
         should_generate = getattr(args, 'generate', None) is not None
@@ -253,20 +252,14 @@ class LlamaCppCommands:
         return cmd
 
     def _cmd_convert(self, args: argparse.Namespace) -> list[str]:
+        cmd = ["convert_hf_to_gguf.py"] if not self._container_image_is_ggml(args) else ["--convert"]  # type: ignore[attr-defined]
         model_name = self._get_model_name(args)
-        return [
-            "convert_hf_to_gguf.py",
-            "--outfile",
-            f"/output/{model_name}.gguf",
-            "/model",
-        ]
+        cmd += ["--outfile", f"/output/{model_name}.gguf", "/model"]
+        return cmd
 
     def _cmd_quantize(self, args: argparse.Namespace) -> list[str]:
+        cmd = ["llama-quantize"] if not self._container_image_is_ggml(args) else ["--quantize"]  # type: ignore[attr-defined]
         model_name = self._get_model_name(args)
         gguf = getattr(args, 'gguf', None) or ""
-        return [
-            "llama-quantize",
-            f"/model/{model_name}.gguf",
-            f"/model/{model_name}-{gguf}.gguf",
-            str(gguf),
-        ]
+        cmd += [f"/model/{model_name}.gguf", f"/model/{model_name}-{gguf}.gguf", str(gguf)]
+        return cmd

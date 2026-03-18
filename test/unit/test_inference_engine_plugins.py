@@ -115,19 +115,29 @@ class TestLlamaCppPlugin:
     def setup_method(self):
         self.plugin = LlamaCppPlugin()
 
+    @pytest.fixture(params=[False, True])
+    def container_image_is_ggml(self, request):
+        return request.param
+
+    @pytest.fixture(autouse=True)
+    def _patch_container_image_is_ggml(self, container_image_is_ggml):
+        with patch.object(self.plugin, "_container_image_is_ggml", return_value=container_image_is_ggml):
+            yield
+
     def test_name(self):
         assert self.plugin.name == "llama.cpp"
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
-    def test_serve_basic(self, mock_colorize, mock_new):
+    def test_serve_basic(self, mock_colorize, mock_new, container_image_is_ggml):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(container=True, MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("serve", ns)
 
-        assert cmd[0] == "llama-server"
+        expected_entry = "--server" if container_image_is_ggml else "llama-server"
+        assert cmd[0] == expected_entry
         assert "--host" in cmd
         assert cmd[cmd.index("--host") + 1] == "0.0.0.0"
         assert "--port" in cmd
@@ -295,14 +305,15 @@ class TestLlamaCppPlugin:
         assert self.plugin.handle_subcommand("serve", ns) == self.plugin.handle_subcommand("run", ns)
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_perplexity(self, mock_new):
+    def test_perplexity(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(ngl=20, threads=8, MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("perplexity", ns)
 
-        assert cmd[0] == "llama-perplexity"
+        expected_entry = "--perplexity" if container_image_is_ggml else "llama-perplexity"
+        assert cmd[0] == expected_entry
         assert "--model" in cmd
         assert "-ngl" in cmd
         assert cmd[cmd.index("-ngl") + 1] == "20"
@@ -310,14 +321,15 @@ class TestLlamaCppPlugin:
         assert cmd[cmd.index("--threads") + 1] == "8"
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_bench(self, mock_new):
+    def test_bench(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(ngl=30, MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("bench", ns)
 
-        assert cmd[0] == "llama-bench"
+        expected_entry = "--bench" if container_image_is_ggml else "llama-bench"
+        assert cmd[0] == expected_entry
         assert "--model" in cmd
         assert "-ngl" in cmd
         assert "-o" in cmd
@@ -374,27 +386,29 @@ class TestLlamaCppPlugin:
         assert self.plugin.handle_subcommand("run", ns) == self.plugin.handle_subcommand("serve", ns)
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_convert(self, mock_new):
+    def test_convert(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model(model_name="mymodel")
         mock_new.return_value = mock_model
 
         ns = make_ns(MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("convert", ns)
 
-        assert cmd[0] == "convert_hf_to_gguf.py"
+        expected_entry = "--convert" if container_image_is_ggml else "convert_hf_to_gguf.py"
+        assert cmd[0] == expected_entry
         assert "--outfile" in cmd
         assert "/output/mymodel.gguf" in cmd
         assert "/model" in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_quantize(self, mock_new):
+    def test_quantize(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model(model_name="mymodel")
         mock_new.return_value = mock_model
 
         ns = make_ns(gguf="Q4_K_M", MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("quantize", ns)
 
-        assert cmd[0] == "llama-quantize"
+        expected_entry = "--quantize" if container_image_is_ggml else "llama-quantize"
+        assert cmd[0] == expected_entry
         assert "/model/mymodel.gguf" in cmd
         assert "/model/mymodel-Q4_K_M.gguf" in cmd
         assert "Q4_K_M" in cmd
@@ -406,17 +420,21 @@ class TestLlamaCppPlugin:
             self.plugin.handle_subcommand("unknown_cmd", ns)
 
     def test_get_container_image_cuda(self):
+        from ramalama.common import version_tagged_image
+
         config = MagicMock()
         config.images.get.return_value = None
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
-        assert image == "quay.io/ramalama/cuda:latest"
+        assert image == version_tagged_image("quay.io/ramalama/cuda")
 
     def test_get_container_image_no_gpu(self):
+        from ramalama.common import version_tagged_image
+
         config = MagicMock()
         config.images.get.return_value = None
-        config.default_image = "quay.io/ramalama/ramalama"
+        config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
         image = self.plugin.get_container_image(config, "")
-        assert image == "quay.io/ramalama/ramalama:latest"
+        assert image == version_tagged_image("quay.io/ramalama/ramalama")
 
     def test_get_container_image_user_override(self):
         config = MagicMock()
@@ -647,9 +665,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_runtime_excludes_rag(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -659,10 +677,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_runtime_includes_rag_with_container(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -672,10 +690,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_runtime_excludes_rag_nocontainer(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
-        monkeypatch.setattr(get_config(), "container", False)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "container", False)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -685,10 +703,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_runtime_excludes_rag_with_container(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -698,10 +716,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_runtime_excludes_rag_nocontainer(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", False)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", False)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -711,9 +729,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_unknown_runtime_raises(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "no-such-runtime")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "no-such-runtime")
         parser = self._make_parser()
         with pytest.raises(ValueError, match="Unknown runtime: 'no-such-runtime'"):
             configure_subcommands(parser)
@@ -725,9 +743,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_run_has_ngl(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -735,9 +753,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_no_ngl(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -745,9 +763,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_has_max_tokens(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -755,10 +773,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_serve_has_max_model_len(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -766,9 +784,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_max_model_len(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -776,9 +794,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_serve_has_webui(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -786,9 +804,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_webui(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -796,9 +814,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_has_ctx_size(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -806,9 +824,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_has_keepalive(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -816,11 +834,11 @@ class TestConfigureSubcommandsFiltering:
 
     def test_all_runtimes_serve_has_temp(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
         for runtime in ("llama.cpp", "mlx", "vllm"):
-            monkeypatch.setattr(get_config(), "runtime", runtime)
-            monkeypatch.setattr(get_config(), "container", True)
+            monkeypatch.setattr(ActiveConfig(), "runtime", runtime)
+            monkeypatch.setattr(ActiveConfig(), "container", True)
             parser = self._make_parser()
             configure_subcommands(parser)
             opts = self._subparser_option_strings(parser, "serve")
@@ -828,10 +846,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_serve_has_api(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -839,9 +857,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_api(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -849,10 +867,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_serve_has_generate(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -860,9 +878,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_generate(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")

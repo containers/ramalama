@@ -9,9 +9,9 @@ from typing import Literal
 
 from ramalama.arg_types import RagArgsType
 from ramalama.chat import ChatOperationalArgs
-from ramalama.common import accel_image, perror, set_accel_env_vars
+from ramalama.common import accel_image, ensure_image, perror, set_accel_env_vars, version_tagged_image
 from ramalama.compat import StrEnum
-from ramalama.config import Config
+from ramalama.config import ActiveConfig, Config
 from ramalama.engine import BuildEngine, Engine, is_healthy, stop_container, wait_for_healthy
 from ramalama.path_utils import get_container_mount_path
 from ramalama.transports.base import Transport
@@ -20,9 +20,9 @@ from ramalama.transports.oci.oci import OCI
 INPUT_DIR = "/docs"
 
 _DEFAULT_RAG_IMAGES: dict[str, str] = {
-    "CUDA_VISIBLE_DEVICES": "quay.io/ramalama/cuda-rag",
-    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm-rag",
-    "INTEL_VISIBLE_DEVICES": "quay.io/ramalama/intel-gpu-rag",
+    "CUDA_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/cuda-rag"),
+    "HIP_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/rocm-rag"),
+    "INTEL_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/intel-gpu-rag"),
 }
 
 
@@ -97,6 +97,10 @@ class Rag:
             dbdir = self.target
 
         engine.add_volume(dbdir, "/output", opts="rw")
+        if not args.dryrun:
+            config = ActiveConfig()
+            should_pull = config.pull in ["always", "missing", "newer"]
+            args.image = ensure_image(args.engine, args.image, should_pull=should_pull)
         engine.add_args(args.image)
         engine.add_args(*cmd)
         try:

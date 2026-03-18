@@ -26,8 +26,8 @@ from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import accel_image, exec_cmd, get_accel, perror
 from ramalama.config import (
     SUPPORTED_ENGINES,
+    ActiveConfig,
     coerce_to_bool,
-    get_config,
     load_file_config,
 )
 from ramalama.config_types import COLOR_OPTIONS
@@ -58,12 +58,12 @@ LIST_SORT_ORDER_OPTIONS = ["desc", "asc"]
 
 @lru_cache(maxsize=1)
 def default_image() -> str:
-    return accel_image(get_config())
+    return accel_image(ActiveConfig())
 
 
 @lru_cache(maxsize=1)
 def default_rag_image() -> str:
-    return rag_image(get_config())
+    return rag_image(ActiveConfig())
 
 
 @lru_cache(maxsize=1)
@@ -184,20 +184,27 @@ def init_cli():
 
 def parse_args_from_cmd(cmd: list[str]) -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     """Parse arguments based on a command string"""
-    config = get_config()
+    config = ActiveConfig()
     if any(arg in ("--dryrun", "--dry-run", "--generate") or arg.startswith("--generate=") for arg in sys.argv[1:]):
         config.dryrun = True
     # Phase 1: Parse the initial arguments to set CONFIG.runtime etc... as this can affect the subcommands
     initial_parser = get_initial_parser()
     initial_args, _ = initial_parser.parse_known_args(cmd)
-    for arg in initial_args.__dict__.keys():
-        if hasattr(config, arg):
+    for arg in initial_args.__dict__.keys() & config._fields:
+        if getattr(initial_args, arg) != getattr(config, arg):
             setattr(config, arg, getattr(initial_args, arg))
 
     # Phase 2: Re-parse the arguments with the subcommands enabled
     parser = get_parser()
     args = parser.parse_args(cmd)
     post_parse_setup(args)
+
+    # Update config field that store runtime specific config which can be overridden via the cli
+    # e.g Config.image and Config.rag_image etc...
+    # TODO(owalsh): refactor this to remove runtime specific config from the global config object
+    for arg in args.__dict__.keys() & config._fields:
+        if getattr(args, arg) != getattr(config, arg):
+            setattr(config, arg, getattr(args, arg))
     return parser, args
 
 
@@ -241,7 +248,7 @@ def create_argument_parser(description: str, add_help: bool = True):
 
 def configure_arguments(parser):
     """Configure the command-line arguments for the parser."""
-    config = get_config()
+    config = ActiveConfig()
     verbosity_group = parser.add_mutually_exclusive_group()
     parser.add_argument(
         "--container",
@@ -311,7 +318,7 @@ def configure_subcommands(parser):
     # output only shows subcommands the active runtime actually supports.
     # get_config().runtime is already set by Phase 1 of parse_args_from_cmd
     # before configure_subcommands() is called in Phase 2.
-    runtime = get_config().runtime
+    runtime = ActiveConfig().runtime
     get_runtime(runtime).register_subcommands(subparsers)
     chat_parser(subparsers)
     containers_parser(subparsers)
@@ -393,7 +400,7 @@ def post_parse_setup(args):
     elif getattr(args, 'quiet', False):
         log_level = LogLevel.ERROR
     else:
-        log_level = get_config().log_level or LogLevel.WARNING
+        log_level = ActiveConfig().log_level or LogLevel.WARNING
     configure_logger(log_level)
 
     # Allow the runtime plugin to mutate and validate args after logger is configured
@@ -425,7 +432,7 @@ def login_parser(subparsers):
 
 
 def normalize_registry(registry):
-    registry = registry or get_config().transport
+    registry = registry or ActiveConfig().transport
 
     if not registry or registry == "" or registry.startswith("oci://"):
         return "oci://"
@@ -636,7 +643,7 @@ def info_cli(args: DefaultArgsType) -> None:
             "Available": list(get_all_runtimes().keys()),
         },
         "RagImage": default_rag_image(),
-        "Selinux": get_config().selinux,
+        "Selinux": ActiveConfig().selinux,
         "Shortnames": {
             "Files": shortnames.paths,
             "Names": shortnames.shortnames,
@@ -701,7 +708,7 @@ def help_cli(args):
 
 
 def pull_parser(subparsers):
-    config = get_config()
+    config = ActiveConfig()
     parser = subparsers.add_parser("pull", help="pull AI Model from Model registry to local storage")
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument(
@@ -727,7 +734,7 @@ def pull_cli(args):
 
 
 def push_parser(subparsers):
-    config = get_config()
+    config = ActiveConfig()
     parser = subparsers.add_parser(
         "push",
         help="push AI Model from local storage to remote registry",
@@ -808,7 +815,7 @@ def push_cli(args):
 
 
 def runtime_options(parser, command):
-    config = get_config()
+    config = ActiveConfig()
     parser.add_argument("--authfile", help="path of the authentication file")
     if command == "serve":
         parser.add_argument(
@@ -897,7 +904,7 @@ def chat_run_options(parser):
     parser.add_argument(
         "--summarize-after",
         type=int,
-        default=get_config().summarize_after,
+        default=ActiveConfig().summarize_after,
         metavar="N",
         help="automatically summarize conversation history after N messages to prevent context growth (0=disabled)",
     )
@@ -920,7 +927,7 @@ def chat_parser(subparsers):
     parser.add_argument(
         "--api-key",
         type=str,
-        default=get_config().api_key,
+        default=ActiveConfig().api_key,
         help="""OpenAI-compatible API key.
         Can also be set in ramalama.conf or via the RAMALAMA_API_KEY environment variable.""",
     )
@@ -938,13 +945,13 @@ def chat_parser(subparsers):
         "--max-tokens",
         dest="max_tokens",
         type=int,
-        default=get_config().max_tokens,
+        default=ActiveConfig().max_tokens,
         help="maximum number of tokens to generate (0 = unlimited)",
     )
     parser.add_argument(
         "--temp",
         type=float,
-        default=float(get_config().temp),
+        default=float(ActiveConfig().temp),
         help="temperature of the response from the AI model",
     )
     parser.add_argument(
@@ -1000,7 +1007,7 @@ def stop_container(args):
 
 
 def daemon_parser(subparsers) -> None:
-    config = get_config()
+    config = ActiveConfig()
     parser: ArgumentParserWithDefaults = subparsers.add_parser("daemon", help="daemon operations")
     parser.set_defaults(func=lambda _: parser.print_help())
 
@@ -1087,7 +1094,7 @@ def daemon_start_cli(args):
         "--port",
         "8080" if is_daemon_in_container else args.port,
         "--host",
-        get_config().host if is_daemon_in_container else args.host,
+        ActiveConfig().host if is_daemon_in_container else args.host,
     ]
     exec_cmd(daemon_cmd)
 
