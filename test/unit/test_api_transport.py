@@ -4,11 +4,11 @@ from unittest import mock
 import pytest
 
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.transports import api as api_module
 from ramalama.transports.api import APITransport
 
-CONFIG = get_config()
+CONFIG = ActiveConfig()
 
 
 def make_provider(api_key: str = "provider-default") -> OpenAIResponsesChatProvider:

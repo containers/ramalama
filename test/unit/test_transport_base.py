@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from ramalama.common import MNT_DIR
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.transports.base import Transport, compute_ports, compute_serving_port
 from ramalama.transports.oci.oci import OCI
 from ramalama.transports.transport_factory import TransportFactory
@@ -19,7 +19,7 @@ class ARGS:
 
 hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
 ms_granite_blob = "https://modelscope.cn/models/ibm-granite/granite-3b-code-base-2k-GGUF/file/view"
-_CONFIG = get_config()
+_CONFIG = ActiveConfig()
 DEFAULT_PORT = int(_CONFIG.port)
 DEFAULT_PORT_RANGE = _CONFIG.default_port_range
 

@@ -809,7 +809,7 @@ def test_serve_with_non_existing_images():
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(["ramalama", "serve", "--image", "bogus", "--pull", "never", "tiny"], stderr=STDOUT)
         assert exc_info.value.returncode == 125
-        assert re.search(r".*Error: bogus: image not known", exc_info.value.output.decode("utf-8"))
+        assert re.search(r".*Error: bogus:latest: image not known", exc_info.value.output.decode("utf-8"))
 
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(

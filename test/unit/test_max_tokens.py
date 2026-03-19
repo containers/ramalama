@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ramalama.config import default_config
+from ramalama.config import load_config
 
 
 class TestMaxTokensConfig:
@@ -15,7 +15,7 @@ class TestMaxTokensConfig:
         """Test that max_tokens has the correct default value."""
         with patch("ramalama.config.load_file_config", return_value={}):
             with patch("ramalama.config.load_env_config", return_value={}):
-                cfg = default_config()
+                cfg = load_config()
                 assert cfg.max_tokens == 0
 
     def test_max_tokens_config_override(self):
@@ -24,7 +24,7 @@ class TestMaxTokensConfig:
 
         with patch("ramalama.config.load_file_config", return_value=file_config):
             with patch("ramalama.config.load_env_config", return_value={}):
-                cfg = default_config()
+                cfg = load_config()
                 assert cfg.max_tokens == 512
 
     def test_max_tokens_env_override(self):
@@ -32,7 +32,7 @@ class TestMaxTokensConfig:
         env = {"RAMALAMA_MAX_TOKENS": "1024"}
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
             # Environment variables are loaded as strings, need to convert to int
             assert cfg.max_tokens == "1024"  # String value from env
             assert cfg.is_set("max_tokens") is True
@@ -43,7 +43,7 @@ class TestMaxTokensConfig:
 
         with patch("ramalama.config.load_file_config", return_value=file_config):
             with patch("ramalama.config.load_env_config", return_value={}):
-                cfg = default_config()
+                cfg = load_config()
                 assert cfg.max_tokens == 256
                 assert cfg.is_set("max_tokens") is True
 
@@ -53,7 +53,7 @@ class TestMaxTokensConfig:
         env = {"RAMALAMA_MAX_TOKENS": "1024"}
 
         with patch("ramalama.config.load_file_config", return_value=file_config):
-            cfg = default_config(env)
+            cfg = load_config(env)
             # Environment variables are loaded as strings
             assert cfg.max_tokens == "1024"  # env should override file as string
 
@@ -63,7 +63,7 @@ class TestMaxTokensConfig:
         env = {"RAMALAMA_MAX_TOKENS": value}
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
             # Environment variables are loaded as strings
             assert cfg.max_tokens == value  # String value from env
 
@@ -72,7 +72,7 @@ class TestMaxTokensConfig:
         env = {"RAMALAMA_MAX_TOKENS": "-1"}
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
             # Environment variables are loaded as strings
             assert cfg.max_tokens == "-1"
 

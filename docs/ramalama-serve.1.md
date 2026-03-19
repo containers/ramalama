@@ -138,6 +138,13 @@ Accelerated images:
 |  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
 |  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
 
+Upstream llama.cpp "full" images from `ghcr.io/ggml-org/llama.cpp` are also supported.
+RamaLama automatically detects the image type and adjusts the container CLI accordingly.
+
+```
+ramalama serve --image ghcr.io/ggml-org/llama.cpp:full-vulkan MODEL
+```
+
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)
 If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
