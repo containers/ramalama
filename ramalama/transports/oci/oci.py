@@ -272,14 +272,17 @@ class OCI(Transport):
             f"Converting {source_model.model_store.model_name} ({source_model.model_store.model_type}) to "
             f"{self.model_store.model_name} ({self.model_store.model_type}) ..."
         )
-        try:
-            rm_cmd = [self.conman, "manifest", "rm", self.model]
-            if args.dryrun:
-                dry_run(rm_cmd)
-            else:
-                run_cmd(rm_cmd, ignore_stderr=True, stdout=None)
-        except subprocess.CalledProcessError:
-            pass
+        for rm_cmd in [
+            [self.conman, "manifest", "rm", self.model],
+            [self.conman, "rmi", self.model],
+        ]:
+            try:
+                if args.dryrun:
+                    dry_run(rm_cmd)
+                else:
+                    run_cmd(rm_cmd, ignore_stderr=True, stdout=None)
+            except subprocess.CalledProcessError:
+                pass
         if args.type == "artifact":
             perror(f"Creating Artifact {self.model} ...")
             self._create_artifact(source_model, self.model, args)
@@ -289,6 +292,8 @@ class OCI(Transport):
         imageid = self.build(source_model, args)
         if args.dryrun:
             imageid = "a1b2c3d4e5f6"
+        if not imageid.startswith("sha256:"):
+            imageid = f"sha256:{imageid}"
         try:
             self._create_manifest(self.model, imageid, args)
         except subprocess.CalledProcessError as e:
