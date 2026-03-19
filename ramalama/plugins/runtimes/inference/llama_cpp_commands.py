@@ -203,6 +203,10 @@ class LlamaCppCommands:
 
         cmd += ["-o", "json"]
 
+        runtime_args = getattr(args, 'runtime_args', None)
+        if runtime_args:
+            cmd.extend(runtime_args)
+
         return cmd
 
     def _cmd_rag(self, args: argparse.Namespace) -> list[str]:
