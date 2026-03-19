@@ -343,6 +343,17 @@ class TestLlamaCppPlugin:
         assert "-o" in cmd
         assert cmd[cmd.index("-o") + 1] == "json"
 
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    def test_bench_runtime_args(self, mock_new, container_image_is_ggml):
+        mock_model = make_transport_model()
+        mock_new.return_value = mock_model
+
+        ns = make_ns(ngl=30, runtime_args=["--extra", "flag"], MODEL="ollama://mymodel")
+        cmd = self.plugin.handle_subcommand("bench", ns)
+
+        assert "--extra" in cmd
+        assert "flag" in cmd
+
     def test_rag_generate(self):
         ns = make_rag_gen_ns(format="qdrant", paths=["/some/path"], inputdir="/input")
         cmd = self.plugin.handle_subcommand("rag", ns)
