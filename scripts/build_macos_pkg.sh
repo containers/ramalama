@@ -157,7 +157,7 @@ echo "Location: /usr/local/bin/ramalama"
 echo ""
 echo "Next steps:"
 echo "  1. Restart your terminal or run: source ~/.zshrc"
-echo "  2. Verify installation: ramalama --version"
+echo "  2. Verify installation: ramalama version"
 echo "  3. Get help: ramalama --help"
 echo ""
 
