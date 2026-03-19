@@ -51,9 +51,6 @@ class APITransport(TransportBase):
     def remove(self, args):
         raise NotImplementedError("Hosted API transports do not support removing remote models.")
 
-    def bench(self, args, cmd: list[str]):
-        raise NotImplementedError("bench is not supported for hosted API transports.")
-
     def run(self, args, server_cmd: list[str]):
         """Connect directly to the provider instead of launching a local server."""
         args.container = False
@@ -67,12 +64,6 @@ class APITransport(TransportBase):
             self.provider.api_key = args.api_key
 
         chat(args, provider=self.provider)
-
-    def perplexity(self, args, cmd: list[str]):
-        raise NotImplementedError("perplexity is not supported for hosted API transports.")
-
-    def serve(self, args, cmd: list[str]):
-        raise NotImplementedError("Hosted API transports cannot be served locally.")
 
     def exists(self) -> bool:
         return True

@@ -32,6 +32,8 @@ spec:
           name: model
         - mountPath: /mnt/models/mmproj
           name: mmproj
+        - mountPath: /dev/accel
+          name: accel
         - mountPath: /dev/dri
           name: dri
         - mountPath: /dev/kfd
@@ -43,6 +45,9 @@ spec:
       - hostPath:
           path: /path/to/mmproj
         name: mmproj
+      - hostPath:
+          path: /dev/accel
+        name: accel
       - hostPath:
           path: /dev/dri
         name: dri

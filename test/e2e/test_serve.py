@@ -557,8 +557,12 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
                 "/mnt/models/model.file",
                 "--served-model-name",
                 f"{model_alias}",
+                "--host",
+                "0.0.0.0",
                 "--port",
                 "1234",
+                "--temperature",
+                "0.8",
             ]
             volumes_spec = content.get("spec", {}).get("template", {}).get("spec", {}).get("volumes", [])
             assert volumes_spec[0] == {
@@ -704,6 +708,43 @@ def test_kube_generation_with_llama_api(test_model):
             assert re.search(r".*/llama-stack", content)
 
 
+@pytest.mark.e2e
+@skip_if_no_container
+def test_compose_generation_with_llama_api(test_model):
+    with RamalamaExecWorkspace() as ctx:
+        # Pull model
+        ctx.check_call(["ramalama", "pull", test_model])
+
+        # Exec ramalama serve
+        result = ctx.check_output(
+            [
+                "ramalama",
+                "serve",
+                "--name",
+                "test",
+                "--port",
+                "1234",
+                "--generate",
+                "compose",
+                "--api",
+                "llama-stack",
+                "--dri",
+                "off",
+                test_model,
+            ]
+        )
+
+        # Test the expected output of the command execution
+        assert re.search(r".*Generating Compose YAML file: docker-compose.yaml", result)
+
+        # Check "docker-compose.yaml" contents
+        with (Path(ctx.workspace_dir) / "docker-compose.yaml").open("r") as f:
+            content = f.read()
+            assert re.search(r".*llama-server", content)
+            assert re.search(r".*\"1234:8123\"", content)
+            assert re.search(r".*/llama-stack", content)
+
+
 @pytest.mark.skip(reason="pulls very large image")
 @pytest.mark.e2e
 @skip_if_docker
@@ -768,7 +809,7 @@ def test_serve_with_non_existing_images():
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(["ramalama", "serve", "--image", "bogus", "--pull", "never", "tiny"], stderr=STDOUT)
         assert exc_info.value.returncode == 125
-        assert re.search(r".*Error: bogus: image not known", exc_info.value.output.decode("utf-8"))
+        assert re.search(r".*Error: bogus:latest: image not known", exc_info.value.output.decode("utf-8"))
 
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(

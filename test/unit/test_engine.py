@@ -187,7 +187,7 @@ def test_is_healthy_success(mock_conn, mock_debug, health_status):
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
     assert ramalama.engine.is_healthy(args, model_name="themodel")
     assert mock_conn.return_value.getresponse.call_count == 2
-    assert mock_debug.call_args.args[0] == "Container thecontainer is healthy"
+    assert mock_debug.call_args.args[0] == "llama.cpp server is ready"
 
 
 @pytest.mark.parametrize(
@@ -203,7 +203,7 @@ def test_is_healthy_vllm(mock_conn, status, ok):
     mock_resp = mock_conn.return_value.getresponse.return_value
     mock_resp.status = status
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False, runtime="vllm")
-    config = ramalama.engine.get_config()
+    config = ramalama.engine.ActiveConfig()
     with patch.object(config, "runtime", "vllm"):
         assert ramalama.engine.is_healthy(args) == ok
         assert mock_conn.return_value.mock_calls[0].args == ('GET', '/ping')

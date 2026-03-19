@@ -62,7 +62,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.17.1 of RamaLama pulls an image with a `:0.17` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.18.0 of RamaLama pulls an image with a `:0.18` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the ramalama.conf file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -133,19 +133,6 @@ Specify seed rather than using random seed model interaction
 
 #### **--selinux**=*true*
 Enable SELinux container separation
-
-#### **--temp**="0.8"
-Temperature of the response from the AI Model
-llama.cpp explains this as:
-
-    The lower the number is, the more deterministic the response.
-
-    The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
-
-        Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
-
-#### **--thinking**=*true*
-Enable or disable thinking mode in reasoning models
 
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.

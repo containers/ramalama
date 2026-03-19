@@ -1,7 +1,5 @@
-import copy
 import json
 import os
-import shutil
 import subprocess
 import tempfile
 from functools import cached_property
@@ -9,7 +7,7 @@ from textwrap import dedent
 
 import ramalama.annotations as annotations
 from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd, set_accel_env_vars
-from ramalama.engine import BuildEngine, Engine, dry_run
+from ramalama.engine import BuildEngine, dry_run
 from ramalama.oci_tools import OciRef, engine_supports_manifest_attributes
 from ramalama.transports.base import Transport
 from ramalama.transports.oci import spec as oci_spec
@@ -87,43 +85,6 @@ class OCI(Transport):
         except Exception:
             return False
 
-    def _convert_to_gguf(self, outdir, source_model, args):
-        with tempfile.TemporaryDirectory(prefix="RamaLama_convert_src_") as srcdir:
-            ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
-            for file in ref_file.files:
-                blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
-                shutil.copyfile(blob_file_path, os.path.join(srcdir, file.name))
-            engine = Engine(args)
-            engine.add_volume(srcdir, "/model")
-            engine.add_volume(outdir.name, "/output", opts="rw")
-            args.model = source_model
-            engine.add_args(args.rag_image)
-            # import here to avoid circular references
-            from ramalama.command.factory import assemble_command
-
-            engine.add_args(*assemble_command(args))
-            if args.dryrun:
-                engine.dryrun()
-            else:
-                engine.run()
-        return self._quantize(source_model, args, outdir.name)
-
-    def _quantize(self, source_model, args, model_dir):
-        engine = Engine(args)
-        engine.add_volume(model_dir, "/model", opts="rw")
-        engine.add_args(args.image)
-        # import here to avoid circular references
-        from ramalama.command.factory import assemble_command
-
-        args = copy.copy(args)
-        args.subcommand = "quantize"
-        engine.add_args(*assemble_command(args))
-        if args.dryrun:
-            engine.dryrun()
-        else:
-            engine.run()
-        return f"{source_model.model_name}-{args.gguf}.gguf"
-
     def build_image(self, cfile, contextdir, args):
         if args.type == "car":
             parent = args.carimage
@@ -178,7 +139,9 @@ class OCI(Transport):
             perror("Converting to gguf ...")
             gguf_dir = tempfile.TemporaryDirectory(prefix="RamaLama_convert_")
             contextdir = gguf_dir.name
-            model_file_name = self._convert_to_gguf(gguf_dir, source_model, args)
+            from ramalama.plugins.loader import get_runtime
+
+            model_file_name = get_runtime(args.runtime)._convert_to_gguf(gguf_dir, source_model, args)
             content = self._gguf_containerfile(model_file_name, args)
         else:
             # use blobs directory as context since paths in Containerfile are relative to it
@@ -309,14 +272,17 @@ class OCI(Transport):
             f"Converting {source_model.model_store.model_name} ({source_model.model_store.model_type}) to "
             f"{self.model_store.model_name} ({self.model_store.model_type}) ..."
         )
-        try:
-            rm_cmd = [self.conman, "manifest", "rm", self.model]
-            if args.dryrun:
-                dry_run(rm_cmd)
-            else:
-                run_cmd(rm_cmd, ignore_stderr=True, stdout=None)
-        except subprocess.CalledProcessError:
-            pass
+        for rm_cmd in [
+            [self.conman, "manifest", "rm", self.model],
+            [self.conman, "rmi", self.model],
+        ]:
+            try:
+                if args.dryrun:
+                    dry_run(rm_cmd)
+                else:
+                    run_cmd(rm_cmd, ignore_stderr=True, stdout=None)
+            except subprocess.CalledProcessError:
+                pass
         if args.type == "artifact":
             perror(f"Creating Artifact {self.model} ...")
             self._create_artifact(source_model, self.model, args)
@@ -326,6 +292,8 @@ class OCI(Transport):
         imageid = self.build(source_model, args)
         if args.dryrun:
             imageid = "a1b2c3d4e5f6"
+        if not imageid.startswith("sha256:"):
+            imageid = f"sha256:{imageid}"
         try:
             self._create_manifest(self.model, imageid, args)
         except subprocess.CalledProcessError as e:

@@ -4,9 +4,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from ramalama.command.factory import assemble_command
 from ramalama.common import MNT_DIR
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.transports.base import Transport, compute_ports, compute_serving_port
 from ramalama.transports.oci.oci import OCI
 from ramalama.transports.transport_factory import TransportFactory
@@ -20,7 +19,7 @@ class ARGS:
 
 hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
 ms_granite_blob = "https://modelscope.cn/models/ibm-granite/granite-3b-code-base-2k-GGUF/file/view"
-_CONFIG = get_config()
+_CONFIG = ActiveConfig()
 DEFAULT_PORT = int(_CONFIG.port)
 DEFAULT_PORT_RANGE = _CONFIG.default_port_range
 
@@ -189,36 +188,34 @@ def test_compute_serving_port(
 class TestMLXRuntime:
     """Test MLX runtime functionality"""
 
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
-    def test_mlx_validation_container_no_error(self, mock_machine, mock_system):
-        """Test that MLX runtime validation passes when mocking macOS with Apple Silicon"""
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
+    def test_mlx_post_process_args_container_no_error(self, mock_machine, mock_system):
+        """Test that MLX post_process_args passes on macOS with Apple Silicon"""
+        from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
+
         mock_system.return_value = "Darwin"
         mock_machine.return_value = "arm64"
 
         args = Namespace(runtime="mlx", container=True)
+        MlxPlugin().post_process_args(args)
 
-        model = Transport("test-model", "/tmp/store")
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
+    def test_mlx_post_process_args_non_macos_error(self, mock_machine, mock_system):
+        """Test that MLX post_process_args fails on non-macOS systems"""
+        from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
 
-        # Should not raise an error since we're mocking macOS with Apple Silicon
-        model.validate_args(args)
-
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
-    def test_mlx_validation_non_macos_error(self, mock_machine, mock_system):
-        """Test that MLX runtime fails on non-macOS systems"""
         mock_system.return_value = "Linux"
         mock_machine.return_value = "x86_64"
 
         args = Namespace(runtime="mlx", container=False, privileged=False)
 
-        model = Transport("test-model", "/tmp/store")
-
         with pytest.raises(ValueError, match="MLX runtime is only supported on macOS"):
-            model.validate_args(args)
+            MlxPlugin().post_process_args(args)
 
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
     def test_mlx_validation_success(self, mock_machine, mock_system):
         """Test that MLX runtime passes validation on macOS with --nocontainer"""
         mock_system.return_value = "Darwin"
@@ -231,15 +228,20 @@ class TestMLXRuntime:
         # Should not raise any exception
         model.validate_args(args)
 
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
     @patch('ramalama.transports.base.Transport.serve_nonblocking', return_value=MagicMock())
     @patch('ramalama.chat.chat')
     @patch('socket.socket')
     def test_mlx_run_uses_server_client_model(
         self, mock_socket_class, mock_chat, mock_serve_nonblocking, mock_machine, mock_system
     ):
-        """Test that MLX runtime uses server-client model in run method"""
+        """Test that MLX runtime uses server-client model in run command"""
+        import ramalama.plugins.loader as factory_module
+        import ramalama.transports.base as base_module
+        import ramalama.transports.transport_factory as tf_module
+        from ramalama.plugins.loader import get_runtime
+
         mock_system.return_value = "Darwin"
         mock_machine.return_value = "arm64"
 
@@ -250,7 +252,6 @@ class TestMLXRuntime:
         mock_socket.__exit__.return_value = False
         mock_socket_class.return_value = mock_socket
 
-        # Add all required arguments for the run method
         args = Namespace(
             subcommand="run",
             runtime="mlx",
@@ -258,29 +259,35 @@ class TestMLXRuntime:
             privileged=False,
             debug=False,
             MODEL="test-model",
-            ARGS=None,  # No prompt arguments
-            pull="missing",  # Required for get_model_path
-            dryrun=True,  # use dryrun to avoid file system checks
+            ARGS=None,
+            pull="missing",
+            dryrun=True,
             store="/tmp/store",
             port="8080",
             engine="podman",
+            rag=None,
+            name=None,
+            noout=False,
         )
 
         model = Transport(args.MODEL, args.store)
-        cmd = assemble_command(args)
 
-        with patch.object(model, 'get_container_name', return_value="test-container"):
-            with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
-                model.run(args, cmd)
+        with (
+            patch.object(tf_module, 'New', return_value=model),
+            patch.object(model, 'ensure_model_exists'),
+            patch.object(base_module, 'compute_serving_port', return_value="8080"),
+            patch.object(factory_module, 'assemble_command', return_value=[]),
+        ):
+            plugin = get_runtime("mlx")
+            plugin._run_handler(args)
+
+        # Verify that serve_nonblocking was called (server-client model)
+        mock_serve_nonblocking.assert_called_once()
 
         # Verify that chat.chat was called (parent process)
         mock_chat.assert_called_once()
-
-        # Verify that serve_nonblocking was called (indicating server-client model) and that the server_process is set
-        mock_serve_nonblocking.assert_called_once()
         assert mock_chat.call_args[0][0].server_process == mock_serve_nonblocking.return_value
 
-        # Verify args were set up correctly for server-client model
         # MLX runtime uses OpenAI-compatible endpoints under /v1
         assert args.url == "http://127.0.0.1:8080/v1"
 

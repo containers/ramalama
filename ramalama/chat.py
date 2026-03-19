@@ -29,13 +29,15 @@ from ramalama.chat_utils import (
     stream_response,
 )
 from ramalama.common import perror
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
 from ramalama.mcp.mcp_agent import LLMAgent
 from ramalama.mcp.mcp_client import PureMCPClient
+from ramalama.plugins.interface import InferenceRuntimePlugin
+from ramalama.plugins.loader import get_runtime
 from ramalama.proxy_support import setup_proxy_support
 
 # Setup proxy support on module import
@@ -88,7 +90,6 @@ def add_api_key(args, headers=None):
 
 @dataclass
 class ChatOperationalArgs:
-    initial_connection: bool = False
     name: str | None = None
     keepalive: int | None = None
     monitor: "ServerMonitor | None" = None
@@ -178,7 +179,7 @@ class RamaLamaShell(cmd.Cmd):
         print()
 
     def prep_rag_message(self):
-        if (context := self.args.rag) is None:
+        if (context := getattr(self.args, 'rag', None)) is None:
             return
 
         builder = OpanAIChatAPIMessageBuilder()
@@ -273,8 +274,11 @@ class RamaLamaShell(cmd.Cmd):
         return self.provider.create_request(messages, options)
 
     def _resolve_model_name(self) -> str | None:
-        if getattr(self.args, "runtime", None) == "mlx":
-            return None
+        runtime = getattr(self.args, "runtime", None)
+        if runtime:
+            plugin = get_runtime(runtime)
+            if isinstance(plugin, InferenceRuntimePlugin) and not plugin.chat_include_model_name:
+                return None
         return getattr(self.args, "model", None)
 
     def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:
@@ -524,8 +528,7 @@ class RamaLamaShell(cmd.Cmd):
         total_time_slept = 0
         response = None
 
-        # Adjust timeout based on whether we're in initial connection phase
-        max_timeout = 30 if getattr(self.args, "initial_connection", False) else 16
+        max_timeout = 16
 
         last_error: Exception | None = None
 
@@ -561,15 +564,11 @@ class RamaLamaShell(cmd.Cmd):
         if response:
             return stream_response(response, self.args.color, self.provider)
 
-        # Only show error and kill if not in initial connection phase
-        if not getattr(self.args, "initial_connection", False):
-            error_suffix = ""
-            if last_error:
-                error_suffix = f" ({last_error})"
-            perror(f"\rError: could not connect to: {self.url}{error_suffix}")
-            self.kills()
-        else:
-            logger.debug(f"Could not connect to: {self.url}")
+        error_suffix = ""
+        if last_error:
+            error_suffix = f" ({last_error})"
+        perror(f"\rError: could not connect to: {self.url}{error_suffix}")
+        self.kills()
 
         return None
 
@@ -582,10 +581,6 @@ class RamaLamaShell(cmd.Cmd):
                 logger.debug("Closed MCP connections")
             except Exception as e:
                 logger.debug(f"Error closing MCP connections: {e}")
-
-        # Don't kill the server if we're still in the initial connection phase
-        if getattr(self.args, "initial_connection", False):
-            return
 
         if getattr(self.args, "server_process", False):
             self.args.server_process.terminate()
@@ -852,7 +847,7 @@ def chat(
         monitor = ServerMonitor(server_process=server_process)
     elif container_name:
         # Monitor the container
-        conman = getattr(args, "engine", get_config().engine)
+        conman = getattr(args, "engine", ActiveConfig().engine)
         if not conman:
             raise ValueError("Container engine is required when monitoring a container")
         monitor = ServerMonitor(container_name=container_name, container_engine=conman)

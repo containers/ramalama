@@ -1,6 +1,7 @@
 import os
+import platform
 
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.console import EMOJI
 
 
@@ -8,9 +9,12 @@ def default_prefix() -> str:
     if not EMOJI:
         return "> "
 
-    config = get_config()
+    config = ActiveConfig()
     if config.prefix:
         return config.prefix
+
+    if platform.system() == "Darwin":
+        return "🍏 > "
 
     engine = config.engine
     if engine:

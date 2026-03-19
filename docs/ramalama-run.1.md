@@ -77,7 +77,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
 `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.17.1 of RamaLama pulls an image with a `:0.17` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.18.0 of RamaLama pulls an image with a `:0.18` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -95,6 +95,13 @@ Accelerated images:
 |  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
 |  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
 
+Upstream llama.cpp "full" images from `ghcr.io/ggml-org/llama.cpp` are also supported.
+RamaLama automatically detects the image type and adjusts the container CLI accordingly.
+
+```
+ramalama run --image ghcr.io/ggml-org/llama.cpp:full-vulkan MODEL
+```
+
 #### **--interactive**, **-i**
 Continue to interactive chat mode after processing stdin or prompt arguments.
 By default, when arguments or piped input are provided, the command exits after
@@ -106,6 +113,9 @@ If GPU device on host system is accessible to user via group access, this option
 
 #### **--keepalive**
 duration to keep a model loaded (e.g. 5m)
+
+#### **--logfile**=*path*
+Log output to a file
 
 #### **--max-tokens**=*integer*
 Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).

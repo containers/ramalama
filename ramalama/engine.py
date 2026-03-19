@@ -14,7 +14,7 @@ import ramalama.common
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.path_utils import normalize_host_path_for_container
 
@@ -297,6 +297,24 @@ def images(args):
         raise (e)
 
 
+def image_inspect(args, name: str, format: str | None = None):
+    if not name:
+        raise ValueError("must specify an image name")
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "image", "inspect"]
+    if format:
+        conman_args += ["--format", format]
+
+    conman_args += [name]
+    try:
+        return run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+    except Exception:
+        return ''
+
+
 def containers(args):
     conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:
@@ -437,49 +455,15 @@ def add_labels(args, add_label: Callable[[str], None]):
 
 
 def is_healthy(args, timeout: int = 3, model_name: str | None = None):
-    """Check if the response from the container indicates a healthy status."""
+    """Check if the runtime server is healthy by delegating to the runtime plugin."""
+    from ramalama.plugins.loader import get_runtime
+
     conn = None
-    config = get_config()
     try:
         conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
         if getattr(args, "debug", False):
             conn.set_debuglevel(1)
-        if config.runtime == 'vllm':
-            conn.request("GET", "/ping")
-            vllm_ping_resp = conn.getresponse()
-            return vllm_ping_resp.status == 200
-        conn.request("GET", "/health")
-        health_resp = conn.getresponse()
-        health_resp.read()
-        if health_resp.status not in (200, 404):
-            logger.debug(f"Container {args.name} /health status code: {health_resp.status}: {health_resp.reason}")
-            return False
-        conn.request("GET", "/models")
-        models_resp = conn.getresponse()
-        if models_resp.status != 200:
-            logger.debug(f"Container {args.name} /models status code {models_resp.status}: {models_resp.reason}")
-            return False
-        content = models_resp.read()
-        if not content:
-            logger.debug(f"Container {args.name} /models returned an empty response")
-            return False
-        body = json.loads(content)
-        if "models" not in body:
-            logger.debug(f"Container {args.name} /models does not include a model list in the response")
-            return False
-        model_names = [m["name"] for m in body["models"]]
-        if not model_name:
-            # FIXME: modules have a circular dependency so inline import here
-            from ramalama.transports.transport_factory import New
-
-            model_name = New(args.MODEL, args).model_alias
-        if not any(model_name in name for name in model_names):
-            logger.debug(
-                f'Container {args.name} /models does not include "{model_name}" in the model list: {model_names}'
-            )
-            return False
-        logger.debug(f"Container {args.name} is healthy")
-        return True
+        return get_runtime(ActiveConfig().runtime).service_ready_check(conn, args, model_name)
     finally:
         if conn:
             conn.close()
@@ -488,8 +472,11 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
 def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     """Waits for a container to become healthy by polling its endpoint."""
     if timeout is None:
-        timeout = 180
-    logger.debug(f"Waiting for container {args.name} to become healthy (timeout: {timeout}s)...")
+        from ramalama.plugins.loader import get_runtime
+
+        timeout = get_runtime(ActiveConfig().runtime).service_ready_check_timeout
+    container_name = f"container {args.name}" if getattr(args, 'container', None) else 'server'
+    logger.debug(f"Waiting for {container_name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()
 
     display_dots = not getattr(args, "debug", False) and sys.stdin.isatty()
@@ -503,10 +490,10 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
                     perror('\r' + n * ' ' + '\r', end='', flush=True)
                 return
         except (ConnectionError, HTTPException, UnicodeDecodeError, json.JSONDecodeError, TimeoutError) as e:
-            logger.debug(f"Health check of container {args.name} failed, retrying... Error: {e}")
+            logger.debug(f"Health check of {container_name} failed, retrying... Error: {e}")
             n += 1
         time.sleep(1)
 
     raise subprocess.TimeoutExpired(
-        f"health check of container {args.name}", timeout, output=logs(args, args.name, ignore_stderr=not args.debug)
+        f"health check of {container_name}", timeout, output=logs(args, args.name, ignore_stderr=not args.debug)
     )
