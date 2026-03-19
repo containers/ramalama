@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ramalama.common import ContainerEntryPoint
+from ramalama.common import ContainerEntryPoint, version_tagged_image
 from ramalama.plugins.interface import InferenceRuntimePlugin
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
 from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin
@@ -419,17 +419,55 @@ class TestLlamaCppPlugin:
         with pytest.raises(NotImplementedError):
             self.plugin.handle_subcommand("unknown_cmd", ns)
 
-    def test_get_container_image_cuda(self):
-        from ramalama.common import version_tagged_image
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.ensure_image")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_quantize_calls_ensure_image_when_not_dryrun(self, mock_engine_cls, mock_ensure_image):
+        default_image = version_tagged_image("quay.io/ramalama/ramalama")
+        mock_ensure_image.return_value = default_image
+        mock_engine_cls.return_value = MagicMock()
+        mock_source = MagicMock()
+        mock_source.model_name = "mymodel"
 
+        args = argparse.Namespace(
+            dryrun=False,
+            image=default_image,
+            engine="podman",
+            gguf="Q4_K_M",
+            container=True,
+            pull="missing",
+        )
+        with patch("ramalama.plugins.runtimes.inference.llama_cpp.ActiveConfig") as mock_cfg:
+            mock_cfg.return_value.pull = "missing"
+            self.plugin._quantize(mock_source, args, "/model_dir")
+
+        mock_ensure_image.assert_called_once_with("podman", default_image, should_pull=True)
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.ensure_image")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_quantize_skips_ensure_image_on_dryrun(self, mock_engine_cls, mock_ensure_image):
+        mock_engine_cls.return_value = MagicMock()
+        mock_source = MagicMock()
+        mock_source.model_name = "mymodel"
+
+        args = argparse.Namespace(
+            dryrun=True,
+            image=version_tagged_image("quay.io/ramalama/ramalama"),
+            engine="podman",
+            gguf="Q4_K_M",
+            container=True,
+            pull="missing",
+        )
+        self.plugin._quantize(mock_source, args, "/model_dir")
+
+        mock_ensure_image.assert_not_called()
+
+    def test_get_container_image_cuda(self):
         config = MagicMock()
         config.images.get.return_value = None
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
         assert image == version_tagged_image("quay.io/ramalama/cuda")
 
     def test_get_container_image_no_gpu(self):
-        from ramalama.common import version_tagged_image
-
         config = MagicMock()
         config.images.get.return_value = None
         config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
