@@ -107,6 +107,10 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         """Run llama-quantize inside a container to quantize a GGUF model."""
         engine = Engine(args)
         engine.add_volume(model_dir, "/model", opts="rw")
+        if not args.dryrun:
+            config = ActiveConfig()
+            should_pull = config.pull in ["always", "missing", "newer"]
+            args.image = ensure_image(args.engine, args.image, should_pull=should_pull)
         engine.add_args(args.image)
         args = copy.copy(args)
         args.subcommand = "quantize"
