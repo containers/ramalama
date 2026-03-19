@@ -11,27 +11,29 @@ repos:
       - id: check-merge-conflict
       - id: check-executables-have-shebangs
       - id: check-shebang-scripts-are-executable
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:
       - id: codespell
         args: ["-w"]
-  - repo: https://github.com/psf/black
-    rev: 26.1.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.5
     hooks:
-      - id: black
-  - repo: https://github.com/pycqa/isort
-    rev: 8.0.1
+      - id: ruff-check
+      - id: ruff-format
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
     hooks:
-      - id: isort
+      - id: shellcheck
   - repo: local
     hooks:
       - id: run-unit-tests
         name: run unit tests
         entry: make unit-tests
+        language: system
+        pass_filenames: false
+      - id: run-type-check
+        name: run type check
+        entry: make type-check
         language: system
         pass_filenames: false
