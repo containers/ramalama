@@ -292,16 +292,15 @@ class OCI(Transport):
         imageid = self.build(source_model, args)
         if args.dryrun:
             imageid = "a1b2c3d4e5f6"
-        if not imageid.startswith("sha256:"):
-            imageid = f"sha256:{imageid}"
+        local_ref = f"containers-storage:{imageid}"
         try:
-            self._create_manifest(self.model, imageid, args)
+            self._create_manifest(self.model, local_ref, args)
         except subprocess.CalledProcessError as e:
             perror(f"""\
 Failed to create manifest for OCI {self.model} : {e}
 Tagging build instead
                 """)
-            self.tag(imageid, self.model, args)
+            self.tag(local_ref, self.model, args)
 
     def convert(self, source_model, args):
         self._convert(source_model, args)
