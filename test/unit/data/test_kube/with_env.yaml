@@ -1,0 +1,53 @@
+# Save the output of this file and use kubectl create -f to import
+# it into Kubernetes.
+#
+# Created with ramalama-test-version
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ramalama
+  labels:
+    app: ramalama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ramalama
+  template:
+    metadata:
+      labels:
+        app: ramalama
+    spec:
+      containers:
+      - name: ramalama
+        image: testimage
+        command: ["llama-server"]
+        args: ['--model', '/mnt/models/model.file']
+        env:
+        - name: API_KEY
+          value: "123456789"
+        - name: TEST_ENV
+          value: "test_value"
+
+        volumeMounts:
+        - mountPath: /mnt/models/model.file
+          name: model
+        - mountPath: /dev/accel
+          name: accel
+        - mountPath: /dev/dri
+          name: dri
+        - mountPath: /dev/kfd
+          name: kfd
+      volumes:
+      - hostPath:
+          path: /path/to/model.file
+        name: model
+      - hostPath:
+          path: /dev/accel
+        name: accel
+      - hostPath:
+          path: /dev/dri
+        name: dri
+      - hostPath:
+          path: /dev/kfd
+        name: kfd

@@ -78,20 +78,32 @@ class Stack:
         name: {name}"""
         return volumes
 
-    def _gen_server_env(self):
-        server_env = ""
+    def _get_env_vars(self):
+        env_vars = {}
         if hasattr(self.args, "env"):
-            for env in self.args.env:
-                server_env += f"\n{env}"
+            for e in self.args.env:
+                env = e.split("=", 1)
+                env_vars[env[0]] = env[1]
+        return env_vars
 
-        for k, v in get_accel_env_vars().items():
-            # Special case for Cuda
-            if k == "MUSA_VISIBLE_DEVICES":
-                server_env += "\nMTHREADS_VISIBLE_DEVICES=all"
-                continue
-            server_env += f"""\n        - name: {k}
+    def _gen_compose_env(self, env_vars):
+        compose_env = ""
+        for k, v in env_vars.items():
+            compose_env += f"""\n      - {k}={v}"""
+        return compose_env
+
+    def _gen_kube_env(self, env_vars):
+        kube_env = ""
+        for k, v in env_vars.items():
+            kube_env += f"""\n        - name: {k}
           value: {v}"""
-        return server_env
+        return kube_env
+
+    def _gen_server_env(self):
+        accel_env_vars = get_accel_env_vars()
+        if "MUSA_VISIBLE_DEVICES" in accel_env_vars:
+            accel_env_vars["MTHREADS_VISIBLE_DEVICES"] = "all"
+        return self._gen_kube_env(accel_env_vars)
 
     def _gen_security_context(self):
         return """
@@ -144,6 +156,8 @@ class Stack:
         llama_args = self._gen_llama_args()
         resources = self._gen_resources()
         security = self._gen_security_context()
+        env_vars = self._get_env_vars()
+        common_env = self._gen_kube_env(env_vars)
         server_env = self._gen_server_env()
         volume_mounts = self._gen_volume_mounts()
         volumes = self._gen_volumes()
@@ -171,7 +185,7 @@ spec:
         command:
         - {llama_args}\
         {security}
-        env:{server_env}\
+        env:{common_env}{server_env}\
         {resources}
         volumeMounts:{volume_mounts}
       - name: llama-stack
@@ -183,7 +197,7 @@ spec:
         - --image-type
         - venv
         - /etc/ramalama/ramalama-run.yaml
-        env:
+        env:{common_env}
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}
         - name: INFERENCE_MODEL
@@ -240,15 +254,16 @@ spec:
                     exec_args,
                 )
                 file = compose.generate()
+                compose_env = self._gen_compose_env(self._get_env_vars())
                 file.content += f"""
   {self.model.model_name}-stack:
     image: {self.stack_image}
     container_name: {self.name}-stack
     ports:
       - "{stack_port}:8123"
-    environment:
-      RAMALAMA_URL: http://{self.name}:{self.model_port}
-      INFERENCE_MODEL: "{self.model.model_alias}"
+    environment:{compose_env}
+      - RAMALAMA_URL=http://{self.name}:{self.model_port}
+      - INFERENCE_MODEL={self.model.model_alias}
     depends_on:
       - {self.model.model_name}
     restart: unless-stopped"""
