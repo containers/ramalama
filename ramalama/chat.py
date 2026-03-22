@@ -480,10 +480,25 @@ class RamaLamaShell(cmd.Cmd):
             return False
 
         # Handle multi-line input (backslash continuation)
-        self.content.append(user_content.rstrip(" \\"))
-        if user_content.endswith(" \\"):
+
+        # Strip only trailing whitespace (not backslash)
+        stripped = user_content.rstrip()
+
+        # Check if the input ends with a backslash (continuation)
+        is_continuation = stripped.endswith("\\")
+
+        # If continuation, remove the trailing backslash
+        if is_continuation:
+            stripped = stripped[:-1]
+
+        # Append processed content
+        self.content.append(stripped)
+
+        # If continuation, wait for next line (do not submit yet)
+        if is_continuation:
             return False
 
+        # Otherwise, combine all lines and reset buffer
         content = "\n".join(self.content)
         self.content = []
 
