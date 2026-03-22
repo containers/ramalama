@@ -305,6 +305,12 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
         help="store AI Models in the specified directory",
     )
     parser.add_argument(
+        "--version",
+        "-V",
+        action="store_true",
+        help="display version of RamaLama",
+    )
+    parser.add_argument(
         "--noout",
         help=argparse.SUPPRESS,
     )
@@ -338,6 +344,11 @@ def configure_subcommands(parser):
 
 def post_parse_setup(args):
     """Perform additional setup after parsing arguments."""
+    # Handle --version flag early
+    if getattr(args, 'version', False):
+        print_version(args)
+        sys.exit(0)
+
     if getattr(args, "subcommand", None) == "benchmark":
         args.subcommand = "bench"
 

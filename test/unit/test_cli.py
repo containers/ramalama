@@ -100,6 +100,30 @@ def test_help(args: list):
         help_cli(args)
 
 
+def test_version_flag(capsys):
+    """Test that --version flag displays version and exits."""
+    from ramalama.cli import parse_args_from_cmd
+
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args_from_cmd(["--version"])
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert "ramalama version" in captured.out or "0." in captured.out
+
+
+def test_version_short_flag(capsys):
+    """Test that -V is an alias for --version."""
+    from ramalama.cli import parse_args_from_cmd
+
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args_from_cmd(["-V"])
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert "ramalama version" in captured.out or "0." in captured.out
+
+
 # Test human readable size
 @pytest.mark.parametrize(
     "size, expected",
