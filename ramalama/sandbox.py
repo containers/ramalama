@@ -1,4 +1,6 @@
+import argparse
 import platform
+from collections.abc import Callable
 
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import run_cmd
@@ -7,6 +9,39 @@ from ramalama.engine import Engine, stop_container
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
+
+
+def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Callable, model_comp: Callable):
+    """
+    Add subparsers to the provided "subparser" object for each subcommand of
+    "ramalama sandbox".
+    "img_comp" and "model_comp" are completer functions for images and models, respectively.
+    "func" is the function that will be called when the subcommand is run.
+    """
+    runtime = get_runtime(ActiveConfig().runtime)
+    parser = subparsers.add_parser("goose", help="run Goose in a sandbox, backed by a local AI Model")
+    if getattr(runtime, "_add_inference_args", None):
+        # Consider adding this to the plugin interface for commands which need to run an
+        # inference server
+        runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
+    parser.add_argument("MODEL", completer=model_comp)
+    parser.add_argument(
+        "--goose-image",
+        default="ghcr.io/block/goose:1.28.0",
+        completer=img_comp,
+        help="Goose container image",
+    )
+    parser.add_argument(
+        "-w",
+        "--workdir",
+        help="local directory to mount into the sandbox container at /work",
+    )
+    parser.add_argument(
+        "ARGS",
+        nargs="*",
+        help="instructions for the sandbox to process non-interactively",
+    )
+    yield parser
 
 
 class SandboxEngineArgsType(BaseEngineArgsType):
