@@ -3,13 +3,13 @@ from types import SimpleNamespace
 import pytest
 
 from ramalama.cli import parse_args_from_cmd, sandbox_cli
-from ramalama.sandbox import GooseEngine
+from ramalama.sandbox import Goose
 
 TEST_MODEL = "qwen3:4b"
 
 
 def _make_args(engine="podman"):
-    """Create minimal args for GooseEngine tests."""
+    """Create minimal args for Goose tests."""
     return SimpleNamespace(
         engine=engine,
         dryrun=False,
@@ -78,14 +78,11 @@ def test_goose_custom_image():
     assert args.goose_image == "myimage:v1"
 
 
-def test_goose_engine_env_vars():
-    """GooseEngine should set various env vars"""
+def test_goose_env_vars():
+    """Goose should set various env vars"""
     args = _make_args()
-    goose = GooseEngine(
-        args,
-        model_name="Qwen3-4B-Q4_K_M",
-    )
-    cmd = goose.exec_args
+    goose = Goose(args, "Qwen3-4B-Q4_K_M")
+    cmd = goose.engine.exec_args
     assert cmd[0] == "podman"
     assert "run" in cmd
     assert "--rm" in cmd
@@ -95,57 +92,42 @@ def test_goose_engine_env_vars():
     assert "GOOSE_MODEL=Qwen3-4B-Q4_K_M" in cmd
 
 
-def test_goose_engine_network():
-    """GooseEngine should setup container networking"""
+def test_goose_network():
+    """Goose should setup container networking"""
     args = _make_args()
-    goose = GooseEngine(
-        args,
-        model_name="test-model",
-    )
-    assert "--network=container:ramalama_model_abc" in goose.exec_args
+    goose = Goose(args, "test-model")
+    assert "--network=container:ramalama_model_abc" in goose.engine.exec_args
 
 
-def test_goose_engine_interactive():
-    """GooseEngine should set the -i option"""
+def test_goose_interactive():
+    """Goose should set the -i option"""
     args = _make_args()
-    goose = GooseEngine(
-        args,
-        model_name="test-model",
-    )
-    assert "-i" in goose.exec_args
+    goose = Goose(args, "test-model")
+    assert "-i" in goose.engine.exec_args
 
 
-def test_goose_engine_with_tty(monkeypatch):
-    """GooseEngine should run the session command when run with a tty"""
+def test_goose_with_tty(monkeypatch):
+    """Goose should run the session command when run with a tty"""
     monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: True)
     args = _make_args()
-    goose = GooseEngine(
-        args,
-        model_name="test-model",
-    )
-    assert goose.exec_args[-1] == "session"
+    goose = Goose(args, "test-model")
+    assert goose.engine.exec_args[-1] == "session"
 
 
-def test_goose_engine_no_tty(monkeypatch):
-    """GooseEngine should run "run -i -" when run without a tty, to read commands from stdin"""
+def test_goose_no_tty(monkeypatch):
+    """Goose should run "run -i -" when run without a tty, to read commands from stdin"""
     monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: False)
     args = _make_args()
-    goose = GooseEngine(
-        args,
-        model_name="test-model",
-    )
-    assert goose.exec_args[-3:] == ["run", "-i", "-"]
+    goose = Goose(args, "test-model")
+    assert goose.engine.exec_args[-3:] == ["run", "-i", "-"]
 
 
-def test_goose_engine_args():
-    """GooseEngine should run "run -t" when args are passed on the command-line"""
+def test_goose_args():
+    """Goose should run "run -t" when args are passed on the command-line"""
     args = _make_args()
     args.ARGS = ["hello", "ramalama"]
-    goose = GooseEngine(
-        args,
-        model_name="test-model",
-    )
-    assert goose.exec_args[-3:] == ["run", "-t", " ".join(args.ARGS)]
+    goose = Goose(args, "test-model")
+    assert goose.engine.exec_args[-3:] == ["run", "-t", " ".join(args.ARGS)]
 
 
 def test_sandbox_workdir_default_none():
@@ -163,26 +145,20 @@ def test_sandbox_workdir_option():
     assert args.workdir == "/tmp"
 
 
-def test_goose_engine_workdir():
-    """GooseEngine should add -v and --workdir=/work when workdir is set."""
+def test_goose_workdir():
+    """Goose should add -v and --workdir=/work when workdir is set."""
     args = _make_args()
     args.workdir = "/tmp/myproject"
-    goose = GooseEngine(
-        args,
-        model_name="test-model",
-    )
-    cmd = goose.exec_args
+    goose = Goose(args, "test-model")
+    cmd = goose.engine.exec_args
     assert "--workdir=/work" in cmd
     assert "/tmp/myproject:/work:rw" in cmd
 
 
-def test_goose_engine_no_workdir():
-    """GooseEngine should not add volume or --workdir when workdir is not set."""
+def test_goose_no_workdir():
+    """Goose should not add volume or --workdir when workdir is not set."""
     args = _make_args()
-    goose = GooseEngine(
-        args,
-        model_name="test-model",
-    )
-    cmd = goose.exec_args
+    goose = Goose(args, "test-model")
+    cmd = goose.engine.exec_args
     assert "--workdir=/work" not in cmd
     assert "-v" not in cmd

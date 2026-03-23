@@ -48,16 +48,10 @@ class SandboxEngineArgsType(BaseEngineArgsType):
     ARGS: list[str]
 
 
-class GooseEngineArgsType(SandboxEngineArgsType):
-    goose_image: str
-    workdir: str | None
-
-
 class SandboxEngine(Engine):
     """Engine for running sandbox containers."""
 
-    def __init__(self, args: SandboxEngineArgsType, *, model_name: str) -> None:
-        self.model_name = model_name
+    def __init__(self, args: SandboxEngineArgsType) -> None:
         super().__init__(args)
 
     def base_args(self) -> None:
@@ -82,54 +76,50 @@ class SandboxEngine(Engine):
         pass
 
 
-class GooseEngine(SandboxEngine):
-    """Goose-specific sandbox engine.
+class GooseArgsType(SandboxEngineArgsType):
+    goose_image: str
+    workdir: str | None
 
-    Extends SandboxEngine with environment variables required by Goose, and
-    workdir handling. If args are provided, they will be passed to Goose to
-    process non-interactively. If there are no arguments and stdin is a tty,
-    an interactive session will be started. Otherwise, instructions will be
-    read from stdin.
+
+class Goose:
+    """
+    Run Goose in a sandbox.
+    Environment variables required by Goose will be set, and any workdir specified will be mounted into the container.
+    If args are provided, they will be passed to Goose to process non-interactively. If there are no arguments and stdin
+    is a tty, an interactive session will be started. Otherwise, instructions will be read from stdin.
     """
 
-    def __init__(self, args: GooseEngineArgsType, *, model_name: str) -> None:
-        super().__init__(args, model_name=model_name)
-        self.add_name(f"goose-{self.args.name}")  # type: ignore[attr-defined]
-        self.add_workdir()
-        self.add_args(args.goose_image)
-        if args.ARGS:
-            self.add_args("run", "-t", " ".join(args.ARGS))
-        elif self.use_tty():
-            self.add_args("session")
-        else:
-            self.add_args("run", "-i", "-")
-
-    def add_env_options(self) -> None:
-        super().add_env_options()
-        self.add_env_option("GOOSE_PROVIDER=openai")
-        self.add_env_option(f"OPENAI_HOST=http://localhost:{self.args.port}")
-        self.add_env_option("OPENAI_API_KEY=ramalama")
-        self.add_env_option(f"GOOSE_MODEL={self.model_name}")
-        self.add_env_option("GOOSE_TELEMETRY_ENABLED=false")
-        self.add_env_option("GOOSE_CLI_SHOW_THINKING=true")
-
-    def add_privileged_options(self) -> None:
-        super().add_privileged_options()
-        # The goose image needs to run as uid 1000 so it can write state to the
-        # home directory in the image. Map uid 1000 to the local user (which is
-        # mapped to intermediate uid/gid 0) so files can be written to /work if
-        # required.
-        if self.use_podman:
+    def __init__(self, args: GooseArgsType, model_name: str) -> None:
+        self.engine = SandboxEngine(args)
+        if self.engine.use_podman:
             if platform.system() != "Windows":
-                self.add_args("--uidmap=+1000:0")
+                self.engine.add_args("--uidmap=+1000:0")
+        self.engine.add_name(f"goose-{args.name}")  # type: ignore[attr-defined]
+        self.add_env_options(args, model_name)
+        self.add_workdir(args)
+        self.engine.add_args(args.goose_image)
+        if args.ARGS:
+            self.engine.add_args("run", "-t", " ".join(args.ARGS))
+        elif self.engine.use_tty():
+            self.engine.add_args("session")
+        else:
+            self.engine.add_args("run", "-i", "-")
 
-    def add_workdir(self):
-        if self.args.workdir:
-            self.add_volume(self.args.workdir, "/work", opts="rw")
-            self.add_args("--workdir=/work")
+    def add_env_options(self, args: GooseArgsType, model_name: str) -> None:
+        self.engine.add_env_option("GOOSE_PROVIDER=openai")
+        self.engine.add_env_option(f"OPENAI_HOST=http://localhost:{args.port}")
+        self.engine.add_env_option("OPENAI_API_KEY=ramalama")
+        self.engine.add_env_option(f"GOOSE_MODEL={model_name}")
+        self.engine.add_env_option("GOOSE_TELEMETRY_ENABLED=false")
+        self.engine.add_env_option("GOOSE_CLI_SHOW_THINKING=true")
+
+    def add_workdir(self, args: GooseArgsType):
+        if args.workdir:
+            self.engine.add_volume(args.workdir, "/work", opts="rw")
+            self.engine.add_args("--workdir=/work")
 
     def run(self) -> None:
-        run_cmd(self.exec_args, stdout=None, stdin=None)
+        run_cmd(self.engine.exec_args, stdout=None, stdin=None)
 
 
 def run_sandbox(args):
@@ -145,13 +135,10 @@ def run_sandbox(args):
 
     model.serve_nonblocking(args, cmd)
 
-    goose = GooseEngine(
-        args,
-        model_name=model.model_alias,
-    )
+    goose = Goose(args, model.model_alias)
 
     if args.dryrun:
-        goose.dryrun()
+        goose.engine.dryrun()
         return
 
     try:
