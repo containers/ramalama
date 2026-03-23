@@ -1,19 +1,50 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.7-1775624009
+# OpenVINO container build
+#
+# Uses Fedora 44 as the base image with OpenVINO installed from the upstream
+# tarball release. Fedora 44 provides intel-opencl 26.x and ocl-icd natively,
+# avoiding the need to pull packages from Rawhide (which would drag in a
+# development glibc upgrade).
+#
+# TODO: Once openvino 2026.x is packaged in Fedora (RHBZ#2392862), switch
+# from the upstream tarball to `dnf install openvino openvino-devel` and
+# remove the tarball download and manual library copies below.
+#
+# The upstream llama.cpp OpenVINO Dockerfile installs OpenVINO the same way:
+# download tarball, extract to /opt/intel/openvino, source setupvars.sh.
 
-# Install Python development dependencies
-RUN dnf install -y python3-devel wget compat-openssl11 python3-jinja2 python3-markupsafe
-# RUN pip3 install "Jinja2==3.1.6" "MarkupSafe==3.0.2"
+ARG OPENVINO_VERSION_MAJOR=2026.0
+ARG OPENVINO_VERSION_FULL=2026.0.0.20965.c6d6a13a886
 
-# Download and extract the Red Hat OpenVINO Model Server binary release
-RUN wget https://github.com/openvinotoolkit/model_server/releases/download/v2025.3/ovms_redhat_python_on.tar.gz && \
-    tar -xzvf ovms_redhat_python_on.tar.gz && \
-    rm ovms_redhat_python_on.tar.gz
+FROM quay.io/fedora/fedora:44 AS builder
 
-# Set environment variables for OpenVINO libraries and OVMS executable
-ENV LD_LIBRARY_PATH=/ovms/lib:/ovms/third-party:/usr/lib64:$LD_LIBRARY_PATH
-ENV PATH=/ovms/bin:/usr/local/bin:$PATH
-ENV PYTHONPATH=/ovms/lib/python
+ARG OPENVINO_VERSION_MAJOR
+ARG OPENVINO_VERSION_FULL
 
-WORKDIR /ovms
+# Install OpenVINO from upstream tarball
+RUN dnf install -y wget tar gzip && \
+    mkdir -p /opt/intel && \
+    wget -q https://storage.openvinotoolkit.org/repositories/openvino/packages/${OPENVINO_VERSION_MAJOR}/linux/openvino_toolkit_rhel8_${OPENVINO_VERSION_FULL}_x86_64.tgz && \
+    tar -xf openvino_toolkit_rhel8_${OPENVINO_VERSION_FULL}_x86_64.tgz && \
+    mv openvino_toolkit_rhel8_${OPENVINO_VERSION_FULL}_x86_64 /opt/intel/openvino && \
+    rm -f openvino_toolkit_rhel8_${OPENVINO_VERSION_FULL}_x86_64.tgz && \
+    dnf -y clean all
 
-CMD ["ovms"]
+ENV OpenVINO_DIR=/opt/intel/openvino
+
+COPY container-images/scripts/build_llama.sh \
+     container-images/scripts/lib.sh \
+     /src/
+WORKDIR /src/
+RUN ./build_llama.sh openvino
+
+FROM quay.io/fedora/fedora:44
+
+# Copy OpenVINO runtime libraries and bundled TBB from builder
+COPY --from=builder /opt/intel/openvino/runtime/lib/intel64/ /usr/lib64/
+COPY --from=builder /opt/intel/openvino/runtime/3rdparty/tbb/lib/ /usr/lib64/
+
+RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install,relabel=private \
+    cp -a /tmp/install/bin/ /usr/ && \
+    cp -a /tmp/install/lib64/*.so* /usr/lib64/
+RUN --mount=type=bind,target=/src,relabel=private \
+    /src/container-images/scripts/build_llama.sh openvino runtime
