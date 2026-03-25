@@ -7,7 +7,6 @@ import pytest
 
 from test.conftest import (
     skip_if_container,
-    skip_if_docker,
     skip_if_no_container,
     skip_if_ppc64le,
     skip_if_s390x,
@@ -29,7 +28,6 @@ def test_convert_custom_gguf_config():
 
 # fmt: off
 @pytest.mark.e2e
-@skip_if_docker
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
@@ -37,12 +35,12 @@ def test_convert_custom_gguf_config():
     "in_model, out_model, extra_params, expected",
     [
         pytest.param(
-            Path("aimodel"), "foobar", None,
+            Path("aimodel"), "localhost/foobar", None,
             "oci://localhost/foobar:latest",
             id="{workspace_uri}/aimodel -> foobar",
         ),
         pytest.param(
-            Path("aimodel"), "oci://foobar", None,
+            Path("aimodel"), "oci://localhost/foobar", None,
             "oci://localhost/foobar:latest",
             id="{workspace_uri}/aimodel -> oci://foobar",
         ),

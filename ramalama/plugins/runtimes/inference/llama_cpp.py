@@ -87,6 +87,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
                 shutil.copyfile(blob_file_path, os.path.join(srcdir, file.name))
             engine = Engine(args)
+            if engine.use_docker:
+                # The uid in the container must match the euid on the host for contents of the
+                # volumes to be readable.
+                if hasattr(os, "geteuid"):
+                    # Note: geteuid() doesn't exist on Windows, but this is only needed on Unix
+                    engine.add_args(f"--user={os.geteuid()}")
             engine.add_volume(srcdir, "/model")
             engine.add_volume(outdir.name, "/output", opts="rw")
             args = copy.copy(args)
@@ -106,6 +112,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _quantize(self, source_model, args, model_dir):
         """Run llama-quantize inside a container to quantize a GGUF model."""
         engine = Engine(args)
+        if engine.use_docker:
+            # The uid in the container must match the euid on the host for contents of the
+            # volumes to be readable.
+            if hasattr(os, "geteuid"):
+                # Note: geteuid() doesn't exist on Windows, but this is only needed on Unix
+                engine.add_args(f"--user={os.geteuid()}")
         engine.add_volume(model_dir, "/model", opts="rw")
         if not args.dryrun:
             config = ActiveConfig()
