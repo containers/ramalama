@@ -26,6 +26,7 @@ from ramalama.chat_utils import (
     SystemMessage,
     ToolMessage,
     UserMessage,
+    sanitize_for_terminal,
     stream_response,
 )
 from ramalama.common import perror
@@ -67,7 +68,8 @@ def res(response, color):
                 continue
 
             if content:
-                print(f"{color_yellow}{content}{color_default}", end="", flush=True)
+                safe_content = sanitize_for_terminal(content)
+                print(f"{color_yellow}{safe_content}{color_default}", end="", flush=True)
                 assistant_response += content
 
     print("")
@@ -319,7 +321,8 @@ class RamaLamaShell(cmd.Cmd):
                     if (self.args.color == "auto" and should_colorize()) or self.args.color == "always":
                         color_default = "\033[0m"
                         color_yellow = "\033[33m"
-                    print(f"{color_yellow}{text}{color_default}", end="", flush=True)
+                    safe_text = sanitize_for_terminal(text)
+                    print(f"{color_yellow}{safe_text}{color_default}", end="", flush=True)
 
                 setattr(self.mcp_agent, "_stream_callback", mcp_stream_callback)
 
