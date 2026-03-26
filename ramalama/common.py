@@ -137,6 +137,7 @@ def run_cmd(
     args: Sequence[str],
     cwd: str | None = None,
     stdout: int | IO[Any] | None = subprocess.PIPE,
+    stdin: int | IO[Any] | None = subprocess.DEVNULL,
     ignore_stderr: bool = False,
     ignore_all: bool = False,
     encoding: str | None = None,
@@ -171,7 +172,7 @@ def run_cmd(
         env = os.environ | env
 
     result = subprocess.run(
-        args, check=True, cwd=cwd, stdout=sout, stderr=serr, stdin=subprocess.DEVNULL, encoding=encoding, env=env
+        args, check=True, cwd=cwd, stdout=sout, stderr=serr, stdin=stdin, encoding=encoding, env=env
     )
     logger.debug(f"Command finished with return code: {result.returncode}")
 

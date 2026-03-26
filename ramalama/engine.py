@@ -197,12 +197,13 @@ class Engine(BaseEngine):
         else:
             super().add_privileged_options()
 
+    def is_tty_cmd(self) -> bool:
+        return getattr(self.args, "subcommand", "") == "run" and not getattr(self.args, "ARGS", None)
+
     def use_tty(self) -> bool:
         if not sys.stdin.isatty():
             return False
-        if getattr(self.args, "ARGS", None):
-            return False
-        return getattr(self.args, "subcommand", "") == "run"
+        return self.is_tty_cmd()
 
     def add_tty_option(self) -> None:
         if self.use_tty():
