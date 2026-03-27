@@ -7,7 +7,7 @@ import pytest
 from test.conftest import skip_if_apple_silicon, skip_if_no_mlx, skip_if_not_apple_silicon
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
-MODEL = "hf://mlx-community/SmolLM-135M-4bit"
+MODEL = "hf://mlx-community/Llama-3.2-1B-Instruct-4bit"
 
 
 @pytest.mark.e2e
@@ -76,9 +76,11 @@ def test_runtime_mlx_dryrun_run_with_temperature():
 @skip_if_not_apple_silicon
 @skip_if_no_mlx
 def test_runtime_mlx_dryrun_run_with_max_tokens():
-    """ramalama --runtime=mlx --dryrun run with ctx-size should include max-tokens setting"""
+    """ramalama --runtime=mlx --dryrun run with max-tokens should include max-tokens setting"""
     with RamalamaExecWorkspace() as ctx:
-        result = ctx.check_output(["ramalama", "--runtime=mlx", "--dryrun", "run", "--ctx-size", "1024", MODEL, "test"])
+        result = ctx.check_output(
+            ["ramalama", "--runtime=mlx", "--dryrun", "run", "--max-tokens", "1024", MODEL, "test"]
+        )
         assert re.search(r"--max-tokens\s+1024", result), "should include max tokens setting"
 
 
@@ -187,3 +189,19 @@ def test_runtime_mlx_rejects_privileged_option():
         assert re.search(r"--nocontainer.*--privileged.*conflict", exc_info.value.output.decode("utf-8")), (
             "should show conflict error"
         )
+
+
+@pytest.mark.e2e
+@skip_if_not_apple_silicon
+@skip_if_no_mlx
+def test_runtime_mlx_run_model_with_prompt():
+    with RamalamaExecWorkspace() as ctx:
+        run_cmd = [
+            "ramalama",
+            "--runtime=mlx",
+            "run",
+            MODEL,
+            "what is the capital of France?",
+        ]
+        result = ctx.check_output(run_cmd)
+        assert "paris" in result.lower()

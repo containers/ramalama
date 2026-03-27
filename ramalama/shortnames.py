@@ -7,8 +7,11 @@ class Shortnames:
     """Shortnames utility class"""
 
     shortnames: dict[str, str] = {}
+    config_sources: dict[str, str] = {}
 
     def __init__(self):
+        self.shortnames = {}
+        self.config_sources = {}
         data_path = sysconfig.get_path("data")
         file_paths = [
             "./shortnames/shortnames.conf",  # for development
@@ -30,8 +33,12 @@ class Shortnames:
             # Unix-specific paths using XDG conventions
             file_paths.extend(
                 [
-                    os.path.expanduser("~/.config/ramalama/shortnames.conf"),
-                    os.path.expanduser("~/.local/share/ramalama/shortnames.conf"),
+                    os.path.expanduser(
+                        os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama/shortnames.conf")
+                    ),
+                    os.path.expanduser(
+                        os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama/shortnames.conf")
+                    ),
                     os.path.expanduser("~/.local/pipx/venvs/ramalama/share/ramalama/shortnames.conf"),
                     "/etc/ramalama/shortnames.conf",
                     "/usr/share/ramalama/shortnames.conf",
@@ -44,11 +51,13 @@ class Shortnames:
             config = configparser.ConfigParser(delimiters="=")
             config.read(file_path)
             if "shortnames" in config:
-                self.paths.append(os.path.realpath(file_path))
-                self.shortnames.update(config["shortnames"])
-
-        # Remove leading and trailing quotes from keys and values
-        self.shortnames = {self._strip_quotes(key): self._strip_quotes(value) for key, value in self.shortnames.items()}
+                real_path = os.path.realpath(file_path)
+                self.paths.append(real_path)
+                for key, value in config["shortnames"].items():
+                    name = self._strip_quotes(key)
+                    target = self._strip_quotes(value)
+                    self.shortnames[name] = target
+                    self.config_sources[name] = real_path
 
     def _strip_quotes(self, s) -> str:
         return s.strip("'\"")

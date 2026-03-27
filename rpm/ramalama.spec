@@ -1,7 +1,7 @@
 %global pypi_name ramalama
 %global forgeurl  https://github.com/containers/%{pypi_name}
 # see ramalama/version.py
-%global version0  0.17.1
+%global version0  0.18.0
 %forgemeta
 
 %global summary   Command line tool for working with AI LLM models
@@ -79,7 +79,6 @@ make docs
 %dir %{_datadir}/%{pypi_name}
 %{_datadir}/%{pypi_name}/shortnames.conf
 %{_datadir}/%{pypi_name}/ramalama.conf
-%{_datadir}/%{pypi_name}/inference/*
 %{_mandir}/man1/ramalama*.1*
 %{_mandir}/man5/ramalama*.5*
 %{_mandir}/man7/ramalama*.7*

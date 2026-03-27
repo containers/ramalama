@@ -396,6 +396,7 @@ def test_stop_failures():
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_quadlet_generation(shared_ctx, test_model):
     ctx = shared_ctx
     test_model_full_name = get_full_model_name(test_model)
@@ -413,6 +414,7 @@ def test_quadlet_generation(shared_ctx, test_model):
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_quadlet_generation_with_add_to_unit_flag(test_model):
     with RamalamaExecWorkspace() as ctx:
         test_model_full_name = get_full_model_name(test_model)
@@ -426,6 +428,7 @@ def test_quadlet_generation_with_add_to_unit_flag(test_model):
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_generation_with_bad_id(test_model):
     with RamalamaExecWorkspace() as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -438,6 +441,7 @@ def test_generation_with_bad_id(test_model):
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_generation_with_bad_add_to_unit_flag_value(test_model):
     with RamalamaExecWorkspace() as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -553,10 +557,12 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
                 "/mnt/models/model.file",
                 "--served-model-name",
                 f"{model_alias}",
-                "--max_model_len",
-                "2048",
+                "--host",
+                "0.0.0.0",
                 "--port",
                 "1234",
+                "--temperature",
+                "0.8",
             ]
             volumes_spec = content.get("spec", {}).get("template", {}).get("spec", {}).get("volumes", [])
             assert volumes_spec[0] == {
@@ -569,6 +575,7 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 @pytest.mark.parametrize(
     "generate, env_vars",
     [
@@ -589,7 +596,7 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
         )
     ],
 )
-def test_serve_kube_generation(test_model, generate, env_vars):
+def test_serve_generation(test_model, generate, env_vars):
     with RamalamaExecWorkspace(env_vars=env_vars) as ctx:
         # Pull model
         ctx.check_call(["ramalama", "pull", test_model])
@@ -665,12 +672,25 @@ def test_serve_kube_generation(test_model, generate, env_vars):
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_docker
-def test_kube_generation_with_llama_api(test_model):
+@pytest.mark.parametrize(
+    "generate, env_vars",
+    [
+        pytest.param(
+            *item,
+            id=f"generate={item[0]}{' + env_vars' if item[1] else ''}",
+        )
+        for item in itertools.product(
+            ["kube", "compose"],
+            [None, "SEARCH_API_KEY=9999"]
+        )
+    ],
+)
+def test_serve_generation_with_llama_api(test_model, generate, env_vars):
     with RamalamaExecWorkspace() as ctx:
         # Pull model
         ctx.check_call(["ramalama", "pull", test_model])
 
+        extra_args = ["--env", env_vars] if env_vars else []
         # Exec ramalama serve
         result = ctx.check_output(
             [
@@ -681,24 +701,47 @@ def test_kube_generation_with_llama_api(test_model):
                 "--port",
                 "1234",
                 "--generate",
-                "kube",
+                generate,
                 "--api",
                 "llama-stack",
                 "--dri",
                 "off",
                 test_model,
-            ]
+            ] + extra_args
         )
 
-        # Test the expected output of the command execution
-        assert re.search(r".*Generating Kubernetes YAML file: test.yaml", result)
+        if generate == 'kube':
+            # Test the expected output of the command execution
+            assert re.search(r".*Generating Kubernetes YAML file: test.yaml", result)
+            # Check "test.yaml" contents
+            with (Path(ctx.workspace_dir) / "test.yaml").open("r") as f:
+                content = f.read()
+                assert re.search(r".*llama-server", content)
+                assert re.search(r".*hostPort: 1234", content)
+                assert re.search(r".*/llama-stack", content)
 
-        # Check "test.yaml" contents
-        with (Path(ctx.workspace_dir) / "test.yaml").open("r") as f:
-            content = f.read()
-            assert re.search(r".*llama-server", content)
-            assert re.search(r".*hostPort: 1234", content)
-            assert re.search(r".*/llama-stack", content)
+                if env_vars:
+                    assert len(re.findall(r"name: SEARCH_API_KEY", content)) == 2
+                    assert len(re.findall(r"value: 9999", content)) == 2
+                else:
+                    assert not re.search(r".*name: SEARCH_API_KEY", content)
+                    assert not re.search(r".*value: 9999", content)
+
+        elif generate == 'compose':
+            # Test the expected output of the command execution
+            assert re.search(r".*Generating Compose YAML file: docker-compose.yaml", result)
+
+            # Check "docker-compose.yaml" contents
+            with (Path(ctx.workspace_dir) / "docker-compose.yaml").open("r") as f:
+                content = f.read()
+                assert re.search(r".*llama-server", content)
+                assert re.search(r".*\"1234:8123\"", content)
+                assert re.search(r".*/llama-stack", content)
+
+                if env_vars:
+                    assert len(re.findall(r"- SEARCH_API_KEY=9999", content)) == 2
+                else:
+                    assert not re.search(r".*- SEARCH_API_KEY=9999", content)
 
 
 @pytest.mark.skip(reason="pulls very large image")
@@ -765,7 +808,7 @@ def test_serve_with_non_existing_images():
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(["ramalama", "serve", "--image", "bogus", "--pull", "never", "tiny"], stderr=STDOUT)
         assert exc_info.value.returncode == 125
-        assert re.search(r".*Error: bogus: image not known", exc_info.value.output.decode("utf-8"))
+        assert re.search(r".*Error: bogus:latest: image not known", exc_info.value.output.decode("utf-8"))
 
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(
@@ -783,7 +826,10 @@ def test_serve_with_non_existing_images():
                 stderr=STDOUT,
             )
         assert exc_info.value.returncode == 22
-        assert re.search(r"Error: quay.io/ramalama/rag does not exist.*", exc_info.value.output.decode("utf-8"))
+        assert re.search(
+            r"Error: quay.io/ramalama/rag(?::latest)? does not exist.*",
+            exc_info.value.output.decode("utf-8"),
+        )
 
 
 @pytest.mark.e2e

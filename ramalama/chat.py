@@ -5,6 +5,7 @@ import cmd
 import copy
 import itertools
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -28,13 +29,15 @@ from ramalama.chat_utils import (
     stream_response,
 )
 from ramalama.common import perror
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
 from ramalama.mcp.mcp_agent import LLMAgent
 from ramalama.mcp.mcp_client import PureMCPClient
+from ramalama.plugins.interface import InferenceRuntimePlugin
+from ramalama.plugins.loader import get_runtime
 from ramalama.proxy_support import setup_proxy_support
 
 # Setup proxy support on module import
@@ -87,7 +90,6 @@ def add_api_key(args, headers=None):
 
 @dataclass
 class ChatOperationalArgs:
-    initial_connection: bool = False
     name: str | None = None
     keepalive: int | None = None
     monitor: "ServerMonitor | None" = None
@@ -177,7 +179,7 @@ class RamaLamaShell(cmd.Cmd):
         print()
 
     def prep_rag_message(self):
-        if (context := self.args.rag) is None:
+        if (context := getattr(self.args, 'rag', None)) is None:
             return
 
         builder = OpanAIChatAPIMessageBuilder()
@@ -272,8 +274,11 @@ class RamaLamaShell(cmd.Cmd):
         return self.provider.create_request(messages, options)
 
     def _resolve_model_name(self) -> str | None:
-        if getattr(self.args, "runtime", None) == "mlx":
-            return None
+        runtime = getattr(self.args, "runtime", None)
+        if runtime:
+            plugin = get_runtime(runtime)
+            if isinstance(plugin, InferenceRuntimePlugin) and not plugin.chat_include_model_name:
+                return None
         return getattr(self.args, "model", None)
 
     def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:
@@ -409,9 +414,16 @@ class RamaLamaShell(cmd.Cmd):
             return None
 
     def handle_args(self, monitor):
+        """Process command-line arguments and/or stdin input.
+
+        Returns True if the program should exit, False if it should continue to interactive mode.
+        """
         prompt = " ".join(self.args.ARGS) if self.args.ARGS else None
+        stdin_was_pipe = False
+
         if not sys.stdin.isatty():
             stdin = sys.stdin.read()
+            stdin_was_pipe = True
             if prompt:
                 prompt += f"\n\n{stdin}"
             else:
@@ -419,6 +431,23 @@ class RamaLamaShell(cmd.Cmd):
 
         if prompt:
             self.default(prompt)
+            # Continue to interactive mode if --interactive flag is set
+            if getattr(self.args, 'interactive', False):
+                # If stdin was a pipe, we need to reopen the terminal for interactive input
+                if stdin_was_pipe:
+                    try:
+                        # Use platform-specific terminal device
+                        # Windows: 'CON', Unix/Linux: '/dev/tty'
+                        terminal_device = 'CON' if os.name == 'nt' else '/dev/tty'
+                        sys.stdin = open(terminal_device, 'r')
+                    except (OSError, FileNotFoundError) as e:
+                        perror(f"Cannot open terminal for interactive mode: {e}")
+                        monitor.stop()
+                        self.kills()
+                        return True
+                print("")
+                return False
+            # Default behavior: exit after displaying response
             monitor.stop()
             self.kills()
             return True
@@ -499,8 +528,7 @@ class RamaLamaShell(cmd.Cmd):
         total_time_slept = 0
         response = None
 
-        # Adjust timeout based on whether we're in initial connection phase
-        max_timeout = 30 if getattr(self.args, "initial_connection", False) else 16
+        max_timeout = 16
 
         last_error: Exception | None = None
 
@@ -536,15 +564,11 @@ class RamaLamaShell(cmd.Cmd):
         if response:
             return stream_response(response, self.args.color, self.provider)
 
-        # Only show error and kill if not in initial connection phase
-        if not getattr(self.args, "initial_connection", False):
-            error_suffix = ""
-            if last_error:
-                error_suffix = f" ({last_error})"
-            perror(f"\rError: could not connect to: {self.url}{error_suffix}")
-            self.kills()
-        else:
-            logger.debug(f"Could not connect to: {self.url}")
+        error_suffix = ""
+        if last_error:
+            error_suffix = f" ({last_error})"
+        perror(f"\rError: could not connect to: {self.url}{error_suffix}")
+        self.kills()
 
         return None
 
@@ -557,10 +581,6 @@ class RamaLamaShell(cmd.Cmd):
                 logger.debug("Closed MCP connections")
             except Exception as e:
                 logger.debug(f"Error closing MCP connections: {e}")
-
-        # Don't kill the server if we're still in the initial connection phase
-        if getattr(self.args, "initial_connection", False):
-            return
 
         if getattr(self.args, "server_process", False):
             self.args.server_process.terminate()
@@ -827,7 +847,7 @@ def chat(
         monitor = ServerMonitor(server_process=server_process)
     elif container_name:
         # Monitor the container
-        conman = getattr(args, "engine", get_config().engine)
+        conman = getattr(args, "engine", ActiveConfig().engine)
         if not conman:
             raise ValueError("Container engine is required when monitoring a container")
         monitor = ServerMonitor(container_name=container_name, container_engine=conman)

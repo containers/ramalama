@@ -35,7 +35,7 @@
                   (llama-cpp.override llamaCppOverrides)
                 ];
                 nativeBuildInputs =
-                  (with pkgs; [ codespell shellcheck ruff bats jq apacheHttpd ]) ++
+                  (with pkgs; [ codespell shellcheck ruff jq apacheHttpd ]) ++
                   (with pkgs.python3Packages; [ pytest ]);
               } // ramalamaOverrides)
           )

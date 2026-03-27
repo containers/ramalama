@@ -2,9 +2,9 @@
 
 import os
 import shlex
-from typing import Optional, Tuple
+from typing import Optional
 
-from ramalama.common import RAG_DIR, get_accel_env_vars
+from ramalama.common import RAG_DIR, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.version import version
 
@@ -13,9 +13,9 @@ class Compose:
     def __init__(
         self,
         model_name: str,
-        model_paths: Tuple[str, str],
-        chat_template_paths: Optional[Tuple[str, str]],
-        mmproj_paths: Optional[Tuple[str, str]],
+        model_paths: tuple[str, str],
+        chat_template_paths: Optional[tuple[str, str]],
+        mmproj_paths: Optional[tuple[str, str]],
         args,
         exec_args,
     ):
@@ -86,16 +86,13 @@ class Compose:
         return f'\n      - "{self.src_mmproj_path}:{self.dest_mmproj_path}:ro"'
 
     def _gen_devices(self) -> str:
-        device_list = []
-        for dev_path in ["/dev/dri", "/dev/kfd", "/dev/accel"]:
-            if os.path.exists(dev_path):
-                device_list.append(dev_path)
+        devices = get_gpu_devices()
 
-        if not device_list:
+        if not devices:
             return ""
 
         devices_str = "    devices:"
-        for dev in device_list:
+        for dev in devices.values():
             devices_str += f'\n      - "{dev}:{dev}"'
         return devices_str
 

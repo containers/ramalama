@@ -130,20 +130,20 @@ sudo rm /usr/local/share/zsh/site-functions/_ramalama
 See the [macOS Installation Guide](docs/MACOS_INSTALL.md) for more details.
 
 ### Remove User Data and Configuration
-After uninstalling RamaLama using any method above, you may want to remove downloaded models and configuration files from your home directory:
+After uninstalling RamaLama using any method above, you may want to remove downloaded models and configuration files:
 
 ```bash
 # Remove downloaded models and data (can be large)
-rm -rf ~/.local/share/ramalama
+rm -rf -- "${XDG_DATA_HOME:-~/.local/share}/ramalama"
 
 # Remove configuration files
-rm -rf ~/.config/ramalama
+rm -rf -- "${XDG_CONFIG_HOME:-~/.config}/ramalama"
 
 # If you ran RamaLama as root, also remove:
 sudo rm -rf /var/lib/ramalama
 ```
 
-**Note:** The model data directory (`~/.local/share/ramalama`) can be quite large depending on how many models you've downloaded. Make sure you want to remove these files before running the commands above.
+**Note:** The model data directory (by default `~/.local/share/ramalama`) can be quite large depending on how many models you've downloaded. Make sure you want to remove these files before running the commands above.
 
 ## Accelerated images
 
@@ -295,8 +295,8 @@ RamaLama reads shortnames.conf files if they exist. These files contain a list o
 | Shortnames type    | Path                                                       |
 | :----------------  | :-------------------------------------------               |
 | Development        | ./shortnames.conf                                          |
-| User (Config)      | $HOME/.config/ramalama/shortnames.conf                     |
-| User (Local Share) | $HOME/.local/share/ramalama/shortnames.conf                |
+| User (Config)      | $XDG\_CONFIG\_HOME/ramalama/shortnames.conf                |
+| User (Data)        | $XDG\_DATA\_HOME/ramalama/shortnames.conf                  |
 | Administrators     | /etc/ramalama/shortnames.conf                              |
 | Distribution       | /usr/share/ramalama/shortnames.conf                        |
 | Local Distribution | /usr/local/share/ramalama/shortnames.conf                  |
@@ -1167,7 +1167,7 @@ $ cat /usr/share/ramalama/shortnames.conf
 </details>
 
 ### [`ramalama-version`](https://github.com/containers/ramalama/blob/main/docs/ramalama-version.1.md)
-#### Display version of the AI Model.
+#### Display version of RamaLama.
 - <details>
     <summary>
         Print the version of RamaLama.
@@ -1222,7 +1222,7 @@ $ cat /usr/share/ramalama/shortnames.conf
     |           +------------------+           +------------------+
     |           | Pull inferencing |           | Pull model layer |
     +-----------| runtime (cuda)   |---------->| granite3-moe     |
-            +------------------+           +------------------+
+                +------------------+           +------------------+
                            | Repo options:    |
                            +-+-------+------+-+
                              |       |      |

@@ -58,26 +58,33 @@ def _(message: AssistantMessage) -> dict[str, Any]:
     if message.attachments:
         raise ValueError("Attachments are not supported by this provider.")
 
-    tool_calls = [
-        {
-            "id": call.id,
-            "type": "function",
-            "function": {
-                "name": call.name,
-                "arguments": json.dumps(call.arguments, ensure_ascii=False),
-            },
-        }
-        for call in message.tool_calls
-    ]
-    return {**message.metadata, 'content': message.text or "", 'role': message.role, 'tool_calls': tool_calls}
+    payload = {**message.metadata, 'content': message.text or "", 'role': message.role}
+
+    if message.tool_calls:
+        payload['tool_calls'] = [
+            {
+                "id": call.id,
+                "type": "function",
+                "function": {
+                    "name": call.name,
+                    "arguments": json.dumps(call.arguments, ensure_ascii=False),
+                },
+            }
+            for call in message.tool_calls
+        ]
+
+    return payload
 
 
-class CompletionsPayload(TypedDict, total=False):
+class RequiredCompletionsPayload(TypedDict):
     messages: list[dict[str, Any]]
-    model: str | None
-    temperature: float | None
-    max_tokens: int | None
     stream: bool
+
+
+class CompletionsPayload(RequiredCompletionsPayload, total=False):
+    model: str
+    temperature: float
+    max_tokens: int
 
 
 class OpenAICompletionsChatProvider(ChatProvider):
@@ -91,10 +98,7 @@ class OpenAICompletionsChatProvider(ChatProvider):
     def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> CompletionsPayload:
         payload: CompletionsPayload = {
             "messages": [message_to_completions_dict(m) for m in messages],
-            "model": options.model,
-            "temperature": options.temperature,
-            "max_tokens": options.max_tokens,
-            "stream": options.stream,
+            **options.to_dict(),
         }
         return payload
 

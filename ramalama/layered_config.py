@@ -2,6 +2,8 @@ from dataclasses import MISSING, fields, is_dataclass
 from functools import reduce
 from typing import Any, Type, get_type_hints
 
+from ramalama.logger import logger
+
 
 def deep_merge(left: dict, right: dict) -> dict:
     """Recursively merge override dict into base dict."""
@@ -41,13 +43,28 @@ def build_subconfigs(values: dict, obj: Type) -> dict:
 class LayeredMixin:
     """Mixin class to handle layered configurations from multiple sources."""
 
-    def __init__(self, *layers: dict[str, Any]):
-        self._fields = {f.name for f in fields(self.__class__)}  # type: ignore[arg-type]
-        self._layers = [{k: layer[k] for k in layer.keys() & self._fields} for layer in layers]
+    _layers_finalized = False
 
-        defaults = extract_defaults(self.__class__)
-        merged = defaults | reduce(deep_merge, reversed(self._layers))
+    def __init__(self, *layers: dict[str, Any]):
+        self._fields = {f.name for f in fields(self.__class__) if not f.name.startswith("_")}  # type: ignore[arg-type]
+        _layers = [{k: layer[k] for k in layer.keys() & self._fields} for layer in layers]
+
+        merged = extract_defaults(self.__class__)
+        if _layers:
+            merged |= reduce(deep_merge, _layers)  # type: ignore[arg-type]
         super().__init__(**build_subconfigs(merged, type(self)))
+        # Add an empty layer to store values set via the instance attributes
+        _layers.append({})
+        self._layers = _layers
 
     def is_set(self, name: str) -> bool:
-        return any(name in layer for layer in self._layers)
+        """Returns True if the config attribute is explicitly set vs the default value."""
+        return hasattr(self, "_layers") and any(name in layer for layer in self._layers)
+
+    def __setattr__(self, name: str, value: Any):
+        if hasattr(self, "_layers"):
+            if name not in self._fields:
+                raise AttributeError(f"Attribute {name} not found in config class {self.__class__.__name__}")
+            logger.debug(f"Setting config attribute {name} to {value}")
+            self._layers[-1][name] = value
+        super().__setattr__(name, value)

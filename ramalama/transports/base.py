@@ -1,20 +1,17 @@
 import copy
-import json
 import os
-import platform
 import random
 import socket
 import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
-from functools import cached_property
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, TypeGuard
 
 from ramalama import chat
 from ramalama.common import ContainerEntryPoint
 from ramalama.compose import Compose
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.model_inspect.base_info import ModelInfoBase
@@ -28,22 +25,16 @@ from ramalama.quadlet import Quadlet
 
 if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
+    from ramalama.transports.oci.oci import OCI
 
-from datetime import datetime, timezone
-
-from ramalama.benchmarks.manager import BenchmarksManager
-from ramalama.benchmarks.schemas import BenchmarkRecord, BenchmarkRecordV1, get_benchmark_record
-from ramalama.benchmarks.utilities import parse_json, print_bench_results
 from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
-    accel_image,
     exec_cmd,
     genname,
     is_split_file_model,
     perror,
     populate_volume_from_image,
-    run_cmd,
     set_accel_env_vars,
 )
 from ramalama.logger import logger
@@ -84,6 +75,16 @@ class NoRefFileFound(Exception):
         return f"No ref file found for '{self.model}'. Please pull model."
 
 
+def is_oci(transport: "Transport") -> TypeGuard["OCI"]:
+    """
+    Type guard to determine whether a given transport is an OCI transport.
+
+    This assumes the transport exposes a `model_type` attribute and that
+    OCI-based transports set `model_type` to the string `"oci"`.
+    """
+    return getattr(transport, "model_type", None) == "oci"
+
+
 def trim_model_name(model):
     if model.startswith("huggingface://"):
         model = model.replace("huggingface://", "hf://", 1)
@@ -118,22 +119,6 @@ class TransportBase(ABC):
         raise self.__not_implemented_error("rm")
 
     @abstractmethod
-    def bench(self, args, cmd: list[str]):
-        raise self.__not_implemented_error("bench")
-
-    @abstractmethod
-    def run(self, args, cmd: list[str]):
-        raise self.__not_implemented_error("run")
-
-    @abstractmethod
-    def perplexity(self, args, cmd: list[str]):
-        raise self.__not_implemented_error("perplexity")
-
-    @abstractmethod
-    def serve(self, args, cmd: list[str]):
-        raise self.__not_implemented_error("serve")
-
-    @abstractmethod
     def exists(self) -> bool:
         raise self.__not_implemented_error("exists")
 
@@ -164,12 +149,7 @@ class Transport(TransportBase):
         self._model_store_path: str = model_store_path
         self._model_store: Optional["ModelStore"] = None
 
-        self.default_image = accel_image(get_config())
         self.draft_model: Transport | None = None
-
-    @cached_property
-    def artifact(self) -> bool:
-        return self.is_artifact()
 
     def extract_model_identifiers(self):
         model_name = self.model
@@ -271,16 +251,9 @@ class Transport(TransportBase):
         if dry_run:
             return "/path/to/model"
 
-        if self.model_type == 'oci':
+        if is_oci(self):
             if use_container or should_generate:
-                if getattr(self, "artifact", False):
-                    artifact_name_method = getattr(self, "artifact_name", None)
-                    if artifact_name_method:
-                        try:
-                            return f"{MNT_DIR}/{artifact_name_method()}"
-                        except subprocess.CalledProcessError:
-                            pass
-                return f"{MNT_DIR}/model.file"
+                return self.entrypoint_path()
             else:
                 return f"oci://{self.model}"
 
@@ -434,12 +407,12 @@ class Transport(TransportBase):
             return
 
         if self.model_type == 'oci':
-            if self.engine.use_podman:
+            if self.engine.use_podman or self.strategy.kind == "artifact":
                 mount_cmd = self.mount_cmd()
             elif self.engine.use_docker:
                 output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
                 volume = populate_volume_from_image(self, args, os.path.basename(output_filename))
-                mount_cmd = f"--mount=type=volume,src={volume},dst={MNT_DIR},readonly"
+                mount_cmd = self.mount_cmd(volume, MNT_DIR)
             else:
                 raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
             self.engine.add([mount_cmd])
@@ -468,73 +441,11 @@ class Transport(TransportBase):
             mount_opts += f",ro{self.engine.relabel()}"
             self.engine.add([mount_opts])
 
-    def bench(self, args, cmd: list[str]):
-        set_accel_env_vars()
-
-        output_format = getattr(args, "format", "table")
-
-        if args.dryrun:
-            if args.container:
-                self.engine.dryrun()
-            else:
-                dry_run(cmd)
-
-            return
-        elif args.container:
-            self.setup_container(args)
-            self.setup_mounts(args)
-            self.engine.add([args.image] + cmd)
-            result = self.engine.run_process()
-        else:
-            result = run_cmd(cmd, encoding="utf-8")
-
-        try:
-            bench_results = parse_json(result.stdout)
-        except (json.JSONDecodeError, ValueError):
-            message = f"Could not parse benchmark output. Expected JSON but got:\n{result.stdout}"
-            raise ValueError(message)
-
-        base_payload: dict = {
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "configuration": {
-                "container_image": args.image,
-                "container_runtime": args.engine,
-                "inference_engine": args.runtime,
-                "runtime_args": cmd,
-            },
-        }
-        results: list[BenchmarkRecord] = list()
-        for bench_result in bench_results:
-            result_record: BenchmarkRecordV1 = get_benchmark_record({"result": bench_result, **base_payload}, "v1")
-            results.append(result_record)
-
-        if output_format == "json":
-            print(result.stdout)
-        else:
-            print_bench_results(results)
-
-        config = get_config()
-        if not config.benchmarks.disable:
-            bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
-            bench_manager.save(results)
-
-    def run(self, args, cmd: list[str]):
-        # The Run command will first launch a daemonized service
-        # and run chat to communicate with it.
-
-        if len(cmd) > 0 and isinstance(cmd[0], ContainerEntryPoint):
-            # Ignore entrypoint
-            cmd = cmd[1:]
-
-        process = self.serve_nonblocking(args, cmd)
-        if process:
-            return self._connect_and_chat(args, process)
-
     def serve_nonblocking(self, args, cmd: list[str]) -> subprocess.Popen | None:
         if args.container:
             args.name = self.get_container_name(args)
 
-        args.host = get_config().host
+        args.host = ActiveConfig().host
         args.detach = True
 
         set_accel_env_vars()
@@ -563,14 +474,16 @@ class Transport(TransportBase):
 
         process = subprocess.Popen(
             cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         return process
 
     def _connect_and_chat(self, args, server_process):
         """Connect to the server and start chat in the parent process."""
+
         args.url = f"http://127.0.0.1:{args.port}/v1"
-        if getattr(args, "runtime", None) == "mlx":
-            args.prefix = "🍏 > "
 
         # Model name in the chat request must match RamalamaModelContext.alias()
         chat_args = copy.deepcopy(args)
@@ -581,9 +494,6 @@ class Transport(TransportBase):
         else:
             # Store the Popen object for monitoring
             chat_args.server_process = server_process
-
-            if getattr(chat_args, "runtime", None) == "mlx":
-                return self._handle_mlx_chat(chat_args)
             chat.chat(chat_args)
             return 0
 
@@ -620,35 +530,6 @@ class Transport(TransportBase):
                 time.sleep(1)
         return 0
 
-    def _handle_mlx_chat(self, args):
-        """Handle chat for MLX runtime with connection retries."""
-        args.ignore = getattr(args, "dryrun", False)
-        args.initial_connection = True
-        max_retries = 10
-
-        for i in range(max_retries):
-            try:
-                if self._is_server_ready(args.port):
-                    args.initial_connection = False
-                    time.sleep(1)  # Give server time to stabilize
-                    chat.chat(args)
-                    break
-                else:
-                    logger.debug(f"MLX server not ready, waiting... (attempt {i + 1}/{max_retries})")
-                    time.sleep(3)
-                    continue
-
-            except Exception as e:
-                if i >= max_retries - 1:
-                    perror(f"Error: Failed to connect to MLX server after {max_retries} attempts: {e}")
-                    self._cleanup_server_process(args.server_process)
-                    raise e
-                logger.debug(f"Connection attempt failed, retrying... (attempt {i + 1}/{max_retries}): {e}")
-                time.sleep(3)
-
-        args.initial_connection = False
-        return 0
-
     def _is_server_ready(self, port):
         """Check if the server is ready to accept connections."""
         try:
@@ -670,10 +551,6 @@ class Transport(TransportBase):
         except subprocess.TimeoutExpired:
             process.kill()
 
-    def perplexity(self, args, cmd: list[str]):
-        set_accel_env_vars()
-        self.execute_command(cmd, args)
-
     def exists(self) -> bool:
         _, _, all = self.model_store.get_cached_files(self.model_tag)
         return all
@@ -690,12 +567,6 @@ class Transport(TransportBase):
         self.pull(args)
 
     def validate_args(self, args):
-        # MLX validation
-        if getattr(args, "runtime", None) == "mlx":
-            is_apple_silicon = platform.system() == "Darwin" and platform.machine() == "arm64"
-            if not is_apple_silicon:
-                raise ValueError("MLX runtime is only supported on macOS with Apple Silicon.")
-
         # If --nocontainer=False was specified return valid
         if args.container:
             return
@@ -779,22 +650,16 @@ class Transport(TransportBase):
                 )
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
-    def serve(self, args, cmd: list[str]):
-        set_accel_env_vars()
-
-        if args.generate:
-            self.generate_container_config(args, cmd)
-            return
-
-        try:
-            self.execute_command(cmd, args)
-        except Exception as e:
-            self._cleanup_server_process(args.server_process)
-            raise e
-
     def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None):
         quadlet = Quadlet(
-            self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
+            self.model_name,
+            model_paths,
+            chat_template_paths,
+            mmproj_paths,
+            args,
+            exec_args,
+            self.is_artifact,
+            model_parts,
         )
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
@@ -802,16 +667,16 @@ class Transport(TransportBase):
     def quadlet_kube(
         self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None
     ):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
         kube.generate().write(output_dir)
 
         quadlet = Quadlet(
-            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact, model_parts
+            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact, model_parts
         )
         quadlet.kube().write(output_dir)
 
     def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.artifact)
+        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
         kube.generate().write(output_dir)
 
     def compose(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
@@ -862,6 +727,7 @@ class Transport(TransportBase):
         perror(f"Downloading {model_name} ...")
         perror(f"Trying to pull {model_name} ...")
 
+    @property
     def is_artifact(self) -> bool:
         return False
 
@@ -869,7 +735,7 @@ class Transport(TransportBase):
 def compute_ports(exclude: list[str] | None = None) -> list[int]:
     excluded = set() if exclude is None else set(map(int, exclude))
 
-    port_range = get_config().default_port_range
+    port_range = ActiveConfig().default_port_range
     ports = [p for p in range(port_range[0], port_range[1] + 1) if p not in excluded]
 
     if not ports:
@@ -909,7 +775,7 @@ def compute_serving_port(args, quiet: bool = False, exclude: list[str] | None = 
         raise IOError("no available port could be detected. Please ensure you have enough free ports.")
     if not quiet:
         openai = f"http://localhost:{target_port}"
-        if args.api == "llama-stack":
+        if getattr(args, "api", None) == "llama-stack":
             perror(f"Llama Stack RESTAPI: {openai}")
             openai = openai + "/v1/openai"
             perror(f"OpenAI RESTAPI: {openai}")

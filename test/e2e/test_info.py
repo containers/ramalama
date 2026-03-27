@@ -35,7 +35,7 @@ def test_info(monkeypatch, container_engine):
             str(Path(tempfile.gettempdir()) / "test_store"),
             id="with --store",
         ),
-        pytest.param(["--runtime", "vllm"], ["Inference", "Default"], "vllm", id="with --runtime"),
+        pytest.param(["--runtime", "vllm"], ["Runtimes", "Default"], "vllm", id="with --runtime"),
     ],
 )
 def test_info_with_params(params, key, expected_value):

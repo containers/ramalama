@@ -143,6 +143,18 @@ DATA_PATH = Path(__file__).parent / "data" / "test_kube"
             ),
             "with_mmproj.yaml",
         ),
+        (
+            Input(
+                model_name="tinyllama",
+                model_src_path="/path/to/model.file",
+                model_dest_path="/mnt/models/model.file",
+                model_file_exists=True,
+                args=Args(env=["API_KEY=123456789"]),
+                exec_args=["llama-server", "--model", "/mnt/models/model.file"],
+                artifact=False,
+            ),
+            "with_env.yaml",
+        ),
     ],
 )
 def test_kube_generate(input: Input, expected_file_name: str, monkeypatch):
@@ -158,6 +170,7 @@ def test_kube_generate(input: Input, expected_file_name: str, monkeypatch):
         input.mmproj_src_path: input.mmproj_file_exists,
         "/dev/dri": True,
         "/dev/kfd": True,
+        "/dev/accel": True,
     }
 
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
@@ -274,7 +287,7 @@ def test_kube_no_env_vars(monkeypatch):
 def test_kube_no_devices(monkeypatch):
     """Test Kube generation when no GPU devices are available."""
 
-    monkeypatch.setattr("os.path.exists", lambda path: path not in ["/dev/dri", "/dev/kfd"])
+    monkeypatch.setattr("os.path.exists", lambda path: path not in ["/dev/dri", "/dev/kfd", "/dev/accel"])
     monkeypatch.setattr("ramalama.kube.get_accel_env_vars", lambda: {})
     monkeypatch.setattr("ramalama.kube.version", lambda: "test-version")
 
@@ -297,3 +310,4 @@ def test_kube_no_devices(monkeypatch):
     assert "name: model" in content
     assert "name: dri" not in content
     assert "name: kfd" not in content
+    assert "name: accel" not in content

@@ -12,7 +12,9 @@ import string
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, Literal, Optional, Protocol, TypeAlias, TypedDict, cast, get_args
 
 import yaml
@@ -25,7 +27,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
     from ramalama.arg_types import SUPPORTED_ENGINES, ContainerArgType
-    from ramalama.config import Config, RamalamaImageConfig
+    from ramalama.config import Config
     from ramalama.transports.base import Transport
 
 MNT_DIR = "/mnt/models"
@@ -135,6 +137,7 @@ def run_cmd(
     args: Sequence[str],
     cwd: str | None = None,
     stdout: int | IO[Any] | None = subprocess.PIPE,
+    stdin: int | IO[Any] | None = subprocess.DEVNULL,
     ignore_stderr: bool = False,
     ignore_all: bool = False,
     encoding: str | None = None,
@@ -168,7 +171,9 @@ def run_cmd(
     if env:
         env = os.environ | env
 
-    result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr, encoding=encoding, env=env)
+    result = subprocess.run(
+        args, check=True, cwd=cwd, stdout=sout, stderr=serr, stdin=stdin, encoding=encoding, env=env
+    )
     logger.debug(f"Command finished with return code: {result.returncode}")
 
     return result
@@ -292,10 +297,11 @@ def genname():
     return "ramalama-" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
-def engine_version(engine: SUPPORTED_ENGINES) -> str:
+@lru_cache
+def engine_version(engine: SUPPORTED_ENGINES | Path | str) -> SemVer:
     # Create manifest list for target with imageid
     cmd_args = [str(engine), "version", "--format", "{{ .Client.Version }}"]
-    return run_cmd(cmd_args, encoding="utf-8").stdout.strip()
+    return SemVer.parse(run_cmd(cmd_args, encoding="utf-8").stdout.strip())
 
 
 class CDI_DEVICE(TypedDict):
@@ -307,29 +313,43 @@ class CDI_RETURN_TYPE(TypedDict):
 
 
 def load_cdi_config(spec_dirs: list[str]) -> CDI_RETURN_TYPE | None:
-    # Loads the first YAML or JSON CDI configuration file found in the
-    # given directories."""
+    # Load and merge all CDI configuration files from the given directories.
+    # When multiple CDI configs exist (e.g. /var/run/cdi and /etc/cdi), all are
+    # merged so that device "all" and other devices are found regardless of
+    # which file they appear in (fixes #2485).
+    merged_devices: list[CDI_DEVICE] = []
+    seen_names: set[str] = set()
 
     for spec_dir in spec_dirs:
+        if not os.path.isdir(spec_dir):
+            continue
         for root, _, files in os.walk(spec_dir):
-            for file in files:
+            for file in sorted(files):
                 _, ext = os.path.splitext(file)
+                if ext not in (".yaml", ".yml", ".json"):
+                    continue
                 file_path = os.path.join(root, file)
-                if ext in [".yaml", ".yml"]:
-                    try:
-                        with open(file_path, "r") as stream:
-                            return yaml.safe_load(stream)
-                    except (OSError, yaml.YAMLError) as e:
-                        logger.warning(f"Failed to load YAML file {file_path}: {e}")
-                        continue
-                elif ext == ".json":
-                    try:
-                        with open(file_path, "r") as stream:
-                            return json.load(stream)
-                    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
-                        logger.warning(f"Failed to load JSON file {file_path}: {e}")
-                        continue
-    return None
+                config = None
+                try:
+                    with open(file_path, "r") as stream:
+                        if ext == ".json":
+                            config = json.load(stream)
+                        else:
+                            config = yaml.safe_load(stream)
+                except (OSError, yaml.YAMLError, json.JSONDecodeError, UnicodeDecodeError) as e:
+                    logger.warning(f"Failed to load/parse CDI file {file_path}: {e}")
+                    continue
+                if not config or not isinstance(config, dict):
+                    continue
+                for cdi_device in config.get("devices", []):
+                    if isinstance(cdi_device, dict) and (name := cdi_device.get("name")):
+                        if name not in seen_names:
+                            seen_names.add(name)
+                            merged_devices.append(cast(CDI_DEVICE, cdi_device))
+
+    if not merged_devices:
+        return None
+    return {"devices": merged_devices}
 
 
 def get_podman_machine_cdi_config() -> CDI_RETURN_TYPE | None:
@@ -569,6 +589,15 @@ GPUEnvVar: TypeAlias = Literal[
 ]
 
 
+def get_gpu_devices():
+    devices = {}
+    for dev in ["dri", "kfd", "accel"]:
+        path = "/dev/" + dev
+        if os.path.exists(path):
+            devices[dev] = path
+    return dict(sorted(devices.items()))
+
+
 def get_gpu_type_env_vars() -> dict[GPUEnvVar, str]:
     return {k: v for k in get_args(GPUEnvVar) if (v := os.environ.get(k))}
 
@@ -601,18 +630,20 @@ def minor_release() -> str:
     return vers
 
 
-def tagged_image(image: str) -> str:
+def version_tagged_image(image: str) -> str:
     if len(image.split(":")) > 1:
         return image
     return f"{image}:{minor_release()}"
 
 
+def latest_tagged_image(image: str) -> str:
+    if len(image.split(":")) > 1:
+        return image
+    return f"{image}:latest"
+
+
 class AccelImageArgsWithImage(Protocol):
     image: str
-
-
-class AccelImageArgsVLLMRuntime(Protocol):
-    runtime: Literal["vllm"]
 
 
 class AccelImageArgsOtherRuntime(Protocol):
@@ -628,77 +659,80 @@ class AccelImageArgsOtherRuntimeRAG(Protocol):
     quiet: bool
 
 
-AccelImageArgs: TypeAlias = (
-    None | AccelImageArgsVLLMRuntime | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
-)
+AccelImageArgs: TypeAlias = None | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
 
 
-def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_key: str = "image") -> str:
+def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: str = "image") -> str:
     """
-    Selects and the appropriate image based on config, arguments, environment.
+    Selects the appropriate image based on config, arguments, environment.
     "images" is a mapping of environment variable names to image names. If not specified, the
     mapping from default config will be used.
     "conf_key" is the configuration key that holds the configured value of the selected image.
     If not specified, it defaults to "image".
-    """
-    # User provided an image via config
-    if config.is_set(conf_key):
-        return tagged_image(getattr(config, conf_key))
 
-    if not images:
-        images = config.images
+    Never pulls images; callers that need pulling should pass the result to ensure_image().
+    """
+
+    # User provided an image via config; tag with :latest if no tag given
+    if config.is_set(conf_key):
+        return latest_tagged_image(getattr(config, conf_key))
 
     set_gpu_type_env_vars()
     gpu_type = next(iter(get_gpu_type_env_vars()), "")
 
-    if config.runtime == "vllm":
-        # Check for GPU-specific VLLM image, with a fallback to the generic one.
-        image = None
-        if gpu_type:
-            image = config.images.get(f"VLLM_{gpu_type}")
+    if not images:
+        # No explicit images provided: ask the runtime plugin for the image
+        from ramalama.plugins.loader import get_runtime
 
-        if not image:
-            image = config.images.get("VLLM", "docker.io/vllm/vllm-openai")
+        plugin_image = get_runtime(config.runtime).get_container_image(config, gpu_type)
+        if plugin_image is not None:
+            return latest_tagged_image(plugin_image)
+        images = config.images  # plugin returned None (e.g., MLX); fall back to user dict
 
-        # If the image from the config is specified by tag or digest, return it unmodified
-        return image if ":" in image else f"{image}:latest"
-    # Get image based on detected GPU type
-    image = images.get(gpu_type, getattr(config, f"default_{conf_key}"))
+    # Get image based on detected GPU type; tag user overrides with :latest if untagged
+    return latest_tagged_image(images.get(gpu_type, getattr(config, f"default_{conf_key}")))
 
-    # If the image from the config is specified by tag or digest, return it unmodified
-    if ":" in image:
+
+def ensure_image(conman: str | None, image: str, should_pull: bool = False) -> str:
+    """Check if image exists locally; optionally pull it.
+
+    Returns the image string on success. If conman is falsy, returns image unchanged.
+    Raises ValueError if the image cannot be pulled.
+    """
+    if not conman:
         return image
 
-    vers = minor_release()
+    if ":" not in image:
+        image = f"{image}:latest"
 
-    should_pull = config.pull in ["always", "missing"] and not config.dryrun
-    if config.engine and attempt_to_use_versioned(config.engine, image, vers, True, should_pull):
-        return f"{image}:{vers}"
-
-    return f"{image}:latest"
-
-
-def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, should_pull: bool) -> bool:
     try:
-        # check if versioned image exists locally
-        if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True):
-            return True
-
+        if run_cmd([conman, "inspect", image], ignore_all=True):
+            return image
     except Exception:
         pass
 
     if not should_pull:
-        return False
+        return image
 
     try:
-        # attempt to pull the versioned image
-        if not quiet:
-            perror(f"Attempting to pull {image}:{vers} ...")
-        run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True)
-        return True
-
+        run_cmd([conman, "pull", image], ignore_stderr=True)
+        return image
     except Exception:
-        return False
+        pass
+
+    # This is a fallback for main when the version has been bumped but the
+    # tagged image for the version has not been pushed yet
+    # Only try this for quay.io/ramalama/ images
+    base, _, _ = image.rpartition(":")
+    if base and base.startswith("quay.io/ramalama/"):
+        latest = latest_tagged_image(base)
+        try:
+            run_cmd([conman, "pull", latest], ignore_stderr=True)
+            return latest
+        except Exception as e:
+            raise ValueError(f"Failed to pull image {image} or {latest}: {e}")
+
+    raise ValueError(f"Failed to pull image {image}")
 
 
 class ContainerEntryPoint(str):
@@ -710,3 +744,36 @@ class ContainerEntryPoint(str):
 
     def __repr__(self):
         return repr(self.entrypoint)
+
+
+SEMVER_RE = re.compile(
+    r"^(?P<major>0|[1-9]\d*)\."
+    r"(?P<minor>0|[1-9]\d*)\."
+    r"(?P<patch>0|[1-9]\d*)"
+    r"(?:-(?P<prerelease>"
+    r"(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
+    r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*"
+    r"))?"
+    r"(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+)
+
+
+def parse_semver(s: str) -> SemVer:
+    m = SEMVER_RE.fullmatch(s)
+    if not m:
+        raise ValueError(f"Not a valid SemVer 2.0.0: {s!r}")
+    major = int(m.group("major"))
+    minor = int(m.group("minor"))
+    patch = int(m.group("patch"))
+    return SemVer(major, minor, patch)
+
+
+@dataclass(frozen=True, order=True)
+class SemVer:
+    major: int
+    minor: int
+    patch: int
+
+    @classmethod
+    def parse(cls, s: str) -> "SemVer":
+        return parse_semver(s)

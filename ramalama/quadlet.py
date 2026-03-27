@@ -43,7 +43,7 @@ class Quadlet:
         self.image = args.image
         self.rag = ""
         self.rag_name = ""
-        if args.rag:
+        if getattr(args, 'rag', None):
             self.rag = args.rag.removeprefix("oci://")
             self.rag_name = os.path.basename(self.rag) + "-rag"
 

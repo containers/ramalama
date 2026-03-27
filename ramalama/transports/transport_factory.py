@@ -6,13 +6,13 @@ from urllib.parse import urlparse
 from ramalama.arg_types import StoreArgType
 from ramalama.chat_providers.api_providers import get_chat_provider
 from ramalama.common import rm_until_substring
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.path_utils import file_uri_to_path
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import MODEL_TYPES, Transport
 from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.modelscope import ModelScope
-from ramalama.transports.oci import OCI
+from ramalama.transports.oci.oci import OCI
 from ramalama.transports.ollama import Ollama
 from ramalama.transports.rlcr import RamalamaContainerRegistry
 from ramalama.transports.url import URL
@@ -169,5 +169,5 @@ class TransportFactory:
 
 def New(name, args, transport: str | None = None) -> CLASS_MODEL_TYPES:
     if transport is None:
-        transport = get_config().transport
+        transport = ActiveConfig().transport
     return TransportFactory(name, args, transport=transport).create()

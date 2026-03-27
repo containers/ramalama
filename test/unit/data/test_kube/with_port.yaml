@@ -31,6 +31,8 @@ spec:
         volumeMounts:
         - mountPath: /mnt/models/model.file
           name: model
+        - mountPath: /dev/accel
+          name: accel
         - mountPath: /dev/dri
           name: dri
         - mountPath: /dev/kfd
@@ -39,6 +41,9 @@ spec:
       - hostPath:
           path: /path/to/model.file
         name: model
+      - hostPath:
+          path: /dev/accel
+        name: accel
       - hostPath:
           path: /dev/dri
         name: dri

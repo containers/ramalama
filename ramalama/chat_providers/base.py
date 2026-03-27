@@ -2,28 +2,49 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypedDict
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from ramalama.chat_utils import ChatMessageType
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
+
+
+class RequiredChatRequestOptionsDict(TypedDict):
+    stream: bool
+
+
+class ChatRequestOptionsDict(RequiredChatRequestOptionsDict, total=False):
+    model: str
+    temperature: float
+    max_tokens: int
 
 
 @dataclass(slots=True)
 class ChatRequestOptions:
     """Normalized knobs for building a chat completion request."""
 
-    model: str | None = None
+    model: str | None
+    stream: bool = True
     temperature: float | None = None
     max_tokens: int | None = None
-    stream: bool = True
     extra: dict[str, Any] | None = None
 
-    def to_dict(self) -> dict[str, Any]:
-        keys = ["model", "temperature", "max_tokens", "stream"]
-        result = {k: v for k in keys if (v := getattr(self, k)) is not None}
-        result |= {} if self.extra is None else dict(self.extra)
+    def to_dict(self) -> ChatRequestOptionsDict:
+        result: ChatRequestOptionsDict = {'stream': self.stream}
+
+        if self.temperature is not None:
+            result['temperature'] = self.temperature
+        if self.max_tokens is not None:
+            result['max_tokens'] = self.max_tokens
+        if self.model is not None:
+            result['model'] = self.model
+
+        if self.extra is not None:
+            # Can't easily type this without access to open TypedDicts
+            # https://typing.python.org/en/latest/spec/glossary.html#term-closed
+            result |= self.extra  # type: ignore
+
         return result
 
 
@@ -58,7 +79,7 @@ class ChatProvider(ABC):
         default_headers: Mapping[str, str] | None = None,
     ) -> None:
         if api_key is None:
-            api_key = get_config().api_key
+            api_key = ActiveConfig().api_key
 
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -164,7 +185,7 @@ class ChatProvider(ABC):
             if exc.code in (401, 403):
                 message = (
                     f"Could not authenticate with {self.provider}."
-                    "The provided API key was either missing or invalid.\n"
+                    " The provided API key was either missing or invalid.\n"
                     f"Set RAMALAMA_API_KEY or ramalama.provider.<provider_name>.api_key."
                 )
                 try:
