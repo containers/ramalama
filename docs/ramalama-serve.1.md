@@ -4,11 +4,17 @@
 ramalama\-serve - serve REST API on specified AI Model
 
 ## SYNOPSIS
-**ramalama serve** [*options*] _model_
+**ramalama serve** [*options*] [_model_]
 
 ## DESCRIPTION
 Serve specified AI Model as a chat bot. RamaLama pulls specified AI Model from
 registry if it does not exist in local storage.
+
+When invoked without a model argument, starts in **router mode**: all locally
+stored GGUF models are mounted into a container and served via llama.cpp's
+multi-model directory feature. Requests are routed to the appropriate model
+based on the model name in the API request. Router mode requires a container
+runtime.
 
 ## MODEL TRANSPORTS
 
@@ -211,6 +217,10 @@ times the larger model needs to be invoked.
 
 Use --runtime-arg to pass the other draft model related parameters.
 Make sure the sampling parameters like top_k on the web UI are set correctly.
+
+#### **--models-max**=*integer*
+Maximum number of models to load concurrently in router mode (default: 4).
+Only used when `ramalama serve` is invoked without a model argument.
 
 #### **--name**, **-n**
 Name of the container to run the Model in.

@@ -43,13 +43,16 @@ class LlamaCppCommands:
     def _cmd_run(self, args: argparse.Namespace) -> list[str]:
         if getattr(args, 'rag', None):
             return self._cmd_run_rag(args)
+
+        router_mode = getattr(args, 'router_mode', False)
+
         cmd = ["llama-server"] if not self._container_image_is_ggml(args) else ["--server"]  # type: ignore[attr-defined]
 
         is_container = args.container
         should_generate = getattr(args, 'generate', None) is not None
         dry_run = getattr(args, 'dryrun', False)
 
-        model = New(args.MODEL, args) if hasattr(args, 'MODEL') else None
+        model = New(args.MODEL, args) if hasattr(args, 'MODEL') and args.MODEL is not None else None
 
         # --host: use 0.0.0.0 in container, or the configured host otherwise
         host = '0.0.0.0' if is_container else getattr(args, 'host', None)
@@ -64,7 +67,11 @@ class LlamaCppCommands:
         if logfile:
             cmd += ["--log-file", str(logfile)]
 
-        if model is not None:
+        if router_mode:
+            cmd += ["--models-dir", "/mnt/models"]
+            models_max = getattr(args, 'models_max', 4)
+            cmd += ["--models-max", str(models_max)]
+        elif model is not None:
             model_path = model._get_entry_model_path(is_container, should_generate, dry_run)
             cmd += ["--model", model_path]
 
@@ -86,7 +93,7 @@ class LlamaCppCommands:
         if not getattr(args, 'thinking', None):
             cmd += ["--reasoning-budget", "0"]
 
-        if model is not None:
+        if not router_mode and model is not None:
             cmd += ["--alias", model.model_alias]
 
         ctx_size = getattr(args, 'ctx_size', None)
@@ -107,20 +114,21 @@ class LlamaCppCommands:
         if getattr(args, 'webui', None) == 'off':
             cmd.append("--no-webui")
 
-        ngl = getattr(args, 'ngl', 0)
-        ngl_val = 999 if ngl < 0 else ngl
-        cmd += ["-ngl", str(ngl_val)]
+        if not router_mode:
+            ngl = getattr(args, 'ngl', 0)
+            ngl_val = 999 if ngl < 0 else ngl
+            cmd += ["-ngl", str(ngl_val)]
 
-        model_draft = getattr(args, 'model_draft', None)
-        if model_draft:
-            draft_path = ""
-            if model is not None:
-                draft_model = getattr(model, 'draft_model', None)
-                if draft_model:
-                    draft_path = draft_model._get_entry_model_path(is_container, should_generate, dry_run)
-            if draft_path:
-                cmd += ["--model-draft", draft_path]
-            cmd += ["-ngld", str(ngl_val)]
+            model_draft = getattr(args, 'model_draft', None)
+            if model_draft:
+                draft_path = ""
+                if model is not None:
+                    draft_model = getattr(model, 'draft_model', None)
+                    if draft_model:
+                        draft_path = draft_model._get_entry_model_path(is_container, should_generate, dry_run)
+                if draft_path:
+                    cmd += ["--model-draft", draft_path]
+                cmd += ["-ngld", str(ngl_val)]
 
         threads = getattr(args, 'threads', None)
         if threads is not None:
