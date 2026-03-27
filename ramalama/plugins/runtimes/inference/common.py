@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import copy
+import os
 from abc import abstractmethod
+from collections.abc import Callable
 from typing import Any
 
 from ramalama.cli import (
@@ -15,9 +17,16 @@ from ramalama.cli import (
     runtime_options,
     suppressCompleter,
 )
-from ramalama.common import ContainerEntryPoint, accel_image, ensure_image, set_accel_env_vars
+from ramalama.common import (
+    ContainerEntryPoint,
+    accel_image,
+    ensure_image,
+    sanitize_filename,
+    set_accel_env_vars,
+)
 from ramalama.config import ActiveConfig
 from ramalama.logger import logger
+from ramalama.model_store.reffile import StoreFileType
 from ramalama.plugins.interface import InferenceRuntimePlugin
 from ramalama.plugins.loader import assemble_command
 from ramalama.stack import Stack
@@ -135,7 +144,7 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
         runtime_options(parser, "serve")
         self._add_inference_args(parser, "serve")
-        parser.add_argument("MODEL", completer=local_models)  # positional argument
+        parser.add_argument("MODEL", completer=local_models)
         parser.set_defaults(func=self._serve_handler)
         return parser
 
@@ -243,6 +252,51 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             raise ValueError("ramalama serve is not supported for hosted API transports.")
 
         self._do_serve(args, model)
+
+
+def _enumerate_store_gguf_models(
+    store: Any,
+    refs_dir_name: str,
+    snapshots_dir_name: str,
+    blobs_dir_name: str,
+    ref_json_cls: Any,
+    migrate_fn: Callable[[str, str], Any],
+) -> list[tuple[str, str]]:
+    """Walk the model store and return (host_blob_path, readable_name.gguf) for each GGUF model."""
+    models: list[tuple[str, str]] = []
+    seen_names: set[str] = set()
+
+    for root, subdirs, _ in os.walk(store.path):
+        if refs_dir_name not in subdirs:
+            continue
+
+        ref_dir = os.path.join(root, refs_dir_name)
+        for ref_file_name in os.listdir(ref_dir):
+            ref_file_path = os.path.join(ref_dir, ref_file_name)
+            ref_file = migrate_fn(ref_file_path, os.path.join(root, snapshots_dir_name))
+            if ref_file is None:
+                ref_file = ref_json_cls.from_path(ref_file_path)
+
+            tag, _ = os.path.splitext(ref_file_name)
+            model_rel = root.replace(store.path, "").lstrip(os.sep)
+            parts = model_rel.split(os.sep)
+            readable = "-".join(parts + [tag])
+
+            for model_file in ref_file.model_files:
+                if model_file.type != StoreFileType.GGUF_MODEL:
+                    continue
+
+                blob_path = os.path.join(root, blobs_dir_name, sanitize_filename(model_file.hash))
+                if not os.path.exists(blob_path):
+                    continue
+
+                name = f"{readable}.gguf"
+                if name in seen_names:
+                    name = f"{readable}-{model_file.hash[:8]}.gguf"
+                seen_names.add(name)
+                models.append((blob_path, name))
+
+    return models
 
 
 class ContainerizedInferenceRuntimePlugin(BaseInferenceRuntime):

@@ -4,11 +4,20 @@
 ramalama\-serve - serve REST API on specified AI Model
 
 ## SYNOPSIS
-**ramalama serve** [*options*] _model_
+**ramalama serve** [*options*] [_model_ ...]
 
 ## DESCRIPTION
 Serve specified AI Model as a chat bot. RamaLama pulls specified AI Model from
 registry if it does not exist in local storage.
+
+When invoked with two or more model arguments, or without any model argument,
+starts in **router mode**: models are mounted into a container and served via
+llama.cpp's multi-model directory feature. Requests are routed to the
+appropriate model based on the model name in the API request. Router mode
+requires a container runtime.
+
+With no model arguments, all locally stored GGUF models are served. With
+multiple model arguments, only the specified models are served.
 
 @@include options/model-transports.md
 
@@ -84,6 +93,8 @@ appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
 @@option max-tokens
 
 @@option model-draft
+
+@@option models-max
 
 @@option name
 
