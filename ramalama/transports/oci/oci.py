@@ -231,21 +231,9 @@ class OCI(Transport):
             run_cmd(cmd_args)
 
     def _create_manifest(self, target, imageid, args):
+        self._create_manifest_without_attributes(target, imageid, args)
         if not engine_supports_manifest_attributes(args.engine):
-            return self._create_manifest_without_attributes(target, imageid, args)
-
-        # Create manifest list for target with imageid
-        cmd_args = [
-            self.conman,
-            "manifest",
-            "create",
-            target,
-            imageid,
-        ]
-        if args.dryrun:
-            dry_run(cmd_args)
-        else:
-            run_cmd(cmd_args)
+            return
 
         # Annotate manifest list
         cmd_args = [
@@ -292,15 +280,11 @@ class OCI(Transport):
         imageid = self.build(source_model, args)
         if args.dryrun:
             imageid = "a1b2c3d4e5f6"
-        local_ref = f"containers-storage:{imageid}"
-        try:
-            self._create_manifest(self.model, local_ref, args)
-        except subprocess.CalledProcessError as e:
-            perror(f"""\
-Failed to create manifest for OCI {self.model} : {e}
-Tagging build instead
-                """)
-            self.tag(local_ref, self.model, args)
+        if self.conman == "docker":
+            # docker manifest create doesn't support local image references, so it's not usable here
+            self.tag(imageid, self.model, args)
+        else:
+            self._create_manifest(self.model, f"containers-storage:{imageid}", args)
 
     def convert(self, source_model, args):
         self._convert(source_model, args)

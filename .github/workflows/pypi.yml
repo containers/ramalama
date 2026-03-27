@@ -36,7 +36,7 @@ jobs:
           persist-credentials: false
 
       - name: Build and inspect python package
-        uses: hynek/build-and-inspect-python-package@f3d069d0f9a3c9169d1a483318bb0e09876a6fd6 # v2.15.0
+        uses: hynek/build-and-inspect-python-package@35116b25fb28e4b91149d761b2230d28ef49adc0 # v2.16.0
         with:
           attest-build-provenance-github: |
             ${{ github.repository_owner == 'containers' && (

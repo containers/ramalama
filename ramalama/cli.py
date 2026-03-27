@@ -332,6 +332,7 @@ def configure_subcommands(parser):
     pull_parser(subparsers)
     push_parser(subparsers)
     rm_parser(subparsers)
+    sandbox_parser(subparsers)
     stop_parser(subparsers)
     version_parser(subparsers)
     daemon_parser(subparsers)
@@ -980,6 +981,27 @@ def _rag_args(args):
     rag_args.model_args = args
     rag_args.generate = ""
     return rag_args
+
+
+def sandbox_parser(subparsers):
+    parser = subparsers.add_parser("sandbox", help="run an AI agent in a sandbox, backed by a local AI Model")
+    parser.set_defaults(func=lambda _: parser.print_help())
+    sandbox_subparsers = parser.add_subparsers(dest="sandbox_agent")
+
+    from ramalama.sandbox import add_sandbox_subparsers
+
+    for parser in add_sandbox_subparsers(sandbox_subparsers, local_images, local_models):
+        runtime_options(parser, "sandbox")
+        parser.set_defaults(func=sandbox_cli)
+
+
+def sandbox_cli(args):
+    if not args.container:
+        raise ValueError("ramalama sandbox requires a container engine")
+
+    from ramalama.sandbox import run_sandbox
+
+    run_sandbox(args)
 
 
 def stop_parser(subparsers):
