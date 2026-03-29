@@ -695,6 +695,7 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
         ctx.check_call(["ramalama", "pull", test_model])
 
         extra_args = ["--env", env_vars] if env_vars else []
+        extra_args += ['--runtime-args', '--top-p 1.0']
         # Exec ramalama serve
         result = ctx.check_output(
             [
@@ -723,13 +724,14 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
                 assert re.search(r".*llama-server", content)
                 assert re.search(r".*hostPort: 1234", content)
                 assert re.search(r".*/llama-stack", content)
+                assert re.search(r".*'--top-p', '1.0'.*", content)
 
                 if env_vars:
                     assert len(re.findall(r"name: SEARCH_API_KEY", content)) == 2
-                    assert len(re.findall(r"value: 9999", content)) == 2
+                    assert len(re.findall(r'value: "?9999"?', content)) == 2
                 else:
-                    assert not re.search(r".*name: SEARCH_API_KEY", content)
-                    assert not re.search(r".*value: 9999", content)
+                    assert not re.search(r"name: SEARCH_API_KEY", content)
+                    assert not re.search(r'value: "?9999"?', content)
 
         elif generate == 'compose':
             # Test the expected output of the command execution

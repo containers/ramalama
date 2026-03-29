@@ -1,15 +1,14 @@
 import copy
 import os
-import platform
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import check_nvidia, exec_cmd, genname, get_accel_env_vars, get_gpu_devices, version_tagged_image
+from ramalama.common import exec_cmd, genname, get_accel_env_vars, version_tagged_image
 from ramalama.compat import NamedTemporaryFile
 from ramalama.compose import Compose
 from ramalama.config import ActiveConfig
 from ramalama.engine import add_labels
-from ramalama.path_utils import normalize_host_path_for_container
+from ramalama.kube import Kube
 from ramalama.plugins.loader import assemble_command
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
@@ -26,57 +25,13 @@ class Stack:
         self.host = "0.0.0.0"
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
-        self.model_port = str(int(self.args.port) + 1)
+        self.model_port = "8080"
         self.stack_image = version_tagged_image(ActiveConfig().stack_image)
         self.labels = ""
 
     def add_label(self, label):
         cleanlabel = label.replace("=", ": ", 1)
         self.labels = f"{self.labels}\n        {cleanlabel}"
-
-    def _gen_resources(self):
-        if check_nvidia() == "cuda":
-            return """
-        resources:
-          limits:
-             'nvidia.com/gpu=all': 1"""
-        return ""
-
-    def _gen_volume_mounts(self):
-        if self.model_type == "OCI":
-            volume_mounts = """
-        - mountPath: /mnt/models
-          subPath: /models
-          name: model"""
-        else:
-            volume_mounts = f"""
-        - mountPath: {self.model._get_entry_model_path(True, True, False)}
-          name: model"""
-
-        if self.args.dri == "on" and platform.system() != "Windows":
-            for name, path in get_gpu_devices().items():
-                volume_mounts += f"""
-        - mountPath: {path}
-          name: {name}"""
-
-        return volume_mounts
-
-    def _gen_volumes(self):
-        host_model_path = normalize_host_path_for_container(self.model._get_entry_model_path(False, False, False))
-        if platform.system() == "Windows":
-            #  Workaround https://github.com/containers/podman/issues/16704
-            host_model_path = '/mnt' + host_model_path
-        volumes = f"""
-      - hostPath:
-          path: {host_model_path}
-        name: model"""
-        if self.args.dri == "on" and platform.system() != "Windows":
-            for name, path in get_gpu_devices().items():
-                volumes += f"""
-      - hostPath:
-          path: {path}
-        name: {name}"""
-        return volumes
 
     def _get_env_vars(self):
         env_vars = {}
@@ -105,112 +60,50 @@ class Stack:
             accel_env_vars["MTHREADS_VISIBLE_DEVICES"] = "all"
         return self._gen_kube_env(accel_env_vars)
 
-    def _gen_security_context(self):
-        return """
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - CAP_CHOWN
-            - CAP_FOWNER
-            - CAP_FSETID
-            - CAP_KILL
-            - CAP_NET_BIND_SERVICE
-            - CAP_SETFCAP
-            - CAP_SETGID
-            - CAP_SETPCAP
-            - CAP_SETUID
-            - CAP_SYS_CHROOT
-            add:
-            - CAP_DAC_OVERRIDE
-          seLinuxOptions:
-            type: spc_t"""
-
-    def _gen_llama_args(self):
-        return "\n        - ".join(
-            [
-                'llama-server',
-                '--port',
-                str(self.model_port),
-                '--model',
-                self.model._get_entry_model_path(True, True, False),
-                '--alias',
-                self.model.model_name,
-                '--ctx-size',
-                str(self.args.ctx_size),
-                '--temp',
-                str(self.args.temp),
-                '--jinja',
-                '--cache-reuse',
-                '256',
-                '-v',
-                '--threads',
-                str(self.args.threads),
-                '--host',
-                self.host,
-            ]
-        )
-
     def generate(self):
         add_labels(self.args, self.add_label)
-        llama_args = self._gen_llama_args()
-        resources = self._gen_resources()
-        security = self._gen_security_context()
         env_vars = self._get_env_vars()
         common_env = self._gen_kube_env(env_vars)
-        server_env = self._gen_server_env()
-        volume_mounts = self._gen_volume_mounts()
-        volumes = self._gen_volumes()
-        self.stack_yaml = f"""
-apiVersion: v1
-kind: Deployment
-metadata:
-  name: {self.name}
-  labels:
-    app: {self.name}
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: {self.name}
-  template:
-    metadata:
-      labels:
-        ai.ramalama: ""
-        app: {self.name}{self.labels}
-    spec:
-      containers:
-      - name: model-server
-        image: {self.args.image}
-        command:
-        - {llama_args}\
-        {security}
-        env:{common_env}{server_env}\
-        {resources}
-        volumeMounts:{volume_mounts}
-      - name: llama-stack
-        image: {self.stack_image}
-        args:
-        - llama
-        - stack
-        - run
-        - --image-type
-        - venv
-        - /etc/ramalama/ramalama-run.yaml
+        llama_stack_container = {
+            "name": "llama-stack",
+            "image": self.stack_image,
+            "args": ["llama", "stack", "run", "--image-type", "venv", "/etc/ramalama/ramalama-run.yaml"],
+            "env_string": f"""\
         env:{common_env}
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}
         - name: INFERENCE_MODEL
-          value: {self.model.model_name}\
-        {security}
+          value: {self.model.model_name}""",
+            "port_string": f"""\
         ports:
         - containerPort: 8321
-          hostPort: {self.args.port}
-      volumes:{volumes}"""
-        return self.stack_yaml
+          hostPort: {self.args.port}""",
+        }
+        kube = Kube(*(self._delegate_args() + tuple([False])))
+        return kube.generate_content("model-server", self.labels, llama_stack_container)
+
+    def _delegate_args(self):
+        model_src_path = self.model._get_entry_model_path(False, False, False)
+        chat_template_src_path = self.model._get_chat_template_path(False, False, False)
+        mmproj_src_path = self.model._get_mmproj_path(False, False, False)
+        model_dest_path = self.model._get_entry_model_path(True, True, False)
+        chat_template_dest_path = self.model._get_chat_template_path(True, True, False)
+        mmproj_dest_path = self.model._get_mmproj_path(True, True, False)
+        args2 = copy.copy(self.args)
+        args2.port = self.model_port
+        exec_args = assemble_command(args2)
+        return (
+            self.model.model_name,
+            (model_src_path, model_dest_path),
+            (chat_template_src_path, chat_template_dest_path),
+            (mmproj_src_path, mmproj_dest_path),
+            args2,
+            exec_args,
+        )
 
     def serve(self):
-        self.args.port = compute_serving_port(self.args, quiet=self.args.generate)
+        stack_port = compute_serving_port(self.args, quiet=self.args.generate)
+        self.args.port = stack_port
         yaml = self.generate()
         if self.args.dryrun:
             print(yaml)
@@ -235,24 +128,7 @@ spec:
                 return
 
             if self.args.generate.gen_type == "compose":
-                model_src_path = self.model._get_entry_model_path(False, False, False)
-                chat_template_src_path = self.model._get_chat_template_path(False, False, False)
-                mmproj_src_path = self.model._get_mmproj_path(False, False, False)
-                model_dest_path = self.model._get_entry_model_path(True, True, False)
-                chat_template_dest_path = self.model._get_chat_template_path(True, True, False)
-                mmproj_dest_path = self.model._get_mmproj_path(True, True, False)
-                stack_port = self.args.port
-                compose_args = copy.copy(self.args)
-                compose_args.port = self.model_port
-                exec_args = assemble_command(compose_args)
-                compose = Compose(
-                    self.model.model_name,
-                    (model_src_path, model_dest_path),
-                    (str(chat_template_src_path), str(chat_template_dest_path)),
-                    (str(mmproj_src_path), str(mmproj_dest_path)),
-                    compose_args,
-                    exec_args,
-                )
+                compose = Compose(*self._delegate_args())
                 file = compose.generate()
                 compose_env = self._gen_compose_env(self._get_env_vars())
                 file.content += f"""

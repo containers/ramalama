@@ -2,7 +2,7 @@ import os
 import platform
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel_env_vars, get_gpu_devices
+from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, check_nvidia, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.version import version
@@ -41,7 +41,7 @@ class Kube:
         mounts = """\
         volumeMounts:"""
 
-        volumes = """
+        volumes = """\
       volumes:"""
         if os.path.exists(self.src_model_path):
             m, v = self._gen_path_volume()
@@ -75,7 +75,7 @@ class Kube:
         m, v = self._gen_devices()
         mounts += m
         volumes += v
-        return mounts + volumes
+        return mounts, volumes
 
     def _gen_devices(self):
         mounts = ""
@@ -186,11 +186,74 @@ class Kube:
 
         return env_spec
 
-    def generate(self) -> PlainFile:
+    def __gen_security_context(self):
+        return """\
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - CAP_CHOWN
+            - CAP_FOWNER
+            - CAP_FSETID
+            - CAP_KILL
+            - CAP_NET_BIND_SERVICE
+            - CAP_SETFCAP
+            - CAP_SETGID
+            - CAP_SETPCAP
+            - CAP_SETUID
+            - CAP_SYS_CHROOT
+            add:
+            - CAP_DAC_OVERRIDE
+          seLinuxOptions:
+            type: spc_t"""
+
+    def __gen_resources(self):
+        if check_nvidia() == "cuda":
+            return """
+        resources:
+          limits:
+             'nvidia.com/gpu=all': 1"""
+        return ""
+
+    def __gen_container(self, container_args):
+        content = f"""\
+      - name: {container_args["name"]}
+        image: {container_args["image"]}
+"""
+        if "command" in container_args:
+            content += f"""\
+        command: ["{container_args["command"]}"]
+"""
+        content += f"""\
+        args: {container_args["args"]}
+{container_args["env_string"]}"""
+        content += f"""
+{self.__gen_security_context()}
+{container_args["port_string"]}"""
+        if "mounts_string" in container_args:
+            content += f"""
+{container_args["mounts_string"]}"""
+        if "resources_string" in container_args:
+            content += f"""\
+{container_args["resources_string"]}"""
+        return content
+
+    def generate_content(self, name=None, labels="", container=None):
         env_string = self.__gen_env_vars()
         port_string = self.__gen_ports()
-        volume_string = self._gen_volumes()
+        mounts_string, volume_string = self._gen_volumes()
         _version = version()
+        model_container = {
+            "name": self.name if name is None else name,
+            "image": self.image,
+            "args": self.exec_args[1:],
+            "env_string": env_string,
+            "port_string": port_string,
+            "mounts_string": mounts_string,
+            "resources_string": self.__gen_resources(),
+        }
+        if not isinstance(self.exec_args[0], ContainerEntryPoint):
+            model_container["command"] = self.exec_args[0]
 
         content = f"""\
 # Save the output of this file and use kubectl create -f to import
@@ -211,24 +274,21 @@ spec:
   template:
     metadata:
       labels:
-        app: {self.name}
+        app: {self.name}{labels}
     spec:
       containers:
-      - name: {self.name}
-        image: {self.image}
+{self.__gen_container(model_container)}
 """
-        if not isinstance(self.exec_args[0], ContainerEntryPoint):
-            content += f"""\
-        command: ["{self.exec_args[0]}"]
+        if container is not None:
+            content += f"""{self.__gen_container(container)}
 """
-        content += f"""\
-        args: {self.exec_args[1:]}
-{env_string}
-{port_string}
-{volume_string}
+        content += f"""{volume_string}
 """
 
-        return genfile(self.name, content)
+        return content
+
+    def generate(self) -> PlainFile:
+        return genfile(self.name, self.generate_content())
 
 
 def genfile(name, content) -> PlainFile:
