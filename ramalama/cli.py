@@ -242,6 +242,7 @@ def create_argument_parser(description: str, add_help: bool = True):
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=add_help,
     )
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s version " + version())
     configure_arguments(parser)
     return parser
 
