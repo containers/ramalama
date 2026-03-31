@@ -665,8 +665,8 @@ AccelImageArgs: TypeAlias = None | AccelImageArgsOtherRuntime | AccelImageArgsOt
 def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: str = "image") -> str:
     """
     Selects the appropriate image based on config, arguments, environment.
-    "images" is a mapping of environment variable names to image names. If not specified, the
-    mapping from default config will be used.
+    "images" is a mapping of environment variable names to image names. If not specified,
+    the runtime plugin is asked to select the image.
     "conf_key" is the configuration key that holds the configured value of the selected image.
     If not specified, it defaults to "image".
 
@@ -681,7 +681,7 @@ def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: 
     gpu_type = next(iter(get_gpu_type_env_vars()), "")
 
     if not images:
-        # No explicit images provided: ask the runtime plugin for the image
+        # Ask the runtime plugin to select the image based on detected GPU and its own logic
         from ramalama.plugins.loader import get_runtime
 
         plugin_image = get_runtime(config.runtime).get_container_image(config, gpu_type)
@@ -689,7 +689,7 @@ def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: 
             return latest_tagged_image(plugin_image)
         images = config.images  # plugin returned None (e.g., MLX); fall back to user dict
 
-    # Get image based on detected GPU type; tag user overrides with :latest if untagged
+    # Explicit images dict provided (e.g., RAG): select by detected GPU type
     return latest_tagged_image(images.get(gpu_type, getattr(config, f"default_{conf_key}")))
 
 
