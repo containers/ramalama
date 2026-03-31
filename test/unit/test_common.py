@@ -14,7 +14,9 @@ from ramalama.cli import (
     parse_args_from_cmd,
 )
 from ramalama.common import (
+    _check_intel_windows,
     accel_image,
+    check_intel,
     check_nvidia,
     ensure_image,
     find_in_cdi,
@@ -268,6 +270,60 @@ class TestCheckNvidia:
     def test_check_nvidia_smi_not_found(self, mock_run_cmd):
         mock_run_cmd.side_effect = OSError("nvidia-smi not found")
         assert check_nvidia() is None
+
+
+class TestCheckIntelWindows:
+    """Tests for _check_intel_windows() and check_intel() on Windows."""
+
+    def _patch_wmi(self):
+        """Patch wmi in sys.modules so the local import inside _check_intel_windows() picks it up."""
+        mock_wmi = MagicMock()
+        return patch.dict("sys.modules", {"wmi": mock_wmi}), mock_wmi
+
+    def test_intel_gpu_detected(self):
+        patcher, mock_wmi = self._patch_wmi()
+        with patcher:
+            gpu = MagicMock()
+            gpu.Name = "Intel(R) UHD Graphics 770"
+            mock_wmi.WMI.return_value.Win32_VideoController.return_value = [gpu]
+            assert _check_intel_windows() == 1
+
+    def test_no_intel_gpu(self):
+        patcher, mock_wmi = self._patch_wmi()
+        with patcher:
+            gpu = MagicMock()
+            gpu.Name = "NVIDIA GeForce RTX 4090"
+            mock_wmi.WMI.return_value.Win32_VideoController.return_value = [gpu]
+            assert _check_intel_windows() == 0
+
+    def test_mixed_vendors(self):
+        patcher, mock_wmi = self._patch_wmi()
+        with patcher:
+            nvidia = MagicMock()
+            nvidia.Name = "NVIDIA GeForce RTX 4090"
+            intel = MagicMock()
+            intel.Name = "Intel(R) Arc A770"
+            mock_wmi.WMI.return_value.Win32_VideoController.return_value = [nvidia, intel]
+            assert _check_intel_windows() == 1
+
+    def test_wmi_failure(self):
+        patcher, mock_wmi = self._patch_wmi()
+        with patcher:
+            mock_wmi.WMI.side_effect = Exception("WMI not available")
+            assert _check_intel_windows() == 0
+
+    @patch("ramalama.common.platform.system", return_value="Windows")
+    def test_check_intel_sets_env(self, _mock_system):
+        patcher, mock_wmi = self._patch_wmi()
+        gpu = MagicMock()
+        gpu.Name = "Intel(R) UHD Graphics 770"
+        mock_wmi.WMI.return_value.Win32_VideoController.return_value = [gpu]
+        with patcher, patch.dict("os.environ", {}, clear=True):
+            result = check_intel()
+            assert result == "intel"
+            assert os.environ["INTEL_VISIBLE_DEVICES"] == "1"
+            assert "GGML_OPENVINO_DEVICE" not in os.environ
+            assert "GGML_OPENVINO_STATEFUL_EXECUTION" not in os.environ
 
 
 class TestGetAccel:
