@@ -38,6 +38,47 @@ The default can be overridden in the `ramalama.conf` file.
 #### **--authfile**=*password*
 path of the authentication file for OCI registries
 
+#### **--backend**=*auto* | vulkan | rocm | cuda | sycl | openvino
+GPU backend to use for inference (default: auto).
+
+Available backends depend on the detected GPU hardware.
+
+**auto** (default): Automatically selects the preferred backend based on your GPU:
+- **AMD GPUs**: vulkan (Linux/macOS) or rocm (Windows)
+- **NVIDIA GPUs**: cuda
+- **Intel GPUs**: vulkan (Linux/macOS) or sycl (Windows); openvino available as explicit option
+- **No GPU**: vulkan (CPU fallback)
+
+**Platform-specific behavior**:
+- On **Linux/macOS**, Vulkan provides broad compatibility and is preferred for AMD and Intel GPUs
+- On **Windows**, vulkan is not supported on WSL2, so vendor-specific backends (rocm, sycl) are preferred
+
+**Explicit backend selection**:
+- **vulkan**: Use Vulkan-based inference (compatible with AMD, Intel, and CPU)
+- **rocm**: Use AMD ROCm backend (AMD GPUs only)
+- **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
+- **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
+- **openvino**: Use Intel OpenVINO backend (Intel GPUs only); uses `ghcr.io/ggml-org/llama.cpp:full-openvino`
+
+**Available choices**: The allowed values for `--backend` are dynamically determined based on
+your detected GPU hardware. For example, on a system with an AMD GPU, only `auto`, `vulkan`,
+and `rocm` are available.
+
+**Configuration**: The default can be overridden in the `ramalama.conf` file or via the
+RAMALAMA_BACKEND environment variable.
+
+Examples:
+```
+# Use auto-detection (default)
+ramalama run granite
+
+# Force Vulkan backend
+ramalama run --backend vulkan granite
+
+# Force ROCm backend on AMD GPU
+ramalama run --backend rocm granite
+```
+
 #### **--cache-reuse**=256
 Min chunk size to attempt reusing from the cache via KV shifting
 
@@ -74,8 +115,8 @@ Show this help message and exit
 
 #### **--image**=IMAGE
 OCI container image to run with specified AI model. RamaLama defaults to using
-images based on the accelerator it discovers. For example:
-`quay.io/ramalama/ramalama`. See the table below for all default images.
+images based on the accelerator it discovers and the selected `--backend`.
+For example: `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
 Version 0.18.0 of RamaLama pulls an image with a `:0.18` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
@@ -83,17 +124,23 @@ The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
 RamaLama to use the `quay.io/ramalama/aiimage:1.2` image.
 
+**Note**: The `--backend` option provides a higher-level way to select the appropriate image
+based on GPU type. Use `--backend` to select vulkan, rocm, cuda, sycl, or openvino backends, which will
+automatically choose the correct image. Use `--image` only when you need to override the image
+selection entirely.
+
 Accelerated images:
 
-| Accelerator             | Image                      |
+| Backend / Accelerator   | Image                      |
 | ------------------------| -------------------------- |
-|  CPU, Apple             | quay.io/ramalama/ramalama  |
-|  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm      |
-|  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda      |
-|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi     |
-|  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu |
-|  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
-|  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
+|  CPU, Vulkan            | quay.io/ramalama/ramalama  |
+|  ROCm (AMD)             | quay.io/ramalama/rocm      |
+|  CUDA (NVIDIA)          | quay.io/ramalama/cuda      |
+|  Intel GPU (sycl)       | quay.io/ramalama/intel-gpu |
+|  Intel GPU (openvino)   | ghcr.io/ggml-org/llama.cpp:full-openvino |
+|  Asahi (Apple Silicon)  | quay.io/ramalama/asahi     |
+|  CANN (Ascend)          | quay.io/ramalama/cann      |
+|  MUSA (Moore Threads)   | quay.io/ramalama/musa      |
 
 Upstream llama.cpp "full" images from `ghcr.io/ggml-org/llama.cpp` are also supported.
 RamaLama automatically detects the image type and adjusts the container CLI accordingly.

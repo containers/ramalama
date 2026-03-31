@@ -5,10 +5,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ramalama.common import ContainerEntryPoint, version_tagged_image
+from ramalama.cli import (
+    configure_subcommands,
+    create_argument_parser,
+    default_image,
+    default_rag_image,
+)
+from ramalama.common import ContainerEntryPoint, accel_image, version_tagged_image
+from ramalama.compat import NamedTemporaryFile
+from ramalama.config import DEFAULT_IMAGE, load_config
 from ramalama.plugins.interface import InferenceRuntimePlugin
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
-from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin
+from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin, get_available_backends
 from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
 from ramalama.plugins.runtimes.inference.vllm import VllmPlugin
 
@@ -463,12 +471,14 @@ class TestLlamaCppPlugin:
 
     def test_get_container_image_cuda(self):
         config = MagicMock()
+        config.backend = "auto"
         config.images.get.return_value = None
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
         assert image == version_tagged_image("quay.io/ramalama/cuda")
 
     def test_get_container_image_no_gpu(self):
         config = MagicMock()
+        config.backend = "auto"
         config.images.get.return_value = None
         config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
         image = self.plugin.get_container_image(config, "")
@@ -476,6 +486,7 @@ class TestLlamaCppPlugin:
 
     def test_get_container_image_user_override(self):
         config = MagicMock()
+        config.backend = "auto"
         config.images.get.side_effect = lambda key, default=None: {
             "CUDA_VISIBLE_DEVICES": "custom/cuda:v1.0",
         }.get(key, default)
@@ -568,14 +579,18 @@ class TestVllmPlugin:
         config = MagicMock()
         config.images.get.side_effect = lambda key, default=None: default
 
+        # RamalamaImages provides a default for CUDA without :latest tag
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
-        assert image == "docker.io/vllm/vllm-openai:latest"
+        assert image == "docker.io/vllm/vllm-openai"
 
     def test_get_container_image_no_gpu(self):
+        from unittest.mock import patch
+
         config = MagicMock()
         config.images.get.side_effect = lambda key, default=None: default
 
-        image = self.plugin.get_container_image(config, "")
+        with patch.dict("os.environ", {}, clear=True):
+            image = self.plugin.get_container_image(config, "")
         assert image == "docker.io/vllm/vllm-openai:latest"
 
     def test_get_container_image_with_tag_not_modified(self):
@@ -923,3 +938,217 @@ class TestConfigureSubcommandsFiltering:
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
         assert "--generate" not in opts
+
+
+# ---------------------------------------------------------------------------
+# llama.cpp backend selection
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "backend,gpu_env,expected_result",
+    [
+        # Auto mode: Vulkan for AMD and Intel, CUDA for NVIDIA
+        ("auto", "HIP_VISIBLE_DEVICES", DEFAULT_IMAGE),  # AMD -> Vulkan -> ramalama image
+        ("auto", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
+        ("auto", "INTEL_VISIBLE_DEVICES", DEFAULT_IMAGE),  # Intel -> Vulkan -> ramalama image
+        # Explicit Vulkan: works for AMD and Intel
+        ("vulkan", "HIP_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        ("vulkan", "INTEL_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        # Explicit vendor backends
+        ("rocm", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
+        ("cuda", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
+        ("sycl", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),
+        ("openvino", "INTEL_VISIBLE_DEVICES", "ghcr.io/ggml-org/llama.cpp:full-openvino"),
+        # Force backend even with different GPU (warns but allows)
+        ("rocm", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
+        ("cuda", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
+        ("vulkan", "CUDA_VISIBLE_DEVICES", DEFAULT_IMAGE),  # Vulkan on NVIDIA (not in preferences, warns)
+    ],
+)
+def test_backend_selection(backend: str, gpu_env: str, expected_result: str, monkeypatch):
+    """Test that GPUs use the correct image based on backend config."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    with NamedTemporaryFile('w', delete_on_close=False) as f:
+        f.write(f"""\
+[ramalama]
+backend = "{backend}"
+            """)
+        f.flush()
+
+        env = {
+            "RAMALAMA_CONFIG": f.name,
+            gpu_env: "1",
+        }
+
+        with patch.dict("os.environ", env, clear=True):
+            config = load_config()
+            with patch("ramalama.cli.ActiveConfig", return_value=config):
+                default_image.cache_clear()
+                default_rag_image.cache_clear()
+                parser = create_argument_parser("test_backend")
+                configure_subcommands(parser)
+                assert accel_image(config) == expected_result
+
+
+@pytest.mark.parametrize(
+    "backend,gpu_env,expected_result",
+    [
+        # Auto mode on Windows: ROCm for AMD, CUDA for NVIDIA, sycl for Intel
+        ("auto", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),  # AMD -> ROCm on Windows
+        ("auto", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),  # NVIDIA -> CUDA
+        ("auto", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),  # Intel -> sycl
+        # Explicit backends still work
+        ("vulkan", "HIP_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        ("rocm", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
+        ("vulkan", "INTEL_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        ("sycl", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),
+        ("openvino", "INTEL_VISIBLE_DEVICES", "ghcr.io/ggml-org/llama.cpp:full-openvino"),
+    ],
+)
+def test_backend_selection_windows(backend: str, gpu_env: str, expected_result: str, monkeypatch):
+    """Test that Windows defaults to vendor-specific backends for AMD and Intel."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.platform.system", lambda: "Windows")
+
+    with NamedTemporaryFile('w', delete_on_close=False) as f:
+        f.write(f"""\
+[ramalama]
+backend = "{backend}"
+            """)
+        f.flush()
+
+        env = {
+            "RAMALAMA_CONFIG": f.name,
+            gpu_env: "1",
+        }
+
+        with patch.dict("os.environ", env, clear=True):
+            config = load_config()
+            with patch("ramalama.cli.ActiveConfig", return_value=config):
+                default_image.cache_clear()
+                default_rag_image.cache_clear()
+                parser = create_argument_parser("test_backend_windows")
+                configure_subcommands(parser)
+                assert accel_image(config) == expected_result
+
+
+@pytest.mark.parametrize(
+    "gpu_env,backend,expected_image",
+    [
+        # AMD GPU: vLLM should use ROCm image regardless of backend
+        ("HIP_VISIBLE_DEVICES", "auto", "docker.io/vllm/vllm-openai-rocm:latest"),
+        ("HIP_VISIBLE_DEVICES", "vulkan", "docker.io/vllm/vllm-openai-rocm:latest"),
+        ("HIP_VISIBLE_DEVICES", "rocm", "docker.io/vllm/vllm-openai-rocm:latest"),
+        # NVIDIA GPU: vLLM uses standard CUDA image
+        ("CUDA_VISIBLE_DEVICES", "auto", "docker.io/vllm/vllm-openai:latest"),
+        ("CUDA_VISIBLE_DEVICES", "cuda", "docker.io/vllm/vllm-openai:latest"),
+        # Intel GPU: vLLM uses Intel-specific image regardless of backend
+        ("INTEL_VISIBLE_DEVICES", "auto", "docker.io/intel/vllm:latest"),
+        ("INTEL_VISIBLE_DEVICES", "vulkan", "docker.io/intel/vllm:latest"),
+        ("INTEL_VISIBLE_DEVICES", "sycl", "docker.io/intel/vllm:latest"),
+    ],
+)
+def test_vllm_backend_image_selection(gpu_env: str, backend: str, expected_image: str, monkeypatch):
+    """Test that vLLM uses correct images based on detected GPU, not backend selection."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    with NamedTemporaryFile('w', delete_on_close=False) as f:
+        f.write(f"""\
+[ramalama]
+backend = "{backend}"
+runtime = "vllm"
+            """)
+        f.flush()
+
+        env = {
+            "RAMALAMA_CONFIG": f.name,
+            gpu_env: "1",
+        }
+
+        with patch.dict("os.environ", env, clear=True):
+            config = load_config()
+            with patch("ramalama.cli.ActiveConfig", return_value=config):
+                default_image.cache_clear()
+                default_rag_image.cache_clear()
+                parser = create_argument_parser("test_vllm")
+                configure_subcommands(parser)
+                assert accel_image(config) == expected_image
+
+
+def test_backend_incompatibility_warning(monkeypatch):
+    """Test that warnings are issued for incompatible backend selections."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    with NamedTemporaryFile('w', delete_on_close=False) as f:
+        f.write("""\
+[ramalama]
+backend = "cuda"
+            """)
+        f.flush()
+
+        env = {
+            "RAMALAMA_CONFIG": f.name,
+            "HIP_VISIBLE_DEVICES": "1",  # AMD GPU detected, but CUDA backend requested
+        }
+
+        with patch.dict("os.environ", env, clear=True):
+            config = load_config()
+            with patch("ramalama.cli.ActiveConfig", return_value=config):
+                default_image.cache_clear()
+                default_rag_image.cache_clear()
+                parser = create_argument_parser("test_backend_warning")
+                configure_subcommands(parser)
+
+                with patch("ramalama.plugins.runtimes.inference.llama_cpp.logger.warning") as mock_warning:
+                    result = accel_image(config)
+                    assert result == version_tagged_image("quay.io/ramalama/cuda")
+                    mock_warning.assert_called_once()
+                    call_args = mock_warning.call_args[0][0]
+                    assert "may not be compatible" in call_args
+                    assert "HIP GPU" in call_args
+
+
+@pytest.mark.parametrize(
+    "gpu_env,expected_backends",
+    [
+        ("HIP_VISIBLE_DEVICES", ["auto", "vulkan", "rocm"]),  # AMD
+        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda"]),  # NVIDIA
+        ("INTEL_VISIBLE_DEVICES", ["auto", "vulkan", "sycl", "openvino"]),  # Intel (Vulkan preferred)
+        ("ASAHI_VISIBLE_DEVICES", ["auto", "vulkan"]),  # Asahi
+        (None, ["auto", "vulkan"]),  # No GPU
+    ],
+)
+def test_get_available_backends(gpu_env: str | None, expected_backends: list[str], monkeypatch):
+    """Test that available backends are correctly returned based on detected GPU."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    env = {}
+    if gpu_env:
+        env[gpu_env] = "1"
+
+    with patch.dict("os.environ", env, clear=True):
+        assert get_available_backends() == expected_backends
+
+
+@pytest.mark.parametrize(
+    "gpu_env,expected_backends",
+    [
+        ("HIP_VISIBLE_DEVICES", ["auto", "rocm", "vulkan"]),  # AMD: ROCm preferred on Windows
+        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda"]),  # NVIDIA: same on all platforms
+        ("INTEL_VISIBLE_DEVICES", ["auto", "sycl", "vulkan", "openvino"]),  # Intel: sycl preferred on Windows
+        (None, ["auto", "vulkan"]),  # No GPU: same on all platforms
+    ],
+)
+def test_get_available_backends_windows(gpu_env: str | None, expected_backends: list[str], monkeypatch):
+    """Test that available backends on Windows prefer vendor-specific backends."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.platform.system", lambda: "Windows")
+
+    env = {}
+    if gpu_env:
+        env[gpu_env] = "1"
+
+    with patch.dict("os.environ", env, clear=True):
+        assert get_available_backends() == expected_backends
