@@ -10,7 +10,7 @@ const siteBaseUrl = '/docs/';
 const config: Config = {
   title: 'RamaLama',
   tagline: 'Working with AI made simple, straightforward, and familiar',
-  favicon: 'img/favicon.png',
+  favicon: 'img/ramalama-favicon.svg',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
