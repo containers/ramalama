@@ -79,6 +79,12 @@ def test_config_defaults_not_set(monkeypatch):
     assert cfg.is_set("verify") is False
 
 
+@pytest.mark.parametrize("backend", ["auto", "vulkan", "rocm", "cuda", "sycl", "openvino"])
+def test_base_config_accepts_valid_backend(backend):
+    config = BaseConfig(backend=backend)
+    assert config.backend == backend
+
+
 def test_base_config_normalizes_pull_for_docker():
     config = BaseConfig(engine="docker", pull="newer")
     assert config.pull == "always"

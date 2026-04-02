@@ -205,6 +205,7 @@ deps = [
     "mlx-lm ; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "pytest-timeout"
 ]
+set_env = { COLUMNS = "120" }
 commands = [
   [
     "pytest",

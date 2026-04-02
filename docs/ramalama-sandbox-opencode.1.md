@@ -1,16 +1,16 @@
-% ramalama-sandbox-goose 1
+% ramalama-sandbox-opencode 1
 
 ## NAME
-ramalama\-sandbox\-goose - run Goose in a sandbox, backed by a local AI Model
+ramalama\-sandbox\-opencode - run OpenCode in a sandbox, backed by a local AI Model
 
 ## SYNOPSIS
-**ramalama sandbox goose** [*options*] *model* [arg ...]
+**ramalama sandbox opencode** [*options*] *model* [arg ...]
 
 ## DESCRIPTION
-Run Goose in a container, connected to a local model server also running
-in a container. Goose uses the model for reasoning and tool calling.
+Run OpenCode in a container, connected to a local model server also running
+in a container. OpenCode uses the model for reasoning and tool calling.
 
-When run with no arguments after the model, an interactive session is
+When run with no arguments after the model, an interactive TUI session is
 launched. If one or more arguments are provided, they are passed to the agent
 as instructions to process non-interactively. Commands may also be passed via
 stdin.
@@ -56,20 +56,20 @@ RAMALAMA_BACKEND environment variable.
 Examples:
 ```
 # Use auto-detection (default)
-ramalama run granite
+ramalama serve granite
 
 # Force Vulkan backend
-ramalama run --backend vulkan granite
+ramalama serve --backend vulkan granite
 
 # Force ROCm backend on AMD GPU
-ramalama run --backend rocm granite
+ramalama serve --backend rocm granite
 ```
 
 #### **--cache-reuse**=256
 Min chunk size to attempt reusing from the cache via KV shifting
 
 #### **--ctx-size**, **-c**
-size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 0, 0 = loaded from model)
+Size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vLLM regardless of alias (default: 0, 0 = loaded from model).
 
 #### **--device**
 Add a host device to the container. Optional permissions parameter can
@@ -92,9 +92,6 @@ process to be launched inside of the container. If an environment variable is
 specified without a value, the container engine checks the host environment
 for a value and set the variable only if it is set on the host.
 
-#### **--goose-image**=*IMAGE*
-Goose container image
-
 #### **--help**, **-h**
 show this help message and exit
 
@@ -104,7 +101,7 @@ IP address for llama.cpp to listen on.
 #### **--image**=IMAGE
 OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
-`quay.io/ramalama/ramalama`. See the table above for all default images.
+`quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
 Version 0.18.0 of RamaLama pulls an image with a `:0.18` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
@@ -170,11 +167,14 @@ The default, -1, means use whatever is automatically deemed appropriate (0 or 99
 #### **--oci-runtime**
 
 Override the default OCI runtime used to launch the container. Container
-engines like Podman and Docker, have their own default oci runtime that they
-use. Using this option RamaLama will override these defaults.
+engines like Podman and Docker have their own default OCI runtime that they
+use. Using this option, RamaLama will override these defaults.
 
 On NVIDIA-based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
+
+#### **--opencode-image**=*IMAGE*
+OpenCode container image
 
 #### **--port**, **-p**
 port for AI Model server to listen on. It must be available. If not specified,
@@ -244,34 +244,34 @@ Local directory to mount into the sandbox container at /work
 
 ## EXAMPLES
 
-Run the Goose agent with default settings:
+Run the OpenCode agent with default settings:
 ```
-ramalama sandbox goose qwen3:4b
+ramalama sandbox opencode qwen3:4b
 ```
 
-Run the Goose agent with a custom image:
+Run the OpenCode agent with a custom image:
 ```
-ramalama sandbox goose --goose-image ghcr.io/block/goose:1.27.1 qwen3:4b
+ramalama sandbox opencode --opencode-image ghcr.io/anomalyco/opencode:v1.3.0 qwen3:4b
 ```
 
 Turn off thinking mode in the model the agent is connecting to (may result in faster responses):
 ```
-ramalama sandbox goose --thinking=off qwen3:4b
+ramalama sandbox opencode --thinking=off qwen3:4b
 ```
 
 Start an interactive session with access to a local directory:
 ```
-ramalama sandbox goose -w ./src qwen3:4b
+ramalama sandbox opencode -w ./src qwen3:4b
 ```
 
 Request the agent to perform actions non-interactively:
 ```
-ramalama sandbox goose -w ./src qwen3:4b Please analyze the source code in the current directory
+ramalama sandbox opencode -w ./src qwen3:4b Please analyze the source code in the current directory
 ```
 
 Send instructions to the agent via stdin:
 ```
-echo "What is the speed of light in meters per second?" | ramalama sandbox goose qwen3:4b
+echo "What is the speed of light in meters per second?" | ramalama sandbox opencode qwen3:4b
 ```
 
 ## SEE ALSO

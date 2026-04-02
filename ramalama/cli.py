@@ -242,6 +242,7 @@ def create_argument_parser(description: str, add_help: bool = True):
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=add_help,
     )
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s version " + version())
     configure_arguments(parser)
     return parser
 
@@ -989,18 +990,8 @@ def sandbox_parser(subparsers):
 
     from ramalama.sandbox import add_sandbox_subparsers
 
-    for parser in add_sandbox_subparsers(sandbox_subparsers, local_images, local_models):
-        runtime_options(parser, "sandbox")
-        parser.set_defaults(func=sandbox_cli)
-
-
-def sandbox_cli(args):
-    if not args.container:
-        raise ValueError("ramalama sandbox requires a container engine")
-
-    from ramalama.sandbox import run_sandbox
-
-    run_sandbox(args)
+    for sub_parser in add_sandbox_subparsers(sandbox_subparsers, local_images, local_models):
+        runtime_options(sub_parser, "sandbox")
 
 
 def stop_parser(subparsers):

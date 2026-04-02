@@ -33,6 +33,16 @@ Note: On systems with NVIDIA GPUs, see **[ramalama-cuda(7)](ramalama-cuda.7.md)*
 
 RamaLama CLI defaults can be modified via ramalama.conf files. Default settings for flags are defined in **[ramalama.conf(5)](ramalama.conf.5.md)**.
 
+## FEDORA SILVERBLUE AND TOOLBOX
+
+On Fedora Silverblue and other immutable variants the system is read-only. You can run RamaLama in either of these ways:
+
+- **Toolbox**: Create a Toolbox container and install RamaLama inside it (e.g. `pip install ramalama` or `dnf install ramalama`). Use the same Podman or Docker from the host so RamaLama can start model containers; ensure the toolbox has access to the host's container engine (e.g., by bind-mounting the socket or by configuring the toolbox to use the host's `podman` command).
+
+- **Host Installation or Toolbox with Host Access**: Install RamaLama on the host via `rpm-ostree install ramalama` if the package is available for your image, or run RamaLama from a toolbox with the model store on a writable location such as your home directory.
+
+The model store defaults to `~/.local/share/ramalama`, which is writable on Silverblue.
+
 ## SECURITY
 
 ### Test and run your models more securely
@@ -131,6 +141,9 @@ The default can be overridden in the ramalama.conf file.
 #### **--store**=STORE
 store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`)
 The default can be overridden in the ramalama.conf file.
+
+#### **--version**, **-v**
+show the program version and exit
 
 ## COMMANDS
 
