@@ -6,7 +6,7 @@ import pytest
 from test.conftest import skip_if_no_container, skip_if_not_windows, skip_if_ppc64le, skip_if_s390x, skip_if_windows
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
-TEST_MODEL = "qwen3:1.7b"
+TEST_MODEL = "qwen3.5:4b"
 
 
 def _dryrun_cmd(agent):
@@ -148,6 +148,7 @@ def test_sandbox_dryrun_opencode_custom_image():
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
@@ -159,6 +160,7 @@ def test_sandbox_run(sandbox_ctx, agent):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
@@ -186,6 +188,7 @@ def test_sandbox_run_cmdline(sandbox_ctx, tmp_path, container_engine, agent):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
