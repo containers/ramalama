@@ -13,6 +13,7 @@ in a container. The agent uses the model for reasoning and tool calling.
 The *agent* argument selects which AI agent to run. Currently supported agents:
 
 - **goose** - the Goose AI agent (https://github.com/block/goose)
+- **opencode** - the OpenCode AI agent (https://opencode.ai/)
 
 ## OPTIONS
 
@@ -24,6 +25,7 @@ show this help message and exit
 | Command  | Man Page                                                       | Description                                           |
 | -------- | -------------------------------------------------------------- | ----------------------------------------------------- |
 | goose    | [ramalama-sandbox-goose(1)](ramalama-sandbox-goose.1.md)       | run Goose in a sandbox, backed by a local AI Model    |
+| opencode | [ramalama-sandbox-opencode(1)](ramalama-sandbox-opencode.1.md) | run OpenCode in a sandbox, backed by a local AI Model |
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**, **[ramalama-run(1)](ramalama-run.1.md)**, **[ramalama-serve(1)](ramalama-serve.1.md)**
