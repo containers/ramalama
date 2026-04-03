@@ -35,6 +35,7 @@ from ramalama.common import (
     is_split_file_model,
     perror,
     populate_volume_from_image,
+    run_cmd,
     set_accel_env_vars,
 )
 from ramalama.logger import logger
@@ -401,6 +402,10 @@ class Transport(TransportBase):
 
         if args.dryrun:
             self.engine.dryrun()
+            return True
+        # Detached serve: use run_cmd so the process returns and the plugin can run the healthcheck
+        if getattr(args, "detach", False) and getattr(args, "subcommand", "") == "serve":
+            run_cmd(self.engine.exec_args, ignore_all=args.noout)
             return True
         self.engine.exec(stdout2null=args.noout)
         return True

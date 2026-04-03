@@ -48,21 +48,25 @@ class LayeredMixin:
     def __init__(self, *layers: dict[str, Any]):
         self._fields = {f.name for f in fields(self.__class__) if not f.name.startswith("_")}  # type: ignore[arg-type]
         _layers = [{k: layer[k] for k in layer.keys() & self._fields} for layer in layers]
+        # Expose source layers during dataclass __post_init__ so is_set() works,
+        # but don't record attribute writes until initialization is complete.
+        self._layers = _layers
+        self._layers_finalized = False
 
         merged = extract_defaults(self.__class__)
         if _layers:
             merged |= reduce(deep_merge, _layers)  # type: ignore[arg-type]
         super().__init__(**build_subconfigs(merged, type(self)))
         # Add an empty layer to store values set via the instance attributes
-        _layers.append({})
-        self._layers = _layers
+        self._layers.append({})
+        self._layers_finalized = True
 
     def is_set(self, name: str) -> bool:
         """Returns True if the config attribute is explicitly set vs the default value."""
         return hasattr(self, "_layers") and any(name in layer for layer in self._layers)
 
     def __setattr__(self, name: str, value: Any):
-        if hasattr(self, "_layers"):
+        if hasattr(self, "_layers") and getattr(self, "_layers_finalized", False):
             if name not in self._fields:
                 raise AttributeError(f"Attribute {name} not found in config class {self.__class__.__name__}")
             logger.debug(f"Setting config attribute {name} to {value}")

@@ -70,12 +70,17 @@ jobs:
       matrix:
         variant:
           - title: ""
+            runs-on: ubuntu-24.04
             uv-options: {}
           - title: " (python 3.10)"
+            runs-on: ubuntu-24.04
             uv-options:
               python-version: '3.10'
+          - title: " (MacOS)"
+            runs-on: macos-26
+            uv-options: {}
     name: Unit Tests${{ matrix.variant.title }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.variant.runs-on }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
