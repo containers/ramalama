@@ -5,10 +5,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ramalama.common import ContainerEntryPoint
+from ramalama.cli import (
+    configure_subcommands,
+    create_argument_parser,
+    default_image,
+    default_rag_image,
+)
+from ramalama.common import ContainerEntryPoint, accel_image, version_tagged_image
+from ramalama.compat import NamedTemporaryFile
+from ramalama.config import DEFAULT_IMAGE, load_config
 from ramalama.plugins.interface import InferenceRuntimePlugin
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
-from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin
+from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin, get_available_backends
 from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
 from ramalama.plugins.runtimes.inference.vllm import VllmPlugin
 
@@ -115,19 +123,29 @@ class TestLlamaCppPlugin:
     def setup_method(self):
         self.plugin = LlamaCppPlugin()
 
+    @pytest.fixture(params=[False, True])
+    def container_image_is_ggml(self, request):
+        return request.param
+
+    @pytest.fixture(autouse=True)
+    def _patch_container_image_is_ggml(self, container_image_is_ggml):
+        with patch.object(self.plugin, "_container_image_is_ggml", return_value=container_image_is_ggml):
+            yield
+
     def test_name(self):
         assert self.plugin.name == "llama.cpp"
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
-    def test_serve_basic(self, mock_colorize, mock_new):
+    def test_serve_basic(self, mock_colorize, mock_new, container_image_is_ggml):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(container=True, MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("serve", ns)
 
-        assert cmd[0] == "llama-server"
+        expected_entry = "--server" if container_image_is_ggml else "llama-server"
+        assert cmd[0] == expected_entry
         assert "--host" in cmd
         assert cmd[cmd.index("--host") + 1] == "0.0.0.0"
         assert "--port" in cmd
@@ -295,14 +313,15 @@ class TestLlamaCppPlugin:
         assert self.plugin.handle_subcommand("serve", ns) == self.plugin.handle_subcommand("run", ns)
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_perplexity(self, mock_new):
+    def test_perplexity(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(ngl=20, threads=8, MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("perplexity", ns)
 
-        assert cmd[0] == "llama-perplexity"
+        expected_entry = "--perplexity" if container_image_is_ggml else "llama-perplexity"
+        assert cmd[0] == expected_entry
         assert "--model" in cmd
         assert "-ngl" in cmd
         assert cmd[cmd.index("-ngl") + 1] == "20"
@@ -310,14 +329,15 @@ class TestLlamaCppPlugin:
         assert cmd[cmd.index("--threads") + 1] == "8"
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_bench(self, mock_new):
+    def test_bench(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
         ns = make_ns(ngl=30, MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("bench", ns)
 
-        assert cmd[0] == "llama-bench"
+        expected_entry = "--bench" if container_image_is_ggml else "llama-bench"
+        assert cmd[0] == expected_entry
         assert "--model" in cmd
         assert "-ngl" in cmd
         assert "-o" in cmd
@@ -374,27 +394,29 @@ class TestLlamaCppPlugin:
         assert self.plugin.handle_subcommand("run", ns) == self.plugin.handle_subcommand("serve", ns)
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_convert(self, mock_new):
+    def test_convert(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model(model_name="mymodel")
         mock_new.return_value = mock_model
 
         ns = make_ns(MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("convert", ns)
 
-        assert cmd[0] == "convert_hf_to_gguf.py"
+        expected_entry = "--convert" if container_image_is_ggml else "convert_hf_to_gguf.py"
+        assert cmd[0] == expected_entry
         assert "--outfile" in cmd
         assert "/output/mymodel.gguf" in cmd
         assert "/model" in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
-    def test_quantize(self, mock_new):
+    def test_quantize(self, mock_new, container_image_is_ggml):
         mock_model = make_transport_model(model_name="mymodel")
         mock_new.return_value = mock_model
 
         ns = make_ns(gguf="Q4_K_M", MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("quantize", ns)
 
-        assert cmd[0] == "llama-quantize"
+        expected_entry = "--quantize" if container_image_is_ggml else "llama-quantize"
+        assert cmd[0] == expected_entry
         assert "/model/mymodel.gguf" in cmd
         assert "/model/mymodel-Q4_K_M.gguf" in cmd
         assert "Q4_K_M" in cmd
@@ -405,21 +427,66 @@ class TestLlamaCppPlugin:
         with pytest.raises(NotImplementedError):
             self.plugin.handle_subcommand("unknown_cmd", ns)
 
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.ensure_image")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_quantize_calls_ensure_image_when_not_dryrun(self, mock_engine_cls, mock_ensure_image):
+        default_image = version_tagged_image("quay.io/ramalama/ramalama")
+        mock_ensure_image.return_value = default_image
+        mock_engine_cls.return_value = MagicMock()
+        mock_source = MagicMock()
+        mock_source.model_name = "mymodel"
+
+        args = argparse.Namespace(
+            dryrun=False,
+            image=default_image,
+            engine="podman",
+            gguf="Q4_K_M",
+            container=True,
+            pull="missing",
+        )
+        with patch("ramalama.plugins.runtimes.inference.llama_cpp.ActiveConfig") as mock_cfg:
+            mock_cfg.return_value.pull = "missing"
+            self.plugin._quantize(mock_source, args, "/model_dir")
+
+        mock_ensure_image.assert_called_once_with("podman", default_image, should_pull=True)
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.ensure_image")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_quantize_skips_ensure_image_on_dryrun(self, mock_engine_cls, mock_ensure_image):
+        mock_engine_cls.return_value = MagicMock()
+        mock_source = MagicMock()
+        mock_source.model_name = "mymodel"
+
+        args = argparse.Namespace(
+            dryrun=True,
+            image=version_tagged_image("quay.io/ramalama/ramalama"),
+            engine="podman",
+            gguf="Q4_K_M",
+            container=True,
+            pull="missing",
+        )
+        self.plugin._quantize(mock_source, args, "/model_dir")
+
+        mock_ensure_image.assert_not_called()
+
     def test_get_container_image_cuda(self):
         config = MagicMock()
+        config.backend = "auto"
         config.images.get.return_value = None
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
-        assert image == "quay.io/ramalama/cuda:latest"
+        assert image == version_tagged_image("quay.io/ramalama/cuda")
 
     def test_get_container_image_no_gpu(self):
         config = MagicMock()
+        config.backend = "auto"
         config.images.get.return_value = None
-        config.default_image = "quay.io/ramalama/ramalama"
+        config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
         image = self.plugin.get_container_image(config, "")
-        assert image == "quay.io/ramalama/ramalama:latest"
+        assert image == version_tagged_image("quay.io/ramalama/ramalama")
 
     def test_get_container_image_user_override(self):
         config = MagicMock()
+        config.backend = "auto"
         config.images.get.side_effect = lambda key, default=None: {
             "CUDA_VISIBLE_DEVICES": "custom/cuda:v1.0",
         }.get(key, default)
@@ -512,14 +579,18 @@ class TestVllmPlugin:
         config = MagicMock()
         config.images.get.side_effect = lambda key, default=None: default
 
+        # RamalamaImages provides a default for CUDA without :latest tag
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
-        assert image == "docker.io/vllm/vllm-openai:latest"
+        assert image == "docker.io/vllm/vllm-openai"
 
     def test_get_container_image_no_gpu(self):
+        from unittest.mock import patch
+
         config = MagicMock()
         config.images.get.side_effect = lambda key, default=None: default
 
-        image = self.plugin.get_container_image(config, "")
+        with patch.dict("os.environ", {}, clear=True):
+            image = self.plugin.get_container_image(config, "")
         assert image == "docker.io/vllm/vllm-openai:latest"
 
     def test_get_container_image_with_tag_not_modified(self):
@@ -647,9 +718,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_runtime_excludes_rag(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -659,10 +730,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_runtime_includes_rag_with_container(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -672,10 +743,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_runtime_excludes_rag_nocontainer(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
-        monkeypatch.setattr(get_config(), "container", False)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "container", False)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -685,10 +756,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_runtime_excludes_rag_with_container(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -698,10 +769,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_runtime_excludes_rag_nocontainer(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", False)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", False)
         parser = self._make_parser()
         configure_subcommands(parser)
         name_map = self._name_map(parser)
@@ -711,9 +782,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_unknown_runtime_raises(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "no-such-runtime")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "no-such-runtime")
         parser = self._make_parser()
         with pytest.raises(ValueError, match="Unknown runtime: 'no-such-runtime'"):
             configure_subcommands(parser)
@@ -725,9 +796,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_run_has_ngl(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -735,9 +806,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_no_ngl(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -745,9 +816,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_has_max_tokens(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -755,10 +826,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_serve_has_max_model_len(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -766,9 +837,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_max_model_len(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -776,9 +847,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_llama_cpp_serve_has_webui(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -786,9 +857,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_webui(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -796,9 +867,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_has_ctx_size(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -806,9 +877,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_run_has_keepalive(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
@@ -816,11 +887,11 @@ class TestConfigureSubcommandsFiltering:
 
     def test_all_runtimes_serve_has_temp(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
         for runtime in ("llama.cpp", "mlx", "vllm"):
-            monkeypatch.setattr(get_config(), "runtime", runtime)
-            monkeypatch.setattr(get_config(), "container", True)
+            monkeypatch.setattr(ActiveConfig(), "runtime", runtime)
+            monkeypatch.setattr(ActiveConfig(), "container", True)
             parser = self._make_parser()
             configure_subcommands(parser)
             opts = self._subparser_option_strings(parser, "serve")
@@ -828,10 +899,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_serve_has_api(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -839,9 +910,9 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_api(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -849,10 +920,10 @@ class TestConfigureSubcommandsFiltering:
 
     def test_vllm_serve_has_generate(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "vllm")
-        monkeypatch.setattr(get_config(), "container", True)
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
@@ -860,10 +931,224 @@ class TestConfigureSubcommandsFiltering:
 
     def test_mlx_serve_no_generate(self, monkeypatch):
         from ramalama.cli import configure_subcommands
-        from ramalama.config import get_config
+        from ramalama.config import ActiveConfig
 
-        monkeypatch.setattr(get_config(), "runtime", "mlx")
+        monkeypatch.setattr(ActiveConfig(), "runtime", "mlx")
         parser = self._make_parser()
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "serve")
         assert "--generate" not in opts
+
+
+# ---------------------------------------------------------------------------
+# llama.cpp backend selection
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "backend,gpu_env,expected_result",
+    [
+        # Auto mode: Vulkan for AMD and Intel, CUDA for NVIDIA
+        ("auto", "HIP_VISIBLE_DEVICES", DEFAULT_IMAGE),  # AMD -> Vulkan -> ramalama image
+        ("auto", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
+        ("auto", "INTEL_VISIBLE_DEVICES", DEFAULT_IMAGE),  # Intel -> Vulkan -> ramalama image
+        # Explicit Vulkan: works for AMD and Intel
+        ("vulkan", "HIP_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        ("vulkan", "INTEL_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        # Explicit vendor backends
+        ("rocm", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
+        ("cuda", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
+        ("sycl", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),
+        ("openvino", "INTEL_VISIBLE_DEVICES", "ghcr.io/ggml-org/llama.cpp:full-openvino"),
+        # Force backend even with different GPU (warns but allows)
+        ("rocm", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
+        ("cuda", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
+        ("vulkan", "CUDA_VISIBLE_DEVICES", DEFAULT_IMAGE),  # Vulkan on NVIDIA (not in preferences, warns)
+    ],
+)
+def test_backend_selection(backend: str, gpu_env: str, expected_result: str, monkeypatch):
+    """Test that GPUs use the correct image based on backend config."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    with NamedTemporaryFile('w', delete_on_close=False) as f:
+        f.write(f"""\
+[ramalama]
+backend = "{backend}"
+            """)
+        f.flush()
+
+        env = {
+            "RAMALAMA_CONFIG": f.name,
+            gpu_env: "1",
+        }
+
+        with patch.dict("os.environ", env, clear=True):
+            config = load_config()
+            with patch("ramalama.cli.ActiveConfig", return_value=config):
+                default_image.cache_clear()
+                default_rag_image.cache_clear()
+                parser = create_argument_parser("test_backend")
+                configure_subcommands(parser)
+                assert accel_image(config) == expected_result
+
+
+@pytest.mark.parametrize(
+    "backend,gpu_env,expected_result",
+    [
+        # Auto mode on Windows: ROCm for AMD, CUDA for NVIDIA, sycl for Intel
+        ("auto", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),  # AMD -> ROCm on Windows
+        ("auto", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),  # NVIDIA -> CUDA
+        ("auto", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),  # Intel -> sycl
+        # Explicit backends still work
+        ("vulkan", "HIP_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        ("rocm", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
+        ("vulkan", "INTEL_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        ("sycl", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),
+        ("openvino", "INTEL_VISIBLE_DEVICES", "ghcr.io/ggml-org/llama.cpp:full-openvino"),
+    ],
+)
+def test_backend_selection_windows(backend: str, gpu_env: str, expected_result: str, monkeypatch):
+    """Test that Windows defaults to vendor-specific backends for AMD and Intel."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.platform.system", lambda: "Windows")
+
+    with NamedTemporaryFile('w', delete_on_close=False) as f:
+        f.write(f"""\
+[ramalama]
+backend = "{backend}"
+            """)
+        f.flush()
+
+        env = {
+            "RAMALAMA_CONFIG": f.name,
+            gpu_env: "1",
+        }
+
+        with patch.dict("os.environ", env, clear=True):
+            config = load_config()
+            with patch("ramalama.cli.ActiveConfig", return_value=config):
+                default_image.cache_clear()
+                default_rag_image.cache_clear()
+                parser = create_argument_parser("test_backend_windows")
+                configure_subcommands(parser)
+                assert accel_image(config) == expected_result
+
+
+@pytest.mark.parametrize(
+    "gpu_env,backend,expected_image",
+    [
+        # AMD GPU: vLLM should use ROCm image regardless of backend
+        ("HIP_VISIBLE_DEVICES", "auto", "docker.io/vllm/vllm-openai-rocm:latest"),
+        ("HIP_VISIBLE_DEVICES", "vulkan", "docker.io/vllm/vllm-openai-rocm:latest"),
+        ("HIP_VISIBLE_DEVICES", "rocm", "docker.io/vllm/vllm-openai-rocm:latest"),
+        # NVIDIA GPU: vLLM uses standard CUDA image
+        ("CUDA_VISIBLE_DEVICES", "auto", "docker.io/vllm/vllm-openai:latest"),
+        ("CUDA_VISIBLE_DEVICES", "cuda", "docker.io/vllm/vllm-openai:latest"),
+        # Intel GPU: vLLM uses Intel-specific image regardless of backend
+        ("INTEL_VISIBLE_DEVICES", "auto", "docker.io/intel/vllm:latest"),
+        ("INTEL_VISIBLE_DEVICES", "vulkan", "docker.io/intel/vllm:latest"),
+        ("INTEL_VISIBLE_DEVICES", "sycl", "docker.io/intel/vllm:latest"),
+    ],
+)
+def test_vllm_backend_image_selection(gpu_env: str, backend: str, expected_image: str, monkeypatch):
+    """Test that vLLM uses correct images based on detected GPU, not backend selection."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    with NamedTemporaryFile('w', delete_on_close=False) as f:
+        f.write(f"""\
+[ramalama]
+backend = "{backend}"
+runtime = "vllm"
+            """)
+        f.flush()
+
+        env = {
+            "RAMALAMA_CONFIG": f.name,
+            gpu_env: "1",
+        }
+
+        with patch.dict("os.environ", env, clear=True):
+            config = load_config()
+            with patch("ramalama.cli.ActiveConfig", return_value=config):
+                default_image.cache_clear()
+                default_rag_image.cache_clear()
+                parser = create_argument_parser("test_vllm")
+                configure_subcommands(parser)
+                assert accel_image(config) == expected_image
+
+
+def test_backend_incompatibility_warning(monkeypatch):
+    """Test that warnings are issued for incompatible backend selections."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    with NamedTemporaryFile('w', delete_on_close=False) as f:
+        f.write("""\
+[ramalama]
+backend = "cuda"
+            """)
+        f.flush()
+
+        env = {
+            "RAMALAMA_CONFIG": f.name,
+            "HIP_VISIBLE_DEVICES": "1",  # AMD GPU detected, but CUDA backend requested
+        }
+
+        with patch.dict("os.environ", env, clear=True):
+            config = load_config()
+            with patch("ramalama.cli.ActiveConfig", return_value=config):
+                default_image.cache_clear()
+                default_rag_image.cache_clear()
+                parser = create_argument_parser("test_backend_warning")
+                configure_subcommands(parser)
+
+                with patch("ramalama.plugins.runtimes.inference.llama_cpp.logger.warning") as mock_warning:
+                    result = accel_image(config)
+                    assert result == version_tagged_image("quay.io/ramalama/cuda")
+                    mock_warning.assert_called_once()
+                    call_args = mock_warning.call_args[0][0]
+                    assert "may not be compatible" in call_args
+                    assert "HIP GPU" in call_args
+
+
+@pytest.mark.parametrize(
+    "gpu_env,expected_backends",
+    [
+        ("HIP_VISIBLE_DEVICES", ["auto", "vulkan", "rocm"]),  # AMD
+        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda"]),  # NVIDIA
+        ("INTEL_VISIBLE_DEVICES", ["auto", "vulkan", "sycl", "openvino"]),  # Intel (Vulkan preferred)
+        ("ASAHI_VISIBLE_DEVICES", ["auto", "vulkan"]),  # Asahi
+        (None, ["auto", "vulkan"]),  # No GPU
+    ],
+)
+def test_get_available_backends(gpu_env: str | None, expected_backends: list[str], monkeypatch):
+    """Test that available backends are correctly returned based on detected GPU."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    env = {}
+    if gpu_env:
+        env[gpu_env] = "1"
+
+    with patch.dict("os.environ", env, clear=True):
+        assert get_available_backends() == expected_backends
+
+
+@pytest.mark.parametrize(
+    "gpu_env,expected_backends",
+    [
+        ("HIP_VISIBLE_DEVICES", ["auto", "rocm", "vulkan"]),  # AMD: ROCm preferred on Windows
+        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda"]),  # NVIDIA: same on all platforms
+        ("INTEL_VISIBLE_DEVICES", ["auto", "sycl", "vulkan", "openvino"]),  # Intel: sycl preferred on Windows
+        (None, ["auto", "vulkan"]),  # No GPU: same on all platforms
+    ],
+)
+def test_get_available_backends_windows(gpu_env: str | None, expected_backends: list[str], monkeypatch):
+    """Test that available backends on Windows prefer vendor-specific backends."""
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.platform.system", lambda: "Windows")
+
+    env = {}
+    if gpu_env:
+        env[gpu_env] = "1"
+
+    with patch.dict("os.environ", env, clear=True):
+        assert get_available_backends() == expected_backends

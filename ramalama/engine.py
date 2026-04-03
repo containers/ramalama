@@ -14,7 +14,7 @@ import ramalama.common
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.path_utils import normalize_host_path_for_container
 
@@ -197,12 +197,13 @@ class Engine(BaseEngine):
         else:
             super().add_privileged_options()
 
+    def is_tty_cmd(self) -> bool:
+        return getattr(self.args, "subcommand", "") == "run" and not getattr(self.args, "ARGS", None)
+
     def use_tty(self) -> bool:
         if not sys.stdin.isatty():
             return False
-        if getattr(self.args, "ARGS", None):
-            return False
-        return getattr(self.args, "subcommand", "") == "run"
+        return self.is_tty_cmd()
 
     def add_tty_option(self) -> None:
         if self.use_tty():
@@ -295,6 +296,24 @@ def images(args):
     except subprocess.CalledProcessError as e:
         perror("ramalama list command requires a running container engine")
         raise (e)
+
+
+def image_inspect(args, name: str, format: str | None = None):
+    if not name:
+        raise ValueError("must specify an image name")
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "image", "inspect"]
+    if format:
+        conman_args += ["--format", format]
+
+    conman_args += [name]
+    try:
+        return run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+    except Exception:
+        return ''
 
 
 def containers(args):
@@ -445,7 +464,7 @@ def is_healthy(args, timeout: int = 3, model_name: str | None = None):
         conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
         if getattr(args, "debug", False):
             conn.set_debuglevel(1)
-        return get_runtime(get_config().runtime).service_ready_check(conn, args, model_name)
+        return get_runtime(ActiveConfig().runtime).service_ready_check(conn, args, model_name)
     finally:
         if conn:
             conn.close()
@@ -456,7 +475,7 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
     if timeout is None:
         from ramalama.plugins.loader import get_runtime
 
-        timeout = get_runtime(get_config().runtime).service_ready_check_timeout
+        timeout = get_runtime(ActiveConfig().runtime).service_ready_check_timeout
     container_name = f"container {args.name}" if getattr(args, 'container', None) else 'server'
     logger.debug(f"Waiting for {container_name} to become healthy (timeout: {timeout}s)...")
     start_time = time.time()

@@ -25,13 +25,8 @@ make e2e-tests               # Run with Podman (default)
 make e2e-tests-docker        # Run with Docker
 make e2e-tests-nocontainer   # Run without container engine
 
-# System tests (BATS)
-make bats                    # Run BATS system tests
-make bats-nocontainer        # Run in nocontainer mode
-make bats-docker             # Run with Docker
-
 # All tests
-make tests                   # Run unit tests and system-level integration tests
+make tests                   # Run unit tests and e2e tests, with and without a container engine
 ```
 
 ### Running a single test
@@ -41,9 +36,6 @@ tox -- test/unit/test_cli.py::test_function_name -vvv
 
 # E2E test
 tox -e e2e -- test/e2e/test_basic.py::test_function_name -vvv
-
-# Single BATS file
-RAMALAMA=$(pwd)/bin/ramalama bats -T test/system/030-run.bats
 ```
 
 ### Code Quality
@@ -108,7 +100,6 @@ supported subcommands.
 
 - `test/unit/` - pytest unit tests (fast, no external dependencies)
 - `test/e2e/` - pytest end-to-end tests (marked with `@pytest.mark.e2e`)
-- `test/system/` - BATS shell tests for full CLI integration testing
 
 ## Code Style
 
@@ -117,3 +108,8 @@ supported subcommands.
 - Formatting: ruff format + ruff check (I rules)
 - Type hints encouraged (mypy checked)
 - Commits require DCO sign-off (`git commit -s`)
+- **Commit messages for PRs**:
+  - Use exactly one sign-off, added via `git commit -s` only.
+  - Do not manually add a "Signed-off-by:" line in the message body.
+  - Do not add any trailers (e.g. "Made-with: Cursor") after the sign-off.
+  - The author's `Signed-off-by` must be the last line of the commit message.

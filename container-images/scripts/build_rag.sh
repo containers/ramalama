@@ -1,8 +1,10 @@
 #!/bin/bash
 
 install_pkgs() {
-    local pkgs=("git-core" "libglvnd-glx")
-    local default_python="python3.13"
+    local pkgs=("git-core" "libglvnd-glx" "rust" "cargo")
+    # Keep the python versions below in sync with the versions used for dependency resolution
+    # in container-images/common/Makefile
+    local default_python="python3.14"
 
     if [ "$backend" = "cu128" ]; then
         default_python="python3.12"

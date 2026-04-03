@@ -2,7 +2,8 @@ CUDA_BACKEND = cu128
 ROCM_BACKEND = rocm6.3
 INTEL_BACKEND = xpu
 
-PYTHON_VERSION = 3.13
+# Keep the versions below in sync with the python versions installed in build_rag.sh
+PYTHON_VERSION = 3.14
 CUDA_PYTHON_VERSION = 3.12
 
 rag-backends = cpu $(CUDA_BACKEND) $(ROCM_BACKEND) $(INTEL_BACKEND) cpu-aarch64 $(CUDA_BACKEND)-aarch64

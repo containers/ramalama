@@ -2,7 +2,7 @@ import os
 import platform
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel_env_vars
+from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.version import version
@@ -80,15 +80,14 @@ class Kube:
     def _gen_devices(self):
         mounts = ""
         volumes = ""
-        for dev in ["dri", "kfd"]:
-            if os.path.exists("/dev/" + dev):
-                mounts += f"""
-        - mountPath: /dev/{dev}
-          name: {dev}"""
-                volumes += f"""
+        for name, path in get_gpu_devices().items():
+            mounts += f"""
+        - mountPath: {path}
+          name: {name}"""
+            volumes += f"""
       - hostPath:
-          path: /dev/{dev}
-        name: {dev}"""
+          path: {path}
+        name: {name}"""
         return mounts, volumes
 
     def _gen_path_volume(self):
@@ -167,9 +166,12 @@ class Kube:
 
         return ports
 
-    @staticmethod
-    def __gen_env_vars():
+    def __gen_env_vars(self):
         env_vars = get_accel_env_vars()
+
+        if hasattr(self.args, "env"):
+            extra_env = dict(i.split("=", 1) for i in self.args.env)
+            env_vars |= extra_env
 
         if not env_vars:
             return ""
@@ -177,7 +179,7 @@ class Kube:
         env_spec = """\
         env:"""
 
-        for k, v in env_vars.items():
+        for k, v in sorted(env_vars.items()):
             env_spec += f"""
         - name: {k}
           value: \"{v}\""""

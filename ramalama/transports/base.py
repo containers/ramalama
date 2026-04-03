@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional, TypeGuard
 from ramalama import chat
 from ramalama.common import ContainerEntryPoint
 from ramalama.compose import Compose
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.model_inspect.base_info import ModelInfoBase
@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 from ramalama.common import (
     MNT_DIR,
     MNT_FILE_DRAFT,
-    accel_image,
     exec_cmd,
     genname,
     is_split_file_model,
@@ -151,7 +150,6 @@ class Transport(TransportBase):
         self._model_store_path: str = model_store_path
         self._model_store: Optional["ModelStore"] = None
 
-        self.default_image = accel_image(get_config())
         self.draft_model: Transport | None = None
 
     def extract_model_identifiers(self):
@@ -452,7 +450,7 @@ class Transport(TransportBase):
         if args.container:
             args.name = self.get_container_name(args)
 
-        args.host = get_config().host
+        args.host = ActiveConfig().host
         args.detach = True
 
         set_accel_env_vars()
@@ -742,7 +740,7 @@ class Transport(TransportBase):
 def compute_ports(exclude: list[str] | None = None) -> list[int]:
     excluded = set() if exclude is None else set(map(int, exclude))
 
-    port_range = get_config().default_port_range
+    port_range = ActiveConfig().default_port_range
     ports = [p for p in range(port_range[0], port_range[1] + 1) if p not in excluded]
 
     if not ports:

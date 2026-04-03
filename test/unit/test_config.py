@@ -4,16 +4,16 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.config import (
+    ActiveConfig,
     BaseConfig,
-    default_config,
-    get_config,
     get_default_engine,
     get_default_store,
+    load_config,
     load_env_config,
 )
 from ramalama.log_levels import LogLevel
 
-config = get_config()
+config = ActiveConfig()
 
 
 @pytest.fixture(autouse=True)
@@ -31,7 +31,7 @@ def isolate_config():
 def test_correct_config_defaults(monkeypatch):
     monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
     with patch("ramalama.config.load_env_config", return_value={}):
-        cfg = default_config()
+        cfg = load_config()
 
     assert cfg.carimage == "registry.access.redhat.com/ubi10-micro:latest"
     assert cfg.container in [True, False]  # depends on env/system
@@ -57,7 +57,7 @@ def test_config_defaults_not_set(monkeypatch):
     monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
     with patch("ramalama.config.load_file_config", return_value={}):
         with patch("ramalama.config.load_env_config", return_value={}):
-            cfg = default_config()
+            cfg = load_config()
 
     assert cfg.is_set("carimage") is False
     assert cfg.is_set("container") is False  # depends on env/system
@@ -79,6 +79,12 @@ def test_config_defaults_not_set(monkeypatch):
     assert cfg.is_set("verify") is False
 
 
+@pytest.mark.parametrize("backend", ["auto", "vulkan", "rocm", "cuda", "sycl", "openvino"])
+def test_base_config_accepts_valid_backend(backend):
+    config = BaseConfig(backend=backend)
+    assert config.backend == backend
+
+
 def test_base_config_normalizes_pull_for_docker():
     config = BaseConfig(engine="docker", pull="newer")
     assert config.pull == "always"
@@ -98,7 +104,7 @@ def test_file_config_overrides_defaults():
 
     with patch("ramalama.config.load_file_config", return_value=mock_file_config):
         with patch("ramalama.config.load_env_config", return_value={}):
-            cfg = default_config()
+            cfg = load_config()
             assert cfg.image == "custom/image:latest"
             assert cfg.container is False
             assert cfg.verify is False
@@ -118,7 +124,7 @@ def test_env_overrides_file_and_default():
 
     with patch("ramalama.config.load_file_config", return_value=mock_file_config):
         with patch("ramalama.config.load_env_config", return_value=mock_env_config):
-            cfg = default_config()
+            cfg = load_config()
             assert cfg.image == "env/image:override"
 
             assert cfg.is_set("image") is True
@@ -148,7 +154,7 @@ def test_get_default_store(uid, is_root, expected):
 )
 def test_cfg_container_env_override(env_value, expected):
     with patch.dict(os.environ, {"RAMALAMA_IN_CONTAINER": env_value} if env_value is not None else {}, clear=True):
-        cfg = default_config()
+        cfg = load_config()
         assert cfg.is_set("container") is True
         print(os.environ)
         assert cfg.container == expected, cfg.container
@@ -156,12 +162,12 @@ def test_cfg_container_env_override(env_value, expected):
 
 def test_cfg_container_not_set():
     with patch.dict(os.environ, {"RAMALAMA_CONTAINER_ENGINE": "podman"}):
-        cfg = default_config()
+        cfg = load_config()
         assert cfg.is_set("container") is False
         assert cfg.container is True
 
     with patch.dict(os.environ, {}):
-        cfg = default_config()
+        cfg = load_config()
         with patch("ramalama.config.load_env_config", return_value={}):
             assert cfg.is_set("container") is False
             assert cfg.container is (cfg.engine is not None)
@@ -230,10 +236,23 @@ class TestGetDefaultEngine:
             patch("ramalama.config.os.path.exists", return_value=False),
             patch("ramalama.config.sys.platform", "darwin"),
         ):
-            cfg = default_config()
+            cfg = load_config()
 
         assert cfg.engine == "docker"
         assert cfg.is_set("engine") is False
+
+    def test_explicit_engine_is_preserved_when_podman_machine_missing(self):
+        with (
+            patch("ramalama.config.available", return_value=False),
+            patch("ramalama.config.apple_vm", return_value=False),
+            patch("ramalama.config.load_file_config", return_value={}),
+            patch("ramalama.config.sys.platform", "darwin"),
+        ):
+            cfg = load_config({"RAMALAMA_CONTAINER_ENGINE": "podman"})
+
+        assert cfg.engine == "podman"
+        assert cfg.is_set("engine") is True
+        assert cfg.container is True
 
 
 class TestLoadEnvConfig:
@@ -507,7 +526,7 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             assert cfg.user.no_missing_gpu_prompt is True
             assert cfg.settings.config_files == ["/custom/config.toml"]
@@ -533,7 +552,7 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value=file_config):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             # Environment should override file config
             assert cfg.image == "env/image:latest"
@@ -553,7 +572,7 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             # Basic config should work
             assert cfg.image == "base/image:latest"
@@ -573,7 +592,7 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             assert cfg.container is True
             assert cfg.engine == "docker"
@@ -582,7 +601,7 @@ class TestConfigIntegration:
     def test_config_empty_layers(self):
         """Test behaviour with empty configuration layers."""
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config({})
+            cfg = load_config({})
 
             # Should use defaults
             assert cfg.image == cfg.default_image
@@ -599,7 +618,7 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             assert cfg.ctx_size == 4096
             assert cfg.container is True
@@ -628,7 +647,7 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value=file_config):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             # Verify the merged configuration
             assert cfg.image == "custom/ramalama:latest"
@@ -654,7 +673,7 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value=file_config):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             # Values set in either layer should return True
             assert cfg.is_set("image") is True

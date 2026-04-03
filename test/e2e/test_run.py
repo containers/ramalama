@@ -347,7 +347,7 @@ def test_run_keepalive(shared_ctx_with_models, test_model):
         pytest.param(
             ["--image", "bogus", "--pull", "never", "tiny"],
             22,
-            r".*Error: bogus: image not known",
+            r".*Error: bogus:latest: image not known",
             id="non-existing-image",
         ),
         pytest.param(

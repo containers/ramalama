@@ -241,6 +241,9 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
         input.model_src_blob: input.model_file_exists,
         input.chat_template_src_blob: input.chat_template_file_exists,
         input.mmproj_src_blob: input.mmproj_file_exists,
+        "/dev/dri": True,
+        "/dev/kfd": True,
+        "/dev/accel": True,
     }
 
     # Add existence checks for all model parts

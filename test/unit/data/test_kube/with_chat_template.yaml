@@ -32,6 +32,8 @@ spec:
           name: model
         - mountPath: /mnt/models/chat_template
           name: chat_template
+        - mountPath: /dev/accel
+          name: accel
         - mountPath: /dev/dri
           name: dri
         - mountPath: /dev/kfd
@@ -43,6 +45,9 @@ spec:
       - hostPath:
           path: /path/to/chat_template
         name: chat_template
+      - hostPath:
+          path: /dev/accel
+        name: accel
       - hostPath:
           path: /dev/dri
         name: dri

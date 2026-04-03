@@ -10,6 +10,7 @@ Below summarizes the processes that we follow.
 * [Working On Issues](#working-on-issues)
 * [Contributing To RamaLama](#contributing-to-ramalama-1)
 * [Submitting Pull Requests](#submitting-pull-requests)
+* [AI-Assisted Contributions](#ai-assisted-contributions)
 * [Speaking and Advocacy](#speaking-and-advocacy)
 * [Communications](#communications)
 * [Code of Conduct](#code-of-conduct)
@@ -400,6 +401,24 @@ or persistently faulty condition.  This risks additional bugs being introduced
 and further complication of necessary corrective measures.  Most likely people
 are aware and working on this, but it doesn't hurt [to confirm and/or try and help
 if possible.](#communications).
+
+## AI-Assisted Contributions
+
+**AI is welcome. Humans are Responsible.**
+
+Current AI tools are useful as coding assistants, but not as autonomous contributors. Submissions generated entirely by autonomous AI agents are prohibited. Any issues or pull requests that appear to be the sole work of an AI agent will be closed.
+
+* Using AI tools to help write your PR is acceptable, but as the author, you are responsible for understanding every change. Do not leave the first review of AI-generated changes to the reviewers. Verify the changes (code review, testing, etc.) and explain your motivation behind these changes before submitting your PR. 
+
+* When responding to review comments, please do so without relying on AI tools. Reviewers want to engage directly with you, not with generated responses. If you used AI tools in preparing your PR, please disclose this in the Pull Request. Acceptable formats include:
+
+`Assisted-by: Claude <noreply@anthropic.com>`
+
+`Co-authored-by: Claude <noreply@anthropic.com>`
+
+`Generated-by: Claude <noreply@anthropic.com>`
+
+Many AI coding tools automatically add Co-authored-by trailers. This is acceptable and need not be changed to Assisted-by. However, we encourage new contributors to refrain from heavy use of AI until they have developed a firm understanding of our architecture and codebase.
 
 ## Speaking and Advocacy
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-DEFAULT_LLAMA_CPP_COMMIT="b45ef2702c262998d5db9887cd3c82f04761237a" # b7872
-MESA_VULKAN_VERSION=25.2.3-101.fc43
+DEFAULT_LLAMA_CPP_COMMIT="a69d54f990d0cd88786d5943632d6426dc9660b7" # b8401
+MESA_VULKAN_VERSION=25.3.6-102.fc43
 
 dnf_install_intel_gpu() {
   local intel_rpms=("intel-oneapi-mkl-sycl-devel" "intel-oneapi-dnnl-devel"
