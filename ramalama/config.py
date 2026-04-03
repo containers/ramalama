@@ -14,7 +14,7 @@ from ramalama.log_levels import LogLevel, coerce_log_level
 from ramalama.toml_parser import TOMLParser
 
 DEFAULT_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama")
-DEFAULT_STACK_IMAGE: str = version_tagged_image("quay.io/ramalama/llama-stack")
+DEFAULT_STACK_IMAGE: str = version_tagged_image("quay.io/ramalama/llama-stack:0.7.0")
 DEFAULT_RAG_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-rag")
 GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q2_K",

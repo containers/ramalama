@@ -67,11 +67,13 @@ class Stack:
         llama_stack_container = {
             "name": "llama-stack",
             "image": self.stack_image,
-            "args": ["llama", "stack", "run", "--image-type", "venv", "/etc/ramalama/ramalama-run.yaml"],
+            "args": [],
             "env_string": f"""\
         env:{common_env}
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}
+        - name: RAMALAMA_RUNTIME
+          value: {self.args.runtime}
         - name: INFERENCE_MODEL
           value: {self.model.model_name}""",
             "port_string": f"""\
@@ -91,6 +93,7 @@ class Stack:
         mmproj_dest_path = self.model._get_mmproj_path(True, True, False)
         args2 = copy.copy(self.args)
         args2.port = self.model_port
+        args2.webui = 'off'
         exec_args = assemble_command(args2)
         return (
             self.model.model_name,
@@ -123,7 +126,7 @@ class Stack:
                 k.add("comment", f"# RamaLama service for {self.model.model_alias}")
                 k.add("comment", "# Serving RESTAPIs:")
                 k.add("comment", f"#    Llama Stack: {openai}")
-                k.add("comment", f"#    OpenAI:      {openai}/v1/openai\n")
+                k.add("comment", f"#    OpenAI:      {openai}/v1\n")
                 k.write(self.args.generate.output_dir)
                 return
 
