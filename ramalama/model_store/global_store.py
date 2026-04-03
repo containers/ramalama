@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict, List
 
 from ramalama import oci_tools
@@ -79,7 +80,14 @@ class GlobalModelStore:
             for oci_model in oci_models:
                 name, modified, size = (oci_model["name"], oci_model["modified"], oci_model["size"])
 
-                modified_unix = modified.timestamp() if modified is not None else 0
+                if modified is None:
+                    modified_unix = 0
+                elif isinstance(modified, str):
+                    if modified.endswith("Z"):
+                        modified = modified[:-1] + "+00:00"
+                    modified_unix = datetime.fromisoformat(modified).timestamp()
+                else:
+                    modified_unix = modified.timestamp()
                 models[name] = [ModelFile(name, modified_unix, size, is_partial=False)]
 
         return models
