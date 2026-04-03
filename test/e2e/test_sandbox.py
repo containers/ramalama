@@ -33,14 +33,17 @@ def sandbox_ctx():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_windows
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
-def test_sandbox_dryrun_default(agent):
+@pytest.mark.parametrize(
+    "agent, cmd",
+    [
+        ["goose", r"run -i -\s*$"],
+        ["opencode", r"run --thinking=true\s*$"],
+    ],
+)
+def test_sandbox_dryrun_default(agent, cmd):
     """Dryrun should print container commands including run."""
     result = check_output(_dryrun_cmd(agent), stdin=subprocess.DEVNULL)
-    if agent == "goose":
-        assert re.search(r"run -i -", result)
-    else:
-        assert re.search(r"run -", result)
+    assert re.search(cmd, result)
 
 
 @pytest.mark.e2e

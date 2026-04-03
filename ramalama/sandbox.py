@@ -173,14 +173,16 @@ class OpenCode(Agent):
         self.add_env_options(args)
         self.engine.add_workdir(args)
         self.engine.add_args(args.opencode_image)
-        if args.ARGS:
-            self.engine.add_args("run", " ".join(args.ARGS))
-        elif not self.engine.use_tty():
-            self.engine.add_args("run", "-")
+        if args.ARGS or not self.engine.use_tty():
+            # Use the "run" command to process args from the command-line or stdin non-interatively
+            self.engine.add_args("run", "--thinking=true")
+            self.engine.add(args.ARGS)
+        # Running on a tty with no arguments will start the TUI for an interactive session
 
     def add_env_options(self, args: OpenCodeArgsType) -> None:
         config = {
             "$schema": "https://opencode.ai/config.json",
+            "model": f"ramalama/{self.model_name}",
             "provider": {
                 "ramalama": {
                     "npm": "@ai-sdk/openai-compatible",
