@@ -62,6 +62,28 @@ def test_list_models_timezones_in_utc(monkeypatch):
     assert all(m['modified'].utcoffset() == timedelta(0) for m in models)
 
 
+def test_list_models_timezones_in_utc_when_manifest_attributes_unsupported(monkeypatch):
+    manifest_output = (
+        '{"name":"oci://localhost/demo:latest","modified":"2026-01-01 00:00:00 +0000","size":123,"ID":"sha256:b"},'
+    )
+
+    def fake_run_cmd(args, **kwargs):
+        if args[:4] == ["podman", "images", "--filter", "label=org.containers.type"]:
+            return _result("")
+        if args[:4] == ["podman", "images", "--filter", "manifest=true"]:
+            return _result(manifest_output)
+        if args[:3] == ["podman", "artifact", "ls"]:
+            return _result("")
+        raise AssertionError(f"Unexpected command: {args}")
+
+    monkeypatch.setattr(oci_tools, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(oci_tools, "engine_supports_manifest_attributes", lambda engine: False)
+
+    models = oci_tools.list_models(EngineArgs(engine="podman"))
+    assert all(isinstance(m['modified'], datetime) for m in models)
+    assert all(m['modified'].utcoffset() == timedelta(0) for m in models)
+
+
 def test_list_manifests_filters_by_annotation(monkeypatch):
     manifests_output = """\
 {"name":"oci://localhost/annotation-filtered:latest","modified":"2026-01-01 00:00:00 +0000","size":456,"ID":"sha256:c"},
