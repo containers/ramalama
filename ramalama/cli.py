@@ -171,10 +171,10 @@ def get_initial_parser():
     return parser
 
 
-def get_parser():
+def get_parser(lightweight=False):
     description = get_description()
     parser = create_argument_parser(description, add_help=True)
-    configure_subcommands(parser)
+    configure_subcommands(parser, lightweight=lightweight)
     return parser
 
 
@@ -190,13 +190,19 @@ def parse_args_from_cmd(cmd: list[str]) -> tuple[argparse.ArgumentParser, argpar
         config.dryrun = True
     # Phase 1: Parse the initial arguments to set CONFIG.runtime etc... as this can affect the subcommands
     initial_parser = get_initial_parser()
-    initial_args, _ = initial_parser.parse_known_args(cmd)
+    initial_args, remaining = initial_parser.parse_known_args(cmd)
     for arg in initial_args.__dict__.keys() & config._fields:
         if getattr(initial_args, arg) != getattr(config, arg):
             setattr(config, arg, getattr(initial_args, arg))
 
+    # Some subcommands (e.g. list, version) don't need runtime plugin registration
+    # or GPU detection, so skip the expensive parser setup for those.
+    # Find the first non-option token in remaining args as the subcommand.
+    subcommand = next((arg for arg in remaining if not arg.startswith("-")), None)
+    lightweight = subcommand in LIGHTWEIGHT_SUBCOMMANDS
+
     # Phase 2: Re-parse the arguments with the subcommands enabled
-    parser = get_parser()
+    parser = get_parser(lightweight=lightweight)
     args = parser.parse_args(cmd)
     post_parse_setup(args)
 
@@ -312,16 +318,39 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
 
 
-def configure_subcommands(parser):
+# Subcommands that don't need runtime plugin registration or GPU detection.
+# Only run/serve/bench (via runtime plugin), sandbox, and daemon need it.
+LIGHTWEIGHT_SUBCOMMANDS = {
+    "chat",
+    "containers",
+    "ps",
+    "info",
+    "inspect",
+    "list",
+    "login",
+    "logout",
+    "ls",
+    "pull",
+    "push",
+    "rm",
+    "stop",
+    "version",
+}
+
+
+def configure_subcommands(parser, lightweight=False):
     """Add subcommand parsers to the main argument parser."""
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
-    # Register subcommands only for the selected runtime plugin so that help
-    # output only shows subcommands the active runtime actually supports.
-    # get_config().runtime is already set by Phase 1 of parse_args_from_cmd
-    # before configure_subcommands() is called in Phase 2.
-    runtime = ActiveConfig().runtime
-    get_runtime(runtime).register_subcommands(subparsers)
+
+    if not lightweight:
+        # Register subcommands only for the selected runtime plugin so that help
+        # output only shows subcommands the active runtime actually supports.
+        # get_config().runtime is already set by Phase 1 of parse_args_from_cmd
+        # before configure_subcommands() is called in Phase 2.
+        runtime = ActiveConfig().runtime
+        get_runtime(runtime).register_subcommands(subparsers)
+
     chat_parser(subparsers)
     containers_parser(subparsers)
     help_parser(subparsers)
@@ -333,10 +362,15 @@ def configure_subcommands(parser):
     pull_parser(subparsers)
     push_parser(subparsers)
     rm_parser(subparsers)
-    sandbox_parser(subparsers)
+
+    if not lightweight:
+        sandbox_parser(subparsers)
+
     stop_parser(subparsers)
     version_parser(subparsers)
-    daemon_parser(subparsers)
+
+    if not lightweight:
+        daemon_parser(subparsers)
 
 
 def post_parse_setup(args):
