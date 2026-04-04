@@ -111,3 +111,40 @@ def test_engine_supports_manifest_attributes_uses_semver(monkeypatch):
 
     monkeypatch.setattr(oci_tools, "engine_version", lambda engine: SemVer(4, 9, 9))
     assert oci_tools.engine_supports_manifest_attributes("podman") is False
+
+
+def test_list_manifests_parses_modified_when_engine_lacks_attribute_support(monkeypatch):
+    """Regression test for https://github.com/containers/ramalama/issues/2586.
+
+    When engine_supports_manifest_attributes() returns False, list_manifests()
+    previously returned the raw JSON dicts, leaving ``modified`` as a plain
+    string.  GlobalModelStore.list_models() then called .timestamp() on that
+    string, triggering an AttributeError.
+
+    The fix ensures parse_datetime() is applied before returning, so callers
+    always receive a datetime (or None) — never a bare string.
+    """
+    manifests_output = (
+        '{"name":"oci://localhost/mymodel:latest","modified":"2026-03-01 12:00:00 +0000",'
+        '"size":500,"ID":"sha256:d"},'
+    )
+
+    def fake_run_cmd(args, **kwargs):
+        if args[:4] == ["podman", "images", "--filter", "manifest=true"]:
+            return _result(manifests_output)
+        raise AssertionError(f"Unexpected command: {args}")
+
+    monkeypatch.setattr(oci_tools, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(oci_tools, "engine_supports_manifest_attributes", lambda engine: False)
+
+    models = oci_tools.list_manifests(EngineArgs(engine="podman"))
+
+    assert len(models) == 1
+    model = models[0]
+    assert model["name"] == "oci://localhost/mymodel:latest"
+    assert model["size"] == 500
+    # ``modified`` must be a datetime — not a raw string — so that
+    # GlobalModelStore.list_models() can safely call .timestamp() on it.
+    assert isinstance(model["modified"], datetime), (
+        f"Expected datetime, got {type(model['modified'])}: {model['modified']!r}"
+    )
