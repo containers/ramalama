@@ -57,7 +57,7 @@ def test_help_command_flags():
     # Test for regression of #7273 (spurious "--remote" help on output)
     for help_opt in ["help", "-h", "--help"]:
         result = check_output(["ramalama", help_opt])
-        assert re.search(r"^usage: ramalama \[-h] \[--debug.*] \[--dryrun] \[--engine {podman,docker}]", result)
+        assert re.search(r"^usage: ramalama \[-h] \[-v] \[--debug.*] \[--dryrun] \[--engine {podman,docker}]", result)
 
 
 @pytest.mark.e2e
@@ -153,10 +153,7 @@ def test_default_image_by_env_variable_and_config(command):
 def test_default_container_engine():
     result = check_output(["ramalama", "--help"])
     match = DEFAULT_CONTAINER_ENGINE_PATTERN.search(result.replace("\n", ""))
-    if platform.system() == "Darwin":
-        assert match is None
-    else:
-        assert match.group("engine") in ['podman', 'docker']
+    assert match and match.group("engine") in ['podman', 'docker']
 
 
 @pytest.mark.e2e

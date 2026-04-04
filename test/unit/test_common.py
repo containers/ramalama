@@ -8,7 +8,11 @@ from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
 
-from ramalama.cli import default_image, default_rag_image, parse_args_from_cmd
+from ramalama.cli import (
+    default_image,
+    default_rag_image,
+    parse_args_from_cmd,
+)
 from ramalama.common import (
     accel_image,
     check_nvidia,
@@ -19,7 +23,6 @@ from ramalama.common import (
     populate_volume_from_image,
     rm_until_substring,
     verify_checksum,
-    version_tagged_image,
 )
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import DEFAULT_IMAGE, load_config
@@ -120,7 +123,8 @@ DEFAULT_IMAGES = {
         (None, f"{_BASE_IMAGE}@sha256:digest", None, None, f"{_BASE_IMAGE}@sha256:digest"),
         (None, None, f"{_BASE_IMAGE}@sha256:digest", None, f"{_BASE_IMAGE}@sha256:digest"),
         (None, None, None, f"{_BASE_IMAGE}@sha256:digest", f"{_BASE_IMAGE}@sha256:digest"),
-        ("HIP_VISIBLE_DEVICES", None, None, None, version_tagged_image("quay.io/ramalama/rocm")),
+        # AMD GPU defaults to Vulkan (ramalama image, version-tagged)
+        ("HIP_VISIBLE_DEVICES", None, None, None, DEFAULT_IMAGE),
         ("HIP_VISIBLE_DEVICES", f"{_BASE_IMAGE}:latest", None, None, f"{_BASE_IMAGE}:latest"),
         ("HIP_VISIBLE_DEVICES", None, f"{_BASE_IMAGE}:latest", None, f"{_BASE_IMAGE}:latest"),
         ("HIP_VISIBLE_DEVICES", None, None, f"{_BASE_IMAGE}:latest", f"{_BASE_IMAGE}:latest"),
@@ -177,6 +181,16 @@ def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
         ["podman", "machine", "list", "--format", "json", "--all-providers"], ignore_stderr=True, encoding="utf-8"
     )
     mock_handle_provider.assert_called_once_with({"Name": "myvm"}, config)
+
+
+@patch("ramalama.common.run_cmd", side_effect=FileNotFoundError("podman: command not found"))
+def test_apple_vm_returns_false_when_podman_not_installed(mock_run_cmd):
+    from ramalama.common import apple_vm
+
+    result = apple_vm("podman", None)
+
+    assert result is False
+    mock_run_cmd.assert_called_once()
 
 
 class TestEnsureImage:

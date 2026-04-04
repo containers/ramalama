@@ -11,6 +11,12 @@ from ramalama.transports.transport_factory import New
 
 _VLLM_DEFAULT_IMAGE = "docker.io/vllm/vllm-openai:latest"
 
+_VLLM_IMAGES: dict[str, str] = {
+    "CUDA_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai",
+    "HIP_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai-rocm",
+    "INTEL_VISIBLE_DEVICES": "docker.io/intel/vllm",
+}
+
 
 class VllmPlugin(ContainerizedInferenceRuntimePlugin):
     @property
@@ -87,14 +93,13 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         self._add_max_model_len_arg(parser)
         return parser
 
-    def get_container_image(self, config: Any, gpu_type: str) -> str | None:
-        # GPU-specific user override (e.g., VLLM_CUDA_VISIBLE_DEVICES)
-        if gpu_type and (override := config.images.get(f"VLLM_{gpu_type}")):
-            return override
-        # General vllm user override (VLLM key, any GPU)
-        if override := config.images.get("VLLM"):
-            return override
-        return _VLLM_DEFAULT_IMAGE
+    def get_container_image(self, config: Any, detected_gpu_type: str) -> str | None:
+        if detected_gpu_type:
+            image = config.images.get(f"VLLM_{detected_gpu_type}") or _VLLM_IMAGES.get(detected_gpu_type)
+            if image:
+                return image
+
+        return config.images.get("VLLM") or _VLLM_DEFAULT_IMAGE
 
     def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
         conn.request("GET", "/ping")

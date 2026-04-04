@@ -180,6 +180,14 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         except Exception as e:
             model._cleanup_server_process(getattr(args, "server_process", None))
             raise e
+        # When serving in a detached container, wait for the server to become healthy before returning
+        if (
+            not getattr(args, "dryrun", False)
+            and not getattr(args, "generate", None)
+            and getattr(args, "container", False)
+            and getattr(args, "detach", False)
+        ):
+            model.wait_for_healthy(args)
 
     def _run_handler(self, args: argparse.Namespace) -> None:
         try:

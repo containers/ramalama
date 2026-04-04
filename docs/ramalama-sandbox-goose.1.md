@@ -1,34 +1,28 @@
-% ramalama-bench 1
+% ramalama-sandbox-goose 1
 
 ## NAME
-ramalama\-bench - benchmark specified AI Model
+ramalama\-sandbox\-goose - run Goose in a sandbox, backed by a local AI Model
 
 ## SYNOPSIS
-**ramalama bench** [*options*] *model* [arg ...]
+**ramalama sandbox goose** [*options*] *model* [arg ...]
 
-## MODEL TRANSPORTS
+## DESCRIPTION
+Run Goose in a container, connected to a local model server also running
+in a container. Goose uses the model for reasoning and tool calling.
 
-| Transports    | Prefix | Web Site                                            |
-| ------------- | ------ | --------------------------------------------------- |
-| URL based     | https://, http://, file:// | `https://web.site/ai.model`, `file://tmp/ai.model`|
-| HuggingFace   | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)|
-| ModelScope    | modelscope://, ms:// | [`modelscope.cn`](https://modelscope.cn/)|
-| Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)|
-| rlcr          | rlcr://   | [`ramalama.com`](https://registry.ramalama.com) |
-| OCI Container Registries | oci:// | [`opencontainers.org`](https://opencontainers.org)|
-|||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
+When run with no arguments after the model, an interactive session is
+launched. If one or more arguments are provided, they are passed to the agent
+as instructions to process non-interactively. Commands may also be passed via
+stdin.
 
-RamaLama defaults to the Ollama registry transport. This default can be overridden in the `ramalama.conf` file or via the RAMALAMA_TRANSPORTS
-environment. `export RAMALAMA_TRANSPORT=huggingface` Changes RamaLama to use huggingface transport.
-
-Modify individual model transports by specifying the `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, `file://` prefix to the model.
-
-URL support means if a model is on a web site or even on your local system, you can run it directly.
+Two containers are started: a model server (llama-server) and the agent
+container. They communicate via container networking. When the agent session
+exits, the model server container is automatically stopped and removed.
 
 ## OPTIONS
 
 #### **--authfile**=*password*
-path of the authentication file for OCI registries
+Path of the authentication file for OCI registries
 
 #### **--backend**=*auto* | vulkan | rocm | cuda | sycl | openvino
 GPU backend to use for inference (default: auto).
@@ -62,15 +56,20 @@ RAMALAMA_BACKEND environment variable.
 Examples:
 ```
 # Use auto-detection (default)
-ramalama bench granite
+ramalama run granite
 
 # Force Vulkan backend
-ramalama bench --backend vulkan granite
+ramalama run --backend vulkan granite
 
-# Compare performance between backends
-ramalama bench --backend vulkan granite
-ramalama bench --backend rocm granite
+# Force ROCm backend on AMD GPU
+ramalama run --backend rocm granite
 ```
+
+#### **--cache-reuse**=256
+Min chunk size to attempt reusing from the cache via KV shifting
+
+#### **--ctx-size**, **-c**
+size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 0, 0 = loaded from model)
 
 #### **--device**
 Add a host device to the container. Optional permissions parameter can
@@ -79,9 +78,9 @@ write, and m for mknod(2).
 
 Example: --device=/dev/dri/renderD128:/dev/xvdc:rwm
 
-The device specification is passed directly to the underlying container engine.  See documentation of the supported container engine for more information.
+The device specification is passed directly to the underlying container engine. See documentation of the supported container engine for more information.
 
-Pass '--device=none' explicitly add no device to the container, eg for
+Pass '--device=none' to explicitly add no device to the container, e.g. for
 running a CPU-only performance comparison.
 
 #### **--env**=
@@ -93,20 +92,23 @@ process to be launched inside of the container. If an environment variable is
 specified without a value, the container engine checks the host environment
 for a value and set the variable only if it is set on the host.
 
-#### **--format**
-Set the output format of the benchmark results. Options include json and table (default: table).
+#### **--goose-image**=*IMAGE*
+Goose container image
 
 #### **--help**, **-h**
 show this help message and exit
 
+#### **--host**="0.0.0.0"
+IP address for llama.cpp to listen on.
+
 #### **--image**=IMAGE
 OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers. For example:
-`quay.io/ramalama/ramalama`. See the table below for all default images.
+`quay.io/ramalama/ramalama`. See the table above for all default images.
 The default image tag is based on the minor version of the RamaLama package.
 Version 0.18.0 of RamaLama pulls an image with a `:0.18` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
-The default can be overridden in the ramalama.conf file or via the
+The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
 RamaLama to use the `quay.io/ramalama/aiimage:1.2` image.
 
@@ -122,19 +124,48 @@ Accelerated images:
 |  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann      |
 |  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa      |
 
+Upstream llama.cpp "full" images from `ghcr.io/ggml-org/llama.cpp` are also supported.
+RamaLama automatically detects the image type and adjusts the container CLI accordingly.
+
+```
+ramalama serve --image ghcr.io/ggml-org/llama.cpp:full-vulkan MODEL
+```
+
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)
 If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
 
-#### **--name**, **-n**
-name of the container to run the Model in
+#### **--logfile**=*path*
+Log output to a file
 
-#### **--network**=*none*
+#### **--max-tokens**=*integer*
+Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
+This parameter is mapped to the appropriate runtime-specific parameter:
+- llama.cpp: `-n` parameter
+- MLX: `--max-tokens` parameter
+- vLLM: `--max-tokens` parameter
+
+#### **--model-draft**
+
+A draft model is a smaller, faster model that helps accelerate the decoding
+process of larger, more complex models, like Large Language Models (LLMs). It
+works by generating candidate sequences of tokens that the larger model then
+verifies and refines. This approach, often referred to as speculative decoding,
+can significantly improve the speed of inferencing by reducing the number of
+times the larger model needs to be invoked.
+
+Use --runtime-args to pass the other draft model related parameters.
+Make sure the sampling parameters like top_k on the web UI are set correctly.
+
+#### **--name**, **-n**
+Name of the container to run the Model in.
+
+#### **--network**=*""*
 set the network mode for the container
 
 #### **--ngl**
-number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
-The default -1, means use whatever is automatically deemed appropriate (0 or 999)
+number of GPU layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
+The default, -1, means use whatever is automatically deemed appropriate (0 or 999)
 
 #### **--oci-runtime**
 
@@ -142,8 +173,14 @@ Override the default OCI runtime used to launch the container. Container
 engines like Podman and Docker, have their own default oci runtime that they
 use. Using this option RamaLama will override these defaults.
 
-On Nvidia based GPU systems, RamaLama defaults to using the
+On NVIDIA-based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
+
+#### **--port**, **-p**
+port for AI Model server to listen on. It must be available. If not specified,
+a free port in the 8080-8180 range is selected, starting with 8080.
+
+The default can be overridden in the `ramalama.conf` file.
 
 #### **--privileged**
 By default, RamaLama containers are unprivileged (=false) and cannot, for
@@ -170,30 +207,75 @@ not have more privileges than the user that launched them.
 - **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
 - **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
+#### **--runtime-args**="*args*"
+Add *args* to the runtime (llama.cpp or vllm) invocation.
+
 #### **--seed**=
-Specify seed rather than using random seed model interaction
+Specify a seed rather than using a random seed.
 
 #### **--selinux**=*true*
 Enable SELinux container separation
 
+#### **--temp**="0.8"
+Temperature of the response from the AI Model.
+llama.cpp explains this as:
+
+    The lower the number is, the more deterministic the response.
+
+    The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
+
+	Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
+
+#### **--thinking**=*true*
+Enable or disable thinking mode in reasoning models
+
 #### **--threads**, **-t**
-Maximum number of cpu threads to use.
+Maximum number of CPU threads to use.
 The default is to use half the cores available on this system for the number of threads.
 
 #### **--tls-verify**=*true*
 require HTTPS and verify certificates when contacting OCI registries
 
-## DESCRIPTION
-Benchmark specified AI Model.
+#### **--webui**=*on* | *off*
+Enable or disable the web UI for the served model (enabled by default). When set to "on" (the default), the web interface is properly initialized. When set to "off", the `--no-webui` option is passed to the llama-server command to disable the web interface.
+
+#### **--workdir**, **-w**
+Local directory to mount into the sandbox container at /work
 
 ## EXAMPLES
 
+Run the Goose agent with default settings:
 ```
-ramalama bench granite3-moe
+ramalama sandbox goose qwen3:4b
+```
+
+Run the Goose agent with a custom image:
+```
+ramalama sandbox goose --goose-image ghcr.io/block/goose:1.27.1 qwen3:4b
+```
+
+Turn off thinking mode in the model the agent is connecting to (may result in faster responses):
+```
+ramalama sandbox goose --thinking=off qwen3:4b
+```
+
+Start an interactive session with access to a local directory:
+```
+ramalama sandbox goose -w ./src qwen3:4b
+```
+
+Request the agent to perform actions non-interactively:
+```
+ramalama sandbox goose -w ./src qwen3:4b Please analyze the source code in the current directory
+```
+
+Send instructions to the agent via stdin:
+```
+echo "What is the speed of light in meters per second?" | ramalama sandbox goose qwen3:4b
 ```
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-run(1)](ramalama-run.1.md)**, **[ramalama-serve(1)](ramalama-serve.1.md)**, **[ramalama-sandbox(1)](ramalama-sandbox.1.md)**
 
 ## HISTORY
-Jan 2025, Originally compiled by Eric Curtin <ecurtin@redhat.com>
+Mar 2026, Originally compiled by Mike Bonnet <mikeb@redhat.com>

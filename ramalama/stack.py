@@ -248,8 +248,8 @@ spec:
                 compose = Compose(
                     self.model.model_name,
                     (model_src_path, model_dest_path),
-                    (chat_template_src_path, chat_template_dest_path),
-                    (mmproj_src_path, mmproj_dest_path),
+                    (str(chat_template_src_path), str(chat_template_dest_path)),
+                    (str(mmproj_src_path), str(mmproj_dest_path)),
                     compose_args,
                     exec_args,
                 )

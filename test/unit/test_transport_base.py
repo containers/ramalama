@@ -185,6 +185,42 @@ def test_compute_serving_port(
                 assert outputPort == expectedOutput
 
 
+def test_rag_args_clears_port_override():
+    """Test that _rag_args removes port_override so model gets a random port."""
+    from ramalama.cli import _rag_args
+
+    args = Namespace(
+        port="8080",
+        port_override=True,
+        rag="localhost/rag-data:latest",
+        rag_image="localhost/rag-image:latest",
+        engine="podman",
+        name="myname",
+        debug=False,
+        api="",
+    )
+
+    random_port = "12345"
+    mock_compute_ports = Mock(return_value=[int(random_port)])
+    mock_socket_inst = MagicMock()
+    mock_socket_inst.bind = MagicMock(side_effect=[None])
+
+    with (
+        patch('ramalama.transports.base.compute_ports', mock_compute_ports),
+        patch('socket.socket', return_value=mock_socket_inst),
+    ):
+        rag_args = _rag_args(args)
+
+    # port_override must be removed so compute_serving_port picks a random port
+    assert not hasattr(args, 'port_override'), "port_override should be removed from model args"
+    # The model port must equal the mocked random port
+    assert args.port == random_port
+    # The RAG proxy should have gotten the user's original port
+    assert rag_args.port == "8080"
+    # model_port on the rag_args should match the model's assigned port
+    assert rag_args.model_port == random_port
+
+
 class TestMLXRuntime:
     """Test MLX runtime functionality"""
 

@@ -79,6 +79,12 @@ def test_config_defaults_not_set(monkeypatch):
     assert cfg.is_set("verify") is False
 
 
+@pytest.mark.parametrize("backend", ["auto", "vulkan", "rocm", "cuda", "sycl", "openvino"])
+def test_base_config_accepts_valid_backend(backend):
+    config = BaseConfig(backend=backend)
+    assert config.backend == backend
+
+
 def test_base_config_normalizes_pull_for_docker():
     config = BaseConfig(engine="docker", pull="newer")
     assert config.pull == "always"
@@ -234,6 +240,19 @@ class TestGetDefaultEngine:
 
         assert cfg.engine == "docker"
         assert cfg.is_set("engine") is False
+
+    def test_explicit_engine_is_preserved_when_podman_machine_missing(self):
+        with (
+            patch("ramalama.config.available", return_value=False),
+            patch("ramalama.config.apple_vm", return_value=False),
+            patch("ramalama.config.load_file_config", return_value={}),
+            patch("ramalama.config.sys.platform", "darwin"),
+        ):
+            cfg = load_config({"RAMALAMA_CONTAINER_ENGINE": "podman"})
+
+        assert cfg.engine == "podman"
+        assert cfg.is_set("engine") is True
+        assert cfg.container is True
 
 
 class TestLoadEnvConfig:
