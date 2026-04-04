@@ -1,10 +1,7 @@
-import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List
-
-logger = logging.getLogger(__name__)
 
 from ramalama import oci_tools
 from ramalama.arg_types import EngineArgs
@@ -88,14 +85,7 @@ class GlobalModelStore:
                 elif isinstance(modified, str):
                     if modified.endswith("Z"):
                         modified = modified[:-1] + "+00:00"
-                    try:
-                        modified_unix = datetime.fromisoformat(modified).timestamp()
-                    except ValueError:
-                        logger.warning(
-                            "Could not parse model modification timestamp %r — defaulting to 0",
-                            modified,
-                        )
-                        modified_unix = 0
+                    modified_unix = datetime.fromisoformat(modified).timestamp()
                 else:
                     modified_unix = modified.timestamp()
                 models[name] = [ModelFile(name, modified_unix, size, is_partial=False)]
