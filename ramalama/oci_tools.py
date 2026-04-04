@@ -150,7 +150,14 @@ def list_manifests(args: EngineArgType) -> list[ListModelResponse]:
 
     manifests = json.loads(f"[{output[:-1]}]")
     if not engine_supports_manifest_attributes(args.engine):
-        return manifests
+        return [
+            {
+                "name": manifest["name"],
+                "modified": parse_datetime(manifest["modified"]),
+                "size": int(manifest["size"]),
+            }
+            for manifest in manifests
+        ]
 
     models: list[ListModelResponse] = []
     for manifest in manifests:
