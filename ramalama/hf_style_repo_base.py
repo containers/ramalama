@@ -368,7 +368,10 @@ class HFStyleRepoModel(Transport, ABC):
             os.makedirs(self.model_store.base_path, exist_ok=True)
             with tempfile.TemporaryDirectory(prefix="tmp_hfcli_", dir=self.model_store.base_path) as tempdir:
                 model = f"{organization}/{name}"
-                conman_args = self.get_cli_download_args(tempdir, model)
+                try:
+                    conman_args = self.get_cli_download_args(tempdir, model)
+                except NotImplementedError:
+                    raise e from None
                 run_cmd(conman_args)
 
                 snapshot_hash, files = self._collect_cli_files(tempdir)
