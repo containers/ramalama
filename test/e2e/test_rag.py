@@ -35,16 +35,8 @@ WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
             id="check --network is not set by default"
         ),
         pytest.param(
-            HTTP_FILE, [], True, f".*doc2rag --format qdrant /output {HTTP_FILE}",
+            HTTP_FILE, [], True, f".*doc2rag .*/output {HTTP_FILE}",
             id="check with http file"
-        ),
-        pytest.param(
-            HTTP_FILE, ["--format", "json"], True, f".*doc2rag --format json /output {HTTP_FILE}",
-            id="check with http file + json format"
-        ),
-        pytest.param(
-            HTTP_FILE, ["--format", "milvus"], True, f".*doc2rag --format milvus /output {HTTP_FILE}",
-            id="check with http file + milvus format"
         ),
         pytest.param(
             HTTP_FILE, [], False, ".*/docs.*",
@@ -55,13 +47,16 @@ WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
             id="check with local file"
         ),
         pytest.param(
-            Path("README.md"), [], True, ".*doc2rag --format qdrant /output /docs",
+            Path("README.md"), [], True, ".*doc2rag .*/output /docs",
             id="check doc2rag existence with local file"
         ),
         pytest.param(
-            Path("README.md"), ["--format", "markdown", "--ocr"], True,
-            ".*doc2rag --format markdown --ocr /output /docs",
-            id="check --ocr flag with local file"
+            Path("README.md"), ["--chunk-size", "512"], True, ".*--chunk-size 512",
+            id="check --chunk-size flag"
+        ),
+        pytest.param(
+            Path("README.md"), [], True, ".*--chunk-size 400",
+            id="check default chunk-size"
         ),
     ],
 )
@@ -134,6 +129,21 @@ def test_rag_dry_run_with_file_network_uri():
 
 @pytest.mark.e2e
 @skip_if_no_container
+def test_rag_dry_run_multiple_documents():
+    with RamalamaExecWorkspace() as ctx:
+        file_path = Path(ctx.workspace_dir) / "README.md"
+        file_path.touch()
+        result = ctx.check_output(RAG_DRY_RUN + [str(file_path), HTTP_FILE, RAG_MODEL])
+        # Local file should be mounted
+        assert re.search(
+            fr".*-v \"?{normalize_host_path_for_container(file_path)}\"?:/docs/README.md:ro", result
+        )
+        # URL should be passed to doc2rag command
+        assert re.search(fr".*{HTTP_FILE}", result)
+
+
+@pytest.mark.e2e
+@skip_if_no_container
 def test_rag_dry_run_with_debug():
     with RamalamaExecWorkspace() as ctx:
         result = ctx.check_output(["ramalama", "--debug", "--dryrun", "rag", HTTP_FILE, RAG_MODEL])
@@ -194,7 +204,7 @@ def test_rag_error_when_file_is_missing():
     "model, params, expected, expected_regex",
     [
         pytest.param(
-            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*llama-server --host [\w\.:]+ --port 8081",
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*llama-server --host [\w\.:]+\ --port \d+",
             id="check llama-server"
         ),
         pytest.param(
@@ -202,7 +212,7 @@ def test_rag_error_when_file_is_missing():
             id="check rag image"
         ),
         pytest.param(
-            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, ".*rag_framework serve --port 8080",
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*rag_framework serve --port \d+",
             id="check rag_framework"
         ),
         pytest.param(
@@ -286,6 +296,7 @@ def test_rag(container_engine):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_not_windows
 def test_rag_with_unc_path(container_engine):
@@ -297,6 +308,7 @@ def test_rag_with_unc_path(container_engine):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_not_windows
 def test_rag_with_unc_uri(container_engine):

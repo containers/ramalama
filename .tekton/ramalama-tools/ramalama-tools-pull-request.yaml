@@ -11,19 +11,17 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: >-
       event == "pull_request" && target_branch == "main" && body.action != "ready_for_review" &&
       (
-        "container-images/common/Containerfile.rag".pathChanged() ||
-        "container-images/common/requirements-rag-cu128*.txt".pathChanged() ||
-        "container-images/scripts/build_rag.sh".pathChanged() ||
-        "container-images/scripts/doc2rag".pathChanged() ||
-        "container-images/scripts/rag_framework".pathChanged() ||
+        "container-images/common/Containerfile.tools".pathChanged() ||
+        "container-images/common/requirements-tools-cpu*.txt".pathChanged() ||
+        "container-images/scripts/build_tools.sh".pathChanged() ||
         ".tekton/pipelines/pull-request-pipeline.yaml".pathChanged() ||
-        ".tekton/cuda-rag/cuda-rag-pull-request.yaml".pathChanged()
+        ".tekton/ramalama-tools/ramalama-tools-pull-request.yaml".pathChanged()
       )
   labels:
     appstudio.openshift.io/application: ramalama
-    appstudio.openshift.io/component: cuda-rag
+    appstudio.openshift.io/component: ramalama-tools
     pipelines.appstudio.openshift.io/type: build
-  name: cuda-rag-on-pull-request
+  name: ramalama-tools-on-pull-request
   namespace: ramalama-tenant
 spec:
   params:
@@ -32,22 +30,18 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ramalama-tenant/cuda-rag:on-pr-{{revision}}
+    value: quay.io/redhat-user-workloads/ramalama-tenant/ramalama-tools:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: dockerfile
-    value: container-images/common/Containerfile.rag
-  - name: build-args
-    value:
-    - PARENT=docker.io/nvidia/cuda:12.8.1-devel-ubi9
-    - TORCH_BACKEND=cu128
+    value: container-images/common/Containerfile.tools
   pipelineRef:
     name: pull-request-pipeline
   timeouts:
     pipeline: 12h
     finally: 15m
   taskRunTemplate:
-    serviceAccountName: build-pipeline-cuda-rag
+    serviceAccountName: build-pipeline-ramalama-tools
   workspaces:
   - name: git-auth
     secret:

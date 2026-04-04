@@ -211,24 +211,24 @@ If this port is unavailable, another free port from this range will be selected.
 - **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
 - **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
-**rag_format**="qdrant"
+**rag_image**="quay.io/ramalama/ramalama-rag"
 
-Specify the default output format for output of the `ramalama rag` command.
-Options: qdrant, json, markdown, milvus.
+OCI container image used for RAG processing (doc2rag and rag_framework).
+Can also be overridden with the `--rag-image` flag on the command line or the
+RAMALAMA_RAG_IMAGE environment variable.
 
-**rag_images**="quay.io/ramalama/ramalama-rag"
+`[[ramalama.tools_images]]`
 
-OCI container image to run with the specified AI model when using RAG content.
+User-override entries for GPU-specific tools container images used for GGUF
+conversion. Built-in GPU defaults (CUDA, ROCm, Intel) are defined internally;
+entries here override those defaults:
 
-`[[ramalama.rag_images]]`
+  CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda-tools"
+  HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm-tools"
+  INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu-tools"
 
-User-override entries for GPU-specific RAG container images. Built-in GPU defaults
-(CUDA, ROCm, Intel) are defined internally; entries here override those defaults:
-
-  CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda-rag"
-  HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm-rag"
-  INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu-rag"
-
+Can also be overridden with the `--tools-image` flag on the command line or the
+RAMALAMA_TOOLS_IMAGE environment variable.
 
 **runtime**="llama.cpp"
 

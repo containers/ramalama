@@ -16,6 +16,7 @@ from ramalama.toml_parser import TOMLParser
 DEFAULT_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama")
 DEFAULT_STACK_IMAGE: str = version_tagged_image("quay.io/ramalama/llama-stack")
 DEFAULT_RAG_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-rag")
+DEFAULT_TOOLS_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-tools")
 GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q2_K",
     "Q3_K_S",
@@ -176,6 +177,7 @@ class BaseConfig:
     convert_type: Literal["artifact", "car", "raw"] = "raw"
     default_image: str = DEFAULT_IMAGE
     default_rag_image: str = DEFAULT_RAG_IMAGE
+    default_tools_image: str = DEFAULT_TOOLS_IMAGE
     dryrun: bool = False
     engine: SUPPORTED_ENGINES | None = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
@@ -185,15 +187,14 @@ class BaseConfig:
     image: str = None  # type: ignore
     images: dict[str, str] = field(default_factory=dict)
     rag_image: str | None = None
-    rag_images: dict[str, str] = field(default_factory=dict)
+    tools_image: str | None = None
+    tools_images: dict[str, str] = field(default_factory=dict)
     keep_groups: bool = False
     log_level: LogLevel | None = None
     max_tokens: int = 0
-    ocr: bool = False
     port: str = "8080"
     prefix: str = None  # type: ignore
     pull: str = "newer"
-    rag_format: Literal["qdrant", "json", "markdown", "milvus"] = "qdrant"
     runtime: SUPPORTED_RUNTIMES = "llama.cpp"
     selinux: bool = False
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
@@ -300,11 +301,11 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     if 'env' in config:
         config['env'] = config['env'].split(',')
 
-    for key in ['images', 'rag_images']:
+    for key in ['images', 'tools_images']:
         if key in config:
             config[key] = json.loads(config[key])
 
-    for key in ['ocr', 'keep_groups', 'container', 'verify']:
+    for key in ['keep_groups', 'container', 'verify']:
         if key in config:
             config[key] = coerce_to_bool(config[key])
 

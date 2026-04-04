@@ -67,6 +67,13 @@ def default_rag_image() -> str:
 
 
 @lru_cache(maxsize=1)
+def default_tools_image() -> str:
+    from ramalama.tools import tools_image
+
+    return tools_image(ActiveConfig())
+
+
+@lru_cache(maxsize=1)
 def get_shortnames():
     return Shortnames()
 
@@ -653,6 +660,7 @@ def info_cli(args: DefaultArgsType) -> None:
             "Sources": list(set(shortnames.config_sources.values())),
         },
         "Store": args.store,
+        "ToolsImage": default_tools_image(),
         "UseContainer": args.container,
         "Version": version(),
     }

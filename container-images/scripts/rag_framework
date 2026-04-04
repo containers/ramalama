@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
+"""OpenAI-compatible RAG API proxy using llama.cpp for embeddings and Qdrant for retrieval.
 
-# All imports first
-import asyncio
+Sits between clients and a llama.cpp LLM server, injecting relevant context
+from a Qdrant vector database into chat completion requests.
+
+Usage:
+    rag_framework serve /rag/vector.db --embed-url URL --model-host HOST --model-port PORT
+"""
+
 import logging
-import os
 import sys
 import textwrap
 import time
 import uuid
-import warnings
 from argparse import ArgumentParser, Namespace
 from contextlib import asynccontextmanager
 from functools import cache
-from pathlib import Path
 
 import aiohttp
 import openai
@@ -20,23 +23,16 @@ import qdrant_client
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-from fastembed import SparseTextEmbedding, TextEmbedding
-from fastembed.rerank.cross_encoder import TextCrossEncoder
 from pydantic import BaseModel, Field
-from pymilvus import AnnSearchRequest, AsyncMilvusClient, RRFRanker  # type: ignore
 
-warnings.filterwarnings("ignore", category=UserWarning)
+logger = logging.getLogger("rag_framework")
 
-# Global Vars
-EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
-SPARSE_MODEL = os.getenv("SPARSE_MODEL", "prithivida/Splade_PP_en_v1")
-RANK_MODEL = os.getenv("RANK_MODEL", "Xenova/ms-marco-MiniLM-L-6-v2")
 COLLECTION_NAME = "rag"
-# Needed for mac to not give errors
-os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
+# ---------------------------------------------------------------------------
 # OpenAI API Compatible Data Models
+# ---------------------------------------------------------------------------
 class ChatMessage(BaseModel):
     role: str = Field(description="The role of the message author")
     content: str = Field(description="The contents of the message")
@@ -53,7 +49,6 @@ class ChatCompletionRequest(BaseModel):
     max_completion_tokens: int | None = Field(None, ge=1, description="Maximum number of tokens to generate")
     presence_penalty: float | None = Field(0, ge=-2, le=2, description="Presence penalty")
     frequency_penalty: float | None = Field(0, ge=-2, le=2, description="Frequency penalty")
-    logit_bias: dict[str, float] | None = Field(None, description="Modify likelihood of specified tokens")
     user: str | None = Field(None, description="A unique identifier representing your end-user")
 
 
@@ -78,7 +73,6 @@ class ChatCompletionResponse(BaseModel):
     usage: Usage
 
 
-# Streaming models
 class Delta(BaseModel):
     role: str | None = None
     content: str | None = None
@@ -99,206 +93,174 @@ class ChatCompletionStreamResponse(BaseModel):
     choices: list[StreamChoice]
 
 
-def eprint(e, exit_code):
-    print("Error:", str(e).strip("'\""), file=sys.stderr)
-    sys.exit(exit_code)
+# ---------------------------------------------------------------------------
+# Embedding via llama.cpp
+# ---------------------------------------------------------------------------
+class LlamaCppEmbedder:
+    """Generate embeddings via a llama.cpp server's /v1/embeddings endpoint."""
+
+    def __init__(self, api_url):
+        self.embeddings_url = f"{api_url.rstrip('/')}/v1/embeddings"
+
+    async def embed_query(self, text):
+        """Embed a single query and return its vector."""
+        payload = {"input": [text]}
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(
+                    self.embeddings_url, json=payload, timeout=aiohttp.ClientTimeout(total=30)
+                ) as resp:
+                    resp.raise_for_status()
+                    result = await resp.json()
+                    return result["data"][0]["embedding"]
+            except aiohttp.ClientError as e:
+                raise RuntimeError(f"Embedding server request failed: {e}") from e
 
 
-# Helper Classes and Functions
-
-
-def _bracket_host(host: str) -> str:
-    return f"[{host}]" if ":" in host else host
-
-
-async def request(host: str, port: int, path: str, timeout: int = 10):
-    host_str = _bracket_host(host)
-    async with aiohttp.ClientSession(
-        f"http://{host_str}:{port}",
-        timeout=aiohttp.ClientTimeout(total=timeout),
-    ) as session:
-        async with session.get(path) as resp:
-            data = await resp.json()
-            return resp, data
-
-
-async def wait_for_llama_server(host: str, port: int, total_timeout: int = 120, print_interval: int = 5):
-    end_time = time.monotonic() + total_timeout
-    last_print = 0
-    request_timeout = 1  # Timeout per individual HTTP request
-    host_str = _bracket_host(host)
-
-    while time.monotonic() < end_time:
-        try:
-            resp, data = await request(host, port, "/health", timeout=request_timeout)
-            if resp.status == 200:
-                return True
-
-            now = time.monotonic()
-            if now - last_print >= print_interval:
-                print(f"Server at {host_str}:{port} is running but not ready (status={resp.status}), retrying...")
-                last_print = now
-
-        except Exception as e:
-            now = time.monotonic()
-            if now - last_print >= print_interval:
-                print(f"Error connecting to {host_str}:{port}: {e}, retrying...")
-                last_print = now
-
-        await asyncio.sleep(1)
-
-    raise TimeoutError(f"LLaMA server at {host_str}:{port} did not become ready after {total_timeout} seconds.")
-
-
-class qdrant:
-    def __init__(self, vector_path):
-        self.client = qdrant_client.AsyncQdrantClient(path=vector_path)
-        self.client.set_model(EMBED_MODEL, local_files_only=True)
-        self.client.set_sparse_model(SPARSE_MODEL, local_files_only=True)
-
-    async def query(self, prompt):
-        results = await self.client.query(
-            collection_name="rag",
-            query_text=prompt,
-            limit=20,
-        )
-        return [r.document for r in results]
-
-
-class milvus:
-    def __init__(self, vector_path):
-        self.milvus_client = AsyncMilvusClient(uri=os.path.join(vector_path, "milvus.db"))
-        self.dmodel = TextEmbedding(model_name=EMBED_MODEL, local_files_only=True)
-        self.smodel = SparseTextEmbedding(model_name=SPARSE_MODEL, local_files_only=True)
-
-    async def query(self, prompt):
-        dense_embedding = next(self.dmodel.embed([prompt]))
-        sparse_embedding = next(self.smodel.embed([prompt])).as_dict()
-
-        search_param_dense = {
-            "data": [dense_embedding],
-            "anns_field": "dense",
-            "param": {"metric_type": "IP", "params": {"nprobe": 10}},
-            "limit": 10,
-        }
-
-        request_dense = AnnSearchRequest(**search_param_dense)
-
-        search_param_sparse = {
-            "data": [sparse_embedding],
-            "anns_field": "sparse",
-            "param": {"metric_type": "IP", "params": {"drop_ratio_build": 0.2}},
-            "limit": 10,
-        }
-
-        request_sparse = AnnSearchRequest(**search_param_sparse)
-
-        reqs = [request_dense, request_sparse]
-
-        ranker = RRFRanker(100)
-
-        results = await self.milvus_client.hybrid_search(
-            collection_name=COLLECTION_NAME,
-            reqs=reqs,
-            ranker=ranker,
-            limit=20,
-            output_fields=["text"],
-        )
-        return [hit["entity"]["text"] for hit in results[0]]
-
-
-class OpenAICompatibleRagService:
-    def __init__(self, vector_path, model_host, model_port):
-        self.reranker = TextCrossEncoder(model_name=RANK_MODEL, local_files_only=True)
-
-        if self.is_milvus(vector_path):
-            # setup milvus
-            self.vectordb = milvus(vector_path)
-        else:
-            # setup qdrant
-            self.vectordb = qdrant(vector_path)
-
-        model_host_str = _bracket_host(model_host)
+# ---------------------------------------------------------------------------
+# RAG Service
+# ---------------------------------------------------------------------------
+class RagService:
+    def __init__(self, vector_path, embed_url, model_host, model_port):
+        self.qclient = qdrant_client.AsyncQdrantClient(path=vector_path)
+        self.embedder = LlamaCppEmbedder(api_url=embed_url)
         self.llm = openai.AsyncOpenAI(
-            api_key="your-api-key",
-            base_url=f"http://{model_host_str}:{model_port}",
+            api_key="ramalama",
+            base_url=f"http://{model_host}:{model_port}",
             http_client=openai.DefaultAioHttpClient(),
         )
 
-    def is_milvus(self, vector_path):
-        return any(f.suffix == ".db" and f.is_file() for f in Path(vector_path).iterdir())
+    async def search(self, query, limit=5, neighbor_window=1):
+        """Embed query, search Qdrant, and expand with neighboring chunks.
 
-    def _extract_conversation_context(self, messages: list[ChatMessage]) -> str:
-        """Extract conversation context from message history"""
-        # Use last few messages as conversation context
-        context_messages = messages[-6:]
-        return "\n".join([f"{msg.role}: {msg.content}" for msg in context_messages])
+        For each matched chunk, retrieves `neighbor_window` chunks before and
+        after it within the same document. Each match produces its own context
+        window. Adjacent or overlapping windows from the same document are merged.
 
-    async def _perform_rag_lookup(self, query: str) -> str:
-        """Perform RAG vector search and reranking"""
-        # Vector search
-        results = await self.vectordb.query(query)
-
-        # Rerank and select top 5
-        reranked_context = " ".join(
-            str(results[i])
-            for i, _ in sorted(enumerate(self.reranker.rerank(query, results)), key=lambda x: x[1], reverse=True)[:5]
+        Returns a list of context strings, one per merged window.
+        """
+        vector = await self.embedder.embed_query(query)
+        results = await self.qclient.query_points(
+            collection_name=COLLECTION_NAME,
+            query=vector,
+            limit=limit,
+            with_payload=True,
         )
-        return reranked_context.strip()
 
-    async def _build_rag_enhanced_messages(self, messages: list[ChatMessage]) -> list[dict]:
-        """Build messages with RAG context for the LLM"""
-        if not messages:
+        if not results.points:
             return []
 
-        # Get the latest user message
-        latest_message = messages[-1]
-        if latest_message.role != "user":
-            return [{"role": msg.role, "content": msg.content} for msg in messages]
+        # Build expanded set of (doc_id, chunk_index) pairs
+        expanded = set()
+        has_metadata = False
+        for point in results.points:
+            if not point.payload or "chunk_index" not in point.payload:
+                continue
+            has_metadata = True
+            doc_id = point.payload.get("doc_id", 0)
+            chunk_idx = point.payload["chunk_index"]
+            for offset in range(-neighbor_window, neighbor_window + 1):
+                expanded.add((doc_id, chunk_idx + offset))
 
-        # Perform RAG lookup
-        rag_context = await self._perform_rag_lookup(latest_message.content)
-        conversation_history = self._extract_conversation_context(messages[:-1])
+        # Fall back to matched chunks directly if no metadata
+        if not has_metadata:
+            return [point.payload["document"] for point in results.points if point.payload]
 
-        # Enhanced system prompt with RAG context
-        system_prompt = textwrap.dedent("""
-            You are an expert software architect assistant.
-            Use the provided context and conversation history to answer questions accurately and concisely.
-            If the answer is not in the context, respond with "I don't know" - do not fabricate details.
+        # Group by doc_id and merge overlapping windows
+        from collections import defaultdict
 
-            ### Conversation History:
-            {0}
+        by_doc = defaultdict(set)
+        for doc_id, chunk_idx in expanded:
+            by_doc[doc_id].add(chunk_idx)
 
-            ### Retrieved Context:
-            {1}
+        # Fetch all needed chunks in one query
+        from qdrant_client import models
 
-            ### Current Question:
-            {2}
+        all_indices = [idx for indices in by_doc.values() for idx in indices]
+        neighbor_results = await self.qclient.scroll(
+            collection_name=COLLECTION_NAME,
+            scroll_filter=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="chunk_index",
+                        match=models.MatchAny(any=all_indices),
+                    )
+                ]
+            ),
+            with_payload=True,
+            limit=len(expanded),
+        )
 
-            Provide a helpful and accurate response based on the context above.
-            """).strip().format(conversation_history, rag_context, latest_message.content)
+        # Index fetched chunks by (doc_id, chunk_index)
+        chunk_map = {}
+        for point in neighbor_results[0]:
+            if point.payload:
+                key = (point.payload.get("doc_id", 0), point.payload["chunk_index"])
+                chunk_map[key] = point.payload["document"]
 
-        return [{"role": "user", "content": system_prompt}]
+        # Build context windows: group contiguous indices per doc, sorted
+        context_windows = []
+        for doc_id in sorted(by_doc):
+            indices = sorted(by_doc[doc_id])
+            # Split into contiguous runs
+            runs = []
+            current_run = [indices[0]]
+            for idx in indices[1:]:
+                if idx == current_run[-1] + 1:
+                    current_run.append(idx)
+                else:
+                    runs.append(current_run)
+                    current_run = [idx]
+            runs.append(current_run)
 
-    async def create_chat_completion(
-        self, request: ChatCompletionRequest
-    ) -> ChatCompletionResponse | StreamingResponse:
-        """OpenAI-compatible chat completion endpoint"""
+            for run in runs:
+                parts = [chunk_map[(doc_id, i)] for i in run if (doc_id, i) in chunk_map]
+                if parts:
+                    context_windows.append("\n\n".join(parts))
+
+        return context_windows
+
+    async def create_chat_completion(self, request):
+        """OpenAI-compatible chat completion with RAG context injection."""
         completion_id = f"chatcmpl-{uuid.uuid4().hex[:29]}"
         created = int(time.time())
 
-        # Build RAG-enhanced messages
-        enhanced_messages = await self._build_rag_enhanced_messages(request.messages)
+        enhanced_messages = await self._build_rag_messages(request.messages)
 
         if request.stream:
             return await self._stream_completion(completion_id, created, request, enhanced_messages)
-        else:
-            return await self._complete_chat(completion_id, created, request, enhanced_messages)
+        return await self._complete_chat(completion_id, created, request, enhanced_messages)
 
-    async def _complete_chat(
-        self, completion_id: str, created: int, request: ChatCompletionRequest, enhanced_messages: list[dict]
-    ) -> ChatCompletionResponse:
-        """Non-streaming completion"""
+    async def _build_rag_messages(self, messages):
+        """Build messages with RAG context injected as a system message."""
+        if not messages:
+            return []
+
+        latest = messages[-1]
+        if latest.role != "user":
+            return [{"role": m.role, "content": m.content} for m in messages]
+
+        rag_chunks = await self.search(latest.content)
+        if not rag_chunks:
+            return [{"role": m.role, "content": m.content} for m in messages]
+
+        context = "\n\n".join(rag_chunks)
+
+        system_msg = {
+            "role": "system",
+            "content": textwrap.dedent(f"""\
+                Use the provided context to answer questions accurately.
+                If the answer is not in the context, say so - do not fabricate details.
+
+                ### Retrieved Context:
+                {context}"""),
+        }
+
+        result = [system_msg]
+        result.extend({"role": m.role, "content": m.content} for m in messages)
+        return result
+
+    async def _complete_chat(self, completion_id, created, request, enhanced_messages):
         response = await self.llm.chat.completions.create(
             model=request.model,
             messages=enhanced_messages,
@@ -306,8 +268,6 @@ class OpenAICompatibleRagService:
             max_completion_tokens=request.max_completion_tokens,
             stream=False,
         )
-
-        # Convert to OpenAI format
         return ChatCompletionResponse(
             id=completion_id,
             created=created,
@@ -326,13 +286,8 @@ class OpenAICompatibleRagService:
             ),
         )
 
-    async def _stream_completion(
-        self, completion_id: str, created: int, request: ChatCompletionRequest, enhanced_messages: list[dict]
-    ) -> StreamingResponse:
-        """OpenAI-compatible streaming response generator"""
-
-        async def generate_stream():
-            # First chunk with role
+    async def _stream_completion(self, completion_id, created, request, enhanced_messages):
+        async def generate():
             first_chunk = ChatCompletionStreamResponse(
                 id=completion_id,
                 created=created,
@@ -341,7 +296,6 @@ class OpenAICompatibleRagService:
             )
             yield f"data: {first_chunk.model_dump_json()}\n\n"
 
-            # Stream content from LLM
             response = await self.llm.chat.completions.create(
                 model=request.model,
                 messages=enhanced_messages,
@@ -352,11 +306,8 @@ class OpenAICompatibleRagService:
 
             async for chunk in response:
                 if chunk.choices and (delta := chunk.choices[0].delta):
-                    # Use getattr to safely access optional attributes
-                    content = getattr(delta, 'content', None)
-                    reasoning_content = getattr(delta, 'reasoning_content', None)
-
-                    # Only send chunk if there's actual content or reasoning
+                    content = getattr(delta, "content", None)
+                    reasoning_content = getattr(delta, "reasoning_content", None)
                     if content is not None or reasoning_content is not None:
                         stream_chunk = ChatCompletionStreamResponse(
                             id=completion_id,
@@ -372,181 +323,177 @@ class OpenAICompatibleRagService:
                         )
                         yield f"data: {stream_chunk.model_dump_json()}\n\n"
 
-                # Handle finish reason
                 if chunk.choices and chunk.choices[0].finish_reason:
                     final_chunk = ChatCompletionStreamResponse(
                         id=completion_id,
                         created=created,
                         model=request.model,
-                        choices=[StreamChoice(index=0, delta=Delta(), finish_reason=chunk.choices[0].finish_reason)],
+                        choices=[
+                            StreamChoice(index=0, delta=Delta(), finish_reason=chunk.choices[0].finish_reason)
+                        ],
                     )
                     yield f"data: {final_chunk.model_dump_json()}\n\n"
 
-            # End of stream marker
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(
-            generate_stream(),
+            generate(),
             media_type="text/plain",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-            },
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+async def _request(host, port, path, timeout=10):
+    async with aiohttp.ClientSession(
+        f"http://{host}:{port}",
+        timeout=aiohttp.ClientTimeout(total=timeout),
+    ) as session:
+        async with session.get(path) as resp:
+            data = await resp.json()
+            return resp, data
+
+
+async def _wait_for_llm(host, port, total_timeout=120):
+    import asyncio
+
+    end_time = time.monotonic() + total_timeout
+    while time.monotonic() < end_time:
+        try:
+            resp, _ = await _request(host, port, "/health", timeout=2)
+            if resp.status == 200:
+                return True
+            if resp.status == 404:
+                try:
+                    models_resp, _ = await _request(host, port, "/models", timeout=2)
+                    if models_resp.status == 200:
+                        return True
+                except aiohttp.ClientError:
+                    pass
+        except aiohttp.ClientError:
+            pass
+        await asyncio.sleep(1)
+    raise TimeoutError(f"LLM server at {host}:{port} did not become ready after {total_timeout}s")
+
+
+# ---------------------------------------------------------------------------
+# FastAPI Application
+# ---------------------------------------------------------------------------
 @cache
-def initialize_rag_service() -> OpenAICompatibleRagService:
-    args = get_args()
-    return OpenAICompatibleRagService(
-        args.vector_path,
-        args.model_host,
-        args.model_port,
-    )
+def _get_service():
+    args = _get_args()
+    return RagService(args.vector_path, args.embed_url, args.model_host, args.model_port)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    args = get_args()
-    initialize_rag_service()
-    await wait_for_llama_server(args.model_host, args.model_port, total_timeout=120)
+    args = _get_args()
+    _get_service()
+    await _wait_for_llm(args.model_host, args.model_port)
     yield
 
 
-# FastAPI Application
-app = FastAPI(
-    title="RAG-Enhanced OpenAI Compatible API",
-    lifespan=lifespan,
-)
+app = FastAPI(title="RAG-Enhanced OpenAI Compatible API", lifespan=lifespan)
 
 
 @app.post("/v1/chat/completions", response_model=None)
-async def create_chat_completion(request: ChatCompletionRequest) -> ChatCompletionResponse | StreamingResponse:
-    """OpenAI-compatible chat completions endpoint"""
+async def create_chat_completion(request: ChatCompletionRequest):
     try:
-        service = initialize_rag_service()
-        return await service.create_chat_completion(request)
+        return await _get_service().create_chat_completion(request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/models")
-async def llama_models() -> dict:
-    """Return the response from the llama.cpp /models endpoint."""
-    args = get_args()
+async def llama_models():
+    args = _get_args()
     try:
-        resp, data = await request(args.model_host, args.model_port, "/models")
+        resp, data = await _request(args.model_host, args.model_port, "/models")
         if resp.status == 200:
             for model in data.get("models", []):
-                # Append +rag to the model name so it matches what the client expects
                 model["name"] += "+rag"
             return data
         raise HTTPException(status_code=resp.status, detail=resp.reason)
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"LLM service unavailable: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"LLM service unavailable: {e}")
 
 
 @app.get("/v1/models")
-async def list_models() -> dict:
-    """OpenAI-compatible models endpoint"""
+async def list_models():
     try:
-        service = initialize_rag_service()
-        # Get available models from the LLM service
+        service = _get_service()
         llm_models = await service.llm.models.list()
-        model_data = []
-
-        # Add each model from the LLM service with +rag suffix
-        for model in llm_models.data:
-            model_data.append(
+        return {
+            "object": "list",
+            "data": [
                 {
-                    "id": f"{model.id}+rag",
+                    "id": f"{m.id}+rag",
                     "object": "model",
-                    "created": getattr(model, "created", int(time.time())),
-                    "owned_by": getattr(model, "owned_by", "ramalama"),
+                    "created": getattr(m, "created", int(time.time())),
+                    "owned_by": getattr(m, "owned_by", "ramalama"),
                 }
-            )
-        return {"object": "list", "data": model_data}
+                for m in llm_models.data
+            ],
+        }
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"LLM service unavailable: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"LLM service unavailable: {e}")
 
 
 @app.get("/health")
-async def health_check() -> dict[str, str]:
+async def health_check():
     try:
-        args = get_args()
-        resp, data = await request(args.model_host, args.model_port, "/health")
+        args = _get_args()
+        resp, _ = await _request(args.model_host, args.model_port, "/health")
         if resp.status != 200:
             raise HTTPException(status_code=resp.status, detail=resp.reason)
-        service = initialize_rag_service()
-        # Verify core components are initialized
-        if service.vectordb is None or service.llm is None or service.reranker is None:
+        service = _get_service()
+        if service.qclient is None or service.llm is None:
             raise HTTPException(status_code=503, detail="RAG has not been initialized")
         return {"status": "ok", "rag": "ok"}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"LLM service unavailable: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"LLM service unavailable: {e}")
 
 
-def serve_rag_api(args):
-    """Start the OpenAI-compatible RAG API server"""
-    uvicorn.run(app, host=args.host, port=args.port)
-
-
-def load():
-    client = qdrant_client.QdrantClient(":memory:")
-    client.set_model(EMBED_MODEL)
-    client.set_sparse_model(SPARSE_MODEL)
-    TextCrossEncoder(model_name=RANK_MODEL)
-
-
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 parser = ArgumentParser(description="OpenAI-compatible RAG API server")
-parser.add_argument("--debug", action="store_true", help="Output debug information")
-subparsers = parser.add_subparsers(dest='command')
+parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+subparsers = parser.add_subparsers(dest="command")
 
-serve_parser = subparsers.add_parser('serve', help='Run RAG as OpenAI-compatible HTTP API server')
-serve_parser.add_argument("vector_path", type=str, help="Path to the vector database")
-serve_parser.add_argument("--model-host", default="localhost", help="The hostname where the model is being served")
-serve_parser.add_argument("--model-port", default=8080, type=int, help="The port where the model is being served")
-serve_parser.add_argument("--host", default="::", help="Host to bind server")
+serve_parser = subparsers.add_parser("serve", help="Run RAG as OpenAI-compatible HTTP API server")
+serve_parser.add_argument("vector_path", type=str, help="Path to the Qdrant vector database")
+serve_parser.add_argument("--embed-url", dest="embed_url", required=True, help="URL of the llama.cpp embedding server")
+serve_parser.add_argument("--model-host", default="localhost", help="Hostname of the LLM server")
+serve_parser.add_argument("--model-port", default=8080, type=int, help="Port of the LLM server")
+serve_parser.add_argument("--host", default="0.0.0.0", help="Host to bind server")
 serve_parser.add_argument("--port", default=8081, type=int, help="Port for RAG API")
-serve_parser.set_defaults(func=serve_rag_api)
-
-load_parser = subparsers.add_parser('load', help='Preload RAG Embedding Models')
-load_parser.set_defaults(func=load)
 
 
 @cache
-def get_args() -> Namespace:
+def _get_args():
     return parser.parse_args()
-
-
-def setup_logging(args: Namespace):
-    if args.debug:
-        level = logging.DEBUG
-    else:
-        level = logging.WARNING
-    logging.basicConfig(
-        level=level,
-        style="{",
-        format="{asctime} {name} {levelname}: {message}",
-    )
 
 
 if __name__ == "__main__":
     try:
-        args = get_args()
-        setup_logging(args)
-
-        if args.command:
-            if args.command in ['serve']:
-                args.func(args)
-            else:
-                # no argument for 'load'
-                args.func()
+        args = _get_args()
+        logging.basicConfig(
+            level=logging.DEBUG if args.debug else logging.WARNING,
+            style="{",
+            format="{asctime} {name} {levelname}: {message}",
+            force=True,
+        )
+        if args.command == "serve":
+            uvicorn.run(app, host=args.host, port=args.port)
         else:
             parser.print_help()
     except ValueError as e:
-        eprint(e, 1)
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)

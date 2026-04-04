@@ -10,6 +10,7 @@ from ramalama.cli import (
     create_argument_parser,
     default_image,
     default_rag_image,
+    default_tools_image,
 )
 from ramalama.common import ContainerEntryPoint, accel_image, version_tagged_image
 from ramalama.compat import NamedTemporaryFile
@@ -71,19 +72,17 @@ def make_ns(
 
 def make_rag_gen_ns(
     debug=False,
-    format="qdrant",
-    ocr=False,
     paths=None,
-    urls=None,
     inputdir="/input",
+    api_url=None,
+    embed_url=None,
 ) -> argparse.Namespace:
     return argparse.Namespace(
         debug=debug,
-        format=format,
-        ocr=ocr,
         PATHS=paths,
-        urls=urls,
         inputdir=inputdir,
+        api_url=api_url,
+        embed_url=embed_url,
     )
 
 
@@ -92,12 +91,14 @@ def make_rag_ns(
     port="9090",
     model_host="host.containers.internal",
     model_port="8080",
+    embed_url="http://localhost:8082",
 ) -> argparse.Namespace:
     return argparse.Namespace(
         debug=debug,
         port=port,
         model_host=model_host,
         model_port=model_port,
+        embed_url=embed_url,
     )
 
 
@@ -350,33 +351,27 @@ class TestLlamaCppPlugin:
         assert "flag" in cmd
 
     def test_rag_generate(self):
-        ns = make_rag_gen_ns(format="qdrant", paths=["/some/path"], inputdir="/input")
+        ns = make_rag_gen_ns(paths=["/some/path"], inputdir="/input", embed_url="http://localhost:8081")
         cmd = self.plugin.handle_subcommand("rag", ns)
 
         assert cmd[0] == "doc2rag"
-        assert "--format" in cmd
-        assert cmd[cmd.index("--format") + 1] == "qdrant"
         assert "/output" in cmd
         assert "/input" in cmd
 
     def test_rag_generate_with_debug(self):
-        ns = make_rag_gen_ns(debug=True)
+        ns = make_rag_gen_ns(debug=True, embed_url="http://localhost:8081")
         cmd = self.plugin.handle_subcommand("rag", ns)
 
         assert "--debug" in cmd
 
-    def test_rag_generate_with_ocr(self):
-        ns = make_rag_gen_ns(ocr=True)
+    def test_rag_generate_with_api_url(self):
+        ns = make_rag_gen_ns(api_url="http://localhost:8080", embed_url="http://localhost:8081")
         cmd = self.plugin.handle_subcommand("rag", ns)
 
-        assert "--ocr" in cmd
-
-    def test_rag_generate_with_urls(self):
-        ns = make_rag_gen_ns(urls=["http://example.com", "http://other.com"])
-        cmd = self.plugin.handle_subcommand("rag", ns)
-
-        assert "http://example.com" in cmd
-        assert "http://other.com" in cmd
+        assert "--api-url" in cmd
+        assert cmd[cmd.index("--api-url") + 1] == "http://localhost:8080"
+        assert "--embed-url" in cmd
+        assert cmd[cmd.index("--embed-url") + 1] == "http://localhost:8081"
 
     def test_run_rag(self):
         # RAG routing is internal: _cmd_run dispatches to _cmd_run_rag when args.rag is set
@@ -986,6 +981,7 @@ backend = "{backend}"
             with patch("ramalama.cli.ActiveConfig", return_value=config):
                 default_image.cache_clear()
                 default_rag_image.cache_clear()
+                default_tools_image.cache_clear()
                 parser = create_argument_parser("test_backend")
                 configure_subcommands(parser)
                 assert accel_image(config) == expected_result
@@ -1028,6 +1024,7 @@ backend = "{backend}"
             with patch("ramalama.cli.ActiveConfig", return_value=config):
                 default_image.cache_clear()
                 default_rag_image.cache_clear()
+                default_tools_image.cache_clear()
                 parser = create_argument_parser("test_backend_windows")
                 configure_subcommands(parser)
                 assert accel_image(config) == expected_result
@@ -1071,6 +1068,7 @@ runtime = "vllm"
             with patch("ramalama.cli.ActiveConfig", return_value=config):
                 default_image.cache_clear()
                 default_rag_image.cache_clear()
+                default_tools_image.cache_clear()
                 parser = create_argument_parser("test_vllm")
                 configure_subcommands(parser)
                 assert accel_image(config) == expected_image
@@ -1097,6 +1095,7 @@ backend = "cuda"
             with patch("ramalama.cli.ActiveConfig", return_value=config):
                 default_image.cache_clear()
                 default_rag_image.cache_clear()
+                default_tools_image.cache_clear()
                 parser = create_argument_parser("test_backend_warning")
                 configure_subcommands(parser)
 

@@ -59,11 +59,12 @@ spec:
       value:
       - RAMALAMA_DEFAULT_IMAGE="$(tasks.init.results.ramalama-image)"
       - RAMALAMA_DEFAULT_RAG_IMAGE="$(tasks.init.results.ramalama-rag-image)"
+      - RAMALAMA_DEFAULT_TOOLS_IMAGE="$(tasks.init.results.ramalama-tools-image)"
       - RAMALAMA_STACK_IMAGE=$(tasks.init.results.stack-image)
       - >-
         RAMALAMA_IMAGES='{"CUDA_VISIBLE_DEVICES": "$(tasks.init.results.cuda-image)"}'
       - >-
-        RAMALAMA_RAG_IMAGES='{"CUDA_VISIBLE_DEVICES": "$(tasks.init.results.cuda-rag-image)"}'
+        RAMALAMA_TOOLS_IMAGES='{"CUDA_VISIBLE_DEVICES": "$(tasks.init.results.cuda-tools-image)"}'
     taskRef:
       resolver: git
       params:

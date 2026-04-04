@@ -11,6 +11,7 @@ import pytest
 from ramalama.cli import (
     default_image,
     default_rag_image,
+    default_tools_image,
     parse_args_from_cmd,
 )
 from ramalama.common import (
@@ -164,6 +165,7 @@ image = "{config_override}"
             with patch("ramalama.cli.ActiveConfig", return_value=config):
                 default_image.cache_clear()
                 default_rag_image.cache_clear()
+                default_tools_image.cache_clear()
                 parse_args_from_cmd(cmdline)
                 assert accel_image(config) == expected_result
 

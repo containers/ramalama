@@ -1,274 +1,488 @@
 #!/usr/bin/env python3
+"""Convert documents into a Qdrant RAG vector database using llama.cpp servers.
 
-# suppress pkg warning for pymilvus
+This script runs inside the ramalama-rag container and connects to external
+llama.cpp servers for VLM document conversion (Granite Docling) and text
+embedding (Qwen3 Embedding).
+
+Usage:
+    doc2rag [--debug] [--api-url URL] [--embed-url URL] /output /docs/...
+"""
+
 import argparse
+import base64
 import errno
 import hashlib
-import itertools
+import io
+import json
 import logging
 import os
-import os.path
+import re
 import sys
-import threading
-import time
 import uuid
-import warnings
 from pathlib import Path
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
-import docling
-import qdrant_client
-from docling.chunking import HybridChunker
-from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from fastembed import SparseTextEmbedding, TextEmbedding
-from pymilvus import DataType, MilvusClient
-from qdrant_client import models
-from transformers import AutoTokenizer
+logger = logging.getLogger("doc2rag")
 
-warnings.filterwarnings("ignore", category=UserWarning)
+# ---------------------------------------------------------------------------
+# File type sets
+# ---------------------------------------------------------------------------
+IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif"})
+PDF_EXTENSIONS = frozenset({".pdf"})
+TEXT_EXTENSIONS = frozenset({".txt", ".md", ".html", ".htm"})
+SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS | PDF_EXTENSIONS | TEXT_EXTENSIONS
 
-# Global Vars
-EMBED_MODEL = os.getenv("EMBED_MODEL", "jinaai/jina-embeddings-v2-small-en")
-SPARSE_MODEL = os.getenv("SPARSE_MODEL", "prithivida/Splade_PP_en_v1")
 COLLECTION_NAME = "rag"
-os.environ["TOKENIZERS_PARALLELISM"] = "true"
+EMBEDDING_BATCH_SIZE = 1
 
 
-class Converter:
-    """A Class designed to handle all document conversions using Docling"""
+# ---------------------------------------------------------------------------
+# Document conversion via Granite Docling VLM
+# ---------------------------------------------------------------------------
+class GraniteDoclingConverter:
+    """Converts documents to structured text via the Granite Docling VLM and docling-core."""
 
-    def __init__(self, args):
-        # Docling Setup (Turn off OCR (image processing) for drastically reduced RAM usage and big speed increase)
-        if os.environ.get("CUDA_VISIBLE_DEVICES", "").lower() in ["", "none", "-1"]:
-            dev = AcceleratorDevice.CPU
+    def __init__(self, api_url, ctx_size=8192):
+        self.completions_url = f"{api_url.rstrip('/')}/v1/chat/completions"
+        self.ctx_size = ctx_size
+
+    def _send_pil_image(self, pil_image):
+        """Send a PIL Image to the Granite Docling server and return raw DocTags."""
+        buf = io.BytesIO()
+        pil_image.save(buf, format="PNG")
+        image_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+        payload = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}},
+                        {"type": "text", "text": "Convert this page to docling."},
+                    ],
+                }
+            ],
+            "max_tokens": self.ctx_size,
+            "temperature": 0.0,
+        }
+
+        req = Request(
+            self.completions_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urlopen(req, timeout=300) as resp:
+                result = json.loads(resp.read())
+        except HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"llama-server returned {e.code}: {body}") from None
+
+        return result["choices"][0]["message"]["content"]
+
+    def convert_file(self, file_path, name=None):
+        """Convert a single file and return a list of documents.
+
+        Text files are returned as raw strings.  Images produce a single
+        DoclingDocument.  PDFs produce one DoclingDocument per page.
+        """
+        suffix = file_path.suffix.lower()
+        if suffix in TEXT_EXTENSIONS:
+            return [read_text_file(file_path)]
+        if suffix in PDF_EXTENSIONS:
+            return self._convert_pdf(file_path, name)
+        return [self._convert_image(file_path, name)]
+
+    def _convert_image(self, image_path, name=None):
+        from docling_core.types.doc import DoclingDocument
+        from docling_core.types.doc.document import DocTagsDocument
+        from PIL import Image
+
+        if name is None:
+            name = image_path.stem
+
+        pil_image = Image.open(image_path).convert("RGB")
+        pil_image = _resize_image(pil_image, MAX_IMAGE_SIZE)
+        logger.debug("Converting %s via Granite Docling", image_path.name)
+        doctags = self._send_pil_image(pil_image)
+
+        doctags_doc = DocTagsDocument.from_doctags_and_image_pairs([doctags], [pil_image])
+        return DoclingDocument.load_from_doctags(doctags_doc, document_name=name)
+
+    def _convert_pdf(self, pdf_path, name=None):
+        from docling_core.types.doc import DoclingDocument
+        from docling_core.types.doc.document import DocTagsDocument
+
+        import pypdfium2 as pdfium
+
+        if name is None:
+            name = pdf_path.stem
+
+        pdf = pdfium.PdfDocument(str(pdf_path))
+        n_pages = len(pdf)
+        docs = []
+
+        for page_idx in range(n_pages):
+            page = pdf[page_idx]
+            pil_image = page.render(scale=1).to_pil().convert("RGB")
+            pil_image = _resize_image(pil_image, MAX_IMAGE_SIZE)
+            sys.stderr.write(f"\r  Page {page_idx + 1}/{n_pages}...")
+            sys.stderr.flush()
+
+            doctags = self._send_pil_image(pil_image)
+            doctags_doc = DocTagsDocument.from_doctags_and_image_pairs([doctags], [pil_image])
+            doc = DoclingDocument.load_from_doctags(doctags_doc, document_name=f"{name}_p{page_idx + 1}")
+            docs.append(doc)
+            del pil_image
+
+        pdf.close()
+        sys.stderr.write("\n")
+        return docs
+
+
+# ---------------------------------------------------------------------------
+# Token-aware document chunking (semchunk + tiktoken)
+# ---------------------------------------------------------------------------
+def chunk_documents(docs, max_tokens=400):
+    """Chunk a mixed list of DoclingDocument objects and raw text strings.
+
+    Uses semchunk (the same splitter docling's HybridChunker uses internally)
+    with tiktoken for token-aware, semantically meaningful chunking.
+
+    Returns (chunks, ids, doc_ids, chunk_indices) where:
+      - chunks: list of text strings
+      - ids: deterministic int64 hashes for deduplication
+      - doc_ids: which document each chunk came from
+      - chunk_indices: per-document sequential index for neighbor expansion
+    """
+    import semchunk
+    import tiktoken
+
+    from docling_core.types.doc.document import SectionHeaderItem, TitleItem
+
+    encoding = tiktoken.get_encoding("cl100k_base")
+    token_counter = lambda text: len(encoding.encode(text))  # noqa: E731
+    chunks, ids, doc_ids, chunk_indices = [], [], [], []
+
+    for doc_id, doc in enumerate(docs):
+        if isinstance(doc, str):
+            text = doc
         else:
-            dev = AcceleratorDevice.CUDA
-        pipeline_options = PdfPipelineOptions(
-            accelerator_options=AcceleratorOptions(device=dev),
-            do_ocr=args.ocr,
+            text = _docling_doc_to_text(doc, SectionHeaderItem, TitleItem)
+
+        if not text.strip():
+            continue
+
+        chunk_idx = 0
+        for part in semchunk.chunk(text, chunk_size=max_tokens, token_counter=token_counter):
+            part = part.strip()
+            if part:
+                chunks.append(part)
+                ids.append(_text_hash(part, doc_id, chunk_idx))
+                doc_ids.append(doc_id)
+                chunk_indices.append(chunk_idx)
+                chunk_idx += 1
+
+    return chunks, ids, doc_ids, chunk_indices
+
+
+def _docling_doc_to_text(doc, SectionHeaderItem, TitleItem):
+    """Serialize a DoclingDocument to markdown-like text for chunking."""
+    parts = []
+    for item, _level in doc.iterate_items():
+        if isinstance(item, (TitleItem, SectionHeaderItem)):
+            if item.text:
+                parts.append(f"\n{'#' * min(_level + 1, 6)} {item.text.strip()}\n")
+        elif hasattr(item, "text") and item.text:
+            text = item.text.strip()
+            if text:
+                parts.append(text)
+    return "\n".join(parts)
+
+
+def _text_hash(text, doc_id, chunk_index):
+    digest = hashlib.sha256(f"{doc_id}:{chunk_index}:{text}".encode("utf-8")).hexdigest()
+    return uuid.UUID(digest[:32]).int & ((1 << 63) - 1)
+
+
+# ---------------------------------------------------------------------------
+# Embedding via llama.cpp /v1/embeddings
+# ---------------------------------------------------------------------------
+class LlamaCppEmbedder:
+    """Generate embeddings via a llama.cpp server's /v1/embeddings endpoint."""
+
+    def __init__(self, api_url):
+        self.embeddings_url = f"{api_url.rstrip('/')}/v1/embeddings"
+        self._dim = None
+
+    @property
+    def dimension(self):
+        if self._dim is None:
+            raise RuntimeError("Embedding dimension unknown; call embed() first")
+        return self._dim
+
+    def embed(self, texts):
+        total = len(texts)
+        all_embeddings = []
+        for i in range(0, total, EMBEDDING_BATCH_SIZE):
+            batch = texts[i : i + EMBEDDING_BATCH_SIZE]
+            all_embeddings.extend(self._embed_batch(batch))
+            done = min(i + EMBEDDING_BATCH_SIZE, total)
+            sys.stderr.write(f"\r  Embedding {done}/{total} chunks...")
+            sys.stderr.flush()
+        sys.stderr.write("\n")
+        return all_embeddings
+
+    def _embed_batch(self, texts):
+        payload = json.dumps({"input": texts}).encode("utf-8")
+        req = Request(
+            self.embeddings_url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
         )
-        self.sources = []
-        for source in args.sources:
-            self.add(source)
-        self.output = args.output
-        self.format = args.format
-        self.doc_converter = DocumentConverter(
-            format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
-        )
+        try:
+            with urlopen(req, timeout=300) as resp:
+                result = json.loads(resp.read())
+        except HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"llama-server embedding request returned {e.code}: {body}") from None
 
-    def add(self, file_path):
-        if os.path.isdir(file_path):
-            self.walk(file_path)  # Walk directory and process all files
-        else:
-            self.sources.append(file_path)  # Process the single file
+        data = sorted(result["data"], key=lambda d: d["index"])
+        vectors = [d["embedding"] for d in data]
 
-    def chunk(self, docs):
-        tokenizer = AutoTokenizer.from_pretrained(EMBED_MODEL, local_files_only=True)
-        chunker = HybridChunker(tokenizer=tokenizer, max_tokens=8192, overlap=100, merge_peers=True)
-        documents, ids = [], []
+        if vectors and self._dim is None:
+            self._dim = len(vectors[0])
+            logger.debug("Detected embedding dimension: %d", self._dim)
 
-        for file in docs:
-            chunk_iter = chunker.chunk(dl_doc=file.document)
-            for chunk in chunk_iter:
-                # Extract the enriched text from the chunk
-                doc_text = chunker.contextualize(chunk=chunk)
-                documents.append(doc_text)
-                doc_id = self.generate_hash(doc_text)
-                ids.append(doc_id)
-        return documents, ids
+        return vectors
 
-    def convert_milvus(self, docs):
-        output_dir = Path(self.output)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        milvus_client = MilvusClient(uri=os.path.join(self.output, "milvus.db"))
-        collection_name = COLLECTION_NAME
-        dmodel = TextEmbedding(model_name=EMBED_MODEL, local_files_only=True)
-        smodel = SparseTextEmbedding(model_name=SPARSE_MODEL, local_files_only=True)
-        test_embedding = next(dmodel.embed("This is a test"))
-        embedding_dim = len(test_embedding)
-        schema = MilvusClient.create_schema(
-            auto_id=False,
-            enable_dynamic_field=True,
-        )
-        schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
-        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=1000)
-        schema.add_field(field_name="sparse", datatype=DataType.SPARSE_FLOAT_VECTOR)
-        schema.add_field(field_name="dense", datatype=DataType.FLOAT_VECTOR, dim=embedding_dim)
-        index_params = milvus_client.prepare_index_params()
-        index_params.add_index(field_name="dense", index_name="dense_index", index_type="AUTOINDEX")
-        index_params.add_index(field_name="sparse", index_name="sparse_index", index_type="SPARSE_INVERTED_INDEX")
-        milvus_client.create_collection(collection_name=collection_name, schema=schema, index_params=index_params)
-        # Chunk and add chunks to collection 1 by 1
-        chunks, ids = self.chunk(docs)
-        # Batch-embed chunks for better performance
-        dense_embeddings = list(dmodel.embed(chunks))
-        sparse_embeddings_list = list(smodel.embed(chunks))
 
-        for i, (chunk, id) in enumerate(zip(chunks, ids)):
-            sparse_vector = sparse_embeddings_list[i].as_dict()
-            milvus_client.insert(
-                collection_name=collection_name,
-                data=[{"id": id, "text": chunk, "sparse": sparse_vector, "dense": dense_embeddings[i]}],
-            )
-            # Flush every 100 records to reduce RAM usage
-            if i % 100 == 0:
-                milvus_client.flush(collection_name=collection_name)
-            print(f"\rProcessed chunk {i+1}/{len(chunks)}", end='', flush=True)
-        milvus_client.flush(collection_name=collection_name)
-        print("\n")
-        return
+# ---------------------------------------------------------------------------
+# Qdrant vector storage
+# ---------------------------------------------------------------------------
+def store_in_qdrant(chunks, ids, doc_ids, chunk_indices, output_dir, embedder, embedding_model=None):
+    """Embed chunks via llama.cpp and persist them in a Qdrant on-disk collection."""
+    import qdrant_client
+    from qdrant_client import models
 
-    def convert_qdrant(self, results):
-        qclient = qdrant_client.QdrantClient(path=self.output)
-        qclient.set_model(EMBED_MODEL, local_files_only=True)
-        qclient.set_sparse_model(SPARSE_MODEL, local_files_only=True)
-        # optimizations to reduce ram
-        qclient.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=qclient.get_fastembed_vector_params(on_disk=True),
-            sparse_vectors_config=qclient.get_fastembed_sparse_vector_params(on_disk=True),
-            quantization_config=models.ScalarQuantization(
-                scalar=models.ScalarQuantizationConfig(
-                    type=models.ScalarType.INT8,
-                    always_ram=True,
-                ),
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    vectors = embedder.embed(chunks)
+    dim = embedder.dimension
+
+    qclient = qdrant_client.QdrantClient(path=str(output_dir))
+    qclient.create_collection(
+        collection_name=COLLECTION_NAME,
+        vectors_config=models.VectorParams(size=dim, distance=models.Distance.COSINE, on_disk=True),
+        quantization_config=models.ScalarQuantization(
+            scalar=models.ScalarQuantizationConfig(
+                type=models.ScalarType.INT8,
+                always_ram=True,
             ),
-        )
-        chunks, ids = self.chunk(results)
-        return qclient.add(COLLECTION_NAME, documents=chunks, ids=ids, batch_size=1)
+        ),
+    )
 
-    def show_progress(self, message, stop_event):
-        spinner = itertools.cycle([".", "..", "..."])
-        while not stop_event.is_set():
-            sys.stdout.write(f"\r{message} {next(spinner)}   ")
-            sys.stdout.flush()
-            time.sleep(0.5)
-        sys.stdout.write("\r" + " " * 50 + "\r")
+    batch_size = 100
+    for start in range(0, len(chunks), batch_size):
+        end = min(start + batch_size, len(chunks))
+        points = [
+            models.PointStruct(
+                id=ids[i],
+                payload={
+                    "document": chunks[i],
+                    "doc_id": doc_ids[i],
+                    "chunk_index": chunk_indices[i],
+                },
+                vector=vectors[i],
+            )
+            for i in range(start, end)
+        ]
+        qclient.upsert(collection_name=COLLECTION_NAME, points=points)
 
-    def convert(self):
-        results = []
-        names = []
-        for source in self.sources:
-            name = Path((str(source))).name
-            names.append(name)
-            stop_event = threading.Event()
-            progress_thread = threading.Thread(target=self.show_progress, args=(f"Converting {name}", stop_event))
-            progress_thread.start()
-            try:
-                results.append(self.doc_converter.convert(source))
-            finally:
-                stop_event.set()
-                progress_thread.join()
-            print(f"Finished converting {name}")
-
-        if self.format == "qdrant":
-            return self.convert_qdrant(results)
-        if self.format == "markdown":
-            return self.convert_markdown(results)
-        if self.format == "json":
-            return self.convert_json(results)
-        if self.format == "milvus":
-            self.convert_milvus(results)
-
-    def convert_markdown(self, results):
-        ctr = 0
-        for ctr, result in enumerate(results):
-            dirname = self.output + os.path.dirname(self.sources[ctr])
-            os.makedirs(dirname, exist_ok=True)
-            document = result.document
-            document.save_as_markdown(os.path.join(dirname, f"{document.name}.md"))
-
-    def convert_json(self, results):
-        for ctr, result in enumerate(results):
-            dirname = self.output + os.path.dirname(self.sources[ctr])
-            os.makedirs(dirname, exist_ok=True)
-            document = result.document
-            document.save_as_json(os.path.join(dirname, f"{document.name}.json"))
-
-    def walk(self, path):
-        for root, dirs, files in os.walk(path, topdown=True):
-            if len(files) == 0:
-                continue
-            for f in files:
-                file = os.path.join(root, f)
-                if os.path.isfile(file):
-                    self.sources.append(file)
-
-    def generate_hash(self, document: str) -> int:
-        """Generate a unique int64 hash from the document text."""
-        sha256_hash = hashlib.sha256(document.encode('utf-8')).hexdigest()
-        uuid_val = uuid.UUID(sha256_hash[:32])
-        # Convert to signed int64 (Milvus requires signed 64-bit)
-        return uuid_val.int & ((1 << 63) - 1)
+    # Write metadata for rag_framework to know which embedding model to use
+    metadata = {"embedding_model": embedding_model or "", "embedding_dim": dim}
+    metadata_path = output_dir / "metadata.json"
+    with open(metadata_path, "w") as f:
+        json.dump(metadata, f, indent=2)
 
 
-def load():
-    # Dummy code to preload models
-    client = qdrant_client.QdrantClient(":memory:")
-    client.set_model(EMBED_MODEL)
-    client.set_sparse_model(SPARSE_MODEL)
-    converter = DocumentConverter()
-    converter.initialize_pipeline(InputFormat.PDF)
-    AutoTokenizer.from_pretrained(EMBED_MODEL)
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+MAX_IMAGE_SIZE = 1024
 
 
-parser = argparse.ArgumentParser(
-    description="process source files into RAG vector database",
-)
-parser.add_argument("--debug", action="store_true", help="Output debug information")
-parser.add_argument("output", nargs="?", help="Output directory")
-parser.add_argument("sources", nargs="*", help="Source files")
-parser.add_argument(
-    "--format",
-    default="qdrant",
-    help="Output format for RAG Data",
-    choices=["qdrant", "json", "markdown", "milvus"],
-)
-parser.add_argument(
-    "--ocr",
-    action='store_true',
-    help="Enable embedded image text extraction from PDF (Increases RAM Usage significantly)",
-)
+def _resize_image(pil_image, max_size=MAX_IMAGE_SIZE):
+    """Downscale an image so neither dimension exceeds max_size pixels."""
+    w, h = pil_image.size
+    scale = min(max_size / w, max_size / h, 1.0)
+    if scale < 1.0:
+        new_size = (int(w * scale), int(h * scale))
+        return pil_image.resize(new_size)
+    return pil_image
+
+
+def collect_files(path):
+    """Recursively collect all supported files under path."""
+    path = Path(path)
+    if path.is_file():
+        return [path] if path.suffix.lower() in SUPPORTED_EXTENSIONS else []
+    files = []
+    for root, _, filenames in os.walk(path):
+        for fname in filenames:
+            fpath = Path(root) / fname
+            if fpath.suffix.lower() in SUPPORTED_EXTENSIONS:
+                files.append(fpath)
+    return sorted(files)
+
+
+def download_url(url, dest_dir):
+    """Download a URL to dest_dir, returning the local Path."""
+    from urllib.parse import unquote, urlparse
+
+    parsed = urlparse(url)
+    filename = os.path.basename(unquote(parsed.path)) or "downloaded"
+    # Ensure the filename has a supported extension; default to .md for raw text
+    if Path(filename).suffix.lower() not in SUPPORTED_EXTENSIONS:
+        filename += ".md"
+    dest = Path(dest_dir) / filename
+    perror(f"Downloading {url} ...")
+    with urlopen(url, timeout=120) as resp:
+        dest.write_bytes(resp.read())
+    return dest
+
+
+def read_text_file(file_path):
+    """Read a text file; strip HTML tags from .html/.htm files."""
+    text = file_path.read_text(encoding="utf-8", errors="replace")
+    if file_path.suffix.lower() in {".html", ".htm"}:
+        text = re.sub(r"<[^>]+>", "", text)
+    return text
 
 
 def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def eprint(e, exit_code):
-    perror("Error: " + str(e).strip("'\""))
-    sys.exit(exit_code)
+# ---------------------------------------------------------------------------
+# Main pipeline
+# ---------------------------------------------------------------------------
+def run_pipeline(args):
+    """Execute the full doc2rag pipeline."""
+    import tempfile
+    from urllib.parse import urlparse
+
+    # Download any HTTP/HTTPS URLs to a temp directory
+    url_tmpdir = None
+    local_sources = []
+    for src in args.sources:
+        parsed = urlparse(src)
+        if parsed.scheme in ("http", "https"):
+            if url_tmpdir is None:
+                url_tmpdir = tempfile.mkdtemp(prefix="doc2rag_urls_")
+            local_sources.append(download_url(src, url_tmpdir))
+        else:
+            local_sources.append(Path(src))
+
+    source_path = local_sources[0] if len(local_sources) == 1 else None
+
+    # Collect files from all source arguments
+    all_files = []
+    for src in local_sources:
+        all_files.extend(collect_files(src))
+
+    if not all_files:
+        raise FileNotFoundError(f"No supported documents found in {args.sources}")
+
+    vlm_extensions = IMAGE_EXTENSIONS | PDF_EXTENSIONS
+    vlm_files = [f for f in all_files if f.suffix.lower() in vlm_extensions]
+    text_files = [f for f in all_files if f.suffix.lower() in TEXT_EXTENSIONS]
+    needs_vlm = len(vlm_files) > 0
+
+    perror(f"Found {len(all_files)} file(s): {len(vlm_files)} need VLM, {len(text_files)} text-only")
+
+    # Read text files directly
+    docs = []
+    for i, fpath in enumerate(text_files, 1):
+        perror(f"Reading {fpath.name} ({i}/{len(text_files)})...")
+        try:
+            text = read_text_file(fpath)
+            if text.strip():
+                docs.append(text)
+            else:
+                perror(f"  Warning: {fpath.name} is empty, skipping")
+        except Exception as e:
+            perror(f"  Error reading {fpath.name}: {e}")
+
+    # Convert VLM files
+    if needs_vlm:
+        if not args.api_url:
+            raise ValueError("--api-url is required when processing PDFs or images")
+        converter = GraniteDoclingConverter(api_url=args.api_url, ctx_size=getattr(args, "ctx_size", 8192))
+        for i, fpath in enumerate(vlm_files, 1):
+            perror(f"Converting {fpath.name} ({i}/{len(vlm_files)})...")
+            try:
+                for doc in converter.convert_file(fpath):
+                    if isinstance(doc, str):
+                        if doc.strip():
+                            docs.append(doc)
+                    elif doc.export_to_markdown().strip():
+                        docs.append(doc)
+            except Exception as e:
+                perror(f"  Error converting {fpath.name}: {e}")
+
+    if not docs:
+        raise ValueError("No documents were successfully converted")
+
+    # Chunk
+    perror("Chunking documents...")
+    chunk_size = getattr(args, "chunk_size", 400)
+    chunks, ids, doc_ids, chunk_indices = chunk_documents(docs, max_tokens=chunk_size)
+    perror(f"  {len(chunks)} chunks created")
+
+    # Embed and store
+    if not args.embed_url:
+        raise ValueError("--embed-url is required for embedding")
+
+    embedder = LlamaCppEmbedder(api_url=args.embed_url)
+    embedding_model = getattr(args, "embed_model", None)
+    perror("Embedding chunks via llama.cpp...")
+    store_in_qdrant(chunks, ids, doc_ids, chunk_indices, args.output, embedder, embedding_model=embedding_model)
+    perror(f"Stored {len(chunks)} vectors in Qdrant")
 
 
-def setup_logging(args: argparse.Namespace):
-    if args.debug:
-        level = logging.DEBUG
-    else:
-        level = logging.WARNING
-    logging.basicConfig(
-        level=level,
-        style="{",
-        format="{asctime} {name} {levelname}: {message}",
-        force=True,
-    )
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+parser = argparse.ArgumentParser(description="Convert documents into a Qdrant RAG vector database")
+parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+parser.add_argument("--api-url", dest="api_url", help="URL of the llama.cpp VLM server for document conversion")
+parser.add_argument("--embed-url", dest="embed_url", help="URL of the llama.cpp embedding server")
+parser.add_argument("--embed-model", dest="embed_model", help="Name of the embedding model (stored in metadata)")
+parser.add_argument("--chunk-size", dest="chunk_size", type=int, default=400, help="Max tokens per chunk (default: 400)")
+parser.add_argument("--ctx-size", dest="ctx_size", type=int, default=8192, help="Context size of the VLM server (default: 8192)")
+parser.add_argument("output", help="Output directory for the Qdrant database")
+parser.add_argument("sources", nargs="+", help="Source files or directories to process")
 
-
-try:
-    args = parser.parse_args()
-    setup_logging(args)
-
-    if args.output == "load":
-        load()
-    else:
-        converter = Converter(args)
-        converter.convert()
-except docling.exceptions.ConversionError as e:
-    eprint(e, 1)
-except FileNotFoundError as e:
-    eprint(e, errno.ENOENT)
-except ValueError as e:
-    eprint(e, errno.EINVAL)
-except KeyboardInterrupt:
-    pass
+if __name__ == "__main__":
+    try:
+        args = parser.parse_args()
+        logging.basicConfig(
+            level=logging.DEBUG if args.debug else logging.WARNING,
+            style="{",
+            format="{asctime} {name} {levelname}: {message}",
+            force=True,
+        )
+        run_pipeline(args)
+    except FileNotFoundError as e:
+        perror(f"Error: {e}")
+        sys.exit(errno.ENOENT)
+    except ValueError as e:
+        perror(f"Error: {e}")
+        sys.exit(errno.EINVAL)
+    except KeyboardInterrupt:
+        perror("\nInterrupted.")
+        sys.exit(130)
