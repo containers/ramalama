@@ -60,6 +60,7 @@ def test_list_models_timezones_in_utc(monkeypatch):
     models = oci_tools.list_models(EngineArgs(engine="podman"))
     assert all(isinstance(m['modified'], datetime) for m in models)
     assert all(m['modified'].utcoffset() == timedelta(0) for m in models)
+    assert all(isinstance(m['size'], int) for m in models)
 
 
 def test_list_models_timezones_in_utc_when_manifest_attributes_unsupported(monkeypatch):
