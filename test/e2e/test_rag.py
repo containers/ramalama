@@ -265,6 +265,7 @@ def test_run_dry_run_pull_policy(container_engine):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x

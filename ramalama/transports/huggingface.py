@@ -178,7 +178,7 @@ class HuggingfaceRepository(HFStyleRepository):
             return False
 
         # Find all safetensors files, config files and index files
-        safetensors_files = []
+        safetensors_files: list[dict[str, str]] = []
         self.other_files = []
         index_file = None
 
@@ -315,7 +315,7 @@ class Huggingface(HFStyleRepoModel):
         return False
 
     def push(self, _, args):
-        if not self.hf_cli_available:
+        if not getattr(self, "hf_cli_available", False):
             raise NotImplementedError(self.get_missing_message())
         proc = run_cmd(
             [
