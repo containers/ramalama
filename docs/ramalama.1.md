@@ -5,24 +5,24 @@
 ramalama - Simple management tool for working with AI Models
 
 ## SYNOPSIS
-
+```
 **ramalama** [*options*] _command_
-
+```
 ## DESCRIPTION
 
-RamaLama: The goal of RamaLama is to make AI boring.
+The goal of RamaLama is to make AI boring.
 
-RamaLama tool facilitates local management and serving of AI Models.
+The ramaLama tool facilitates local management and serving of AI models.
 
-On first run RamaLama inspects your system for GPU support, falling back to CPU support if no GPUs are present.
+On first run, RamaLama inspects your system for GPU support, falling back to CPU support if no GPUs are present.
 
 RamaLama uses container engines like Podman or Docker to pull the appropriate OCI image with all of the software necessary to run an AI Model for your systems setup.
 
-Running in containers eliminates the need for users to configure the host system for AI. After the initialization, RamaLama runs the AI Models within a container based on the OCI image. RamaLama pulls a container image specific to the GPUs discovered on the host system. These images are tied to the minor version of RamaLama. For example RamaLama version 1.2.3 on an NVIDIA system pulls quay.io/ramalama/cuda:1.2. To override the default image use the `--image` option.
+Running in containers eliminates the need for users to configure the host system for AI. After the initialization, RamaLama runs the AI Models within a container based on the OCI image. RamaLama pulls a container image specific to the GPUs discovered on the host system. These images are tied to the minor version of RamaLama. For example, RamaLama version 1.2.3 on an NVIDIA system pulls quay.io/ramalama/cuda:1.2. To override the default image use the `--image` option.
 
-RamaLama pulls AI Models from model registries. Starting a chatbot or a rest API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
+RamaLama pulls AI Models from model registries. Starting a chatbot or a REST API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
 
-When both Podman and Docker are installed, RamaLama defaults to Podman. The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behaviour. When neither are installed RamaLama attempts to run the model with software on the local system.
+When both Podman and Docker are installed, RamaLama defaults to Podman. The `RAMALAMA_CONTAINER_ENGINE=docker` environment variable can override this behaviour. When neither are installed, RamaLama attempts to run the model with software on the local system.
 
 **Note**: On macOS systems that use Podman for containers, configure the Podman machine to use the `libkrun` machine provider. The `libkrun` provider enables containers within the Podman Machine access to the Mac's GPU. See **[ramalama-macos(7)](ramalama-macos.7.md)** for further information.
 
@@ -44,7 +44,7 @@ The model store defaults to `~/.local/share/ramalama`, which is writable on Silv
 
 ### Test and run your models more securely
 
-Because RamaLama defaults to running AI models inside of rootless containers using Podman on Docker, these containers isolate the AI models from information on the underlying host. With RamaLama containers, the AI model is mounted as a volume into the container in read-only mode. This results in the process running the model, llama.cpp or vLLM, being isolated from the host. In addition, since `ramalama run` uses the `--network=none` option, the container cannot reach the network and leak any information out of the system. Finally, containers are run with `--rm` option, which means that any content written during the execution of the container is wiped out when the application exits. Hosted API transports such as `openai://` bypass the container runtime entirely and connect directly to the remote provider; those transports inherit the provider's network access and security guarantees instead of RamaLama's container sandbox.
+Because RamaLama defaults to running AI models inside of rootless containers using Podman or Docker, these containers isolate the AI models from information on the underlying host. With RamaLama containers, the AI model is mounted as a volume into the container in read-only mode. This results in the process running the model, llama.cpp or vLLM, being isolated from the host. In addition, since `ramalama run` uses the `--network=none` option, the container cannot reach the network and leak any information out of the system. Finally, containers are run with `--rm` option, which means that any content written during the execution of the container is wiped out when the application exits. Hosted API transports such as `openai://` bypass the container runtime entirely and connect directly to the remote provider; those transports inherit the provider's network access and security guarantees instead of RamaLama's container sandbox.
 
 ### Here’s how RamaLama delivers a robust security footprint:
 
@@ -77,7 +77,8 @@ URL support means if a model is on a web site or even on your local system, you 
 
 ```
 ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
-
+```
+```
 ramalama run file://$HOME/granite-7b-lab-Q4_K_M.gguf
 ```
 
