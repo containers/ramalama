@@ -5,9 +5,11 @@
 ramalama - Simple management tool for working with AI Models
 
 ## SYNOPSIS
+
 ```
 **ramalama** [*options*] _command_
 ```
+
 ## DESCRIPTION
 
 The goal of RamaLama is to make AI boring.
@@ -59,17 +61,17 @@ Because RamaLama defaults to running AI models inside of rootless containers usi
 
 RamaLama supports multiple AI model registries types called transports. Supported transports:
 
-| Transports               | Prefix                        | Web Site                                                                                                    |
-| ------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| URL based                | https://, http://, file://    | `https://web.site/ai.model`, `file://tmp/ai.model`                                                          |
-| HuggingFace              | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)                                                               |
-| ModelScope               | modelscope://, ms://          | [`modelscope.cn`](https://modelscope.cn/)                                                                   |
-| Ollama                   | ollama://                     | [`ollama.com`](https://www.ollama.com)                                                                       |
-| rlcr                     | rlcr://                       | [`ramalama.com`](https://registry.ramalama.com)                                                             |
-| OCI Container Registries | oci://                        | [`opencontainers.org`](https://opencontainers.org)                                                           |
+| Transports               | Prefix                        | Web Site                                                                                                            |
+| ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| URL based                | https://, http://, file://    | `https://web.site/ai.model`, `file://tmp/ai.model`                                                                  |
+| HuggingFace              | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co)                                                                      |
+| ModelScope               | modelscope://, ms://          | [`modelscope.cn`](https://modelscope.cn/)                                                                           |
+| Ollama                   | ollama://                     | [`ollama.com`](https://www.ollama.com)                                                                              |
+| rlcr                     | rlcr://                       | [`ramalama.com`](https://registry.ramalama.com)                                                                     |
+| OCI Container Registries | oci://                        | [`opencontainers.org`](https://opencontainers.org)                                                                  |
 |                          |                               | Examples: [`quay.io`](https://quay.io), [`Docker Hub`](https://docker.io), [`Artifactory`](https://artifactory.com) |
 
-RamaLama defaults to the Ollama registry transport. This default can be overridden in the `ramalama.conf` file or via the `RAMALAMA_TRANSPORTS` environment variable. Running `export RAMALAMA_TRANSPORT=huggingface` changes RamaLama to use the HuggingFace transport.
+RamaLama defaults to the Ollama registry transport. This default can be overridden in the `ramalama.conf` file or via the `RAMALAMA_TRANSPORT` environment variable. Running `export RAMALAMA_TRANSPORT=huggingface` changes RamaLama to use the HuggingFace transport.
 
 Modify individual model transports by specifying the `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, `file://` prefix to the model.
 
@@ -78,6 +80,7 @@ URL support means if a model is on a web site or even on your local system, you 
 ```
 ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf
 ```
+
 ```
 ramalama run file://$HOME/granite-7b-lab-Q4_K_M.gguf
 ```
@@ -133,7 +136,7 @@ The default can be overridden in the ramalama.conf file.
 
 Decrease output verbosity.
 
-#### **--runtime**=_llama.cpp_ | _vllm_
+#### **--runtime**=_llama.cpp_ | _vLLM_
 
 Specify the runtime to use, valid options are 'llama.cpp' and 'vllM' (default: llama.cpp).
 The default can be overridden in the ramalama.conf file.
@@ -149,29 +152,29 @@ Show the program version and exit.
 
 ## COMMANDS
 
-| Command                                            | Description                                                                                             |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| [ramalama-bench(1)](ramalama-bench.1.md)           | Benchmark specified AI Model                                                                           |
-| [ramalama-benchmarks(1)](ramalama-benchmarks.1.md) | View and interact with historical benchmark results                                                    |
-| [ramalama-chat(1)](ramalama-chat.1.md)             | OpenAI chat with the specified REST API URL                                                            |
-| [ramalama-containers(1)](ramalama-containers.1.md) | List all RamaLama containers                                                                           |
-| [ramalama-convert(1)](ramalama-convert.1.md)       | Convert AI Models from local storage to OCI Image                                                      |
-| [ramalama-daemon(1)](ramalama-daemon.1.md)         | Run a RamaLama REST server                                                                             |
-| [ramalama-info(1)](ramalama-info.1.md)             | Display RamaLama configuration information                                                             |
-| [ramalama-inspect(1)](ramalama-inspect.1.md)       | Inspect the specified AI Model                                                                         |
-| [ramalama-list(1)](ramalama-list.1.md)             | List all downloaded AI Models                                                                          |
-| [ramalama-login(1)](ramalama-login.1.md)           | Login to remote registry                                                                               |
-| [ramalama-logout(1)](ramalama-logout.1.md)         | Logout from remote registry                                                                            |
-| [ramalama-perplexity(1)](ramalama-perplexity.1.md) | Calculate the perplexity value of an AI Model                                                          |
-| [ramalama-pull(1)](ramalama-pull.1.md)             | Pull AI Models from Model registries to local storage                                                  |
-| [ramalama-push(1)](ramalama-push.1.md)             | Push AI Models from local storage to remote registries                                                 |
+| Command                                            | Description                                                                                              |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [ramalama-bench(1)](ramalama-bench.1.md)           | Benchmark specified AI Model                                                                             |
+| [ramalama-benchmarks(1)](ramalama-benchmarks.1.md) | View and interact with historical benchmark results                                                      |
+| [ramalama-chat(1)](ramalama-chat.1.md)             | OpenAI chat with the specified REST API URL                                                              |
+| [ramalama-containers(1)](ramalama-containers.1.md) | List all RamaLama containers                                                                             |
+| [ramalama-convert(1)](ramalama-convert.1.md)       | Convert AI Models from local storage to OCI Image                                                        |
+| [ramalama-daemon(1)](ramalama-daemon.1.md)         | Run a RamaLama REST server                                                                               |
+| [ramalama-info(1)](ramalama-info.1.md)             | Display RamaLama configuration information                                                               |
+| [ramalama-inspect(1)](ramalama-inspect.1.md)       | Inspect the specified AI Model                                                                           |
+| [ramalama-list(1)](ramalama-list.1.md)             | List all downloaded AI Models                                                                            |
+| [ramalama-login(1)](ramalama-login.1.md)           | Login to remote registry                                                                                 |
+| [ramalama-logout(1)](ramalama-logout.1.md)         | Logout from remote registry                                                                              |
+| [ramalama-perplexity(1)](ramalama-perplexity.1.md) | Calculate the perplexity value of an AI Model                                                            |
+| [ramalama-pull(1)](ramalama-pull.1.md)             | Pull AI Models from Model registries to local storage                                                    |
+| [ramalama-push(1)](ramalama-push.1.md)             | Push AI Models from local storage to remote registries                                                   |
 | [ramalama-rag(1)](ramalama-rag.1.md)               | Generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image |
-| [ramalama-rm(1)](ramalama-rm.1.md)                 | Remove AI Models from local storage                                                                    |
-| [ramalama-run(1)](ramalama-run.1.md)               | Run specified AI Model as a chatbot                                                                    |
-| [ramalama-sandbox(1)](ramalama-sandbox.1.md)       | Run an AI agent in a sandbox, backed by a local AI Model                                               |
-| [ramalama-serve(1)](ramalama-serve.1.md)           | Serve REST API on specified AI Model                                                                   |
-| [ramalama-stop(1)](ramalama-stop.1.md)             | Stop named container that is running AI Model                                                          |
-| [ramalama-version(1)](ramalama-version.1.md)       | Display version of RamaLama                                                                            |
+| [ramalama-rm(1)](ramalama-rm.1.md)                 | Remove AI Models from local storage                                                                      |
+| [ramalama-run(1)](ramalama-run.1.md)               | Run specified AI Model as a chatbot                                                                      |
+| [ramalama-sandbox(1)](ramalama-sandbox.1.md)       | Run an AI agent in a sandbox, backed by a local AI Model                                                 |
+| [ramalama-serve(1)](ramalama-serve.1.md)           | Serve REST API on specified AI Model                                                                     |
+| [ramalama-stop(1)](ramalama-stop.1.md)             | Stop named container that is running AI Model                                                            |
+| [ramalama-version(1)](ramalama-version.1.md)       | Display version of RamaLama                                                                              |
 
 ## CONFIGURATION FILES
 
@@ -189,19 +192,19 @@ If the **RAMALAMA_CONFIG** environment variable is set, then its value is used f
 
 RamaLama default behaviour can also be overridden via environment variables, although the recommended way is to use the ramalama.conf file.
 
-| ENV Name                  | Description                                                                                     |
-| ------------------------- | ----------------------------------------------------------------------------------------------- |
-| HTTP_PROXY, http_proxy    | Proxy URL for HTTP connections                                                                  |
-| HTTPS_PROXY, https_proxy  | Proxy URL for HTTPS connections                                                                 |
-| NO_PROXY, no_proxy        | Comma-separated list of hosts to bypass proxy (e.g., localhost,127.0.0.1,.local)              |
-| RAMALAMA_CONFIG           | Specific configuration file to be used                                                          |
-| RAMALAMA_CONTAINER_ENGINE | Container engine (Podman/Docker) to use                                                         |
-| RAMALAMA_FORCE_EMOJI      | Define whether `ramalama run` uses EMOJI                                                        |
-| RAMALAMA_IMAGE            | Container image to use for serving AI Model                                                     |
-| RAMALAMA_IN_CONTAINER     | Run RamaLama in the default container                                                           |
-| RAMALAMA_STORE            | Location to store AI Models                                                                     |
-| RAMALAMA_TRANSPORT        | Default AI Model transport (ollama, huggingface, OCI)                                           |
-| TMPDIR                    | Directory for temporary files. Defaults to /var/tmp if unset.                                   |
+| ENV Name                  | Description                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| HTTP_PROXY, http_proxy    | Proxy URL for HTTP connections                                                   |
+| HTTPS_PROXY, https_proxy  | Proxy URL for HTTPS connections                                                  |
+| NO_PROXY, no_proxy        | Comma-separated list of hosts to bypass proxy (e.g., localhost,127.0.0.1,.local) |
+| RAMALAMA_CONFIG           | Specific configuration file to be used                                           |
+| RAMALAMA_CONTAINER_ENGINE | Container engine (Podman/Docker) to use                                          |
+| RAMALAMA_FORCE_EMOJI      | Define whether `ramalama run` uses EMOJI                                         |
+| RAMALAMA_IMAGE            | Container image to use for serving AI Model                                      |
+| RAMALAMA_IN_CONTAINER     | Run RamaLama in the default container                                            |
+| RAMALAMA_STORE            | Location to store AI Models                                                      |
+| RAMALAMA_TRANSPORT        | Default AI Model transport (ollama, huggingface, OCI)                            |
+| TMPDIR                    | Directory for temporary files. Defaults to /var/tmp if unset.                    |
 
 ## SEE ALSO
 
