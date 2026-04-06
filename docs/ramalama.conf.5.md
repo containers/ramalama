@@ -148,7 +148,7 @@ Specifies the GPU backend to use for inference. This setting affects which conta
 - **`openvino`**: Intel OpenVINO backend (Intel GPUs only); uses `ghcr.io/ggml-org/llama.cpp:full-openvino`
 
 :::warning Platform-Specific Behavior
-On Windows WSL2, Vulkan is not supported, so vendor-specific backends (`rocm` for AMD, `sycl` for Intel) are automatically preferred when using `backend="auto"`.
+On Windows WSL2, Vulkan support is limited and depends on system configuration, so vendor-specific backends (`rocm` for AMD, `sycl` for Intel) are automatically preferred when using `backend="auto"`.
 :::
 
 **Example:**
