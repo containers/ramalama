@@ -21,7 +21,7 @@ RamaLama searches for configuration files in multiple locations, with later file
 
 These configuration files affect all users on the system:
 
-| Path | Platform |
+| Path | Exception |
 |------|----------|
 | `/usr/share/ramalama/ramalama.conf` | Linux |
 | `/usr/local/share/ramalama/ramalama.conf` | Linux |
@@ -154,7 +154,7 @@ On Windows WSL2, Vulkan is not supported, so vendor-specific backends (`rocm` fo
 **Example:**
 ```toml
 [ramalama]
-backend = "cuda"
+backend = "vulkan" # Force Vulkan for all GPUs
 ```
 
 ---
@@ -430,7 +430,7 @@ prefix = "AI> "
 
 #### port
 
-**Type:** string  
+**Type:** integer (represented as string in config)  
 **Default:** `"8080"`
 
 Specify the initial port for a range of 101 ports for services to listen on. If this port is unavailable, another free port from this range will be selected.
@@ -589,7 +589,7 @@ summarize_after = 10
 
 #### temp
 
-**Type:** string  
+**Type:** float (represented as string in config)  
 **Default:** `"0.8"`
 
 Temperature of the response from the AI model.
@@ -776,11 +776,3 @@ storage_folder = "$HOME/.local/share/ramalama/benchmarks"
 
 [ramalama.user]
 no_missing_gpu_prompt = false
-```
-
-## See Also
-
-- [ramalama(1)](../ramalama.1.md) - Primary RamaLama man page
-- [ramalama-run(1)](../ramalama-run.1.md) - Run AI models
-- [ramalama-serve(1)](../ramalama-serve.1.md) - Serve AI models via REST API
-- [ramalama-info(1)](../ramalama-info.1.md) - Display configuration information
