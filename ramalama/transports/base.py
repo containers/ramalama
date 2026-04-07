@@ -35,6 +35,7 @@ from ramalama.common import (
     is_split_file_model,
     perror,
     populate_volume_from_image,
+    run_cmd,
     set_accel_env_vars,
 )
 from ramalama.logger import logger
@@ -362,7 +363,10 @@ class Transport(TransportBase):
     def base(self, args, name):
         if self.type == "Ollama":
             args.UNRESOLVED_MODEL = args.MODEL
-            args.MODEL = self.resolve_model()
+            resolve_model = getattr(self, "resolve_model", None)
+            if not callable(resolve_model):
+                raise NotImplementedError("Ollama transport requires resolve_model; it is missing or not callable")
+            args.MODEL = resolve_model()
         self.engine = self.new_engine(args)
         if args.subcommand == "run" and not getattr(args, "ARGS", None) and sys.stdin.isatty():
             self.engine.add(["-i"])
@@ -399,6 +403,10 @@ class Transport(TransportBase):
         if args.dryrun:
             self.engine.dryrun()
             return True
+        # Detached serve: use run_cmd so the process returns and the plugin can run the healthcheck
+        if getattr(args, "detach", False) and getattr(args, "subcommand", "") == "serve":
+            run_cmd(self.engine.exec_args, ignore_all=args.noout)
+            return True
         self.engine.exec(stdout2null=args.noout)
         return True
 
@@ -407,12 +415,16 @@ class Transport(TransportBase):
             return
 
         if self.model_type == 'oci':
-            if self.engine.use_podman or self.strategy.kind == "artifact":
-                mount_cmd = self.mount_cmd()
+            strategy = getattr(self, "strategy", None)
+            mount_cmd_fn = getattr(self, "mount_cmd", None)
+            if strategy is None or mount_cmd_fn is None:
+                raise NotImplementedError("OCI transport requires strategy and mount_cmd")
+            if self.engine.use_podman or strategy.kind == "artifact":
+                mount_cmd = mount_cmd_fn()
             elif self.engine.use_docker:
                 output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
                 volume = populate_volume_from_image(self, args, os.path.basename(output_filename))
-                mount_cmd = self.mount_cmd(volume, MNT_DIR)
+                mount_cmd = mount_cmd_fn(volume, MNT_DIR)
             else:
                 raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
             self.engine.add([mount_cmd])

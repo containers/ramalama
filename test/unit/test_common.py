@@ -183,6 +183,16 @@ def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
     mock_handle_provider.assert_called_once_with({"Name": "myvm"}, config)
 
 
+@patch("ramalama.common.run_cmd", side_effect=FileNotFoundError("podman: command not found"))
+def test_apple_vm_returns_false_when_podman_not_installed(mock_run_cmd):
+    from ramalama.common import apple_vm
+
+    result = apple_vm("podman", None)
+
+    assert result is False
+    mock_run_cmd.assert_called_once()
+
+
 class TestEnsureImage:
     """Tests for ensure_image()"""
 

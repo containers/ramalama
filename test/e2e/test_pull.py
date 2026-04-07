@@ -157,6 +157,7 @@ def test_pull_model_layers_download():
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @pytest.mark.distro_integration
 def test_pull_huggingface_tag_multiple_references():
     with RamalamaExecWorkspace() as ctx:

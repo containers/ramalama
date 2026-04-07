@@ -1,9 +1,23 @@
 import base64
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
 from ramalama.console import should_colorize
+
+# Strip ANSI escape sequences and control chars to prevent terminal injection (e.g. from LLM output)
+_ANSI_ESCAPE_RE = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x1b]*(?:\x1b\\|\x07))")
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def sanitize_for_terminal(text: str) -> str:
+    """Remove ANSI escape sequences and control characters from untrusted output before printing."""
+    if not text:
+        return text
+    s = _ANSI_ESCAPE_RE.sub("", text)
+    return _CONTROL_CHARS_RE.sub("", s)
+
 
 RoleType = Literal["system", "user", "assistant", "tool"]
 
@@ -86,7 +100,8 @@ def stream_response(chunks: Iterable[bytes], color: str, provider: StreamParser)
             text = getattr(event, "text", None)
             if not text:
                 continue
-            print(f"{color_yellow}{text}{color_default}", end="", flush=True)
+            safe_text = sanitize_for_terminal(text)
+            print(f"{color_yellow}{safe_text}{color_default}", end="", flush=True)
             assistant_response += text
 
     print("")
@@ -112,6 +127,7 @@ __all__ = [
     "ToolCall",
     "ImageURLPart",
     "ImageBytesPart",
+    "sanitize_for_terminal",
     "stream_response",
     "serialize_part",
 ]

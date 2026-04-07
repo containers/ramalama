@@ -28,6 +28,7 @@ def test_convert_custom_gguf_config():
 
 # fmt: off
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x

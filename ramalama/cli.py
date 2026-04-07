@@ -145,7 +145,8 @@ def available_metadata(prefix, parsed_args, **kwargs):
         # Therefore it needs to be done explicitly here in order to support it
         resolved_model = get_shortnames().resolve(parsed_args.MODEL)
 
-        metadata = New(resolved_model, parsed_args).inspect_metadata()
+        model = New(resolved_model, parsed_args)
+        metadata: dict = getattr(model, "inspect_metadata", lambda: {})()
         return [field for field in metadata.keys() if field.startswith(parsed_args.get)]
     return []
 
@@ -242,6 +243,7 @@ def create_argument_parser(description: str, add_help: bool = True):
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=add_help,
     )
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s version " + version())
     configure_arguments(parser)
     return parser
 
@@ -975,6 +977,10 @@ def _rag_args(args):
     # If --port was specified, use it for the RAG proxy, and
     # select a random port for the model
     args.port = None
+    # Remove port_override so compute_serving_port picks a random port
+    # for the model container instead of returning the now-None args.port
+    if hasattr(args, 'port_override'):
+        delattr(args, 'port_override')
     rag_args.model_port = args.port = compute_serving_port(args, exclude=[rag_args.port])
     args.rag = None
     rag_args.model_args = args
@@ -989,18 +995,8 @@ def sandbox_parser(subparsers):
 
     from ramalama.sandbox import add_sandbox_subparsers
 
-    for parser in add_sandbox_subparsers(sandbox_subparsers, local_images, local_models):
-        runtime_options(parser, "sandbox")
-        parser.set_defaults(func=sandbox_cli)
-
-
-def sandbox_cli(args):
-    if not args.container:
-        raise ValueError("ramalama sandbox requires a container engine")
-
-    from ramalama.sandbox import run_sandbox
-
-    run_sandbox(args)
+    for sub_parser in add_sandbox_subparsers(sandbox_subparsers, local_images, local_models):
+        runtime_options(sub_parser, "sandbox")
 
 
 def stop_parser(subparsers):
@@ -1223,7 +1219,7 @@ def inspect_cli(args):
     args.pull = "never"
 
     model = New(args.MODEL, args)
-    inspect = model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)
+    inspect = model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)  # type: ignore[call-arg]
 
     print(inspect)
 

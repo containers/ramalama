@@ -287,6 +287,7 @@ def test_full_model_name_expansion():
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 def test_serve_and_stop(shared_ctx, test_model):
     ctx = shared_ctx
@@ -336,6 +337,7 @@ def test_serve_and_stop(shared_ctx, test_model):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 def test_serve_multiple_models(shared_ctx, test_model):
     ctx = shared_ctx
@@ -396,6 +398,7 @@ def test_stop_failures():
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 def test_quadlet_generation(shared_ctx, test_model):
     ctx = shared_ctx
@@ -467,6 +470,7 @@ def test_generation_with_bad_add_to_unit_flag_value(test_model):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")
 def test_quadlet_and_kube_generation_with_container_registry(container_registry, is_container, test_model):
@@ -744,8 +748,8 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
                     assert not re.search(r".*- SEARCH_API_KEY=9999", content)
 
 
-@pytest.mark.skip(reason="pulls very large image")
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_docker
 @skip_if_no_container
 @skip_if_ppc64le

@@ -59,7 +59,7 @@ dev = [
     "argcomplete~=3.0",
     "bcrypt",
     "codespell~=2.0",
-    "huggingface_hub~=1.8.0",
+    "huggingface_hub~=1.9.0",
     "hypothesis>=6.135.26",
     "pytest~=9.0",
     "ruff>=0.14.14",
@@ -162,8 +162,8 @@ lcov.output = "coverage/coverage.lcov"
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-markers = ["e2e", "distro_integration"]
-addopts = "-m 'not e2e' --color=yes --durations=10"
+markers = ["e2e", "distro_integration", "slow: tests that take more than ~30 seconds, usually running an inference server"]
+addopts = "-m 'not e2e and not slow' --color=yes --durations=10"
 
 [tool.setuptools.packages.find]
 include = ["ramalama", "ramalama.*"]
@@ -190,6 +190,7 @@ pass_env = [
   "GITHUB_ACTIONS",
   "RAMALAMA_*",
 ]
+set_env = { COLUMNS = "120" }
 commands = [
   [
     "pytest",
@@ -208,9 +209,27 @@ deps = [
 commands = [
   [
     "pytest",
-    "-m", "e2e",
+    "-m", "e2e and not slow",
     "-vvv",
     "--timeout=900",
+    "--durations=10",
+    "--basetemp={envtmpdir}",
+    "--tb=short",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[tool.tox.env.slow]
+deps = [
+    "mlx-lm ; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "pytest-timeout"
+]
+commands = [
+  [
+    "pytest",
+    "-m", "slow",
+    "-vvv",
+    "--timeout=1200",
     "--durations=10",
     "--basetemp={envtmpdir}",
     "--tb=short",

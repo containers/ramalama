@@ -274,6 +274,7 @@ def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_co
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     import platform
 

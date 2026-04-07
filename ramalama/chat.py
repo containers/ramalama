@@ -26,6 +26,7 @@ from ramalama.chat_utils import (
     SystemMessage,
     ToolMessage,
     UserMessage,
+    sanitize_for_terminal,
     stream_response,
 )
 from ramalama.common import perror
@@ -61,14 +62,15 @@ def res(response, color):
             json_line = json.loads(line[len("data: ") :])
             if "choices" in json_line and json_line["choices"]:
                 choice = json_line["choices"][0]["delta"]
-            if "content" in choice:
-                choice = choice["content"]
+            if isinstance(choice, dict) and "content" in choice:
+                content = choice["content"]
             else:
                 continue
 
-            if choice:
-                print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
-                assistant_response += choice
+            if content:
+                safe_content = sanitize_for_terminal(content)
+                print(f"{color_yellow}{safe_content}{color_default}", end="", flush=True)
+                assistant_response += content
 
     print("")
     return assistant_response
@@ -319,9 +321,10 @@ class RamaLamaShell(cmd.Cmd):
                     if (self.args.color == "auto" and should_colorize()) or self.args.color == "always":
                         color_default = "\033[0m"
                         color_yellow = "\033[33m"
-                    print(f"{color_yellow}{text}{color_default}", end="", flush=True)
+                    safe_text = sanitize_for_terminal(text)
+                    print(f"{color_yellow}{safe_text}{color_default}", end="", flush=True)
 
-                self.mcp_agent._stream_callback = mcp_stream_callback
+                setattr(self.mcp_agent, "_stream_callback", mcp_stream_callback)
 
                 # Initialize the agent and get available tools
                 init_results, tools = self.mcp_agent.initialize()
@@ -524,8 +527,8 @@ class RamaLamaShell(cmd.Cmd):
     def _req(self):
         request = self._make_request_data()
 
-        i = 0.01
-        total_time_slept = 0
+        i: float = 0.01
+        total_time_slept: float = 0
         response = None
 
         max_timeout = 16
@@ -582,18 +585,21 @@ class RamaLamaShell(cmd.Cmd):
             except Exception as e:
                 logger.debug(f"Error closing MCP connections: {e}")
 
-        if getattr(self.args, "server_process", False):
-            self.args.server_process.terminate()
+        server_process = getattr(self.args, "server_process", None)
+        if server_process:
+            server_process.terminate()
             try:
-                self.args.server_process.wait(timeout=5)
+                server_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.args.server_process.kill()
+                server_process.kill()
         elif getattr(self.args, "name", None):
             args = copy.copy(self.args)
             args.ignore = True
+            name = getattr(self.args, "name", None)
             # Remove containers on normal exit (remove=True)
-            stop_container(args, self.args.name, remove=True)
-            if extra_name := self.operational_args.name:
+            if name:
+                stop_container(args, name, remove=True)
+            if extra_name := getattr(self.operational_args, "name", None):
                 stop_container(args, extra_name, remove=True)
 
     def loop(self):
