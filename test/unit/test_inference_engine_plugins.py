@@ -153,7 +153,6 @@ class TestLlamaCppPlugin:
         assert "--model" in cmd
         assert cmd[cmd.index("--model") + 1] == "/mnt/models/model.file"
         assert "--no-warmup" in cmd
-        assert "--jinja" in cmd
         assert "--alias" in cmd
         assert "-ngl" in cmd
 
@@ -175,8 +174,6 @@ class TestLlamaCppPlugin:
         cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--mmproj" in cmd
-        assert "--no-jinja" in cmd
-        assert "--jinja" not in cmd
         assert "--chat-template-file" not in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
@@ -189,8 +186,6 @@ class TestLlamaCppPlugin:
         cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--chat-template-file" in cmd
-        assert "--jinja" in cmd
-        assert "--no-jinja" not in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_thinking_disabled(self, mock_colorize):
