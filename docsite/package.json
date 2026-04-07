@@ -16,7 +16,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@docusaurus/core": "3.9.2",
+    "@docusaurus/core": "3.10.0",
     "@docusaurus/plugin-client-redirects": "^3.9.1",
     "@docusaurus/preset-classic": "3.10.0",
     "@mdx-js/react": "^3.1.1",
