@@ -15,7 +15,7 @@ The configuration file uses the [TOML format](https://toml.io), which is easy to
 
 ## File Locations
 
-RamaLama searches for configuration files in multiple locations, with later files overriding settings from earlier ones.
+RamaLama searches for configuration files in multiple locations, Files processed later override settings from earlier ones.
 
 ### Global Configuration Files
 
@@ -58,7 +58,7 @@ ramalama run tiny
 
 ## Configuration Format
 
-The configuration file uses the [TOML format](https://toml.io). Every option is nested under its table, with no bare options allowed.
+As mentioned above that the configuration file uses the [TOML format](https://toml.io). Every option is nested under its table, with no bare options allowed.
 
 **Basic TOML structure:**
 
@@ -148,7 +148,7 @@ Specifies the GPU backend to use for inference. This setting affects which conta
 - **`openvino`**: Intel OpenVINO backend (Intel GPUs only); uses `ghcr.io/ggml-org/llama.cpp:full-openvino`
 
 :::warning Platform-Specific Behavior
-On Windows WSL2, Vulkan support is limited and depends on system configuration, so vendor-specific backends (`rocm` for AMD, `sycl` for Intel) are automatically preferred when using `backend="auto"`.
+On Windows (including WSL2), Vulkan support is limited and depends on system configuration. In such cases, vendor-specific backends (`rocm` for AMD, `sycl` for Intel) may be preferred when using `backend="auto"`.
 :::
 
 **Example:**
@@ -253,7 +253,7 @@ engine = "podman"
 **Type:** array  
 **Default:** `[]`
 
-Environment variables to be added to the environment when running in a container engine (Podman or Docker).
+Environment variables to be added when running within a container engine (Podman or Docker).
 
 **Example:**
 ```toml
@@ -409,7 +409,7 @@ max_tokens = 2048
 **Type:** string  
 **Default:** Based on container engine
 
-Specify the default prefix for chat and run commands. By default, the prefix is based on the container engine used.
+Specify the default prefix for chat and run commands. By default, the prefix depends on the container engine used.
 
 **Default prefixes:**
 
@@ -430,7 +430,7 @@ prefix = "AI> "
 
 #### port
 
-**Type:** integer (represented as string in config)  
+**Type:**string
 **Default:** `"8080"`
 
 Specify the initial port for a range of 101 ports for services to listen on. If this port is unavailable, another free port from this range will be selected.
@@ -448,7 +448,7 @@ port = "8081"
 **Type:** string  
 **Default:** `"newer"`
 
-Policy for pulling container images.
+Policy for pulling container images from registries.
 
 **Valid options:**
 
@@ -486,7 +486,7 @@ rag_format = "json"
 
 ---
 
-#### rag_images
+#### rag_images (string)
 
 **Type:** string  
 **Default:** `"quay.io/ramalama/ramalama-rag"`
@@ -501,7 +501,7 @@ rag_images = "quay.io/ramalama/ramalama-rag"
 
 ---
 
-#### rag_images (table array)
+#### rag_images (table array overrides)
 
 **Type:** table array  
 **Default:** Built-in GPU defaults
@@ -589,7 +589,7 @@ summarize_after = 10
 
 #### temp
 
-**Type:** float (represented as string in config)  
+**Type:** string  
 **Default:** `"0.8"`
 
 Temperature of the response from the AI model.
