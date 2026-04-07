@@ -1,0 +1,70 @@
+% ramalama-perplexity 1
+
+## NAME
+ramalama\-perplexity - calculate the perplexity value of an AI Model
+
+## SYNOPSIS
+**ramalama perplexity** [*options*] *model* [arg ...]
+
+@@include options/model-transports.md
+
+## OPTIONS
+
+@@option authfile
+
+@@option backend
+
+@@option cache-reuse
+
+@@option ctx-size
+
+@@option device
+
+@@option env
+
+@@option help
+
+@@option image
+
+@@option keep-groups
+
+@@option max-tokens
+
+@@option name
+
+@@option network
+
+@@option ngl
+
+@@option oci-runtime
+
+@@option privileged
+
+@@option pull
+
+@@option runtime-args
+
+@@option seed
+
+@@option selinux
+
+@@option temp
+
+@@option threads
+
+@@option tls-verify
+
+## DESCRIPTION
+Calculate the perplexity of an AI Model. Perplexity measures how well the model can predict the next token with lower values being better.
+
+## EXAMPLES
+
+```
+ramalama perplexity granite3-moe
+```
+
+## SEE ALSO
+**[ramalama(1)](ramalama.1.md)**
+
+## HISTORY
+Jan 2025, Originally compiled by Eric Curtin <ecurtin@redhat.com>

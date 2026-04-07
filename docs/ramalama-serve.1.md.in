@@ -1,0 +1,152 @@
+% ramalama-serve 1
+
+## NAME
+ramalama\-serve - serve REST API on specified AI Model
+
+## SYNOPSIS
+**ramalama serve** [*options*] _model_
+
+## DESCRIPTION
+Serve specified AI Model as a chat bot. RamaLama pulls specified AI Model from
+registry if it does not exist in local storage.
+
+@@include options/model-transports.md
+
+## REST API ENDPOINTS
+Under the hood, `ramalama-serve` uses the `llama.cpp` HTTP server by default. When using `--runtime=vllm`, it uses the vLLM server. When using `--runtime=mlx`, it uses the MLX LM server.
+
+For REST API endpoint documentation, see:
+- llama.cpp: [https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints)
+- vLLM: [https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
+- MLX LM: [https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md)
+
+## OPTIONS
+
+#### **--add-to-unit**
+
+format: --add-to-unit section:key:value
+
+Adds to the generated unit file (quadlet) in the section *section* the key *key* with the value *value*.
+
+Useful, for instance, to add environment variables to the generated unit file, or to place the container in a specific pod/network (Container:Network:xxx.network).
+
+**Only valid with *--generate* parameter.**
+
+Section, key and value are required and must be separated by colons.
+
+@@option api
+
+@@option authfile
+
+@@option backend
+
+@@option cache-reuse
+
+@@option ctx-size
+
+#### **--detach**, **-d**
+Run the container in the background and print the new container ID.
+The default is TRUE. The --nocontainer option forces this option to False.
+
+Use the `ramalama stop` command to stop the container running the served ramalama Model.
+
+@@option device
+
+#### **--dri**=*on* | *off*
+Enable or disable mounting `/dev/dri` into the container when running with `--api=llama-stack` (enabled by default). Use to prevent access to the host device when not required, or avoid errors in environments where `/dev/dri` is not available.
+
+@@option env
+
+#### **--generate**=type
+Generate specified configuration format for running the AI Model as a service
+
+| Key          | Description                                                              |
+| ------------ | -------------------------------------------------------------------------|
+| quadlet      | Podman supported container definition for running AI Model under systemd |
+| kube         | Kubernetes YAML definition for running the AI Model as a service         |
+| quadlet/kube | Kubernetes YAML definition for running the AI Model as a service and Podman supported container definition for running the Kube YAML specified pod under systemd|
+| compose      | Compose YAML definition for running the AI Model as a service            |
+
+Optionally, an output directory for the generated files can be specified by
+appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
+
+
+@@option help
+
+@@option host
+
+@@option image
+
+@@option keep-groups
+
+@@option logfile
+
+@@option max-tokens
+
+@@option model-draft
+
+@@option name
+
+@@option network
+
+@@option ngl
+
+@@option oci-runtime
+
+@@option port
+
+@@option privileged
+
+@@option pull
+
+@@option rag-pair
+
+@@option runtime-args
+
+@@option seed
+
+@@option selinux
+
+@@option temp
+
+@@option thinking
+
+@@option threads
+
+@@option tls-verify
+
+@@option webui
+
+## EXAMPLES
+@@include options/serve-examples-body.md
+
+## NVIDIA CUDA Support
+
+See **[ramalama-cuda(7)](ramalama-cuda.7.md)** for setting up the host Linux system for CUDA support.
+
+## MLX Support
+
+The MLX runtime is designed for Apple Silicon Macs and provides optimized performance on these systems. MLX support has the following requirements:
+
+- **Operating System**: macOS only
+- **Hardware**: Apple Silicon (M1, M2, M3, or later)
+- **Container Mode**: MLX requires `--nocontainer` as it cannot run inside containers
+- **Dependencies**: The `mlx-lm` uv package installed on the host system as a uv tool
+
+To install MLX dependencies, use `uv`:
+```bash
+uv tool install mlx-lm
+# or upgrade to the latest version:
+uv tool upgrade mlx-lm
+```
+
+Example usage:
+```bash
+ramalama --runtime=mlx serve hf://mlx-community/Unsloth-Phi-4-4bit
+```
+
+## SEE ALSO
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-stop(1)](ramalama-stop.1.md)**, **quadlet(1)**, **systemctl(1)**, **podman(1)**, **podman-ps(1)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**, **[ramalama.conf(5)](ramalama.conf.5.md)**
+
+## HISTORY
+Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>

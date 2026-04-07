@@ -1,0 +1,8 @@
+# Generated from *.md.in by hack/markdown-preprocess
+ramalama-run.1.md
+ramalama-serve.1.md
+ramalama-perplexity.1.md
+ramalama-bench.1.md
+ramalama-sandbox-goose.1.md
+ramalama-sandbox-opencode.1.md
+.manpages-md.stamp

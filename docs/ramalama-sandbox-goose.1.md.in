@@ -1,0 +1,120 @@
+% ramalama-sandbox-goose 1
+
+## NAME
+ramalama\-sandbox\-goose - run Goose in a sandbox, backed by a local AI Model
+
+## SYNOPSIS
+**ramalama sandbox goose** [*options*] *model* [arg ...]
+
+## DESCRIPTION
+Run Goose in a container, connected to a local model server also running
+in a container. Goose uses the model for reasoning and tool calling.
+
+When run with no arguments after the model, an interactive session is
+launched. If one or more arguments are provided, they are passed to the agent
+as instructions to process non-interactively. Commands may also be passed via
+stdin.
+
+Two containers are started: a model server (llama-server) and the agent
+container. They communicate via container networking. When the agent session
+exits, the model server container is automatically stopped and removed.
+
+## OPTIONS
+
+@@option authfile
+
+@@option backend
+
+@@option cache-reuse
+
+@@option ctx-size
+
+@@option device
+
+@@option env
+
+@@option goose-image
+
+@@option help
+
+@@option host
+
+@@option image
+
+@@option keep-groups
+
+@@option logfile
+
+@@option max-tokens
+
+@@option model-draft
+
+@@option name
+
+@@option network
+
+@@option ngl
+
+@@option oci-runtime
+
+@@option port
+
+@@option privileged
+
+@@option pull
+
+@@option runtime-args
+
+@@option seed
+
+@@option selinux
+
+@@option temp
+
+@@option thinking
+
+@@option threads
+
+@@option tls-verify
+
+@@option webui
+
+@@option workdir
+
+## EXAMPLES
+
+Run the Goose agent with default settings:
+```
+ramalama sandbox goose qwen3:4b
+```
+
+Run the Goose agent with a custom image:
+```
+ramalama sandbox goose --goose-image ghcr.io/block/goose:1.27.1 qwen3:4b
+```
+
+Turn off thinking mode in the model the agent is connecting to (may result in faster responses):
+```
+ramalama sandbox goose --thinking=off qwen3:4b
+```
+
+Start an interactive session with access to a local directory:
+```
+ramalama sandbox goose -w ./src qwen3:4b
+```
+
+Request the agent to perform actions non-interactively:
+```
+ramalama sandbox goose -w ./src qwen3:4b Please analyze the source code in the current directory
+```
+
+Send instructions to the agent via stdin:
+```
+echo "What is the speed of light in meters per second?" | ramalama sandbox goose qwen3:4b
+```
+
+## SEE ALSO
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-run(1)](ramalama-run.1.md)**, **[ramalama-serve(1)](ramalama-serve.1.md)**, **[ramalama-sandbox(1)](ramalama-sandbox.1.md)**
+
+## HISTORY
+Mar 2026, Originally compiled by Mike Bonnet <mikeb@redhat.com>
