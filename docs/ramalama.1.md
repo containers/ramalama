@@ -130,7 +130,7 @@ Show this help message and exit.
 Do not run RamaLama workloads in containers (default: False).
 The default can be overridden in the ramalama.conf file.
 
-**Note**: OCI images cannot be used with the --nocontainer option. This option disables the following features: Automatic GPU acceleration, containerized environment isolation, and dynamic resource allocation. For a complete list of affected features, please see the RamaLama documentation at [link-to-feature-list].
+**Note**: OCI images cannot be used with the --nocontainer option. This option disables the following features: Automatic GPU acceleration, containerized environment isolation, and dynamic resource allocation.
 
 #### **--quiet**
 
@@ -199,7 +199,7 @@ RamaLama default behaviour can also be overridden via environment variables, alt
 | NO_PROXY, no_proxy        | Comma-separated list of hosts to bypass proxy (e.g., localhost,127.0.0.1,.local) |
 | RAMALAMA_CONFIG           | Specific configuration file to be used                                           |
 | RAMALAMA_CONTAINER_ENGINE | Container engine (Podman/Docker) to use                                          |
-| RAMALAMA_FORCE_EMOJIS     | Define whether `ramalama run` uses EMOJI                                         |
+| RAMALAMA_FORCE_EMOJI      | Define whether `ramalama run` uses EMOJIS                                        |
 | RAMALAMA_IMAGE            | Container image to use for serving AI Model                                      |
 | RAMALAMA_IN_CONTAINER     | Run RamaLama in the default container                                            |
 | RAMALAMA_STORE            | Location to store AI Models                                                      |
