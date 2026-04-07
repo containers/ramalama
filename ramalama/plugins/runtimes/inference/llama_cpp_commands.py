@@ -1,6 +1,7 @@
 import argparse
 import os
 
+from ramalama.common import MNT_CHAT_TEMPLATE_FILE
 from ramalama.console import should_colorize
 from ramalama.transports.transport_factory import New
 
@@ -72,7 +73,13 @@ class LlamaCppCommands:
             if mmproj_path:
                 cmd += ["--mmproj", str(mmproj_path)]
 
-            chat_template_path = model._get_chat_template_path(is_container, should_generate, dry_run)
+            # Prefer user-provided --chat-template-file when set (container path in container, host path otherwise)
+            if getattr(args, "chat_template_file", None):
+                chat_template_path = (
+                    MNT_CHAT_TEMPLATE_FILE if (is_container or should_generate) else args.chat_template_file
+                )
+            else:
+                chat_template_path = model._get_chat_template_path(is_container, should_generate, dry_run)
             if not mmproj_path and chat_template_path:
                 cmd += ["--chat-template-file", str(chat_template_path)]
 
