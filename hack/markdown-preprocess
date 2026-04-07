@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+#
+# markdown-preprocess - expand *.md.in to .md for RamaLama man pages
+#
+# @@option foo  -> include docs/options/foo.md
+# @@include path -> include path relative to docs/ (nested @@include allowed in fragments)
+#
+# Set RAMALAMA_SKIP_OPTION_HEADER_REWRITE=1 to avoid rewriting ####> cross-reference
+# headers in docs/options/*.md during the build (keeps a clean git status while iterating).
+# Refresh those headers before commit with: make -C docs manpages-md (default rewrites).
+#
+"""Include mechanism for RamaLama man pages (same idea as Podman's hack/markdown-preprocess)."""
+
+import filecmp
+import glob
+import os
+import sys
+
+ENCODING = 'utf-8-sig'  # tolerate UTF-8 BOM in templates
+
+
+class Preprocessor:
+    def __init__(self) -> None:
+        self.infile = ''
+        self.used_by: dict[str, list[str]] = {}
+
+    def process(self, infile: str) -> None:
+        self.infile = infile
+        outfile = os.path.splitext(infile)[0]
+        outfile_tmp = outfile + '.tmp.' + str(os.getpid())
+
+        with open(infile, encoding=ENCODING) as fh_in, open(
+            outfile_tmp, 'w', encoding='utf-8', newline='\n'
+        ) as fh_out:
+            for raw_line in fh_in:
+                line = raw_line.replace('\r\n', '\n').replace('\r', '\n')
+                stripped = line.strip()
+                if stripped.startswith('@@option '):
+                    rest = stripped[len('@@option ') :].strip()
+                    optionname = rest.split(None, 1)[0] if rest else ''
+                    optionfile = os.path.join('options', optionname + '.md')
+                    if not os.path.isfile(optionfile):
+                        raise SystemExit(
+                            f'markdown-preprocess: missing option fragment {optionfile!r} '
+                            f'(referenced from {infile})'
+                        )
+                    self._track_optionfile(optionfile)
+                    self._insert_file(fh_out, optionfile)
+                elif stripped.startswith('@@include '):
+                    path = stripped[len('@@include ') :].strip()
+                    if path:
+                        self._insert_file(fh_out, path)
+                else:
+                    fh_out.write(line)
+
+        os.chmod(outfile_tmp, 0o644)
+        os.rename(outfile_tmp, outfile)
+
+    def _track_optionfile(self, optionfile: str) -> None:
+        self.used_by.setdefault(optionfile, []).append('ramalama ' + self._ramalama_subcommand())
+
+    def rewrite_optionfiles(self) -> None:
+        skip = os.environ.get('RAMALAMA_SKIP_OPTION_HEADER_REWRITE', '').strip().lower()
+        if skip in ('1', 'yes', 'true'):
+            return
+        for optionfile in self.used_by:
+            tmpfile = optionfile + '.tmp.' + str(os.getpid())
+            with open(optionfile, encoding=ENCODING) as fh_in, open(
+                tmpfile, 'w', encoding='utf-8', newline='\n'
+            ) as fh_out:
+                fh_out.write('####> This option file is used in:\n')
+                used_by = ', '.join(sorted(set(x for x in self.used_by[optionfile])))
+                fh_out.write(f'####>   {used_by}\n')
+                fh_out.write('####> If this file is edited, make sure the changes\n')
+                fh_out.write('####> are applicable to all of those.\n')
+                for line in fh_in:
+                    if not line.startswith('####>'):
+                        fh_out.write(line)
+            if not filecmp.cmp(optionfile, tmpfile, shallow=False):
+                os.unlink(optionfile)
+                os.rename(tmpfile, optionfile)
+            else:
+                os.unlink(tmpfile)
+
+    def _insert_file(self, fh_out, path: str) -> None:
+        if not os.path.isfile(path):
+            raise SystemExit(
+                f'markdown-preprocess: missing include {path!r} (referenced while processing {self.infile})'
+            )
+        fh_out.write('\n[//]: # (BEGIN included file ' + path + ')\n')
+        with open(path, encoding=ENCODING) as fh_included:
+            for raw_line in fh_included:
+                opt_line = raw_line.replace('\r\n', '\n').replace('\r', '\n')
+                if opt_line.startswith('####>'):
+                    continue
+                stripped = opt_line.strip()
+                if stripped.startswith('@@include '):
+                    subpath = stripped[len('@@include ') :].strip()
+                    if subpath:
+                        self._insert_file(fh_out, subpath)
+                    continue
+                sub = self._ramalama_subcommand()
+                opt_line = opt_line.replace('<<subcommand>>', sub)
+                opt_line = opt_line.replace('<<fullsubcommand>>', sub)
+                fh_out.write(opt_line)
+        fh_out.write('\n[//]: # (END   included file ' + path + ')\n')
+
+    def _ramalama_subcommand(self) -> str:
+        """e.g. ramalama-foo-bar.1.md.in -> 'foo bar' (program name not included)."""
+        base = os.path.basename(self.infile)
+        if base.startswith('ramalama-') and base.endswith('.1.md.in'):
+            sub = base[len('ramalama-') : -len('.1.md.in')]
+        elif base.startswith('ramalama-') and base.endswith('.5.md.in'):
+            sub = base[len('ramalama-') : -len('.5.md.in')]
+        elif base.startswith('ramalama-') and base.endswith('.7.md.in'):
+            sub = base[len('ramalama-') : -len('.7.md.in')]
+        else:
+            sub = base.replace('.md.in', '').replace('.md', '')
+            if sub.startswith('ramalama-'):
+                sub = sub[len('ramalama-') :]
+        return sub.replace('-', ' ')
+
+
+def main() -> None:
+    script_dir = os.path.abspath(os.path.dirname(__file__))
+    docs_dir = os.path.join(script_dir, '..', 'docs')
+    try:
+        os.chdir(docs_dir)
+    except FileNotFoundError as ex:
+        raise SystemExit('markdown-preprocess: docs directory not found') from ex
+
+    if len(sys.argv) > 1:
+        raise SystemExit('markdown-preprocess: unexpected arguments')
+
+    preprocessor = Preprocessor()
+    for infile in sorted(glob.glob('*.md.in')):
+        preprocessor.process(infile)
+
+    preprocessor.rewrite_optionfiles()
+
+
+if __name__ == '__main__':
+    main()
