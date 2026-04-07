@@ -776,3 +776,4 @@ storage_folder = "$HOME/.local/share/ramalama/benchmarks"
 
 [ramalama.user]
 no_missing_gpu_prompt = false
+```
