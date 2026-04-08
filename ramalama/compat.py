@@ -31,7 +31,7 @@ else:
             delete = kwargs.pop('delete')
         else:
             delete = True
-        f = _NamedTemporaryFile(*args, **kwargs, delete=delete and delete_on_close)
+        f = _NamedTemporaryFile(*args, **kwargs, delete=delete and delete_on_close)  # type: ignore[call-overload]
         try:
             yield f
         finally:

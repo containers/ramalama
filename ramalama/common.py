@@ -606,6 +606,7 @@ AccelEnvVar: TypeAlias = Literal[
     "CUDA_LAUNCH_BLOCKING",
     "HSA_VISIBLE_DEVICES",
     "HSA_OVERRIDE_GFX_VERSION",
+    "MTHREADS_VISIBLE_DEVICES",
 ]
 
 

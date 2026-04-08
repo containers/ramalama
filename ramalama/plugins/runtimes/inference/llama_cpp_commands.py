@@ -73,13 +73,8 @@ class LlamaCppCommands:
                 cmd += ["--mmproj", str(mmproj_path)]
 
             chat_template_path = model._get_chat_template_path(is_container, should_generate, dry_run)
-            if not mmproj_path and chat_template_path:
+            if chat_template_path:
                 cmd += ["--chat-template-file", str(chat_template_path)]
-
-            if not mmproj_path:
-                cmd.append("--jinja")
-            else:
-                cmd.append("--no-jinja")
 
         cmd.append("--no-warmup")
 
@@ -202,6 +197,10 @@ class LlamaCppCommands:
             cmd += ["--threads", str(threads)]
 
         cmd += ["-o", "json"]
+
+        runtime_args = getattr(args, 'runtime_args', None)
+        if runtime_args:
+            cmd.extend(runtime_args)
 
         return cmd
 

@@ -141,7 +141,7 @@ endif
 
 .PHONY: type-check
 type-check:
-	mypy $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test $(PROJECT_DIR)
+	mypy --check-untyped-defs $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test $(PROJECT_DIR)
 
 .PHONY: validate
 validate: codespell lint check-format man-check type-check
@@ -161,7 +161,7 @@ e2e-image:
 	podman inspect $(E2E_IMAGE) &> /dev/null || \
 		podman build -t $(E2E_IMAGE) -f container-images/e2e/Containerfile .
 
-e2e-tests-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
+e2e-tests-in-container slow-tests-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
 
 %-in-container: e2e-image
 	podman run --rm \
@@ -199,21 +199,26 @@ detailed-cov-tests: requires-tox
 
 .PHONY: e2e-tests
 e2e-tests: requires-tox
-	# This makefile target runs the new e2e-tests pytest based
 	tox -q -e e2e
 
 .PHONY: e2e-tests-nocontainer
 e2e-tests-nocontainer: requires-tox
-	# This makefile target runs the new e2e-tests pytest based
 	tox -q -e e2e -- --no-container
 
 .PHONY: e2e-tests-docker
 e2e-tests-docker: requires-tox
-	# This makefile target runs the new e2e-tests pytest based
 	tox -q -e e2e -- --container-engine=docker
 
+.PHONY: slow-tests
+slow-tests: requires-tox
+	tox -q -e slow
+
+.PHONY: slow-tests-docker
+slow-tests-docker: requires-tox
+	tox -q -e slow -- --container-engine=docker
+
 .PHONY: end-to-end-tests
-end-to-end-tests: validate e2e-tests e2e-tests-nocontainer ci
+end-to-end-tests: validate e2e-tests e2e-tests-nocontainer slow-tests ci
 	make clean
 	hack/tree_status.sh
 

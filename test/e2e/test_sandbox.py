@@ -6,7 +6,7 @@ import pytest
 from test.conftest import skip_if_no_container, skip_if_not_windows, skip_if_ppc64le, skip_if_s390x, skip_if_windows
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
-TEST_MODEL = "qwen3:1.7b"
+TEST_MODEL = "qwen3.5:4b"
 
 
 def _dryrun_cmd(agent):
@@ -33,14 +33,17 @@ def sandbox_ctx():
 @pytest.mark.e2e
 @skip_if_no_container
 @skip_if_windows
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
-def test_sandbox_dryrun_default(agent):
+@pytest.mark.parametrize(
+    "agent, cmd",
+    [
+        ["goose", r"run -i -\s*$"],
+        ["opencode", r"run --thinking=true\s*$"],
+    ],
+)
+def test_sandbox_dryrun_default(agent, cmd):
     """Dryrun should print container commands including run."""
     result = check_output(_dryrun_cmd(agent), stdin=subprocess.DEVNULL)
-    if agent == "goose":
-        assert re.search(r"run -i -", result)
-    else:
-        assert re.search(r"run -", result)
+    assert re.search(cmd, result)
 
 
 @pytest.mark.e2e
@@ -148,6 +151,7 @@ def test_sandbox_dryrun_opencode_custom_image():
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
@@ -159,6 +163,7 @@ def test_sandbox_run(sandbox_ctx, agent):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
@@ -186,6 +191,7 @@ def test_sandbox_run_cmdline(sandbox_ctx, tmp_path, container_engine, agent):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x

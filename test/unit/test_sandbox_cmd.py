@@ -233,6 +233,7 @@ def test_opencode_env_vars():
     assert config_arg is not None, "OPENCODE_CONFIG_CONTENT not found in command"
     config_json = config_arg.split("=", 1)[1]
     config = json.loads(config_json)
+    assert config["model"] == "ramalama/Qwen3-4B-Q4_K_M"
     assert config["provider"]["ramalama"]["npm"] == "@ai-sdk/openai-compatible"
     assert config["provider"]["ramalama"]["options"]["baseURL"] == "http://localhost:8080/v1"
     assert config["provider"]["ramalama"]["options"]["apiKey"] == "ramalama"
@@ -253,7 +254,7 @@ def test_opencode_no_tty(monkeypatch):
     monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: False)
     args = _make_opencode_args()
     opencode = OpenCode(args, "test-model")
-    assert opencode.engine.exec_args[-2:] == ["run", "-"]
+    assert opencode.engine.exec_args[-2:] == ["run", "--thinking=true"]
 
 
 def test_opencode_args():
@@ -261,4 +262,4 @@ def test_opencode_args():
     args = _make_opencode_args()
     args.ARGS = ["hello", "ramalama"]
     opencode = OpenCode(args, "test-model")
-    assert opencode.engine.exec_args[-2:] == ["run", "hello ramalama"]
+    assert opencode.engine.exec_args[-4:] == ["run", "--thinking=true", "hello", "ramalama"]

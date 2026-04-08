@@ -153,7 +153,6 @@ class TestLlamaCppPlugin:
         assert "--model" in cmd
         assert cmd[cmd.index("--model") + 1] == "/mnt/models/model.file"
         assert "--no-warmup" in cmd
-        assert "--jinja" in cmd
         assert "--alias" in cmd
         assert "-ngl" in cmd
 
@@ -175,8 +174,6 @@ class TestLlamaCppPlugin:
         cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--mmproj" in cmd
-        assert "--no-jinja" in cmd
-        assert "--jinja" not in cmd
         assert "--chat-template-file" not in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
@@ -189,8 +186,6 @@ class TestLlamaCppPlugin:
         cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--chat-template-file" in cmd
-        assert "--jinja" in cmd
-        assert "--no-jinja" not in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_thinking_disabled(self, mock_colorize):
@@ -342,6 +337,17 @@ class TestLlamaCppPlugin:
         assert "-ngl" in cmd
         assert "-o" in cmd
         assert cmd[cmd.index("-o") + 1] == "json"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    def test_bench_runtime_args(self, mock_new, container_image_is_ggml):
+        mock_model = make_transport_model()
+        mock_new.return_value = mock_model
+
+        ns = make_ns(ngl=30, runtime_args=["--extra", "flag"], MODEL="ollama://mymodel")
+        cmd = self.plugin.handle_subcommand("bench", ns)
+
+        assert "--extra" in cmd
+        assert "flag" in cmd
 
     def test_rag_generate(self):
         ns = make_rag_gen_ns(format="qdrant", paths=["/some/path"], inputdir="/input")
