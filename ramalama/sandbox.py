@@ -1,6 +1,7 @@
 import argparse
 import json
 import platform
+import shlex
 from collections.abc import Callable
 from typing import cast
 
@@ -63,6 +64,20 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     )
     _add_common_sandbox_args(parser)
     parser.set_defaults(func=run_sandbox_opencode)
+    yield parser
+
+    parser = subparsers.add_parser("openclaw", help="run OpenClaw in a sandbox, backed by a local AI Model")
+    if getattr(runtime, "_add_inference_args", None):
+        runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
+    parser.add_argument("MODEL", completer=model_comp)
+    parser.add_argument(
+        "--openclaw-image",
+        default="ghcr.io/openclaw/openclaw:2026.4.5",
+        completer=img_comp,
+        help="OpenClaw container image",
+    )
+    _add_common_sandbox_args(parser)
+    parser.set_defaults(func=run_sandbox_openclaw)
     yield parser
 
 
@@ -201,6 +216,55 @@ class OpenCode(Agent):
         }
         self.engine.add_env_option(f"OPENCODE_CONFIG_CONTENT={json.dumps(config)}")
 
+class OpenClawArgsType(SandboxEngineArgsType):
+    openclaw_image: str
+
+
+class OpenClaw(Agent):
+    """
+    Run OpenClaw in a sandbox.
+    OpenClaw is configured to use the local model server through an OpenAI-compatible endpoint.
+    """
+
+    def __init__(self, args: OpenClawArgsType, model_name: str) -> None:
+        super().__init__(args, model_name)
+        self.engine.add_name(f"openclaw-{args.name}")  # type: ignore[attr-defined]
+        self.add_env_options(args)
+        self.engine.add_workdir(args)
+        self.engine.add_args(args.openclaw_image)
+        self.engine.add_args("bash", "-lc", self._build_launch_script(args))
+
+    def _build_launch_script(self, args: OpenClawArgsType) -> str:
+        config_batch = json.dumps(
+            [
+                {"path": "models.providers.openai.apiKey", "value": "ramalama"},
+                {"path": "models.providers.openai.baseUrl", "value": f"http://localhost:{args.port}/v1"},
+                {"path": "models.providers.openai.models", "value": []},
+                {"path": "agents.defaults.model.primary", "value": f"openai/{self.model_name}"},
+                {"path": "gateway.mode", "value": "local"},
+                {"path": "gateway.bind", "value": "loopback"},
+            ]
+        )
+        setup_cmd = f"node dist/index.js config set --batch-json {shlex.quote(config_batch)} >/dev/null"
+
+        if args.ARGS:
+            message = " ".join(args.ARGS)
+            run_cmd = f"node dist/index.js agent --local --session-id ramalama --message {shlex.quote(message)}"
+        elif self.engine.use_tty():
+            run_cmd = "exec node dist/index.js tui --session main"
+        else:
+            run_cmd = 'msg="$(cat)"; node dist/index.js agent --local --session-id ramalama --message "$msg"'
+
+        return f"set -euo pipefail; {setup_cmd}; {run_cmd}"
+
+    def add_env_options(self, args: OpenClawArgsType) -> None:
+        self.engine.add_env_option(f"OPENAI_BASE_URL=http://localhost:{args.port}/v1")
+        self.engine.add_env_option("OPENAI_API_KEY=ramalama")
+        self.engine.add_env_option("OPENCLAW_SKIP_CHANNELS=1")
+        self.engine.add_env_option("OPENCLAW_SKIP_GMAIL_WATCHER=1")
+        self.engine.add_env_option("OPENCLAW_SKIP_CRON=1")
+        self.engine.add_env_option("OPENCLAW_SKIP_CANVAS_HOST=1")
+
 
 def run_sandbox_goose(args: GooseArgsType):
     run_sandbox(args, Goose)
@@ -210,6 +274,10 @@ def run_sandbox_opencode(args: OpenCodeArgsType):
     run_sandbox(args, OpenCode)
 
 
+def run_sandbox_openclaw(args: OpenClawArgsType):
+    run_sandbox(args, OpenClaw)
+
+    
 def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
     """Orchestrate model server and sandbox containers."""
 
