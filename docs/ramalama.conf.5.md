@@ -319,7 +319,7 @@ image = "quay.io/ramalama/ramalama:latest"
 
 #### images
 
-**Type:** table array  
+**Type:** table  
 **Default:** Built-in runtime defaults
 
 User-override entries for runtime-specific container images. Each runtime plugin defines its own built-in defaults; entries here override those defaults.
