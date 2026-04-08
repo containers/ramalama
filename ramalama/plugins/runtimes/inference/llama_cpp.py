@@ -405,6 +405,14 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         self._add_backend_arg(bench_parser)
         self._add_ngl_arg(bench_parser)
         self._add_threads_arg(bench_parser)
+        bench_parser.add_argument(
+            "--runtime-args",
+            dest="runtime_args",
+            default="",
+            type=str,
+            help="arguments to add to runtime invocation",
+            completer=suppressCompleter,
+        )
         bench_parser.add_argument("MODEL", completer=local_models)
         bench_parser.add_argument(
             "--format",
