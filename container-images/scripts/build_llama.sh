@@ -52,6 +52,10 @@ dnf_install_s390_ppc64le() {
   dnf install -y "openblas-devel"
 }
 
+dnf_install_openvino() {
+  dnf install -y ocl-icd-devel opencl-headers
+}
+
 dnf_install_mesa() {
   if [ "${ID}" = "fedora" ]; then
     dnf copr enable -y slp/mesa-libkrun-vulkan
@@ -96,6 +100,8 @@ dnf_install() {
     dnf_install_intel_gpu
   elif [ "$containerfile" = "cann" ]; then
     dnf_install_cann
+  elif [ "$containerfile" = "openvino" ]; then
+    dnf_install_openvino
   fi
 
   if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
@@ -134,8 +140,14 @@ dnf_install_runtime_deps() {
       intel-oneapi-mkl-core intel-oneapi-mkl-sycl-blas intel-oneapi-mkl-sycl-dft
       oneapi-level-zero
     )
+  elif [ "$containerfile" = "openvino" ]; then
+    runtime_pkgs+=(ocl-icd intel-opencl intel-npu-driver)
   fi
-  dnf install -y --setopt=install_weak_deps=false "${runtime_pkgs[@]}"
+  if [ ${#runtime_pkgs[@]} -gt 0 ]; then
+    local enablerepo_flag=""
+    [ "$containerfile" = "openvino" ] && enablerepo_flag="--enablerepo=updates-testing"
+    dnf install -y $enablerepo_flag --setopt=install_weak_deps=false "${runtime_pkgs[@]}"
+  fi
   dnf -y clean all
 }
 
@@ -167,6 +179,9 @@ setup_build_env() {
   elif [ "$containerfile" = "intel-gpu" ]; then
     # shellcheck disable=SC1091
     source /opt/intel/oneapi/setvars.sh
+  elif [ "$containerfile" = "openvino" ]; then
+    # shellcheck disable=SC1091
+    source /opt/intel/openvino/setupvars.sh
   fi
   set -ux
 }
@@ -192,7 +207,14 @@ configure_common_flags() {
       "-DGGML_CCACHE=OFF" "-DGGML_RPC=ON" "-DCMAKE_INSTALL_PREFIX=/tmp/install"
       "-DLLAMA_BUILD_TESTS=OFF" "-DLLAMA_BUILD_EXAMPLES=OFF" "-DGGML_BUILD_TESTS=OFF" "-DGGML_BUILD_EXAMPLES=OFF"
   )
-  if [ "$containerfile" != "cann" ]; then
+  if [ "$containerfile" = "cann" ]; then
+      :
+  elif [ "$containerfile" = "openvino" ]; then
+      # openvino backend doesn't support GGML_BACKEND_DL — upstream is missing
+      # GGML_BACKEND_DL_IMPL(ggml_backend_openvino_reg) in ggml-openvino.cpp.
+      # Until that's added, we also can't use GGML_CPU_ALL_VARIANTS.
+      common_flags+=("-DGGML_NATIVE=OFF")
+  else
       common_flags+=("-DGGML_NATIVE=OFF" "-DGGML_BACKEND_DL=ON" "-DGGML_CPU_ALL_VARIANTS=ON")
   fi
   if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" == y ]]; then
@@ -233,6 +255,9 @@ configure_common_flags() {
     ;;
   musa)
     common_flags+=("-DGGML_MUSA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
+    ;;
+  openvino)
+    common_flags+=("-DGGML_OPENVINO=ON")
     ;;
   esac
 }
