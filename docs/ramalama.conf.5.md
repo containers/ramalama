@@ -58,7 +58,7 @@ ramalama run tiny
 
 ## Configuration Format
 
-As mentioned above that the configuration file uses the [TOML format](https://toml.io). Every option is nested under its table, with no bare options allowed.
+As mentioned above, the configuration file uses the [TOML format](https://toml.io). Every option is nested under its table, with no bare options allowed.
 
 **Basic TOML structure:**
 
@@ -78,7 +78,7 @@ backend = "auto"
 engine = "podman"
 store = "$HOME/.local/share/ramalama"
 
-[[ramalama.images]]
+[ramalama.images]
 CUDA_VISIBLE_DEVICES = "quay.io/ramalama/cuda"
 ```
 
@@ -154,7 +154,7 @@ On Windows (including WSL2), Vulkan support is limited and depends on system con
 **Example:**
 ```toml
 [ramalama]
-backend = "vulkan" # Force Vulkan for all GPUs
+backend = "vulkan"
 ```
 
 ---
@@ -430,7 +430,7 @@ prefix = "AI> "
 
 #### port
 
-**Type:**string
+**Type:** string
 **Default:** `"8080"`
 
 Specify the initial port for a range of 101 ports for services to listen on. If this port is unavailable, another free port from this range will be selected.
@@ -486,7 +486,7 @@ rag_format = "json"
 
 ---
 
-#### rag_images (string)
+#### rag_image
 
 **Type:** string  
 **Default:** `"quay.io/ramalama/ramalama-rag"`
@@ -501,16 +501,16 @@ rag_images = "quay.io/ramalama/ramalama-rag"
 
 ---
 
-#### rag_images (table array overrides)
+#### rag_images
 
-**Type:** table array  
+**Type:** table
 **Default:** Built-in GPU defaults
 
 User-override entries for GPU-specific RAG container images. Built-in GPU defaults (CUDA, ROCm, Intel) are defined internally; entries here override those defaults.
 
 **Example:**
 ```toml
-[[ramalama.rag_images]]
+[ramalama.rag_images]
 CUDA_VISIBLE_DEVICES = "quay.io/ramalama/cuda-rag"
 HIP_VISIBLE_DEVICES = "quay.io/ramalama/rocm-rag"
 INTEL_VISIBLE_DEVICES = "quay.io/ramalama/intel-gpu-rag"
