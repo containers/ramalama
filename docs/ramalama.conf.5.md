@@ -15,7 +15,7 @@ The configuration file uses the [TOML format](https://toml.io), which is easy to
 
 ## File Locations
 
-RamaLama searches for configuration files in multiple locations, Files processed later override settings from earlier ones.
+RamaLama searches for configuration files in multiple locations. Files processed later override settings from earlier ones.
 
 ### Global Configuration Files
 
