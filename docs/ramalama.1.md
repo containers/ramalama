@@ -14,9 +14,7 @@ keywords: [ramalama, CLI, AI models, containers, podman, docker]
 
 ## Synopsis
 
-```bash
 ramalama [options] command
-```
 
 ## Description
 
