@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from ramalama.cli import parse_args_from_cmd
-from ramalama.sandbox import Goose, OpenCode
+from ramalama.sandbox import Goose, OpenClaw, OpenCode
 
 TEST_MODEL = "qwen3:4b"
 
@@ -40,18 +40,39 @@ def _make_opencode_args(engine="podman"):
         ARGS=[],
     )
 
+def _make_openclaw_args(engine="podman"):
+    """Create minimal args for OpenClaw tests."""
+    return SimpleNamespace(
+        engine=engine,
+        dryrun=False,
+        quiet=True,
+        openclaw_image="ghcr.io/openclaw/openclaw:latest",
+        name="ramalama_model_abc",
+        port="8080",
+        thinking=False,
+        workdir=None,
+        subcommand="sandbox",
+        ARGS=[],
+    )
+
+
+def _build_agent(agent: str, model: str = "test-model"):
+    args = _make_args() if agent == "goose" else _make_opencode_args() if agent == "opencode" else _make_openclaw_args()
+    cls = Goose if agent == "goose" else OpenCode if agent == "opencode" else OpenClaw
+    return args, cls(args, model)
+
 
 # --- Parametrized tests shared by both agents ---
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_model_positional(agent):
     """Sandbox cli should accept a model as a positional argument"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
     assert args.MODEL == "hf://Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf"
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_requires_container_engine(agent):
     """Sandbox cli should raise when no container engine is configured"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
@@ -60,14 +81,14 @@ def test_sandbox_requires_container_engine(agent):
         args.func(args)
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_subcommand(agent):
     """CLI should handle sandbox subcommand"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
     assert args.subcommand == "sandbox"
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_agent_subcommand(agent):
     """CLI should set sandbox_agent correctly"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
@@ -75,21 +96,21 @@ def test_sandbox_agent_subcommand(agent):
     assert args.sandbox_agent == agent
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_thinking(agent):
     """Inference-specific options like 'thinking' should be handled"""
     _, args = parse_args_from_cmd(["sandbox", agent, "--thinking=off", TEST_MODEL])
     assert not args.thinking
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_workdir_default_none(agent):
     """Default workdir option should be None"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
     assert args.workdir is None
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_workdir_option(agent):
     """CLI should parse -w/--workdir."""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL, "-w", "/tmp"])
@@ -107,43 +128,42 @@ def test_sandbox_no_subcommand(capsys):
     captured = capsys.readouterr()
     assert "goose" in captured.out
     assert "opencode" in captured.out
+    assert "openclaw" in captured.out
 
 
 # --- Parametrized agent construction tests ---
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_agent_network(agent):
     """Agent should setup container networking"""
-    args = _make_args() if agent == "goose" else _make_opencode_args()
-    obj = Goose(args, "test-model") if agent == "goose" else OpenCode(args, "test-model")
+    _, obj = _build_agent(agent)
     assert "--network=container:ramalama_model_abc" in obj.engine.exec_args
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_agent_interactive(agent):
     """Agent should set the -i option"""
-    args = _make_args() if agent == "goose" else _make_opencode_args()
-    obj = Goose(args, "test-model") if agent == "goose" else OpenCode(args, "test-model")
+    _, obj = _build_agent(agent)
     assert "-i" in obj.engine.exec_args
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_agent_workdir(agent):
     """Agent should add -v and --workdir=/work when workdir is set."""
-    args = _make_args() if agent == "goose" else _make_opencode_args()
+    args = _make_args() if agent == "goose" else _make_opencode_args() if agent == "opencode" else _make_openclaw_args()
+    cls = Goose if agent == "goose" else OpenCode if agent == "opencode" else OpenClaw
     args.workdir = "/tmp/myproject"
-    obj = Goose(args, "test-model") if agent == "goose" else OpenCode(args, "test-model")
+    obj = cls(args, "test-model")
     cmd = obj.engine.exec_args
     assert "--workdir=/work" in cmd
     assert "/tmp/myproject:/work:rw" in cmd
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_agent_no_workdir(agent):
     """Agent should not add volume or --workdir when workdir is not set."""
-    args = _make_args() if agent == "goose" else _make_opencode_args()
-    obj = Goose(args, "test-model") if agent == "goose" else OpenCode(args, "test-model")
+    _, obj = _build_agent(agent)
     cmd = obj.engine.exec_args
     assert "--workdir=/work" not in cmd
     assert "-v" not in cmd
@@ -263,3 +283,58 @@ def test_opencode_args():
     args.ARGS = ["hello", "ramalama"]
     opencode = OpenCode(args, "test-model")
     assert opencode.engine.exec_args[-4:] == ["run", "--thinking=true", "hello", "ramalama"]
+
+# --- OpenClaw-specific tests ---
+
+
+def test_openclaw_default_image():
+    """OpenClaw subcommand should provide a default OpenClaw image"""
+    _, args = parse_args_from_cmd(["sandbox", "openclaw", TEST_MODEL])
+    assert args.openclaw_image.startswith("ghcr.io/openclaw/openclaw:")
+
+
+def test_openclaw_custom_image():
+    """OpenClaw subcommand should handle the --openclaw-image option"""
+    _, args = parse_args_from_cmd(["sandbox", "openclaw", TEST_MODEL, "--openclaw-image", "myimage:v1"])
+    assert args.openclaw_image == "myimage:v1"
+
+
+def test_openclaw_env_vars():
+    """OpenClaw should set environment for local OpenAI-compatible provider"""
+    args = _make_openclaw_args()
+    openclaw = OpenClaw(args, "Qwen3-4B-Q4_K_M")
+    cmd = openclaw.engine.exec_args
+    assert "OPENAI_BASE_URL=http://localhost:8080/v1" in cmd
+    assert "OPENAI_API_KEY=ramalama" in cmd
+    assert "OPENCLAW_SKIP_CHANNELS=1" in cmd
+    assert "OPENCLAW_SKIP_GMAIL_WATCHER=1" in cmd
+    assert "OPENCLAW_SKIP_CRON=1" in cmd
+    assert "OPENCLAW_SKIP_CANVAS_HOST=1" in cmd
+
+
+def test_openclaw_with_tty(monkeypatch):
+    """OpenClaw should launch TUI when run with a tty and no args"""
+    monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: True)
+    args = _make_openclaw_args()
+    openclaw = OpenClaw(args, "test-model")
+    script = openclaw.engine.exec_args[-1]
+    assert "exec node dist/index.js tui --session main" in script
+
+
+def test_openclaw_no_tty(monkeypatch):
+    """OpenClaw should read stdin as message when run without a tty"""
+    monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: False)
+    args = _make_openclaw_args()
+    openclaw = OpenClaw(args, "test-model")
+    script = openclaw.engine.exec_args[-1]
+    assert 'msg="$(cat)"' in script
+    assert 'node dist/index.js agent --local --session-id ramalama --message "$msg"' in script
+
+
+def test_openclaw_args():
+    """OpenClaw should run a local one-shot agent call when args are passed"""
+    args = _make_openclaw_args()
+    args.ARGS = ["hello", "ramalama"]
+    openclaw = OpenClaw(args, "test-model")
+    script = openclaw.engine.exec_args[-1]
+    assert "node dist/index.js agent --local --session-id ramalama --message 'hello ramalama'" in script
