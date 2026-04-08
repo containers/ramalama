@@ -1,6 +1,7 @@
 """Unit tests for runtime plugins (llama.cpp, vllm, mlx)."""
 
 import argparse
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1118,7 +1119,7 @@ backend = "cuda"
         (None, ["auto", "vulkan"]),  # No GPU
     ],
 )
-def test_get_available_backends(gpu_env: str | None, expected_backends: list[str], monkeypatch):
+def test_get_available_backends(gpu_env: Optional[str], expected_backends: list[str], monkeypatch):
     """Test that available backends are correctly returned based on detected GPU."""
     monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
 
@@ -1139,7 +1140,7 @@ def test_get_available_backends(gpu_env: str | None, expected_backends: list[str
         (None, ["auto", "vulkan"]),  # No GPU: same on all platforms
     ],
 )
-def test_get_available_backends_windows(gpu_env: str | None, expected_backends: list[str], monkeypatch):
+def test_get_available_backends_windows(gpu_env: Optional[str], expected_backends: list[str], monkeypatch):
     """Test that available backends on Windows prefer vendor-specific backends."""
     monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
     monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.platform.system", lambda: "Windows")

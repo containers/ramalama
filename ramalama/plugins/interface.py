@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import argparse
 from abc import ABC, abstractmethod
 from http.client import HTTPConnection
-from typing import Any
+from typing import Any, Optional
 
 
 class RuntimePlugin(ABC):
@@ -9,7 +11,7 @@ class RuntimePlugin(ABC):
     @abstractmethod
     def name(self) -> str: ...
 
-    def get_container_image(self, config: Any, gpu_type: str) -> str | None:
+    def get_container_image(self, config: Any, gpu_type: str) -> Optional[str]:
         return None
 
     def register_subcommands(self, subparsers: "argparse._SubParsersAction") -> None:
@@ -33,7 +35,7 @@ class RuntimePlugin(ABC):
         """Seconds to wait for the runtime server to become ready."""
         return 180
 
-    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: Optional[str] = None) -> bool:
         """Check if the service is ready to receive requests."""
         return True
 

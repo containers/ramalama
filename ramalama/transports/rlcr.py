@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import os
 import subprocess
+from typing import Optional
 
 from ramalama.common import MNT_DIR, run_cmd
 from ramalama.transports.oci.oci import OCI
 
 
-def find_model_file_in_image(conman: str, model: str) -> str | None:
+def find_model_file_in_image(conman: str, model: str) -> Optional[str]:
     """Inspect the OCI image to find model file location"""
     # First try to get from label
     try:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ramalama.file_loaders.file_types.base import BaseFileLoader
 
 

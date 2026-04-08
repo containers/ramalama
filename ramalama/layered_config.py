@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import MISSING, fields, is_dataclass
 from functools import reduce
 from typing import Any, Type, get_type_hints
@@ -29,7 +31,7 @@ def build_subconfigs(values: dict, obj: Type) -> dict:
     """Facilitates nesting configs by instantiating the child typed object from a dict
 
     NOTE: This implementation does not automatically coerce more complicated config structures
-    involving types like (ConfigObj | None), or list[ConfigObj], etc...
+    involving types like (Optional[ConfigObj]), or list[ConfigObj], etc...
     """
 
     dtypes: dict[str, Type] = get_type_hints(obj)

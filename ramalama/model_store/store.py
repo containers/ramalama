@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shutil
 import urllib.error
@@ -109,7 +111,7 @@ class ModelStore:
         if snapshot_files is None:
             snapshot_files = []
 
-        ref_file: RefJSONFile | None = self.get_ref_file(model_tag)
+        ref_file: Optional[RefJSONFile] = self.get_ref_file(model_tag)
         if ref_file is None:
             return None
 
@@ -177,7 +179,7 @@ class ModelStore:
     def get_cached_files(self, model_tag: str) -> Tuple[str, list[str], bool]:
         cached_files: list[str] = []
 
-        ref_file: RefJSONFile | None = self.get_ref_file(model_tag)
+        ref_file: Optional[RefJSONFile] = self.get_ref_file(model_tag)
         if ref_file is None:
             return ("", cached_files, False)
 
@@ -280,7 +282,7 @@ class ModelStore:
         # Give preference to the embedded chat template as it's most likely to be
         # compatible with llama.cpp
 
-        def get_embedded_template() -> str | None:
+        def get_embedded_template() -> Optional[str]:
             models = ref_file.model_files
             if not models:
                 return None

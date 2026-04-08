@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import http.server
 import urllib.parse
 import urllib.request

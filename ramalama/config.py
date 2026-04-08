@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import json
 import os
 import sys
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Literal, Mapping, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, Mapping, Optional
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import apple_vm, available, version_tagged_image
@@ -78,7 +83,7 @@ def get_default_host() -> str:
         return "0.0.0.0"
 
 
-def get_default_engine() -> SUPPORTED_ENGINES | None:
+def get_default_engine() -> Optional[SUPPORTED_ENGINES]:
     """Determine the container manager to use based on environment and platform."""
     if os.path.exists("/run/.toolboxenv"):
         return None
@@ -110,7 +115,7 @@ def coerce_to_bool(value: Any) -> bool:
     raise ValueError(f"Cannot coerce {value!r} to bool")
 
 
-def get_storage_folder(base_path: str | None = None):
+def get_storage_folder(base_path: Optional[str] = None):
     if base_path is None:
         base_path = get_default_store()
 
@@ -136,7 +141,7 @@ class UserConfig:
 
 @dataclass
 class OpenaiProviderConfig:
-    api_key: str | None = None
+    api_key: Optional[str] = None
 
 
 @dataclass
@@ -148,7 +153,7 @@ class ProviderConfig:
 class RamalamaSettings:
     """These settings are not managed directly by the user"""
 
-    config_files: list[str] | None = None
+    config_files: Optional[list[str]] = None
 
 
 @dataclass
@@ -168,7 +173,7 @@ class HTTPClientConfig:
 @dataclass
 class BaseConfig:
     api: str = "none"
-    api_key: str | None = None
+    api_key: Optional[str] = None
     backend: Literal["auto", "vulkan", "rocm", "cuda", "sycl", "openvino"] = "auto"
     benchmarks: Benchmarks = field(default_factory=Benchmarks)
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
@@ -179,18 +184,18 @@ class BaseConfig:
     default_rag_image: str = DEFAULT_RAG_IMAGE
     default_tools_image: str = DEFAULT_TOOLS_IMAGE
     dryrun: bool = False
-    engine: SUPPORTED_ENGINES | None = field(default_factory=get_default_engine)
+    engine: Optional[SUPPORTED_ENGINES] = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
     host: str = field(default_factory=get_default_host)
     http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
     image: str = None  # type: ignore
     images: dict[str, str] = field(default_factory=dict)
-    rag_image: str | None = None
-    tools_image: str | None = None
+    rag_image: Optional[str] = None
+    tools_image: Optional[str] = None
     tools_images: dict[str, str] = field(default_factory=dict)
     keep_groups: bool = False
-    log_level: LogLevel | None = None
+    log_level: Optional[LogLevel] = None
     max_tokens: int = 0
     port: str = "8080"
     prefix: str = None  # type: ignore
@@ -272,7 +277,7 @@ def load_file_config() -> dict[str, Any]:
     return config
 
 
-def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+def load_env_config(env: Optional[Mapping[str, str]] = None) -> dict[str, Any]:
     if env is None:
         env = os.environ
 
@@ -317,7 +322,7 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     return config
 
 
-def load_config(env: Mapping[str, str] | None = None) -> Config:
+def load_config(env: Optional[Mapping[str, str]] = None) -> Config:
     """Returns a Config object with layers initialized from config file and environment."""
     return Config(load_file_config(), load_env_config(env))
 

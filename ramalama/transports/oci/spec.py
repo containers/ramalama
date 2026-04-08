@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import json
 import os
 import stat
 import tarfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 # CNAI_ARTIFACT_TYPE is the media type for a model artifact manifest.
 CNAI_ARTIFACT_TYPE = "application/vnd.cncf.model.manifest.v1+json"
@@ -126,7 +128,7 @@ class FileMetadata:
         return cls.from_dict(data)
 
     @classmethod
-    def from_path(cls, path: str, *, name: str | None = None) -> "FileMetadata":
+    def from_path(cls, path: str, *, name: Optional[str] = None) -> "FileMetadata":
         stat_result = os.stat(path, follow_symlinks=False)
         mtime = datetime.fromtimestamp(stat_result.st_mtime, tz=timezone.utc).isoformat().replace("+00:00", "Z")
         return cls(
@@ -171,7 +173,7 @@ class Descriptor:
     annotations: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], *, allowed_media_types: set[str] | None = None) -> "Descriptor":
+    def from_dict(cls, data: dict[str, Any], *, allowed_media_types: Optional[set[str]] = None) -> "Descriptor":
         media_type = _require_str(data.get("mediaType"), "descriptor mediaType is required")
         digest = _require_str(data.get("digest"), "descriptor digest is required")
         size = data.get("size")
@@ -203,19 +205,19 @@ class Descriptor:
             data["annotations"] = self.annotations
         return data
 
-    def filepath(self) -> str | None:
+    def filepath(self) -> Optional[str]:
         value = self.annotations.get(LAYER_ANNOTATION_FILEPATH)
         if value is None:
             return None
         return normalize_layer_filepath(value)
 
-    def file_metadata(self) -> FileMetadata | None:
+    def file_metadata(self) -> Optional[FileMetadata]:
         value = self.annotations.get(LAYER_ANNOTATION_FILE_METADATA)
         if value is None:
             return None
         return FileMetadata.from_json(value)
 
-    def media_type_untested(self) -> bool | None:
+    def media_type_untested(self) -> Optional[bool]:
         value = self.annotations.get(LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED)
         if value is None:
             return None

@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import argparse
 import platform
 from http.client import HTTPConnection
-from typing import Any
+from typing import Any, Optional
 
 from ramalama.cli import suppressCompleter
 from ramalama.config import ActiveConfig
@@ -77,7 +79,7 @@ class MlxPlugin(BaseInferenceRuntime):
             logger.info("MLX runtime automatically uses --nocontainer mode")
         args.container = False
 
-    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: Optional[str] = None) -> bool:
         conn.request("GET", "/health")
         resp = conn.getresponse()
         if resp.status != 200:

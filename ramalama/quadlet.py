@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shlex
 from typing import Optional, Tuple

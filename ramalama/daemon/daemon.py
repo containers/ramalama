@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import argparse
 import errno
@@ -7,6 +8,7 @@ import socket
 import socketserver
 import threading
 from datetime import datetime, timedelta
+from typing import Optional
 
 from ramalama.config import ActiveConfig
 from ramalama.daemon.handler.ramalama import RamalamaHandler
@@ -18,7 +20,7 @@ from ramalama.log_levels import LogLevel
 class ShutdownHandler:
     def __init__(self, server: "RamalamaServer") -> None:
         self.server = server
-        self.idle_check_timer: threading.Timer | None = None
+        self.idle_check_timer: Optional[threading.Timer] = None
 
     def handle_kill(self, signum, frame):
         if self.idle_check_timer:

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import pytest
 
@@ -15,7 +15,7 @@ class Args:
     def __init__(
         self,
         type: str = "raw",
-        gguf: str | None = None,
+        gguf: Optional[str] = None,
         carimage: str = "registry.access.redhat.com/ubi10-micro:latest",
     ):
         self.type = type

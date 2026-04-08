@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -5,6 +7,7 @@ import tempfile
 import urllib.request
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Optional
 
 from ramalama.common import (
     SPLIT_MODEL_PATH_RE,
@@ -76,14 +79,14 @@ class HFStyleRepository(ABC):
         self.organization = organization
         self.tag = tag
         self.headers: dict = {}
-        self.blob_url: str | None = None
-        self.model_filename: str | None = None
-        self.model_hash: str | None = None
-        self.mmproj_filename: str | None = None
-        self.mmproj_hash: str | None = None
+        self.blob_url: Optional[str] = None
+        self.model_filename: Optional[str] = None
+        self.model_hash: Optional[str] = None
+        self.mmproj_filename: Optional[str] = None
+        self.mmproj_hash: Optional[str] = None
         self.other_files: list[dict] = []
         self.additional_safetensor_files: list[dict] = []
-        self.safetensors_index_file: str | None = None
+        self.safetensors_index_file: Optional[str] = None
         self.fetch_metadata()
 
     @abstractmethod

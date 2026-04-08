@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import json
 import posixpath
 from abc import ABC, abstractmethod
-from typing import Generic, Literal, TypeVar
+from typing import Generic, Literal, Optional, TypeVar
 
 from ramalama.common import MNT_DIR, run_cmd
 from ramalama.model_store.store import ModelStore
@@ -18,9 +20,9 @@ class BaseOCIStrategy(Generic[K], ABC):
     """Interface for artifact handling strategies."""
 
     kind: K
-    model_store: ModelStore | None
+    model_store: Optional[ModelStore]
 
-    def __init__(self, *, model_store: ModelStore | None = None):
+    def __init__(self, *, model_store: Optional[ModelStore] = None):
         self.model_store = model_store
 
     @abstractmethod
@@ -32,7 +34,7 @@ class BaseOCIStrategy(Generic[K], ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def mount_arg(self, ref: OciRef, *args, **kwargs) -> str | None:
+    def mount_arg(self, ref: OciRef, *args, **kwargs) -> Optional[str]:
         """Return a mount argument for container run, or None if not applicable."""
         raise NotImplementedError
 
@@ -50,7 +52,7 @@ class BaseOCIStrategy(Generic[K], ABC):
         """Return raw inspect output for the reference."""
         raise NotImplementedError
 
-    def entrypoint_path(self, ref: OciRef, mount_dir: str | None = None) -> str:
+    def entrypoint_path(self, ref: OciRef, mount_dir: Optional[str] = None) -> str:
         mount_dir = mount_dir or MNT_DIR
         filenames = self.filenames(ref)
         if not filenames:
@@ -73,7 +75,7 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
         self.engine = engine
         self.model_store = model_store
 
-    def pull(self, ref: OciRef, cmd_args: list[str] | None = None) -> None:
+    def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> None:
         if cmd_args is None:
             cmd_args = []
         run_cmd([self.engine, "pull", *cmd_args, str(ref)])
@@ -85,7 +87,7 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
         except Exception:
             return False
 
-    def remove(self, ref: OciRef, cmd_args: list[str] | None = None) -> bool:
+    def remove(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> bool:
         if cmd_args is None:
             cmd_args = []
 
@@ -114,7 +116,7 @@ class HttpArtifactStrategy(BaseArtifactStrategy):
     def __init__(self, engine: str = "podman", *, model_store: ModelStore):
         super().__init__(engine=engine, model_store=model_store)
 
-    def pull(self, ref: OciRef, cmd_args: list[str] | None = None) -> None:
+    def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> None:
         if cmd_args is None:
             cmd_args = []
         if not self.model_store:
@@ -136,7 +138,7 @@ class HttpArtifactStrategy(BaseArtifactStrategy):
         except Exception:
             return False
 
-    def remove(self, ref: OciRef, cmd_args: list[str] | None = None) -> bool:
+    def remove(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> bool:
         if cmd_args is None:
             cmd_args = []
 
@@ -147,7 +149,7 @@ class HttpArtifactStrategy(BaseArtifactStrategy):
         except Exception:
             return False
 
-    def mount_arg(self, ref: OciRef, dest: str | None = None) -> str | None:
+    def mount_arg(self, ref: OciRef, dest: Optional[str] = None) -> Optional[str]:
         if not self.model_store:
             return None
         snapshot_dir = self.model_store.get_snapshot_directory_from_tag(ref.specifier)
@@ -175,7 +177,7 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
     def __init__(self, engine: str = "podman", *, model_store: ModelStore):
         super().__init__(engine=engine, model_store=model_store)
 
-    def pull(self, ref: OciRef, cmd_args: list[str] | None = None) -> None:
+    def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> None:
         if cmd_args is None:
             cmd_args = []
         run_cmd([self.engine, "artifact", "pull", *cmd_args, str(ref)])
@@ -187,10 +189,10 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
         except Exception:
             return False
 
-    def mount_arg(self, ref: OciRef, dest: str | None = None) -> str:
+    def mount_arg(self, ref: OciRef, dest: Optional[str] = None) -> str:
         return f"--mount=type=artifact,src={str(ref)},destination={dest or MNT_DIR}"
 
-    def remove(self, ref: OciRef, cmd_args: list[str] | None = None) -> bool:
+    def remove(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> bool:
         if cmd_args is None:
             cmd_args = []
 
@@ -226,7 +228,7 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
 
         return sorted(names)
 
-    def entrypoint_path(self, ref: OciRef, mount_dir: str | None = None) -> str:
+    def entrypoint_path(self, ref: OciRef, mount_dir: Optional[str] = None) -> str:
         mount_dir = mount_dir or MNT_DIR
         filenames = self.filenames(ref)
         if not filenames:
@@ -246,7 +248,7 @@ class PodmanImageStrategy(BaseImageStrategy):
     def __init__(self, engine: str = "podman", *, model_store: ModelStore):
         super().__init__(engine=engine, model_store=model_store)
 
-    def mount_arg(self, ref: OciRef, dest: str | None = None) -> str:
+    def mount_arg(self, ref: OciRef, dest: Optional[str] = None) -> str:
         return f"--mount=type=image,src={str(ref)},destination={dest or MNT_DIR},subpath=/models,rw=false"
 
 
@@ -254,5 +256,5 @@ class DockerImageStrategy(BaseImageStrategy):
     def __init__(self, engine: str = "docker", *, model_store: ModelStore):
         super().__init__(engine=engine, model_store=model_store)
 
-    def mount_arg(self, ref: OciRef, dest: str | None = None) -> str | None:
+    def mount_arg(self, ref: OciRef, dest: Optional[str] = None) -> Optional[str]:
         return f"--mount=type=volume,src={str(ref)},dst={dest or MNT_DIR},readonly"

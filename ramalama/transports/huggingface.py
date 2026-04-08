@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import json
 import os
 import urllib.request
 from pathlib import Path
+from typing import Optional
 
 from ramalama.common import run_cmd
 from ramalama.hf_style_repo_base import (
@@ -82,7 +85,7 @@ def fetch_repo_files(repo_name: str, revision: str = "main"):
     base_api_url = f"https://huggingface.co/api/models/{repo_name}/tree/{revision}"
 
     all_files = []
-    next_url: str | None = base_api_url
+    next_url: Optional[str] = base_api_url
 
     # TODO: Handle Diffusers-multifolder layout
     # See https://huggingface.co/docs/diffusers/v0.35.1/using-diffusers/other-formats#diffusers-multifolder

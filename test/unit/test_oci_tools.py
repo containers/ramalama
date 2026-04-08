@@ -52,7 +52,7 @@ def test_list_models_timezones_in_utc(monkeypatch):
     )
     artifact_inspect_output = {
         "Manifest": {
-            "artifactType": oci_tools.annotations.ArtifactTypeModelManifest,
+            "artifactType": oci_tools.oci_annotations.ArtifactTypeModelManifest,
         }
     }
 

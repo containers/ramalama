@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal, TypedDict, cast
+from typing import Literal, Optional, TypedDict, Union, cast
 
 from ramalama.common import SemVer, engine_version
 from ramalama.config import SUPPORTED_ENGINES, ActiveConfig
@@ -57,7 +59,7 @@ class OCIStrategyFactory:
 
     def __init__(
         self,
-        engine: SUPPORTED_ENGINES | Path | str | None,
+        engine: Union[SUPPORTED_ENGINES, Path, str, None],
         model_store: ModelStore,
     ):
         if (engine := engine or ActiveConfig().engine) is None:
@@ -71,7 +73,7 @@ class OCIStrategyFactory:
     def strategies(self, kind: Literal['image', 'artifact']) -> BaseArtifactStrategy | BaseImageStrategy:
         return get_strategy(self.engine, self.engine_name, self.model_store, kind)
 
-    def resolve_kind(self, model: OciRef) -> Literal["image", "artifact"] | None:
+    def resolve_kind(self, model: OciRef) -> Optional[Literal["image", "artifact"]]:
         kind = self._type_resolver.resolve(model)
         if kind == "unknown":
             return None

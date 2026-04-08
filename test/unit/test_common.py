@@ -4,6 +4,7 @@ import subprocess
 from contextlib import ExitStack
 from pathlib import Path
 from sys import platform
+from typing import Optional
 from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
@@ -83,7 +84,7 @@ I have been tampered with
     ],
 )
 def test_verify_checksum(
-    input_file_name: str, content: str, expected_error: type[Exception] | None, expected_result: bool
+    input_file_name: str, content: str, expected_error: Optional[type[Exception]], expected_result: bool
 ):
     # skip this test case on Windows since colon is not a valid file symbol
     if ":" in input_file_name and platform == "win32":

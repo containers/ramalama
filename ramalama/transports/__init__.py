@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ramalama.transports import api, huggingface, modelscope, oci, ollama, rlcr, transport_factory, url
 from ramalama.transports.api import APITransport
 from ramalama.transports.huggingface import Huggingface, HuggingfaceRepository

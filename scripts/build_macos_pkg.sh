@@ -9,7 +9,7 @@
 #
 # Requirements:
 # - macOS with Xcode Command Line Tools
-# - Python 3.10+
+# - Python 3.9+
 # - PyInstaller (pip install pyinstaller)
 #
 # Usage: ./scripts/build_macos_pkg.sh

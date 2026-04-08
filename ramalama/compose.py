@@ -1,5 +1,6 @@
-# ramalama/generate/compose.py
+from __future__ import annotations
 
+# ramalama/generate/compose.py
 import os
 import shlex
 from typing import Optional
