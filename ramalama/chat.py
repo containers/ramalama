@@ -483,8 +483,8 @@ class RamaLamaShell(cmd.Cmd):
             return False
 
         # Handle multi-line input (backslash continuation)
-        self.content.append(user_content.rstrip(" \\"))
-        if user_content.endswith(" \\"):
+        self.content.append(user_content.removesuffix("\\"))
+        if user_content.endswith("\\"):
             return False
 
         content = "\n".join(self.content)
