@@ -760,7 +760,7 @@ runtime = "llama.cpp"
 port = "8080"
 pull = "newer"
 
-[[ramalama.images]]
+[ramalama.images]
 CUDA_VISIBLE_DEVICES = "quay.io/ramalama/cuda"
 HIP_VISIBLE_DEVICES = "quay.io/ramalama/rocm"
 
