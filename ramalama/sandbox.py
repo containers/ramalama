@@ -234,14 +234,14 @@ class OpenClaw(Agent):
         self.add_env_options(args)
         self.engine.add_workdir(args)
         self.engine.add_args(args.openclaw_image)
-        self.engine.add_args("bash", "-lc", self._build_launch_script(args))
+        self.engine.add_args("bash", "-c", self._build_launch_script(args))
 
     def _build_launch_script(self, args: OpenClawArgsType) -> str:
         config_batch = json.dumps(
             [
                 {"path": "models.providers.openai.apiKey", "value": "ramalama"},
                 {"path": "models.providers.openai.baseUrl", "value": f"http://localhost:{args.port}/v1"},
-                {"path": "models.providers.openai.models", "value": []},
+                {"path": "models.providers.openai.models", "value": [self.model_name]},
                 {"path": "agents.defaults.model.primary", "value": f"openai/{self.model_name}"},
                 {"path": "gateway.mode", "value": "local"},
                 {"path": "gateway.bind", "value": "loopback"},
@@ -251,11 +251,11 @@ class OpenClaw(Agent):
 
         if args.ARGS:
             message = " ".join(args.ARGS)
-            run_cmd = f"node dist/index.js agent --local --session-id ramalama --message {shlex.quote(message)}"
+            run_cmd = f"exec node dist/index.js agent --local --session-id ramalama --message {shlex.quote(message)}"
         elif self.engine.use_tty():
             run_cmd = "exec node dist/index.js tui --session main"
         else:
-            run_cmd = 'msg="$(cat)"; node dist/index.js agent --local --session-id ramalama --message "$msg"'
+            run_cmd = 'msg="$(cat)"; exec node dist/index.js agent --local --session-id ramalama --message "$msg"'
 
         return f"set -euo pipefail; {setup_cmd}; {run_cmd}"
 
