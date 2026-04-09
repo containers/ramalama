@@ -856,6 +856,17 @@ def runtime_options(parser, command):
 If GPU device on host is accessible to via group access, this option leaks the user groups into the container.""",
     )
     parser.add_argument(
+        "--engine-args",
+        dest="engine_args",
+        action='append',
+        type=str,
+        default=config.engine_args,
+        help="""additional arguments to pass to the container engine
+(e.g. --engine-args=--read-only or --engine-args '--mount type=bind,src=/path,dst=/path').
+For values that start with a dash, use the form --engine-args=ARG to avoid argparse
+treating them as separate options. Only valid when using containers (conflicts with --nocontainer)""",
+    )
+    parser.add_argument(
         "-n",
         "--name",
         dest="name",

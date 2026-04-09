@@ -235,3 +235,12 @@ def test_post_parse_setup_model_input(
     assert input_args.UNRESOLVED_MODEL == expected_unresolved
     assert input_args.MODEL == expected_resolved
     assert input_args.model == input_args.MODEL
+
+
+def test_engine_args_works_with_container():
+    """Test that --engine-args works when using containers"""
+    # Should not raise when engine_args is used with container=True
+    args = Namespace(engine_args=['--read-only'], container=True, subcommand='run', debug=False, MODEL='test-model')
+
+    # This should not raise
+    post_parse_setup(args)

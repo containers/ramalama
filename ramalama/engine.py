@@ -121,6 +121,15 @@ class BaseEngine(ABC):
         if getattr(self.args, "podman_keep_groups", None):
             self.exec_args += ["--group-add", "keep-groups"]
 
+    def add_engine_args(self):
+        """Add custom engine arguments specified by the user."""
+        engine_args = getattr(self.args, "engine_args", None)
+        if engine_args:
+            import shlex
+
+            for arg in engine_args:
+                self.exec_args.extend(shlex.split(arg))
+
     def add(self, newargs: Sequence[str]):
         self.exec_args.extend(newargs)
 
@@ -157,6 +166,7 @@ class Engine(BaseEngine):
         self.add_detach_option()
         self.add_device_options()
         self.add_env_options()
+        self.add_engine_args()
         self.add_port_option()
         self.add_tty_option()
 

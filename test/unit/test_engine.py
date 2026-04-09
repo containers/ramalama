@@ -92,6 +92,32 @@ class TestEngine(unittest.TestCase):
         self.assertIn("-p", engine.exec_args)
         self.assertIn("8080:8080", engine.exec_args)
 
+    def test_engine_args_single(self):
+        """Test that a single --engine-args is added to exec_args"""
+        args = Namespace(**vars(self.base_args), engine_args=["--read-only"])
+        engine = ramalama.engine.Engine(args)
+        self.assertIn("--read-only", engine.exec_args)
+
+    def test_engine_args_multiple(self):
+        """Test that multiple --engine-args are added to exec_args"""
+        args = Namespace(
+            **vars(self.base_args),
+            engine_args=["--mount type=bind,src=/data,dst=/data", "--env CUSTOM_VAR=value", "--read-only"],
+        )
+        engine = ramalama.engine.Engine(args)
+        self.assertIn("--mount", engine.exec_args)
+        self.assertIn("type=bind,src=/data,dst=/data", engine.exec_args)
+        self.assertIn("--env", engine.exec_args)
+        self.assertIn("CUSTOM_VAR=value", engine.exec_args)
+        self.assertIn("--read-only", engine.exec_args)
+
+    def test_engine_args_none(self):
+        """Test that no engine_args doesn't cause issues"""
+        args = Namespace(**vars(self.base_args))
+        engine = ramalama.engine.Engine(args)
+        # Should not raise any exception and exec_args should be valid
+        self.assertIsInstance(engine.exec_args, list)
+
     @patch('ramalama.engine.run_cmd')
     def test_images(self, mock_run_cmd):
         mock_run_cmd.return_value.stdout = b"image1\nimage2\n"
