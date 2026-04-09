@@ -344,6 +344,23 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 help="enable or disable the web UI (default: on)",
             )
 
+    @staticmethod
+    def _set_openvino_env(args: argparse.Namespace) -> None:
+        """Set OpenVINO env vars when Intel GPU is detected (llama.cpp-specific)."""
+        if not os.environ.get("INTEL_VISIBLE_DEVICES"):
+            return
+
+        openvino_env = [
+            f"GGML_OPENVINO_DEVICE={os.environ.get('GGML_OPENVINO_DEVICE', 'GPU')}",
+            f"GGML_OPENVINO_STATEFUL_EXECUTION={os.environ.get('GGML_OPENVINO_STATEFUL_EXECUTION', 1)}",
+        ]
+        args.env = openvino_env + getattr(args, "env", [])
+
+    def handle_subcommand(self, command: str, args: argparse.Namespace) -> list[str]:
+        set_accel_env_vars()
+        self._set_openvino_env(args)
+        return super().handle_subcommand(command, args)
+
     def _do_run(self, args: argparse.Namespace, model: Any) -> None:
         if getattr(args, "rag", None):
             if isinstance(model, APITransport):

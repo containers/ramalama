@@ -505,6 +505,21 @@ def is_arm() -> bool:
 
 def check_intel() -> Literal["intel"] | None:
     igpu_num = 0
+
+    if platform.system() == "Windows":
+        igpu_num = _check_intel_windows()
+    else:
+        igpu_num = _check_intel_linux()
+
+    if igpu_num:
+        os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
+        return "intel"
+
+    return None
+
+
+def _check_intel_linux() -> int:
+    igpu_num = 0
     # Device IDs for select Intel GPUs.  See: https://dgpu-docs.intel.com/devices/hardware-table.html
     intel_gpus = (
         b"0xe20b",
@@ -526,11 +541,18 @@ def check_intel() -> Literal["intel"] | None:
             for gpu_id in intel_gpus:
                 if gpu_id in content:
                     igpu_num += 1
-    if igpu_num:
-        os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
-        return "intel"
+    return igpu_num
 
-    return None
+
+def _check_intel_windows() -> int:
+    """Detect Intel GPUs on Windows via WMI Win32_VideoController."""
+    try:
+        import wmi  # type: ignore
+
+        w = wmi.WMI()
+        return sum(1 for gpu in w.Win32_VideoController() if "intel" in (gpu.Name or "").lower())
+    except Exception:
+        return 0
 
 
 def check_mthreads() -> Literal["musa"] | None:

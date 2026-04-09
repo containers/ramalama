@@ -26,6 +26,7 @@ dependencies = [
   "pyyaml",
   "jsonschema",
   "jinja2",
+  "wmi ; sys_platform == 'win32'",
 ]
 maintainers = [
    { name = "Dan Walsh", email = "dawalsh@redhat.com" },

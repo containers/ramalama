@@ -1,6 +1,7 @@
 import glob
 import json
 import os
+import platform
 import subprocess
 import sys
 import time
@@ -104,6 +105,7 @@ class BaseEngine(ABC):
             for dev in glob.glob(path):
                 self.exec_args += ["--device", dev]
 
+        intel_windows_added = False
         for k, v in get_accel_env_vars().items():
             # Special case for Cuda
             if k == "CUDA_VISIBLE_DEVICES":
@@ -114,6 +116,11 @@ class BaseEngine(ABC):
                     self.exec_args += ["--device", "nvidia.com/gpu=all"]
             elif k == "MUSA_VISIBLE_DEVICES":
                 self.exec_args += ["--env", "MTHREADS_VISIBLE_DEVICES=all"]
+            elif k == "INTEL_VISIBLE_DEVICES":
+                if platform.system() == "Windows" and not intel_windows_added:
+                    self.exec_args += ["--device", "/dev/dxg"]
+                    self.exec_args += ["--mount", "type=bind,src=/usr/lib/wsl,dst=/usr/lib/wsl"]
+                    intel_windows_added = True
 
             self.exec_args += ["-e", f"{k}={v}"]
 
