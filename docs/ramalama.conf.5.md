@@ -469,7 +469,7 @@ prefix = "AI> "
 
 **port**="8080"
 
-**Type:** integer
+**Type:** string
 **Default:** `"8080"`
 
 Specify the initial port for a range of 101 ports for services to listen on. If this port is unavailable, another free port from this range will be selected.
@@ -736,10 +736,10 @@ The `ramalama.provider` table configures hosted API providers that RamaLama can 
 
 #### openai
 
-**openai**=""
+**openai**
 
 **Type:** table  
-**Default:** `""`
+**Default:** `[ramalama.provider.openai]`
 
 Configuration settings for the OpenAI hosted provider.
 
