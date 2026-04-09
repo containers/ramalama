@@ -578,6 +578,8 @@ def is_healthy(args, timeout: int = 3, model_name: Optional[str] = None):
     ssl_context = probe_ssl_context(args)
 
     conn: Optional[HTTPConnection] = None
+    if getattr(args, "alias", None):
+        model_name = args.alias
     try:
         if ssl_context is not None:
             conn = HTTPSConnection(bind_host, args.port, timeout=timeout, context=ssl_context)
