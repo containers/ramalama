@@ -887,6 +887,12 @@ If GPU device on host is accessible to via group access, this option leaks the u
         help="name of container in which the Model will be run",
         completer=suppressCompleter,
     )
+    parser.add_argument(
+        "--alias",
+        dest="alias",
+        help="model name alias (referenced in the requests and responses of the API)",
+        completer=suppressCompleter,
+    )
     add_network_argument(parser, dflt=None)
     parser.add_argument(
         "--oci-runtime",

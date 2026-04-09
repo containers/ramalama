@@ -165,6 +165,17 @@ def test_is_healthy_conn(mock_conn):
     mock_conn.assert_called_once_with("127.0.0.1", args.port, timeout=3)
 
 
+@patch("ramalama.engine.HTTPConnection")
+@patch("ramalama.plugins.loader.get_runtime")
+def test_is_healthy_conn_with_alias(mock_runtime, mock_conn):
+    args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False, alias='my_alias')
+    mock_service_ready_check = Mock()
+    mock_runtime.return_value = Namespace(service_ready_check=mock_service_ready_check)
+    ramalama.engine.is_healthy(args, model_name="themodel")
+    mock_conn.assert_called_once_with("127.0.0.1", args.port, timeout=3)
+    mock_service_ready_check.assert_called_once_with(mock_conn.return_value, args, 'my_alias')
+
+
 @pytest.mark.parametrize(
     "health_status, models_status, models_body, models_msg",
     [

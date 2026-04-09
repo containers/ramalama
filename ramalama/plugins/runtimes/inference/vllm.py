@@ -42,7 +42,10 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         if model is not None:
             model_path = model._get_entry_model_path(is_container, should_generate, dry_run)
             cmd += ["--model", model_path]
-            cmd += ["--served-model-name", model.model_alias]
+            if getattr(args, 'alias', None):
+                cmd += ["--served-model-name", args.alias]
+            else:
+                cmd += ["--served-model-name", model.model_alias]
 
         ctx_size = getattr(args, 'ctx_size', None)
         if ctx_size:
