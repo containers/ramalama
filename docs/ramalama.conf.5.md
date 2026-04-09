@@ -84,13 +84,17 @@ CUDA_VISIBLE_DEVICES = "quay.io/ramalama/cuda"
 
 ## Configuration Reference
 
-### ramalama Table
+### ramalama table
 
 The `ramalama` table contains settings to configure and manage the container runtime and AI model behavior.
+
+`[[ramalama]]`
 
 ---
 
 #### api
+
+**api**="none"
 
 **Type:** string  
 **Default:** `"none"`
@@ -111,6 +115,8 @@ api = "llama-stack"
 
 #### api_key
 
+**api_key**=""
+
 **Type:** string  
 **Default:** `""`  
 **Environment Override:** `RAMALAMA_API_KEY`
@@ -126,6 +132,8 @@ api_key = "your-api-key-here"
 ---
 
 #### backend
+
+**backend**="auto"
 
 **Type:** string  
 **Default:** `"auto"`  
@@ -161,10 +169,13 @@ backend = "vulkan"
 
 #### carimage
 
+
+**carimage**="registry.access.redhat.com/ubi10-micro:latest"
+
 **Type:** string  
 **Default:** `"registry.access.redhat.com/ubi10-micro:latest"`
 
-OCI model car image used when building and pushing models with `--type=car`.
+OCI model `carimage` used when building and pushing models with `--type=car`.
 
 **Example:**
 ```toml
@@ -175,6 +186,8 @@ carimage = "registry.access.redhat.com/ubi10-micro:latest"
 ---
 
 #### container
+
+**container**=true
 
 **Type:** boolean  
 **Default:** `true`  
@@ -191,6 +204,8 @@ container = true
 ---
 
 #### convert_type
+
+**convert_type**="raw"
 
 **Type:** string  
 **Default:** `"raw"`
@@ -215,6 +230,8 @@ convert_type = "artifact"
 
 #### ctx_size
 
+**ctx_size**=0
+
 **Type:** integer  
 **Default:** `0`
 
@@ -229,6 +246,8 @@ ctx_size = 4096
 ---
 
 #### engine
+
+**engine**="podman"
 
 **Type:** string  
 **Default:** `"podman"`  
@@ -250,6 +269,8 @@ engine = "podman"
 
 #### env
 
+**env**=[]
+
 **Type:** array  
 **Default:** `[]`
 
@@ -264,6 +285,8 @@ env = ["LLAMA_ARG_THREADS=10", "CUSTOM_VAR=value"]
 ---
 
 #### gguf_quantization_mode
+
+**gguf_quantization_mode**="Q4_K_M"
 
 **Type:** string  
 **Default:** `"Q4_K_M"`
@@ -288,6 +311,8 @@ gguf_quantization_mode = "Q4_K_M"
 
 #### host
 
+**host**="0.0.0.0"
+
 **Type:** string  
 **Default:** `"0.0.0.0"`
 
@@ -302,6 +327,8 @@ host = "127.0.0.1"
 ---
 
 #### image
+
+**image**="quay.io/ramalama/ramalama:latest"
 
 **Type:** string  
 **Default:** `"quay.io/ramalama/ramalama:latest"`  
@@ -318,6 +345,8 @@ image = "quay.io/ramalama/ramalama:latest"
 ---
 
 #### images
+
+**images**=Built-in runtime defaults
 
 **Type:** table  
 **Default:** Built-in runtime defaults
@@ -348,6 +377,8 @@ VLLM_CUDA_VISIBLE_DEVICES = "docker.io/vllm/vllm-openai"
 
 #### keep_groups
 
+**keep_groups**=false
+
 **Type:** boolean  
 **Default:** `false`
 
@@ -362,6 +393,8 @@ keep_groups = true
 ---
 
 #### log_level
+
+**log_level**="warning"
 
 **Type:** string  
 **Default:** `"warning"`
@@ -389,6 +422,8 @@ log_level = "info"
 
 #### max_tokens
 
+**max_tokens**=0
+
 **Type:** integer  
 **Default:** `0`
 
@@ -405,6 +440,8 @@ max_tokens = 2048
 ---
 
 #### prefix
+
+**prefix**=Based on container engine
 
 **Type:** string  
 **Default:** Based on container engine
@@ -430,6 +467,8 @@ prefix = "AI> "
 
 #### port
 
+**port**="8080"
+
 **Type:** integer
 **Default:** `"8080"`
 
@@ -444,6 +483,8 @@ port = "8081"
 ---
 
 #### pull
+
+**pull**="newer"
 
 **Type:** string  
 **Default:** `"newer"`
@@ -466,6 +507,8 @@ pull = "missing"
 ---
 
 #### rag_format
+
+**rag_format**="qdrant"
 
 **Type:** string  
 **Default:** `"qdrant"`
@@ -503,6 +546,8 @@ rag_image = "quay.io/ramalama/ramalama-rag"
 
 #### rag_images
 
+**rag_images**=Built-in GPU defaults
+
 **Type:** table
 **Default:** Built-in GPU defaults
 
@@ -519,6 +564,8 @@ INTEL_VISIBLE_DEVICES = "quay.io/ramalama/intel-gpu-rag"
 ---
 
 #### runtime
+
+**runtime**="llama.cpp"
 
 **Type:** string  
 **Default:** `"llama.cpp"`
@@ -540,6 +587,8 @@ runtime = "vllm"
 
 #### selinux
 
+**selinux**=false
+
 **Type:** boolean  
 **Default:** `false`
 
@@ -555,6 +604,8 @@ selinux = true
 
 #### store
 
+**store**="$HOME/.local/share/ramalama"
+
 **Type:** string  
 **Default:** `"$HOME/.local/share/ramalama"`
 
@@ -569,6 +620,8 @@ store = "/custom/path/to/models"
 ---
 
 #### summarize_after
+
+**summarize_after**=4
 
 **Type:** integer  
 **Default:** `4`
@@ -588,6 +641,8 @@ summarize_after = 10
 ---
 
 #### temp
+
+**temp**="0.8"
 
 **Type:** float 
 **Default:** `"0.8"`
@@ -612,6 +667,8 @@ temp = "0.7"
 
 #### transport
 
+**transport**="ollama"
+
 **Type:** string  
 **Default:** `"ollama"`  
 **Environment Override:** `RAMALAMA_TRANSPORT`
@@ -631,11 +688,15 @@ transport = "huggingface"
 
 ---
 
-### ramalama.http_client Table
+### ramalama.http_client table
 
 HTTP client configuration settings.
 
+`[[ramalama.http_client]]`
+
 #### max_retries
+
+**max_retries**=5
 
 **Type:** integer  
 **Default:** `5`
@@ -652,6 +713,8 @@ max_retries = 10
 
 #### max_retry_delay
 
+**max_retry_delay**=30
+
 **Type:** integer  
 **Default:** `30`
 
@@ -665,11 +728,15 @@ max_retry_delay = 60
 
 ---
 
-### ramalama.provider Table
+### ramalama.provider table
 
 The `ramalama.provider` table configures hosted API providers that RamaLama can proxy to.
 
+`[[ramalama.provider]]`
+
 #### openai
+
+**openai**=""
 
 **Type:** table  
 **Default:** `""`
@@ -686,6 +753,8 @@ openai = ""
 
 #### openai.api_key
 
+**api_key**=""
+
 **Type:** string  
 **Default:** `""`
 
@@ -699,14 +768,19 @@ api_key = "your-openai-api-key"
 
 ---
 
-### ramalama.benchmarks Table
+### ramalama.benchmarks table
 
 The `ramalama.benchmarks` table contains benchmark-related settings.
 
+`[[ramalama.benchmarks]]`
+
 #### storage_folder
 
+
+**storage_folder**="<default store>/benchmarks"
+
 **Type:** string  
-**Default:** `"<default store>/benchmarks"`
+**Default:** `"\<default store>/benchmarks"`
 
 Manually specify where to save benchmark results.
 
@@ -720,11 +794,15 @@ storage_folder = "/custom/benchmark/results"
 
 ---
 
-### ramalama.user Table
+### ramalama.user table
 
 The `ramalama.user` table contains user preference settings.
 
+`[[ramalama.user]]`
+
 #### no_missing_gpu_prompt
+
+**no_missing_gpu_prompt**=false
 
 **Type:** boolean  
 **Default:** `false`  

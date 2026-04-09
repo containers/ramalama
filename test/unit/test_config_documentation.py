@@ -36,7 +36,7 @@ def get_documented_fields_in_conf():
     if not conf_path.exists():
         pytest.skip(f"ramalama.conf not found at {conf_path}")
 
-    with open(conf_path) as f:
+    with open(conf_path, encoding="utf-8") as f:
         lines = f.readlines()
 
     # Match commented and uncommented config options like:
@@ -47,7 +47,7 @@ def get_documented_fields_in_conf():
     documented = set()
 
     # Subsections that contain their own field documentation (these fields should not be extracted)
-    subsections_with_fields = {'benchmarks', 'http_client', 'user'}
+    subsections_with_fields = {'benchmarks', 'http_client', 'user', 'provider', 'provider.openai'}
 
     # Track which section we're in to exclude nested fields under commented subsections
     in_commented_nested_section = False
@@ -114,7 +114,7 @@ def get_documented_fields_in_manpage():
     if not manpage_path.exists():
         pytest.skip(f"ramalama.conf.5.md not found at {manpage_path}")
 
-    with open(manpage_path) as f:
+    with open(manpage_path, encoding="utf-8") as f:
         lines = f.readlines()
 
     # Match markdown bold options like:
@@ -128,7 +128,7 @@ def get_documented_fields_in_manpage():
     documented = set()
 
     # Subsections that contain their own **field** documentation (these fields should not be extracted)
-    subsections_with_fields = {'http_client', 'user'}
+    subsections_with_fields = {'http_client', 'user', 'benchmarks', 'provider', 'provider.openai'}
 
     # Track which section we're in
     current_section = None
