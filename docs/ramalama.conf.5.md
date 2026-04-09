@@ -430,7 +430,7 @@ prefix = "AI> "
 
 #### port
 
-**Type:** string
+**Type:** integer
 **Default:** `"8080"`
 
 Specify the initial port for a range of 101 ports for services to listen on. If this port is unavailable, another free port from this range will be selected.
@@ -496,7 +496,7 @@ OCI container image to run with the specified AI model when using RAG content.
 **Example:**
 ```toml
 [ramalama]
-rag_images = "quay.io/ramalama/ramalama-rag"
+rag_image = "quay.io/ramalama/ramalama-rag"
 ```
 
 ---
@@ -589,7 +589,7 @@ summarize_after = 10
 
 #### temp
 
-**Type:** string  
+**Type:** float 
 **Default:** `"0.8"`
 
 Temperature of the response from the AI model.
@@ -671,14 +671,14 @@ The `ramalama.provider` table configures hosted API providers that RamaLama can 
 
 #### openai
 
-**Type:** string  
+**Type:** table  
 **Default:** `""`
 
 Configuration settings for the OpenAI hosted provider.
 
 **Example:**
 ```toml
-[ramalama.provider]
+[[ramalama.provider]]
 openai = ""
 ```
 
@@ -693,7 +693,7 @@ Provider-specific API key used when invoking OpenAI-hosted transports. Overrides
 
 **Example:**
 ```toml
-[ramalama.provider.openai]
+[[ramalama.provider.openai]]
 api_key = "your-openai-api-key"
 ```
 
