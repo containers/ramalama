@@ -94,6 +94,17 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         self._add_max_model_len_arg(parser)
         return parser
 
+    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
+        """Add llama.cpp-specific inference args to an already-created parser."""
+        super()._add_inference_args(parser, command)
+        if command == "serve":
+            parser.add_argument(
+                "--alias",
+                dest="alias",
+                help="model name alias (referenced in the requests and responses of the API)",
+                completer=suppressCompleter,
+            )
+
     def get_container_image(self, config: Any, detected_gpu_type: str) -> Optional[str]:
         if detected_gpu_type:
             image = config.images.get(f"VLLM_{detected_gpu_type}") or _VLLM_IMAGES.get(detected_gpu_type)

@@ -479,8 +479,6 @@ def is_healthy(args, timeout: int = 3, model_name: Optional[str] = None):
     from ramalama.plugins.loader import get_runtime
 
     conn = None
-    if getattr(args, "alias", None):
-        model_name = args.alias
     try:
         conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
         if getattr(args, "debug", False):

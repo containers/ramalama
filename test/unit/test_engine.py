@@ -165,17 +165,6 @@ def test_is_healthy_conn(mock_conn):
     mock_conn.assert_called_once_with("127.0.0.1", args.port, timeout=3)
 
 
-@patch("ramalama.engine.HTTPConnection")
-@patch("ramalama.plugins.loader.get_runtime")
-def test_is_healthy_conn_with_alias(mock_runtime, mock_conn):
-    args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False, alias='my_alias')
-    mock_service_ready_check = Mock()
-    mock_runtime.return_value = Namespace(service_ready_check=mock_service_ready_check)
-    ramalama.engine.is_healthy(args, model_name="themodel")
-    mock_conn.assert_called_once_with("127.0.0.1", args.port, timeout=3)
-    mock_service_ready_check.assert_called_once_with(mock_conn.return_value, args, 'my_alias')
-
-
 @pytest.mark.parametrize(
     "health_status, models_status, models_body, models_msg",
     [
@@ -240,6 +229,26 @@ def test_is_healthy_success(mock_conn, mock_debug, health_status):
     mock_models_resp.read.return_value = '{"models": [{"name": "themodel"}]}'
     mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)
+    assert ramalama.engine.is_healthy(args, model_name="themodel")
+    assert mock_conn.return_value.getresponse.call_count == 2
+    assert mock_debug.call_args.args[0] == "llama.cpp server is ready"
+
+
+@pytest.mark.parametrize(
+    "health_status",
+    [
+        pytest.param(200, id="health api ok"),
+        pytest.param(404, id="no health api"),
+    ],
+)
+@patch("ramalama.engine.logger.debug")
+@patch("ramalama.engine.HTTPConnection")
+def test_is_healthy_success_with_alias(mock_conn, mock_debug, health_status):
+    mock_health_resp = Mock(status=health_status)
+    mock_models_resp = Mock(status=200)
+    mock_models_resp.read.return_value = '{"models": [{"name": "alias"}]}'
+    mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
+    args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False, alias='alias')
     assert ramalama.engine.is_healthy(args, model_name="themodel")
     assert mock_conn.return_value.getresponse.call_count == 2
     assert mock_debug.call_args.args[0] == "llama.cpp server is ready"

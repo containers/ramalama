@@ -505,7 +505,7 @@ class Transport(TransportBase):
 
         # Model name in the chat request must match RamalamaModelContext.alias()
         chat_args = copy.deepcopy(args)
-        chat_args.model = getattr(args, 'alias', f"{self.model_organization}/{self.model_name}")
+        chat_args.model = getattr(args, 'alias', None) or self.model_alias
 
         if args.container:
             return self._handle_container_chat(chat_args, server_process)
