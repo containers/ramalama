@@ -40,6 +40,7 @@ def _make_opencode_args(engine="podman"):
         ARGS=[],
     )
 
+
 def _make_openclaw_args(engine="podman"):
     """Create minimal args for OpenClaw tests."""
     return SimpleNamespace(
@@ -47,8 +48,11 @@ def _make_openclaw_args(engine="podman"):
         dryrun=False,
         quiet=True,
         openclaw_image="ghcr.io/openclaw/openclaw:latest",
+        openclaw_port=18789,
+        state_dir=None,
         name="ramalama_model_abc",
         port="8080",
+        debug=False,
         thinking=False,
         workdir=None,
         subcommand="sandbox",
@@ -56,9 +60,16 @@ def _make_openclaw_args(engine="podman"):
     )
 
 
+AGENT_FACTORIES = {
+    "goose": (_make_args, Goose),
+    "opencode": (_make_opencode_args, OpenCode),
+    "openclaw": (_make_openclaw_args, OpenClaw),
+}
+
+
 def _build_agent(agent: str, model: str = "test-model"):
-    args = _make_args() if agent == "goose" else _make_opencode_args() if agent == "opencode" else _make_openclaw_args()
-    cls = Goose if agent == "goose" else OpenCode if agent == "opencode" else OpenClaw
+    args_factory, cls = AGENT_FACTORIES[agent]
+    args = args_factory()
     return args, cls(args, model)
 
 
@@ -151,8 +162,8 @@ def test_agent_interactive(agent):
 @pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_agent_workdir(agent):
     """Agent should add -v and --workdir=/work when workdir is set."""
-    args = _make_args() if agent == "goose" else _make_opencode_args() if agent == "opencode" else _make_openclaw_args()
-    cls = Goose if agent == "goose" else OpenCode if agent == "opencode" else OpenClaw
+    args_factory, cls = AGENT_FACTORIES[agent]
+    args = args_factory()
     args.workdir = "/tmp/myproject"
     obj = cls(args, "test-model")
     cmd = obj.engine.exec_args
@@ -284,6 +295,7 @@ def test_opencode_args():
     opencode = OpenCode(args, "test-model")
     assert opencode.engine.exec_args[-4:] == ["run", "--thinking=true", "hello", "ramalama"]
 
+
 # --- OpenClaw-specific tests ---
 
 
@@ -299,17 +311,66 @@ def test_openclaw_custom_image():
     assert args.openclaw_image == "myimage:v1"
 
 
+def test_openclaw_custom_port():
+    """OpenClaw subcommand should handle the --openclaw-port option"""
+    _, args = parse_args_from_cmd(["sandbox", "openclaw", "--openclaw-port", "19001", TEST_MODEL])
+    assert args.openclaw_port == 19001
+
+
+def test_openclaw_custom_state_dir():
+    """OpenClaw subcommand should handle the --state-dir option"""
+    _, args = parse_args_from_cmd(["sandbox", "openclaw", "--state-dir", "/tmp/openclaw-state", TEST_MODEL])
+    assert args.state_dir == "/tmp/openclaw-state"
+
+
 def test_openclaw_env_vars():
     """OpenClaw should set environment for local OpenAI-compatible provider"""
     args = _make_openclaw_args()
     openclaw = OpenClaw(args, "Qwen3-4B-Q4_K_M")
-    cmd = openclaw.engine.exec_args
-    assert "OPENAI_BASE_URL=http://localhost:8080/v1" in cmd
-    assert "OPENAI_API_KEY=ramalama" in cmd
-    assert "OPENCLAW_SKIP_CHANNELS=1" in cmd
-    assert "OPENCLAW_SKIP_GMAIL_WATCHER=1" in cmd
-    assert "OPENCLAW_SKIP_CRON=1" in cmd
-    assert "OPENCLAW_SKIP_CANVAS_HOST=1" in cmd
+    try:
+        cmd = openclaw.engine.exec_args
+        assert "OPENAI_BASE_URL=http://localhost:8080/v1" in cmd
+        assert "OPENAI_API_KEY=ramalama" in cmd
+        assert "OPENCLAW_CONFIG_PATH=/etc/openclaw/ramalama.json" in cmd
+        assert "OPENCLAW_SKIP_CHANNELS=1" in cmd
+        assert "OPENCLAW_SKIP_GMAIL_WATCHER=1" in cmd
+        assert "OPENCLAW_SKIP_CRON=1" in cmd
+        assert "OPENCLAW_SKIP_CANVAS_HOST=1" in cmd
+    finally:
+        openclaw.cleanup()
+
+
+def test_openclaw_env_custom_port():
+    """OpenClaw should honor a non-default model server port in env and config"""
+    args = _make_openclaw_args()
+    args.port = "9999"
+    openclaw = OpenClaw(args, "Qwen3-4B-Q4_K_M")
+    try:
+        cmd = openclaw.engine.exec_args
+        assert "OPENAI_BASE_URL=http://localhost:9999/v1" in cmd
+        with open(openclaw.config_file_path, encoding="utf-8") as config_file:
+            config = json.load(config_file)
+        assert config["models"]["providers"]["openai"]["baseUrl"] == "http://localhost:9999/v1"
+    finally:
+        openclaw.cleanup()
+
+
+def test_openclaw_config_file():
+    """OpenClaw should write expected model and gateway configuration"""
+    args = _make_openclaw_args()
+    model_name = "test-model"
+    openclaw = OpenClaw(args, model_name)
+    try:
+        with open(openclaw.config_file_path, encoding="utf-8") as config_file:
+            config = json.load(config_file)
+        assert config["models"]["providers"]["openai"]["apiKey"] == "ramalama"
+        assert config["models"]["providers"]["openai"]["baseUrl"] == "http://localhost:8080/v1"
+        assert config["agents"]["defaults"]["model"]["primary"] == f"openai/{model_name}"
+        assert config["gateway"]["mode"] == "local"
+        assert config["gateway"]["bind"] == "loopback"
+        assert config["gateway"]["port"] == 18789
+    finally:
+        openclaw.cleanup()
 
 
 def test_openclaw_with_tty(monkeypatch):
@@ -317,8 +378,17 @@ def test_openclaw_with_tty(monkeypatch):
     monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: True)
     args = _make_openclaw_args()
     openclaw = OpenClaw(args, "test-model")
-    script = openclaw.engine.exec_args[-1]
-    assert "exec node dist/index.js tui --session main" in script
+    try:
+        assert openclaw.engine.exec_args[-6:] == [
+            "openclaw",
+            "tui",
+            "--url",
+            "ws://localhost:18789",
+            "--session",
+            "main",
+        ]
+    finally:
+        openclaw.cleanup()
 
 
 def test_openclaw_no_tty(monkeypatch):
@@ -326,15 +396,68 @@ def test_openclaw_no_tty(monkeypatch):
     monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: False)
     args = _make_openclaw_args()
     openclaw = OpenClaw(args, "test-model")
-    script = openclaw.engine.exec_args[-1]
-    assert 'msg="$(cat)"' in script
-    assert 'node dist/index.js agent --local --session-id ramalama --message "$msg"' in script
+    try:
+        assert openclaw.engine.exec_args[-3:] == [
+            "bash",
+            "-c",
+            'msg="$(cat)"; exec openclaw agent --session-id ramalama --message "$msg"',
+        ]
+    finally:
+        openclaw.cleanup()
 
 
 def test_openclaw_args():
-    """OpenClaw should run a local one-shot agent call when args are passed"""
+    """OpenClaw should run a one-shot agent call when args are passed"""
     args = _make_openclaw_args()
     args.ARGS = ["hello", "ramalama"]
     openclaw = OpenClaw(args, "test-model")
-    script = openclaw.engine.exec_args[-1]
-    assert "node dist/index.js agent --local --session-id ramalama --message 'hello ramalama'" in script
+    try:
+        assert openclaw.engine.exec_args[-6:] == [
+            "openclaw",
+            "agent",
+            "--session-id",
+            "ramalama",
+            "--message",
+            "hello ramalama",
+        ]
+    finally:
+        openclaw.cleanup()
+
+
+def test_openclaw_gateway_command():
+    """OpenClaw should start the gateway in a detached container"""
+    args = _make_openclaw_args()
+    openclaw = OpenClaw(args, "test-model")
+    try:
+        cmd = openclaw.gateway_engine.exec_args
+        assert "-d" in cmd
+        assert "--expose" in cmd
+        assert "18789" in cmd
+        assert cmd[-7:] == ["openclaw", "gateway", "run", "--port", "18789", "--bind", "loopback"]
+    finally:
+        openclaw.cleanup()
+
+
+def test_openclaw_state_dir_mount():
+    """OpenClaw should mount --state-dir into the gateway container"""
+    args = _make_openclaw_args()
+    args.state_dir = "/tmp/openclaw-state"
+    openclaw = OpenClaw(args, "test-model")
+    try:
+        cmd = openclaw.gateway_engine.exec_args
+        assert any(value.endswith(":/var/lib/openclaw:rw") for value in cmd)
+        assert "OPENCLAW_STATE_DIR=/var/lib/openclaw" in cmd
+    finally:
+        openclaw.cleanup()
+
+
+def test_openclaw_debug_log_level():
+    """OpenClaw should set debug log level when debug mode is enabled"""
+    args = _make_openclaw_args()
+    args.debug = True
+    openclaw = OpenClaw(args, "test-model")
+    try:
+        assert "OPENCLAW_LOG_LEVEL=debug" in openclaw.gateway_engine.exec_args
+        assert "OPENCLAW_LOG_LEVEL=debug" in openclaw.engine.exec_args
+    finally:
+        openclaw.cleanup()

@@ -15,9 +15,10 @@ launched. If one or more arguments are provided, they are passed to the agent
 as instructions to process non-interactively. Commands may also be passed via
 stdin.
 
-Two containers are started: a model server (llama-server) and the agent
-container. They communicate via container networking. When the agent session
-exits, the model server container is automatically stopped and removed.
+Three containers are started: a model server (llama-server), an OpenClaw
+gateway, and an OpenClaw client (TUI/agent). They communicate via container
+networking. When the OpenClaw client session exits, the gateway and model
+server containers are automatically stopped and removed.
 
 ## OPTIONS
 
@@ -174,6 +175,9 @@ On NVIDIA-based GPU systems, RamaLama defaults to using the
 #### **--openclaw-image**=*IMAGE*
 OpenClaw container image
 
+#### **--openclaw-port**=*port*
+OpenClaw gateway port (default: 18789)
+
 #### **--port**, **-p**
 port for AI Model server to listen on. It must be available. If not specified,
 a free port in the 8080-8180 range is selected, starting with 8080.
@@ -201,9 +205,9 @@ not have more privileges than the user that launched them.
 #### **--pull**=*policy*
 
 - **always**: Always pull the image and throw an error if the pull fails.
-- **missing**: Only pull the image when it does not exist in the local containers storage. Throw an error if no image is found and the pull fails.
-- **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
-- **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
+- **missing**: Only pull the image when it does not exist in the local container storage. Throw an error if no image is found and the pull fails.
+- **never**: Never pull the image but use the one from the local container storage. Throw an error when no image is found.
+- **newer**: Pull if the image on the registry is newer than the one in the local container storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
 #### **--runtime-args**="*args*"
 Add *args* to the runtime (llama.cpp or vllm) invocation.
@@ -232,10 +236,13 @@ Maximum number of CPU threads to use.
 The default is to use half the cores available on this system for the number of threads.
 
 #### **--tls-verify**=*true*
-require HTTPS and verify certificates when contacting OCI registries
+requires HTTPS and verifies certificates when contacting OCI registries
 
 #### **--webui**=*on* | *off*
 Enable or disable the web UI for the served model (enabled by default). When set to "on" (the default), the web interface is properly initialized. When set to "off", the `--no-webui` option is passed to the llama-server command to disable the web interface.
+
+#### **--state-dir**=*path*
+Local directory to mount into the OpenClaw gateway container for state
 
 #### **--workdir**, **-w**
 Local directory to mount into the sandbox container at /work
