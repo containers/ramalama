@@ -95,7 +95,7 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         return parser
 
     def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
-        """Add llama.cpp-specific inference args to an already-created parser."""
+        """Add vLLM-specific inference args to an already-created parser."""
         super()._add_inference_args(parser, command)
         if command == "serve":
             parser.add_argument(
