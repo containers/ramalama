@@ -685,7 +685,7 @@ def test_serve_generation(test_model, generate, env_vars):
         )
         for item in itertools.product(
             ["kube", "compose"],
-            [None, "SEARCH_API_KEY=9999"]
+            [None, "SEARCH_API_KEY=9999"],
         )
     ],
 )
@@ -708,7 +708,7 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
                 "--generate",
                 generate,
                 "--api",
-                "llama-stack",
+                "llama-stack:0.6.0",
                 "--dri",
                 "off",
                 test_model,
@@ -725,6 +725,7 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
                 assert re.search(r".*hostPort: 1234", content)
                 assert re.search(r".*/llama-stack", content)
                 assert re.search(r".*'--top-p', '1.0'.*", content)
+                assert re.search(r".*ramalama/llama-stack:0.6.0", content)
 
                 if env_vars:
                     assert len(re.findall(r"name: SEARCH_API_KEY", content)) == 2
@@ -789,7 +790,7 @@ def test_serve_api(caplog):
         )
 
         assert re.search(fr".*Llama Stack RESTAPI: http://localhost:{container_port}", result)
-        assert re.search(fr".*OpenAI RESTAPI: http://localhost:{container_port}/v1/openai", result)
+        assert re.search(fr".*OpenAI RESTAPI: http://localhost:{container_port}/v1", result)
 
         # Inspect the models API
         # FIXME: llama-stack image is currently broken.

@@ -6,10 +6,11 @@ RUN dnf -y install uv gcc python3-devel && \
     dnf -y clean all
 
 RUN uv venv && \
-    uv pip install ramalama_stack==${RAMALAMA_STACK_VERSION}
+    uv pip install ramalama_stack==${RAMALAMA_STACK_VERSION}  && \
+    install -D -m 0644 /root/.llama/distributions/ramalama/ramalama-run.yaml /etc/ramalama/ramalama-run.yaml
 
 COPY --chmod=755 container-images/llama-stack/entrypoint.sh /usr/bin/entrypoint.sh
 
 ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
 
-CMD [ "llama",  "stack",  "run", "/root/.llama/distributions/ramalama/ramalama-run.yaml" ]
+CMD [ "llama",  "stack",  "run", "/etc/ramalama/ramalama-run.yaml" ]

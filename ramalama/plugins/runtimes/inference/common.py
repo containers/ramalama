@@ -3,10 +3,12 @@ from abc import abstractmethod
 from typing import Any
 
 from ramalama.cli import (
+    API_OPTIONS,
     GENERATE_OPTIONS,
     OverrideDefaultAction,
     chat_run_options,
     local_models,
+    parse_api_option,
     parse_generate_option,
     parse_port_option,
     runtime_options,
@@ -252,7 +254,8 @@ class ContainerizedInferenceRuntimePlugin(BaseInferenceRuntime):
         parser.add_argument(
             "--api",
             default=config.api,
-            choices=["llama-stack", "none"],
+            type=parse_api_option,
+            choices=API_OPTIONS,
             help="unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.",
         )
         if command == "serve":

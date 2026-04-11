@@ -3,7 +3,7 @@ import os
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import exec_cmd, genname, get_accel_env_vars, version_tagged_image
+from ramalama.common import exec_cmd, genname, get_accel_env_vars
 from ramalama.compat import NamedTemporaryFile
 from ramalama.compose import Compose
 from ramalama.config import ActiveConfig
@@ -26,7 +26,7 @@ class Stack:
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
         self.model_port = "8080"
-        self.stack_image = version_tagged_image(ActiveConfig().stack_image)
+        self.stack_image = f"""{ActiveConfig().stack_image}:{args.api.version}"""
         self.labels = ""
 
     def add_label(self, label):
