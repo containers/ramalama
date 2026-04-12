@@ -920,7 +920,28 @@ def chat_run_options(parser):
 
 
 def _chat_cli(args):
+    from urllib.parse import urlparse, urlunparse
+
     from ramalama import chat as chat_module
+
+    # If --port is specified, construct the URL from port
+    port = getattr(args, 'port', None)
+    if port:
+        args.url = f"http://127.0.0.1:{port}/v1"
+    else:
+        parsed = urlparse(args.url)
+
+        # Replace 'localhost' with '127.0.0.1' to avoid IPv6 resolution issues.
+        # The server binds to 0.0.0.0 (IPv4 only), so connecting via [::1] fails.
+        if parsed.hostname == 'localhost':
+            netloc = f"127.0.0.1:{parsed.port}" if parsed.port else "127.0.0.1"
+            parsed = parsed._replace(netloc=netloc)
+
+        # Normalize URL: ensure /v1 is present for OpenAI-compatible endpoints
+        if not parsed.path or parsed.path == '/':
+            parsed = parsed._replace(path='/v1')
+
+        args.url = urlunparse(parsed)
 
     return chat_module.chat(args)
 
@@ -940,6 +961,13 @@ def chat_parser(subparsers):
         "--ls",
         action="store_true",
         help="list the available models at an endpoint",
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=parse_port_option,
+        help="port of the AI Model server to connect to",
+        completer=suppressCompleter,
     )
     parser.add_argument("--url", type=str, default="http://127.0.0.1:8080/v1", help="the url to send requests to")
     parser.add_argument("--model", "-m", type=str, completer=local_models, help="model for inferencing")
