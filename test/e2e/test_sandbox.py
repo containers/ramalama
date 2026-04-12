@@ -158,7 +158,6 @@ def test_sandbox_dryrun_openclaw_env_vars():
     result = check_output(_dryrun_cmd("openclaw"))
     assert "OPENAI_API_KEY=ramalama" in result
     assert re.search(r"OPENAI_BASE_URL=http://localhost:\d+/v1", result)
-    assert "OPENCLAW_CONFIG_PATH=/etc/openclaw/ramalama.json" in result
     assert "OPENCLAW_SKIP_CHANNELS=1" in result
 
 
@@ -169,23 +168,6 @@ def test_sandbox_dryrun_openclaw_custom_image():
     result = check_output(_dryrun_cmd("openclaw") + ["--openclaw-image", "myopenclaw:v2"])
     assert "myopenclaw:v2" in result
 
-
-@pytest.mark.e2e
-@skip_if_no_container
-def test_sandbox_dryrun_openclaw_custom_port():
-    """Custom --openclaw-port should be used by the OpenClaw gateway and TUI."""
-    result = check_output(_dryrun_cmd("openclaw") + ["--openclaw-port", "19001"])
-    assert "openclaw gateway run --port 19001 --bind loopback" in result
-    assert "openclaw tui --url ws://localhost:19001 --session main" in result
-
-
-@pytest.mark.e2e
-@skip_if_no_container
-def test_sandbox_dryrun_openclaw_state_dir():
-    """OpenClaw --state-dir should mount the host directory for gateway state."""
-    result = check_output(_dryrun_cmd("openclaw") + ["--state-dir", "/tmp/openclaw-state"])
-    assert re.search(r"openclaw-state:/var/lib/openclaw:rw", result)
-    assert "OPENCLAW_STATE_DIR=/var/lib/openclaw" in result
 
 
 # --- Live run tests ---

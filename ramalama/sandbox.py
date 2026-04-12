@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
-import shlex
+import tempfile
 from collections.abc import Callable
 from typing import Optional, cast
 
@@ -78,9 +79,20 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
         completer=img_comp,
         help="OpenClaw container image",
     )
+    parser.add_argument(
+        "--openclaw-port",
+        type=int,
+        default=18789,
+        help="OpenClaw gateway port (default: 18789)",
+    )
+    parser.add_argument(
+        "--state-dir",
+        help="local directory to mount into the OpenClaw gateway container for state",
+    )
     _add_common_sandbox_args(parser)
     parser.set_defaults(func=run_sandbox_openclaw)
     yield parser
+
 
 
 class SandboxEngineArgsType(BaseEngineArgsType):
@@ -133,6 +145,12 @@ class Agent:
     def __init__(self, args: SandboxEngineArgsType, model_name: str):
         self.engine = SandboxEngine(args)
         self.model_name = model_name
+
+    def start_gateway(self) -> None:
+        """Start any gateway containers.  No-op for most agents."""
+
+    def cleanup(self) -> None:
+        """Clean up after the agent exits.  No-op for most agents."""
 
     def run(self) -> None:
         run_cmd(self.engine.exec_args, stdout=None, stdin=None)
@@ -220,52 +238,134 @@ class OpenCode(Agent):
 
 class OpenClawArgsType(SandboxEngineArgsType):
     openclaw_image: str
+    openclaw_port: int
+    state_dir: str | None
+    debug: bool
 
 
 class OpenClaw(Agent):
     """
-    Run OpenClaw in a sandbox.
-    OpenClaw is configured to use the local model server through an OpenAI-compatible endpoint.
+    Run OpenClaw in a sandbox using a gateway+client architecture.
+    A gateway container runs in the background, configured to communicate with the local model
+    server. A client container runs the TUI or agent, connecting to the gateway via websocket.
+    A JSON config file is written to a temporary file and mounted into both containers via
+    OPENCLAW_CONFIG_PATH.
     """
 
     def __init__(self, args: OpenClawArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
-        self.engine.add_name(f"openclaw-{args.name}")  # type: ignore[attr-defined]
-        self.add_env_options(args)
-        self.engine.add_workdir(args)
-        self.engine.add_args(args.openclaw_image)
-        self.engine.add_args("bash", "-c", self._build_launch_script(args))
+        self.config_file_path = self._write_config(args)
+        self._gateway_name = f"openclaw-gateway-{args.name}"  # type: ignore[attr-defined]
 
-    def _build_launch_script(self, args: OpenClawArgsType) -> str:
-        config_batch = json.dumps(
-            [
-                {"path": "models.providers.openai.apiKey", "value": "ramalama"},
-                {"path": "models.providers.openai.baseUrl", "value": f"http://localhost:{args.port}/v1"},
-                {"path": "models.providers.openai.models", "value": [self.model_name]},
-                {"path": "agents.defaults.model.primary", "value": f"openai/{self.model_name}"},
-                {"path": "gateway.mode", "value": "local"},
-                {"path": "gateway.bind", "value": "loopback"},
-            ]
+        #  Gateway Engine (detached background container)
+        self.gateway_engine = SandboxEngine(args)
+        # Gateway runs detached, not interactive
+        if "-i" in self.gateway_engine.exec_args:
+            self.gateway_engine.exec_args.remove("-i")
+        self.gateway_engine.add_args("-d")
+        self.gateway_engine.add_args("--expose", str(args.openclaw_port))
+        self.gateway_engine.add_name(self._gateway_name)
+        self._add_env_to_engine(self.gateway_engine, args)
+        self._add_state_dir_to_engine(self.gateway_engine, args)
+        self.gateway_engine.add_volume(self.config_file_path, "/etc/openclaw/ramalama.json")
+        self.gateway_engine.add_args(args.openclaw_image)
+        self.gateway_engine.add_args(
+            "openclaw", "gateway", "run", "--port", str(args.openclaw_port), "--bind", "loopback"
         )
-        setup_cmd = f"node dist/index.js config set --batch-json {shlex.quote(config_batch)} >/dev/null"
 
+        # Client Engine (foreground interactive container)
+        self.engine.add_name(f"openclaw-{args.name}")  # type: ignore[attr-defined]
+        self._add_env_to_engine(self.engine, args)
+        self.engine.add_workdir(args)
+        self.engine.add_volume(self.config_file_path, "/etc/openclaw/ramalama.json")
+        self.engine.add_args(args.openclaw_image)
         if args.ARGS:
             message = " ".join(args.ARGS)
-            run_cmd = f"exec node dist/index.js agent --local --session-id ramalama --message {shlex.quote(message)}"
+            self.engine.add_args(
+                "openclaw",
+                "agent",
+                "--url",
+                f"ws://localhost:{args.openclaw_port}",
+                "--session-id",
+                "ramalama",
+                "--message",
+                message,
+            )
         elif self.engine.use_tty():
-            run_cmd = "exec node dist/index.js tui --session main"
+            self.engine.add_args(
+                "openclaw", "tui", "--url", f"ws://localhost:{args.openclaw_port}", "--session", "main"
+            )
         else:
-            run_cmd = 'msg="$(cat)"; exec node dist/index.js agent --local --session-id ramalama --message "$msg"'
+            self.engine.add_args(
+                "bash",
+                "-c",
+                f'msg="$(cat)"; exec openclaw agent --url ws://localhost:{args.openclaw_port}'
+                ' --session-id ramalama --message "$msg"',
+            )
 
-        return f"set -euo pipefail; {setup_cmd}; {run_cmd}"
+    def _write_config(self, args: OpenClawArgsType) -> str:
+        config = {
+            "models": {
+                "providers": {
+                    "openai": {
+                        "apiKey": "ramalama",
+                        "baseUrl": f"http://localhost:{args.port}/v1",
+                        "models": [],
+                    },
+                },
+            },
+            "agents": {
+                "defaults": {
+                    "model": {
+                        "primary": f"openai/{self.model_name}",
+                    },
+                },
+            },
+            "gateway": {
+                "mode": "local",
+                "bind": "loopback",
+            },
+        }
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        json.dump(config, tmp)
+        tmp.close()
+        return tmp.name
 
-    def add_env_options(self, args: OpenClawArgsType) -> None:
-        self.engine.add_env_option(f"OPENAI_BASE_URL=http://localhost:{args.port}/v1")
-        self.engine.add_env_option("OPENAI_API_KEY=ramalama")
-        self.engine.add_env_option("OPENCLAW_SKIP_CHANNELS=1")
-        self.engine.add_env_option("OPENCLAW_SKIP_GMAIL_WATCHER=1")
-        self.engine.add_env_option("OPENCLAW_SKIP_CRON=1")
-        self.engine.add_env_option("OPENCLAW_SKIP_CANVAS_HOST=1")
+    def start_gateway(self) -> None:
+        """Start the gateway container in detached mode."""
+        run_cmd(self.gateway_engine.exec_args, stdout=None)
+
+    def cleanup(self) -> None:
+        """Remove temporary config file and stop gateway container."""
+        if hasattr(self, "config_file_path") and self.config_file_path:
+            try:
+                os.unlink(self.config_file_path)
+            except OSError:
+                pass
+        if hasattr(self, "_gateway_name"):
+            try:
+                self.engine.args.ignore = True  # type: ignore[attr-defined]
+                stop_container(self.engine.args, self._gateway_name, remove=True)
+            except Exception:
+                pass
+
+    def _add_state_dir_to_engine(self, engine: SandboxEngine, args: OpenClawArgsType) -> None:
+        state_dir = getattr(args, "state_dir", None)
+        if state_dir:
+            engine.add_volume(state_dir, "/var/lib/openclaw", opts="rw")
+            engine.add_env_option("OPENCLAW_STATE_DIR=/var/lib/openclaw")
+
+    def _add_env_to_engine(self, engine: SandboxEngine, args: OpenClawArgsType) -> None:
+        engine.add_env_option(f"OPENAI_BASE_URL=http://localhost:{args.port}/v1")
+        engine.add_env_option("OPENAI_API_KEY=ramalama")
+        engine.add_env_option("OPENCLAW_CONFIG_PATH=/etc/openclaw/ramalama.json")
+        engine.add_env_option("OPENCLAW_SKIP_CHANNELS=1")
+        engine.add_env_option("OPENCLAW_SKIP_GMAIL_WATCHER=1")
+        engine.add_env_option("OPENCLAW_SKIP_CRON=1")
+        engine.add_env_option("OPENCLAW_SKIP_CANVAS_HOST=1")
+        if getattr(args, "debug", False):
+            engine.add_env_option("OPENCLAW_LOG_LEVEL=debug")
+
 
 
 def run_sandbox_goose(args: GooseArgsType):
@@ -298,6 +398,8 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
     agent = agent_cls(args, model.model_alias)
 
     if args.dryrun:
+        if hasattr(agent, "gate"):
+            agent.gateway_engine.dryrun()
         agent.engine.dryrun()
         return
 
@@ -305,8 +407,12 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
         # Wait for model server to be healthy
         model.wait_for_healthy(args)  # type: ignore[union-attr]
 
+        # Start gateway if the agent uses one (e.g. OpenClaw)
+        agent.start_gateway()
+
         # Launch agent
         agent.run()
     finally:
+        agent.cleanup()
         args.ignore = True  # type: ignore[attr-defined]
         stop_container(args, args.name, remove=True)  # type: ignore[attr-defined]
