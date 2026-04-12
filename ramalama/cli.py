@@ -10,7 +10,7 @@ import urllib.error
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, get_args
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
@@ -20,7 +20,7 @@ try:
 except Exception:
     suppressCompleter = None
 
-from ramalama import engine
+from ramalama import chat, engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import accel_image, exec_cmd, get_accel, perror
@@ -99,7 +99,7 @@ def parse_generate_option(option: str) -> ParsedGenerateInput:
 
 def parse_port_option(option: str) -> str:
     port = int(option)
-    if port <= 0 or port >= 65535:
+    if port < 1 or port > 65535:
         raise ValueError(f"Invalid port '{port}'")
     return option
 
@@ -920,10 +920,6 @@ def chat_run_options(parser):
 
 
 def _chat_cli(args):
-    from urllib.parse import urlparse, urlunparse
-
-    from ramalama import chat as chat_module
-
     # If --port is specified, construct the URL from port
     port = getattr(args, 'port', None)
     if port:
@@ -934,7 +930,13 @@ def _chat_cli(args):
         # Replace 'localhost' with '127.0.0.1' to avoid IPv6 resolution issues.
         # The server binds to 0.0.0.0 (IPv4 only), so connecting via [::1] fails.
         if parsed.hostname == 'localhost':
-            netloc = f"127.0.0.1:{parsed.port}" if parsed.port else "127.0.0.1"
+            host_port = f"127.0.0.1:{parsed.port}" if parsed.port else "127.0.0.1"
+            if parsed.username and parsed.password:
+                netloc = f"{parsed.username}:{parsed.password}@{host_port}"
+            elif parsed.username:
+                netloc = f"{parsed.username}@{host_port}"
+            else:
+                netloc = host_port
             parsed = parsed._replace(netloc=netloc)
 
         # Normalize URL: ensure /v1 is present for OpenAI-compatible endpoints
@@ -943,7 +945,7 @@ def _chat_cli(args):
 
         args.url = urlunparse(parsed)
 
-    return chat_module.chat(args)
+    return chat.chat(args)
 
 
 def chat_parser(subparsers):
