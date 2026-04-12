@@ -12,6 +12,7 @@ import subprocess
 import sys
 import threading
 import time
+import typing
 import urllib.error
 import urllib.request
 from collections.abc import Sequence
@@ -33,6 +34,7 @@ from ramalama.chat_utils import (
 )
 from ramalama.common import perror
 from ramalama.config import ActiveConfig
+from ramalama.config_types import PathStr
 from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
@@ -151,6 +153,9 @@ class RamaLamaShell(cmd.Cmd):
         operational_args: Optional[ChatOperationalArgs] = None,
         provider: Optional[ChatProvider] = None,
     ):
+        # Reload perror here so we can mock it in tests
+        from ramalama.common import perror
+
         if operational_args is None:
             operational_args = ChatOperationalArgs()
 
@@ -168,6 +173,16 @@ class RamaLamaShell(cmd.Cmd):
         self.initialize_mcp()
 
         self.content: list[str] = []
+        self.attachments: list[PathStr] = []
+        if getattr(args, 'attachments', None):
+            invalid_attachments = []
+            for attachment in typing.cast(list[PathStr], args.attachments):
+                if not self._add_attachment(attachment):
+                    invalid_attachments.append(attachment)
+            if invalid_attachments:
+                # Raising an exception here will keep the container running,
+                # so warn the user and ignore the missing attachments
+                perror(f"The following attachments were not valid and were ignored: {', '.join(invalid_attachments)}.")
         self.message_count = 0  # Track messages for summarization
 
     def do_help(self, args):
@@ -175,6 +190,7 @@ class RamaLamaShell(cmd.Cmd):
         print("\nAvailable commands:")
         print("  /help, help, ?    - Show this help message")
         print("  /clear            - Clear conversation history")
+        print("  /attach file      - Attach a file to the next request")
         print("  /bye, exit        - Exit the chat session")
         if self.mcp_agent:
             print("  /tool [question]  - Manually select which MCP tool to use")
@@ -395,6 +411,16 @@ class RamaLamaShell(cmd.Cmd):
         self.conversation_history.append(UserMessage(text=f"/tool {question}"))
         self.conversation_history.append(AssistantMessage(text=str(responses)))
 
+    def _add_attachment(self, path: PathStr) -> bool:
+        """Add a given attachment to the next request;
+        returns False when the path does not point to an accessible file, and True otherwise."""
+        if not os.access(path, os.R_OK):
+            return False
+        if not os.path.isfile(path):
+            return False
+        self.attachments.append(path)
+        return True
+
     def _select_tools(self):
         """Interactive multi-tool selection without prompting for arguments."""
         if not self.mcp_agent or not self.mcp_agent.available_tools:
@@ -481,7 +507,16 @@ class RamaLamaShell(cmd.Cmd):
         if cmd == "/clear":
             self.conversation_history = []
             self.content = []
+            self.attachments = []
             print("Conversation history cleared.")
+            return False
+
+        # Handle attachments
+        if cmd.startswith("/attach "):
+            # capitalization matters for files, so use user_content
+            file = user_content.strip()[8:]
+            if not self._add_attachment(file):
+                print(f'The file {file} does not exist or cannot be accessed.')
             return False
 
         # Handle multi-line input (backslash continuation)
@@ -510,6 +545,12 @@ class RamaLamaShell(cmd.Cmd):
             return False
 
         self.conversation_history.append(UserMessage(text=content))
+
+        if self.attachments:
+            builder = OpanAIChatAPIMessageBuilder()
+            for attachment in self.attachments:
+                self.conversation_history.extend(builder.load(attachment))
+            self.attachments = []
         self.request_in_process = True
         response = self._req()
         if response:

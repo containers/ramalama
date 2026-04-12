@@ -48,20 +48,27 @@ def _(message: ToolMessage) -> dict[str, Any]:
     return response
 
 
+def _handle_attachments(attachments: list[AttachmentPart]) -> list[dict[str, Any]]:
+    return [serialize_part(attachment) for attachment in attachments]
+
+
 @message_to_completions_dict.register
 def _(message: UserMessage) -> dict[str, Any]:
+    content: str | list[dict[str, Any]] = message.text or ""
     if message.attachments:
-        raise ValueError("Attachments are not supported by this provider.")
-    return {**message.metadata, 'content': message.text or "", 'role': message.role}
+        content = [{"text": content, "type": "text"}]
+        content.extend(_handle_attachments(message.attachments))
+    return {**message.metadata, 'content': content, 'role': message.role}
 
 
 @message_to_completions_dict.register
 def _(message: AssistantMessage) -> dict[str, Any]:
+    content: str | list[dict[str, Any]] = message.text or ""
     if message.attachments:
-        raise ValueError("Attachments are not supported by this provider.")
+        content = [{"text": content, "type": "text"}]
+        content.extend(_handle_attachments(message.attachments))
 
-    payload = {**message.metadata, 'content': message.text or "", 'role': message.role}
-
+    payload = {**message.metadata, 'content': content, 'role': message.role}
     if message.tool_calls:
         payload['tool_calls'] = [
             {
