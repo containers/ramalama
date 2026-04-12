@@ -24,7 +24,7 @@ On first run, RamaLama inspects your system for GPU support, falling back to CPU
 
 RamaLama uses container engines like Podman or Docker to pull the appropriate OCI image with all of the software necessary to run an AI Model for your systems setup.
 
-Running in containers eliminates the need for users to configure the host system for AI. After the initialization, RamaLama runs the AI Models within a container based on the OCI image. RamaLama pulls a container images specific to the GPUs discovered on the host system. These images are tied to the minor version of RamaLama. For example, RamaLama version 1.2.3 on an NVIDIA system pulls quay.io/ramalama/cuda:1.2. To override the default image use the `--image` option.
+Running in containers eliminates the need for users to configure the host system for AI. After the initialization, RamaLama runs the AI Models within a container based on the OCI image. RamaLama pulls a container image specific to the GPUs discovered on the host system. These images are tied to the minor version of RamaLama. For example, RamaLama version 1.2.3 on an NVIDIA system pulls quay.io/ramalama/cuda:1.2. To override the default image use the `--image` option.
 
 RamaLama pulls AI Models from model registries. Starting a chatbot or a REST API service from a simple single command. Models are treated similarly to how Podman and Docker treat container images.
 
@@ -97,7 +97,7 @@ ramalama pull huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.ggu
 ramalama run file://$HOME/granite-7b-lab-Q4_K_M.gguf
 ```
 
-To make it easier for users, RamaLama uses shortname files, which contain alias names for fully specified AI Models, allowing users to specify the shorter names when referring to models. RamaLama reads shortnames.conf files if they exist. These files contain a list of name value pairs for specification of the model. The following table specifies the order in which RamaLama reads the files. Any duplicate names that exist override previously defined shortnames.
+To make it easier for users, RamaLama uses shortname files, which contain alias names for fully specified AI Models, allowing users to specify the shorter names when referring to models. RamaLama reads shortnames.conf files if they exist. These files contain a list of name-value pairs for specification of the model. The following table specifies the order in which RamaLama reads the files. Any duplicate names that exist override previously defined shortnames.
 
 | Shortnames type | Path                                      |
 | --------------- | ----------------------------------------- |
@@ -144,7 +144,7 @@ The default can be overridden in the ramalama.conf file.
 
 :::note
 
-CI images cannot be used with the --nocontainer option. This option disables the following features: Automatic GPU acceleration, containerized environment isolation, and dynamic resource allocation.
+OCI images cannot be used with the --nocontainer option. This option disables the following features: Automatic GPU acceleration, containerized environment isolation, and dynamic resource allocation.
 
 :::
 
@@ -172,7 +172,7 @@ Show the program version and exit.
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | [ramalama-bench(1)](ramalama-bench.1.md)           | benchmark specified AI Model                                                                             |
 | [ramalama-benchmarks(1)](ramalama-benchmarks.1.md) | view and interact with historical benchmark results                                                      |
-| [ramalama-chat(1)](ramalama-chat.1.md)             | openAI chat with the specified REST API URL                                                              |
+| [ramalama-chat(1)](ramalama-chat.1.md)             | OpenAI chat with the specified REST API URL                                                              |
 | [ramalama-containers(1)](ramalama-containers.1.md) | list all RamaLama containers                                                                             |
 | [ramalama-convert(1)](ramalama-convert.1.md)       | convert AI Models from local storage to OCI Image                                                        |
 | [ramalama-daemon(1)](ramalama-daemon.1.md)         | run a RamaLama REST server                                                                               |
