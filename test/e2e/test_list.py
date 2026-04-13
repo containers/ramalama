@@ -6,7 +6,7 @@ import pytest
 
 from test.e2e.utils import RamalamaExecWorkspace
 
-HEADING_REGEX = "NAME *MODIFIED *SIZE"
+HEADING_REGEX = "SHORTNAME *NAME *MODIFIED *SIZE"
 
 TEST_IMAGE = "ollama://smollm:135m"
 
