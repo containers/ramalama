@@ -94,7 +94,6 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     yield parser
 
 
-
 class SandboxEngineArgsType(BaseEngineArgsType):
     ARGS: list[str]
     workdir: Optional[str]
@@ -236,6 +235,7 @@ class OpenCode(Agent):
         }
         self.engine.add_env_option(f"OPENCODE_CONFIG_CONTENT={json.dumps(config)}")
 
+
 class OpenClawArgsType(SandboxEngineArgsType):
     openclaw_image: str
     openclaw_port: int
@@ -367,13 +367,13 @@ class OpenClaw(Agent):
             engine.add_env_option("OPENCLAW_LOG_LEVEL=debug")
 
 
-
 def run_sandbox_goose(args: GooseArgsType):
     run_sandbox(args, Goose)
 
 
 def run_sandbox_opencode(args: OpenCodeArgsType):
     run_sandbox(args, OpenCode)
+
 
 def run_sandbox_openclaw(args: OpenClawArgsType):
     run_sandbox(args, OpenClaw)
@@ -398,7 +398,7 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
     agent = agent_cls(args, model.model_alias)
 
     if args.dryrun:
-        if hasattr(agent, "gate"):
+        if hasattr(agent, "gateway_engine"):
             agent.gateway_engine.dryrun()
         agent.engine.dryrun()
         return

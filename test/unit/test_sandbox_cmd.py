@@ -1,5 +1,5 @@
 import json
-import os 
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -239,6 +239,69 @@ def test_goose_args():
     args.ARGS = ["hello", "ramalama"]
     goose = Goose(args, "test-model")
     assert goose.engine.exec_args[-3:] == ["run", "-t", " ".join(args.ARGS)]
+
+
+# --- OpenCode-specific tests ---
+
+
+def test_opencode_default_image():
+    """OpenCode subcommand should provide a default opencode image"""
+    _, args = parse_args_from_cmd(["sandbox", "opencode", TEST_MODEL])
+    assert args.opencode_image.startswith("ghcr.io/anomalyco/opencode:")
+
+
+def test_opencode_custom_image():
+    """OpenCode subcommand should handle the --opencode-image option"""
+    _, args = parse_args_from_cmd(["sandbox", "opencode", TEST_MODEL, "--opencode-image", "myimage:v1"])
+    assert args.opencode_image == "myimage:v1"
+
+
+def test_opencode_env_vars():
+    """OpenCode should set OPENCODE_CONFIG_CONTENT with proper JSON config"""
+    args = _make_opencode_args()
+    opencode = OpenCode(args, "Qwen3-4B-Q4_K_M")
+    cmd = opencode.engine.exec_args
+    assert "run" in cmd
+    assert "--rm" in cmd
+    # Find the OPENCODE_CONFIG_CONTENT env var
+    config_arg = None
+    for arg in cmd:
+        if arg.startswith("OPENCODE_CONFIG_CONTENT="):
+            config_arg = arg
+            break
+    assert config_arg is not None, "OPENCODE_CONFIG_CONTENT not found in command"
+    config_json = config_arg.split("=", 1)[1]
+    config = json.loads(config_json)
+    assert config["model"] == "ramalama/Qwen3-4B-Q4_K_M"
+    assert config["provider"]["ramalama"]["npm"] == "@ai-sdk/openai-compatible"
+    assert config["provider"]["ramalama"]["options"]["baseURL"] == "http://localhost:8080/v1"
+    assert config["provider"]["ramalama"]["options"]["apiKey"] == "ramalama"
+    assert "Qwen3-4B-Q4_K_M" in config["provider"]["ramalama"]["models"]
+
+
+def test_opencode_with_tty(monkeypatch):
+    """OpenCode should launch TUI (no extra args) when run with a tty"""
+    monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: True)
+    args = _make_opencode_args()
+    opencode = OpenCode(args, "test-model")
+    # The last arg should be the image, no extra command
+    assert opencode.engine.exec_args[-1] == args.opencode_image
+
+
+def test_opencode_no_tty(monkeypatch):
+    """OpenCode should run "run -" when run without a tty, to read commands from stdin"""
+    monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: False)
+    args = _make_opencode_args()
+    opencode = OpenCode(args, "test-model")
+    assert opencode.engine.exec_args[-2:] == ["run", "--thinking=true"]
+
+
+def test_opencode_args():
+    """OpenCode should run "run <message>" when args are passed on the command-line"""
+    args = _make_opencode_args()
+    args.ARGS = ["hello", "ramalama"]
+    opencode = OpenCode(args, "test-model")
+    assert opencode.engine.exec_args[-4:] == ["run", "--thinking=true", "hello", "ramalama"]
 
 
 # --- OpenClaw-specific tests ---

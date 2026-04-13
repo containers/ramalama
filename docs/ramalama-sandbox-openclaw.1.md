@@ -58,8 +58,10 @@ Examples:
 ```
 # Use auto-detection (default)
 ramalama serve granite
+
 # Force Vulkan backend
 ramalama serve --backend vulkan granite
+
 # Force ROCm backend on AMD GPU
 ramalama serve --backend rocm granite
 ```

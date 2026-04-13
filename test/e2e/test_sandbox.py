@@ -169,7 +169,6 @@ def test_sandbox_dryrun_openclaw_custom_image():
     assert "myopenclaw:v2" in result
 
 
-
 # --- Live run tests ---
 
 
