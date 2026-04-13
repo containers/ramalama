@@ -12,6 +12,7 @@ from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
 
 import pytest
+import requests
 import yaml
 
 from test.conftest import (
@@ -334,6 +335,27 @@ def test_serve_and_stop(shared_ctx, test_model):
     # Check if both containers are stopped
     ps_result = ctx.check_output(["ramalama", "ps", "--noheading", "--no-trunc"])
     assert not re.search(f".*({container1_id}|{container2_id})", ps_result)
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_no_container
+def test_serve_model_with_alias(shared_ctx, test_model):
+    container_id  = f"serve_with_alias_{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
+    alias = "my_alias"
+    ctx = shared_ctx
+    serve_cmd = ["ramalama", "serve", "--name", container_id, "--alias", alias, "--detach", test_model]
+    ctx.check_call(serve_cmd)
+    try:
+        ps_list = ctx.check_output(["ramalama", "ps", "--format", "{{.Names}} {{.Ports}}"])
+        port = re.search(rf"{container_id}.*->(?P<port>\d+)", ps_list)["port"]
+        # FIXME: race-condition, chat can fail to connect if llama.cpp isn't ready, just sleep a little for now
+        time.sleep(10)
+        models = requests.get(f"http://127.0.0.1:{port}/v1/models").json()
+        assert models["models"][0]["name"] == alias
+        assert models["models"][0]["model"] == alias
+    finally:
+        ctx.check_call(["ramalama", "stop", container_id])
 
 
 @pytest.mark.e2e

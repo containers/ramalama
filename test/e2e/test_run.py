@@ -289,22 +289,6 @@ def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     ctx.check_call(run_cmd)
 
 
-@pytest.mark.e2e
-@pytest.mark.slow
-def test_run_model_with_prompt_and_alias(shared_ctx_with_models, test_model):
-    import platform
-
-    ctx = shared_ctx_with_models
-
-    run_cmd = ["ramalama", "run", "--temp", "0", "--alias", "my_alias"]
-    if platform.system() in ["Darwin", "Windows"]:
-        # FIXME: continues rambling on Windows and macOS without --max-token
-        run_cmd.extend(["--max-tokens", "100"])
-
-    run_cmd.extend([test_model, "Who is the primary writer of the declaration of independence?"])
-    ctx.check_call(run_cmd)
-
-
 _file_uri_id_suffix = 'C:/dir/file' if platform.system() == "Windows" else '/absolute_dir/file'
 _file_uri_id_relative = "relative_dir/file"
 
