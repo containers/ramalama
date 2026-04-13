@@ -89,6 +89,7 @@ class LlamaBenchResultV1(LlamaBenchResult):
     no_op_offload: int | None = None
     no_host: int | None = None
     use_direct_io: int | None = None
+    fit_target: int | None = None
     n_prompt: int | None = None
     n_gen: int | None = None
     n_depth: int | None = None
@@ -101,7 +102,7 @@ class LlamaBenchResultV1(LlamaBenchResult):
     samples_ts: str | None = None  # JSON array stored as string
 
     @classmethod
-    def from_payload(cls, payload: dict) -> "LlamaBenchResult":
+    def from_payload(cls, payload: dict) -> "LlamaBenchResultV1":
         """Build a result from a llama-bench JSON/JSONL object."""
         return cls(**{f.name: payload[f.name] for f in fields(cls) if f.name in payload})
 
@@ -127,7 +128,7 @@ class BenchmarkRecordV1(BenchmarkRecord):
             payload['device'] = DeviceInfoV1(**payload.pop("device"))
 
         configuration = TestConfigurationV1(**payload.pop('configuration', {}))
-        result = LlamaBenchResultV1(**payload.pop('result', {}))
+        result = LlamaBenchResultV1.from_payload(payload.pop('result', {}))
 
         return cls(configuration=configuration, result=result, **payload)
 
@@ -181,7 +182,7 @@ def get_llama_bench_result(payload: dict, version: Any = None) -> LlamaBenchResu
         version = payload.get('version', "v1")
 
     if version == "v1":
-        return LlamaBenchResultV1(**payload)
+        return LlamaBenchResultV1.from_payload(payload)
 
     raise NotImplementedError(f"No supported LlamaBench schemas for version {version}")
 
