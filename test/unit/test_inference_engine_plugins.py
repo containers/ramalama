@@ -541,13 +541,6 @@ class TestVllmPlugin:
         assert "--max-model-len" in cmd
         assert cmd[cmd.index("--max-model-len") + 1] == "8192"
 
-    def test_serve_temperature(self):
-        ns = make_ns(temp=0.5)
-        cmd = self.plugin.handle_subcommand("serve", ns)
-
-        assert "--temperature" in cmd
-        assert cmd[cmd.index("--temperature") + 1] == "0.5"
-
     def test_serve_seed(self):
         ns = make_ns(seed=123)
         cmd = self.plugin.handle_subcommand("serve", ns)
@@ -895,7 +888,7 @@ class TestConfigureSubcommandsFiltering:
         from ramalama.cli import configure_subcommands
         from ramalama.config import ActiveConfig
 
-        for runtime in ("llama.cpp", "mlx", "vllm"):
+        for runtime in ("llama.cpp", "mlx"):
             monkeypatch.setattr(ActiveConfig(), "runtime", runtime)
             monkeypatch.setattr(ActiveConfig(), "container", True)
             parser = self._make_parser()

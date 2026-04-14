@@ -309,6 +309,15 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         """Add llama.cpp-specific inference args to an already-created parser."""
         super()._add_inference_args(parser, command)
+        config = ActiveConfig()
+        parser.add_argument(
+            "--temp",
+            dest="temp",
+            type=float,
+            default=config.temp,
+            help="temperature of the response from the AI model",
+            completer=suppressCompleter,
+        )
         self._add_backend_arg(parser)
         parser.add_argument(
             "--cache-reuse",

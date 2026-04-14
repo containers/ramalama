@@ -565,8 +565,6 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
                 "0.0.0.0",
                 "--port",
                 "1234",
-                "--temperature",
-                "0.8",
             ]
             volumes_spec = content.get("spec", {}).get("template", {}).get("spec", {}).get("volumes", [])
             assert volumes_spec[0] == {

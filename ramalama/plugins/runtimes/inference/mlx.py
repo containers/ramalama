@@ -3,6 +3,8 @@ import platform
 from http.client import HTTPConnection
 from typing import Any
 
+from ramalama.cli import suppressCompleter
+from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.plugins.runtimes.inference.common import BaseInferenceRuntime
 from ramalama.transports.transport_factory import New
@@ -12,6 +14,18 @@ class MlxPlugin(BaseInferenceRuntime):
     @property
     def name(self) -> str:
         return "mlx"
+
+    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
+        super()._add_inference_args(parser, command)
+        config = ActiveConfig()
+        parser.add_argument(
+            "--temp",
+            dest="temp",
+            type=float,
+            default=config.temp,
+            help="temperature of the response from the AI model",
+            completer=suppressCompleter,
+        )
 
     def _cmd_run(self, args: argparse.Namespace) -> list[str]:
         cmd = ["mlx_lm.server"]
