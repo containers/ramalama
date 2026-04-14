@@ -1,4 +1,6 @@
 import argparse
+import os
+import sys
 from abc import abstractmethod
 from typing import Any
 
@@ -12,9 +14,21 @@ from ramalama.cli import (
     runtime_options,
     suppressCompleter,
 )
-from ramalama.common import ContainerEntryPoint, accel_image, ensure_image, set_accel_env_vars
+from ramalama.common import (
+    ContainerEntryPoint,
+    accel_image,
+    ensure_image,
+    genname,
+    sanitize_filename,
+    set_accel_env_vars,
+)
 from ramalama.config import ActiveConfig
+from ramalama.engine import Engine
 from ramalama.logger import logger
+from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
+from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.model_store.reffile import RefJSONFile, StoreFileType, migrate_reffile_to_refjsonfile
+from ramalama.path_utils import get_container_mount_path
 from ramalama.plugins.interface import InferenceRuntimePlugin
 from ramalama.plugins.loader import assemble_command
 from ramalama.stack import Stack
@@ -132,7 +146,7 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
         runtime_options(parser, "serve")
         self._add_inference_args(parser, "serve")
-        parser.add_argument("MODEL", completer=local_models)  # positional argument
+        parser.add_argument("MODEL", nargs="?", default=None, completer=local_models)  # positional argument
         parser.set_defaults(func=self._serve_handler)
         return parser
 
@@ -202,6 +216,9 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         if not args.container:
             args.detach = False
 
+        if args.MODEL is None:
+            return self._serve_router(args)
+
         if getattr(args, "api", None) == "llama-stack":
             if not args.container:
                 raise ValueError(
@@ -234,6 +251,88 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             raise ValueError("ramalama serve is not supported for hosted API transports.")
 
         self._do_serve(args, model)
+
+    def _serve_router(self, args: argparse.Namespace) -> None:
+        """Serve all locally stored GGUF models using llama.cpp router mode (container-only)."""
+        if not args.container:
+            sys.exit("Error: router mode (ramalama serve with no model) requires a container runtime.")
+
+        set_accel_env_vars()
+        args.port = compute_serving_port(args)
+        args.router_mode = True
+
+        store = GlobalModelStore(args.store)
+        models = _enumerate_store_gguf_models(
+            store,
+            DIRECTORY_NAME_REFS,
+            DIRECTORY_NAME_SNAPSHOTS,
+            DIRECTORY_NAME_BLOBS,
+            RefJSONFile,
+            migrate_reffile_to_refjsonfile,
+        )
+
+        if not models:
+            sys.exit("Error: no GGUF models found in the model store. Pull a model first with: ramalama pull <model>")
+
+        if args.container and not args.dryrun:
+            config = ActiveConfig()
+            should_pull = config.pull in ["always", "missing", "newer"]
+            args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
+
+        cmd = assemble_command(args)
+        engine = Engine(args)
+        name = getattr(args, "name", None) or genname()
+        engine.add(["--label", "ai.ramalama", "--name", name, "--env=HOME=/tmp", "--init"])
+
+        for host_path, container_name in models:
+            mount_path = f"/mnt/models/{container_name}"
+            container_host_path = get_container_mount_path(host_path)
+            engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro"])
+
+        engine.add([args.image] + cmd)
+
+        if args.dryrun:
+            engine.dryrun()
+            return
+        engine.exec()
+
+
+def _enumerate_store_gguf_models(store, refs_dir_name, snapshots_dir_name, blobs_dir_name, RefJSONFile, migrate_fn):
+    """Walk the model store and return (host_blob_path, readable_name.gguf) for each GGUF model."""
+    models = []
+    seen_names = set()
+
+    for root, subdirs, _ in os.walk(store.path):
+        if refs_dir_name not in subdirs:
+            continue
+
+        ref_dir = os.path.join(root, refs_dir_name)
+        for ref_file_name in os.listdir(ref_dir):
+            ref_file_path = os.path.join(ref_dir, ref_file_name)
+            ref_file = migrate_fn(ref_file_path, os.path.join(root, snapshots_dir_name))
+            if ref_file is None:
+                ref_file = RefJSONFile.from_path(ref_file_path)
+
+            tag, _ = os.path.splitext(ref_file_name)
+            model_rel = root.replace(store.path, "").lstrip(os.sep)
+            parts = model_rel.split(os.sep)
+            readable = "-".join(parts + [tag])
+
+            for model_file in ref_file.model_files:
+                if model_file.type != StoreFileType.GGUF_MODEL:
+                    continue
+
+                blob_path = os.path.join(root, blobs_dir_name, sanitize_filename(model_file.hash))
+                if not os.path.exists(blob_path):
+                    continue
+
+                name = f"{readable}.gguf"
+                if name in seen_names:
+                    name = f"{readable}-{model_file.hash[:8]}.gguf"
+                seen_names.add(name)
+                models.append((blob_path, name))
+
+    return models
 
 
 class ContainerizedInferenceRuntimePlugin(BaseInferenceRuntime):

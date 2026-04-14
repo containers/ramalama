@@ -838,6 +838,35 @@ def test_serve_with_non_existing_images():
 
 @pytest.mark.e2e
 @skip_if_no_container
+def test_router_mode_dry_run(shared_ctx, test_model):
+    """ramalama serve (no model) in dryrun should produce a container command with --models-dir."""
+    ctx = shared_ctx
+    result = ctx.check_output(["ramalama", "-q", "--dryrun", "serve"])
+    assert re.search(r".*--models-dir /mnt/models", result)
+    assert re.search(r".*--mount=type=bind,src=.*,destination=/mnt/models/.*\.gguf,ro", result)
+
+
+@pytest.mark.e2e
+@skip_if_container
+def test_router_mode_nocontainer_fails():
+    """ramalama serve (no model) with --nocontainer should fail."""
+    with RamalamaExecWorkspace() as ctx:
+        with pytest.raises(CalledProcessError) as exc_info:
+            ctx.check_output(["ramalama", "--nocontainer", "serve"], stderr=STDOUT)
+        assert re.search(r".*router mode.*requires a container", exc_info.value.output.decode("utf-8"))
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_router_mode_models_max_dry_run(shared_ctx, test_model):
+    """--models-max flag is passed through to llama-server."""
+    ctx = shared_ctx
+    result = ctx.check_output(["ramalama", "-q", "--dryrun", "serve", "--models-max", "2"])
+    assert re.search(r".*--models-max 2", result)
+
+
+@pytest.mark.e2e
+@skip_if_no_container
 @skip_if_darwin
 @skip_if_docker
 def test_serve_with_rag():

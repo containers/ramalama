@@ -222,7 +222,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         model_names = [m["name"] for m in body["models"]]
         if not model_name:
-            model_name = New(args.MODEL, args).model_alias
+            if hasattr(args, 'MODEL') and args.MODEL is not None:
+                model_name = New(args.MODEL, args).model_alias
+            else:
+                # Router mode: any model loaded means the server is ready
+                logger.debug(f"{self.name} {container_name} is ready (router mode)")
+                return True
 
         if not any(model_name in name for name in model_names):
             logger.debug(
@@ -420,6 +425,14 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_serve_subcommand(subparsers)
         self._add_rag_args(parser)
+        parser.add_argument(
+            "--models-max",
+            dest="models_max",
+            type=int,
+            default=4,
+            help="maximum number of models to load concurrently in router mode (default: 4)",
+            completer=suppressCompleter,
+        )
         return parser
 
     def register_subcommands(self, subparsers: "argparse._SubParsersAction") -> None:

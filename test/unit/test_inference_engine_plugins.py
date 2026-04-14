@@ -1,6 +1,7 @@
 """Unit tests for runtime plugins (llama.cpp, vllm, mlx)."""
 
 import argparse
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,8 +16,13 @@ from ramalama.common import ContainerEntryPoint, accel_image, version_tagged_ima
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import DEFAULT_IMAGE, load_config
 from ramalama.plugins.interface import InferenceRuntimePlugin
-from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
-from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin, get_available_backends
+from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin, _enumerate_store_gguf_models
+from ramalama.plugins.runtimes.inference.llama_cpp import (
+    LlamaCppPlugin,
+    backend_to_gpu_env,
+    get_available_backends,
+    get_gpu_backend_preferences,
+)
 from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
 from ramalama.plugins.runtimes.inference.vllm import VllmPlugin
 
@@ -1151,3 +1157,418 @@ def test_get_available_backends_windows(gpu_env: str | None, expected_backends: 
 
     with patch.dict("os.environ", env, clear=True):
         assert get_available_backends() == expected_backends
+
+
+# ---------------------------------------------------------------------------
+# _enumerate_store_gguf_models
+# ---------------------------------------------------------------------------
+
+
+def _make_ref_json_file(model_files):
+    """Create a mock RefJSONFile with the given model files."""
+    ref = MagicMock()
+    ref.model_files = model_files
+    return ref
+
+
+def _make_store_file(hash, file_type):
+    """Create a mock StoreFile."""
+    from ramalama.model_store.reffile import StoreFileType
+
+    sf = MagicMock()
+    sf.hash = hash
+    sf.type = file_type if isinstance(file_type, StoreFileType) else StoreFileType(file_type)
+    return sf
+
+
+class TestEnumerateStoreGgufModels:
+    """Tests for _enumerate_store_gguf_models."""
+
+    def test_finds_gguf_models(self, tmp_path):
+        """A ref file pointing to an existing GGUF blob is returned."""
+        from ramalama.model_store.reffile import StoreFileType
+
+        store = MagicMock()
+        store.path = str(tmp_path)
+
+        # Create store structure: <store>/huggingface/mymodel/refs/latest.json
+        model_dir = tmp_path / "huggingface" / "mymodel"
+        (model_dir / "refs").mkdir(parents=True)
+        (model_dir / "refs" / "latest.json").touch()
+        (model_dir / "blobs").mkdir()
+        (model_dir / "blobs" / "sha256-abc123").touch()
+
+        model_file = _make_store_file("sha256:abc123", StoreFileType.GGUF_MODEL)
+        ref = _make_ref_json_file([model_file])
+
+        models = _enumerate_store_gguf_models(
+            store,
+            "refs",
+            "snapshots",
+            "blobs",
+            MagicMock,
+            lambda path, snap_dir: ref,
+        )
+
+        assert len(models) == 1
+        assert models[0][0] == str(model_dir / "blobs" / "sha256-abc123")
+        assert models[0][1].endswith(".gguf")
+
+    def test_empty_store_returns_empty(self, tmp_path):
+        """An empty store returns no models."""
+        store = MagicMock()
+        store.path = str(tmp_path)
+        tmp_path.mkdir(exist_ok=True)
+
+        models = _enumerate_store_gguf_models(
+            store,
+            "refs",
+            "snapshots",
+            "blobs",
+            MagicMock,
+            lambda p, s: None,
+        )
+        assert models == []
+
+    def test_skips_non_gguf_files(self, tmp_path):
+        """Non-GGUF model files (e.g., safetensor) are skipped."""
+        from ramalama.model_store.reffile import StoreFileType
+
+        store = MagicMock()
+        store.path = str(tmp_path)
+
+        model_dir = tmp_path / "hf" / "model"
+        (model_dir / "refs").mkdir(parents=True)
+        (model_dir / "refs" / "latest.json").touch()
+        (model_dir / "blobs").mkdir()
+        (model_dir / "blobs" / "sha256-xyz").touch()
+
+        safetensor_file = _make_store_file("sha256:xyz", StoreFileType.SAFETENSOR_MODEL)
+        ref = _make_ref_json_file([safetensor_file])
+
+        models = _enumerate_store_gguf_models(
+            store,
+            "refs",
+            "snapshots",
+            "blobs",
+            MagicMock,
+            lambda p, s: ref,
+        )
+        assert models == []
+
+    def test_skips_missing_blobs(self, tmp_path):
+        """GGUF models whose blob files don't exist on disk are skipped."""
+        from ramalama.model_store.reffile import StoreFileType
+
+        store = MagicMock()
+        store.path = str(tmp_path)
+
+        model_dir = tmp_path / "hf" / "model"
+        (model_dir / "refs").mkdir(parents=True)
+        (model_dir / "refs" / "latest.json").touch()
+        (model_dir / "blobs").mkdir()
+        # Don't create the blob file
+
+        model_file = _make_store_file("sha256:missing", StoreFileType.GGUF_MODEL)
+        ref = _make_ref_json_file([model_file])
+
+        models = _enumerate_store_gguf_models(
+            store,
+            "refs",
+            "snapshots",
+            "blobs",
+            MagicMock,
+            lambda p, s: ref,
+        )
+        assert models == []
+
+    def test_deduplicates_names(self, tmp_path):
+        """When two models produce the same name, a hash suffix is added."""
+        from ramalama.model_store.reffile import StoreFileType
+
+        store = MagicMock()
+        store.path = str(tmp_path)
+
+        model_dir = tmp_path / "hf" / "model"
+        (model_dir / "refs").mkdir(parents=True)
+        (model_dir / "refs" / "latest.json").touch()
+        (model_dir / "blobs").mkdir()
+        (model_dir / "blobs" / "sha256-aaa").touch()
+        (model_dir / "blobs" / "sha256-bbb").touch()
+
+        file_a = _make_store_file("sha256:aaa", StoreFileType.GGUF_MODEL)
+        file_b = _make_store_file("sha256:bbb", StoreFileType.GGUF_MODEL)
+        ref = _make_ref_json_file([file_a, file_b])
+
+        models = _enumerate_store_gguf_models(
+            store,
+            "refs",
+            "snapshots",
+            "blobs",
+            MagicMock,
+            lambda p, s: ref,
+        )
+        assert len(models) == 2
+        names = {m[1] for m in models}
+        assert len(names) == 2  # names are unique
+
+
+# ---------------------------------------------------------------------------
+# Router mode in _cmd_run
+# ---------------------------------------------------------------------------
+
+
+class TestRouterModeCmdRun:
+    """Tests for llama.cpp _cmd_run in router mode."""
+
+    def setup_method(self):
+        self.plugin = LlamaCppPlugin()
+
+    @pytest.fixture(autouse=True)
+    def _patch_container_image_is_ggml(self):
+        with patch.object(self.plugin, "_container_image_is_ggml", return_value=False):
+            yield
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_router_mode_has_models_dir(self, mock_colorize):
+        ns = make_ns(container=True)
+        ns.router_mode = True
+        ns.models_max = 4
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--models-dir" in cmd
+        assert cmd[cmd.index("--models-dir") + 1] == "/mnt/models"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_router_mode_has_models_max(self, mock_colorize):
+        ns = make_ns(container=True)
+        ns.router_mode = True
+        ns.models_max = 8
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--models-max" in cmd
+        assert cmd[cmd.index("--models-max") + 1] == "8"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_router_mode_skips_model_and_alias(self, mock_colorize):
+        ns = make_ns(container=True)
+        ns.router_mode = True
+        ns.models_max = 4
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--model" not in cmd
+        assert "--alias" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_router_mode_skips_ngl(self, mock_colorize):
+        ns = make_ns(container=True, ngl=-1)
+        ns.router_mode = True
+        ns.models_max = 4
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "-ngl" not in cmd
+
+
+# ---------------------------------------------------------------------------
+# _serve_router
+# ---------------------------------------------------------------------------
+
+
+class TestServeRouter:
+    """Tests for BaseInferenceRuntime._serve_router."""
+
+    def setup_method(self):
+        self.plugin = LlamaCppPlugin()
+
+    def test_nocontainer_exits(self):
+        """Router mode requires a container runtime."""
+        args = argparse.Namespace(container=False)
+        with pytest.raises(SystemExit):
+            self.plugin._serve_router(args)
+
+    @patch("ramalama.plugins.runtimes.inference.common._enumerate_store_gguf_models", return_value=[])
+    @patch("ramalama.plugins.runtimes.inference.common.set_accel_env_vars")
+    @patch("ramalama.plugins.runtimes.inference.common.compute_serving_port", return_value="8080")
+    def test_no_models_exits(self, mock_port, mock_accel, mock_enum):
+        """Router mode exits if no GGUF models are found."""
+        args = argparse.Namespace(
+            container=True,
+            store="/fake/store",
+            port="8080",
+        )
+        with pytest.raises(SystemExit):
+            self.plugin._serve_router(args)
+
+    @patch("ramalama.plugins.runtimes.inference.common.Engine")
+    @patch("ramalama.plugins.runtimes.inference.common.assemble_command", return_value=["llama-server"])
+    @patch("ramalama.plugins.runtimes.inference.common.ensure_image", return_value="test-image")
+    @patch("ramalama.plugins.runtimes.inference.common.accel_image", return_value="test-image")
+    @patch("ramalama.plugins.runtimes.inference.common.set_accel_env_vars")
+    @patch("ramalama.plugins.runtimes.inference.common.compute_serving_port", return_value="8080")
+    @patch("ramalama.plugins.runtimes.inference.common._enumerate_store_gguf_models")
+    def test_dryrun_does_not_exec(
+        self,
+        mock_enum,
+        mock_port,
+        mock_accel,
+        mock_accel_img,
+        mock_ensure,
+        mock_assemble,
+        mock_engine_cls,
+    ):
+        """Dryrun calls engine.dryrun() instead of engine.exec()."""
+        mock_enum.return_value = [("/path/to/blob", "model.gguf")]
+        mock_engine = MagicMock()
+        mock_engine_cls.return_value = mock_engine
+
+        args = argparse.Namespace(
+            container=True,
+            store="/fake/store",
+            port="8080",
+            dryrun=True,
+            name=None,
+            image="test-image",
+            runtime="llama.cpp",
+            subcommand="serve",
+        )
+        with patch("ramalama.plugins.runtimes.inference.common.ActiveConfig") as mock_cfg:
+            mock_cfg.return_value.pull = "missing"
+            mock_cfg.return_value.engine = "podman"
+            self.plugin._serve_router(args)
+
+        mock_engine.dryrun.assert_called_once()
+        mock_engine.exec.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# service_ready_check router mode
+# ---------------------------------------------------------------------------
+
+
+class TestServiceReadyCheckRouterMode:
+    """Tests for LlamaCppPlugin.service_ready_check in router mode."""
+
+    def setup_method(self):
+        self.plugin = LlamaCppPlugin()
+
+    def test_router_mode_ready_with_any_model(self):
+        """In router mode (no MODEL), any loaded model means the server is ready."""
+        conn = MagicMock()
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.read.return_value = json.dumps({"models": [{"name": "some-model"}]}).encode()
+        conn.getresponse.return_value = mock_response
+
+        args = argparse.Namespace()
+        # No MODEL attribute — simulates router mode
+        result = self.plugin.service_ready_check(conn, args)
+        assert result is True
+
+    def test_router_mode_not_ready_on_http_error(self):
+        """In router mode, a non-200 /health status means the server is not ready."""
+        conn = MagicMock()
+        mock_response = MagicMock()
+        mock_response.status = 503
+        mock_response.reason = "Service Unavailable"
+        mock_response.read.return_value = b""
+        conn.getresponse.return_value = mock_response
+
+        args = argparse.Namespace()
+        result = self.plugin.service_ready_check(conn, args)
+        assert result is False
+
+
+# ---------------------------------------------------------------------------
+# Subcommand arg registration for router mode
+# ---------------------------------------------------------------------------
+
+
+class TestRouterModeSubcommandArgs:
+    """Test that serve subparser has the right args for multi-model router mode."""
+
+    def _make_parser(self):
+        from ramalama.cli import ArgumentParserWithDefaults
+
+        return ArgumentParserWithDefaults()
+
+    def _subparser_option_strings(self, parser, subcommand):
+        name_map = next(a for a in parser._actions if hasattr(a, "_name_parser_map"))._name_parser_map
+        subparser = name_map[subcommand]
+        return {opt for action in subparser._actions for opt in action.option_strings}
+
+    def test_llama_cpp_serve_has_models_max(self, monkeypatch):
+        from ramalama.config import ActiveConfig
+
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        parser = self._make_parser()
+        configure_subcommands(parser)
+        opts = self._subparser_option_strings(parser, "serve")
+        assert "--models-max" in opts
+
+    def test_llama_cpp_serve_has_backend(self, monkeypatch):
+        from ramalama.config import ActiveConfig
+
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        parser = self._make_parser()
+        configure_subcommands(parser)
+        opts = self._subparser_option_strings(parser, "serve")
+        assert "--backend" in opts
+
+    def test_llama_cpp_serve_model_is_optional(self, monkeypatch):
+        """MODEL positional arg is optional for serve (nargs='?')."""
+        from ramalama.config import ActiveConfig
+
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        parser = self._make_parser()
+        configure_subcommands(parser)
+        name_map = next(a for a in parser._actions if hasattr(a, "_name_parser_map"))._name_parser_map
+        serve_parser = name_map["serve"]
+        model_action = next(a for a in serve_parser._actions if "MODEL" in getattr(a, "dest", ""))
+        assert model_action.nargs == "?"
+
+    def test_vllm_serve_no_models_max(self, monkeypatch):
+        from ramalama.config import ActiveConfig
+
+        monkeypatch.setattr(ActiveConfig(), "runtime", "vllm")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
+        parser = self._make_parser()
+        configure_subcommands(parser)
+        opts = self._subparser_option_strings(parser, "serve")
+        assert "--models-max" not in opts
+
+
+# ---------------------------------------------------------------------------
+# backend_to_gpu_env and get_gpu_backend_preferences
+# ---------------------------------------------------------------------------
+
+
+class TestBackendHelpers:
+    """Direct tests for backend helper functions."""
+
+    @pytest.mark.parametrize(
+        "backend,expected",
+        [
+            ("vulkan", "GGML_VK_VISIBLE_DEVICES"),
+            ("rocm", "HIP_VISIBLE_DEVICES"),
+            ("cuda", "CUDA_VISIBLE_DEVICES"),
+            ("sycl", "INTEL_VISIBLE_DEVICES"),
+            ("cann", "ASCEND_VISIBLE_DEVICES"),
+            ("musa", "MUSA_VISIBLE_DEVICES"),
+            ("nonexistent", ""),
+        ],
+    )
+    def test_backend_to_gpu_env(self, backend, expected):
+        assert backend_to_gpu_env(backend) == expected
+
+    def test_gpu_backend_preferences_nvidia(self):
+        prefs = get_gpu_backend_preferences("CUDA_VISIBLE_DEVICES")
+        assert prefs == ["cuda"]
+
+    def test_gpu_backend_preferences_amd(self):
+        prefs = get_gpu_backend_preferences("HIP_VISIBLE_DEVICES")
+        assert "vulkan" in prefs
+        assert "rocm" in prefs
+
+    def test_gpu_backend_preferences_unknown(self):
+        prefs = get_gpu_backend_preferences("UNKNOWN_DEVICES")
+        assert prefs == []
