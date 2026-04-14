@@ -107,9 +107,14 @@ def eprint(e, exit_code):
 # Helper Classes and Functions
 
 
+def _bracket_host(host: str) -> str:
+    return f"[{host}]" if ":" in host else host
+
+
 async def request(host: str, port: int, path: str, timeout: int = 10):
+    host_str = _bracket_host(host)
     async with aiohttp.ClientSession(
-        f"http://{host}:{port}",
+        f"http://{host_str}:{port}",
         timeout=aiohttp.ClientTimeout(total=timeout),
     ) as session:
         async with session.get(path) as resp:
@@ -121,6 +126,7 @@ async def wait_for_llama_server(host: str, port: int, total_timeout: int = 120, 
     end_time = time.monotonic() + total_timeout
     last_print = 0
     request_timeout = 1  # Timeout per individual HTTP request
+    host_str = _bracket_host(host)
 
     while time.monotonic() < end_time:
         try:
@@ -130,18 +136,18 @@ async def wait_for_llama_server(host: str, port: int, total_timeout: int = 120, 
 
             now = time.monotonic()
             if now - last_print >= print_interval:
-                print(f"Server at {host}:{port} is running but not ready (status={resp.status}), retrying...")
+                print(f"Server at {host_str}:{port} is running but not ready (status={resp.status}), retrying...")
                 last_print = now
 
         except Exception as e:
             now = time.monotonic()
             if now - last_print >= print_interval:
-                print(f"Error connecting to {host}:{port}: {e}, retrying...")
+                print(f"Error connecting to {host_str}:{port}: {e}, retrying...")
                 last_print = now
 
         await asyncio.sleep(1)
 
-    raise TimeoutError(f"LLaMA server at {host}:{port} did not become ready after {total_timeout} seconds.")
+    raise TimeoutError(f"LLaMA server at {host_str}:{port} did not become ready after {total_timeout} seconds.")
 
 
 class qdrant:
@@ -212,9 +218,10 @@ class OpenAICompatibleRagService:
             # setup qdrant
             self.vectordb = qdrant(vector_path)
 
+        model_host_str = _bracket_host(model_host)
         self.llm = openai.AsyncOpenAI(
             api_key="your-api-key",
-            base_url=f"http://{model_host}:{model_port}",
+            base_url=f"http://{model_host_str}:{model_port}",
             http_client=openai.DefaultAioHttpClient(),
         )
 
@@ -503,7 +510,7 @@ serve_parser = subparsers.add_parser('serve', help='Run RAG as OpenAI-compatible
 serve_parser.add_argument("vector_path", type=str, help="Path to the vector database")
 serve_parser.add_argument("--model-host", default="localhost", help="The hostname where the model is being served")
 serve_parser.add_argument("--model-port", default=8080, type=int, help="The port where the model is being served")
-serve_parser.add_argument("--host", default="0.0.0.0", help="Host to bind server")
+serve_parser.add_argument("--host", default="::", help="Host to bind server")
 serve_parser.add_argument("--port", default=8081, type=int, help="Port for RAG API")
 serve_parser.set_defaults(func=serve_rag_api)
 

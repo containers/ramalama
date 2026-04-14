@@ -141,9 +141,10 @@ Environment variables to be added to the environment used when running in a cont
 The quantization mode used when creating OCI formatted AI Models.
 Available options: Q2_K, Q3_K_S, Q3_K_M, Q3_K_L, Q4_0, Q4_K_S, Q4_K_M, Q5_0, Q5_K_S, Q5_K_M, Q6_K, Q8_0.
 
-**host**="0.0.0.0"
+**host**="::" | "0.0.0.0"
 
 IP address for llama.cpp to listen on.
+Defaults to "::" (dual-stack) on systems with IPv6 support, "0.0.0.0" (IPv4-only) otherwise.
 
 **image**="quay.io/ramalama/ramalama:latest"
 

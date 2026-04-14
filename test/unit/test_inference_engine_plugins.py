@@ -31,7 +31,7 @@ def make_ns(
     cache_reuse=256,
     max_tokens=0,
     port="8080",
-    host="0.0.0.0",
+    host="::",
     logfile=None,
     debug=False,
     webui="on",
@@ -147,7 +147,7 @@ class TestLlamaCppPlugin:
         expected_entry = "--server" if container_image_is_ggml else "llama-server"
         assert cmd[0] == expected_entry
         assert "--host" in cmd
-        assert cmd[cmd.index("--host") + 1] == "0.0.0.0"
+        assert cmd[cmd.index("--host") + 1] == "::"
         assert "--port" in cmd
         assert cmd[cmd.index("--port") + 1] == "8080"
         assert "--model" in cmd
@@ -622,7 +622,7 @@ class TestMlxPlugin:
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
-        ns = make_ns(temp=0.7, port="8080", host="0.0.0.0", MODEL="ollama://mymodel")
+        ns = make_ns(temp=0.7, port="8080", host="::", MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert cmd[0] == "mlx_lm.server"

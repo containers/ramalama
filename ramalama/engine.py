@@ -196,8 +196,13 @@ class Engine(BaseEngine):
 
         # Convert port to string for processing
         port_str = str(port)
-        host = getattr(self.args, "host", "0.0.0.0")
-        host = f"{host}:" if host != "0.0.0.0" else ""
+        host = getattr(self.args, "host", "::").strip("[]")
+        if host == "::":
+            host = ""
+        elif ":" in host:
+            host = f"[{host}]:"
+        else:
+            host = f"{host}:"
         if ":" in port_str:
             self.add_args("-p", f"{host}{port_str}")
         else:

@@ -66,6 +66,17 @@ def _get_default_config_dirs() -> list[Path]:
 DEFAULT_CONFIG_DIRS = _get_default_config_dirs()
 
 
+def get_default_host() -> str:
+    """Return :: on dual-stack/IPv6 systems, 0.0.0.0 on IPv4-only."""
+    import socket
+
+    try:
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
+            return "::"
+    except OSError:
+        return "0.0.0.0"
+
+
 def get_default_engine() -> SUPPORTED_ENGINES | None:
     """Determine the container manager to use based on environment and platform."""
     if os.path.exists("/run/.toolboxenv"):
@@ -169,7 +180,7 @@ class BaseConfig:
     engine: SUPPORTED_ENGINES | None = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
-    host: str = "0.0.0.0"
+    host: str = field(default_factory=get_default_host)
     http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
     image: str = None  # type: ignore
     images: dict[str, str] = field(default_factory=dict)

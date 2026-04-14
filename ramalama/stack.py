@@ -22,7 +22,7 @@ class Stack:
     def __init__(self, args):
         self.args = args
         self.name = getattr(args, "name", None) or genname()
-        self.host = "0.0.0.0"
+        self.host = "::"
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
         self.model_port = "8080"

@@ -194,7 +194,7 @@ def test_rag_error_when_file_is_missing():
     "model, params, expected, expected_regex",
     [
         pytest.param(
-            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*llama-server --host [\w\.]+ --port 8081",
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*llama-server --host [\w\.:]+ --port 8081",
             id="check llama-server"
         ),
         pytest.param(
