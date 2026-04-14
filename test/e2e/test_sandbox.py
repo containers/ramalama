@@ -169,6 +169,23 @@ def test_sandbox_dryrun_openclaw_custom_image():
     assert "myopenclaw:v2" in result
 
 
+@pytest.mark.e2e
+@skip_if_no_container
+def test_sandbox_dryrun_openclaw_no_url_flag():
+    """OpenClaw client command should rely on config gateway.port instead of --url."""
+    result = check_output(_dryrun_cmd("openclaw") + ["hello"])
+    assert "openclaw agent" in result
+    assert "--url" not in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_sandbox_dryrun_openclaw_debug_verbose():
+    """OpenClaw debug mode should pass --verbose to the agent command."""
+    result = check_output(_dryrun_cmd("openclaw") + ["--debug", "hello"])
+    assert "openclaw agent --verbose" in result
+
+
 # --- Live run tests ---
 
 

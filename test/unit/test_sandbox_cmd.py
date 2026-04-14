@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from ramalama.cli import parse_args_from_cmd
-from ramalama.sandbox import Goose, OpenClaw, OpenCode
+from ramalama.sandbox import Agent, Goose, OpenClaw, OpenCode
 
 TEST_MODEL = "qwen3:4b"
 
@@ -375,6 +375,20 @@ def test_openclaw_config_file():
         # Validate gateway configuration
         assert config["gateway"]["mode"] == "local"
         assert config["gateway"]["bind"] == "loopback"
+        assert config["gateway"]["port"] == 18789
+    finally:
+        openclaw.cleanup()
+
+
+def test_openclaw_config_workspace_when_workdir_set():
+    """OpenClaw should set agents.defaults.workspace when workdir is provided."""
+    args = _make_openclaw_args()
+    args.workdir = "/tmp/myproject"
+    openclaw = OpenClaw(args, "test-model")
+    try:
+        with open(openclaw.config_file_path) as f:
+            config = json.load(f)
+        assert config["agents"]["defaults"]["workspace"] == "/work"
     finally:
         openclaw.cleanup()
 
@@ -397,14 +411,7 @@ def test_openclaw_with_tty(monkeypatch):
     args = _make_openclaw_args()
     openclaw = OpenClaw(args, "test-model")
     try:
-        assert openclaw.engine.exec_args[-6:] == [
-            "openclaw",
-            "tui",
-            "--url",
-            "ws://localhost:18789",
-            "--session",
-            "main",
-        ]
+        assert openclaw.engine.exec_args[-4:] == ["openclaw", "tui", "--session", "main"]
     finally:
         openclaw.cleanup()
 
@@ -417,7 +424,7 @@ def test_openclaw_no_tty(monkeypatch):
     try:
         assert openclaw.engine.exec_args[-2:] == [
             "-c",
-            'msg="$(cat)"; exec openclaw agent --url ws://localhost:18789 --session-id ramalama --message "$msg"',
+            'msg="$(cat)"; exec openclaw agent --session-id ramalama --message "$msg"',
         ]
     finally:
         openclaw.cleanup()
@@ -429,11 +436,9 @@ def test_openclaw_args():
     args.ARGS = ["hello", "ramalama"]
     openclaw = OpenClaw(args, "test-model")
     try:
-        assert openclaw.engine.exec_args[-8:] == [
+        assert openclaw.engine.exec_args[-6:] == [
             "openclaw",
             "agent",
-            "--url",
-            "ws://localhost:18789",
             "--session-id",
             "ramalama",
             "--message",
@@ -453,9 +458,6 @@ def test_openclaw_gateway_engine():
         assert "-d" in gw
         # Gateway should NOT be interactive
         assert "-i" not in gw
-        # Gateway should expose the port
-        assert "--expose" in gw
-        assert "18789" in gw
         # Gateway should share network with model server
         assert "--network=container:ramalama_model_abc" in gw
         # Gateway command should be openclaw gateway run
@@ -492,6 +494,74 @@ def test_openclaw_debug_log_level():
         assert "OPENCLAW_LOG_LEVEL=debug" in openclaw.gateway_engine.exec_args
     finally:
         openclaw.cleanup()
+
+
+def test_openclaw_debug_verbose_in_agent_args():
+    """OpenClaw should pass --verbose to agent command when debug is True."""
+    args = _make_openclaw_args()
+    args.debug = True
+    args.ARGS = ["hello"]
+    openclaw = OpenClaw(args, "test-model")
+    try:
+        cmd = openclaw.engine.exec_args
+        assert "openclaw" in cmd
+        assert "agent" in cmd
+        assert "--verbose" in cmd
+    finally:
+        openclaw.cleanup()
+
+
+def test_openclaw_debug_verbose_in_stdin_path(monkeypatch):
+    """OpenClaw should include --verbose in stdin agent command when debug is True."""
+    monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: False)
+    args = _make_openclaw_args()
+    args.debug = True
+    openclaw = OpenClaw(args, "test-model")
+    try:
+        assert openclaw.engine.exec_args[-2:] == [
+            "-c",
+            'msg="$(cat)"; exec openclaw agent --verbose --session-id ramalama --message "$msg"',
+        ]
+    finally:
+        openclaw.cleanup()
+
+
+def test_openclaw_run_handles_start_wait_and_cleanup(monkeypatch):
+    """OpenClaw.run should start gateway, wait for readiness, run client, and cleanup in finally."""
+    calls = []
+
+    def _record_run_cmd(cmd, stdout=None, stdin=None):
+        calls.append(cmd)
+
+    monkeypatch.setattr("ramalama.sandbox.run_cmd", _record_run_cmd)
+    monkeypatch.setattr(OpenClaw, "_wait_for_gateway_ready", lambda self, timeout=30: calls.append(["wait"]))
+
+    args = _make_openclaw_args()
+    args.ARGS = ["hello"]
+    openclaw = OpenClaw(args, "test-model")
+    config_path = openclaw.config_file_path
+    openclaw.run()
+
+    assert calls[0] == openclaw.gateway_engine.exec_args
+    assert calls[1] == ["wait"]
+    assert calls[2] == openclaw.engine.exec_args
+    assert not os.path.exists(config_path)
+
+
+def test_openclaw_run_cleans_up_on_failure(monkeypatch):
+    """OpenClaw.run should cleanup even if client launch fails."""
+    cleaned = {"value": False}
+
+    monkeypatch.setattr(OpenClaw, "start_gateway", lambda self: None)
+    monkeypatch.setattr(OpenClaw, "_wait_for_gateway_ready", lambda self, timeout=30: None)
+    monkeypatch.setattr(Agent, "run", lambda self: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(OpenClaw, "cleanup", lambda self: cleaned.__setitem__("value", True))
+
+    args = _make_openclaw_args()
+    openclaw = OpenClaw(args, "test-model")
+    with pytest.raises(RuntimeError, match="boom"):
+        openclaw.run()
+    assert cleaned["value"]
 
 
 def test_openclaw_no_debug_log_level():

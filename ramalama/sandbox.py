@@ -6,12 +6,13 @@ import os
 import platform
 import tempfile
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import run_cmd
 from ramalama.config import ActiveConfig
-from ramalama.engine import Engine, stop_container
+from ramalama.engine import Engine, inspect, logs, stop_container, wait_for_healthy
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
@@ -102,13 +103,19 @@ class SandboxEngineArgsType(BaseEngineArgsType):
 class SandboxEngine(Engine):
     """Engine for running sandbox containers."""
 
-    def __init__(self, args: SandboxEngineArgsType) -> None:
+    def __init__(self, args: SandboxEngineArgsType, *, background: bool = False) -> None:
+        self.background = background
         super().__init__(args)
 
     def base_args(self) -> None:
-        self.add_args("run", "--rm", "-i")
+        if self.background:
+            self.add_args("run", "--rm", "-d")
+        else:
+            self.add_args("run", "--rm", "-i")
 
     def is_tty_cmd(self) -> bool:
+        if self.background:
+            return False
         return getattr(self.args, "subcommand", "") == "sandbox"
 
     def add_network(self) -> None:
@@ -144,9 +151,6 @@ class Agent:
     def __init__(self, args: SandboxEngineArgsType, model_name: str):
         self.engine = SandboxEngine(args)
         self.model_name = model_name
-
-    def start_gateway(self) -> None:
-        """Start any gateway containers.  No-op for most agents."""
 
     def cleanup(self) -> None:
         """Clean up after the agent exits.  No-op for most agents."""
@@ -254,19 +258,16 @@ class OpenClaw(Agent):
 
     def __init__(self, args: OpenClawArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
+        self.args = args
         self.config_file_path = self._write_config(args)
         self._gateway_name = f"openclaw-gateway-{args.name}"  # type: ignore[attr-defined]
 
         #  Gateway Engine (detached background container)
-        self.gateway_engine = SandboxEngine(args)
-        # Gateway runs detached, not interactive
-        if "-i" in self.gateway_engine.exec_args:
-            self.gateway_engine.exec_args.remove("-i")
-        self.gateway_engine.add_args("-d")
-        self.gateway_engine.add_args("--expose", str(args.openclaw_port))
+        self.gateway_engine = SandboxEngine(args, background=True)
         self.gateway_engine.add_name(self._gateway_name)
         self._add_env_to_engine(self.gateway_engine, args)
         self._add_state_dir_to_engine(self.gateway_engine, args)
+        self.gateway_engine.add_workdir(args)
         self.gateway_engine.add_volume(self.config_file_path, "/etc/openclaw/ramalama.json")
         self.gateway_engine.add_args(args.openclaw_image)
         self.gateway_engine.add_args(
@@ -281,26 +282,25 @@ class OpenClaw(Agent):
         self.engine.add_args(args.openclaw_image)
         if args.ARGS:
             message = " ".join(args.ARGS)
+            agent_verbose_args = ["--verbose"] if args.debug else []
             self.engine.add_args(
                 "openclaw",
                 "agent",
-                "--url",
-                f"ws://localhost:{args.openclaw_port}",
+                *agent_verbose_args,
                 "--session-id",
                 "ramalama",
                 "--message",
                 message,
             )
         elif self.engine.use_tty():
-            self.engine.add_args(
-                "openclaw", "tui", "--url", f"ws://localhost:{args.openclaw_port}", "--session", "main"
-            )
+            self.engine.add_args("openclaw", "tui", "--session", "main")
         else:
+            verbose_flag = " --verbose" if args.debug else ""
             self.engine.add_args(
                 "bash",
                 "-c",
-                f'msg="$(cat)"; exec openclaw agent --url ws://localhost:{args.openclaw_port}'
-                ' --session-id ramalama --message "$msg"',
+                'msg="$(cat)"; exec openclaw agent'
+                f'{verbose_flag} --session-id ramalama --message "$msg"',
             )
 
     def _write_config(self, args: OpenClawArgsType) -> str:
@@ -324,8 +324,11 @@ class OpenClaw(Agent):
             "gateway": {
                 "mode": "local",
                 "bind": "loopback",
+                "port": args.openclaw_port,
             },
         }
+        if args.workdir:
+            config["agents"]["defaults"]["workspace"] = "/work"
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         json.dump(config, tmp)
         tmp.close()
@@ -333,7 +336,34 @@ class OpenClaw(Agent):
 
     def start_gateway(self) -> None:
         """Start the gateway container in detached mode."""
-        run_cmd(self.gateway_engine.exec_args, stdout=None)
+        run_cmd(self.gateway_engine.exec_args, stdout=None, stdin=None)
+
+    def _gateway_ready(self) -> bool:
+        """Check whether the OpenClaw gateway container is running and listening on the configured port."""
+        try:
+            running = inspect(self.engine.args, self._gateway_name, format="{{ .State.Running }}", ignore_stderr=True)
+            if running.lower() != "true":
+                return False
+
+            gateway_logs = logs(self.engine.args, self._gateway_name, ignore_stderr=True)
+            port = str(self.args.openclaw_port)
+            return any(token in gateway_logs for token in (f"127.0.0.1:{port}", f"localhost:{port}", f":{port}"))
+        except Exception:
+            return False
+
+    def _wait_for_gateway_ready(self, timeout: int = 30) -> None:
+        gateway_args = SimpleNamespace(**vars(self.engine.args))
+        gateway_args.name = self._gateway_name
+        wait_for_healthy(gateway_args, lambda _args: self._gateway_ready(), timeout=timeout)
+
+    def run(self) -> None:
+        """Start gateway, wait for it to become ready, then run the OpenClaw client."""
+        try:
+            self.start_gateway()
+            self._wait_for_gateway_ready()
+            super().run()
+        finally:
+            self.cleanup()
 
     def cleanup(self) -> None:
         """Remove temporary config file and stop gateway container."""
@@ -401,18 +431,18 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
         if hasattr(agent, "gateway_engine"):
             agent.gateway_engine.dryrun()
         agent.engine.dryrun()
+        if isinstance(agent, OpenClaw):
+            agent.cleanup()
         return
 
     try:
         # Wait for model server to be healthy
         model.wait_for_healthy(args)  # type: ignore[union-attr]
 
-        # Start gateway if the agent uses one (e.g. OpenClaw)
-        agent.start_gateway()
-
         # Launch agent
         agent.run()
     finally:
-        agent.cleanup()
+        if not isinstance(agent, OpenClaw):
+            agent.cleanup()
         args.ignore = True  # type: ignore[attr-defined]
         stop_container(args, args.name, remove=True)  # type: ignore[attr-defined]
