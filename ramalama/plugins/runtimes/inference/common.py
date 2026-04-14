@@ -91,14 +91,6 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             help="arguments to add to runtime invocation",
             completer=suppressCompleter,
         )
-        parser.add_argument(
-            "--temp",
-            dest="temp",
-            type=float,
-            default=config.temp,
-            help="temperature of the response from the AI model",
-            completer=suppressCompleter,
-        )
         if command == "serve":
             parser.add_argument(
                 "--host",

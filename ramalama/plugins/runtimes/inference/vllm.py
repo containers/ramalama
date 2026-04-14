@@ -59,10 +59,6 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         if seed is not None:
             cmd += ["--seed", str(seed)]
 
-        temp = getattr(args, 'temp', None)
-        if temp is not None:
-            cmd += ["--temperature", str(temp)]
-
         runtime_args = getattr(args, 'runtime_args', None)
         if runtime_args:
             cmd.extend(runtime_args)
