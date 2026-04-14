@@ -23,7 +23,7 @@ def make_cli_args(**kwargs) -> argparse.Namespace:
         "cache_reuse": None,
         "max_tokens": 0,
         "port": "8080",
-        "host": "0.0.0.0",
+        "host": "::",
         "logfile": None,
         "debug": False,
         "webui": "on",

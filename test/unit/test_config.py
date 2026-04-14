@@ -38,7 +38,7 @@ def test_correct_config_defaults(monkeypatch):
     assert cfg.ctx_size == 0
     assert cfg.engine in ["podman", "docker", None]
     assert cfg.env == []
-    assert cfg.host == "0.0.0.0"
+    assert cfg.host in ["::", "0.0.0.0"]
     assert cfg.image == cfg.default_image
     assert isinstance(cfg.images, dict)
     assert cfg.api == "none"

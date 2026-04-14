@@ -51,8 +51,8 @@ class LlamaCppCommands:
 
         model = New(args.MODEL, args) if hasattr(args, 'MODEL') else None
 
-        # --host: use 0.0.0.0 in container, or the configured host otherwise
-        host = '0.0.0.0' if is_container else getattr(args, 'host', None)
+        # --host: use :: in container, or the configured host otherwise
+        host = '::' if is_container else getattr(args, 'host', None)
         if host is not None:
             cmd += ["--host", str(host)]
 
