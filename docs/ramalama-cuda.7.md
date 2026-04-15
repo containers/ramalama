@@ -12,61 +12,60 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
 
 * Install the NVIDIA Container Toolkit packages
 
-   ```bash
-   sudo dnf install -y nvidia-container-toolkit
-   ```
+```bash
+sudo dnf install -y nvidia-container-toolkit
+```
 
-  > **Note:** The NVIDIA Container Toolkit is required on the host for running CUDA in containers.
-  > **Note:** If the above installation is not working for you and you are running Fedora, try removing it and using the [COPR](https://copr.fedorainfracloud.org/coprs/g/ai-ml/nvidia-container-toolkit/).
+> **Note:** The NVIDIA Container Toolkit is required on the host for running CUDA in containers.
+> **Note:** If the above installation is not working for you and you are running Fedora, try removing it and using the [COPR](https://copr.fedorainfracloud.org/coprs/g/ai-ml/nvidia-container-toolkit/).
 
 ### Installation using APT (For Debian based distros like Ubuntu)
 
 * Configure the Production Repository
 
-   ```bash
-   curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
-   sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-
-   curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-   sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-   sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-   ```
+```bash
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+```
 
 * Update the packages list from the repository
 
-   ```bash
-   sudo apt-get update
-   ```
+```bash
+sudo apt-get update
+```
 
 * Install the NVIDIA Container Toolkit packages
 
-   ```bash
-   sudo apt-get install -y nvidia-container-toolkit
-   ```
+```bash
+sudo apt-get install -y nvidia-container-toolkit
+```
 
-  > **Note:** The NVIDIA Container Toolkit is required for WSL to have CUDA resources while running a container.
+> **Note:** The NVIDIA Container Toolkit is required for WSL to have CUDA resources while running a container.
 
 ## Setting Up CUDA Support
 
-   For additional information see:  [Support for Container Device Interface](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html)
+For additional information see:  [Support for Container Device Interface](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html)
 
-# Generate the CDI specification file
+### Generate the CDI specification file
 
-   ```bash
-   sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
-   ```
+```bash
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+```
 
-# Check the names of the generated devices
+### Check the names of the generated devices
 
-   Open and edit the NVIDIA container runtime configuration:
+List the available CDI devices:
 
-   ```bash
-   nvidia-ctk cdi list
-   INFO[0000] Found 1 CDI devices
-   nvidia.com/gpu=all
-   ```
+```bash
+nvidia-ctk cdi list
+INFO[0000] Found 1 CDI devices
+nvidia.com/gpu=all
+```
 
-   > **Note:** Generate a new CDI specification after any configuration change most notably when the driver is upgraded!
+> **Note:** Generate a new CDI specification after any configuration change most notably when the driver is upgraded!
 
 ## Testing the Setup
 
@@ -74,59 +73,61 @@ Follow the installation instructions provided in the [NVIDIA Container Toolkit i
 
 ---
 
-# **Test the Installation**
+### Test the Installation
 
-   Run the following command to verify setup:
+Run the following command to verify setup:
 
-   ```bash
-   podman run --rm --device=nvidia.com/gpu=all fedora nvidia-smi
-   ```
+```bash
+podman run --rm --device=nvidia.com/gpu=all fedora nvidia-smi
+```
 
-# **Expected Output**
+### Expected Output
 
-   Verify everything is configured correctly, with output similar to this:
+Verify everything is configured correctly, with output similar to this:
 
-   ```text
-   Thu Dec  5 19:58:40 2024
-   +-----------------------------------------------------------------------------------------+
-   | NVIDIA-SMI 565.72                 Driver Version: 566.14         CUDA Version: 12.7     |
-   |-----------------------------------------+------------------------+----------------------+
-   | GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-   | Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-   |                                         |                        |               MIG M. |
-   |=========================================+========================+======================|
-   |   0  NVIDIA GeForce RTX 3080        On  |   00000000:09:00.0  On |                  N/A |
-   | 34%   24C    P5             31W /  380W |     867MiB /  10240MiB |      7%      Default |
-   |                                         |                        |                  N/A |
-   +-----------------------------------------+------------------------+----------------------+
+```text
 
-   +-----------------------------------------------------------------------------------------+
-   | Processes:                                                                              |
-   |  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
-   |        ID   ID                                                               Usage      |
-   |=========================================================================================|
-   |    0   N/A  N/A        35      G   /Xwayland                                   N/A      |
-   |    0   N/A  N/A        35      G   /Xwayland                                   N/A      |
-   +-----------------------------------------------------------------------------------------+
-   ```
+Thu Dec  5 19:58:40 2024
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 565.72                 Driver Version: 566.14         CUDA Version: 12.7     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 3080        On  |   00000000:09:00.0  On |                  N/A |
+| 34%   24C    P5             31W /  380W |     867MiB /  10240MiB |      7%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
 
-   > **NOTE:** On systems that have SELinux enabled, it may be necessary to turn on the `container_use_devices` boolean in order to run the `nvidia-smi` command successfully from a container.
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A        35      G   /Xwayland                                   N/A      |
+|    0   N/A  N/A        35      G   /Xwayland                                   N/A      |
++-----------------------------------------------------------------------------------------+
 
-   To check the status of the boolean, run the following:
+```
 
-   ```bash
-   getsebool container_use_devices
-   ```
+> **NOTE:** On systems that have SELinux enabled, it may be necessary to turn on the `container_use_devices` boolean in order to run the `nvidia-smi` command successfully from a container.
 
-   If the result of the command shows that the boolean is `off`, run the following to turn the boolean on:
+To check the status of the boolean, run the following:
 
-   ```bash
-   sudo setsebool -P container_use_devices 1
-   ```
+```bash
+getsebool container_use_devices
+```
+
+If the result of the command shows that the boolean is `off`, run the following to turn the boolean on:
+
+```bash
+sudo setsebool -P container_use_devices 1
+```
 
 ### CUDA_VISIBLE_DEVICES
 
-RamaLama respects the `CUDA_VISIBLE_DEVICES` environment variable if it's already set in your environment. If not set, RamaLama will default to using all the GPU detected by nvidia-smi.
+RamaLama respects the `CUDA_VISIBLE_DEVICES` environment variable if it's already set in your environment. If not set, RamaLama will default to using all the GPUs detected by nvidia-smi.
 
 You can specify which GPU devices should be visible to RamaLama by setting this variable before running RamaLama commands:
 
@@ -137,10 +138,10 @@ ramalama run granite
 
 This is particularly useful in multi-GPU systems where you want to dedicate specific GPUs to different workloads.
 
-If the `CUDA_VISIBLE_DEVICES` environment variable is set to an empty string, RamaLama will default to using the CPU.
+If `CUDA_VISIBLE_DEVICES` is set to an empty string, RamaLama treats it as unset and follows the default GPU-selection behavior.
 
 ```bash
-export CUDA_VISIBLE_DEVICES=""  # Defaults to CPU
+export CUDA_VISIBLE_DEVICES=""  # Treated as unset
 ramalama run granite
 ```
 
@@ -158,14 +159,17 @@ On some CUDA software updates, RamaLama stops working complaining about missing 
 
 ```bash
 ramalama run granite
-Error: crun: cannot stat `/lib64/libEGL_nvidia.so.565.77`: No such file or directory: OCI runtime attempted to invoke a command that was not found
 ```
+
+Returns this error:
+
+crun: cannot stat `/lib64/libEGL_nvidia.so.565.77`: No such file or directory: OCI runtime attempted to invoke a command that was not found
 
 Because the CUDA version is updated, the CDI specification file needs to be recreated.
 
-   ```bash
-   sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
-   ```
+```bash
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+```
 
 ## SEE ALSO
 

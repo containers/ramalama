@@ -216,12 +216,14 @@ def convert_markdown_to_mdx(content, filename, current_output_path, output_map):
         block_content = match.group(1) if match.group(1) else ""
         # Remove any internal code block markers
         block_content = re.sub(r'```[a-zA-Z0-9_+-]*\s*\n?', '', block_content)
+        # Strip leading/trailing whitespace and ensure the block is flush-left
+        block_content = block_content.strip()
         # Detect language if not explicitly specified
         if match.group(0).startswith('```') and len(match.group(0).split('\n')[0]) > 3:
             lang = match.group(0).split('\n')[0].replace('```', '')
         else:
             lang = detect_code_language(block_content)
-        return f'```{lang}\n{block_content.strip()}\n```'
+        return f"```{lang}\n{block_content}\n```"
 
     # Process all code blocks
     content = re.sub(r'```(?:[a-zA-Z0-9_+-]*)\n((?:(?!```)[\s\S])*?)```', process_code_block, content)
