@@ -1,13 +1,7 @@
----
-title: Configuration File
-sidebar_label: ramalama.conf
-description: Configuration file documentation for RamaLama AI tool
-keywords: [ramalama, configuration, config, ramalama.conf, TOML]
----
-
-# Configuration File
+% ramalama.conf 5
 
 ## Overview
+
 
 The `ramalama.conf` file specifies default configuration options and command-line flags for RamaLama. RamaLama reads all configuration files if they exist and uses them to modify the default behavior when running AI models on the host system.
 
@@ -40,9 +34,7 @@ These configuration files are specific to individual users:
 | `$HOME/.config/ramalama/ramalama.conf` | Fallback if `$XDG_CONFIG_HOME` not set |
 | `$HOME/.config/ramalama/ramalama.conf.d/*.conf` | Fallback drop-in files |
 
-:::note Configuration Priority
-Fields specified in later configuration files override options from earlier files. Configuration files in `.d` directories are processed in alphanumeric sorted order and must end with `.conf`.
-:::
+Note: Configuration Priority - Fields specified in later configuration files override options from earlier files. Configuration files in `.d` directories are processed in alphanumeric sorted order and must end with `.conf`.
 
 ## Environment Variables
 
@@ -88,9 +80,8 @@ CUDA_VISIBLE_DEVICES = "quay.io/ramalama/cuda"
 
 The `ramalama` table contains settings to configure and manage the container runtime and AI model behavior.
 
-`[[ramalama]]`
+`[ramalama]`
 
----
 
 #### api
 
@@ -111,7 +102,6 @@ Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetr
 api = "llama-stack"
 ```
 
----
 
 #### api_key
 
@@ -129,7 +119,6 @@ OpenAI-compatible API key for hosted provider authentication.
 api_key = "your-api-key-here"
 ```
 
----
 
 #### backend
 
@@ -155,9 +144,7 @@ Specifies the GPU backend to use for inference. This setting affects which conta
 - **`sycl`**: Intel SYCL/oneAPI backend (Intel GPUs only)
 - **`openvino`**: Intel OpenVINO backend (Intel GPUs only); uses `ghcr.io/ggml-org/llama.cpp:full-openvino`
 
-:::warning Platform-Specific Behavior
-On Windows (including WSL2), Vulkan support is limited and depends on system configuration. In such cases, vendor-specific backends (`rocm` for AMD, `sycl` for Intel) may be preferred when using `backend="auto"`.
-:::
+Warning: Platform-Specific Behavior - On Windows (including WSL2), Vulkan support is limited and depends on system configuration. In such cases, vendor-specific backends (`rocm` for AMD, `sycl` for Intel) may be preferred when using `backend="auto"`.
 
 **Example:**
 ```toml
@@ -165,7 +152,6 @@ On Windows (including WSL2), Vulkan support is limited and depends on system con
 backend = "vulkan"
 ```
 
----
 
 #### carimage
 
@@ -183,7 +169,6 @@ OCI model `carimage` used when building and pushing models with `--type=car`.
 carimage = "registry.access.redhat.com/ubi10-micro:latest"
 ```
 
----
 
 #### container
 
@@ -201,7 +186,6 @@ Run RamaLama in the default container.
 container = true
 ```
 
----
 
 #### convert_type
 
@@ -226,7 +210,6 @@ Convert the AI model to the specified OCI object type.
 convert_type = "artifact"
 ```
 
----
 
 #### ctx_size
 
@@ -243,7 +226,6 @@ Size of the prompt context. When set to `0`, the context size is loaded from the
 ctx_size = 4096
 ```
 
----
 
 #### engine
 
@@ -265,7 +247,6 @@ Run RamaLama using the specified container engine.
 engine = "podman"
 ```
 
----
 
 #### env
 
@@ -282,7 +263,6 @@ Environment variables to be added when running within a container engine (Podman
 env = ["LLAMA_ARG_THREADS=10", "CUSTOM_VAR=value"]
 ```
 
----
 
 #### gguf_quantization_mode
 
@@ -307,7 +287,6 @@ The quantization mode used when creating OCI-formatted AI models.
 gguf_quantization_mode = "Q4_K_M"
 ```
 
----
 
 #### host
 
@@ -324,7 +303,6 @@ IP address for llama.cpp to listen on when serving models.
 host = "127.0.0.1"
 ```
 
----
 
 #### image
 
@@ -342,7 +320,6 @@ OCI container image to run with the specified AI model.
 image = "quay.io/ramalama/ramalama:latest"
 ```
 
----
 
 #### images
 
@@ -356,7 +333,7 @@ User-override entries for runtime-specific container images. Each runtime plugin
 **For llama.cpp runtime**, set GPU environment variable names to override the image for that accelerator:
 
 ```toml
-[[ramalama.images]]
+[ramalama.images]
 HIP_VISIBLE_DEVICES = "quay.io/ramalama/rocm"
 CUDA_VISIBLE_DEVICES = "quay.io/ramalama/cuda"
 ASAHI_VISIBLE_DEVICES = "quay.io/ramalama/asahi"
@@ -368,12 +345,11 @@ MUSA_VISIBLE_DEVICES = "quay.io/ramalama/musa"
 **For vllm runtime**, use `VLLM` to override the image regardless of GPU, or `VLLM_<GPU_ENV_VAR>` to override for a specific accelerator:
 
 ```toml
-[[ramalama.images]]
+[ramalama.images]
 VLLM = "registry.redhat.io/rhelai1/ramalama-vllm"
 VLLM_CUDA_VISIBLE_DEVICES = "docker.io/vllm/vllm-openai"
 ```
 
----
 
 #### keep_groups
 
@@ -390,7 +366,6 @@ Pass `--group-add keep-groups` to Podman when using Podman. In some cases, this 
 keep_groups = true
 ```
 
----
 
 #### log_level
 
@@ -408,9 +383,7 @@ Set the logging level of the RamaLama application.
 - `error`
 - `critical`
 
-:::note
-The `--debug` command-line option overrides this field and forces the system to use debug level.
-:::
+Note: The `--debug` command-line option overrides this field and forces the system to use debug level.
 
 **Example:**
 ```toml
@@ -418,7 +391,6 @@ The `--debug` command-line option overrides this field and forces the system to 
 log_level = "info"
 ```
 
----
 
 #### max_tokens
 
@@ -437,7 +409,6 @@ This parameter is mapped to the appropriate runtime-specific parameter when exec
 max_tokens = 2048
 ```
 
----
 
 #### prefix
 
@@ -463,7 +434,6 @@ Specify the default prefix for chat and run commands. By default, the prefix dep
 prefix = "AI> "
 ```
 
----
 
 #### port
 
@@ -480,7 +450,6 @@ Specify the initial port for a range of 101 ports for services to listen on. If 
 port = "8081"
 ```
 
----
 
 #### pull
 
@@ -504,7 +473,6 @@ Policy for pulling container images from registries.
 pull = "missing"
 ```
 
----
 
 #### rag_format
 
@@ -527,7 +495,6 @@ Specify the default output format for the `ramalama rag` command.
 rag_format = "json"
 ```
 
----
 
 #### rag_image
 
@@ -542,7 +509,6 @@ OCI container image to run with the specified AI model when using RAG content.
 rag_image = "quay.io/ramalama/ramalama-rag"
 ```
 
----
 
 #### rag_images
 
@@ -561,7 +527,6 @@ HIP_VISIBLE_DEVICES = "quay.io/ramalama/rocm-rag"
 INTEL_VISIBLE_DEVICES = "quay.io/ramalama/intel-gpu-rag"
 ```
 
----
 
 #### runtime
 
@@ -583,7 +548,6 @@ Specify the AI runtime to use.
 runtime = "vllm"
 ```
 
----
 
 #### selinux
 
@@ -600,7 +564,6 @@ Enable SELinux container separation enforcement.
 selinux = true
 ```
 
----
 
 #### store
 
@@ -617,7 +580,6 @@ Store AI models in the specified directory.
 store = "/custom/path/to/models"
 ```
 
----
 
 #### summarize_after
 
@@ -638,13 +600,12 @@ Set to `0` to disable.
 summarize_after = 10
 ```
 
----
 
 #### temp
 
 **temp**="0.8"
 
-**Type:** float 
+**Type:** string 
 **Default:** `"0.8"`
 
 Temperature of the response from the AI model.
@@ -663,7 +624,6 @@ According to llama.cpp:
 temp = "0.7"
 ```
 
----
 
 #### transport
 
@@ -686,13 +646,12 @@ Specify the default transport to be used for pulling and pushing AI models.
 transport = "huggingface"
 ```
 
----
 
 ### ramalama.http_client table
 
 HTTP client configuration settings.
 
-`[[ramalama.http_client]]`
+`[ramalama.http_client]`
 
 #### max_retries
 
@@ -709,7 +668,6 @@ The maximum number of times to retry a failed download.
 max_retries = 10
 ```
 
----
 
 #### max_retry_delay
 
@@ -726,13 +684,12 @@ The maximum delay between retry attempts in seconds.
 max_retry_delay = 60
 ```
 
----
 
 ### ramalama.provider table
 
 The `ramalama.provider` table configures hosted API providers that RamaLama can proxy to.
 
-`[[ramalama.provider]]`
+`[ramalama.provider]`
 
 #### openai
 
@@ -745,11 +702,10 @@ Configuration settings for the OpenAI hosted provider.
 
 **Example:**
 ```toml
-[[ramalama.provider]]
-openai = ""
+[ramalama.provider.openai]
+api_key = "your-api-key-here"
 ```
 
----
 
 #### openai.api_key
 
@@ -762,17 +718,16 @@ Provider-specific API key used when invoking OpenAI-hosted transports. Overrides
 
 **Example:**
 ```toml
-[[ramalama.provider.openai]]
+[ramalama.provider.openai]
 api_key = "your-openai-api-key"
 ```
 
----
 
 ### ramalama.benchmarks table
 
 The `ramalama.benchmarks` table contains benchmark-related settings.
 
-`[[ramalama.benchmarks]]`
+`[ramalama.benchmarks]`
 
 #### storage_folder
 
@@ -792,13 +747,12 @@ By default, results are stored in the default model store directory under `bench
 storage_folder = "/custom/benchmark/results"
 ```
 
----
 
 ### ramalama.user table
 
 The `ramalama.user` table contains user preference settings.
 
-`[[ramalama.user]]`
+`[ramalama.user]`
 
 #### no_missing_gpu_prompt
 
@@ -818,7 +772,6 @@ When set to `true`, RamaLama will automatically proceed without GPU support inst
 no_missing_gpu_prompt = true
 ```
 
----
 
 ## Complete Configuration Example
 

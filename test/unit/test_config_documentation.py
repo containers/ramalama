@@ -51,7 +51,7 @@ def get_documented_fields_in_conf():
 
     # Track which section we're in to exclude nested fields under commented subsections
     in_commented_nested_section = False
-    section_pattern = r'^\s*(#?)\s*\[ramalama\.([a-z_]+)\]'
+    section_pattern = r'^\s*(#?)\s*\[ramalama\.([a-z_]+(?:\.[a-z_]+)*)\]'
     main_section_pattern = r'^\s*\[ramalama\]'
     prev_line_blank = False
 
@@ -69,7 +69,8 @@ def get_documented_fields_in_conf():
         if section_match:
             is_commented = section_match.group(1) == '#'
             section_name = section_match.group(2)
-            documented.add(section_name)
+            if '.' not in section_name:
+                documented.add(section_name)
             # Skip fields if it's a commented nested section OR if it's a subsection with its own fields
             in_commented_nested_section = is_commented or (section_name in subsections_with_fields)
             prev_line_blank = current_line_blank
@@ -132,8 +133,8 @@ def get_documented_fields_in_manpage():
 
     # Track which section we're in
     current_section = None
-    main_section_pattern = r'^`\[\[ramalama\]\]`$'
-    section_pattern = r'^`\[\[ramalama\.([a-z_]+)\]\]`'
+    main_section_pattern = r'^`\[{1,2}ramalama\]{1,2}`$'
+    section_pattern = r'^`\[{1,2}ramalama\.([a-z_]+(?:\.[a-z_]+)*)\]{1,2}`'
     in_main_section = False
 
     for line in lines:
@@ -148,7 +149,8 @@ def get_documented_fields_in_manpage():
         if section_match:
             section_name = section_match.group(1)
             current_section = section_name
-            documented.add(section_name)
+            if '.' not in section_name:
+                documented.add(section_name)
             continue
 
         # Reset section when we hit a new top-level heading
