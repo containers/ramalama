@@ -2,7 +2,7 @@
 
 
 def version():
-    return "0.18.0"
+    return "0.19.0"
 
 
 def print_version(args):
