@@ -1,0 +1,64 @@
+% ramalama-bench 1
+
+## NAME
+ramalama\-bench - benchmark specified AI Model
+
+## SYNOPSIS
+**ramalama bench** [*options*] *model* [arg ...]
+
+@@include options/model-transports.md
+
+## OPTIONS
+
+@@option authfile
+
+@@option backend
+
+@@option device
+
+@@option env
+
+@@option format
+
+@@option help
+
+@@option image
+
+@@option keep-groups
+
+@@option name
+
+@@option network
+
+@@option ngl
+
+@@option oci-runtime
+
+@@option privileged
+
+@@option pull
+
+@@option runtime-args
+
+@@option seed
+
+@@option selinux
+
+@@option threads
+
+@@option tls-verify
+
+## DESCRIPTION
+Benchmark specified AI Model.
+
+## EXAMPLES
+
+```
+ramalama bench granite3-moe
+```
+
+## SEE ALSO
+**[ramalama(1)](ramalama.1.md)**
+
+## HISTORY
+Jan 2025, Originally compiled by Eric Curtin <ecurtin@redhat.com>

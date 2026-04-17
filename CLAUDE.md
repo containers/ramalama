@@ -53,6 +53,10 @@ make codespell               # Check spelling
 make docs                    # Build manpages and docsite
 ```
 
+Man page Markdown under `docs/` can be maintained as `*.md.in` templates that pull shared option text from `docs/options/*.md` via `@@option name` and `@@include path` (processed by `hack/markdown-preprocess` before `go-md2man`). Generated `*.md` files listed in `docs/.gitignore` are build artifacts, similar to Podman’s `docs/source/markdown` flow.
+
+The preprocessor refreshes `####>` cross-reference headers in `docs/options/*.md` by default. Set `RAMALAMA_SKIP_OPTION_HEADER_REWRITE=1` when iterating locally if you want to avoid touching those tracked files; run `make -C docs manpages-md` without that variable before committing so headers stay accurate. Missing `@@option` / `@@include` targets fail the build with an explicit error.
+
 ## Architecture
 
 ### Source Structure (`ramalama/`)

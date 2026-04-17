@@ -40,6 +40,14 @@ jobs:
         with:
           python-version: ${{ steps.min-python.outputs.version }}
 
+      # Manpage roff build (make -C docs / make docs) needs go-md2man; Ubuntu
+      # runners do not put cached Go on PATH, so `go install` from install-tools
+      # is unreliable. The distro package is sufficient.
+      - name: Install go-md2man
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y go-md2man
+
       - name: Install dependencies
         run: |
           uv run -- make install-requirements
