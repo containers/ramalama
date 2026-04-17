@@ -293,13 +293,15 @@ def test_run_model_with_prompt(shared_ctx_with_models, test_model):
 @pytest.mark.slow
 def test_run_model_with_prompt_and_attachments(shared_ctx_with_models, test_model):
     import platform
-    import tempfile
+
+    from ramalama.compat import NamedTemporaryFile
 
     ctx = shared_ctx_with_models
 
-    with tempfile.NamedTemporaryFile(suffix=".txt") as temp_file:
-        with open(temp_file.name, "w") as f:
-            f.write("First line\nSecond line\nThird line.")
+    with NamedTemporaryFile(suffix=".txt", delete_on_close=False) as temp_file:
+        temp_file.write("First line\nSecond line\nThird line.")
+        temp_file.close()
+
         run_cmd = ["ramalama", "run", "--temp", "0", "--attach", temp_file.name]
         if platform.system() in ["Darwin", "Windows"]:
             # FIXME: continues rambling on Windows and macOS without --max-token

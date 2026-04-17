@@ -56,7 +56,7 @@ def _handle_attachments(attachments: list[AttachmentPart]) -> list[dict[str, Any
 def _(message: UserMessage) -> dict[str, Any]:
     content: str | list[dict[str, Any]] = message.text or ""
     if message.attachments:
-        content = [{"text": content, "type": "text"}]
+        content = [{"text": content, "type": "text"}] if content else []
         content.extend(_handle_attachments(message.attachments))
     return {**message.metadata, 'content': content, 'role': message.role}
 
@@ -65,7 +65,7 @@ def _(message: UserMessage) -> dict[str, Any]:
 def _(message: AssistantMessage) -> dict[str, Any]:
     content: str | list[dict[str, Any]] = message.text or ""
     if message.attachments:
-        content = [{"text": content, "type": "text"}]
+        content = [{"text": content, "type": "text"}] if content else []
         content.extend(_handle_attachments(message.attachments))
 
     payload = {**message.metadata, 'content': content, 'role': message.role}

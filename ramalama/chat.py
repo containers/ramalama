@@ -153,9 +153,6 @@ class RamaLamaShell(cmd.Cmd):
         operational_args: Optional[ChatOperationalArgs] = None,
         provider: Optional[ChatProvider] = None,
     ):
-        # Reload perror here so we can mock it in tests
-        from ramalama.common import perror
-
         if operational_args is None:
             operational_args = ChatOperationalArgs()
 
@@ -514,6 +511,8 @@ class RamaLamaShell(cmd.Cmd):
         # Handle attachments
         if cmd.startswith("/attach "):
             # capitalization matters for files, so use user_content
+            # TODO: Maybe create a specialize argument parser for this
+            #       that parses similar to how sh and bash parses arguments.
             file = user_content.strip()[8:]
             if not self._add_attachment(file):
                 print(f'The file {file} does not exist or cannot be accessed.')

@@ -6,6 +6,7 @@ import pytest
 
 from ramalama.chat import RamaLamaShell, chat
 from ramalama.chat_utils import ImageURLPart
+from ramalama.compat import NamedTemporaryFile
 
 
 def _text_content(message):
@@ -23,7 +24,7 @@ class TestFileUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             with open(tmp_file.name, "w") as f:
                 f.write("This is test content for chat input")
 
@@ -51,7 +52,7 @@ class TestFileUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             with open(tmp_file.name, "w") as f:
                 f.write("This is test content for chat input")
 
@@ -93,7 +94,7 @@ class TestFileUploadChatIntegration:
 
     @patch('urllib.request.urlopen')
     @patch('urllib.request.Request')
-    @patch('ramalama.common.perror')
+    @patch('ramalama.chat.perror')
     def test_chat_with_directory_upload(self, mock_err, mock_request, mock_urlopen):
         """Test chat functionality with a single file input."""
         # Mock the models endpoint response
@@ -205,7 +206,7 @@ class TestFileUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             with open(tmp_file.name, "w") as f:
                 f.write("")
 
@@ -232,7 +233,7 @@ class TestFileUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             unicode_content = "Hello 世界! 🌍\nUnicode test: éñü\nEmoji: 🚀🎉"
             with open(tmp_file.name, "w") as f:
                 f.write(unicode_content)
@@ -319,7 +320,7 @@ class TestFileUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             with open(tmp_file.name, "w") as f:
                 f.write("File content")
 
@@ -340,7 +341,7 @@ class TestFileUploadChatIntegration:
 
     def test_chat_function_with_rag_and_dryrun(self):
         """Test that chat function works correctly with rag and dryrun."""
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             with open(tmp_file.name, "w") as f:
                 f.write("Test content")
 
@@ -373,9 +374,9 @@ class TestImageUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp_file:
-            with open(tmp_file.name, "wb") as f:
-                f.write(b"fake image data")
+        with NamedTemporaryFile(suffix=".jpg", delete_on_close=False) as tmp_file:
+            tmp_file.write(b"fake image data")
+            tmp_file.close()
 
             mock_args = MagicMock()
             mock_args.rag = tmp_file.name
@@ -403,9 +404,9 @@ class TestImageUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp_file:
-            with open(tmp_file.name, "wb") as f:
-                f.write(b"fake image data")
+        with NamedTemporaryFile(suffix=".jpg", delete_on_close=False) as tmp_file:
+            tmp_file.write(b"fake image data")
+            tmp_file.close()
 
             mock_args = MagicMock()
             mock_args.attachments = [tmp_file.name]
