@@ -36,7 +36,7 @@ def get_documented_fields_in_conf():
     if not conf_path.exists():
         pytest.skip(f"ramalama.conf not found at {conf_path}")
 
-    with open(conf_path) as f:
+    with open(conf_path, encoding="utf-8") as f:
         lines = f.readlines()
 
     # Match commented and uncommented config options like:
@@ -47,11 +47,11 @@ def get_documented_fields_in_conf():
     documented = set()
 
     # Subsections that contain their own field documentation (these fields should not be extracted)
-    subsections_with_fields = {'benchmarks', 'http_client', 'user'}
+    subsections_with_fields = {'benchmarks', 'http_client', 'user', 'provider', 'provider.openai'}
 
     # Track which section we're in to exclude nested fields under commented subsections
     in_commented_nested_section = False
-    section_pattern = r'^\s*(#?)\s*\[ramalama\.([a-z_]+)\]'
+    section_pattern = r'^\s*(#?)\s*\[ramalama\.([a-z_]+(?:\.[a-z_]+)*)\]'
     main_section_pattern = r'^\s*\[ramalama\]'
     prev_line_blank = False
 
@@ -69,7 +69,8 @@ def get_documented_fields_in_conf():
         if section_match:
             is_commented = section_match.group(1) == '#'
             section_name = section_match.group(2)
-            documented.add(section_name)
+            if '.' not in section_name:
+                documented.add(section_name)
             # Skip fields if it's a commented nested section OR if it's a subsection with its own fields
             in_commented_nested_section = is_commented or (section_name in subsections_with_fields)
             prev_line_blank = current_line_blank
@@ -114,7 +115,7 @@ def get_documented_fields_in_manpage():
     if not manpage_path.exists():
         pytest.skip(f"ramalama.conf.5.md not found at {manpage_path}")
 
-    with open(manpage_path) as f:
+    with open(manpage_path, encoding="utf-8") as f:
         lines = f.readlines()
 
     # Match markdown bold options like:
@@ -128,12 +129,12 @@ def get_documented_fields_in_manpage():
     documented = set()
 
     # Subsections that contain their own **field** documentation (these fields should not be extracted)
-    subsections_with_fields = {'http_client', 'user'}
+    subsections_with_fields = {'http_client', 'user', 'benchmarks', 'provider', 'provider.openai'}
 
     # Track which section we're in
     current_section = None
-    main_section_pattern = r'^`\[\[ramalama\]\]`$'
-    section_pattern = r'^`\[\[ramalama\.([a-z_]+)\]\]`'
+    main_section_pattern = r'^`\[{1,2}ramalama\]{1,2}`$'
+    section_pattern = r'^`\[{1,2}ramalama\.([a-z_]+(?:\.[a-z_]+)*)\]{1,2}`'
     in_main_section = False
 
     for line in lines:
@@ -148,7 +149,8 @@ def get_documented_fields_in_manpage():
         if section_match:
             section_name = section_match.group(1)
             current_section = section_name
-            documented.add(section_name)
+            if '.' not in section_name:
+                documented.add(section_name)
             continue
 
         # Reset section when we hit a new top-level heading

@@ -113,6 +113,7 @@ def convert_markdown_to_mdx(content, filename, current_output_path, output_map):
 
     content = '\n'.join(lines)
 
+
     # Remove NAME section (handles both H1 and H2 variants)
     content = re.sub(
         r'^#{1,2}\s+NAME\s*\n(?:.*?)(?=^#{1,6}\s|\Z)',
@@ -239,6 +240,13 @@ def convert_markdown_to_mdx(content, filename, current_output_path, output_map):
     # Clean up extra whitespace
     content = re.sub(r'\n{3,}', '\n\n', content)
     content = content.strip()
+    
+    # Prevent JSX compilation errors on placeholder paths like <default store>/...
+    content = re.sub(
+        r'(\*\*storage_folder\*\*=")<([^>]+)>(/benchmarks")',
+        r'\1`<\2>`\3',
+        content,
+    )
 
     # Create frontmatter
     frontmatter = f"""---
