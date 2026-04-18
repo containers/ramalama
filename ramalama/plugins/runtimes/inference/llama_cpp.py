@@ -130,7 +130,7 @@ _LLAMA_CPP_IMAGES: dict[str, str] = {
     "GGML_VK_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/ramalama"),
     "HIP_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/rocm"),
     "INTEL_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/intel-gpu"),
-    "OPENVINO_VISIBLE_DEVICES": "ghcr.io/ggml-org/llama.cpp:full-openvino",
+    "OPENVINO_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/openvino"),
     "MUSA_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/musa"),
 }
 

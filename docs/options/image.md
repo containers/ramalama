@@ -26,7 +26,7 @@ Accelerated images:
 |  ROCm (AMD)             | quay.io/ramalama/rocm      |
 |  CUDA (NVIDIA)          | quay.io/ramalama/cuda      |
 |  Intel GPU (sycl)       | quay.io/ramalama/intel-gpu |
-|  Intel GPU (openvino)   | ghcr.io/ggml-org/llama.cpp:full-openvino |
+|  Intel GPU (openvino)   | quay.io/ramalama/openvino  |
 |  Asahi (Apple Silicon)  | quay.io/ramalama/asahi     |
 |  CANN (Ascend)          | quay.io/ramalama/cann      |
 |  MUSA (Moore Threads)   | quay.io/ramalama/musa      |
