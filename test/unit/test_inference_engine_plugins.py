@@ -958,7 +958,7 @@ class TestConfigureSubcommandsFiltering:
         ("rocm", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
         ("cuda", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
         ("sycl", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),
-        ("openvino", "INTEL_VISIBLE_DEVICES", "ghcr.io/ggml-org/llama.cpp:full-openvino"),
+        ("openvino", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/openvino")),
         # Force backend even with different GPU (warns but allows)
         ("rocm", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
         ("cuda", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
@@ -1003,7 +1003,7 @@ backend = "{backend}"
         ("rocm", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
         ("vulkan", "INTEL_VISIBLE_DEVICES", DEFAULT_IMAGE),
         ("sycl", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),
-        ("openvino", "INTEL_VISIBLE_DEVICES", "ghcr.io/ggml-org/llama.cpp:full-openvino"),
+        ("openvino", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/openvino")),
     ],
 )
 def test_backend_selection_windows(backend: str, gpu_env: str, expected_result: str, monkeypatch):

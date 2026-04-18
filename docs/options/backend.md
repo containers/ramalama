@@ -23,7 +23,7 @@ Available backends depend on the detected GPU hardware.
 - **rocm**: Use AMD ROCm backend (AMD GPUs only)
 - **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
 - **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
-- **openvino**: Use Intel OpenVINO backend (Intel GPUs only); uses `ghcr.io/ggml-org/llama.cpp:full-openvino`
+- **openvino**: Use Intel OpenVINO backend (Intel GPUs only); uses `quay.io/ramalama/openvino`
 
 **Available choices**: The allowed values for `--backend` are dynamically determined based on
 your detected GPU hardware. For example, on a system with an AMD GPU, only `auto`, `vulkan`,
