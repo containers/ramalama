@@ -21,6 +21,8 @@ exits, the model server container is automatically stopped and removed.
 
 ## OPTIONS
 
+@@option alias
+
 @@option authfile
 
 @@option backend
