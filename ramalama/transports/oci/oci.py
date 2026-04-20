@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import json
 import os
 import subprocess
 import tempfile
 from functools import cached_property
 from textwrap import dedent
+from typing import Optional, Union
 
-import ramalama.annotations as annotations
+import ramalama.annotations as oci_annotations
 from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd, set_accel_env_vars
 from ramalama.engine import BuildEngine, dry_run
 from ramalama.oci_tools import OciRef, engine_supports_manifest_attributes
@@ -200,7 +203,7 @@ class OCI(Transport):
             f"{oci_spec.LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED}=true",
         ]
         if create:
-            cmd.extend(["--replace", "--type", annotations.ArtifactTypeModelManifest])
+            cmd.extend(["--replace", "--type", oci_annotations.ArtifactTypeModelManifest])
         else:
             cmd.extend(["--append"])
 
@@ -245,11 +248,11 @@ class OCI(Transport):
             "manifest",
             "annotate",
             "--annotation",
-            f"{annotations.AnnotationModel}=true",
+            f"{oci_annotations.AnnotationModel}=true",
             "--annotation",
             ociimage_car if args.type == "car" else ociimage_raw,
             "--annotation",
-            f"{annotations.AnnotationTitle}={args.SOURCE}",
+            f"{oci_annotations.AnnotationTitle}={args.SOURCE}",
             target,
             imageid,
         ]
@@ -348,7 +351,7 @@ class OCI(Transport):
     def exists(self) -> bool:
         return self.strategy.exists(self.ref)
 
-    def entrypoint_path(self, mount_dir: str | None = None) -> str:
+    def entrypoint_path(self, mount_dir: Optional[str] = None) -> str:
         return self.strategy.entrypoint_path(self.ref, mount_dir=mount_dir)
 
     def inspect(
@@ -379,7 +382,7 @@ class OCI(Transport):
         else:
             print(f"{out}   Type: {self.strategy.kind.capitalize()}")
 
-    def mount_cmd(self, src: str | OciRef | None = None, dest: str | None = None):
+    def mount_cmd(self, src: Union[str, OciRef, None] = None, dest: Optional[str] = None):
         if isinstance(src, OciRef):
             return self.strategy.mount_arg(src, dest)
         if src is not None:

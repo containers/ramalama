@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import json
 import logging
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ramalama.config import ActiveConfig
 from ramalama.logger import logger
@@ -19,7 +20,7 @@ class LLMAgent:
         self,
         clients: List[PureMCPClient],
         llm_base_url: str = "http://localhost:8080",
-        model: str | None = None,
+        model: Optional[str] = None,
         args=None,
     ):
         config_level = ActiveConfig().log_level or logging.INFO
@@ -86,7 +87,7 @@ class LLMAgent:
             print(f"  {i}. {name}")
             print(f"     Inputs: {inputs_str}\n")
 
-    def should_use_tools(self, content: str, conversation_history: list[dict[str, str]] | None = None) -> bool:
+    def should_use_tools(self, content: str, conversation_history: Optional[list[dict[str, str]]] = None) -> bool:
         """Determine if the request should be handled by tools using LLM."""
         tools_context = "Available tools:\n"
         for i, tool in enumerate(self.available_tools, 1):
@@ -125,7 +126,7 @@ Should this request use the available tools?"""
         response = self._call_llm(messages)
         return response is not None and response.upper().strip() == "YES"
 
-    def _call_llm(self, messages: List[Dict[str, str]], console_stream: bool = False) -> str | None:
+    def _call_llm(self, messages: List[Dict[str, str]], console_stream: bool = False) -> Optional[str]:
         """
         Call the LLM with the given messages.
         """
@@ -315,7 +316,7 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
                 logging.warning("LLM failed to produce valid JSON for tool arguments: %s", response)
                 return {}
 
-    def execute_task(self, task: str, manual: bool = False, stream: bool = False) -> str | None:
+    def execute_task(self, task: str, manual: bool = False, stream: bool = False) -> Optional[str]:
         """Execute one or more relevant tools for a task and combine results."""
         if not self.available_tools:
             return "No tools available."
@@ -360,7 +361,7 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
         combined_output = "\n\n".join(tool_outputs)
         return self._result(task, combined_output, stream)
 
-    def execute_specific_tool(self, task: str, tool_name: str, manual: bool = False) -> str | None:
+    def execute_specific_tool(self, task: str, tool_name: str, manual: bool = False) -> Optional[str]:
         """Execute a specific tool by name."""
         if not self.available_tools:
             return "No tools available."
@@ -429,7 +430,7 @@ Generate ONLY a JSON object with the arguments. Extract values from the task."""
         chosen = [name.strip().lower() for name in response.split(",")]
         return [t for t in self.available_tools if t["name"].lower() in chosen]
 
-    def _result(self, task: str, content: str, stream: bool = False) -> str | None:
+    def _result(self, task: str, content: str, stream: bool = False) -> Optional[str]:
         """Format the tool result into a user-friendly response."""
         messages = [
             {

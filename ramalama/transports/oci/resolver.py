@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import os
 from collections.abc import Callable
-from typing import Literal
+from typing import Literal, Optional
 
 from ramalama.common import run_cmd
 from ramalama.model_store.store import ModelStore
@@ -19,7 +21,7 @@ def _format_oci_reference(oci_ref: OciRef) -> str:
     return f"{repository}:{tag}"
 
 
-def fetch_manifest(oci_ref: OciRef) -> dict | None:
+def fetch_manifest(oci_ref: OciRef) -> Optional[dict]:
     client = OCIRegistryClient(oci_ref.registry, oci_ref.repository, oci_ref.specifier)
     try:
         manifest, _ = client.get_manifest()
@@ -37,7 +39,7 @@ def manifest_kind(oci_ref: OciRef) -> ReferenceKind:
     return "image"
 
 
-def engine_artifact_exists(engine: str, oci_ref: OciRef, runner: Callable | None = None) -> bool:
+def engine_artifact_exists(engine: str, oci_ref: OciRef, runner: Optional[Callable] = None) -> bool:
     runner = runner or run_cmd
     try:
         runner([engine, "artifact", "inspect", _format_oci_reference(oci_ref)], ignore_stderr=True)
@@ -46,7 +48,7 @@ def engine_artifact_exists(engine: str, oci_ref: OciRef, runner: Callable | None
         return False
 
 
-def engine_image_exists(engine: str, oci_ref: OciRef, runner: Callable | None = None) -> bool:
+def engine_image_exists(engine: str, oci_ref: OciRef, runner: Optional[Callable] = None) -> bool:
     runner = runner or run_cmd
     try:
         runner([engine, "image", "inspect", _format_oci_reference(oci_ref)], ignore_stderr=True)
@@ -55,7 +57,7 @@ def engine_image_exists(engine: str, oci_ref: OciRef, runner: Callable | None = 
         return False
 
 
-def resolve_engine_kind(engine: str, oci_ref: OciRef, runner: Callable | None = None) -> ReferenceKind:
+def resolve_engine_kind(engine: str, oci_ref: OciRef, runner: Optional[Callable] = None) -> ReferenceKind:
     if not engine:
         return "unknown"
     engine_name = os.path.basename(engine)
@@ -85,7 +87,7 @@ def model_store_has_snapshot(model_store: ModelStore, oci_ref: OciRef) -> bool:
 
 
 class OCITypeResolver:
-    def __init__(self, engine: str, model_store: ModelStore | None = None, runner: Callable | None = None):
+    def __init__(self, engine: str, model_store: Optional[ModelStore] = None, runner: Optional[Callable] = None):
         self.engine = engine
         self.model_store = model_store
         self.runner = runner or run_cmd

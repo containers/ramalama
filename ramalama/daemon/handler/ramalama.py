@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import http.server
 import traceback
 import urllib.error

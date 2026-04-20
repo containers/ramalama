@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import argparse
 import json
 import platform
 from collections.abc import Callable
-from typing import cast
+from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import run_cmd
@@ -68,7 +70,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
 
 class SandboxEngineArgsType(BaseEngineArgsType):
     ARGS: list[str]
-    workdir: str | None
+    workdir: Optional[str]
 
 
 class SandboxEngine(Engine):

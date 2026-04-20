@@ -1,5 +1,7 @@
 """utilities for working with AMDKFD driver"""
 
+from __future__ import annotations
+
 import glob
 
 # Heap types in memory properties

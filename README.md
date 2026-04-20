@@ -95,7 +95,7 @@ pip install ramalama
 ```
 
 **Requirements:**
-- Python 3.10 or later
+- Python 3.9 or later
 - Docker Desktop or Podman Desktop with WSL2 backend
 - For GPU support, see [NVIDIA GPU Setup for WSL2](docs/readme/wsl2-docker-cuda.md)
 

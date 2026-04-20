@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import json
+from typing import Optional
 
 from ramalama.benchmarks.schemas import (
     BenchmarkRecord,
@@ -31,7 +34,7 @@ def print_bench_results(records: list[BenchmarkRecord]):
         return
     normalized_records: list[BenchmarkRecordV1] = [normalize_benchmark_record(result) for result in records]
 
-    rows: list[dict[str, object | None]] = []
+    rows: list[dict[str, Optional[object]]] = []
     for i, item in enumerate(normalized_records):
         result = item.result
         model = result.model_filename or ""

@@ -15,8 +15,10 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any, Literal, Optional, Protocol, TypeAlias, TypedDict, cast, get_args
+from typing import IO, TYPE_CHECKING, Any, Literal, Optional, Protocol, TypedDict, Union, cast, get_args
 
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
 import yaml
 
 import ramalama.amdkfd as amdkfd
@@ -75,7 +77,7 @@ def confirm_no_gpu(name, provider) -> bool:
         print("Invalid input. Please enter 'yes' or 'no'.")
 
 
-def handle_provider(machine, config: Config | None = None) -> bool | None:
+def handle_provider(machine, config: Optional[Config] = None) -> Optional[bool]:
     global podman_machine_accel
     name = machine.get("Name")
     provider = machine.get("VMType")
@@ -93,7 +95,7 @@ def handle_provider(machine, config: Config | None = None) -> bool | None:
     return None
 
 
-def apple_vm(engine: SUPPORTED_ENGINES, config: Config | None = None) -> bool:
+def apple_vm(engine: SUPPORTED_ENGINES, config: Optional[Config] = None) -> bool:
     podman_machine_list = [engine, "machine", "list", "--format", "json", "--all-providers"]
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True, encoding="utf-8").stdout.strip()
@@ -135,13 +137,13 @@ def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
 
 def run_cmd(
     args: Sequence[str],
-    cwd: str | None = None,
-    stdout: int | IO[Any] | None = subprocess.PIPE,
-    stdin: int | IO[Any] | None = subprocess.DEVNULL,
+    cwd: Optional[str] = None,
+    stdout: Union[int, IO[Any], None] = subprocess.PIPE,
+    stdin: Union[int, IO[Any], None] = subprocess.DEVNULL,
     ignore_stderr: bool = False,
     ignore_all: bool = False,
-    encoding: str | None = None,
-    env: dict[str, str] | None = None,
+    encoding: Optional[str] = None,
+    env: Optional[dict[str, str]] = None,
 ) -> subprocess.CompletedProcess[Any]:
     """
     Run the given command arguments.
@@ -312,7 +314,7 @@ class CDI_RETURN_TYPE(TypedDict):
     devices: list[CDI_DEVICE]
 
 
-def load_cdi_config(spec_dirs: list[str]) -> CDI_RETURN_TYPE | None:
+def load_cdi_config(spec_dirs: list[str]) -> Optional[CDI_RETURN_TYPE]:
     # Load and merge all CDI configuration files from the given directories.
     # When multiple CDI configs exist (e.g. /var/run/cdi and /etc/cdi), all are
     # merged so that device "all" and other devices are found regardless of
@@ -352,7 +354,7 @@ def load_cdi_config(spec_dirs: list[str]) -> CDI_RETURN_TYPE | None:
     return {"devices": merged_devices}
 
 
-def get_podman_machine_cdi_config() -> CDI_RETURN_TYPE | None:
+def get_podman_machine_cdi_config() -> Optional[CDI_RETURN_TYPE]:
     cdi_config = run_cmd(["podman", "machine", "ssh", "cat", "/etc/cdi/nvidia.yaml"], encoding="utf-8").stdout.strip()
     if cdi_config:
         return yaml.safe_load(cdi_config)
@@ -390,7 +392,7 @@ def find_in_cdi(devices: list[str]) -> tuple[list[str], list[str]]:
     return configured, unconfigured
 
 
-def check_asahi() -> Literal["asahi"] | None:
+def check_asahi() -> Optional[Literal["asahi"]]:
     if os.path.exists('/proc/device-tree/compatible'):
         try:
             with open('/proc/device-tree/compatible', 'rb') as f:
@@ -411,7 +413,7 @@ def check_metal(args: ContainerArgType) -> bool:
 
 
 @lru_cache(maxsize=1)
-def check_nvidia() -> Literal["cuda"] | None:
+def check_nvidia() -> Optional[Literal["cuda"]]:
     try:
         command = ['nvidia-smi', '--query-gpu=index,uuid', '--format=csv,noheader']
         result = run_cmd(command, encoding="utf-8")
@@ -454,7 +456,7 @@ def check_nvidia() -> Literal["cuda"] | None:
     return None
 
 
-def check_ascend() -> Literal["cann"] | None:
+def check_ascend() -> Optional[Literal["cann"]]:
     try:
         command = ['npu-smi', 'info']
         run_cmd(command, encoding="utf-8")
@@ -466,7 +468,7 @@ def check_ascend() -> Literal["cann"] | None:
     return None
 
 
-def check_rocm_amd() -> Literal["hip"] | None:
+def check_rocm_amd() -> Optional[Literal["hip"]]:
     if is_arm():
         # ROCm is not available for arm64, use Vulkan instead
         return None
@@ -503,7 +505,7 @@ def is_arm() -> bool:
     return platform.machine() in ('arm64', 'aarch64')
 
 
-def check_intel() -> Literal["intel"] | None:
+def check_intel() -> Optional[Literal["intel"]]:
     igpu_num = 0
 
     if platform.system() == "Windows":
@@ -555,7 +557,7 @@ def _check_intel_windows() -> int:
         return 0
 
 
-def check_mthreads() -> Literal["musa"] | None:
+def check_mthreads() -> Optional[Literal["musa"]]:
     try:
         command = ['mthreads-gmi']
         run_cmd(command, encoding="utf-8")
@@ -572,9 +574,9 @@ AccelType: TypeAlias = Literal["asahi", "cuda", "cann", "hip", "intel", "musa"]
 
 @lru_cache(maxsize=1)
 def get_accel() -> AccelType | Literal["none"]:
-    checks: tuple[Callable[[], AccelType | None], ...] = (
+    checks: tuple[Callable[[], Optional[AccelType]], ...] = (
         check_asahi,
-        cast(Callable[[], Literal['cuda'] | None], check_nvidia),
+        cast(Callable[[], Optional[Literal['cuda']]], check_nvidia),
         check_ascend,
         check_rocm_amd,
         check_intel,
@@ -682,10 +684,10 @@ class AccelImageArgsOtherRuntimeRAG(Protocol):
     quiet: bool
 
 
-AccelImageArgs: TypeAlias = None | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
+AccelImageArgs: TypeAlias = Union[None, AccelImageArgsOtherRuntime, AccelImageArgsOtherRuntimeRAG]
 
 
-def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: str = "image") -> str:
+def accel_image(config: Config, images: Optional[dict[str, str]] = None, conf_key: str = "image") -> str:
     """
     Selects the appropriate image based on config, arguments, environment.
     "images" is a mapping of environment variable names to image names. If not specified,
@@ -716,7 +718,7 @@ def accel_image(config: Config, images: dict[str, str] | None = None, conf_key: 
     return latest_tagged_image(images.get(gpu_type, getattr(config, f"default_{conf_key}")))
 
 
-def ensure_image(conman: str | None, image: str, should_pull: bool = False) -> str:
+def ensure_image(conman: Optional[str], image: str, should_pull: bool = False) -> str:
     """Check if image exists locally; optionally pull it.
 
     Returns the image string on success. If conman is falsy, returns image unchanged.

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class MissingArgumentError(Exception):
     """Exception raised when a required argument is missing."""
 

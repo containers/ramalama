@@ -81,7 +81,7 @@ def test_help_output(subcommand):
     assert result.startswith(f"usage: ramalama {usage_cmd_name}")
 
     # Check if the option section is rendered
-    assert re.search("^options:$", result, re.MULTILINE)
+    assert re.search("^(options|optional arguments):$", result, re.MULTILINE)
 
 
 @pytest.mark.e2e

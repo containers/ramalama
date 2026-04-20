@@ -107,7 +107,7 @@ supported subcommands.
 
 ## Code Style
 
-- Python 3.10+ required
+- Python 3.9+ required
 - Line length: 120 characters
 - Formatting: ruff format + ruff check (I rules)
 - Type hints encouraged (mypy checked)

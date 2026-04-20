@@ -51,7 +51,7 @@ ramalama --help
 If you prefer to use Python package management:
 
 ```bash
-# Install Python 3.10 or later (if not already installed)
+# Install Python 3.9 or later (if not already installed)
 brew install python@3.11
 
 # Install ramalama

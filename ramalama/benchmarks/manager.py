@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import json
 from dataclasses import asdict
 from functools import cached_property
 from pathlib import Path
+from typing import Union
 
 from ramalama.benchmarks.errors import MissingStorageFolderError
 from ramalama.benchmarks.schemas import BenchmarkRecord, DeviceInfoV1, get_benchmark_record
@@ -12,7 +15,7 @@ BENCHMARKS_FILENAME = "benchmarks.jsonl"
 
 
 class BenchmarksManager:
-    def __init__(self, storage_folder: str | Path | None):
+    def __init__(self, storage_folder: Union[str, Path, None]):
         if storage_folder is None:
             raise MissingStorageFolderError
 

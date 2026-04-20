@@ -1,7 +1,7 @@
 import string
 import sys
 from dataclasses import fields
-from typing import get_args
+from typing import Optional, get_args
 from unittest.mock import MagicMock
 
 import pytest
@@ -57,7 +57,7 @@ special_cases = {
 }
 
 
-def args_to_cli_args(args_obj, subcommand: str | None, special_cases: dict | None = None) -> list:
+def args_to_cli_args(args_obj, subcommand: Optional[str], special_cases: Optional[dict] = None) -> list:
     """
     Convert a dataclass instance to CLI arguments for argparse.
     - subcommand: the CLI subcommand (e.g., 'chat')
