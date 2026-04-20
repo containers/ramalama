@@ -9,6 +9,7 @@ import sys
 import urllib.error
 from datetime import datetime, timezone
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, get_args
 from urllib.parse import urlparse
 
@@ -20,7 +21,7 @@ try:
 except Exception:
     suppressCompleter = None
 
-from ramalama import engine
+from ramalama import common, engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import accel_image, exec_cmd, get_accel, perror
@@ -653,6 +654,7 @@ def info_cli(args: DefaultArgsType) -> None:
             "Sources": list(set(shortnames.config_sources.values())),
         },
         "Store": args.store,
+        "StoreUsage": common.store_disk_stats(Path(args.store)),
         "UseContainer": args.container,
         "Version": version(),
     }
