@@ -217,6 +217,12 @@ OCI container image used for RAG processing (doc2rag and rag_framework).
 Can also be overridden with the `--rag-image` flag on the command line or the
 RAMALAMA_RAG_IMAGE environment variable.
 
+**stack_image**="quay.io/ramalama/llama-stack"
+
+OCI container image used for running llama-stack server.
+Can also be overridden with the `--stack-image` flag on the command line or the
+RAMALAMA_STACK_IMAGE environment variable.
+
 `[[ramalama.tools_images]]`
 
 User-override entries for GPU-specific tools container images used for GGUF

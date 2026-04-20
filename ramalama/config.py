@@ -183,6 +183,7 @@ class BaseConfig:
     default_image: str = DEFAULT_IMAGE
     default_rag_image: str = DEFAULT_RAG_IMAGE
     default_tools_image: str = DEFAULT_TOOLS_IMAGE
+    default_stack_image: str = DEFAULT_STACK_IMAGE
     dryrun: bool = False
     engine: Optional[SUPPORTED_ENGINES] = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
@@ -193,6 +194,7 @@ class BaseConfig:
     images: dict[str, str] = field(default_factory=dict)
     rag_image: Optional[str] = None
     tools_image: Optional[str] = None
+    stack_image: Optional[str] = None
     tools_images: dict[str, str] = field(default_factory=dict)
     keep_groups: bool = False
     log_level: Optional[LogLevel] = None
@@ -203,7 +205,6 @@ class BaseConfig:
     runtime: SUPPORTED_RUNTIMES = "llama.cpp"
     selinux: bool = False
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
-    stack_image: str = DEFAULT_STACK_IMAGE
     store: str = field(default_factory=get_default_store)
     summarize_after: int = 4
     temp: str = "0.8"

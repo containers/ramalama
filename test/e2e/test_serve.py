@@ -696,6 +696,7 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
         ctx.check_call(["ramalama", "pull", test_model])
 
         extra_args = ["--env", env_vars] if env_vars else []
+        extra_args += ["--stack-image", "quay.io/ramalama/llama-stack:0.18"] if env_vars else []
         extra_args += ['--runtime-args', '--top-p 1.0']
         # Exec ramalama serve
         result = ctx.check_output(
@@ -715,7 +716,6 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
                 test_model,
             ] + extra_args
         )
-
         if generate == 'kube':
             # Test the expected output of the command execution
             assert re.search(r".*Generating Kubernetes YAML file: test.yaml", result)
@@ -730,9 +730,11 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
                 if env_vars:
                     assert len(re.findall(r"name: SEARCH_API_KEY", content)) == 2
                     assert len(re.findall(r'value: "?9999"?', content)) == 2
+                    assert len(re.findall(r'quay.io/ramalama/llama-stack:0.18', content)) == 1
                 else:
                     assert not re.search(r"name: SEARCH_API_KEY", content)
                     assert not re.search(r'value: "?9999"?', content)
+                    assert not re.search(r'quay.io/ramalama/llama-stack:0.18', content)
 
         elif generate == 'compose':
             # Test the expected output of the command execution

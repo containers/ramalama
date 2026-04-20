@@ -19,7 +19,7 @@ def get_config_fields():
         'default_rag_image',  # Internal constant, users configure 'rag_image' instead
         'default_tools_image',  # Internal constant, users configure via tools_images
         'tools_image',  # Users configure via tools_images, not directly documented
-        'stack_image',  # Internal constant for stack operations
+        'default_stack_image',  # Internal constant for stack operations
         'dryrun',  # Runtime flag, not a persistent config option
         'verify',  # Runtime flag for model verification, not typically configured
     }

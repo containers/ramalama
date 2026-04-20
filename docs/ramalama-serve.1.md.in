@@ -107,6 +107,8 @@ appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
 
 @@option selinux
 
+@@option stack-image
+
 @@option temp
 
 @@option thinking
