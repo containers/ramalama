@@ -63,7 +63,7 @@ dev = [
     "huggingface_hub~=1.11.0;python_version>=\"3.10\"",
     "hypothesis>=6.135.26",
     "pytest~=9.0;python_version>=\"3.10\"",
-    "pytest~=8.0;python_version<\"3.10\"",
+    "pytest~=9.0;python_version<\"3.10\"",
     "ruff>=0.14.14",
     "wheel~=0.46.3",
     "mypy",
