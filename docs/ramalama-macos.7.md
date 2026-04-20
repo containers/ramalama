@@ -12,27 +12,39 @@ machine with libkrun to access the GPU.
 Previously created Podman Machines must be recreated to take
 advantage of the `libkrun` provider.
 
+Note that it is also possible to run ramalama without containers on macOS to
+use MLX directly; for details see
+[MACOS-INSTALL.md](https://github.com/containers/ramalama/blob/main/docs/MACOS_INSTALL.md).
+
 ## Configuration Methods:
 
 ### containers.conf
 
-Open the containers.conf file, typically located at $HOME/.config/containers/containers.conf.
+Open the `containers.conf` file, typically located at `$HOME/.config/containers/containers.conf`.
 
-Add the following line within the [machine] section: provider = "libkrun".
+Add the following line within the `[machine]` section: `provider = "libkrun"`.
 This change will persist across sessions.
 
 ### Environment Variable
-Set the CONTAINERS_MACHINE_PROVIDER environment variable to libkrun. This will be a temporary change until you restart your terminal or session.
 
-For example: export CONTAINERS_MACHINE_PROVIDER=libkrun
+Set the `CONTAINERS_MACHINE_PROVIDER` environment variable to `libkrun`.
+This will be a temporary change until you restart your terminal or session.
+
+For example: `export CONTAINERS_MACHINE_PROVIDER=libkrun`
 
 ### ramalama.conf
 
-RamaLama can also be run in a limited manner without using Containers, by
-specifying the --nocontainer option. Open the ramalama.conf file, typically located at $HOME/.config/ramalama/ramalama.conf.
+RamaLama can also be run in a limited manner without using containers, by
+specifying the `--nocontainer` option. In this case MLX is used for native
+GPU acceleration, which will result in better performance than the podman
+krunkit solution. To do this, open the `ramalama.conf` file, typically
+located at $HOME/.config/ramalama/ramalama.conf.
 
-Add the following line within the [machine] section: `container = false`
+Add the following line within the `[machine]` section: `container = false`
 This change will persist across sessions.
+
+For more details on this setup read
+[MACOS-INSTALL.md](https://github.com/containers/ramalama/blob/main/docs/MACOS_INSTALL.md).
 
 ## Podman Desktop
 
@@ -42,7 +54,7 @@ Creating a Podman Machine with libkrun (MacOS):
 
 In the Podman tile, click Create new.
 In the Create a Podman machine screen, you can configure the machine's resources (CPU, Memory, Disk size) and enable Machine with root privileges if needed.
-To use libkrun, ensure that the environment variable is set or the containers.conf file is configured before creating the machine.
+To use `libkrun`, ensure that the environment variable is set or the `containers.conf` file is configured before creating the machine.
 Once the machine is created, Podman Desktop will manage the connection to the new machine.
 
 ## Important Notes:
@@ -53,7 +65,7 @@ Refer to the [Podman Desktop documentation](https://podman-desktop.io/docs/podma
 
 ## SEE ALSO
 
-**[ramalama(1)](ramalama.1.md)**, **[podman-machine(1)](https://github.com/containers/podman/blob/main/docs/source/markdown/podman-machine.1.md)**
+**[ramalama(1)](ramalama.1.md)**, **[podman-machine(1)](https://github.com/containers/podman/blob/main/docs/source/markdown/podman-machine.1.md)**, **[MACOS_INSTALL.md](https://github.com/containers/ramalama/blob/main/docs/MACOS_INSTALL.md)**
 
 ## HISTORY
 
