@@ -48,6 +48,9 @@ Each server provides tools that can be automatically invoked during chat convers
 #### **--model**=MODEL
 Model for inferencing (may not be required for endpoints that only serve one model)
 
+#### **--port**, **-p**=*port*
+Port of the AI Model server to connect to. When specified, the URL is constructed as http://127.0.0.1:PORT/v1.
+
 #### **--prefix**
 Prefix for the user prompt (default: 🦭 > )
 
