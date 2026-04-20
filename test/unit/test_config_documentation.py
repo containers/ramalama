@@ -17,15 +17,15 @@ def get_config_fields():
         'settings',  # Internal RamalamaSettings, not user-configurable
         'default_image',  # Internal constant, users configure 'image' instead
         'default_rag_image',  # Internal constant, users configure 'rag_image' instead
-        'rag_image',  # Derived from rag_images, not directly configured
+        'default_tools_image',  # Internal constant, users configure via tools_images
+        'tools_image',  # Users configure via tools_images, not directly documented
         'stack_image',  # Internal constant for stack operations
         'dryrun',  # Runtime flag, not a persistent config option
-        'ocr',  # Runtime flag, not a persistent config option
         'verify',  # Runtime flag for model verification, not typically configured
     }
 
     config_fields = [field.name for field in fields(BaseConfig) if field.name not in excluded_fields]
-    config_fields.extend(('benchmarks', 'http_client', 'images', 'rag_images', 'user'))
+    config_fields.extend(('benchmarks', 'http_client', 'images', 'tools_images', 'user'))
     return sorted(set(config_fields))
 
 

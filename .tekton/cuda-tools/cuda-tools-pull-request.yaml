@@ -11,19 +11,17 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: >-
       event == "pull_request" && target_branch == "main" && body.action != "ready_for_review" &&
       (
-        "container-images/common/Containerfile.rag".pathChanged() ||
-        "container-images/common/requirements-rag-xpu.txt".pathChanged() ||
-        "container-images/scripts/build_rag.sh".pathChanged() ||
-        "container-images/scripts/doc2rag".pathChanged() ||
-        "container-images/scripts/rag_framework".pathChanged() ||
+        "container-images/common/Containerfile.tools".pathChanged() ||
+        "container-images/common/requirements-tools-cu128*.txt".pathChanged() ||
+        "container-images/scripts/build_tools.sh".pathChanged() ||
         ".tekton/pipelines/pull-request-pipeline.yaml".pathChanged() ||
-        ".tekton/intel-gpu-rag/intel-gpu-rag-pull-request.yaml".pathChanged()
+        ".tekton/cuda-tools/cuda-tools-pull-request.yaml".pathChanged()
       )
   labels:
     appstudio.openshift.io/application: ramalama
-    appstudio.openshift.io/component: intel-gpu-rag
+    appstudio.openshift.io/component: cuda-tools
     pipelines.appstudio.openshift.io/type: build
-  name: intel-gpu-rag-on-pull-request
+  name: cuda-tools-on-pull-request
   namespace: ramalama-tenant
 spec:
   params:
@@ -32,24 +30,22 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ramalama-tenant/intel-gpu-rag:on-pr-{{revision}}
+    value: quay.io/redhat-user-workloads/ramalama-tenant/cuda-tools:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
-  - name: build-platforms
-    value:
-    - linux-d160-m4xlarge/amd64
   - name: dockerfile
-    value: container-images/common/Containerfile.rag
+    value: container-images/common/Containerfile.tools
   - name: build-args
     value:
-    - TORCH_BACKEND=xpu
+    - PARENT=docker.io/nvidia/cuda:12.8.1-devel-ubi9
+    - TORCH_BACKEND=cu128
   pipelineRef:
     name: pull-request-pipeline
   timeouts:
     pipeline: 12h
     finally: 15m
   taskRunTemplate:
-    serviceAccountName: build-pipeline-intel-gpu-rag
+    serviceAccountName: build-pipeline-cuda-tools
   workspaces:
   - name: git-auth
     secret:
