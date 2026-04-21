@@ -13,7 +13,7 @@ install_pkgs() {
 install_requirements() {
     local script_dir
     script_dir="$(dirname "$0")"
-    uv pip install -r "$script_dir/../common/requirements-rag.in"
+    uv pip install -r "$script_dir/../common/requirements-rag.txt"
 }
 
 main() {

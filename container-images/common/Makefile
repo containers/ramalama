@@ -23,3 +23,11 @@ $(tools-requirements-files): requirements-tools-%.txt: requirements-tools.in
 	--generate-hashes \
 	--emit-index-annotation \
 	-o $@ $<
+
+requirements-rag.txt: requirements-rag.in
+	uv -q pip compile \
+	--python-version $(PYTHON_VERSION) \
+	--upgrade \
+	--generate-hashes \
+	--emit-index-annotation \
+	-o $@ $<
