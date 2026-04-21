@@ -146,7 +146,7 @@ def test_agent_network(agent):
     try:
         assert "--network=container:ramalama_model_abc" in obj.engine.exec_args
     finally:
-        obj.cleanup()
+        getattr(obj, "cleanup", lambda: None)()
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
@@ -156,7 +156,7 @@ def test_agent_interactive(agent):
     try:
         assert "-i" in obj.engine.exec_args
     finally:
-        obj.cleanup()
+        getattr(obj, "cleanup", lambda: None)()
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
@@ -171,7 +171,7 @@ def test_agent_workdir(agent):
         assert "--workdir=/work" in cmd
         assert "/tmp/myproject:/work:rw" in cmd
     finally:
-        obj.cleanup()
+        getattr(obj, "cleanup", lambda: None)()
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
@@ -185,7 +185,7 @@ def test_agent_no_workdir(agent):
         workdir_volumes = [arg for arg in cmd if ":/work:" in arg]
         assert len(workdir_volumes) == 0
     finally:
-        obj.cleanup()
+        getattr(obj, "cleanup", lambda: None)()
 
 
 # --- Goose-specific tests ---
@@ -368,6 +368,7 @@ def test_openclaw_config_file():
         with open(openclaw.config_file_path) as f:
             config = json.load(f)
         # Validate provider configuration
+        assert config["models"]["providers"]["openai"]["api"] == "openai-completions"
         assert config["models"]["providers"]["openai"]["apiKey"] == "ramalama"
         assert "8080" in config["models"]["providers"]["openai"]["baseUrl"]
         # Validate default agent model

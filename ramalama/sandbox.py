@@ -108,10 +108,11 @@ class SandboxEngine(Engine):
         super().__init__(args)
 
     def base_args(self) -> None:
+        super().base_args()
         if self.background:
-            self.add_args("run", "--rm", "-d")
+            self.add_args("-d")
         else:
-            self.add_args("run", "--rm", "-i")
+            self.add_args("-i")
 
     def is_tty_cmd(self) -> bool:
         if self.background:
@@ -152,8 +153,8 @@ class Agent:
         self.engine = SandboxEngine(args)
         self.model_name = model_name
 
-    def cleanup(self) -> None:
-        """Clean up after the agent exits.  No-op for most agents."""
+    def dryrun(self) -> None:
+        self.engine.dryrun()
 
     def run(self) -> None:
         run_cmd(self.engine.exec_args, stdout=None, stdin=None)
@@ -308,6 +309,7 @@ class OpenClaw(Agent):
             "models": {
                 "providers": {
                     "openai": {
+                        "api": "openai-completions",
                         "apiKey": "ramalama",
                         "baseUrl": f"http://localhost:{args.port}/v1",
                         "models": [],
@@ -367,17 +369,12 @@ class OpenClaw(Agent):
 
     def cleanup(self) -> None:
         """Remove temporary config file and stop gateway container."""
-        if hasattr(self, "config_file_path") and self.config_file_path:
-            try:
-                os.unlink(self.config_file_path)
-            except OSError:
-                pass
-        if hasattr(self, "_gateway_name"):
-            try:
-                self.engine.args.ignore = True  # type: ignore[attr-defined]
-                stop_container(self.engine.args, self._gateway_name, remove=True)
-            except Exception:
-                pass
+        try:
+            os.unlink(self.config_file_path)
+        except FileNotFoundError:
+            pass
+        self.engine.args.ignore = True  # type: ignore[attr-defined]
+        stop_container(self.engine.args, self._gateway_name, remove=True)
 
     def _add_state_dir_to_engine(self, engine: SandboxEngine, args: OpenClawArgsType) -> None:
         state_dir = getattr(args, "state_dir", None)
@@ -395,6 +392,10 @@ class OpenClaw(Agent):
         engine.add_env_option("OPENCLAW_SKIP_CANVAS_HOST=1")
         if getattr(args, "debug", False):
             engine.add_env_option("OPENCLAW_LOG_LEVEL=debug")
+
+    def dryrun(self) -> None:
+        self.gateway_engine.dryrun()
+        super().dryrun()
 
 
 def run_sandbox_goose(args: GooseArgsType):
@@ -428,11 +429,7 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
     agent = agent_cls(args, model.model_alias)
 
     if args.dryrun:
-        if hasattr(agent, "gateway_engine"):
-            agent.gateway_engine.dryrun()
-        agent.engine.dryrun()
-        if isinstance(agent, OpenClaw):
-            agent.cleanup()
+        agent.dryrun()
         return
 
     try:
@@ -442,7 +439,5 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
         # Launch agent
         agent.run()
     finally:
-        if not isinstance(agent, OpenClaw):
-            agent.cleanup()
         args.ignore = True  # type: ignore[attr-defined]
         stop_container(args, args.name, remove=True)  # type: ignore[attr-defined]
