@@ -18,7 +18,8 @@ class Quadlet:
         args,
         exec_args,
         artifact: bool,
-        model_parts: Optional[list[Tuple[str, str]]] = None,
+        model_parts: Optional[list[Tuple[str, str]]],
+        draft_model_paths: Optional[Tuple[str, str]],
     ):
         self.src_model_path, self.dest_model_path = model_paths
         self.src_chat_template_path, self.dest_chat_template_path = (
@@ -28,6 +29,12 @@ class Quadlet:
 
         # Store all model parts for multi-part models
         self.model_parts = model_parts if model_parts is not None else [(self.src_model_path, self.dest_model_path)]
+
+        if draft_model_paths is not None:
+            src_draft_model_path, dest_draft_model_path = draft_model_paths
+            if src_draft_model_path.startswith("oci://"):
+                src_draft_model_path = src_draft_model_path.removeprefix("oci://")
+            self.model_parts.append((src_draft_model_path, dest_draft_model_path))
 
         if self.src_model_path.startswith("oci://"):
             self.src_model_path = self.src_model_path.removeprefix("oci://")

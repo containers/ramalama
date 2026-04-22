@@ -35,7 +35,6 @@ if TYPE_CHECKING:
 
 from ramalama.common import (
     MNT_DIR,
-    MNT_FILE_DRAFT,
     exec_cmd,
     genname,
     is_split_file_model,
@@ -452,12 +451,22 @@ class Transport(TransportBase):
             )
 
         if self.draft_model:
-            draft_model = self.draft_model._get_entry_model_path(args.container, args.generate, args.dryrun)
-            # Convert path to container-friendly format (handles Windows path conversion)
-            container_draft_model = get_container_mount_path(draft_model)
-            mount_opts = f"--mount=type=bind,src={container_draft_model},destination={MNT_FILE_DRAFT}"
-            mount_opts += f",ro{self.engine.relabel()}"
-            self.engine.add([mount_opts])
+            ref_file = self.draft_model.model_store.get_ref_file(self.draft_model.model_tag)
+
+            if ref_file is None:
+                raise NoRefFileFound(self.draft_model.model)
+
+            # mount all files into container with file name instead of hash
+            for file in ref_file.files:
+                if file.type != 'gguf':
+                    continue
+                blob_path = self.draft_model.model_store.get_blob_file_path(file.hash)
+                # Convert path to container-friendly format (handles Windows path conversion)
+                container_blob_path = get_container_mount_path(blob_path)
+                mount_path = f"{MNT_DIR}/{file.name}"
+                self.engine.add(
+                    [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
+                )
 
     def serve_nonblocking(self, args, cmd: list[str]) -> Optional[subprocess.Popen]:
         if args.container:
@@ -613,7 +622,13 @@ class Transport(TransportBase):
 
         # Get all model parts (for multi-part models)
         model_parts = self._get_all_model_part_paths(False, True, args.dryrun)
-
+        if self.draft_model is not None:
+            draft_model_paths = (
+                self.draft_model._get_entry_model_path(False, False, args.dryrun),
+                self.draft_model._get_entry_model_path(True, True, args.dryrun),
+            )
+        else:
+            draft_model_paths = None
         if args.generate.gen_type == "quadlet":
             self.quadlet(
                 (model_src_path, model_dest_path),
@@ -623,15 +638,17 @@ class Transport(TransportBase):
                 exec_args,
                 args.generate.output_dir,
                 model_parts,
+                draft_model_paths,
             )
         elif args.generate.gen_type == "kube":
             self.kube(
-                (model_src_path.removeprefix("oci://"), model_dest_path),
+                (model_src_path, model_dest_path),
                 (chat_template_src_path, chat_template_dest_path),
                 (mmproj_src_path, mmproj_dest_path),
                 args,
                 exec_args,
                 args.generate.output_dir,
+                draft_model_paths,
             )
         elif args.generate.gen_type == "quadlet/kube":
             self.quadlet_kube(
@@ -641,7 +658,7 @@ class Transport(TransportBase):
                 args,
                 exec_args,
                 args.generate.output_dir,
-                model_parts,
+                draft_model_paths,
             )
         elif args.generate.gen_type == "compose":
             self.compose(
@@ -651,6 +668,7 @@ class Transport(TransportBase):
                 args,
                 exec_args,
                 args.generate.output_dir,
+                draft_model_paths,
             )
 
     def execute_command(self, exec_args, args):
@@ -668,7 +686,17 @@ class Transport(TransportBase):
                 )
             raise NotImplementedError(file_not_found % {"cmd": exec_args[0], "error": str(e).strip("'")})
 
-    def quadlet(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None):
+    def quadlet(
+        self,
+        model_paths,
+        chat_template_paths,
+        mmproj_paths,
+        args,
+        exec_args,
+        output_dir,
+        model_parts,
+        draft_model_paths,
+    ):
         quadlet = Quadlet(
             self.model_name,
             model_paths,
@@ -678,27 +706,56 @@ class Transport(TransportBase):
             exec_args,
             self.is_artifact,
             model_parts,
+            draft_model_paths,
         )
         for generated_file in quadlet.generate():
             generated_file.write(output_dir)
 
     def quadlet_kube(
-        self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, model_parts=None
+        self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, draft_model_paths
     ):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
+        kube = Kube(
+            self.model_name,
+            model_paths,
+            chat_template_paths,
+            mmproj_paths,
+            args,
+            exec_args,
+            draft_model_paths,
+            self.is_artifact,
+        )
         kube.generate().write(output_dir)
 
         quadlet = Quadlet(
-            kube.name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact, model_parts
+            kube.name,
+            model_paths,
+            chat_template_paths,
+            mmproj_paths,
+            args,
+            exec_args,
+            self.is_artifact,
+            None,
+            draft_model_paths,
         )
         quadlet.kube().write(output_dir)
 
-    def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        kube = Kube(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, self.is_artifact)
+    def kube(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, draft_model_paths):
+        kube = Kube(
+            self.model_name,
+            model_paths,
+            chat_template_paths,
+            mmproj_paths,
+            args,
+            exec_args,
+            draft_model_paths,
+            self.is_artifact,
+        )
         kube.generate().write(output_dir)
 
-    def compose(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir):
-        compose = Compose(self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args)
+    def compose(self, model_paths, chat_template_paths, mmproj_paths, args, exec_args, output_dir, draft_model_paths):
+        compose = Compose(
+            self.model_name, model_paths, chat_template_paths, mmproj_paths, args, exec_args, draft_model_paths
+        )
         compose.generate().write(output_dir)
 
     def inspect_metadata(self) -> dict[str, Any]:

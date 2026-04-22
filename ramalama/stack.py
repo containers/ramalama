@@ -34,6 +34,7 @@ class Stack:
         self.model_port = "8080"
         self.stack_image = stack_image(ActiveConfig())
         self.labels = ""
+        self.draft_model = New(args.model_draft, args) if args.model_draft is not None else None
 
     def add_label(self, label):
         cleanlabel = label.replace("=", ": ", 1)
@@ -100,6 +101,13 @@ class Stack:
         args2 = copy.copy(self.args)
         args2.port = self.model_port
         exec_args = assemble_command(args2)
+        draft_model_paths = None
+        if self.draft_model is not None:
+            draft_model_paths = (
+                self.draft_model._get_entry_model_path(False, False, False),
+                self.draft_model._get_entry_model_path(True, True, False),
+            )
+
         return (
             self.model.model_name,
             (model_src_path, model_dest_path),
@@ -107,22 +115,25 @@ class Stack:
             (mmproj_src_path, mmproj_dest_path),
             args2,
             exec_args,
+            draft_model_paths,
         )
 
     def serve(self):
         stack_port = compute_serving_port(self.args, quiet=self.args.generate)
         self.args.port = stack_port
-        yaml = self.generate()
         if self.args.dryrun:
+            yaml = self.generate()
             print(yaml)
             return
 
         if self.args.generate:
             if self.args.generate.gen_type == "kube":
+                yaml = self.generate()
                 kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
                 return
 
             if self.args.generate.gen_type == "quadlet/kube" or self.args.generate.gen_type == "quadlet":
+                yaml = self.generate()
                 kube.genfile(self.name, yaml).write(self.args.generate.output_dir)
                 k = quadlet.kube(
                     self.name, f"RamaLama {self.model.model_alias} Kubernetes YAML - llama Stack AI Model Service"
@@ -160,6 +171,7 @@ class Stack:
         with NamedTemporaryFile(
             mode='w', prefix='RamaLama_', delete=not self.args.debug, delete_on_close=False
         ) as yaml_file:
+            yaml = self.generate()
             yaml_file.write(yaml)
             yaml_file.close()
 

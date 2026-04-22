@@ -46,6 +46,8 @@ the execution. URL support means if a model is on a web site or even on your loc
 
 @@option mcp
 
+@@option model-draft
+
 @@option name
 
 @@option network
