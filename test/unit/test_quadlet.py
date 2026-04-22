@@ -37,6 +37,9 @@ class Input:
         model_src_blob: str = "",
         model_dest_name: str = "",
         model_file_exists: bool = False,
+        draft_model_src_blob: str = "",
+        draft_model_dest_name: str = "",
+        draft_model_file_exists: bool = False,
         chat_template_src_blob: str = "",
         chat_template_dest_name: str = "",
         chat_template_file_exists: bool = False,
@@ -54,6 +57,9 @@ class Input:
         self.model_src_blob = model_src_blob
         self.model_dest_name = model_dest_name
         self.model_file_exists = model_file_exists
+        self.draft_model_src_blob = draft_model_src_blob
+        self.draft_model_dest_name = draft_model_dest_name
+        self.draft_model_file_exists = draft_model_file_exists
         self.chat_template_src_blob = chat_template_src_blob
         self.chat_template_dest_name = chat_template_dest_name
         self.chat_template_file_exists = chat_template_file_exists
@@ -90,6 +96,19 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
                 image="testimage",
             ),
             DATA_PATH / "basic",
+        ),
+        (
+            Input(
+                model_name="tinyllama",
+                model_src_blob="sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816",
+                model_dest_name="/mnt/models/tinyllama",
+                model_file_exists=True,
+                draft_model_src_blob="sha256-f60ff32ab6f83e42c043d6c78162af3b81862c6be03c769683af18efdadb2c33",
+                draft_model_dest_name="/mnt/models/atomicllama",
+                draft_model_file_exists=True,
+                image="testimage",
+            ),
+            DATA_PATH / "draft_model",
         ),
         (
             Input(
@@ -250,6 +269,7 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
 
     existence = {
         input.model_src_blob: input.model_file_exists,
+        input.draft_model_src_blob: input.draft_model_file_exists,
         input.chat_template_src_blob: input.chat_template_file_exists,
         input.mmproj_src_blob: input.mmproj_file_exists,
         "/dev/dri": True,
@@ -261,6 +281,11 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
     if input.model_parts:
         for src, _ in input.model_parts:
             existence[src] = input.model_file_exists
+
+    # Add draft_model to model_parts if set
+    draft_model_parts = None
+    if input.draft_model_src_blob:
+        draft_model_parts = (input.draft_model_src_blob, input.draft_model_dest_name)
 
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
     monkeypatch.setattr(Quadlet, "_gen_env", lambda self, quadlet_file: None)
@@ -275,6 +300,7 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
         input.exec_args,
         input.artifact,
         input.model_parts,
+        draft_model_parts,
     ).generate():
         assert file.filename in expected_files
 

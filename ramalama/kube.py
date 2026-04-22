@@ -19,15 +19,16 @@ class Kube:
         mmproj_paths: Optional[Tuple[str, str]],
         args,
         exec_args,
+        draft_model_paths: Optional[Tuple[str, str]],
         artifact: bool,
     ):
-        self.src_model_path, self.dest_model_path = model_paths
         self.src_chat_template_path, self.dest_chat_template_path = (
             chat_template_paths if chat_template_paths is not None else ("", "")
         )
         self.src_mmproj_path, self.dest_mmproj_path = mmproj_paths if mmproj_paths is not None else ("", "")
-        self.src_model_path = self.src_model_path.removeprefix("oci://")
-
+        self.model_paths = {'model': model_paths}
+        if draft_model_paths is not None:
+            self.model_paths['model_draft'] = draft_model_paths
         self.ai_image = model_name
         if getattr(args, "name", None):
             self.name = args.name
@@ -45,19 +46,21 @@ class Kube:
 
         volumes = """\
       volumes:"""
-        if os.path.exists(self.src_model_path):
-            m, v = self._gen_path_volume()
-            mounts += m
-            volumes += v
-        else:
-            subPath = ""
-            if not self.artifact:
-                subPath = """
+        for volume_name, (src_model_path, dest_model_path) in self.model_paths.items():
+            src_model_path = src_model_path.removeprefix("oci://")
+            if os.path.exists(src_model_path):
+                m, v = self._gen_path_volume(volume_name, src_model_path, dest_model_path)
+                mounts += m
+                volumes += v
+            else:
+                subPath = ""
+                if not self.artifact:
+                    subPath = """
           subPath: /models"""
-            mounts += f"""
+                mounts += f"""
         - mountPath: {MNT_DIR}{subPath}
-          name: model"""
-            volumes += self._gen_oci_volume()
+          name: {volume_name}"""
+                volumes += self._gen_oci_volume(volume_name, src_model_path)
 
         if getattr(self.args, 'rag', None):
             m, v = self._gen_rag_volume()
@@ -92,26 +95,26 @@ class Kube:
         name: {name}"""
         return mounts, volumes
 
-    def _gen_path_volume(self):
-        host_model_path = normalize_host_path_for_container(self.src_model_path)
+    def _gen_path_volume(self, volume_name, src_model_path, dest_model_path):
+        host_model_path = normalize_host_path_for_container(src_model_path)
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
             host_model_path = '/mnt' + host_model_path
         mount = f"""
-        - mountPath: {self.dest_model_path}
-          name: model"""
+        - mountPath: {dest_model_path}
+          name: {volume_name}"""
         volume = f"""
       - hostPath:
           path: {host_model_path}
-        name: model"""
+        name: {volume_name}"""
         return mount, volume
 
-    def _gen_oci_volume(self):
+    def _gen_oci_volume(self, volume_name, src_model_path):
         return f"""
       - image:
-          reference: {self.src_model_path}
+          reference: {src_model_path}
           pullPolicy: IfNotPresent
-        name: model"""
+        name: {volume_name}"""
 
     def _gen_rag_volume(self):
         mounts = f"""

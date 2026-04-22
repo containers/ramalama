@@ -19,13 +19,19 @@ class Compose:
         mmproj_paths: Optional[tuple[str, str]],
         args,
         exec_args,
+        draft_model_paths: Optional[tuple[str, str]],
     ):
         self.src_model_path, self.dest_model_path = model_paths
+        self.src_draft_model_path, self.dest_draft_model_path = (
+            draft_model_paths if draft_model_paths is not None else ("", "")
+        )
         self.src_chat_template_path, self.dest_chat_template_path = (
             chat_template_paths if chat_template_paths is not None else ("", "")
         )
         self.src_mmproj_path, self.dest_mmproj_path = mmproj_paths if mmproj_paths is not None else ("", "")
         self.src_model_path = self.src_model_path.removeprefix("oci://")
+        if self.src_draft_model_path:
+            self.src_draft_model_path = self.src_draft_model_path.removeprefix("oci://")
 
         self.model_name = model_name
         custom_name = getattr(args, "name", None)
@@ -38,7 +44,9 @@ class Compose:
         volumes = "    volumes:"
 
         # Model Volume
-        volumes += self._gen_model_volume()
+        volumes += self._gen_model_volume(self.src_model_path, self.dest_model_path)
+        if self.src_draft_model_path is not None:
+            volumes += self._gen_model_volume(self.src_draft_model_path, self.dest_draft_model_path)
 
         # RAG Volume
         if getattr(self.args, "rag", None):
@@ -54,8 +62,8 @@ class Compose:
 
         return volumes
 
-    def _gen_model_volume(self) -> str:
-        return f'\n      - "{self.src_model_path}:{self.dest_model_path}:ro"'
+    def _gen_model_volume(self, src_model_path, dest_model_path) -> str:
+        return f'\n      - "{src_model_path}:{dest_model_path}:ro"'
 
     def _gen_rag_volume(self) -> str:
         rag_source = self.args.rag
