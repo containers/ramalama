@@ -262,6 +262,7 @@ class OpenClaw(Agent):
         self.args = args
         self.config_file_path = self._write_config(args)
         self._gateway_name = f"openclaw-gateway-{args.name}"  # type: ignore[attr-defined]
+        self._gateway_started = False
 
         #  Gateway Engine (detached background container)
         self.gateway_engine = SandboxEngine(args, background=True)
@@ -297,8 +298,7 @@ class OpenClaw(Agent):
             self.engine.add_args(
                 "bash",
                 "-c",
-                'msg="$(cat)"; exec openclaw agent'
-                f'{verbose_flag} --session-id ramalama --message "$msg"',
+                f'msg="$(cat)"; exec openclaw agent{verbose_flag} --session-id ramalama --message "$msg"',
             )
 
     def _write_config(self, args: OpenClawArgsType) -> str:
@@ -336,6 +336,7 @@ class OpenClaw(Agent):
     def start_gateway(self) -> None:
         """Start the gateway container in detached mode."""
         run_cmd(self.gateway_engine.exec_args, stdout=None, stdin=None)
+        self._gateway_started = True
 
     def _gateway_ready(self) -> bool:
         """Check whether the OpenClaw gateway container is running and listening on the configured port."""
@@ -370,8 +371,9 @@ class OpenClaw(Agent):
             os.unlink(self.config_file_path)
         except FileNotFoundError:
             pass
-        self.engine.args.ignore = True  # type: ignore[attr-defined]
-        stop_container(self.engine.args, self._gateway_name, remove=True)
+        if self._gateway_started:
+            self.engine.args.ignore = True  # type: ignore[attr-defined]
+            stop_container(self.engine.args, self._gateway_name, remove=True)
 
     def _add_state_dir_to_engine(self, engine: SandboxEngine, args: OpenClawArgsType) -> None:
         state_dir = getattr(args, "state_dir", None)
