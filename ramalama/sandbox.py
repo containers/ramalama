@@ -272,7 +272,9 @@ class OpenClaw(Agent):
         self.gateway_engine.add_workdir(args)
         self.gateway_engine.add_volume(self.config_file_path, "/etc/openclaw/ramalama.json")
         self.gateway_engine.add_args(args.openclaw_image)
-        self.gateway_engine.add_args("openclaw", "gateway", "run", "--port", str(args.openclaw_port), "--bind", "loopback")
+        self.gateway_engine.add_args(
+            "openclaw", "gateway", "run", "--port", str(args.openclaw_port), "--bind", "loopback"
+        )
 
         # Client Engine (foreground interactive container)
         self.engine.add_name(f"openclaw-{args.name}")  # type: ignore[attr-defined]

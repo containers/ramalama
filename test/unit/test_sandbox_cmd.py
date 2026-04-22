@@ -535,7 +535,9 @@ def test_openclaw_run_handles_start_wait_and_cleanup(monkeypatch):
         calls.append(cmd)
 
     monkeypatch.setattr("ramalama.sandbox.run_cmd", _record_run_cmd)
-    monkeypatch.setattr("ramalama.sandbox.stop_container", lambda args, name, remove=False: calls.append(["stop", name]))
+    monkeypatch.setattr(
+        "ramalama.sandbox.stop_container", lambda args, name, remove=False: calls.append(["stop", name])
+    )
     monkeypatch.setattr(OpenClaw, "_wait_for_gateway_ready", lambda self, timeout=30: calls.append(["wait"]))
 
     args = _make_openclaw_args()
