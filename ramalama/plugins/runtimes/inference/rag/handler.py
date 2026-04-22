@@ -14,7 +14,6 @@ from ramalama.common import ensure_image, perror, set_accel_env_vars
 from ramalama.config import ActiveConfig
 from ramalama.plugins.interface import RuntimePlugin
 from ramalama.plugins.loader import assemble_command
-from ramalama.plugins.runtimes.inference.llama_cpp_commands import _NGL_DEFAULT, _default_threads
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
 
@@ -112,6 +111,10 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
 
 def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=8192, cache_reuse=256):
     """Build argparse.Namespace for an internal llama.cpp serve session."""
+    from ramalama.plugins.loader import get_runtime
+
+    config = ActiveConfig()
+    rt_config = get_runtime("llama.cpp").get_runtime_config(config)
     return argparse.Namespace(
         MODEL=model_name,
         subcommand="serve",
@@ -124,7 +127,7 @@ def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=8192, 
         quiet=True,
         noout=True,
         image=args.image,
-        pull=getattr(args, "pull", ActiveConfig().pull),
+        pull=getattr(args, "pull", config.pull),
         network=None,
         oci_runtime=None,
         selinux=False,
@@ -140,8 +143,8 @@ def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=8192, 
         port=str(port),
         ctx_size=ctx_size,
         cache_reuse=cache_reuse,
-        ngl=getattr(args, "ngl", _NGL_DEFAULT),
-        threads=getattr(args, "threads", _default_threads()),
+        ngl=getattr(args, "ngl", rt_config.ngl),
+        threads=getattr(args, "threads", rt_config.threads),
         temp=0.0,
         thinking=False,
         max_tokens=0,
@@ -154,7 +157,7 @@ def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=8192, 
         gguf=None,
         authfile=None,
         tlsverify=True,
-        verify=ActiveConfig().verify,
+        verify=config.verify,
     )
 
 

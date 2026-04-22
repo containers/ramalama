@@ -2,7 +2,7 @@
 ####>   ramalama bench, ramalama perplexity, ramalama run, ramalama sandbox goose, ramalama sandbox opencode, ramalama serve
 ####> If this file is edited, make sure the changes
 ####> are applicable to all of those.
-#### **--backend**=*auto* | vulkan | rocm | cuda | sycl | openvino
+#### **--backend**=*auto* | vulkan | rocm | cuda | sycl | openvino | cann | musa
 
 GPU backend to use for inference (default: auto).
 
@@ -12,6 +12,8 @@ Available backends depend on the detected GPU hardware.
 - **AMD GPUs**: vulkan (Linux/macOS) or rocm (Windows)
 - **NVIDIA GPUs**: cuda
 - **Intel GPUs**: vulkan (Linux/macOS) or sycl (Windows); openvino available as explicit option
+- **Ascend NPUs**: cann
+- **MUSA GPUs**: musa
 - **No GPU**: vulkan (CPU fallback)
 
 **Platform-specific behavior**:
@@ -24,6 +26,8 @@ Available backends depend on the detected GPU hardware.
 - **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
 - **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
 - **openvino**: Use Intel OpenVINO backend (Intel GPUs only); uses `quay.io/ramalama/openvino`
+- **cann**: Use Huawei CANN backend (Ascend NPUs only); uses `quay.io/ramalama/cann`
+- **musa**: Use Moore Threads MUSA backend (MUSA GPUs only); uses `quay.io/ramalama/musa`
 
 **Available choices**: The allowed values for `--backend` are dynamically determined based on
 your detected GPU hardware. For example, on a system with an AMD GPU, only `auto`, `vulkan`,

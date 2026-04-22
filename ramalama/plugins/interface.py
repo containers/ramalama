@@ -2,14 +2,43 @@ from __future__ import annotations
 
 import argparse
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
+from dataclasses import asdict, fields
 from http.client import HTTPConnection
-from typing import Any, Optional
+from typing import Any, Optional, Type
 
 
 class RuntimePlugin(ABC):
+    config_type: Optional[Type] = None
+
     @property
     @abstractmethod
     def name(self) -> str: ...
+
+    @property
+    def config_key(self) -> str:
+        return self.name.replace(".", "_").replace("-", "_")
+
+    def get_runtime_config(self, config: Any) -> Any:
+        """Return the typed runtime config, hydrated from config.runtimes."""
+        if self.config_type is None:
+            return None
+        raw = config.runtimes.get(self.config_key, {})
+        if not isinstance(raw, Mapping):
+            raise ValueError(f"config.runtimes.{self.config_key} must be a mapping, got {type(raw).__name__}")
+        known = {f.name for f in fields(self.config_type)}
+        return self.config_type(**{k: v for k, v in raw.items() if k in known})
+
+    def sync_args_to_runtime_config(self, args: argparse.Namespace, config: Any) -> None:
+        """Sync CLI args into the runtime config section."""
+        if self.config_type is None:
+            return
+        rt_config = self.get_runtime_config(config)
+        rt_fields = {f.name for f in fields(rt_config)}
+        for arg_name in vars(args).keys() & rt_fields:
+            if getattr(args, arg_name) != getattr(rt_config, arg_name):
+                setattr(rt_config, arg_name, getattr(args, arg_name))
+        config.runtimes[self.config_key] = asdict(rt_config)
 
     def get_container_image(self, config: Any, gpu_type: str) -> Optional[str]:
         return None

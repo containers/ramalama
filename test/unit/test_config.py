@@ -47,7 +47,6 @@ def test_correct_config_defaults(monkeypatch):
     assert cfg.pull in ["newer", "always"]  # depends on engine
     assert cfg.runtime == "llama.cpp"
     assert cfg.store == get_default_store()
-    assert cfg.temp == "0.8"
     assert cfg.transport == "ollama"
     assert cfg.verify is True
 
@@ -72,15 +71,8 @@ def test_config_defaults_not_set(monkeypatch):
     assert cfg.is_set("pull") is False
     assert cfg.is_set("runtime") is False
     assert cfg.is_set("store") is False
-    assert cfg.is_set("temp") is False
     assert cfg.is_set("transport") is False
     assert cfg.is_set("verify") is False
-
-
-@pytest.mark.parametrize("backend", ["auto", "vulkan", "rocm", "cuda", "sycl", "openvino"])
-def test_base_config_accepts_valid_backend(backend):
-    config = BaseConfig(backend=backend)
-    assert config.backend == backend
 
 
 def test_base_config_normalizes_pull_for_docker():

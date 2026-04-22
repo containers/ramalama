@@ -17,7 +17,7 @@ from test.e2e.utils import RamalamaExecWorkspace
 @pytest.mark.e2e
 def test_convert_custom_gguf_config():
     config = """
-    [ramalama]
+    [ramalama.runtimes.llama_cpp]
     gguf_quantization_mode="Q5_0"
     """
 
