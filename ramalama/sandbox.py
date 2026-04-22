@@ -88,7 +88,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     )
     parser.add_argument(
         "--state-dir",
-        help="local directory to mount into the OpenClaw gateway container for state",
+        help="local directory to mount into the OpenClaw gateway container for persistent state",
     )
     _add_common_sandbox_args(parser)
     parser.set_defaults(func=run_sandbox_openclaw)
