@@ -418,7 +418,7 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
     if not args.container:  # type: ignore[attr-defined]
         raise ValueError("ramalama sandbox requires a container engine")
 
-    args.port = compute_serving_port(args)
+    args.port = compute_serving_port(args) # type: ignore[attr-defined]  
 
     model = New(args.MODEL, args)
     model.ensure_model_exists(args)
