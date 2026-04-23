@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
+from functools import partial
 from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
@@ -518,7 +519,7 @@ class Transport(TransportBase):
         return None
 
     def wait_for_healthy(self, args):
-        wait_for_healthy(args, is_healthy)
+        wait_for_healthy(args, partial(is_healthy, model_name=self.model_alias))
 
     def _handle_container_chat(self, args, server_process):
         """Handle chat for container-based execution."""
