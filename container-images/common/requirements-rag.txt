@@ -326,9 +326,9 @@ distro==1.9.0 \
     --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
     # via openai
     # from https://pypi.org/simple
-docling-core==2.74.0 \
-    --hash=sha256:359f101a261cdcfa592bcb0e82dd508bd431f8d9ed49c6938ee271db1d420039 \
-    --hash=sha256:e8beb0b84a033c814386b1d990e73cb1c68c6485906c78c841b901577c705dc0
+docling-core==2.74.1 \
+    --hash=sha256:46bf298686f2c51ddd69b6935a27dff1cc80838f2f5f1a8823492d99cf1a357b \
+    --hash=sha256:e6464078012b3d45f4e0accd101fcb277063903f355eabbb9aee8de00527a789
     # via -r requirements-rag.in
     # from https://pypi.org/simple
 fastapi==0.136.0 \
