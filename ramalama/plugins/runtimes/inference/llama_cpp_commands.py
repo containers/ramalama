@@ -71,12 +71,16 @@ class LlamaCppCommands:
             cmd += ["--model", model_path]
 
             mmproj_path = model._get_mmproj_path(is_container, should_generate, dry_run)
-            if mmproj_path:
-                cmd += ["--mmproj", str(mmproj_path)]
-
-            chat_template_path = model._get_chat_template_path(is_container, should_generate, dry_run)
-            if chat_template_path:
-                cmd += ["--chat-template-file", str(chat_template_path)]
+            has_mmproj = bool(mmproj_path) or bool(model._get_mmproj_path(False, False, False))
+            if has_mmproj:
+                if mmproj_path:
+                    cmd += ["--mmproj", str(mmproj_path)]
+                cmd.append("--no-jinja")
+            else:
+                chat_template_path = model._get_chat_template_path(is_container, should_generate, dry_run)
+                if chat_template_path:
+                    cmd += ["--chat-template-file", str(chat_template_path)]
+                cmd.append("--jinja")
 
         cmd.append("--no-warmup")
 
