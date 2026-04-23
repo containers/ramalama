@@ -1875,9 +1875,9 @@ tqdm==4.67.3 \
     #   openai
     #   semchunk
     # from https://pypi.org/simple
-typer==0.24.1 \
-    --hash=sha256:112c1f0ce578bfb4cab9ffdabc68f031416ebcc216536611ba21f04e9aa84c9e \
-    --hash=sha256:e39b4732d65fbdcde189ae76cf7cd48aeae72919dea1fdfc16593be016256b45
+typer==0.24.2 \
+    --hash=sha256:b618bc3d721f9a8d30f3e05565be26416d06e9bcc29d49bc491dc26aba674fa8 \
+    --hash=sha256:ec070dcfca1408e85ee203c6365001e818c3b7fffe686fd07ff2d68095ca0480
     # via docling-core
     # from https://pypi.org/simple
 typing-extensions==4.15.0 \
