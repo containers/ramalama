@@ -145,7 +145,7 @@ class GraniteDoclingConverter:
 # ---------------------------------------------------------------------------
 # Token-aware document chunking (semchunk + tiktoken)
 # ---------------------------------------------------------------------------
-def chunk_documents(docs, max_tokens=400):
+def chunk_documents(docs, max_tokens=400, captioner=None):
     """Chunk a mixed list of DoclingDocument objects and raw text strings.
 
     Uses semchunk (the same splitter docling's HybridChunker uses internally)
@@ -170,7 +170,7 @@ def chunk_documents(docs, max_tokens=400):
         if isinstance(doc, str):
             text = doc
         else:
-            text = _docling_doc_to_text(doc, SectionHeaderItem, TitleItem)
+            text = _docling_doc_to_text(doc, SectionHeaderItem, TitleItem, captioner=captioner)
 
         if not text.strip():
             continue
@@ -188,13 +188,80 @@ def chunk_documents(docs, max_tokens=400):
     return chunks, ids, doc_ids, chunk_indices
 
 
-def _docling_doc_to_text(doc, SectionHeaderItem, TitleItem):
+class ImageCaptioner:
+    """Describe images via a general-purpose VLM (e.g. Gemma 4)."""
+
+    def __init__(self, api_url):
+        self.completions_url = f"{api_url.rstrip('/')}/v1/chat/completions"
+        self.count = 0
+
+    def caption(self, pil_image):
+        self.count += 1
+        sys.stderr.write(f"\r  Captioning image {self.count}...")
+        sys.stderr.flush()
+        buf = io.BytesIO()
+        pil_image.save(buf, format="PNG")
+        image_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+        payload = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}},
+                        {"type": "text", "text": "Describe this image in detail. Include all visible text, data, and visual elements."},
+                    ],
+                }
+            ],
+            "max_tokens": 1024,
+            "temperature": 0.0,
+        }
+
+        req = Request(
+            self.completions_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urlopen(req, timeout=300) as resp:
+                result = json.loads(resp.read())
+        except HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            logger.warning("Caption request failed (%s): %s", e.code, body)
+            return None
+
+        choices = result.get("choices")
+        if not choices:
+            logger.warning("Caption request returned no choices: %s", result)
+            return None
+
+        return choices[0]["message"]["content"]
+
+
+def _docling_doc_to_text(doc, SectionHeaderItem, TitleItem, captioner=None):
     """Serialize a DoclingDocument to markdown-like text for chunking."""
+    from docling_core.types.doc.document import PictureItem
+
     parts = []
     for item, _level in doc.iterate_items():
         if isinstance(item, (TitleItem, SectionHeaderItem)):
             if item.text:
                 parts.append(f"\n{'#' * min(_level + 1, 6)} {item.text.strip()}\n")
+        elif isinstance(item, PictureItem) and captioner and item.image:
+            description = None
+            try:
+                pil_image = item.image.pil_image
+                if pil_image:
+                    description = captioner.caption(pil_image)
+            except Exception as e:
+                logger.warning("Failed to caption image: %s", e)
+
+            if description:
+                parts.append(f"\n[Image: {description.strip()}]\n")
+            elif getattr(item, "text", None):
+                text = item.text.strip()
+                if text:
+                    parts.append(text)
         elif hasattr(item, "text") and item.text:
             text = item.text.strip()
             if text:
@@ -437,10 +504,16 @@ def run_pipeline(args):
     if not docs:
         raise ValueError("No documents were successfully converted")
 
+    # Set up image captioner if a caption URL is provided
+    caption_url = getattr(args, "caption_url", None)
+    captioner = ImageCaptioner(api_url=caption_url) if caption_url else None
+
     # Chunk
-    perror("Chunking documents...")
+    perror("Chunking and captioning documents..." if captioner else "Chunking documents...")
     chunk_size = getattr(args, "chunk_size", 400)
-    chunks, ids, doc_ids, chunk_indices = chunk_documents(docs, max_tokens=chunk_size)
+    chunks, ids, doc_ids, chunk_indices = chunk_documents(docs, max_tokens=chunk_size, captioner=captioner)
+    if captioner and captioner.count > 0:
+        sys.stderr.write("\n")
     perror(f"  {len(chunks)} chunks created")
 
     # Embed and store
@@ -464,6 +537,7 @@ parser.add_argument("--embed-url", dest="embed_url", help="URL of the llama.cpp 
 parser.add_argument("--embed-model", dest="embed_model", help="Name of the embedding model (stored in metadata)")
 parser.add_argument("--chunk-size", dest="chunk_size", type=int, default=400, help="Max tokens per chunk (default: 400)")
 parser.add_argument("--ctx-size", dest="ctx_size", type=int, default=8192, help="Context size of the VLM server (default: 8192)")
+parser.add_argument("--caption-url", dest="caption_url", help="URL of a VLM server for image captioning (e.g. Gemma 4)")
 parser.add_argument("output", help="Output directory for the Qdrant database")
 parser.add_argument("sources", nargs="+", help="Source files or directories to process")
 

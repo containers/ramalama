@@ -39,6 +39,12 @@ positional arguments:
 
 ## OPTIONS
 
+#### **--caption-images**=*MODEL*
+Enable image captioning via a VLM to describe charts, diagrams, and photos
+found in documents.  When enabled, a third llama.cpp server is started to
+generate text descriptions of images before chunking.  The model argument
+is optional (default: hf://unsloth/gemma-4-E2B-it-GGUF).
+
 #### **--chunk-size**=*integer*
 Maximum tokens per chunk for embedding (default: 400). Smaller chunks
 are faster to embed but may lose context; larger chunks preserve more

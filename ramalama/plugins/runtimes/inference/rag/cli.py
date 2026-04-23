@@ -3,6 +3,7 @@
 from ramalama.cli import OverrideDefaultAction, default_image, default_rag_image, local_images, suppressCompleter
 from ramalama.plugins.runtimes.inference.llama_cpp import AddPathOrUrl
 from ramalama.plugins.runtimes.inference.llama_cpp_commands import _NGL_DEFAULT, _default_threads
+from ramalama.plugins.runtimes.inference.rag.handler import DEFAULT_CAPTION_MODEL
 
 
 def register_rag_subcommand(plugin, subparsers):
@@ -75,6 +76,16 @@ def register_rag_subcommand(plugin, subparsers):
         help="OCI container image for the RAG processing container",
         action=OverrideDefaultAction,
         completer=local_images,
+    )
+    parser.add_argument(
+        "--caption-images",
+        dest="caption_images",
+        nargs="?",
+        const=DEFAULT_CAPTION_MODEL,
+        default=None,
+        metavar="MODEL",
+        help=f"enable image captioning via a VLM (default model: {DEFAULT_CAPTION_MODEL})",
+        completer=suppressCompleter,
     )
     def_threads = _default_threads()
     parser.add_argument(

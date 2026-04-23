@@ -233,6 +233,10 @@ class LlamaCppCommands:
         if ctx_size:
             cmd += ["--ctx-size", str(ctx_size)]
 
+        caption_url = getattr(args, 'caption_url', None)
+        if caption_url:
+            cmd += ["--caption-url", str(caption_url)]
+
         cmd.append("/output")
 
         if getattr(args, 'PATHS', None) and getattr(args, 'inputdir', None):

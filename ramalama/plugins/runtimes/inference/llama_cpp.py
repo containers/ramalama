@@ -409,7 +409,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         finally:
             from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers
 
-            _cleanup_servers(args, embed_serve_args, None, embed_proc, None)
+            _cleanup_servers(args, [embed_serve_args], [embed_proc])
 
     def _serve_rag(self, args: argparse.Namespace, model: Any) -> None:
         if not args.container:
@@ -423,7 +423,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         finally:
             from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers
 
-            _cleanup_servers(args, embed_serve_args, None, embed_proc, None)
+            _cleanup_servers(args, [embed_serve_args], [embed_proc])
 
     def _start_rag_embedding_server(self, args):
         """Start a llama.cpp embedding server for RAG inference and set embed_url on args."""
