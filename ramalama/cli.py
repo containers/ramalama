@@ -339,6 +339,7 @@ def configure_subcommands(parser):
     info_parser(subparsers)
     inspect_parser(subparsers)
     list_parser(subparsers)
+    list_devices_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
     pull_parser(subparsers)
@@ -549,6 +550,72 @@ def list_containers(args):
     if len(containers) == 0:
         return
     print("\n".join(containers))
+
+
+def list_devices_parser(subparsers):
+    from ramalama.config import DEFAULT_IMAGE
+
+    parser = subparsers.add_parser("list-devices", help="list available GPU/accelerator devices via llama.cpp")
+    parser.add_argument(
+        "--image",
+        default=DEFAULT_IMAGE,
+        help="OCI container image to use for device detection",
+        completer=local_images,
+    )
+    parser.set_defaults(func=list_devices_cli)
+
+
+def list_devices_cli(args):
+    image = args.image
+    conman = args.engine
+    if not conman:
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [conman, "run", "--rm"]
+    conman_args += ["--security-opt=label=disable"]
+    conman_args += ["--cap-drop=all", "--security-opt=no-new-privileges"]
+
+    import platform
+
+    if platform.system() == "Windows":
+        # Assuming user is using WSL which translates /dev/dri to /dev/dxg
+        conman_args += ["--device", "/dev/dxg"]
+        conman_args += ["--mount", "type=bind,src=/usr/lib/wsl,dst=/usr/lib/wsl"]
+        conman_args += ["-e", "LD_LIBRARY_PATH=/usr/lib/wsl/lib"]
+    elif platform.system() == "Darwin":
+        # Assuming user is using a libkrun container with /dev/dri available
+        conman_args += ["--device", "/dev/dri"]
+    else:
+        for path in ["/dev/dri", "/dev/kfd"]:
+            if os.path.exists(path):
+                conman_args += ["--device", path]
+
+    conman_args += [image, "llama-server", "--list-devices"]
+
+    logger.debug("list_devices_cli: %s", " ".join(conman_args))
+
+    if args.dryrun:
+        from ramalama.engine import dry_run
+
+        dry_run(conman_args)
+        return
+
+    result = subprocess.run(conman_args, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        sys.stderr.write(result.stderr)
+        sys.exit(result.returncode)
+
+    if args.debug:
+        sys.stderr.write(result.stderr)
+        print(result.stdout, end="")
+        return
+
+    printing = False
+    for line in result.stdout.splitlines():
+        if line.startswith("Available devices:"):
+            printing = True
+        if printing:
+            print(line)
 
 
 def info_parser(subparsers):
