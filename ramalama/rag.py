@@ -160,14 +160,16 @@ class RagTransport(OCI):
 
     type: str = "Model+RAG"
 
+    def format_model(self, model: str) -> str:
+        if getattr(self, "kind", None) is RagSource.DB:
+            return model
+        return super().format_model(model)
+
     def __init__(self, imodel: Transport, cmd: list[str], args: RagArgsType):
+        self.kind = RagSource.DB if os.path.exists(args.rag) else RagSource.IMAGE
         super().__init__(args.rag, args.store, args.engine)
         self.imodel = imodel
         self.model_cmd = cmd
-        if os.path.exists(args.rag):
-            self.kind = RagSource.DB
-        else:
-            self.kind = RagSource.IMAGE
 
     def exists(self) -> bool:
         if self.kind is RagSource.DB:
