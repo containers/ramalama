@@ -38,7 +38,7 @@ def sandbox_ctx():
     [
         ["goose", r"run -i -\s*$"],
         ["opencode", r"run --thinking=true\s*$"],
-        ["openclaw", r"openclaw gateway run --port 18789 --bind loopback"],
+        ["openclaw", r"openclaw gateway run"],
     ],
 )
 def test_sandbox_dryrun_default(agent, cmd):

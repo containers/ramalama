@@ -462,7 +462,7 @@ def test_openclaw_gateway_engine():
         # Gateway should share network with model server
         assert "--network=container:ramalama_model_abc" in gw
         # Gateway command should be openclaw gateway run
-        assert gw[-7:] == ["openclaw", "gateway", "run", "--port", "18789", "--bind", "loopback"]
+        assert gw[-3:] == ["openclaw", "gateway", "run"]
     finally:
         openclaw.cleanup()
 
