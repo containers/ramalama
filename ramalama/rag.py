@@ -163,6 +163,8 @@ class RagTransport(OCI):
     def format_model(self, model: str) -> str:
         if getattr(self, "kind", None) is RagSource.DB:
             return model
+        if "/" not in model:
+            model = f"localhost/{model}"
         return super().format_model(model)
 
     def __init__(self, imodel: Transport, cmd: list[str], args: RagArgsType):
