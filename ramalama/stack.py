@@ -75,7 +75,7 @@ class Stack:
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}
         - name: INFERENCE_MODEL
-          value: {self.model.model_name}""",
+          value: {self.model.model_alias}""",
             "port_string": f"""\
         ports:
         - containerPort: 8321
