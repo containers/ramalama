@@ -178,6 +178,9 @@ def test_kube_generate(input: Input, expected_file_name: str, monkeypatch):
     # Mock environment variables
     monkeypatch.setattr("ramalama.kube.get_accel_env_vars", lambda: {"TEST_ENV": "test_value"})
 
+    # Mock NVIDIA check to ensure deterministic behavior across systems
+    monkeypatch.setattr("ramalama.kube.check_nvidia", lambda: None)
+
     # Mock version
     monkeypatch.setattr("ramalama.kube.version", lambda: "test-version")
 

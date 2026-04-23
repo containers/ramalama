@@ -55,6 +55,11 @@ spec:
           name: dri
         - mountPath: /dev/kfd
           name: kfd
+        resources:
+          limits:
+             'podman.io/device=/dev/accel': 1
+             'podman.io/device=/dev/dri': 1
+             'podman.io/device=/dev/kfd': 1
       volumes:
       - hostPath:
           path: /path/to/model.file
