@@ -202,7 +202,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         health_resp.read()
         if health_resp.status not in (200, 404):
             logger.debug(f"{self.name} {container_name} /health {health_resp.status}: {health_resp.reason}")
-
             return False
 
         conn.request("GET", "/models")
@@ -225,7 +224,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if not model_name:
             model_name = New(args.MODEL, args).model_alias
 
-        if not any(model_name in name for name in model_names):
+        if model_name not in model_names:
             logger.debug(
                 f'{self.name} {container_name} /models does not include "{model_name}" in the model list: {model_names}'
             )
@@ -448,7 +447,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)
 
         if not args.dryrun:
-            _wait_for_server("127.0.0.1", int(embed_port))
+            _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
 
         if args.model_args.engine == "podman":
             embed_host = "host.containers.internal"

@@ -228,4 +228,4 @@ class RagTransport(OCI):
 
     def wait_for_healthy(self, args: RagArgsType) -> None:
         self.imodel.wait_for_healthy(args.model_args)
-        wait_for_healthy(args, partial(is_healthy, model_name=f"{self.imodel.model_name}+rag"))
+        wait_for_healthy(args, partial(is_healthy, model_name=f"{self.imodel.model_alias}+rag"))
