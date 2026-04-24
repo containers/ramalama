@@ -125,8 +125,8 @@ Note: OCI images cannot be used with the `--nocontainer` option. This option dis
 #### **--quiet**
 Decrease output verbosity.
 
-#### **--runtime**=*llama.cpp* | *vLLM*
-Specify the runtime to use. Valid options are `llama.cpp` and `vLLM` (default: `llama.cpp`).
+#### **--runtime**=*llama.cpp* | *vllm*
+Specify the runtime to use. Valid options are `llama.cpp` and `vllm` (default: `llama.cpp`).
 The default can be overridden in the `ramalama.conf` file.
 
 #### **--store**=STORE
