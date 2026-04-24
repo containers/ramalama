@@ -96,7 +96,7 @@ def test_basic_dry_run():
             id="check --network is not present when run within container", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--name", "foobar"], r".*--host 0.0.0.0", None, None, True,
+            ["--name", "foobar"], r".*--host ::", None, None, True,
             id="check --host is not present when run within container", marks=skip_if_no_container
         ),
         pytest.param(
@@ -175,8 +175,8 @@ def test_basic_dry_run():
             ["--selinux", "False"], r".*--security-opt=label=disable", None, None, True,
             id="check --selinux=False disables container separation", marks=skip_if_no_container),
         pytest.param(
-            [], r".*--host 0.0.0.0", None, None, True,
-            id="check default --host value to 0.0.0.0", marks=skip_if_container
+            [], r".*--host (::|0\.0\.0\.0)", None, None, True,
+            id="check default --host value", marks=skip_if_container
         ),
         pytest.param(
             [], r".*--cache-reuse 256", None, None, True,
@@ -410,8 +410,8 @@ def test_quadlet_generation(shared_ctx, test_model):
     )
     with container_file.open("r") as f:
         content = f.read()
-        assert re.search(r".*PublishPort=0.0.0.0:1234:1234", content)
-        assert re.search(r".*llama-server --host 0.0.0.0 --port 1234 --model .*", content)
+        assert re.search(r".*PublishPort=(\[::\]|0\.0\.0\.0):1234:1234", content)
+        assert re.search(r".*llama-server --host (::|0\.0\.0\.0) --port 1234 --model .*", content)
         assert re.search(f".*Mount=type=bind,.*{test_model_full_name}", content)
         assert re.search(r".*Environment=HIP_VISIBLE_DEVICES=99", content)
 
@@ -506,9 +506,10 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
         quadlet_file = Path(ctx.workspace_dir) / "{}.container".format(container_name)
         with quadlet_file.open("r") as f:
             content = f.read()
-            assert re.search(f".*PublishPort=0.0.0.0:{container_port}:{container_port}", content)
+            assert re.search(f".*PublishPort=(\\[::\\]|0\\.0\\.0\\.0):{container_port}:{container_port}", content)
             assert re.search(f".*ContainerName={container_name}", content)
-            assert re.search(f".*Exec=.*llama-server --host 0.0.0.0 --port {container_port} --model .*", content)
+            host_re = r"(::|0\.0\.0\.0)"
+            assert re.search(f".*Exec=.*llama-server --host {host_re} --port {container_port} --model .*", content)
             quadlet_image_source = f"{container_registry.host}:{container_registry.port}/{test_model}"
             assert re.search(
                 f".*Mount=type=image,source={quadlet_image_source},"
@@ -556,13 +557,15 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
             container_spec = containers_spec[0]
             assert 'command' not in container_spec
             model_alias = f"{container_registry.host}:{container_registry.port}/{test_model.split(':')[0]}"
+            expected_host = container_spec['args'][container_spec['args'].index("--host") + 1]
+            assert expected_host in ["::", "0.0.0.0"]
             assert container_spec['args'] == [
                 "--model",
                 "/mnt/models/model.file",
                 "--served-model-name",
                 f"{model_alias}",
                 "--host",
-                "0.0.0.0",
+                expected_host,
                 "--port",
                 "1234",
             ]

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import copy
 import json
@@ -8,11 +10,9 @@ import tempfile
 from dataclasses import asdict
 from datetime import datetime, timezone
 from http.client import HTTPConnection
-from textwrap import dedent
-from typing import Any, get_args
+from typing import Any, Optional, get_args
 from urllib.parse import urlparse
 
-from ramalama import rag as rag_module
 from ramalama.benchmarks.manager import BenchmarksManager
 from ramalama.benchmarks.schemas import BenchmarkRecord, get_benchmark_record
 from ramalama.benchmarks.utilities import parse_json, print_bench_results
@@ -24,8 +24,8 @@ from ramalama.cli import (
     add_network_argument,
     default_image,
     default_rag_image,
+    default_tools_image,
     get_shortnames,
-    local_env,
     local_images,
     local_models,
     runtime_options,
@@ -55,6 +55,7 @@ from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
 )
 from ramalama.rag import RagTransport
 from ramalama.transports.api import APITransport
+from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New, TransportFactory
 
 
@@ -130,7 +131,7 @@ _LLAMA_CPP_IMAGES: dict[str, str] = {
     "GGML_VK_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/ramalama"),
     "HIP_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/rocm"),
     "INTEL_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/intel-gpu"),
-    "OPENVINO_VISIBLE_DEVICES": "ghcr.io/ggml-org/llama.cpp:full-openvino",
+    "OPENVINO_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/openvino"),
     "MUSA_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/musa"),
 }
 
@@ -161,8 +162,8 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             if not args.dryrun:
                 config = ActiveConfig()
                 should_pull = config.pull in ["always", "missing", "newer"]
-                args.rag_image = ensure_image(args.engine, args.rag_image, should_pull=should_pull)
-            engine.add_args(args.rag_image)
+                args.tools_image = ensure_image(args.engine, args.tools_image, should_pull=should_pull)
+            engine.add_args(args.tools_image)
             engine.add_args(*self._cmd_convert(args))
             if args.dryrun:
                 engine.dryrun()
@@ -194,14 +195,13 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             engine.run()
         return f"{source_model.model_name}-{args.gguf}.gguf"
 
-    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: Optional[str] = None) -> bool:
         container_name = f"container {args.name}" if getattr(args, 'container', None) else 'server'
         conn.request("GET", "/health")
         health_resp = conn.getresponse()
         health_resp.read()
         if health_resp.status not in (200, 404):
             logger.debug(f"{self.name} {container_name} /health {health_resp.status}: {health_resp.reason}")
-
             return False
 
         conn.request("GET", "/models")
@@ -224,7 +224,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if not model_name:
             model_name = New(args.MODEL, args).model_alias
 
-        if not any(model_name in name for name in model_names):
+        if model_name not in model_names:
             logger.debug(
                 f'{self.name} {container_name} /models does not include "{model_name}" in the model list: {model_names}'
             )
@@ -233,7 +233,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         logger.debug(f"{self.name} {container_name} is ready")
         return True
 
-    def get_container_image(self, config: Any, detected_gpu_type: str) -> str | None:
+    def get_container_image(self, config: Any, detected_gpu_type: str) -> Optional[str]:
         backend = config.backend
         if backend == "auto":
             preferences = get_gpu_backend_preferences(detected_gpu_type)
@@ -402,7 +402,13 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         args = _rag_args(args)
         model = RagTransport(model, assemble_command(args.model_args), args)
         model.ensure_model_exists(args)
-        model.run(args, assemble_command(args))
+        embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
+        try:
+            model.run(args, assemble_command(args))
+        finally:
+            from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers
+
+            _cleanup_servers(args, embed_serve_args, None, embed_proc, None)
 
     def _serve_rag(self, args: argparse.Namespace, model: Any) -> None:
         if not args.container:
@@ -410,7 +416,46 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         args = _rag_args(args)
         model = RagTransport(model, assemble_command(args.model_args), args)
         model.ensure_model_exists(args)
-        model.serve(args, assemble_command(args))
+        embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
+        try:
+            model.serve(args, assemble_command(args))
+        finally:
+            from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers
+
+            _cleanup_servers(args, embed_serve_args, None, embed_proc, None)
+
+    def _start_rag_embedding_server(self, args):
+        """Start a llama.cpp embedding server for RAG inference and set embed_url on args."""
+        from ramalama.plugins.runtimes.inference.rag.handler import EMBEDDING_MODEL, _build_serve_args, _wait_for_server
+
+        embedding_model = EMBEDDING_MODEL
+        set_accel_env_vars()
+
+        embed_port = compute_serving_port(args, quiet=True, exclude=[args.port, args.model_args.port])
+        embed_serve_args = _build_serve_args(args.model_args, embedding_model, embed_port, runtime_args=["--embedding"])
+        # Internal models should always be pullable regardless of the user's --pull flag
+        embed_serve_args.pull = ActiveConfig().pull
+
+        embed_transport = New(embedding_model, embed_serve_args)
+        if isinstance(embed_transport, APITransport):
+            raise ValueError(
+                f"embedding model {embedding_model} resolved to an API transport, which cannot serve locally"
+            )
+        embed_transport.ensure_model_exists(embed_serve_args)
+
+        embed_cmd = assemble_command(embed_serve_args)
+        embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)
+
+        if not args.dryrun:
+            _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
+
+        if args.model_args.engine == "podman":
+            embed_host = "host.containers.internal"
+        else:
+            embed_host = f"host.{args.model_args.engine}.internal"
+
+        args.embed_url = f"http://{embed_host}:{embed_port}"
+        return embed_serve_args, embed_proc
 
     def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_run_subcommand(subparsers)
@@ -473,8 +518,8 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         )
         add_network_argument(convert_parser)
         convert_parser.add_argument(
-            "--rag-image",
-            default=default_rag_image(),
+            "--tools-image",
+            default=default_tools_image(),
             help="Image to use for conversion to GGUF",
             action=OverrideDefaultAction,
             completer=local_images,
@@ -536,84 +581,9 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
             self._register_rag_subcommand(subparsers)
 
     def _register_rag_subcommand(self, subparsers: "argparse._SubParsersAction") -> None:
-        config = ActiveConfig()
-        parser = subparsers.add_parser(
-            "rag",
-            help="generate and convert retrieval augmented generation (RAG) data from provided "
-            "documents into an OCI Image",
-        )
-        parser.add_argument(
-            "--env",
-            dest="env",
-            action='append',
-            type=str,
-            default=config.env,
-            help="environment variables to add to the running RAG container",
-            completer=local_env,
-        )
-        parser.add_argument(
-            "--format",
-            default=config.rag_format,
-            help="Output format for RAG Data",
-            choices=["qdrant", "json", "markdown", "milvus"],
-        )
-        parser.add_argument(
-            "--image",
-            default=default_rag_image(),
-            help="Image to use for generating RAG data",
-            action=OverrideDefaultAction,
-            completer=local_images,
-        )
-        parser.add_argument(
-            "--keep-groups",
-            dest="podman_keep_groups",
-            default=config.keep_groups,
-            action="store_true",
-            help=(
-                "pass `--group-add keep-groups` to podman.\n"
-                "If GPU device on host is accessible to via group access, "
-                "this option leaks the user groups into the container."
-            ),
-        )
-        add_network_argument(parser, dflt=None)
-        parser.add_argument(
-            "--pull",
-            dest="pull",
-            type=str,
-            default=config.pull,
-            choices=["always", "missing", "never", "newer"],
-            help='pull image policy',
-        )
-        parser.add_argument(
-            "--selinux",
-            default=config.selinux,
-            action=CoerceToBool,
-            help="Enable SELinux container separation",
-        )
-        parser.add_argument(
-            "PATHS",
-            nargs="+",
-            help=dedent("""
-        Files/URLs/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
-        formatted files to be processed"""),
-            action=AddPathOrUrl,
-        )
-        parser.add_argument(
-            "DESTINATION", help="Path or OCI Image name to contain processed rag data", completer=suppressCompleter
-        )
-        parser.add_argument(
-            "--ocr",
-            dest="ocr",
-            default=config.ocr,
-            action="store_true",
-            help="Enable embedded image text extraction from PDF (Increases RAM Usage significantly)",
-        )
-        parser.set_defaults(func=self._rag_handler)
+        from ramalama.plugins.runtimes.inference.rag.cli import register_rag_subcommand
 
-    def _rag_handler(self, args: argparse.Namespace) -> None:
-        rag = rag_module.Rag(args.DESTINATION)
-        args.inputdir = rag_module.INPUT_DIR
-        rag.generate(args, assemble_command(args))
+        register_rag_subcommand(self, subparsers)
 
     def _convert_handler(self, args: argparse.Namespace) -> None:
         if not args.container:

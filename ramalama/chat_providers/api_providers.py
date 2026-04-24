@@ -1,15 +1,18 @@
+from __future__ import annotations
+
 from collections.abc import Callable
+from typing import Optional
 
 from ramalama.chat_providers.base import ChatProvider
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
 from ramalama.config import ActiveConfig
 
-PROVIDER_API_KEY_RESOLVERS: dict[str, Callable[[], str | None]] = {
+PROVIDER_API_KEY_RESOLVERS: dict[str, Callable[[], Optional[str]]] = {
     "openai": lambda: ActiveConfig().provider.openai.api_key,
 }
 
 
-def get_provider_api_key(scheme: str) -> str | None:
+def get_provider_api_key(scheme: str) -> Optional[str]:
     """Return a configured API key for the given provider scheme, if any."""
 
     if resolver := PROVIDER_API_KEY_RESOLVERS.get(scheme):

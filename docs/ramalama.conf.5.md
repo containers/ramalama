@@ -87,7 +87,7 @@ Valid options: auto, vulkan, rocm, cuda, sycl, openvino
 - **rocm**: Use AMD ROCm backend (AMD GPUs only)
 - **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
 - **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
-- **openvino**: Use Intel OpenVINO backend (Intel GPUs only); uses `ghcr.io/ggml-org/llama.cpp:full-openvino`
+- **openvino**: Use Intel OpenVINO backend (Intel GPUs only); uses `quay.io/ramalama/openvino`
 
 **Platform-specific behavior**: On Windows, vulkan is not supported on WSL2, so vendor-specific backends (rocm for AMD, sycl for Intel) are automatically preferred when using `backend="auto"`.
 
@@ -141,9 +141,10 @@ Environment variables to be added to the environment used when running in a cont
 The quantization mode used when creating OCI formatted AI Models.
 Available options: Q2_K, Q3_K_S, Q3_K_M, Q3_K_L, Q4_0, Q4_K_S, Q4_K_M, Q5_0, Q5_K_S, Q5_K_M, Q6_K, Q8_0.
 
-**host**="0.0.0.0"
+**host**="::" | "0.0.0.0"
 
 IP address for llama.cpp to listen on.
+Defaults to "::" (dual-stack) on systems with IPv6 support, "0.0.0.0" (IPv4-only) otherwise.
 
 **image**="quay.io/ramalama/ramalama:latest"
 
@@ -210,24 +211,24 @@ If this port is unavailable, another free port from this range will be selected.
 - **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
 - **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
-**rag_format**="qdrant"
+**rag_image**="quay.io/ramalama/ramalama-rag"
 
-Specify the default output format for output of the `ramalama rag` command.
-Options: qdrant, json, markdown, milvus.
+OCI container image used for RAG processing (doc2rag and rag_framework).
+Can also be overridden with the `--rag-image` flag on the command line or the
+RAMALAMA_RAG_IMAGE environment variable.
 
-**rag_images**="quay.io/ramalama/ramalama-rag"
+`[[ramalama.tools_images]]`
 
-OCI container image to run with the specified AI model when using RAG content.
+User-override entries for GPU-specific tools container images used for GGUF
+conversion. Built-in GPU defaults (CUDA, ROCm, Intel) are defined internally;
+entries here override those defaults:
 
-`[[ramalama.rag_images]]`
+  CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda-tools"
+  HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm-tools"
+  INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu-tools"
 
-User-override entries for GPU-specific RAG container images. Built-in GPU defaults
-(CUDA, ROCm, Intel) are defined internally; entries here override those defaults:
-
-  CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda-rag"
-  HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm-rag"
-  INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu-rag"
-
+Can also be overridden with the `--tools-image` flag on the command line or the
+RAMALAMA_TOOLS_IMAGE environment variable.
 
 **runtime**="llama.cpp"
 

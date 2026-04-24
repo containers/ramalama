@@ -38,7 +38,7 @@ def test_correct_config_defaults(monkeypatch):
     assert cfg.ctx_size == 0
     assert cfg.engine in ["podman", "docker", None]
     assert cfg.env == []
-    assert cfg.host == "0.0.0.0"
+    assert cfg.host in ["::", "0.0.0.0"]
     assert cfg.image == cfg.default_image
     assert isinstance(cfg.images, dict)
     assert cfg.api == "none"
@@ -49,7 +49,6 @@ def test_correct_config_defaults(monkeypatch):
     assert cfg.store == get_default_store()
     assert cfg.temp == "0.8"
     assert cfg.transport == "ollama"
-    assert cfg.ocr is False
     assert cfg.verify is True
 
 
@@ -75,7 +74,6 @@ def test_config_defaults_not_set(monkeypatch):
     assert cfg.is_set("store") is False
     assert cfg.is_set("temp") is False
     assert cfg.is_set("transport") is False
-    assert cfg.is_set("ocr") is False
     assert cfg.is_set("verify") is False
 
 
@@ -613,7 +611,6 @@ class TestConfigIntegration:
             "RAMALAMA_CTX_SIZE": "4096",
             "RAMALAMA_CONTAINER": "true",
             "RAMALAMA_KEEP_GROUPS": "true",
-            "RAMALAMA_OCR": "true",
             "RAMALAMA_USER__NO_MISSING_GPU_PROMPT": "true",
         }
 
@@ -623,7 +620,6 @@ class TestConfigIntegration:
             assert cfg.ctx_size == 4096
             assert cfg.container is True
             assert cfg.keep_groups is True
-            assert cfg.ocr is True
             assert cfg.user.no_missing_gpu_prompt is True
 
     def test_config_complex_nesting_scenario(self):

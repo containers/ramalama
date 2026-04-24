@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, TypedDict
+from typing import Any, Optional, TypedDict
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
@@ -20,15 +22,15 @@ class ChatRequestOptionsDict(RequiredChatRequestOptionsDict, total=False):
     max_tokens: int
 
 
-@dataclass(slots=True)
+@dataclass
 class ChatRequestOptions:
     """Normalized knobs for building a chat completion request."""
 
-    model: str | None
+    model: Optional[str]
     stream: bool = True
-    temperature: float | None = None
-    max_tokens: int | None = None
-    extra: dict[str, Any] | None = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    extra: Optional[dict[str, Any]] = None
 
     def to_dict(self) -> ChatRequestOptionsDict:
         result: ChatRequestOptionsDict = {'stream': self.stream}
@@ -48,19 +50,19 @@ class ChatRequestOptions:
         return result
 
 
-@dataclass(slots=True)
+@dataclass
 class ChatStreamEvent:
     """A provider-agnostic representation of a streamed delta."""
 
-    text: str | None = None
-    raw: dict[str, Any] | None = None
+    text: Optional[str] = None
+    raw: Optional[dict[str, Any]] = None
     done: bool = False
 
 
 class ChatProviderError(Exception):
     """Raised when a provider request fails or returns an invalid payload."""
 
-    def __init__(self, message: str, *, status_code: int | None = None, payload: Any | None = None):
+    def __init__(self, message: str, *, status_code: Optional[int] = None, payload: Optional[Any] = None):
         super().__init__(message)
         self.status_code = status_code
         self.payload = payload
@@ -75,8 +77,8 @@ class ChatProvider(ABC):
     def __init__(
         self,
         base_url: str,
-        api_key: str | None = None,
-        default_headers: Mapping[str, str] | None = None,
+        api_key: Optional[str] = None,
+        default_headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         if api_key is None:
             api_key = ActiveConfig().api_key
@@ -85,7 +87,7 @@ class ChatProvider(ABC):
         self.api_key = api_key
         self._default_headers: dict[str, str] = dict(default_headers or {})
 
-    def build_url(self, path: str | None = None) -> str:
+    def build_url(self, path: Optional[str] = None) -> str:
         rel = path or self.default_path
         if not rel.startswith("/"):
             rel = f"/{rel}"
@@ -95,8 +97,8 @@ class ChatProvider(ABC):
         self,
         *,
         include_auth: bool = True,
-        extra: dict[str, str] | None = None,
-        options: ChatRequestOptions | None = None,
+        extra: Optional[dict[str, str]] = None,
+        options: Optional[ChatRequestOptions] = None,
     ) -> dict[str, str]:
         headers: dict[str, str] = {
             "Content-Type": "application/json",
@@ -132,13 +134,13 @@ class ChatProvider(ABC):
     # ------------------------------------------------------------------
     # Provider customization points
     # ------------------------------------------------------------------
-    def provider_headers(self, options: ChatRequestOptions | None = None) -> dict[str, str]:
+    def provider_headers(self, options: Optional[ChatRequestOptions] = None) -> dict[str, str]:
         return {}
 
-    def additional_request_headers(self, options: ChatRequestOptions | None = None) -> dict[str, str]:
+    def additional_request_headers(self, options: Optional[ChatRequestOptions] = None) -> dict[str, str]:
         return {}
 
-    def resolve_request_path(self, options: ChatRequestOptions | None = None) -> str:
+    def resolve_request_path(self, options: Optional[ChatRequestOptions] = None) -> str:
         return self.default_path
 
     @abstractmethod
@@ -152,7 +154,7 @@ class ChatProvider(ABC):
     # ------------------------------------------------------------------
     # Error handling
     # ------------------------------------------------------------------
-    def raise_for_status(self, status_code: int, payload: Any | None = None) -> None:
+    def raise_for_status(self, status_code: int, payload: Optional[Any] = None) -> None:
         if status_code >= 400:
             if isinstance(payload, dict) and "error" in payload:
                 err = payload["error"]

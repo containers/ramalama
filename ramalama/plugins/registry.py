@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+import sys
 from importlib.metadata import entry_points
-from typing import Generic, Type, TypeVar
+from typing import Generic, Optional, Type, TypeVar
 
 T = TypeVar("T")
 
@@ -10,15 +13,19 @@ class PluginRegistry(Generic[T]):
     def __init__(self, group: str, base_class: Type[T]):
         self.group = group
         self.base_class = base_class
-        self._plugins: dict[str, T] | None = None
+        self._plugins: Optional[dict[str, T]] = None
 
     def load(self) -> dict[str, T]:
         if self._plugins is None:
             self._plugins = {}
-            for ep in entry_points(group=self.group):
+            if sys.version_info >= (3, 10):
+                eps = entry_points(group=self.group)
+            else:
+                eps = entry_points().get(self.group, [])  # type: ignore[call-overload]
+            for ep in eps:
                 plugin: T = ep.load()()
                 self._plugins[plugin.name] = plugin  # type: ignore[attr-defined]
         return self._plugins
 
-    def get(self, name: str) -> T | None:
+    def get(self, name: str) -> Optional[T]:
         return self.load().get(name)

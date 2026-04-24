@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 DIRECTORY_NAME_BLOBS = "blobs"
 DIRECTORY_NAME_REFS = "refs"
 DIRECTORY_NAME_SNAPSHOTS = "snapshots"

@@ -15,6 +15,8 @@ Proxy URL formats:
 - SOCKS5: socks5://proxy:port or socks5h://proxy:port (for DNS through proxy)
 """
 
+from __future__ import annotations
+
 import urllib.request
 
 from ramalama.logger import logger

@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 #
 # Copied from https://github.com/engelmi/go2jinja
 #
-
 import argparse
 import re
 import sys
@@ -29,7 +30,7 @@ class Node:
     end: int
     content: str
 
-    type: NodeType | None
+    type: Optional[NodeType]
 
     prev: Optional["Node"]
     next: Optional["Node"]
@@ -206,7 +207,7 @@ def detect_node_type(stmt: str) -> Optional[NodeType]:
 def parse_go_template(content: str) -> list[Node]:
     root_nodes: list[Node] = []
 
-    prev_expr_node: Node | None = None
+    prev_expr_node: Optional[Node] = None
     current_scope_nodes: list[Node] = []
     start_pos = content.find(GO_SYMBOL_OPEN_BRACKETS)
     end_pos = 0
@@ -365,7 +366,7 @@ def go_to_jinja(content: str) -> str:
             if not pipeline.isspace():
                 pipeline = pipeline.lstrip().rstrip()
 
-            longest_match: FunctionType | None = None
+            longest_match: Optional[FunctionType] = None
             for ft in FUNCTION_MAPPING.keys():
                 if pipeline.startswith(ft.value):
                     if longest_match is None or len(ft.value) > len(longest_match.value):

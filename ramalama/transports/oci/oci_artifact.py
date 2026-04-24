@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import json
 import os
@@ -6,7 +8,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Iterable
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, Optional
 
 from ramalama.common import perror
 from ramalama.logger import logger
@@ -84,7 +86,7 @@ class OCIRegistryClient:
         self.reference = reference
         self.base_url = f"https://{self.registry}/v2/{self.repository}"
 
-        self._bearer_token: str | None = None
+        self._bearer_token: Optional[str] = None
 
     def get_manifest(self) -> tuple[dict[str, Any], str]:
         headers = {"Accept": ",".join(MANIFEST_ACCEPT_HEADERS)}
@@ -130,14 +132,14 @@ class OCIRegistryClient:
                     pass
             raise
 
-    def _prepare_headers(self, headers: dict[str, str] | None = None) -> dict[str, str]:
+    def _prepare_headers(self, headers: Optional[dict[str, str]] = None) -> dict[str, str]:
         final_headers = dict() if headers is None else headers.copy()
         if self._bearer_token is not None:
             final_headers.setdefault("Authorization", f"Bearer {self._bearer_token}")
 
         return final_headers
 
-    def _open(self, url: str, headers: dict[str, str] | None = None):
+    def _open(self, url: str, headers: Optional[dict[str, str]] = None):
         req = urllib.request.Request(url, headers=self._prepare_headers(headers))
         try:
             return urllib.request.urlopen(req, timeout=60)
@@ -152,7 +154,7 @@ class OCIRegistryClient:
                         return urllib.request.urlopen(req, timeout=60)
             raise
 
-    def _request_bearer_token(self, challenge: str) -> str | None:
+    def _request_bearer_token(self, challenge: str) -> Optional[str]:
         scheme, _, params = challenge.partition(" ")
         if scheme.lower() != "bearer":
             return None

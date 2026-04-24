@@ -405,8 +405,8 @@ sub ramalama_help {
                 $section = 'options';
             }
         }
-        elsif ($line =~ /^(options):/) {
-            $section = lc $1;
+        elsif ($line =~ /^(options|optional\s+arguments):/) {
+            $section = 'options';
         }
 
         # ...then track commands and options. For subcommands, recurse.

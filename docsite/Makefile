@@ -17,6 +17,7 @@ help: ## Show this help message
 
 convert: ## Convert manpages from ../docs to MDX format for docsite
 	@echo "Converting manpages to MDX format..."
+	@$(MAKE) -C ../docs manpages-md
 	@python3 convert_manpages.py
 	@echo "✅ Manpage conversion complete!"
 

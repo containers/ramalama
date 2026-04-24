@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import os
 import random
@@ -6,7 +8,11 @@ import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Optional, TypeGuard
+from functools import partial
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeGuard
 
 from ramalama import chat
 from ramalama.common import ContainerEntryPoint
@@ -150,7 +156,7 @@ class Transport(TransportBase):
         self._model_store_path: str = model_store_path
         self._model_store: Optional["ModelStore"] = None
 
-        self.draft_model: Transport | None = None
+        self.draft_model: Optional[Transport] = None
 
     def extract_model_identifiers(self):
         model_name = self.model
@@ -453,7 +459,7 @@ class Transport(TransportBase):
             mount_opts += f",ro{self.engine.relabel()}"
             self.engine.add([mount_opts])
 
-    def serve_nonblocking(self, args, cmd: list[str]) -> subprocess.Popen | None:
+    def serve_nonblocking(self, args, cmd: list[str]) -> Optional[subprocess.Popen]:
         if args.container:
             args.name = self.get_container_name(args)
 
@@ -509,11 +515,11 @@ class Transport(TransportBase):
             chat.chat(chat_args)
             return 0
 
-    def chat_operational_args(self, args) -> "ChatOperationalArgs | None":
+    def chat_operational_args(self, args) -> "Optional[ChatOperationalArgs]":
         return None
 
     def wait_for_healthy(self, args):
-        wait_for_healthy(args, is_healthy)
+        wait_for_healthy(args, partial(is_healthy, model_name=self.model_alias))
 
     def _handle_container_chat(self, args, server_process):
         """Handle chat for container-based execution."""
@@ -744,7 +750,7 @@ class Transport(TransportBase):
         return False
 
 
-def compute_ports(exclude: list[str] | None = None) -> list[int]:
+def compute_ports(exclude: Optional[list[str]] = None) -> list[int]:
     excluded = set() if exclude is None else set(map(int, exclude))
 
     port_range = ActiveConfig().default_port_range
@@ -759,7 +765,7 @@ def compute_ports(exclude: list[str] | None = None) -> list[int]:
     return [first_port] + ports
 
 
-def get_available_port_if_any(exclude: list[str] | None = None) -> int:
+def get_available_port_if_any(exclude: Optional[list[str]] = None) -> int:
     ports = compute_ports(exclude=exclude)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         chosen_port = 0
@@ -775,7 +781,7 @@ def get_available_port_if_any(exclude: list[str] | None = None) -> int:
         return chosen_port
 
 
-def compute_serving_port(args, quiet: bool = False, exclude: list[str] | None = None) -> str:
+def compute_serving_port(args, quiet: bool = False, exclude: Optional[list[str]] = None) -> str:
     # user probably specified a custom port, don't override the choice
     if hasattr(args, 'port_override'):
         target_port = args.port

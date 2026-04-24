@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # These annotations are based off the standards:
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md
 # https://github.com/CloudNativeAI/model-spec

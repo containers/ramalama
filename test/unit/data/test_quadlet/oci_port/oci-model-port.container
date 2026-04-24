@@ -14,7 +14,7 @@ Exec=
 SecurityLabelDisable=true
 DropCapability=all
 NoNewPrivileges=true
-PublishPort=0.0.0.0:8080:8080
+PublishPort=[::]:8080:8080
 Mount=type=image,source=registry.example.com/model:latest,destination=/mnt/models,subpath=/models,readwrite=false
 
 [Install]

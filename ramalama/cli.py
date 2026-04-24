@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import copy
 import errno
@@ -9,14 +11,16 @@ import sys
 import urllib.error
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, get_args
+from typing import Any, Optional, get_args
 from urllib.parse import urlparse
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
     import argcomplete
 
-    suppressCompleter: type[argcomplete.completers.SuppressCompleter] | None = argcomplete.completers.SuppressCompleter
+    suppressCompleter: Optional[type[argcomplete.completers.SuppressCompleter]] = (
+        argcomplete.completers.SuppressCompleter
+    )
 except Exception:
     suppressCompleter = None
 
@@ -64,6 +68,13 @@ def default_image() -> str:
 @lru_cache(maxsize=1)
 def default_rag_image() -> str:
     return rag_image(ActiveConfig())
+
+
+@lru_cache(maxsize=1)
+def default_tools_image() -> str:
+    from ramalama.tools import tools_image
+
+    return tools_image(ActiveConfig())
 
 
 @lru_cache(maxsize=1)
@@ -500,7 +511,7 @@ def human_duration(d):
     return "1 year" if d < 63072000 else f"{d // 31536000} years"
 
 
-def add_network_argument(parser, dflt: str | None = "none"):
+def add_network_argument(parser, dflt: Optional[str] = "none"):
     # Disable network access by default, and give the option to pass any supported network mode into
     # podman if needed:
     # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
@@ -653,6 +664,7 @@ def info_cli(args: DefaultArgsType) -> None:
             "Sources": list(set(shortnames.config_sources.values())),
         },
         "Store": args.store,
+        "ToolsImage": default_tools_image(),
         "UseContainer": args.container,
         "Version": version(),
     }

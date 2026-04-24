@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import base64
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Optional, Protocol, Union
 
 from ramalama.console import should_colorize
 
@@ -22,63 +24,63 @@ def sanitize_for_terminal(text: str) -> str:
 RoleType = Literal["system", "user", "assistant", "tool"]
 
 
-@dataclass(slots=True)
+@dataclass
 class ImageURLPart:
     url: str
-    detail: str | None = None
+    detail: Optional[str] = None
     type: Literal["image_url"] = "image_url"
 
 
-@dataclass(slots=True)
+@dataclass
 class ImageBytesPart:
     data: bytes
     mime_type: str = "application/octet-stream"
     type: Literal["image_bytes"] = "image_bytes"
 
 
-@dataclass(slots=True)
+@dataclass
 class ToolCall:
     id: str
     name: str
     arguments: dict[str, Any]
 
 
-AttachmentPart = ImageURLPart | ImageBytesPart
+AttachmentPart = Union[ImageURLPart, ImageBytesPart]
 
 
-@dataclass(slots=True)
+@dataclass
 class SystemMessage:
     role: Literal["system"] = "system"
     text: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@dataclass
 class UserMessage:
     role: Literal["user"] = "user"
-    text: str | None = None
+    text: Optional[str] = None
     metadata: dict[str, Any] = field(default_factory=dict)
     attachments: list[AttachmentPart] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class AssistantMessage:
     role: Literal["assistant"] = "assistant"
-    text: str | None = None
+    text: Optional[str] = None
     metadata: dict[str, Any] = field(default_factory=dict)
     tool_calls: list[ToolCall] = field(default_factory=list)
     attachments: list[AttachmentPart] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class ToolMessage:
     text: str
     role: Literal["tool"] = "tool"
     metadata: dict[str, Any] = field(default_factory=dict)
-    tool_call_id: str | None = None
+    tool_call_id: Optional[str] = None
 
 
-ChatMessageType = SystemMessage | UserMessage | AssistantMessage | ToolMessage
+ChatMessageType = Union[SystemMessage, UserMessage, AssistantMessage, ToolMessage]
 
 
 class StreamParser(Protocol):

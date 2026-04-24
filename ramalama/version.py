@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 """Version of RamaLamaPy."""
+
+__version__ = "0.19.0"
 
 
 def version():
-    return "0.18.0"
+    return __version__
 
 
 def print_version(args):
@@ -10,3 +14,7 @@ def print_version(args):
         print(version())
     else:
         print("ramalama version %s" % version())
+
+
+if __name__ == "__main__":
+    print(version())

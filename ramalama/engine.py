@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import glob
 import json
 import os
@@ -8,7 +10,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from http.client import HTTPConnection, HTTPException
-from typing import Any
+from typing import Any, Optional
 
 # Live reference for checking global vars
 import ramalama.common
@@ -196,8 +198,13 @@ class Engine(BaseEngine):
 
         # Convert port to string for processing
         port_str = str(port)
-        host = getattr(self.args, "host", "0.0.0.0")
-        host = f"{host}:" if host != "0.0.0.0" else ""
+        host = getattr(self.args, "host", "::").strip("[]")
+        if host == "::":
+            host = ""
+        elif ":" in host:
+            host = f"[{host}]:"
+        else:
+            host = f"{host}:"
         if ":" in port_str:
             self.add_args("-p", f"{host}{port_str}")
         else:
@@ -248,7 +255,7 @@ class BuildEngine(BaseEngine):
             # as an equals-separated option (--pull=foo)
             self.add_args(f"--pull={value}")
 
-    def build(self, cfile: str, context: str, /, *, tag: str | None = None) -> str:
+    def build(self, cfile: str, context: str, /, *, tag: Optional[str] = None) -> str:
         """
         Build an image using specified Containerfile path and context dir.
         If tag is provided, the image will be tagged.
@@ -262,7 +269,7 @@ class BuildEngine(BaseEngine):
             return ""
         return self.run_process().stdout.strip()
 
-    def build_containerfile(self, content: str, context: str, /, *, tag: str | None = None):
+    def build_containerfile(self, content: str, context: str, /, *, tag: Optional[str] = None):
         """
         Build an image using the provided Containerfile content and context dir.
         If tag is provided, the image will be tagged.
@@ -310,7 +317,7 @@ def images(args):
         raise (e)
 
 
-def image_inspect(args, name: str, format: str | None = None):
+def image_inspect(args, name: str, format: Optional[str] = None):
     if not name:
         raise ValueError("must specify an image name")
     conman = str(args.engine) if args.engine is not None else None
@@ -372,7 +379,7 @@ def info(args) -> list[Any] | str | dict[str, Any]:
         return str(e)
 
 
-def inspect(args, name: str, format: str | None = None, ignore_stderr: bool = False):
+def inspect(args, name: str, format: Optional[str] = None, ignore_stderr: bool = False):
     if not name:
         raise ValueError("must specify a container name")
     conman = str(args.engine) if args.engine is not None else None
@@ -467,7 +474,7 @@ def add_labels(args, add_label: Callable[[str], None]):
             add_label(f"{label_prefix}={value}")
 
 
-def is_healthy(args, timeout: int = 3, model_name: str | None = None):
+def is_healthy(args, timeout: int = 3, model_name: Optional[str] = None):
     """Check if the runtime server is healthy by delegating to the runtime plugin."""
     from ramalama.plugins.loader import get_runtime
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import os
 
@@ -51,8 +53,8 @@ class LlamaCppCommands:
 
         model = New(args.MODEL, args) if hasattr(args, 'MODEL') else None
 
-        # --host: use 0.0.0.0 in container, or the configured host otherwise
-        host = '0.0.0.0' if is_container else getattr(args, 'host', None)
+        # --host: use :: in container, or the configured host otherwise
+        host = '::' if is_container else getattr(args, 'host', None)
         if host is not None:
             cmd += ["--host", str(host)]
 
@@ -210,11 +212,26 @@ class LlamaCppCommands:
         if getattr(args, 'debug', None):
             cmd.append("--debug")
 
-        if getattr(args, 'format', None):
-            cmd += ["--format", str(args.format)]
+        api_url = getattr(args, 'api_url', None)
+        if api_url:
+            cmd += ["--api-url", str(api_url)]
 
-        if getattr(args, 'ocr', None):
-            cmd.append("--ocr")
+        embed_url = getattr(args, 'embed_url', None)
+        if not embed_url:
+            raise ValueError("--embed-url is required for RAG document processing")
+        cmd += ["--embed-url", str(embed_url)]
+
+        embed_model = getattr(args, 'embed_model', None)
+        if embed_model:
+            cmd += ["--embed-model", str(embed_model)]
+
+        chunk_size = getattr(args, 'chunk_size', None)
+        if chunk_size:
+            cmd += ["--chunk-size", str(chunk_size)]
+
+        ctx_size = getattr(args, 'ctx_size', None)
+        if ctx_size:
+            cmd += ["--ctx-size", str(ctx_size)]
 
         cmd.append("/output")
 
@@ -245,6 +262,11 @@ class LlamaCppCommands:
         model_port = getattr(args, 'model_port', None)
         if model_port is not None:
             cmd += ["--model-port", str(model_port)]
+
+        embed_url = getattr(args, 'embed_url', None)
+        if not embed_url:
+            raise ValueError("--embed-url is required for RAG serving")
+        cmd += ["--embed-url", str(embed_url)]
 
         cmd.append("/rag/vector.db")
 

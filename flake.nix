@@ -30,7 +30,6 @@
                 dependencies = with python3Packages; [
                   argcomplete
                   pyyaml
-                  jsonschema
                   jinja2
                   (llama-cpp.override llamaCppOverrides)
                 ];

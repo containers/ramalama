@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from functools import singledispatch
-from typing import Any, TypedDict
+from typing import Any, Optional, TypedDict
 
 from ramalama.chat_providers.base import ChatProvider, ChatRequestOptions, ChatStreamEvent
 from ramalama.chat_utils import (
@@ -91,7 +93,7 @@ class OpenAICompletionsChatProvider(ChatProvider):
     provider = "openai"
     default_path = "/chat/completions"
 
-    def __init__(self, base_url: str, api_key: str | None = None):
+    def __init__(self, base_url: str, api_key: Optional[str] = None):
         super().__init__(base_url, api_key)
         self._stream_buffer: str = ""
 
@@ -130,7 +132,7 @@ class OpenAICompletionsChatProvider(ChatProvider):
 
         return events
 
-    def _extract_delta(self, payload: Mapping[str, object]) -> str | None:
+    def _extract_delta(self, payload: Mapping[str, object]) -> Optional[str]:
         choices = payload.get("choices")
         if not isinstance(choices, list) or not choices:
             return None
@@ -168,7 +170,7 @@ def message_to_responses_dict(message: Any) -> dict[str, Any]:
 
 
 def create_responses_content(
-    text: str | None, attachments: list[AttachmentPart], content_type: str
+    text: Optional[str], attachments: list[AttachmentPart], content_type: str
 ) -> list[dict[str, Any]] | str:
     """
     TODO: Current structure doesn't correctly reflect document ordering
@@ -237,7 +239,7 @@ def _(message: AssistantMessage) -> dict[str, Any]:
 class ResponsesPayload(TypedDict, total=False):
     input: list[dict[str, Any]]
     model: str
-    temperature: float | None
+    temperature: Optional[float]
     max_completion_tokens: int
     stream: bool
 
@@ -246,7 +248,7 @@ class OpenAIResponsesChatProvider(ChatProvider):
     provider = "openai"
     default_path: str = "/responses"
 
-    def __init__(self, base_url: str, api_key: str | None = None):
+    def __init__(self, base_url: str, api_key: Optional[str] = None):
         super().__init__(base_url, api_key)
         self._stream_buffer: str = ""
 
@@ -311,7 +313,7 @@ class OpenAIResponsesChatProvider(ChatProvider):
         return hinted_type == "response.completed"
 
     @staticmethod
-    def _extract_responses_delta(event_type: str, payload: Mapping[str, Any]) -> str | None:
+    def _extract_responses_delta(event_type: str, payload: Mapping[str, Any]) -> Optional[str]:
         if not event_type:
             event_type = payload.get("type", "") if isinstance(payload, Mapping) else ""
 

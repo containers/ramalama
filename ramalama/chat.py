@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import _thread
 import cmd
@@ -16,6 +17,7 @@ import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Optional
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.chat_providers import ChatProvider, ChatRequestOptions
@@ -92,15 +94,15 @@ def add_api_key(args, headers=None):
 
 @dataclass
 class ChatOperationalArgs:
-    name: str | None = None
-    keepalive: int | None = None
-    monitor: "ServerMonitor | None" = None
+    name: Optional[str] = None
+    keepalive: Optional[int] = None
+    monitor: "Optional[ServerMonitor]" = None
 
 
 class Spinner:
     def __init__(self, wait_time: float = 0.1):
         self._stop_event: threading.Event = threading.Event()
-        self._thread: threading.Thread | None = None
+        self._thread: Optional[threading.Thread] = None
         self.wait_time = wait_time
 
     def __enter__(self):
@@ -146,8 +148,8 @@ class RamaLamaShell(cmd.Cmd):
     def __init__(
         self,
         args: ChatArgsType,
-        operational_args: ChatOperationalArgs | None = None,
-        provider: ChatProvider | None = None,
+        operational_args: Optional[ChatOperationalArgs] = None,
+        provider: Optional[ChatProvider] = None,
     ):
         if operational_args is None:
             operational_args = ChatOperationalArgs()
@@ -162,7 +164,7 @@ class RamaLamaShell(cmd.Cmd):
         self.url = self.provider.build_url()
 
         self.prep_rag_message()
-        self.mcp_agent: LLMAgent | None = None
+        self.mcp_agent: Optional[LLMAgent] = None
         self.initialize_mcp()
 
         self.content: list[str] = []
@@ -275,7 +277,7 @@ class RamaLamaShell(cmd.Cmd):
         options = self._build_request_options(stream=stream, max_tokens=max_tokens)
         return self.provider.create_request(messages, options)
 
-    def _resolve_model_name(self) -> str | None:
+    def _resolve_model_name(self) -> Optional[str]:
         runtime = getattr(self.args, "runtime", None)
         if runtime:
             plugin = get_runtime(runtime)
@@ -283,7 +285,7 @@ class RamaLamaShell(cmd.Cmd):
                 return None
         return getattr(self.args, "model", None)
 
-    def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:
+    def _build_request_options(self, *, stream: bool, max_tokens: Optional[int]) -> ChatRequestOptions:
         temperature = getattr(self.args, "temp", None)
         if max_tokens is not None and max_tokens <= 0:
             max_tokens = None
@@ -533,7 +535,7 @@ class RamaLamaShell(cmd.Cmd):
 
         max_timeout = 16
 
-        last_error: Exception | None = None
+        last_error: Optional[Exception] = None
 
         spinner = Spinner().start()
 
@@ -827,8 +829,8 @@ def _report_server_exit(monitor):
 
 def chat(
     args: ChatArgsType,
-    operational_args: ChatOperationalArgs | None = None,
-    provider: ChatProvider | None = None,
+    operational_args: Optional[ChatOperationalArgs] = None,
+    provider: Optional[ChatProvider] = None,
 ):
     if args.dryrun:
         assert args.ARGS is not None

@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import json
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import chain
-from typing import TypedDict
+from typing import Optional, TypedDict
 
-import ramalama.annotations as annotations
+import ramalama.annotations as oci_annotations
 from ramalama.arg_types import EngineArgType
 from ramalama.common import SemVer, engine_version, run_cmd
 from ramalama.logger import logger
@@ -31,7 +33,7 @@ def convert_from_human_readable_size(input) -> int:
     return int(round(float(value)))
 
 
-def parse_datetime(date_str: str) -> datetime | None:
+def parse_datetime(date_str: str) -> Optional[datetime]:
     try:
         parsed_date = datetime.fromisoformat(date_str.replace(" UTC", "").replace("+0000", "+00:00").replace(" ", "T"))
     except ValueError:
@@ -41,7 +43,7 @@ def parse_datetime(date_str: str) -> datetime | None:
 
 
 class ListModelResponse(TypedDict):
-    modified: datetime | None
+    modified: Optional[datetime]
     name: str
     size: int
 
@@ -102,7 +104,7 @@ def list_artifacts(args: EngineArgType):
             continue
         if "artifactType" not in inspect["Manifest"]:
             continue
-        if inspect["Manifest"]['artifactType'] != annotations.ArtifactTypeModelManifest:
+        if inspect["Manifest"]['artifactType'] != oci_annotations.ArtifactTypeModelManifest:
             continue
         models.append(
             {
@@ -179,7 +181,7 @@ def list_manifests(args: EngineArgType) -> list[ListModelResponse]:
         img = inspect['manifests'][0]
         if 'annotations' not in img:
             continue
-        if annotations.AnnotationModel in img['annotations']:
+        if oci_annotations.AnnotationModel in img['annotations']:
             models.append(
                 {
                     "name": manifest["name"],
@@ -272,8 +274,8 @@ class OciRef:
     registry: str
     repository: str
     specifier: str  # Either the digest or the tag
-    tag: str | None = None
-    digest: str | None = None
+    tag: Optional[str] = None
+    digest: Optional[str] = None
 
     def __str__(self) -> str:
         if self.digest:

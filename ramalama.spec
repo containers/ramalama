@@ -61,7 +61,6 @@ a = Analysis(
         'ramalama.file_loaders',
         'argcomplete',
         'yaml',
-        'jsonschema',
         'jinja2',
     ],
     hookspath=[],

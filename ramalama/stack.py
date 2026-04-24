@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import os
 
@@ -22,7 +24,7 @@ class Stack:
     def __init__(self, args):
         self.args = args
         self.name = getattr(args, "name", None) or genname()
-        self.host = "0.0.0.0"
+        self.host = "::"
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
         self.model_port = "8080"
@@ -73,7 +75,7 @@ class Stack:
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}
         - name: INFERENCE_MODEL
-          value: {self.model.model_name}""",
+          value: \"{self.model.model_alias}\"""",
             "port_string": f"""\
         ports:
         - containerPort: 8321
@@ -139,7 +141,7 @@ class Stack:
       - "{stack_port}:8123"
     environment:{compose_env}
       - RAMALAMA_URL=http://{self.name}:{self.model_port}
-      - INFERENCE_MODEL={self.model.model_alias}
+      - INFERENCE_MODEL="{self.model.model_alias}"
     depends_on:
       - {self.model.model_name}
     restart: unless-stopped"""

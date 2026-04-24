@@ -109,6 +109,11 @@ docs: docs-manpages docsite-docs
 docs-manpages:
 	$(MAKE) -C docs
 
+# Preprocess *.md.in into *.md only (no go-md2man). Used by man-check in CI.
+.PHONY: docs-manpages-md
+docs-manpages-md:
+	$(MAKE) -C docs manpages-md
+
 docsite-docs:
 	$(MAKE) -C docsite convert
 
@@ -133,7 +138,7 @@ codespell:
 	codespell $(PROJECT_DIR) $(PYTHON_SCRIPTS)
 
 .PHONY: man-check
-man-check:
+man-check: docs-manpages-md
 ifeq ($(OS),Linux)
 	hack/man-page-checker
 	hack/xref-helpmsgs-manpages
@@ -230,8 +235,8 @@ tests: unit-tests end-to-end-tests
 
 .PHONY: rag-requirements
 rag-requirements:
-	touch container-images/common/requirements-rag.in
-	make -C container-images/common rag-requirements
+	touch container-images/common/*.in
+	make -C container-images/common tools-requirements requirements-rag.txt
 
 .PHONY: clean
 clean:

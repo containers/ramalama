@@ -114,6 +114,50 @@ class TestEngine(unittest.TestCase):
             mock_stdout.write.assert_called()
 
 
+@pytest.mark.parametrize(
+    "host, port, expected_port_arg",
+    [
+        # Default :: omits host prefix
+        ("::", "8080", "8080:8080"),
+        # IPv4 host uses bare host prefix
+        ("127.0.0.1", "8080", "127.0.0.1:8080:8080"),
+        # IPv6 host gets bracketed
+        ("::1", "8080", "[::1]:8080:8080"),
+        ("fe80::1", "3000", "[fe80::1]:3000:3000"),
+        # Port range passthrough with default host
+        ("::", "8080:8081", "8080:8081"),
+        # Port range with IPv4 host
+        ("127.0.0.1", "8080:8081", "127.0.0.1:8080:8081"),
+        # Port range with IPv6 host
+        ("::1", "8080:8081", "[::1]:8080:8081"),
+    ],
+    ids=[
+        "default-ipv6-wildcard",
+        "ipv4-host",
+        "ipv6-loopback",
+        "ipv6-link-local",
+        "port-range-default",
+        "port-range-ipv4",
+        "port-range-ipv6",
+    ],
+)
+def test_add_port_with_host(host, port, expected_port_arg):
+    base_args = Namespace(
+        engine="podman",
+        debug=False,
+        dryrun=False,
+        pull="never",
+        image="test-image:latest",
+        quiet=True,
+        selinux=False,
+        host=host,
+        port=port,
+    )
+    engine = ramalama.engine.Engine(base_args)
+    p_index = engine.exec_args.index("-p")
+    assert engine.exec_args[p_index + 1] == expected_port_arg
+
+
 @patch("ramalama.engine.HTTPConnection")
 def test_is_healthy_conn(mock_conn):
     args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False)

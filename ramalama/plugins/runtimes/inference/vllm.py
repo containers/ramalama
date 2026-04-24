@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import argparse
 from http.client import HTTPConnection
-from typing import Any
+from typing import Any, Optional
 
 from ramalama.cli import suppressCompleter
 from ramalama.common import ContainerEntryPoint
@@ -46,8 +48,8 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         if ctx_size:
             cmd += ["--max-model-len", str(ctx_size)]
 
-        # --host: use 0.0.0.0 in container, or the configured host otherwise
-        host = '0.0.0.0' if is_container else getattr(args, 'host', None)
+        # --host: use :: in container, or the configured host otherwise
+        host = '::' if is_container else getattr(args, 'host', None)
         if host is not None:
             cmd += ["--host", str(host)]
 
@@ -89,7 +91,7 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         self._add_max_model_len_arg(parser)
         return parser
 
-    def get_container_image(self, config: Any, detected_gpu_type: str) -> str | None:
+    def get_container_image(self, config: Any, detected_gpu_type: str) -> Optional[str]:
         if detected_gpu_type:
             image = config.images.get(f"VLLM_{detected_gpu_type}") or _VLLM_IMAGES.get(detected_gpu_type)
             if image:
@@ -97,7 +99,7 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
 
         return config.images.get("VLLM") or _VLLM_DEFAULT_IMAGE
 
-    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: str | None = None) -> bool:
+    def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: Optional[str] = None) -> bool:
         conn.request("GET", "/ping")
         resp = conn.getresponse()
         container_name = f"container {args.name}" if getattr(args, 'container', None) else 'server'

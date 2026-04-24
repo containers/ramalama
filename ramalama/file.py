@@ -1,5 +1,6 @@
-# The following code is inspired from: https://github.com/ericcurtin/lm-pull/blob/main/lm-pull.py
+from __future__ import annotations
 
+# The following code is inspired from: https://github.com/ericcurtin/lm-pull/blob/main/lm-pull.py
 import os
 import platform
 

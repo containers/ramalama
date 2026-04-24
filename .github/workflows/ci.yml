@@ -36,9 +36,17 @@ jobs:
           echo "version=$min" >> "$GITHUB_OUTPUT"
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: ${{ steps.min-python.outputs.version }}
+
+      # Manpage roff build (make -C docs / make docs) needs go-md2man; Ubuntu
+      # runners do not put cached Go on PATH, so `go install` from install-tools
+      # is unreliable. The distro package is sufficient.
+      - name: Install go-md2man
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y go-md2man
 
       - name: Install dependencies
         run: |
@@ -72,10 +80,10 @@ jobs:
           - title: ""
             runs-on: ubuntu-24.04
             uv-options: {}
-          - title: " (python 3.10)"
+          - title: " (python 3.9)"
             runs-on: ubuntu-24.04
             uv-options:
-              python-version: '3.10'
+              python-version: '3.9'
           - title: " (MacOS)"
             runs-on: macos-26
             uv-options: {}
@@ -85,7 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: Run unit tests
@@ -107,9 +115,9 @@ jobs:
           - title: ""
             uv-options:
               activate-environment: true
-          - title: " (python 3.10)"
+          - title: " (python 3.9)"
             uv-options:
-              python-version: '3.10'
+              python-version: '3.9'
               activate-environment: true
     name: E2E Tests${{ matrix.variant.title }}
     runs-on: ubuntu-24.04
@@ -118,7 +126,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
@@ -169,9 +177,9 @@ jobs:
           - title: ""
             uv-options:
               activate-environment: true
-          - title: " (python 3.10)"
+          - title: " (python 3.9)"
             uv-options:
-              python-version: '3.10'
+              python-version: '3.9'
               activate-environment: true
     name: E2E Tests (--no-container)${{ matrix.variant.title }}
     runs-on: ubuntu-24.04
@@ -180,7 +188,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
@@ -229,9 +237,9 @@ jobs:
           - title: ""
             uv-options:
               activate-environment: true
-          - title: " (python 3.10)"
+          - title: " (python 3.9)"
             uv-options:
-              python-version: '3.10'
+              python-version: '3.9'
               activate-environment: true
     name: E2E Tests (docker)${{ matrix.variant.title }}
     runs-on: ubuntu-24.04
@@ -240,7 +248,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
@@ -309,9 +317,9 @@ jobs:
           - title: ""
             uv-options:
               activate-environment: true
-          - title: " (python 3.10)"
+          - title: " (python 3.9)"
             uv-options:
-              python-version: '3.10'
+              python-version: '3.9'
               activate-environment: true
     name: E2E Tests (MacOS)${{ matrix.variant.title }}
     runs-on: macos-15
@@ -320,7 +328,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
@@ -354,9 +362,9 @@ jobs:
           - title: ""
             uv-options:
               activate-environment: true
-          - title: " (python 3.10)"
+          - title: " (python 3.9)"
             uv-options:
-              python-version: '3.10'
+              python-version: '3.9'
               activate-environment: true
     name: E2E Tests (Windows)${{ matrix.variant.title }}
     runs-on: windows-latest
@@ -371,7 +379,7 @@ jobs:
            New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: Update WSL2
