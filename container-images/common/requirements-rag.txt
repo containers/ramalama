@@ -1906,9 +1906,9 @@ urllib3==2.6.3 \
     #   qdrant-client
     #   requests
     # from https://pypi.org/simple
-uvicorn==0.45.0 \
-    --hash=sha256:2db26f588131aeec7439de00f2dd52d5f210710c1f01e407a52c90b880d1fd4f \
-    --hash=sha256:3fe650df136c5bd2b9b06efc5980636344a2fbb840e9ddd86437d53144fa335d
+uvicorn==0.46.0 \
+    --hash=sha256:bbebbcbed972d162afca128605223022bedd345b7bc7855ce66deb31487a9048 \
+    --hash=sha256:fb9da0926999cc6cb22dc7cd71a94a632f078e6ae47ff683c5c420750fb7413d
     # via -r requirements-rag.in
     # from https://pypi.org/simple
 yarl==1.23.0 \
