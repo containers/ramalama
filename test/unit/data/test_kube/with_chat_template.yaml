@@ -49,7 +49,7 @@ spec:
         - mountPath: /mnt/models/model.file
           name: model
         - mountPath: /mnt/models/chat_template
-          name: chat_template
+          name: chat-template
         - mountPath: /dev/accel
           name: accel
         - mountPath: /dev/dri
@@ -67,7 +67,7 @@ spec:
         name: model
       - hostPath:
           path: /path/to/chat_template
-        name: chat_template
+        name: chat-template
       - hostPath:
           path: /dev/accel
         name: accel

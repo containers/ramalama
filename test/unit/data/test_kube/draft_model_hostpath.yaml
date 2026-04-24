@@ -49,7 +49,7 @@ spec:
         - mountPath: /mnt/models/model.file
           name: model
         - mountPath: /mnt/models/model_draft.file
-          name: model_draft
+          name: model-draft
         - mountPath: /dev/accel
           name: accel
         - mountPath: /dev/dri
@@ -62,7 +62,7 @@ spec:
         name: model
       - hostPath:
           path: /path/to/model_draft.file
-        name: model_draft
+        name: model-draft
       - hostPath:
           path: /dev/accel
         name: accel

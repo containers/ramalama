@@ -28,7 +28,7 @@ class Kube:
         self.src_mmproj_path, self.dest_mmproj_path = mmproj_paths if mmproj_paths is not None else ("", "")
         self.model_paths = {'model': model_paths}
         if draft_model_paths is not None:
-            self.model_paths['model_draft'] = draft_model_paths
+            self.model_paths['model-draft'] = draft_model_paths
         self.ai_image = model_name
         if getattr(args, "name", None):
             self.name = args.name
@@ -136,11 +136,11 @@ class Kube:
             host_chat_template_path = '/mnt' + host_chat_template_path
         mount = f"""
         - mountPath: {self.dest_chat_template_path}
-          name: chat_template"""
+          name: chat-template"""
         volume = f"""
       - hostPath:
           path: {host_chat_template_path}
-        name: chat_template"""
+        name: chat-template"""
         return mount, volume
 
     def _gen_mmproj_volume(self):
