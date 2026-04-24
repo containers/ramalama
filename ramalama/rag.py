@@ -5,17 +5,17 @@ import subprocess
 import tempfile
 from functools import partial
 from textwrap import dedent
-from typing import Literal, cast
+from typing import Literal
 
-from ramalama.arg_types import RagArgsType, ServeRunArgsType
+from ramalama.arg_types import RagArgsType
 from ramalama.chat import ChatOperationalArgs
-from ramalama.common import accel_image, perror, set_accel_env_vars
+from ramalama.common import ensure_image, perror, set_accel_env_vars
 from ramalama.compat import StrEnum
-from ramalama.config import Config
+from ramalama.config import ActiveConfig, Config
 from ramalama.engine import BuildEngine, Engine, is_healthy, stop_container, wait_for_healthy
 from ramalama.path_utils import get_container_mount_path
 from ramalama.transports.base import Transport
-from ramalama.transports.oci import OCI
+from ramalama.transports.oci.oci import OCI
 
 INPUT_DIR = "/docs"
 
@@ -91,6 +91,10 @@ class Rag:
             dbdir = self.target
 
         engine.add_volume(dbdir, "/output", opts="rw")
+        if not args.dryrun:
+            config = ActiveConfig()
+            should_pull = config.pull in ["always", "missing", "newer"]
+            args.image = ensure_image(args.engine, args.image, should_pull=should_pull)
         engine.add_args(args.image)
         engine.add_args(*cmd)
         try:
@@ -108,7 +112,7 @@ class Rag:
 
 
 def rag_image(config: Config) -> str:
-    return accel_image(config, images=config.rag_images, conf_key="rag_image")
+    return config.default_rag_image
 
 
 class RagSource(StrEnum):
@@ -128,22 +132,27 @@ class RagEngine(Engine):
 
     def add_labels(self):
         super().add_labels()
-        self.add_label(f"ai.ramalama.rag.{self.sourcetype}={self.args.rag}")
+        rag = getattr(self.args, "rag", None)
+        if rag is not None:
+            self.add_label(f"ai.ramalama.rag.{self.sourcetype}={rag}")
 
     def add_rag(self):
+        rag = getattr(self.args, "rag", None)
+        if rag is None:
+            return
         if self.sourcetype is RagSource.DB:
             # Convert to container-friendly path format (handles Windows path conversion)
-            rag = get_container_mount_path(self.args.rag)
+            rag_path = get_container_mount_path(rag)
             # Read-write is the default behaviour for bind mounts in both Docker and Podman
-            self.add_args(f"--mount=type=bind,source={rag},destination=/rag/vector.db{self.relabel()}")
+            self.add_args(f"--mount=type=bind,source={rag_path},destination=/rag/vector.db{self.relabel()}")
         else:
             # Image mounts default to read-only in Podman, so we need rw=true for write access
             # Docker does not support type=image mounts
             if self.use_podman:
-                self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag,rw=true")
+                self.add_args(f"--mount=type=image,source={rag},destination=/rag,rw=true")
             else:
                 # Docker falls back to using volumes or other mechanisms
-                self.add_args(f"--mount=type=image,source={self.args.rag},destination=/rag")
+                self.add_args(f"--mount=type=image,source={rag},destination=/rag")
 
 
 class RagTransport(OCI):
@@ -176,9 +185,8 @@ class RagTransport(OCI):
 
     def _handle_container_chat(self, args: RagArgsType, server_process: int) -> Literal[0]:
         # Clear args.rag so RamaLamaShell doesn't treat it as local data for RAG context
-        chat_args = cast(ServeRunArgsType, args)
-        chat_args.rag = None
-        return super()._handle_container_chat(chat_args, server_process)
+        args.rag = None  # type: ignore[assignment]
+        return super()._handle_container_chat(args, server_process)
 
     def serve(self, args: RagArgsType, cmd: list[str]):
         args.model_args.name = self.imodel.get_container_name(args.model_args)
@@ -190,7 +198,7 @@ class RagTransport(OCI):
                     " ".join(self.model_cmd),
                 )
         try:
-            super().serve(args, cmd)
+            self.execute_command(cmd, args)
         finally:
             if getattr(args.model_args, "name", None):
                 args.model_args.ignore = True
@@ -218,4 +226,4 @@ class RagTransport(OCI):
 
     def wait_for_healthy(self, args: RagArgsType) -> None:
         self.imodel.wait_for_healthy(args.model_args)
-        wait_for_healthy(args, partial(is_healthy, model_name=f"{self.imodel.model_name}+rag"))
+        wait_for_healthy(args, partial(is_healthy, model_name=f"{self.imodel.model_alias}+rag"))

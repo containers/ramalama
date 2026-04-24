@@ -12,7 +12,7 @@ metadata:
       event == "pull_request" && target_branch == "main" && body.action != "ready_for_review" &&
       (
         "container-images/common/Containerfile.rag".pathChanged() ||
-        "container-images/common/requirements-rag-cpu*.txt".pathChanged() ||
+        "container-images/common/requirements-rag.txt".pathChanged() ||
         "container-images/scripts/build_rag.sh".pathChanged() ||
         "container-images/scripts/doc2rag".pathChanged() ||
         "container-images/scripts/rag_framework".pathChanged() ||

@@ -6,11 +6,8 @@ adjust:
     when: initiator != packit
 
 require:
-    - bats
-    - black
+    - ruff
     - codespell
-    - flake8
-    - isort
     - jq
     - make
     - perl-Clone
@@ -21,7 +18,6 @@ require:
     - python3-argcomplete
     - python3-huggingface-hub
     - shellcheck
-    - python3-jsonschema
     - python3-pyyaml
     - python3-jinja2
 
@@ -39,7 +35,7 @@ require:
     summary: Run unit tests
     test: make -C $TMT_TREE unit-tests
 
-/bats-nocontainer:
-    summary: Run system tests on host
-    test: bash ./bats-tests.sh nocontainer
+/e2e-nocontainer:
+    summary: Run e2e tests on host
+    test: make -C $TMT_TREE e2e-tests-nocontainer
     duration: 30m

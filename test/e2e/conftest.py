@@ -8,11 +8,12 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from test.conftest import ramalama_container_engine
 
 import bcrypt
 import pytest
 import requests
+
+from test.conftest import ramalama_container_engine
 
 if sys.byteorder == "big":
     # Most tests assume little-endian so need to disable endianness verification on big-endian systems
@@ -67,9 +68,9 @@ def container_registry():
             pwfile.write(f"{registry_username}:{passwd_hash}")
 
         # Start the registry
+        # fmt: off
         subprocess.run(
             [
-                # fmt: off
                 ramalama_container_engine, "run", "-d", "--rm",
                 "--name", registry_name,
                 "-p", f"{registry_port}:5000",
@@ -80,10 +81,10 @@ def container_registry():
                 "-e", "REGISTRY_HTTP_TLS_CERTIFICATE=/auth/domain.crt",
                 "-e", "REGISTRY_HTTP_TLS_KEY=/auth/domain.key",
                 registry_image,
-                # fmt: on
             ],
             check=True,
         )
+        # fmt: on
         time.sleep(2)
 
         try:

@@ -1,70 +1,86 @@
+from __future__ import annotations
+
 import base64
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Optional, Protocol, Union
 
 from ramalama.console import should_colorize
+
+# Strip ANSI escape sequences and control chars to prevent terminal injection (e.g. from LLM output)
+_ANSI_ESCAPE_RE = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x1b]*(?:\x1b\\|\x07))")
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def sanitize_for_terminal(text: str) -> str:
+    """Remove ANSI escape sequences and control characters from untrusted output before printing."""
+    if not text:
+        return text
+    s = _ANSI_ESCAPE_RE.sub("", text)
+    return _CONTROL_CHARS_RE.sub("", s)
+
 
 RoleType = Literal["system", "user", "assistant", "tool"]
 
 
-@dataclass(slots=True)
+@dataclass
 class ImageURLPart:
     url: str
-    detail: str | None = None
+    detail: Optional[str] = None
     type: Literal["image_url"] = "image_url"
 
 
-@dataclass(slots=True)
+@dataclass
 class ImageBytesPart:
     data: bytes
     mime_type: str = "application/octet-stream"
     type: Literal["image_bytes"] = "image_bytes"
 
 
-@dataclass(slots=True)
+@dataclass
 class ToolCall:
     id: str
     name: str
     arguments: dict[str, Any]
 
 
-AttachmentPart = ImageURLPart | ImageBytesPart
+AttachmentPart = Union[ImageURLPart, ImageBytesPart]
 
 
-@dataclass(slots=True)
+@dataclass
 class SystemMessage:
     role: Literal["system"] = "system"
     text: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@dataclass
 class UserMessage:
     role: Literal["user"] = "user"
-    text: str | None = None
+    text: Optional[str] = None
     metadata: dict[str, Any] = field(default_factory=dict)
     attachments: list[AttachmentPart] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class AssistantMessage:
     role: Literal["assistant"] = "assistant"
-    text: str | None = None
+    text: Optional[str] = None
     metadata: dict[str, Any] = field(default_factory=dict)
     tool_calls: list[ToolCall] = field(default_factory=list)
     attachments: list[AttachmentPart] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class ToolMessage:
     text: str
     role: Literal["tool"] = "tool"
     metadata: dict[str, Any] = field(default_factory=dict)
-    tool_call_id: str | None = None
+    tool_call_id: Optional[str] = None
 
 
-ChatMessageType = SystemMessage | UserMessage | AssistantMessage | ToolMessage
+ChatMessageType = Union[SystemMessage, UserMessage, AssistantMessage, ToolMessage]
 
 
 class StreamParser(Protocol):
@@ -86,7 +102,8 @@ def stream_response(chunks: Iterable[bytes], color: str, provider: StreamParser)
             text = getattr(event, "text", None)
             if not text:
                 continue
-            print(f"{color_yellow}{text}{color_default}", end="", flush=True)
+            safe_text = sanitize_for_terminal(text)
+            print(f"{color_yellow}{safe_text}{color_default}", end="", flush=True)
             assistant_response += text
 
     print("")
@@ -112,6 +129,7 @@ __all__ = [
     "ToolCall",
     "ImageURLPart",
     "ImageBytesPart",
+    "sanitize_for_terminal",
     "stream_response",
     "serialize_part",
 ]

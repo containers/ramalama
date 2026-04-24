@@ -1,0 +1,390 @@
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import tempfile
+from functools import cached_property
+from textwrap import dedent
+from typing import Optional, Union
+
+import ramalama.annotations as oci_annotations
+from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd, set_accel_env_vars
+from ramalama.engine import BuildEngine, dry_run
+from ramalama.oci_tools import OciRef, engine_supports_manifest_attributes
+from ramalama.transports.base import Transport
+from ramalama.transports.oci import spec as oci_spec
+from ramalama.transports.oci.strategies import BaseOCIStrategy
+from ramalama.transports.oci.strategy import OCIStrategyFactory
+
+prefix = "oci://"
+ociimage_raw = "org.containers.type=ai.image.model.raw"
+ociimage_car = "org.containers.type=ai.image.model.car"
+
+
+class OCI(Transport):
+    type = "OCI"
+
+    def __init__(self, model: str, model_store_path: str, conman: str, ignore_stderr: bool = False):
+        # Must fix the tag before the base class parses the name
+        model_name = model.split('/')[-1]
+        if ":" not in model_name:
+            model = f"{model}:latest"
+        super().__init__(model, model_store_path)
+
+        if not conman:
+            raise ValueError("RamaLama OCI Images requires a container engine")
+        self.conman = conman
+        self.ignore_stderr = ignore_stderr
+        self.ref: OciRef = OciRef.from_ref_string(self.model.removeprefix(prefix))
+
+    @cached_property
+    def strategy(self) -> BaseOCIStrategy:
+        return OCIStrategyFactory(self.conman, model_store=self.model_store).resolve(self.ref)
+
+    @property
+    def is_artifact(self) -> bool:
+        return self.strategy.kind == 'artifact'
+
+    def login(self, args):
+        conman_args = [self.conman, "login"]
+        if str(args.tlsverify).lower() == "false":
+            conman_args.extend([f"--tls-verify={args.tlsverify}"])
+        if args.authfile:
+            conman_args.extend([f"--authfile={args.authfile}"])
+        if args.username:
+            conman_args.extend([f"--username={args.username}"])
+        if args.password:
+            conman_args.extend([f"--password={args.password}"])
+        if args.passwordstdin:
+            conman_args.append("--password-stdin")
+        if args.REGISTRY:
+            conman_args.append(args.REGISTRY.removeprefix(prefix))
+        return exec_cmd(conman_args)
+
+    def logout(self, args):
+        conman_args = [self.conman, "logout"]
+        conman_args.append(self.model)
+        return exec_cmd(conman_args)
+
+    def _target_decompose(self, model):
+        model = model.removeprefix(prefix)
+        # Remove the prefix and extract target details
+        try:
+            registry, reference = model.split("/", 1)
+        except Exception:
+            raise KeyError(
+                "You must specify a registry for the model in the form "
+                f"'oci://registry.acme.org/ns/repo:tag', got instead: {self.model}"
+            )
+
+        reference_dir = reference.replace(":", "/")
+        return registry, reference, reference_dir
+
+    def _has_local_snapshot(self) -> bool:
+        try:
+            _, cached_files, complete = self.model_store.get_cached_files(self.model_tag)
+            return complete and bool(cached_files)
+        except Exception:
+            return False
+
+    def build_image(self, cfile, contextdir, args):
+        if args.type == "car":
+            parent = args.carimage
+            label = ociimage_car
+        else:
+            parent = "scratch"
+            label = ociimage_raw
+
+        footer = dedent(f"""
+            FROM {parent}
+            LABEL {label}
+            COPY --from=build /data/ /
+            """).strip()
+        full_cfile = cfile + "\n\n" + footer + "\n"
+        if args.debug:
+            perror(f"Containerfile: \n{full_cfile}")
+        engine = BuildEngine(args)
+        return engine.build_containerfile(full_cfile, contextdir)
+
+    def _gguf_containerfile(self, model_file_name, args):
+        return dedent(f"""
+            FROM {args.carimage} AS build
+            COPY {model_file_name} /data/models/{model_file_name}
+            RUN ln -s {model_file_name} /data/models/model.file
+            """).strip()
+
+    def _generate_containerfile(self, source_model, args):
+        # Generate the containerfile content
+        # Keep this in sync with docs/ramalama-oci.5.md !
+        is_car = args.type == "car"
+        is_raw = args.type == "raw"
+        if args.type == "artifact":
+            raise TypeError("artifact handling should not generate containerfiles.")
+        if not is_car and not is_raw:
+            raise ValueError(f"argument --type: invalid choice: '{args.type}' (choose from artifact,  car, raw)")
+        content = [f"FROM {args.carimage} AS build"]
+        model_name = source_model.model_name
+        ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
+
+        for file in ref_file.files:
+            blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+            blob_file_path = os.path.relpath(blob_file_path, source_model.model_store.blobs_directory)
+            content.append(f"COPY {blob_file_path} /data/models/{model_name}/{file.name}")
+        name = ref_file.model_files[0].name if ref_file.model_files else model_name
+        content.append(f"RUN ln -s {model_name}/{name} /data/models/model.file")
+
+        return "\n".join(content)
+
+    def build(self, source_model, args):
+        gguf_dir = None
+        if getattr(args, "gguf", None):
+            perror("Converting to gguf ...")
+            gguf_dir = tempfile.TemporaryDirectory(prefix="RamaLama_convert_")
+            contextdir = gguf_dir.name
+            from ramalama.plugins.loader import get_runtime
+
+            runtime = get_runtime(args.runtime)
+            convert_fn = getattr(runtime, "_convert_to_gguf", None)
+            if convert_fn is None:
+                raise NotImplementedError("Runtime does not support _convert_to_gguf")
+            model_file_name = convert_fn(gguf_dir, source_model, args)
+            content = self._gguf_containerfile(model_file_name, args)
+        else:
+            # use blobs directory as context since paths in Containerfile are relative to it
+            contextdir = source_model.model_store.blobs_directory
+            content = self._generate_containerfile(source_model, args)
+        try:
+            return self.build_image(content, contextdir, args)
+        finally:
+            if gguf_dir:
+                gguf_dir.cleanup()
+
+    def tag(self, imageid, target, args):
+        # Tag imageid with target
+        cmd_args = [
+            self.conman,
+            "tag",
+            imageid,
+            target,
+        ]
+        if args.dryrun:
+            dry_run(cmd_args)
+        else:
+            run_cmd(cmd_args)
+
+    def _rm_artifact(self, ignore) -> None:
+        rm_cmd = [
+            self.conman,
+            "artifact",
+            "rm",
+        ]
+        if ignore:
+            rm_cmd.append("--ignore")
+        rm_cmd.append(self.model)
+
+        run_cmd(
+            rm_cmd,
+            ignore_all=True,
+        )
+
+    def _add_artifact(self, create, name, path, file_name) -> None:
+        filepath = oci_spec.normalize_layer_filepath(file_name)
+        metadata = oci_spec.FileMetadata.from_path(path, name=file_name).to_json()
+        cmd = [
+            self.conman,
+            "artifact",
+            "add",
+            "--annotation",
+            f"{oci_spec.LAYER_ANNOTATION_FILEPATH}={filepath}",
+            "--annotation",
+            f"{oci_spec.LAYER_ANNOTATION_FILE_METADATA}={metadata}",
+            "--annotation",
+            f"{oci_spec.LAYER_ANNOTATION_FILE_MEDIATYPE_UNTESTED}=true",
+        ]
+        if create:
+            cmd.extend(["--replace", "--type", oci_annotations.ArtifactTypeModelManifest])
+        else:
+            cmd.extend(["--append"])
+
+        cmd.extend([self.model, path])
+        run_cmd(
+            cmd,
+            ignore_stderr=True,
+        )
+
+    def _create_artifact(self, source_model, target, args) -> None:
+        model_name = source_model.model_name
+        ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
+        name = ref_file.model_files[0].name if ref_file.model_files else model_name
+        create = True
+        for file in ref_file.files:
+            blob_file_path = source_model.model_store.get_blob_file_path(file.hash)
+            self._add_artifact(create, name, blob_file_path, file.name)
+            create = False
+
+    def _create_manifest_without_attributes(self, target, imageid, args):
+        # Create manifest list for target with imageid
+        cmd_args = [
+            self.conman,
+            "manifest",
+            "create",
+            target,
+            imageid,
+        ]
+        if args.dryrun:
+            dry_run(cmd_args)
+        else:
+            run_cmd(cmd_args)
+
+    def _create_manifest(self, target, imageid, args):
+        self._create_manifest_without_attributes(target, imageid, args)
+        if not engine_supports_manifest_attributes(args.engine):
+            return
+
+        # Annotate manifest list
+        cmd_args = [
+            self.conman,
+            "manifest",
+            "annotate",
+            "--annotation",
+            f"{oci_annotations.AnnotationModel}=true",
+            "--annotation",
+            ociimage_car if args.type == "car" else ociimage_raw,
+            "--annotation",
+            f"{oci_annotations.AnnotationTitle}={args.SOURCE}",
+            target,
+            imageid,
+        ]
+        if args.dryrun:
+            dry_run(cmd_args)
+        else:
+            run_cmd(cmd_args, stdout=None)
+
+    def _convert(self, source_model, args):
+        set_accel_env_vars()
+        perror(
+            f"Converting {source_model.model_store.model_name} ({source_model.model_store.model_type}) to "
+            f"{self.model_store.model_name} ({self.model_store.model_type}) ..."
+        )
+        for rm_cmd in [
+            [self.conman, "manifest", "rm", self.model],
+            [self.conman, "rmi", self.model],
+        ]:
+            try:
+                if args.dryrun:
+                    dry_run(rm_cmd)
+                else:
+                    run_cmd(rm_cmd, ignore_stderr=True, stdout=None)
+            except subprocess.CalledProcessError:
+                pass
+        if args.type == "artifact":
+            perror(f"Creating Artifact {self.model} ...")
+            self._create_artifact(source_model, self.model, args)
+            return
+
+        perror(f"Building {self.model} ...")
+        imageid = self.build(source_model, args)
+        if args.dryrun:
+            imageid = "a1b2c3d4e5f6"
+        if self.conman == "docker":
+            # docker manifest create doesn't support local image references, so it's not usable here
+            self.tag(imageid, self.model, args)
+        else:
+            self._create_manifest(self.model, f"containers-storage:{imageid}", args)
+
+    def convert(self, source_model, args):
+        self._convert(source_model, args)
+
+    def push(self, source_model, args):
+        target = self.model
+        source = source_model.model
+        conman_args = [self.conman, "push"]
+        type = "image"
+        if args.type == "artifact":
+            type = args.type
+            conman_args.insert(1, "artifact")
+
+        perror(f"Pushing {type} {self.model} ...")
+        if args.authfile:
+            conman_args.extend([f"--authfile={args.authfile}"])
+        if str(args.tlsverify).lower() == "false":
+            conman_args.extend([f"--tls-verify={args.tlsverify}"])
+        conman_args.extend([target])
+        if source != target:
+            self._convert(source_model, args)
+        try:
+            run_cmd(conman_args, ignore_stderr=self.ignore_stderr)
+        except subprocess.CalledProcessError as e:
+            try:
+                if args.type != "artifact":
+                    perror(f"Pushing artifact {self.model} ...")
+                    conman_args.insert(1, "artifact")
+                    run_cmd(conman_args)
+            except subprocess.CalledProcessError:
+                perror(f"Failed to push OCI {target} : {e}")
+                raise e
+
+    def pull(self, args):
+        conman_args = []
+        if args.quiet:
+            conman_args.extend(['--quiet'])
+        else:
+            perror(f"Downloading {self.model} ...")
+        if str(args.tlsverify).lower() == "false":
+            conman_args.extend([f"--tls-verify={args.tlsverify}"])
+        if args.authfile:
+            conman_args.extend([f"--authfile={args.authfile}"])
+
+        self.strategy.pull(self.ref, cmd_args=conman_args)
+
+    def remove(self, args) -> bool:
+        cmd_args = []
+        ignore = getattr(args, "ignore", False)
+        if ignore:
+            if self.strategy.kind == "artifact":
+                cmd_args.append("--ignore")
+            else:
+                cmd_args.append(f"--force={ignore}")
+        return self.strategy.remove(self.ref, cmd_args=cmd_args)
+
+    def exists(self) -> bool:
+        return self.strategy.exists(self.ref)
+
+    def entrypoint_path(self, mount_dir: Optional[str] = None) -> str:
+        return self.strategy.entrypoint_path(self.ref, mount_dir=mount_dir)
+
+    def inspect(
+        self,
+        show_all: bool = False,
+        show_all_metadata: bool = False,
+        get_field: str = "",
+        as_json: bool = False,
+        dryrun: bool = False,
+    ) -> None:
+        out = super().inspect(
+            show_all=show_all, show_all_metadata=show_all_metadata, get_field=get_field, dryrun=dryrun, as_json=as_json
+        )
+
+        if get_field or dryrun:
+            print(out)
+            return
+
+        if as_json:
+            out = json.loads(out)
+
+            # docker/podman image inspect returns a list of objects
+            inspect = json.loads(self.strategy.inspect(self.ref))
+            if self.strategy.kind == "image":
+                inspect = inspect[0] if inspect else {}
+
+            print(json.dumps(out | inspect, sort_keys=True, indent=4))
+        else:
+            print(f"{out}   Type: {self.strategy.kind.capitalize()}")
+
+    def mount_cmd(self, src: Union[str, OciRef, None] = None, dest: Optional[str] = None):
+        if isinstance(src, OciRef):
+            return self.strategy.mount_arg(src, dest)
+        if src is not None:
+            return f"--mount=type=volume,src={src},dst={dest or MNT_DIR},readonly"
+        return self.strategy.mount_arg(self.ref, dest)

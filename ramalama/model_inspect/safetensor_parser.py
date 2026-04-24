@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import struct
 
@@ -10,7 +12,6 @@ from ramalama.model_inspect.safetensor_info import SafetensorModelInfo
 
 
 class SafetensorInfoParser:
-
     @staticmethod
     def is_model_safetensor(model_name: str) -> bool:
 

@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import argparse
+import errno
 import signal
+import socket
 import socketserver
 import threading
 from datetime import datetime, timedelta
+from typing import Optional
 
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.daemon.handler.ramalama import RamalamaHandler
 from ramalama.daemon.logging import configure_logger, logger
 from ramalama.daemon.service.model_runner import ModelRunner
@@ -16,7 +20,7 @@ from ramalama.log_levels import LogLevel
 class ShutdownHandler:
     def __init__(self, server: "RamalamaServer") -> None:
         self.server = server
-        self.idle_check_timer = None
+        self.idle_check_timer: Optional[threading.Timer] = None
 
     def handle_kill(self, signum, frame):
         if self.idle_check_timer:
@@ -67,22 +71,34 @@ class ShutdownHandler:
         self.idle_check_timer.start()
 
     def __exit__(self, type, value, traceback):
-        if self.idle_check_timer:
+        if self.idle_check_timer is not None:
             self.idle_check_timer.cancel()
 
 
 class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+
     def __init__(
         self, host: str, port: int, model_store_path: str, idle_check_interval: timedelta, bind_and_activate=True
     ):
+        # Use AF_INET6 for IPv6 addresses; on dual-stack systems :: accepts IPv4 too
+        if ":" in host:
+            self.address_family = socket.AF_INET6
         # Do not pass a RequestHandlerClass here, we will create a custom handler in finish_request
         super().__init__((host, port), None, bind_and_activate)  # type: ignore
 
         self.model_store_path: str = model_store_path
         self.model_runner: ModelRunner = ModelRunner()
-        self.idle_check_interval = idle_check_interval
+        self.idle_check_interval: timedelta = idle_check_interval
 
-        self.allow_reuse_address = True
+    def server_bind(self):
+        # Enable dual-stack so :: accepts IPv4 connections too
+        if self.address_family == socket.AF_INET6:
+            try:
+                self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+            except (AttributeError, OSError):
+                pass
+        super().server_bind()
 
     def finish_request(self, request, client_address):
         RamalamaHandler(self.model_store_path, self.model_runner, request, client_address, self)
@@ -90,7 +106,8 @@ class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def check_model_expiration(self):
         curr_time = datetime.now()
         for name, m in self.model_runner.managed_models.items():
-            if m.expiration_date > curr_time:
+            expiration_date = getattr(m, "expiration_date", None)
+            if expiration_date is None or expiration_date > curr_time:
                 continue
 
             try:
@@ -114,19 +131,28 @@ class RamalamaServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Ramalama Daemon")
-    parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser.add_argument("--host", type=str, default="::")
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--model-store-path", type=str, default="/models")
 
     return parser.parse_args()
 
 
-def run(host: str = "0.0.0.0", port: int = 8080, model_store_path: str = "/models"):
-    configure_logger(get_config().log_level or LogLevel.DEBUG)
-    logger.debug(f"Starting Ramalama daemon on {host}:{port}...")
-    with RamalamaServer(host, port, model_store_path, timedelta(seconds=10)) as httpd:
-        with ShutdownHandler(httpd):
-            server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+def run(host: str = "::", port: int = 8080, model_store_path: str = "/models"):
+    configure_logger(ActiveConfig().log_level or LogLevel.DEBUG)
+    host_str = f"[{host}]" if ":" in host else host
+    logger.debug(f"Starting Ramalama daemon on {host_str}:{port}...")
+    try:
+        server = RamalamaServer(host, port, model_store_path, timedelta(seconds=10))
+    except OSError as e:
+        if host != "::" or e.errno not in (errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL, errno.EINVAL):
+            raise
+        host = "0.0.0.0"
+        logger.debug(f"IPv6 not available, falling back to {host}:{port}...")
+        server = RamalamaServer(host, port, model_store_path, timedelta(seconds=10))
+    with server:
+        with ShutdownHandler(server):
+            server_thread = threading.Thread(target=server.serve_forever, daemon=True)
             server_thread.start()
             server_thread.join()
 

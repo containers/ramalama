@@ -8,12 +8,15 @@ ramalama\-info - display RamaLama configuration information
 **ramalama info** [*options*]
 
 ## DESCRIPTION
-Display configuration information in a json format.
+Display configuration information in a json format. Use **--shortnames** to list available shortnames.
 
 ## OPTIONS
 
 #### **--help**, **-h**
 show this help message and exit
+
+#### **--shortnames**
+Print the available shortnames and exit. Each entry includes the source of the configuration file.
 
 ## FIELDS
 
@@ -25,8 +28,9 @@ The `Engine` field indicates the OCI container engine used to launch the contain
 
 The `Image` field indicates the default container image in which to run the AI Model
 
-The `Inference` field lists the currently used inference engine as well as a list of available engine specification and schema files used for model inference. 
-For example:
+The `RagImage` field indicates the default container image used when running RAG (Retrieval Augmented Generation) workloads.
+
+The `Runtimes` field lists the currently selected inference engine runtime and all available runtime plugins. For example:
 
     - `llama.cpp`
     - `vllm`
@@ -34,7 +38,7 @@ For example:
 
 The `Selinux` field indicates if SELinux is activated or not.
 
-The `Shortnames` field shows the used list of configuration files specifying AI Model short names as well as the merged list of shortnames.
+The `Shortnames` field shows the used list of configuration files specifying AI Model short names as well as the merged list of shortnames. The `Shortnames.Sources` map indicates which configuration file provided each shortname.
 
 The `Store` field indicates the directory path where RamaLama stores its persistent data, including downloaded models, configuration files, and cached data. By default, this is located in the user's local share directory.
 
@@ -49,21 +53,21 @@ Info with no container engine
 $ ramalama info
 {
     "Accelerator": "cuda",
+    "Config": {},
     "Engine": {
         "Name": ""
     },
     "Image": "quay.io/ramalama/cuda:0.7",
-    "Inference": {
-        "Default": "llama.cpp",
-        "Engines": {
-            "llama.cpp": "/usr/share/ramalama/inference-spec/engines/llama.cpp.yaml",
-            "mlx": "/usr/share/ramalama/inference-spec/engines/mlx.yaml",
-            "vllm": "/usr/share/ramalama/inference-spec/engines/vllm.yaml"
-        },
-        "Schema": {
-            "1-0-0": "/usr/share/ramalama/inference-spec/schema/schema.1-0-0.json"
-        }
+    "RagImage": "quay.io/ramalama/ramalama:latest",
+    "Runtimes": {
+        "Available": [
+            "llama.cpp",
+            "vllm",
+            "mlx"
+        ],
+        "Default": "llama.cpp"
     },
+    "Selinux": false,
     "Shortnames": {
         "Names": {
             "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",
@@ -118,6 +122,13 @@ $ ramalama info
     "UseContainer": true,
     "Version": "0.7.5"
 }
+```
+
+List available shortnames
+```
+$ ramalama info --shortnames
+smollm:135m=ollama://smollm:135m (/usr/share/ramalama/shortnames.conf)
+tinyllama:latest=ollama://tinyllama:latest (/home/dwalsh/.config/ramalama/shortnames.conf)
 ```
 
 Info with Podman engine
@@ -305,17 +316,16 @@ $ ramalama info
         "Name": "podman"
     },
     "Image": "quay.io/ramalama/cuda:0.7",
-    "Inference": {
-        "Default": "llama.cpp",
-        "Engines": {
-            "llama.cpp": "/usr/share/ramalama/inference-spec/engines/llama.cpp.yaml",
-            "mlx": "/usr/share/ramalama/inference-spec/engines/mlx.yaml",
-            "vllm": "/usr/share/ramalama/inference-spec/engines/vllm.yaml"
-        },
-        "Schema": {
-            "1-0-0": "/usr/share/ramalama/inference-spec/schema/schema.1-0-0.json"
-        }
+    "RagImage": "quay.io/ramalama/ramalama:latest",
+    "Runtimes": {
+        "Available": [
+            "llama.cpp",
+            "vllm",
+            "mlx"
+        ],
+        "Default": "llama.cpp"
     },
+    "Selinux": true,
     "Shortnames": {
         "Names": {
             "cerebrum": "huggingface://froggeric/Cerebrum-1.0-7b-GGUF/Cerebrum-1.0-7b-Q4_KS.gguf",

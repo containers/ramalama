@@ -12,9 +12,13 @@ import string
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from functools import lru_cache
-from typing import IO, TYPE_CHECKING, Any, Literal, Optional, Protocol, TypeAlias, TypedDict, cast, get_args
+from pathlib import Path
+from typing import IO, TYPE_CHECKING, Any, Literal, Optional, Protocol, TypedDict, Union, cast, get_args
 
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
 import yaml
 
 import ramalama.amdkfd as amdkfd
@@ -25,7 +29,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
     from ramalama.arg_types import SUPPORTED_ENGINES, ContainerArgType
-    from ramalama.config import Config, RamalamaImageConfig
+    from ramalama.config import Config
     from ramalama.transports.base import Transport
 
 MNT_DIR = "/mnt/models"
@@ -73,7 +77,7 @@ def confirm_no_gpu(name, provider) -> bool:
         print("Invalid input. Please enter 'yes' or 'no'.")
 
 
-def handle_provider(machine, config: Config | None = None) -> bool | None:
+def handle_provider(machine, config: Optional[Config] = None) -> Optional[bool]:
     global podman_machine_accel
     name = machine.get("Name")
     provider = machine.get("VMType")
@@ -91,7 +95,7 @@ def handle_provider(machine, config: Config | None = None) -> bool | None:
     return None
 
 
-def apple_vm(engine: SUPPORTED_ENGINES, config: Config | None = None) -> bool:
+def apple_vm(engine: SUPPORTED_ENGINES, config: Optional[Config] = None) -> bool:
     podman_machine_list = [engine, "machine", "list", "--format", "json", "--all-providers"]
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True, encoding="utf-8").stdout.strip()
@@ -100,7 +104,7 @@ def apple_vm(engine: SUPPORTED_ENGINES, config: Config | None = None) -> bool:
             result = handle_provider(machine, config)
             if result is not None:
                 return result
-    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+    except (subprocess.CalledProcessError, json.JSONDecodeError, FileNotFoundError) as e:
         logger.warning(f"Failed to list and parse podman machines: {e}")
     return False
 
@@ -133,12 +137,13 @@ def exec_cmd(args, stdout2null: bool = False, stderr2null: bool = False):
 
 def run_cmd(
     args: Sequence[str],
-    cwd: str | None = None,
-    stdout: int | IO[Any] | None = subprocess.PIPE,
+    cwd: Optional[str] = None,
+    stdout: Union[int, IO[Any], None] = subprocess.PIPE,
+    stdin: Union[int, IO[Any], None] = subprocess.DEVNULL,
     ignore_stderr: bool = False,
     ignore_all: bool = False,
-    encoding: str | None = None,
-    env: dict[str, str] | None = None,
+    encoding: Optional[str] = None,
+    env: Optional[dict[str, str]] = None,
 ) -> subprocess.CompletedProcess[Any]:
     """
     Run the given command arguments.
@@ -168,7 +173,9 @@ def run_cmd(
     if env:
         env = os.environ | env
 
-    result = subprocess.run(args, check=True, cwd=cwd, stdout=sout, stderr=serr, encoding=encoding, env=env)
+    result = subprocess.run(
+        args, check=True, cwd=cwd, stdout=sout, stderr=serr, stdin=stdin, encoding=encoding, env=env
+    )
     logger.debug(f"Command finished with return code: {result.returncode}")
 
     return result
@@ -292,10 +299,11 @@ def genname():
     return "ramalama-" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
-def engine_version(engine: SUPPORTED_ENGINES) -> str:
+@lru_cache
+def engine_version(engine: SUPPORTED_ENGINES | Path | str) -> SemVer:
     # Create manifest list for target with imageid
     cmd_args = [str(engine), "version", "--format", "{{ .Client.Version }}"]
-    return run_cmd(cmd_args, encoding="utf-8").stdout.strip()
+    return SemVer.parse(run_cmd(cmd_args, encoding="utf-8").stdout.strip())
 
 
 class CDI_DEVICE(TypedDict):
@@ -306,33 +314,47 @@ class CDI_RETURN_TYPE(TypedDict):
     devices: list[CDI_DEVICE]
 
 
-def load_cdi_config(spec_dirs: list[str]) -> CDI_RETURN_TYPE | None:
-    # Loads the first YAML or JSON CDI configuration file found in the
-    # given directories."""
+def load_cdi_config(spec_dirs: list[str]) -> Optional[CDI_RETURN_TYPE]:
+    # Load and merge all CDI configuration files from the given directories.
+    # When multiple CDI configs exist (e.g. /var/run/cdi and /etc/cdi), all are
+    # merged so that device "all" and other devices are found regardless of
+    # which file they appear in (fixes #2485).
+    merged_devices: list[CDI_DEVICE] = []
+    seen_names: set[str] = set()
 
     for spec_dir in spec_dirs:
+        if not os.path.isdir(spec_dir):
+            continue
         for root, _, files in os.walk(spec_dir):
-            for file in files:
+            for file in sorted(files):
                 _, ext = os.path.splitext(file)
+                if ext not in (".yaml", ".yml", ".json"):
+                    continue
                 file_path = os.path.join(root, file)
-                if ext in [".yaml", ".yml"]:
-                    try:
-                        with open(file_path, "r") as stream:
-                            return yaml.safe_load(stream)
-                    except (OSError, yaml.YAMLError) as e:
-                        logger.warning(f"Failed to load YAML file {file_path}: {e}")
-                        continue
-                elif ext == ".json":
-                    try:
-                        with open(file_path, "r") as stream:
-                            return json.load(stream)
-                    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
-                        logger.warning(f"Failed to load JSON file {file_path}: {e}")
-                        continue
-    return None
+                config = None
+                try:
+                    with open(file_path, "r") as stream:
+                        if ext == ".json":
+                            config = json.load(stream)
+                        else:
+                            config = yaml.safe_load(stream)
+                except (OSError, yaml.YAMLError, json.JSONDecodeError, UnicodeDecodeError) as e:
+                    logger.warning(f"Failed to load/parse CDI file {file_path}: {e}")
+                    continue
+                if not config or not isinstance(config, dict):
+                    continue
+                for cdi_device in config.get("devices", []):
+                    if isinstance(cdi_device, dict) and (name := cdi_device.get("name")):
+                        if name not in seen_names:
+                            seen_names.add(name)
+                            merged_devices.append(cast(CDI_DEVICE, cdi_device))
+
+    if not merged_devices:
+        return None
+    return {"devices": merged_devices}
 
 
-def get_podman_machine_cdi_config() -> CDI_RETURN_TYPE | None:
+def get_podman_machine_cdi_config() -> Optional[CDI_RETURN_TYPE]:
     cdi_config = run_cmd(["podman", "machine", "ssh", "cat", "/etc/cdi/nvidia.yaml"], encoding="utf-8").stdout.strip()
     if cdi_config:
         return yaml.safe_load(cdi_config)
@@ -370,7 +392,7 @@ def find_in_cdi(devices: list[str]) -> tuple[list[str], list[str]]:
     return configured, unconfigured
 
 
-def check_asahi() -> Literal["asahi"] | None:
+def check_asahi() -> Optional[Literal["asahi"]]:
     if os.path.exists('/proc/device-tree/compatible'):
         try:
             with open('/proc/device-tree/compatible', 'rb') as f:
@@ -391,7 +413,7 @@ def check_metal(args: ContainerArgType) -> bool:
 
 
 @lru_cache(maxsize=1)
-def check_nvidia() -> Literal["cuda"] | None:
+def check_nvidia() -> Optional[Literal["cuda"]]:
     try:
         command = ['nvidia-smi', '--query-gpu=index,uuid', '--format=csv,noheader']
         result = run_cmd(command, encoding="utf-8")
@@ -434,7 +456,7 @@ def check_nvidia() -> Literal["cuda"] | None:
     return None
 
 
-def check_ascend() -> Literal["cann"] | None:
+def check_ascend() -> Optional[Literal["cann"]]:
     try:
         command = ['npu-smi', 'info']
         run_cmd(command, encoding="utf-8")
@@ -446,7 +468,7 @@ def check_ascend() -> Literal["cann"] | None:
     return None
 
 
-def check_rocm_amd() -> Literal["hip"] | None:
+def check_rocm_amd() -> Optional[Literal["hip"]]:
     if is_arm():
         # ROCm is not available for arm64, use Vulkan instead
         return None
@@ -483,7 +505,22 @@ def is_arm() -> bool:
     return platform.machine() in ('arm64', 'aarch64')
 
 
-def check_intel() -> Literal["intel"] | None:
+def check_intel() -> Optional[Literal["intel"]]:
+    igpu_num = 0
+
+    if platform.system() == "Windows":
+        igpu_num = _check_intel_windows()
+    else:
+        igpu_num = _check_intel_linux()
+
+    if igpu_num:
+        os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
+        return "intel"
+
+    return None
+
+
+def _check_intel_linux() -> int:
     igpu_num = 0
     # Device IDs for select Intel GPUs.  See: https://dgpu-docs.intel.com/devices/hardware-table.html
     intel_gpus = (
@@ -506,14 +543,21 @@ def check_intel() -> Literal["intel"] | None:
             for gpu_id in intel_gpus:
                 if gpu_id in content:
                     igpu_num += 1
-    if igpu_num:
-        os.environ["INTEL_VISIBLE_DEVICES"] = str(igpu_num)
-        return "intel"
-
-    return None
+    return igpu_num
 
 
-def check_mthreads() -> Literal["musa"] | None:
+def _check_intel_windows() -> int:
+    """Detect Intel GPUs on Windows via WMI Win32_VideoController."""
+    try:
+        import wmi  # type: ignore
+
+        w = wmi.WMI()
+        return sum(1 for gpu in w.Win32_VideoController() if "intel" in (gpu.Name or "").lower())
+    except Exception:
+        return 0
+
+
+def check_mthreads() -> Optional[Literal["musa"]]:
     try:
         command = ['mthreads-gmi']
         run_cmd(command, encoding="utf-8")
@@ -530,9 +574,9 @@ AccelType: TypeAlias = Literal["asahi", "cuda", "cann", "hip", "intel", "musa"]
 
 @lru_cache(maxsize=1)
 def get_accel() -> AccelType | Literal["none"]:
-    checks: tuple[Callable[[], AccelType | None], ...] = (
+    checks: tuple[Callable[[], Optional[AccelType]], ...] = (
         check_asahi,
-        cast(Callable[[], Literal['cuda'] | None], check_nvidia),
+        cast(Callable[[], Optional[Literal['cuda']]], check_nvidia),
         check_ascend,
         check_rocm_amd,
         check_intel,
@@ -569,6 +613,15 @@ GPUEnvVar: TypeAlias = Literal[
 ]
 
 
+def get_gpu_devices():
+    devices = {}
+    for dev in ["dri", "kfd", "accel"]:
+        path = "/dev/" + dev
+        if os.path.exists(path):
+            devices[dev] = path
+    return dict(sorted(devices.items()))
+
+
 def get_gpu_type_env_vars() -> dict[GPUEnvVar, str]:
     return {k: v for k in get_args(GPUEnvVar) if (v := os.environ.get(k))}
 
@@ -577,6 +630,7 @@ AccelEnvVar: TypeAlias = Literal[
     "CUDA_LAUNCH_BLOCKING",
     "HSA_VISIBLE_DEVICES",
     "HSA_OVERRIDE_GFX_VERSION",
+    "MTHREADS_VISIBLE_DEVICES",
 ]
 
 
@@ -601,74 +655,20 @@ def minor_release() -> str:
     return vers
 
 
-def tagged_image(image: str) -> str:
+def version_tagged_image(image: str) -> str:
     if len(image.split(":")) > 1:
         return image
     return f"{image}:{minor_release()}"
 
 
-@lru_cache(maxsize=1)
-def check_cuda_version() -> tuple[int, int]:
-    """
-    Check the CUDA version installed on the system by parsing the output of nvidia-smi --version.
-
-    Returns:
-        tuple: A tuple of (major, minor) version numbers, or (0, 0) if CUDA is not found or version can't be determined.
-    """
-    try:
-        # Run nvidia-smi --version to get version info
-        command = ['nvidia-smi']
-        output = run_cmd(command, encoding="utf-8").stdout.strip()
-
-        # Look for CUDA Version in the output
-        cuda_match = re.search(r'CUDA Version\s*:\s*(\d+)\.(\d+)', output)
-        if cuda_match:
-            major = int(cuda_match.group(1))
-            minor = int(cuda_match.group(2))
-            return (major, minor)
-    except Exception:
-        pass
-
-    return (0, 0)
-
-
-def select_cuda_image(config: Config) -> str:
-    """
-    Select appropriate CUDA image based on the detected CUDA version.
-
-    Args:
-        config: The configuration object containing the CUDA image reference
-
-    Returns:
-        str: The appropriate CUDA image name
-
-    Raises:
-        NotImplementedError: If CUDA version is less than 12.4
-    """
-    # Get the default CUDA image from config
-    cuda_image = config.images.get("CUDA_VISIBLE_DEVICES")
-
-    if cuda_image is None:
-        raise NotImplementedError("No image repository found for CUDA_VISIBLE_DEVICES in config.")
-
-    # Check CUDA version and select appropriate image
-    cuda_version = check_cuda_version()
-
-    # Select appropriate image based on CUDA version
-    if cuda_version >= (12, 8):
-        return cuda_image  # Use the standard image for CUDA 12.8+
-    elif cuda_version >= (12, 4):
-        return f"{cuda_image}-12.4.1"  # Use the specific version for older CUDA
-    else:
-        raise NotImplementedError(f"CUDA version {cuda_version} is not supported. Minimum required version is 12.4.")
+def latest_tagged_image(image: str) -> str:
+    if len(image.split(":")) > 1:
+        return image
+    return f"{image}:latest"
 
 
 class AccelImageArgsWithImage(Protocol):
     image: str
-
-
-class AccelImageArgsVLLMRuntime(Protocol):
-    runtime: Literal["vllm"]
 
 
 class AccelImageArgsOtherRuntime(Protocol):
@@ -684,85 +684,80 @@ class AccelImageArgsOtherRuntimeRAG(Protocol):
     quiet: bool
 
 
-AccelImageArgs: TypeAlias = (
-    None | AccelImageArgsVLLMRuntime | AccelImageArgsOtherRuntime | AccelImageArgsOtherRuntimeRAG
-)
+AccelImageArgs: TypeAlias = Union[None, AccelImageArgsOtherRuntime, AccelImageArgsOtherRuntimeRAG]
 
 
-def accel_image(config: Config, images: RamalamaImageConfig | None = None, conf_key: str = "image") -> str:
+def accel_image(config: Config, images: Optional[dict[str, str]] = None, conf_key: str = "image") -> str:
     """
-    Selects and the appropriate image based on config, arguments, environment.
-    "images" is a mapping of environment variable names to image names. If not specified, the
-    mapping from default config will be used.
+    Selects the appropriate image based on config, arguments, environment.
+    "images" is a mapping of environment variable names to image names. If not specified,
+    the runtime plugin is asked to select the image.
     "conf_key" is the configuration key that holds the configured value of the selected image.
     If not specified, it defaults to "image".
-    """
-    # User provided an image via config
-    if config.is_set(conf_key):
-        return tagged_image(getattr(config, conf_key))
 
-    if not images:
-        images = config.images
+    Never pulls images; callers that need pulling should pass the result to ensure_image().
+    """
+
+    # User provided an image via config; tag with :latest if no tag given
+    if config.is_set(conf_key):
+        return latest_tagged_image(getattr(config, conf_key))
 
     set_gpu_type_env_vars()
     gpu_type = next(iter(get_gpu_type_env_vars()), "")
 
-    if config.runtime == "vllm":
-        # Check for GPU-specific VLLM image, with a fallback to the generic one.
-        image = None
-        if gpu_type:
-            image = config.images.get(f"VLLM_{gpu_type}")
+    if not images:
+        # Ask the runtime plugin to select the image based on detected GPU and its own logic
+        from ramalama.plugins.loader import get_runtime
 
-        if not image:
-            image = config.images.get("VLLM", "docker.io/vllm/vllm-openai")
+        plugin_image = get_runtime(config.runtime).get_container_image(config, gpu_type)
+        if plugin_image is not None:
+            return latest_tagged_image(plugin_image)
+        images = config.images  # plugin returned None (e.g., MLX); fall back to user dict
 
-        # If the image from the config is specified by tag or digest, return it unmodified
-        return image if ":" in image else f"{image}:latest"
-    # Get image based on detected GPU type
-    image = images.get(gpu_type, getattr(config, f"default_{conf_key}"))
+    # Explicit images dict provided (e.g., RAG): select by detected GPU type
+    return latest_tagged_image(images.get(gpu_type, getattr(config, f"default_{conf_key}")))
 
-    # If the image from the config is specified by tag or digest, return it unmodified
-    if ":" in image:
+
+def ensure_image(conman: Optional[str], image: str, should_pull: bool = False) -> str:
+    """Check if image exists locally; optionally pull it.
+
+    Returns the image string on success. If conman is falsy, returns image unchanged.
+    Raises ValueError if the image cannot be pulled.
+    """
+    if not conman:
         return image
 
-    # Special handling for CUDA images based on version - only if the image is the default CUDA image
-    if conf_key == "image" and image == images.get("CUDA_VISIBLE_DEVICES"):
-        try:
-            image = select_cuda_image(config)
-        except NotImplementedError as e:
-            logger.warning(f"{e}: Falling back to default image.")
-            image = config.default_image
+    if ":" not in image:
+        image = f"{image}:latest"
 
-    vers = minor_release()
-
-    should_pull = config.pull in ["always", "missing"] and not config.dryrun
-    if config.engine and attempt_to_use_versioned(config.engine, image, vers, True, should_pull):
-        return f"{image}:{vers}"
-
-    return f"{image}:latest"
-
-
-def attempt_to_use_versioned(conman: str, image: str, vers: str, quiet: bool, should_pull: bool) -> bool:
     try:
-        # check if versioned image exists locally
-        if run_cmd([conman, "inspect", f"{image}:{vers}"], ignore_all=True):
-            return True
-
+        if run_cmd([conman, "inspect", image], ignore_all=True):
+            return image
     except Exception:
         pass
 
     if not should_pull:
-        return False
+        return image
 
     try:
-        # attempt to pull the versioned image
-        if not quiet:
-            perror(f"Attempting to pull {image}:{vers} ...")
-        run_cmd([conman, "pull", f"{image}:{vers}"], ignore_stderr=True)
-        return True
-
+        run_cmd([conman, "pull", image], ignore_stderr=True)
+        return image
     except Exception:
-        return False
+        pass
+
+    # This is a fallback for main when the version has been bumped but the
+    # tagged image for the version has not been pushed yet
+    # Only try this for quay.io/ramalama/ images
+    base, _, _ = image.rpartition(":")
+    if base and base.startswith("quay.io/ramalama/"):
+        latest = latest_tagged_image(base)
+        try:
+            run_cmd([conman, "pull", latest], ignore_stderr=True)
+            return latest
+        except Exception as e:
+            raise ValueError(f"Failed to pull image {image} or {latest}: {e}")
+
+    raise ValueError(f"Failed to pull image {image}")
 
 
 class ContainerEntryPoint(str):
@@ -774,3 +769,36 @@ class ContainerEntryPoint(str):
 
     def __repr__(self):
         return repr(self.entrypoint)
+
+
+SEMVER_RE = re.compile(
+    r"^(?P<major>0|[1-9]\d*)\."
+    r"(?P<minor>0|[1-9]\d*)\."
+    r"(?P<patch>0|[1-9]\d*)"
+    r"(?:-(?P<prerelease>"
+    r"(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
+    r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*"
+    r"))?"
+    r"(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+)
+
+
+def parse_semver(s: str) -> SemVer:
+    m = SEMVER_RE.fullmatch(s)
+    if not m:
+        raise ValueError(f"Not a valid SemVer 2.0.0: {s!r}")
+    major = int(m.group("major"))
+    minor = int(m.group("minor"))
+    patch = int(m.group("patch"))
+    return SemVer(major, minor, patch)
+
+
+@dataclass(frozen=True, order=True)
+class SemVer:
+    major: int
+    minor: int
+    patch: int
+
+    @classmethod
+    def parse(cls, s: str) -> "SemVer":
+        return parse_semver(s)

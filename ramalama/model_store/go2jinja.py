@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 #
 # Copied from https://github.com/engelmi/go2jinja
 #
-
 import argparse
 import re
 import sys
@@ -29,7 +30,7 @@ class Node:
     end: int
     content: str
 
-    type: NodeType | None
+    type: Optional[NodeType]
 
     prev: Optional["Node"]
     next: Optional["Node"]
@@ -166,7 +167,7 @@ REGEX_NODE_CONTINUE = f"{REGEX_NODE_START_BLOCK}continue{REGEX_NODE_END_BLOCK}" 
 REGEX_NODE_BREAK = f"{REGEX_NODE_START_BLOCK}break{REGEX_NODE_END_BLOCK}"  # noqa: E275
 REGEX_NODE_STMT = f"{REGEX_NODE_START_BLOCK}({REGEX_VARIABLE}|{REGEX_LOCAL_VARIABLE}){REGEX_NODE_END_BLOCK}"
 REGEX_NODE_ASSIGNMENT = (
-    f"{REGEX_NODE_START_BLOCK}" f"{REGEX_LOCAL_VARIABLE}\\s*:?=\\s*{REGEX_NODE_PIPELINE}" f"{REGEX_NODE_END_BLOCK}"
+    f"{REGEX_NODE_START_BLOCK}{REGEX_LOCAL_VARIABLE}\\s*:?=\\s*{REGEX_NODE_PIPELINE}{REGEX_NODE_END_BLOCK}"
 )
 GO_KEYWORDS: Dict[NodeType, re.Pattern] = {
     NodeType.IF: re.compile(R"{}".format(REGEX_NODE_IF), re.S),
@@ -206,12 +207,11 @@ def detect_node_type(stmt: str) -> Optional[NodeType]:
 def parse_go_template(content: str) -> list[Node]:
     root_nodes: list[Node] = []
 
-    prev_expr_node: Node | None = None
+    prev_expr_node: Optional[Node] = None
     current_scope_nodes: list[Node] = []
     start_pos = content.find(GO_SYMBOL_OPEN_BRACKETS)
     end_pos = 0
     while start_pos != -1:
-
         if end_pos == 0 and start_pos != 0:
             content_node = Node(
                 end_pos,
@@ -366,7 +366,7 @@ def go_to_jinja(content: str) -> str:
             if not pipeline.isspace():
                 pipeline = pipeline.lstrip().rstrip()
 
-            longest_match: FunctionType | None = None
+            longest_match: Optional[FunctionType] = None
             for ft in FUNCTION_MAPPING.keys():
                 if pipeline.startswith(ft.value):
                     if longest_match is None or len(ft.value) > len(longest_match.value):
@@ -531,7 +531,7 @@ def tree_structure(nodes: list[Node], level: int) -> str:
     res = ""
     for node in nodes:
         parent_type = "--" if node.parent is None else node.parent.type
-        res += level * "\t" + f"{node.type}: {node.start},{node.end} - " f"{parent_type} - {node.content}\n"
+        res += level * "\t" + f"{node.type}: {node.start},{node.end} - {parent_type} - {node.content}\n"
         res += tree_structure(node.children, level + 1)
 
     return res

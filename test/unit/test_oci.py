@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import pytest
 
 from ramalama.model_store.reffile import RefJSONFile, StoreFile, StoreFileType
 from ramalama.model_store.store import ModelStore
 from ramalama.transports.huggingface import Huggingface
-from ramalama.transports.oci import OCI
+from ramalama.transports.oci.oci import OCI
 from ramalama.transports.ollama import Ollama
 from ramalama.transports.url import URL
 
@@ -15,7 +15,7 @@ class Args:
     def __init__(
         self,
         type: str = "raw",
-        gguf: str | None = None,
+        gguf: Optional[str] = None,
         carimage: str = "registry.access.redhat.com/ubi10-micro:latest",
     ):
         self.type = type
@@ -24,7 +24,6 @@ class Args:
 
 
 class Input:
-
     def __init__(
         self,
         source_model: Union[Ollama, URL, Huggingface],

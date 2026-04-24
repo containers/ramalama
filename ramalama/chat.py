@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import _thread
 import cmd
 import copy
 import itertools
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -15,6 +17,7 @@ import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Optional
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.chat_providers import ChatProvider, ChatRequestOptions
@@ -25,16 +28,19 @@ from ramalama.chat_utils import (
     SystemMessage,
     ToolMessage,
     UserMessage,
+    sanitize_for_terminal,
     stream_response,
 )
 from ramalama.common import perror
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.console import should_colorize
 from ramalama.engine import stop_container
 from ramalama.file_loaders.file_manager import OpanAIChatAPIMessageBuilder
 from ramalama.logger import logger
 from ramalama.mcp.mcp_agent import LLMAgent
 from ramalama.mcp.mcp_client import PureMCPClient
+from ramalama.plugins.interface import InferenceRuntimePlugin
+from ramalama.plugins.loader import get_runtime
 from ramalama.proxy_support import setup_proxy_support
 
 # Setup proxy support on module import
@@ -58,14 +64,15 @@ def res(response, color):
             json_line = json.loads(line[len("data: ") :])
             if "choices" in json_line and json_line["choices"]:
                 choice = json_line["choices"][0]["delta"]
-            if "content" in choice:
-                choice = choice["content"]
+            if isinstance(choice, dict) and "content" in choice:
+                content = choice["content"]
             else:
                 continue
 
-            if choice:
-                print(f"{color_yellow}{choice}{color_default}", end="", flush=True)
-                assistant_response += choice
+            if content:
+                safe_content = sanitize_for_terminal(content)
+                print(f"{color_yellow}{safe_content}{color_default}", end="", flush=True)
+                assistant_response += content
 
     print("")
     return assistant_response
@@ -87,16 +94,15 @@ def add_api_key(args, headers=None):
 
 @dataclass
 class ChatOperationalArgs:
-    initial_connection: bool = False
-    name: str | None = None
-    keepalive: int | None = None
-    monitor: "ServerMonitor | None" = None
+    name: Optional[str] = None
+    keepalive: Optional[int] = None
+    monitor: "Optional[ServerMonitor]" = None
 
 
 class Spinner:
     def __init__(self, wait_time: float = 0.1):
         self._stop_event: threading.Event = threading.Event()
-        self._thread: threading.Thread | None = None
+        self._thread: Optional[threading.Thread] = None
         self.wait_time = wait_time
 
     def __enter__(self):
@@ -142,8 +148,8 @@ class RamaLamaShell(cmd.Cmd):
     def __init__(
         self,
         args: ChatArgsType,
-        operational_args: ChatOperationalArgs | None = None,
-        provider: ChatProvider | None = None,
+        operational_args: Optional[ChatOperationalArgs] = None,
+        provider: Optional[ChatProvider] = None,
     ):
         if operational_args is None:
             operational_args = ChatOperationalArgs()
@@ -158,14 +164,26 @@ class RamaLamaShell(cmd.Cmd):
         self.url = self.provider.build_url()
 
         self.prep_rag_message()
-        self.mcp_agent: LLMAgent | None = None
+        self.mcp_agent: Optional[LLMAgent] = None
         self.initialize_mcp()
 
         self.content: list[str] = []
         self.message_count = 0  # Track messages for summarization
 
+    def do_help(self, args):
+        """Display help information about available commands."""
+        print("\nAvailable commands:")
+        print("  /help, help, ?    - Show this help message")
+        print("  /clear            - Clear conversation history")
+        print("  /bye, exit        - Exit the chat session")
+        if self.mcp_agent:
+            print("  /tool [question]  - Manually select which MCP tool to use")
+        print("  \\                 - End a line with backslash to continue on next line")
+        print("  Ctrl+D            - Exit the chat session (EOF)")
+        print()
+
     def prep_rag_message(self):
-        if (context := self.args.rag) is None:
+        if (context := getattr(self.args, 'rag', None)) is None:
             return
 
         builder = OpanAIChatAPIMessageBuilder()
@@ -259,12 +277,15 @@ class RamaLamaShell(cmd.Cmd):
         options = self._build_request_options(stream=stream, max_tokens=max_tokens)
         return self.provider.create_request(messages, options)
 
-    def _resolve_model_name(self) -> str | None:
-        if getattr(self.args, "runtime", None) == "mlx":
-            return None
+    def _resolve_model_name(self) -> Optional[str]:
+        runtime = getattr(self.args, "runtime", None)
+        if runtime:
+            plugin = get_runtime(runtime)
+            if isinstance(plugin, InferenceRuntimePlugin) and not plugin.chat_include_model_name:
+                return None
         return getattr(self.args, "model", None)
 
-    def _build_request_options(self, *, stream: bool, max_tokens: int | None) -> ChatRequestOptions:
+    def _build_request_options(self, *, stream: bool, max_tokens: Optional[int]) -> ChatRequestOptions:
         temperature = getattr(self.args, "temp", None)
         if max_tokens is not None and max_tokens <= 0:
             max_tokens = None
@@ -302,9 +323,10 @@ class RamaLamaShell(cmd.Cmd):
                     if (self.args.color == "auto" and should_colorize()) or self.args.color == "always":
                         color_default = "\033[0m"
                         color_yellow = "\033[33m"
-                    print(f"{color_yellow}{text}{color_default}", end="", flush=True)
+                    safe_text = sanitize_for_terminal(text)
+                    print(f"{color_yellow}{safe_text}{color_default}", end="", flush=True)
 
-                self.mcp_agent._stream_callback = mcp_stream_callback
+                setattr(self.mcp_agent, "_stream_callback", mcp_stream_callback)
 
                 # Initialize the agent and get available tools
                 init_results, tools = self.mcp_agent.initialize()
@@ -316,10 +338,7 @@ class RamaLamaShell(cmd.Cmd):
                     logger.debug(f"Connected to: {server_name}")
                     print(f"Found {len(server_tools)} tool(s) from {server_name}")
 
-                print("\nUsage:")
-                print("  - Ask questions naturally (automatic tool selection)")
-                print("  - Use '/tool [question]' to manually select which tool to use")
-                print("  - Use '/bye' or 'exit' to quit")
+                self.do_help("")
 
         except Exception as e:
             perror(f"Failed to initialize MCP: {e}")
@@ -400,9 +419,16 @@ class RamaLamaShell(cmd.Cmd):
             return None
 
     def handle_args(self, monitor):
+        """Process command-line arguments and/or stdin input.
+
+        Returns True if the program should exit, False if it should continue to interactive mode.
+        """
         prompt = " ".join(self.args.ARGS) if self.args.ARGS else None
+        stdin_was_pipe = False
+
         if not sys.stdin.isatty():
             stdin = sys.stdin.read()
+            stdin_was_pipe = True
             if prompt:
                 prompt += f"\n\n{stdin}"
             else:
@@ -410,6 +436,23 @@ class RamaLamaShell(cmd.Cmd):
 
         if prompt:
             self.default(prompt)
+            # Continue to interactive mode if --interactive flag is set
+            if getattr(self.args, 'interactive', False):
+                # If stdin was a pipe, we need to reopen the terminal for interactive input
+                if stdin_was_pipe:
+                    try:
+                        # Use platform-specific terminal device
+                        # Windows: 'CON', Unix/Linux: '/dev/tty'
+                        terminal_device = 'CON' if os.name == 'nt' else '/dev/tty'
+                        sys.stdin = open(terminal_device, 'r')
+                    except (OSError, FileNotFoundError) as e:
+                        perror(f"Cannot open terminal for interactive mode: {e}")
+                        monitor.stop()
+                        self.kills()
+                        return True
+                print("")
+                return False
+            # Default behavior: exit after displaying response
             monitor.stop()
             self.kills()
             return True
@@ -421,18 +464,36 @@ class RamaLamaShell(cmd.Cmd):
         return True
 
     def default(self, user_content):
-        self.content.append(user_content.rstrip(" \\"))
-        if user_content.endswith(" \\"):
+        # Check for commands before processing multi-line input
+        # Normalize: strip whitespace and make case-insensitive
+        cmd = user_content.strip().lower()
+
+        # Help command - show available commands
+        if cmd in ["/help", "help", "?"]:
+            self.do_help("")
             return False
 
-        if user_content in ["/bye", "exit"]:
+        # Exit commands
+        if cmd in ["/bye", "exit"]:
             return True
+
+        # Clear command - reset conversation history and multi-line buffer
+        if cmd == "/clear":
+            self.conversation_history = []
+            self.content = []
+            print("Conversation history cleared.")
+            return False
+
+        # Handle multi-line input (backslash continuation)
+        self.content.append(user_content.removesuffix("\\"))
+        if user_content.endswith("\\"):
+            return False
 
         content = "\n".join(self.content)
         self.content = []
 
-        # Check for manual tool selection command FIRST
-        if self.mcp_agent and content.strip().startswith("/tool"):
+        # Check for manual tool selection command FIRST (case-insensitive)
+        if self.mcp_agent and content.strip().lower().startswith("/tool"):
             self._handle_manual_tool_selection(content)
             return False
 
@@ -468,14 +529,13 @@ class RamaLamaShell(cmd.Cmd):
     def _req(self):
         request = self._make_request_data()
 
-        i = 0.01
-        total_time_slept = 0
+        i: float = 0.01
+        total_time_slept: float = 0
         response = None
 
-        # Adjust timeout based on whether we're in initial connection phase
-        max_timeout = 30 if getattr(self.args, "initial_connection", False) else 16
+        max_timeout = 16
 
-        last_error: Exception | None = None
+        last_error: Optional[Exception] = None
 
         spinner = Spinner().start()
 
@@ -509,15 +569,11 @@ class RamaLamaShell(cmd.Cmd):
         if response:
             return stream_response(response, self.args.color, self.provider)
 
-        # Only show error and kill if not in initial connection phase
-        if not getattr(self.args, "initial_connection", False):
-            error_suffix = ""
-            if last_error:
-                error_suffix = f" ({last_error})"
-            perror(f"\rError: could not connect to: {self.url}{error_suffix}")
-            self.kills()
-        else:
-            logger.debug(f"Could not connect to: {self.url}")
+        error_suffix = ""
+        if last_error:
+            error_suffix = f" ({last_error})"
+        perror(f"\rError: could not connect to: {self.url}{error_suffix}")
+        self.kills()
 
         return None
 
@@ -531,22 +587,21 @@ class RamaLamaShell(cmd.Cmd):
             except Exception as e:
                 logger.debug(f"Error closing MCP connections: {e}")
 
-        # Don't kill the server if we're still in the initial connection phase
-        if getattr(self.args, "initial_connection", False):
-            return
-
-        if getattr(self.args, "server_process", False):
-            self.args.server_process.terminate()
+        server_process = getattr(self.args, "server_process", None)
+        if server_process:
+            server_process.terminate()
             try:
-                self.args.server_process.wait(timeout=5)
+                server_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.args.server_process.kill()
+                server_process.kill()
         elif getattr(self.args, "name", None):
             args = copy.copy(self.args)
             args.ignore = True
+            name = getattr(self.args, "name", None)
             # Remove containers on normal exit (remove=True)
-            stop_container(args, self.args.name, remove=True)
-            if extra_name := self.operational_args.name:
+            if name:
+                stop_container(args, name, remove=True)
+            if extra_name := getattr(self.operational_args, "name", None):
                 stop_container(args, extra_name, remove=True)
 
     def loop(self):
@@ -563,7 +618,7 @@ class RamaLamaShell(cmd.Cmd):
                 else:
                     print("")
                     if not self.request_in_process:
-                        print("Use Ctrl + d or /bye or exit to quit.")
+                        print("Use /help for commands. Ctrl+d, /bye or exit to quit.")
 
                 continue
 
@@ -774,8 +829,8 @@ def _report_server_exit(monitor):
 
 def chat(
     args: ChatArgsType,
-    operational_args: ChatOperationalArgs | None = None,
-    provider: ChatProvider | None = None,
+    operational_args: Optional[ChatOperationalArgs] = None,
+    provider: Optional[ChatProvider] = None,
 ):
     if args.dryrun:
         assert args.ARGS is not None
@@ -800,7 +855,7 @@ def chat(
         monitor = ServerMonitor(server_process=server_process)
     elif container_name:
         # Monitor the container
-        conman = getattr(args, "engine", get_config().engine)
+        conman = getattr(args, "engine", ActiveConfig().engine)
         if not conman:
             raise ValueError("Container engine is required when monitoring a container")
         monitor = ServerMonitor(container_name=container_name, container_engine=conman)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 from ramalama.logger import logger
@@ -63,8 +65,10 @@ class TOMLParser:
 
     def get(self, key, default=None):
         keys = key.split(".")
-        value = self.data
+        value: object = self.data
         for k in keys:
+            if not isinstance(value, dict):
+                return default
             value = value.get(k)
             if value is None:
                 return default

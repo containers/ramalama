@@ -10,6 +10,10 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
+
+import pytest
+import yaml
+
 from test.conftest import (
     skip_if_container,
     skip_if_darwin,
@@ -20,9 +24,6 @@ from test.conftest import (
     skip_if_s390x,
 )
 from test.e2e.utils import RamalamaExecWorkspace, check_output, get_full_model_name
-
-import pytest
-import yaml
 
 
 @contextmanager
@@ -61,11 +62,11 @@ def test_basic_dry_run():
     assert not re.search(r".*-t -i", result), "run without terminal"
 
 
+# fmt: off
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "extra_params, pattern, config, env_vars, expected",
     [
-        # fmt: off
         pytest.param(
             [], f".*{DRY_RUN_TEST_MODEL}.*", None, None, True,
             id="check model name", marks=skip_if_no_container
@@ -95,7 +96,7 @@ def test_basic_dry_run():
             id="check --network is not present when run within container", marks=skip_if_no_container
         ),
         pytest.param(
-            ["--name", "foobar"], r".*--host 0.0.0.0", None, None, True,
+            ["--name", "foobar"], r".*--host ::", None, None, True,
             id="check --host is not present when run within container", marks=skip_if_no_container
         ),
         pytest.param(
@@ -174,8 +175,8 @@ def test_basic_dry_run():
             ["--selinux", "False"], r".*--security-opt=label=disable", None, None, True,
             id="check --selinux=False disables container separation", marks=skip_if_no_container),
         pytest.param(
-            [], r".*--host 0.0.0.0", None, None, True,
-            id="check default --host value to 0.0.0.0", marks=skip_if_container
+            [], r".*--host (::|0\.0\.0\.0)", None, None, True,
+            id="check default --host value", marks=skip_if_container
         ),
         pytest.param(
             [], r".*--cache-reuse 256", None, None, True,
@@ -215,20 +216,20 @@ def test_basic_dry_run():
             [], r".*--reasoning-budget", None, None, False,
             id="check --reasoning-budget not passed by default",
         ),
-        # fmt: on
     ],
 )
+# fmt: on
 def test_params(extra_params, pattern, config, env_vars, expected):
     with RamalamaExecWorkspace(config=config, env_vars=env_vars) as ctx:
         result = ctx.check_output(RAMALAMA_DRY_RUN + extra_params + [DRY_RUN_TEST_MODEL])
         assert bool(re.search(pattern, result)) is expected
 
 
+# fmt: off
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "extra_params, pattern, config, env_vars, expected_exit_code, expected",
     [
-        # fmt: off
         pytest.param(
             ["--pull", "bogus"], r".*error: argument --pull: invalid choice: 'bogus'", None, None, 2, True,
             id="raise error when --pull value is not valid", marks=skip_if_no_container,
@@ -241,9 +242,9 @@ def test_params(extra_params, pattern, config, env_vars, expected):
             ["--selinux", "100"], r".*Error: Cannot coerce '100' to bool", None, None, 22, True,
             id="raise error when --selinux has non boolean value", marks=skip_if_no_container,
         )
-        # fmt: on
     ],
 )
+# fmt: on
 def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_code, expected):
     with RamalamaExecWorkspace(config=config, env_vars=env_vars) as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -286,6 +287,7 @@ def test_full_model_name_expansion():
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 def test_serve_and_stop(shared_ctx, test_model):
     ctx = shared_ctx
@@ -335,6 +337,7 @@ def test_serve_and_stop(shared_ctx, test_model):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 def test_serve_multiple_models(shared_ctx, test_model):
     ctx = shared_ctx
@@ -395,6 +398,8 @@ def test_stop_failures():
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_no_container
 def test_quadlet_generation(shared_ctx, test_model):
     ctx = shared_ctx
     test_model_full_name = get_full_model_name(test_model)
@@ -405,13 +410,14 @@ def test_quadlet_generation(shared_ctx, test_model):
     )
     with container_file.open("r") as f:
         content = f.read()
-        assert re.search(r".*PublishPort=0.0.0.0:1234:1234", content)
-        assert re.search(r".*llama-server --host 0.0.0.0 --port 1234 --model .*", content)
+        assert re.search(r".*PublishPort=(\[::\]|0\.0\.0\.0):1234:1234", content)
+        assert re.search(r".*llama-server --host (::|0\.0\.0\.0) --port 1234 --model .*", content)
         assert re.search(f".*Mount=type=bind,.*{test_model_full_name}", content)
         assert re.search(r".*Environment=HIP_VISIBLE_DEVICES=99", content)
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_quadlet_generation_with_add_to_unit_flag(test_model):
     with RamalamaExecWorkspace() as ctx:
         test_model_full_name = get_full_model_name(test_model)
@@ -425,6 +431,7 @@ def test_quadlet_generation_with_add_to_unit_flag(test_model):
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_generation_with_bad_id(test_model):
     with RamalamaExecWorkspace() as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -437,6 +444,7 @@ def test_generation_with_bad_id(test_model):
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 def test_generation_with_bad_add_to_unit_flag_value(test_model):
     with RamalamaExecWorkspace() as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -462,6 +470,7 @@ def test_generation_with_bad_add_to_unit_flag_value(test_model):
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_no_container
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")
 def test_quadlet_and_kube_generation_with_container_registry(container_registry, is_container, test_model):
@@ -497,9 +506,10 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
         quadlet_file = Path(ctx.workspace_dir) / "{}.container".format(container_name)
         with quadlet_file.open("r") as f:
             content = f.read()
-            assert re.search(f".*PublishPort=0.0.0.0:{container_port}:{container_port}", content)
+            assert re.search(f".*PublishPort=(\\[::\\]|0\\.0\\.0\\.0):{container_port}:{container_port}", content)
             assert re.search(f".*ContainerName={container_name}", content)
-            assert re.search(f".*Exec=.*llama-server --host 0.0.0.0 --port {container_port} --model .*", content)
+            host_re = r"(::|0\.0\.0\.0)"
+            assert re.search(f".*Exec=.*llama-server --host {host_re} --port {container_port} --model .*", content)
             quadlet_image_source = f"{container_registry.host}:{container_registry.port}/{test_model}"
             assert re.search(
                 f".*Mount=type=image,source={quadlet_image_source},"
@@ -547,13 +557,15 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
             container_spec = containers_spec[0]
             assert 'command' not in container_spec
             model_alias = f"{container_registry.host}:{container_registry.port}/{test_model.split(':')[0]}"
+            expected_host = container_spec['args'][container_spec['args'].index("--host") + 1]
+            assert expected_host in ["::", "0.0.0.0"]
             assert container_spec['args'] == [
                 "--model",
                 "/mnt/models/model.file",
                 "--served-model-name",
                 f"{model_alias}",
-                "--max_model_len",
-                "2048",
+                "--host",
+                expected_host,
                 "--port",
                 "1234",
             ]
@@ -568,6 +580,7 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
 
 
 @pytest.mark.e2e
+@skip_if_no_container
 @pytest.mark.parametrize(
     "generate, env_vars",
     [
@@ -588,7 +601,7 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
         )
     ],
 )
-def test_serve_kube_generation(test_model, generate, env_vars):
+def test_serve_generation(test_model, generate, env_vars):
     with RamalamaExecWorkspace(env_vars=env_vars) as ctx:
         # Pull model
         ctx.check_call(["ramalama", "pull", test_model])
@@ -664,12 +677,26 @@ def test_serve_kube_generation(test_model, generate, env_vars):
 
 @pytest.mark.e2e
 @skip_if_no_container
-@skip_if_docker
-def test_kube_generation_with_llama_api(test_model):
+@pytest.mark.parametrize(
+    "generate, env_vars",
+    [
+        pytest.param(
+            *item,
+            id=f"generate={item[0]}{' + env_vars' if item[1] else ''}",
+        )
+        for item in itertools.product(
+            ["kube", "compose"],
+            [None, "SEARCH_API_KEY=9999"]
+        )
+    ],
+)
+def test_serve_generation_with_llama_api(test_model, generate, env_vars):
     with RamalamaExecWorkspace() as ctx:
         # Pull model
         ctx.check_call(["ramalama", "pull", test_model])
 
+        extra_args = ["--env", env_vars] if env_vars else []
+        extra_args += ['--runtime-args', '--top-p 1.0']
         # Exec ramalama serve
         result = ctx.check_output(
             [
@@ -680,28 +707,52 @@ def test_kube_generation_with_llama_api(test_model):
                 "--port",
                 "1234",
                 "--generate",
-                "kube",
+                generate,
                 "--api",
                 "llama-stack",
                 "--dri",
                 "off",
                 test_model,
-            ]
+            ] + extra_args
         )
 
-        # Test the expected output of the command execution
-        assert re.search(r".*Generating Kubernetes YAML file: test.yaml", result)
+        if generate == 'kube':
+            # Test the expected output of the command execution
+            assert re.search(r".*Generating Kubernetes YAML file: test.yaml", result)
+            # Check "test.yaml" contents
+            with (Path(ctx.workspace_dir) / "test.yaml").open("r") as f:
+                content = f.read()
+                assert re.search(r".*llama-server", content)
+                assert re.search(r".*hostPort: 1234", content)
+                assert re.search(r".*/llama-stack", content)
+                assert re.search(r".*'--top-p', '1.0'.*", content)
 
-        # Check "test.yaml" contents
-        with (Path(ctx.workspace_dir) / "test.yaml").open("r") as f:
-            content = f.read()
-            assert re.search(r".*llama-server", content)
-            assert re.search(r".*hostPort: 1234", content)
-            assert re.search(r".*/llama-stack", content)
+                if env_vars:
+                    assert len(re.findall(r"name: SEARCH_API_KEY", content)) == 2
+                    assert len(re.findall(r'value: "?9999"?', content)) == 2
+                else:
+                    assert not re.search(r"name: SEARCH_API_KEY", content)
+                    assert not re.search(r'value: "?9999"?', content)
+
+        elif generate == 'compose':
+            # Test the expected output of the command execution
+            assert re.search(r".*Generating Compose YAML file: docker-compose.yaml", result)
+
+            # Check "docker-compose.yaml" contents
+            with (Path(ctx.workspace_dir) / "docker-compose.yaml").open("r") as f:
+                content = f.read()
+                assert re.search(r".*llama-server", content)
+                assert re.search(r".*\"1234:8123\"", content)
+                assert re.search(r".*/llama-stack", content)
+
+                if env_vars:
+                    assert len(re.findall(r"- SEARCH_API_KEY=9999", content)) == 2
+                else:
+                    assert not re.search(r".*- SEARCH_API_KEY=9999", content)
 
 
-@pytest.mark.skip(reason="pulls very large image")
 @pytest.mark.e2e
+@pytest.mark.slow
 @skip_if_docker
 @skip_if_no_container
 @skip_if_ppc64le
@@ -764,7 +815,7 @@ def test_serve_with_non_existing_images():
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(["ramalama", "serve", "--image", "bogus", "--pull", "never", "tiny"], stderr=STDOUT)
         assert exc_info.value.returncode == 125
-        assert re.search(r".*Error: bogus: image not known", exc_info.value.output.decode("utf-8"))
+        assert re.search(r".*Error: bogus:latest: image not known", exc_info.value.output.decode("utf-8"))
 
         with pytest.raises(CalledProcessError) as exc_info:
             ctx.check_output(
@@ -782,7 +833,10 @@ def test_serve_with_non_existing_images():
                 stderr=STDOUT,
             )
         assert exc_info.value.returncode == 22
-        assert re.search(r"Error: quay.io/ramalama/rag does not exist.*", exc_info.value.output.decode("utf-8"))
+        assert re.search(
+            r"Error: quay.io/ramalama/rag(?::latest)? does not exist.*",
+            exc_info.value.output.decode("utf-8"),
+        )
 
 
 @pytest.mark.e2e

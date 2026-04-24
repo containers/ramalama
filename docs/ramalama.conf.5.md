@@ -69,15 +69,41 @@ Options: llama-stack, none
 
 OpenAI-compatible API key. Can also be set via the RAMALAMA_API_KEY environment variable.
 
+**backend**="auto"
+
+GPU backend to use for inference (default: auto).
+
+This setting affects which container image is selected and how GPU resources are utilized.
+
+Valid options: auto, vulkan, rocm, cuda, sycl, openvino
+
+- **auto** (default): Automatically selects the preferred backend based on detected GPU:
+  - AMD GPUs: vulkan (Linux/macOS) or rocm (Windows)
+  - NVIDIA GPUs: cuda
+  - Intel GPUs: vulkan (Linux/macOS) or sycl (Windows); openvino available as explicit option
+  - No GPU: vulkan (CPU fallback)
+
+- **vulkan**: Use Vulkan-based inference (compatible with AMD, Intel, and CPU)
+- **rocm**: Use AMD ROCm backend (AMD GPUs only)
+- **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
+- **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
+- **openvino**: Use Intel OpenVINO backend (Intel GPUs only); uses `quay.io/ramalama/openvino`
+
+**Platform-specific behavior**: On Windows, vulkan is not supported on WSL2, so vendor-specific backends (rocm for AMD, sycl for Intel) are automatically preferred when using `backend="auto"`.
+
+The RAMALAMA_BACKEND environment variable overrides this field.
+
+Example configuration:
+```toml
+[ramalama]
+backend = "vulkan"  # Force Vulkan for all GPUs
+```
+
 **carimage**="registry.access.redhat.com/ubi10-micro:latest"
 
 OCI model car image
 
 Image to be used when building and pushing --type=car models
-
-**cache_reuse**=256
-
-Min chunk size to attempt reusing from the cache via KV shifting
 
 **container**=true
 
@@ -115,9 +141,10 @@ Environment variables to be added to the environment used when running in a cont
 The quantization mode used when creating OCI formatted AI Models.
 Available options: Q2_K, Q3_K_S, Q3_K_M, Q3_K_L, Q4_0, Q4_K_S, Q4_K_M, Q5_0, Q5_K_S, Q5_K_M, Q6_K, Q8_0.
 
-**host**="0.0.0.0"
+**host**="::" | "0.0.0.0"
 
 IP address for llama.cpp to listen on.
+Defaults to "::" (dual-stack) on systems with IPv6 support, "0.0.0.0" (IPv4-only) otherwise.
 
 **image**="quay.io/ramalama/ramalama:latest"
 
@@ -125,16 +152,25 @@ OCI container image to run with the specified AI model
 RAMALAMA_IMAGE environment variable overrides this field.
 
 `[[ramalama.images]]`
+
+User-override entries for runtime-specific container images. Each runtime plugin
+defines its own built-in defaults; entries here override those defaults.
+
+For the llama.cpp runtime, set GPU env var names to override the image for that
+accelerator:
+
   HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm"
   CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda"
   ASAHI_VISIBLE_DEVICES  = "quay.io/ramalama/asahi"
   INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu"
   ASCEND_VISIBLE_DEVICES = "quay.io/ramalama/cann"
   MUSA_VISIBLE_DEVICES   = "quay.io/ramalama/musa"
-  VLLM                   = "registry.redhat.io/rhelai1/ramalama-vllm"
 
-Alternative images to use when RamaLama recognizes specific hardware or user
-specified vllm model runtime.
+For the vllm runtime, use `VLLM` to override the image regardless of GPU, or
+`VLLM_<GPU_ENV_VAR>` to override for a specific accelerator:
+
+  VLLM                        = "registry.redhat.io/rhelai1/ramalama-vllm"
+  VLLM_CUDA_VISIBLE_DEVICES   = "docker.io/vllm/vllm-openai"
 
 **keep_groups**=false
 
@@ -151,11 +187,6 @@ Note: --debug option overrides this field and forces the system to debug
 
 Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
 This parameter is mapped to the appropriate runtime-specific parameter when executing models.
-
-**ngl**=-1
-
-number of gpu layers, 0 means CPU inferencing, 999 means use max layers (default: -1)
-The default -1, means use whatever is automatically deemed appropriate (0 or 999)
 
 **prefix**=""
 Specify default prefix for chat and run command. By default the prefix
@@ -180,21 +211,24 @@ If this port is unavailable, another free port from this range will be selected.
 - **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
 - **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
-**rag_format**="qdrant"
+**rag_image**="quay.io/ramalama/ramalama-rag"
 
-Specify the default output format for output of the `ramalama rag` command.
-Options: qdrant, json, markdown, milvus.
+OCI container image used for RAG processing (doc2rag and rag_framework).
+Can also be overridden with the `--rag-image` flag on the command line or the
+RAMALAMA_RAG_IMAGE environment variable.
 
-**rag_images**="quay.io/ramalama/ramalama-rag"
+`[[ramalama.tools_images]]`
 
-OCI container image to run with the specified AI model when using RAG content.
+User-override entries for GPU-specific tools container images used for GGUF
+conversion. Built-in GPU defaults (CUDA, ROCm, Intel) are defined internally;
+entries here override those defaults:
 
-`[[ramalama.rag_images]]`
-  CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda-rag"
-  HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm-rag"
-  INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu-rag"
-  GGML_VK_VISIBLE_DEVICES = "quay.io/ramalama/ramalama"
+  CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda-tools"
+  HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm-tools"
+  INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu-tools"
 
+Can also be overridden with the `--tools-image` flag on the command line or the
+RAMALAMA_TOOLS_IMAGE environment variable.
 
 **runtime**="llama.cpp"
 
@@ -225,15 +259,6 @@ llama.cpp explains this as:
     The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
 
         Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
-
-**thinking**=true
-
-Enable thinking mode on reasoning models
-
-**threads**=-1
-
-maximum number of cpu threads to use for inferencing
-The default -1, uses the default of the underlying implementation
 
 **transport**="ollama"
 

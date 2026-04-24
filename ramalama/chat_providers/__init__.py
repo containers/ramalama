@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ramalama.chat_providers import api_providers, openai
 from ramalama.chat_providers.base import (
     ChatProvider,

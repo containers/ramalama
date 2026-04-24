@@ -1,21 +1,27 @@
+from __future__ import annotations
+
 import json
 import os
 import sys
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Literal, Mapping, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, Mapping, Optional
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import apple_vm, available
+from ramalama.common import apple_vm, available, version_tagged_image
 from ramalama.config_types import SUPPORTED_ENGINES, SUPPORTED_RUNTIMES
 from ramalama.layered_config import LayeredMixin
 from ramalama.log_levels import LogLevel, coerce_log_level
 from ramalama.toml_parser import TOMLParser
 
-DEFAULT_IMAGE: str = "quay.io/ramalama/ramalama"
-DEFAULT_STACK_IMAGE: str = "quay.io/ramalama/llama-stack"
-DEFAULT_RAG_IMAGE: str = "quay.io/ramalama/ramalama-rag"
+DEFAULT_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama")
+DEFAULT_STACK_IMAGE: str = version_tagged_image("quay.io/ramalama/llama-stack")
+DEFAULT_RAG_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-rag")
+DEFAULT_TOOLS_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-tools")
 GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
     "Q2_K",
     "Q3_K_S",
@@ -66,7 +72,18 @@ def _get_default_config_dirs() -> list[Path]:
 DEFAULT_CONFIG_DIRS = _get_default_config_dirs()
 
 
-def get_default_engine() -> SUPPORTED_ENGINES | None:
+def get_default_host() -> str:
+    """Return :: on dual-stack/IPv6 systems, 0.0.0.0 on IPv4-only."""
+    import socket
+
+    try:
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
+            return "::"
+    except OSError:
+        return "0.0.0.0"
+
+
+def get_default_engine() -> Optional[SUPPORTED_ENGINES]:
     """Determine the container manager to use based on environment and platform."""
     if os.path.exists("/run/.toolboxenv"):
         return None
@@ -83,44 +100,7 @@ def get_default_store() -> str:
     if hasattr(os, 'geteuid') and os.geteuid() == 0:
         return "/var/lib/ramalama"
 
-    return os.path.expanduser("~/.local/share/ramalama")
-
-
-def get_all_inference_spec_dirs(subdir: str) -> list[Path]:
-    ramalama_root = Path(__file__).parent.parent
-    development_spec_dir = ramalama_root / "inference-spec" / subdir
-    all_dirs = [development_spec_dir, *[conf_dir / "inference" for conf_dir in DEFAULT_CONFIG_DIRS]]
-
-    return [d for d in all_dirs if d.exists()]
-
-
-def get_inference_spec_files() -> dict[str, Path]:
-    files: dict[str, Path] = {}
-
-    for spec_dir in get_all_inference_spec_dirs("engines"):
-        # Give preference to .yaml, then .json spec files
-        file_extensions = ["*.yaml", "*.yml", "*.json"]
-        for file_extension in file_extensions:
-            # On naming collisions, i.e. muliple specs for one inference engine, prefer the
-            # spec files discovered later (i.e. user-level > system-level)
-            for spec_file in sorted(Path(spec_dir).glob(file_extension)):
-                file = Path(spec_file)
-                runtime = file.stem
-                files[runtime] = file
-
-    return files
-
-
-def get_inference_schema_files() -> dict[str, Path]:
-    files: dict[str, Path] = {}
-
-    for schema_dir in get_all_inference_spec_dirs("schema"):
-        for spec_file in sorted(Path(schema_dir).glob("schema.*.json")):
-            file = Path(spec_file)
-            version = file.name.replace("schema.", "").replace(".json", "")
-            files[version] = file
-
-    return files
+    return os.path.expanduser(os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama"))
 
 
 def coerce_to_bool(value: Any) -> bool:
@@ -135,7 +115,7 @@ def coerce_to_bool(value: Any) -> bool:
     raise ValueError(f"Cannot coerce {value!r} to bool")
 
 
-def get_storage_folder(base_path: str | None = None):
+def get_storage_folder(base_path: Optional[str] = None):
     if base_path is None:
         base_path = get_default_store()
 
@@ -161,7 +141,7 @@ class UserConfig:
 
 @dataclass
 class OpenaiProviderConfig:
-    api_key: str | None = None
+    api_key: Optional[str] = None
 
 
 @dataclass
@@ -173,53 +153,7 @@ class ProviderConfig:
 class RamalamaSettings:
     """These settings are not managed directly by the user"""
 
-    config_files: list[str] | None = None
-
-
-@dataclass
-class RamalamaImageConfig:
-    def get(self, key: str, default: Any = None) -> Any:
-        return getattr(self, key, default)
-
-    def __getitem__(self, key: str) -> Any:
-        return getattr(self, key)
-
-    def __setitem__(self, key: str, value: Any):
-        setattr(self, key, value)
-
-    def __contains__(self, key: str) -> bool:
-        return key in {f.name for f in fields(self)}
-
-    def __iter__(self):
-        return iter(f.name for f in fields(self))
-
-    def __len__(self) -> int:
-        return len(fields(self))
-
-
-@dataclass
-class RamalamaImages(RamalamaImageConfig):
-    ASAHI_VISIBLE_DEVICES: str = "quay.io/ramalama/asahi"
-    ASCEND_VISIBLE_DEVICES: str = "quay.io/ramalama/cann"
-    CUDA_VISIBLE_DEVICES: str = "quay.io/ramalama/cuda"
-    GGML_VK_VISIBLE_DEVICES: str = "quay.io/ramalama/ramalama"
-    HIP_VISIBLE_DEVICES: str = "quay.io/ramalama/rocm"
-    INTEL_VISIBLE_DEVICES: str = "quay.io/ramalama/intel-gpu"
-    MUSA_VISIBLE_DEVICES: str = "quay.io/ramalama/musa"
-    VLLM_ASAHI_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_ASCEND_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_CUDA_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_GGML_VK_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_HIP_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_INTEL_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-    VLLM_MUSA_VISIBLE_DEVICES: str = "docker.io/vllm/vllm-openai"
-
-
-@dataclass
-class RamalamaRagImages(RamalamaImageConfig):
-    CUDA_VISIBLE_DEVICES: str = "quay.io/ramalama/cuda-rag"
-    HIP_VISIBLE_DEVICES: str = "quay.io/ramalama/rocm-rag"
-    INTEL_VISIBLE_DEVICES: str = "quay.io/ramalama/intel-gpu-rag"
+    config_files: Optional[list[str]] = None
 
 
 @dataclass
@@ -239,34 +173,33 @@ class HTTPClientConfig:
 @dataclass
 class BaseConfig:
     api: str = "none"
-    api_key: str | None = None
+    api_key: Optional[str] = None
+    backend: Literal["auto", "vulkan", "rocm", "cuda", "sycl", "openvino"] = "auto"
     benchmarks: Benchmarks = field(default_factory=Benchmarks)
-    cache_reuse: int = 256
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
     container: bool = None  # type: ignore
     ctx_size: int = 0
     convert_type: Literal["artifact", "car", "raw"] = "raw"
     default_image: str = DEFAULT_IMAGE
     default_rag_image: str = DEFAULT_RAG_IMAGE
+    default_tools_image: str = DEFAULT_TOOLS_IMAGE
     dryrun: bool = False
-    engine: SUPPORTED_ENGINES | None = field(default_factory=get_default_engine)
+    engine: Optional[SUPPORTED_ENGINES] = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
-    host: str = "0.0.0.0"
+    host: str = field(default_factory=get_default_host)
     http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
     image: str = None  # type: ignore
-    images: RamalamaImages = field(default_factory=RamalamaImages)
-    rag_image: str | None = None
-    rag_images: RamalamaRagImages = field(default_factory=RamalamaRagImages)
+    images: dict[str, str] = field(default_factory=dict)
+    rag_image: Optional[str] = None
+    tools_image: Optional[str] = None
+    tools_images: dict[str, str] = field(default_factory=dict)
     keep_groups: bool = False
-    log_level: LogLevel | None = None
+    log_level: Optional[LogLevel] = None
     max_tokens: int = 0
-    ngl: int = -1
-    ocr: bool = False
     port: str = "8080"
     prefix: str = None  # type: ignore
     pull: str = "newer"
-    rag_format: Literal["qdrant", "json", "markdown", "milvus"] = "qdrant"
     runtime: SUPPORTED_RUNTIMES = "llama.cpp"
     selinux: bool = False
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
@@ -274,8 +207,6 @@ class BaseConfig:
     store: str = field(default_factory=get_default_store)
     summarize_after: int = 4
     temp: str = "0.8"
-    thinking: bool = True
-    threads: int = -1
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
@@ -346,7 +277,7 @@ def load_file_config() -> dict[str, Any]:
     return config
 
 
-def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+def load_env_config(env: Optional[Mapping[str, str]] = None) -> dict[str, Any]:
     if env is None:
         env = os.environ
 
@@ -375,15 +306,15 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     if 'env' in config:
         config['env'] = config['env'].split(',')
 
-    for key in ['images', 'rag_images']:
+    for key in ['images', 'tools_images']:
         if key in config:
             config[key] = json.loads(config[key])
 
-    for key in ['ocr', 'keep_groups', 'container', 'verify']:
+    for key in ['keep_groups', 'container', 'verify']:
         if key in config:
             config[key] = coerce_to_bool(config[key])
 
-    for key in ['threads', 'ctx_size', 'ngl', 'summarize_after']:
+    for key in ['ctx_size', 'summarize_after']:
         if key in config:
             config[key] = int(config[key])
     if log_level := config.get("log_level"):
@@ -391,11 +322,20 @@ def load_env_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     return config
 
 
-def default_config(env: Mapping[str, str] | None = None) -> Config:
-    """Returns a default Config object with all layers initialized."""
-    return Config(load_env_config(env), load_file_config())
+def load_config(env: Optional[Mapping[str, str]] = None) -> Config:
+    """Returns a Config object with layers initialized from config file and environment."""
+    return Config(load_file_config(), load_env_config(env))
 
 
-@lru_cache(maxsize=1)
-def get_config() -> Config:
-    return default_config()
+def ActiveConfig() -> Config:
+    """Returns the active Config object with layers initialized from config file and environment."""
+    if not hasattr(ActiveConfig, "_singleton"):
+        ActiveConfig._singleton = load_config()  # type: ignore[attr-defined]
+    return ActiveConfig._singleton  # type: ignore[attr-defined]
+
+
+def DefaultConfig() -> Config:
+    """Returns the default Config object with no layer initialized from config file or environment."""
+    if not hasattr(DefaultConfig, "_singleton"):
+        DefaultConfig._singleton = Config()  # type: ignore[attr-defined]
+    return DefaultConfig._singleton  # type: ignore[attr-defined]

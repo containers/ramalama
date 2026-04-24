@@ -12,6 +12,8 @@ permissions:
 
 jobs:
   stale:
+    if: |
+      github.repository_owner == 'containers'
 
     permissions:
       issues: write  # for actions/stale to close stale issues

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -5,6 +7,7 @@ import tempfile
 import urllib.request
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Optional
 
 from ramalama.common import (
     SPLIT_MODEL_PATH_RE,
@@ -76,14 +79,14 @@ class HFStyleRepository(ABC):
         self.organization = organization
         self.tag = tag
         self.headers: dict = {}
-        self.blob_url = None
-        self.model_filename = None
-        self.model_hash = None
-        self.mmproj_filename = None
-        self.mmproj_hash = None
+        self.blob_url: Optional[str] = None
+        self.model_filename: Optional[str] = None
+        self.model_hash: Optional[str] = None
+        self.mmproj_filename: Optional[str] = None
+        self.mmproj_hash: Optional[str] = None
         self.other_files: list[dict] = []
         self.additional_safetensor_files: list[dict] = []
-        self.safetensors_index_file: str | None = None
+        self.safetensors_index_file: Optional[str] = None
         self.fetch_metadata()
 
     @abstractmethod
@@ -214,6 +217,8 @@ class HFStyleRepository(ABC):
     def mmproj_file(self) -> SnapshotFile:
         assert self.model_filename
         assert self.model_hash
+        assert self.mmproj_filename is not None
+        assert self.mmproj_hash is not None
         return SnapshotFile(
             url=f"{self.blob_url}/{self.mmproj_filename}",
             header=self.headers,

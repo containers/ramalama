@@ -3,6 +3,7 @@ DATADIR := ${PREFIX}/share
 MANDIR := $(DATADIR)/man
 GO ?= go
 GOMD2MAN ?= go-md2man
+ROOTDIR := $(abspath ..)
 ifeq ($(shell uname -s),FreeBSD)
 SED=gsed
 else
@@ -10,8 +11,17 @@ SED=sed
 endif
 # This must never include the 'hack' directory
 export PATH := $(shell $(GO) env GOPATH)/bin:$(PATH)
+export GITIGNORE := $(shell tail -n +2 .gitignore)
 
-docs:  $(patsubst %.md,%,$(wildcard *[157].md))
+MANPAGES_MD_IN := $(wildcard *.md.in)
+MANPAGES_MD_GENERATED := $(MANPAGES_MD_IN:%.md.in=%.md)
+MANPAGES_STAMP := .manpages-md.stamp
+
+# Wildcard alone misses generated *.md not yet present at make parse time.
+ALL_MD_SOURCES := $(sort $(MANPAGES_MD_GENERATED) $(wildcard *[157].md))
+DOCS_MAN_TARGETS := $(patsubst %.md,%,$(ALL_MD_SOURCES))
+
+docs: install-tools manpages-md $(DOCS_MAN_TARGETS)
 
 %.1: %.1.md
 ### sed is used to filter http/s links as well as relative links
@@ -46,6 +56,19 @@ docs:  $(patsubst %.md,%,$(wildcard *[157].md))
 	 -e 's/\\$$/  /g' $<  | \
 	$(GOMD2MAN) -in /dev/stdin -out  $@
 
+# Run the preprocessor once (avoids parallel make rerunning it per .md and races
+# when rewriting docs/options cross-reference headers).
+$(MANPAGES_STAMP): $(MANPAGES_MD_IN) $(wildcard options/*.md) $(ROOTDIR)/hack/markdown-preprocess
+	$(ROOTDIR)/hack/markdown-preprocess
+	@touch $@
+
+# go-md2man consumes these; depend on the stamp so they exist before parallel roff builds.
+$(MANPAGES_MD_GENERATED): $(MANPAGES_STAMP)
+	@test -f '$@'
+
+.PHONY: manpages-md
+manpages-md: $(MANPAGES_MD_GENERATED)
+
 .PHONY: install
 install: docs
 	install -d ${DESTDIR}/${MANDIR}/man1
@@ -61,8 +84,9 @@ install: docs
 
 .PHONY: install-tools
 install-tools:
-	$(GO) install github.com/cpuguy83/go-md2man@latest
+	@command -v $(GOMD2MAN) >/dev/null 2>&1 || $(GO) install github.com/cpuguy83/go-md2man@latest
 
 .PHONY: clean
 clean:
 	$(RM) -f ramalama*.1 ramalama*.5 ramalama*.7
+	$(RM) -f $(MANPAGES_MD_GENERATED) $(MANPAGES_STAMP)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import subprocess
 from datetime import datetime, timedelta
 from typing import Optional
@@ -11,7 +13,6 @@ def generate_model_id(model: CLASS_MODEL_TYPES) -> str:
 
 
 class ManagedModel:
-
     def __init__(
         self,
         model: CLASS_MODEL_TYPES,
@@ -46,7 +47,6 @@ class ManagedModel:
 
 
 class ModelRunner:
-
     def __init__(self) -> None:
         self._models: dict[str, ManagedModel] = {}
         self._serve_path_model_id_map: dict[str, str] = {}

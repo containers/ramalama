@@ -6,9 +6,11 @@
 | -------- | ------- | ------- |
 |  Dan Walsh | rhatdan | Red Hat |
 |  Mike Bonnet | mikebonnet | Red Hat |
+|  Oliver Walsh | olliewalsh | Red Hat |
 
 ## Reviewers
 
-| Reviewer| GitHub ID| Affiliation|
-| -------- | ------- | ------- |
-| TODO | TODO | TODO |
+| Reviewer | GitHub ID | Affiliation |
+| -------- | --------- | ----------- |
+| Michael Engel | engelmi | Red Hat |
+| Brian Mahabir | bmahabirbu | Red Hat |

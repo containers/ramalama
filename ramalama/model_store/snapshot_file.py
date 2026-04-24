@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from enum import IntEnum
 from typing import Dict, Sequence

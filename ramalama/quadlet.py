@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shlex
 from typing import Optional, Tuple
@@ -43,7 +45,7 @@ class Quadlet:
         self.image = args.image
         self.rag = ""
         self.rag_name = ""
-        if args.rag:
+        if getattr(args, 'rag', None):
             self.rag = args.rag.removeprefix("oci://")
             self.rag_name = os.path.basename(self.rag) + "-rag"
 
@@ -178,8 +180,10 @@ class Quadlet:
 
     def _gen_port(self, quadlet_file: UnitFile):
         if getattr(self.args, "port", "") != "":
-            host = getattr(self.args, "host", None) or "0.0.0.0"
-            quadlet_file.add("Container", "PublishPort", f"{host}:{self.args.port}:{self.args.port}")
+            host = getattr(self.args, "host", None) or "::"
+            host = host.strip("[]")
+            host_str = f"[{host}]" if ":" in host else host
+            quadlet_file.add("Container", "PublishPort", f"{host_str}:{self.args.port}:{self.args.port}")
 
     def _gen_rag_volume(self, quadlet_file: UnitFile):
         files: list[UnitFile] = []

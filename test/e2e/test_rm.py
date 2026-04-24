@@ -2,9 +2,10 @@ import random
 import re
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 import pytest
+
+from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 
 @pytest.mark.e2e

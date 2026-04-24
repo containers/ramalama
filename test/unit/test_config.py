@@ -4,17 +4,16 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.config import (
+    ActiveConfig,
     BaseConfig,
-    RamalamaImages,
-    default_config,
-    get_config,
     get_default_engine,
     get_default_store,
+    load_config,
     load_env_config,
 )
 from ramalama.log_levels import LogLevel
 
-config = get_config()
+config = ActiveConfig()
 
 
 @pytest.fixture(autouse=True)
@@ -32,28 +31,24 @@ def isolate_config():
 def test_correct_config_defaults(monkeypatch):
     monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
     with patch("ramalama.config.load_env_config", return_value={}):
-        cfg = default_config()
+        cfg = load_config()
 
     assert cfg.carimage == "registry.access.redhat.com/ubi10-micro:latest"
     assert cfg.container in [True, False]  # depends on env/system
     assert cfg.ctx_size == 0
-    assert cfg.cache_reuse == 256
     assert cfg.engine in ["podman", "docker", None]
     assert cfg.env == []
-    assert cfg.host == "0.0.0.0"
+    assert cfg.host in ["::", "0.0.0.0"]
     assert cfg.image == cfg.default_image
-    assert isinstance(cfg.images, RamalamaImages)
+    assert isinstance(cfg.images, dict)
     assert cfg.api == "none"
     assert cfg.keep_groups is False
-    assert cfg.ngl == -1
-    assert cfg.threads == -1
     assert cfg.port == BaseConfig().port
     assert cfg.pull in ["newer", "always"]  # depends on engine
     assert cfg.runtime == "llama.cpp"
     assert cfg.store == get_default_store()
     assert cfg.temp == "0.8"
     assert cfg.transport == "ollama"
-    assert cfg.ocr is False
     assert cfg.verify is True
 
 
@@ -61,7 +56,7 @@ def test_config_defaults_not_set(monkeypatch):
     monkeypatch.delenv("RAMALAMA_IMAGE", raising=False)
     with patch("ramalama.config.load_file_config", return_value={}):
         with patch("ramalama.config.load_env_config", return_value={}):
-            cfg = default_config()
+            cfg = load_config()
 
     assert cfg.is_set("carimage") is False
     assert cfg.is_set("container") is False  # depends on env/system
@@ -73,16 +68,19 @@ def test_config_defaults_not_set(monkeypatch):
     assert cfg.is_set("images") is False
     assert cfg.is_set("api") is False
     assert cfg.is_set("keep_groups") is False
-    assert cfg.is_set("ngl") is False
-    assert cfg.is_set("threads") is False
     assert cfg.is_set("port") is False
     assert cfg.is_set("pull") is False
     assert cfg.is_set("runtime") is False
     assert cfg.is_set("store") is False
     assert cfg.is_set("temp") is False
     assert cfg.is_set("transport") is False
-    assert cfg.is_set("ocr") is False
     assert cfg.is_set("verify") is False
+
+
+@pytest.mark.parametrize("backend", ["auto", "vulkan", "rocm", "cuda", "sycl", "openvino"])
+def test_base_config_accepts_valid_backend(backend):
+    config = BaseConfig(backend=backend)
+    assert config.backend == backend
 
 
 def test_base_config_normalizes_pull_for_docker():
@@ -98,21 +96,18 @@ def test_base_config_preserves_pull_for_non_docker():
 def test_file_config_overrides_defaults():
     mock_file_config = {
         "image": "custom/image:latest",
-        "threads": 8,
         "container": False,
         "verify": False,
     }
 
     with patch("ramalama.config.load_file_config", return_value=mock_file_config):
         with patch("ramalama.config.load_env_config", return_value={}):
-            cfg = default_config()
+            cfg = load_config()
             assert cfg.image == "custom/image:latest"
-            assert cfg.threads == 8
             assert cfg.container is False
             assert cfg.verify is False
 
             assert cfg.is_set("image") is True
-            assert cfg.is_set("threads") is True
             assert cfg.is_set("container") is True
             assert cfg.is_set("verify") is True
 
@@ -120,21 +115,17 @@ def test_file_config_overrides_defaults():
 def test_env_overrides_file_and_default():
     mock_file_config = {
         "image": "custom/image:latest",
-        "threads": 8,
     }
     mock_env_config = {
         "image": "env/image:override",
-        "threads": 16,
     }
 
     with patch("ramalama.config.load_file_config", return_value=mock_file_config):
         with patch("ramalama.config.load_env_config", return_value=mock_env_config):
-            cfg = default_config()
+            cfg = load_config()
             assert cfg.image == "env/image:override"
-            assert cfg.threads == 16
 
             assert cfg.is_set("image") is True
-            assert cfg.is_set("threads") is True
 
 
 @pytest.mark.parametrize(
@@ -161,7 +152,7 @@ def test_get_default_store(uid, is_root, expected):
 )
 def test_cfg_container_env_override(env_value, expected):
     with patch.dict(os.environ, {"RAMALAMA_IN_CONTAINER": env_value} if env_value is not None else {}, clear=True):
-        cfg = default_config()
+        cfg = load_config()
         assert cfg.is_set("container") is True
         print(os.environ)
         assert cfg.container == expected, cfg.container
@@ -169,12 +160,12 @@ def test_cfg_container_env_override(env_value, expected):
 
 def test_cfg_container_not_set():
     with patch.dict(os.environ, {"RAMALAMA_CONTAINER_ENGINE": "podman"}):
-        cfg = default_config()
+        cfg = load_config()
         assert cfg.is_set("container") is False
         assert cfg.container is True
 
     with patch.dict(os.environ, {}):
-        cfg = default_config()
+        cfg = load_config()
         with patch("ramalama.config.load_env_config", return_value={}):
             assert cfg.is_set("container") is False
             assert cfg.container is (cfg.engine is not None)
@@ -243,10 +234,23 @@ class TestGetDefaultEngine:
             patch("ramalama.config.os.path.exists", return_value=False),
             patch("ramalama.config.sys.platform", "darwin"),
         ):
-            cfg = default_config()
+            cfg = load_config()
 
         assert cfg.engine == "docker"
         assert cfg.is_set("engine") is False
+
+    def test_explicit_engine_is_preserved_when_podman_machine_missing(self):
+        with (
+            patch("ramalama.config.available", return_value=False),
+            patch("ramalama.config.apple_vm", return_value=False),
+            patch("ramalama.config.load_file_config", return_value={}),
+            patch("ramalama.config.sys.platform", "darwin"),
+        ):
+            cfg = load_config({"RAMALAMA_CONTAINER_ENGINE": "podman"})
+
+        assert cfg.engine == "podman"
+        assert cfg.is_set("engine") is True
+        assert cfg.container is True
 
 
 class TestLoadEnvConfig:
@@ -256,7 +260,6 @@ class TestLoadEnvConfig:
         """Test loading basic RAMALAMA environment variables."""
         env = {
             "RAMALAMA_IMAGE": "test/image:latest",
-            "RAMALAMA_THREADS": "8",
             "RAMALAMA_CONTAINER": "true",
             "RAMALAMA_HOST": "127.0.0.1",
             "RAMALAMA_VERIFY": "false",
@@ -266,7 +269,6 @@ class TestLoadEnvConfig:
 
         expected = {
             "image": "test/image:latest",
-            "threads": 8,
             "container": True,
             "host": "127.0.0.1",
             "verify": False,
@@ -350,7 +352,6 @@ class TestLoadEnvConfig:
             "RAMALAMA_IMAGE": "test/image:latest",
             "PATH": "/usr/bin:/bin",
             "HOME": "/home/user",
-            "RAMALAMA_THREADS": "8",
             "SHELL": "/bin/bash",
         }
 
@@ -358,7 +359,6 @@ class TestLoadEnvConfig:
 
         expected = {
             "image": "test/image:latest",
-            "threads": 8,
         }
         assert result == expected
 
@@ -377,7 +377,6 @@ class TestLoadEnvConfig:
         """Test that keys are converted to lowercase."""
         env = {
             "RAMALAMA_IMAGE": "test/image:latest",
-            "RAMALAMA_THREADS": "8",
             "RAMALAMA_USER__NO_MISSING_GPU_PROMPT": "true",
         }
 
@@ -385,7 +384,6 @@ class TestLoadEnvConfig:
 
         # All keys should be lowercase
         assert "image" in result
-        assert "threads" in result
         assert "user" in result
         assert "no_missing_gpu_prompt" in result["user"]
 
@@ -526,7 +524,7 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             assert cfg.user.no_missing_gpu_prompt is True
             assert cfg.settings.config_files == ["/custom/config.toml"]
@@ -541,33 +539,30 @@ class TestConfigIntegration:
         """Test that environment variables override file config."""
         file_config = {
             "image": "file/image:latest",
-            "threads": 4,
             "user": {"no_missing_gpu_prompt": False},
             "images": {"CUDA_VISIBLE_DEVICES": "file/cuda:latest"},
         }
 
         env = {
             "RAMALAMA_IMAGE": "env/image:latest",
-            "RAMALAMA_THREADS": "8",
             "RAMALAMA_USER__NO_MISSING_GPU_PROMPT": "true",
             "RAMALAMA_IMAGES": '{"CUDA_VISIBLE_DEVICES": "env/cuda:latest"}',
         }
 
         with patch("ramalama.config.load_file_config", return_value=file_config):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             # Environment should override file config
             assert cfg.image == "env/image:latest"
-            assert cfg.threads == 8
             assert cfg.user.no_missing_gpu_prompt is True
             assert cfg.images["CUDA_VISIBLE_DEVICES"] == "env/cuda:latest"
-            assert cfg.images["HIP_VISIBLE_DEVICES"] == "quay.io/ramalama/rocm"
+            # HIP_VISIBLE_DEVICES is not set in env or file; plugin defaults are not in config
+            assert "HIP_VISIBLE_DEVICES" not in cfg.images
 
     def test_config_multiple_env_layers(self):
         """Test that multiple environment variable layers work correctly."""
         env = {
             "RAMALAMA_IMAGE": "base/image:latest",
-            "RAMALAMA_THREADS": "4",
             "RAMALAMA_USER__NO_MISSING_GPU_PROMPT": "false",
             "RAMALAMA_IMAGES": '{"CUDA_VISIBLE_DEVICES": "base/cuda:latest"}',
             "RAMALAMA_APP__DATABASE__HOST": "localhost",
@@ -575,11 +570,10 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             # Basic config should work
             assert cfg.image == "base/image:latest"
-            assert cfg.threads == 4
             assert cfg.user.no_missing_gpu_prompt is False
             assert cfg.images["CUDA_VISIBLE_DEVICES"] == "base/cuda:latest"
 
@@ -596,7 +590,7 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             assert cfg.container is True
             assert cfg.engine == "docker"
@@ -605,34 +599,27 @@ class TestConfigIntegration:
     def test_config_empty_layers(self):
         """Test behaviour with empty configuration layers."""
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config({})
+            cfg = load_config({})
 
             # Should use defaults
             assert cfg.image == cfg.default_image
-            assert cfg.threads == -1
             assert cfg.user.no_missing_gpu_prompt is False
 
     def test_config_type_coercion(self):
         """Test that environment variables are properly type-coerced."""
         env = {
-            "RAMALAMA_THREADS": "16",
             "RAMALAMA_CTX_SIZE": "4096",
-            "RAMALAMA_NGL": "2",
             "RAMALAMA_CONTAINER": "true",
             "RAMALAMA_KEEP_GROUPS": "true",
-            "RAMALAMA_OCR": "true",
             "RAMALAMA_USER__NO_MISSING_GPU_PROMPT": "true",
         }
 
         with patch("ramalama.config.load_file_config", return_value={}):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
-            assert cfg.threads == 16
             assert cfg.ctx_size == 4096
-            assert cfg.ngl == 2
             assert cfg.container is True
             assert cfg.keep_groups is True
-            assert cfg.ocr is True
             assert cfg.user.no_missing_gpu_prompt is True
 
     def test_config_complex_nesting_scenario(self):
@@ -647,7 +634,6 @@ class TestConfigIntegration:
 
         env = {
             "RAMALAMA_IMAGE": "custom/ramalama:latest",
-            "RAMALAMA_THREADS": "8",
             "RAMALAMA_IMAGES": (
                 '{"CUDA_VISIBLE_DEVICES": "custom/cuda:latest", "INTEL_VISIBLE_DEVICES": "custom/intel:latest"}'
             ),
@@ -657,28 +643,24 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value=file_config):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             # Verify the merged configuration
             assert cfg.image == "custom/ramalama:latest"
-            assert cfg.threads == 8
             assert cfg.user.no_missing_gpu_prompt is True
 
             # Deep merged images
-            expected_images = RamalamaImages(
-                **{
-                    "CUDA_VISIBLE_DEVICES": "custom/cuda:latest",  # from env
-                    "INTEL_VISIBLE_DEVICES": "custom/intel:latest",  # from env
-                    "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm:latest",  # from file config
-                }
-            )
+            expected_images = {
+                "CUDA_VISIBLE_DEVICES": "custom/cuda:latest",  # from env
+                "INTEL_VISIBLE_DEVICES": "custom/intel:latest",  # from env
+                "HIP_VISIBLE_DEVICES": "quay.io/ramalama/rocm:latest",  # from file config
+            }
             assert cfg.images == expected_images
 
     def test_config_is_set_behavior(self):
         """Test that is_set correctly tracks configuration sources."""
         file_config = {
             "image": "file/image:latest",
-            "threads": 4,
         }
 
         env = {
@@ -687,11 +669,10 @@ class TestConfigIntegration:
         }
 
         with patch("ramalama.config.load_file_config", return_value=file_config):
-            cfg = default_config(env)
+            cfg = load_config(env)
 
             # Values set in either layer should return True
             assert cfg.is_set("image") is True
-            assert cfg.is_set("threads") is True
             assert cfg.is_set("user") is True
 
             # Values not set in any layer should return False

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass
 from typing import Any
@@ -27,7 +29,6 @@ class ModelDetailsResponse:
 
 @dataclass
 class ModelResponse:
-
     name: str
     organization: str
     tag: str
@@ -67,7 +68,6 @@ def model_list_serialize(models: list[ModelResponse]) -> str:
 
 @dataclass
 class RunningModelResponse:
-
     id: str
     name: str
     organization: str

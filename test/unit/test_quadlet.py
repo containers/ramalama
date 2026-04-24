@@ -14,7 +14,7 @@ class Args:
         name: str = "",
         rag: str = "",
         port: str = "",
-        host: str = "0.0.0.0",
+        host: str = "::",
         env: list = [],
         MODEL: Optional[str] = None,
         add_to_unit=None,
@@ -111,6 +111,17 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
                 accel_type="intel",
             ),
             DATA_PATH / "localhost",
+        ),
+        (
+            Input(
+                model_name="tinyllama",
+                model_src_blob="sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816",
+                model_dest_name="tinyllama",
+                image="testimage",
+                args=Args(port="2020", host="::1"),
+                accel_type="intel",
+            ),
+            DATA_PATH / "ipv6_host",
         ),
         (
             Input(
@@ -241,6 +252,9 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
         input.model_src_blob: input.model_file_exists,
         input.chat_template_src_blob: input.chat_template_file_exists,
         input.mmproj_src_blob: input.mmproj_file_exists,
+        "/dev/dri": True,
+        "/dev/kfd": True,
+        "/dev/accel": True,
     }
 
     # Add existence checks for all model parts

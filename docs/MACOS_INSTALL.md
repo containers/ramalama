@@ -40,7 +40,7 @@ The installer places files in:
 
 ```bash
 # Check version
-ramalama --version
+ramalama version
 
 # Get help
 ramalama --help
@@ -51,7 +51,7 @@ ramalama --help
 If you prefer to use Python package management:
 
 ```bash
-# Install Python 3.10 or later (if not already installed)
+# Install Python 3.9 or later (if not already installed)
 brew install python@3.11
 
 # Install ramalama
@@ -128,8 +128,8 @@ sudo rm /usr/local/bin/ramalama
 sudo rm -rf /Applications/ramalama.app
 
 # Remove configuration and data files (optional)
-rm -rf ~/.local/share/ramalama
-rm -rf ~/.config/ramalama
+rm -rf -- "${XDG_DATA_HOME:-~/.local/share}/ramalama"
+rm -rf -- "${XDG_CONFIG_HOME:-~/.config}/ramalama"
 
 # Remove man pages (optional)
 sudo rm /usr/local/share/man/man1/ramalama*.1
@@ -182,7 +182,7 @@ Once installed, try these commands:
 
 ```bash
 # Check version
-ramalama --version
+ramalama version
 
 # Pull a model
 ramalama pull tinyllama

@@ -1,9 +1,10 @@
 import json
 import re
 from subprocess import STDOUT, CalledProcessError
-from test.e2e.utils import RamalamaExecWorkspace
 
 import pytest
+
+from test.e2e.utils import RamalamaExecWorkspace
 
 GGUF_MODEL = "ollama://tinyllama"
 ST_MODEL = "https://huggingface.co/LiheYoung/depth-anything-small-hf/resolve/main/model.safetensors"

@@ -4,6 +4,9 @@ import re
 import shutil
 from pathlib import Path
 from subprocess import DEVNULL, PIPE, STDOUT, CalledProcessError
+
+import pytest
+
 from test.conftest import (
     skip_if_container,
     skip_if_darwin,
@@ -13,8 +16,6 @@ from test.conftest import (
     skip_if_not_windows,
 )
 from test.e2e.utils import RamalamaExecWorkspace, check_output
-
-import pytest
 
 TEST_MODEL = "smollm:135m"
 TEST_MODEL_FULL_NAME = "smollm-135M-instruct-v0.2-Q8_0-GGUF"
@@ -60,11 +61,11 @@ def test_basic_dry_run():
     assert not re.search(r".*-t -i", result), "run without terminal"
 
 
+# fmt: off
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "extra_params, pattern, config, env_vars, expected, stdin",
     [
-        # fmt: off
         pytest.param(
             [], f".*{TEST_MODEL_FULL_NAME}.*", None, None, True, None,
             id="check test_model", marks=skip_if_no_container
@@ -223,20 +224,20 @@ def test_basic_dry_run():
         pytest.param(
             ["--device", "none", "--pull", "never"], r".*--device.*", None, None, False, None,
             id="check --device with unsupported value", marks=skip_if_no_container),
-        # fmt: on
     ],
 )
+# fmt: on
 def test_params(extra_params, pattern, config, env_vars, expected, stdin):
     with RamalamaExecWorkspace(config=config, env_vars=env_vars) as ctx:
         result = ctx.check_output(RAMALAMA_DRY_RUN + extra_params + [TEST_MODEL], stdin=stdin)
         assert bool(re.search(pattern, result)) is expected
 
 
+# fmt: off
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "extra_params, pattern, config, env_vars, expected_exit_code, expected",
     [
-        # fmt: off
         pytest.param(
             ["--pull", "bogus"], r".*error: argument --pull: invalid choice: 'bogus'", None, None, 2, True,
             id="raise error when --pull value is not valid", marks=skip_if_no_container,
@@ -261,9 +262,9 @@ def test_params(extra_params, pattern, config, env_vars, expected, stdin):
             None, None, 22, True,
             id="raise error on conflict between nocontainer and --privileged", marks=skip_if_container,
         ),
-        # fmt: on
     ],
 )
+# fmt: on
 def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_code, expected):
     with RamalamaExecWorkspace(config=config, env_vars=env_vars) as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -273,6 +274,7 @@ def test_params_errors(extra_params, pattern, config, env_vars, expected_exit_co
 
 
 @pytest.mark.e2e
+@pytest.mark.slow
 def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     import platform
 
@@ -346,7 +348,7 @@ def test_run_keepalive(shared_ctx_with_models, test_model):
         pytest.param(
             ["--image", "bogus", "--pull", "never", "tiny"],
             22,
-            r".*Error: bogus: image not known",
+            r".*Error: bogus:latest: image not known",
             id="non-existing-image",
         ),
         pytest.param(

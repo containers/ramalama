@@ -1,5 +1,7 @@
 """Utilities for cross-platform path handling, especially for Windows Docker/Podman support."""
 
+from __future__ import annotations
+
 import os
 import platform
 import string

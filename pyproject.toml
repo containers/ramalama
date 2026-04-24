@@ -7,7 +7,7 @@ name = "ramalama"
 dynamic = ["version"]
 description = "RamaLama is a command line tool for working with AI LLM models."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 keywords = [
   "ramalama",
   "llama",
@@ -24,8 +24,8 @@ keywords = [
 dependencies = [
   "argcomplete",
   "pyyaml",
-  "jsonschema",
   "jinja2",
+  "wmi ; sys_platform == 'win32'",
 ]
 maintainers = [
    { name = "Dan Walsh", email = "dawalsh@redhat.com" },
@@ -42,6 +42,7 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -56,17 +57,15 @@ text = "MIT"
 
 [project.optional-dependencies]
 dev = [
-    # "pytest>=7.0",
     "argcomplete~=3.0",
     "bcrypt",
-    "black~=26.1",
     "codespell~=2.0",
-    "flake8~=7.0",
-    "huggingface_hub~=1.4.0",
+    "huggingface_hub~=1.11.0;python_version>=\"3.10\"",
     "hypothesis>=6.135.26",
-    "isort~=7.0",
-    "pytest~=9.0",
-    "wheel~=0.46.3",
+    "pytest~=9.0;python_version>=\"3.10\"",
+    "pytest~=8.0;python_version<\"3.10\"",
+    "ruff>=0.14.14",
+    "wheel~=0.47.0",
     "mypy",
     "types-PyYAML",
     "types-jsonschema",
@@ -89,7 +88,7 @@ cov-detailed = [
 
 [dependency-groups]
 dev = [
-    "ramalama[cov-detailed]",
+    "ramalama[cov-detailed]"
 ]
 
 [project.urls]
@@ -103,6 +102,11 @@ Matrix = "https://matrix.to/#/#ramalama:fedoraproject.org"
 [project.scripts]
 ramalama = "ramalama.cli:main"
 
+[project.entry-points."ramalama.runtimes.v1alpha"]
+"llama.cpp" = "ramalama.plugins.runtimes.inference.llama_cpp:LlamaCppPlugin"
+"vllm" = "ramalama.plugins.runtimes.inference.vllm:VllmPlugin"
+"mlx" = "ramalama.plugins.runtimes.inference.mlx:MlxPlugin"
+
 [tool.setuptools]
 include-package-data = true
 license-files = ["LICENSE"]
@@ -111,18 +115,7 @@ license-files = ["LICENSE"]
 "ramalama" = ["py.typed"]
 
 [tool.setuptools.dynamic]
-version = {attr = "ramalama.version.version"}
-
-[tool.black]
-line-length = 120
-skip-string-normalization = true
-target-version = ["py310", "py311", "py312", "py313", "py314"]
-extend-exclude = "(.history|build|dist|docs|hack)"
-
-[tool.isort]
-profile = "black"
-line_length = 120
-skip = [".venv", "venv", ".tox"]
+version = {attr = "ramalama.version.__version__"}
 
 [tool.codespell]
 skip = ["build", "ramalama.egg-info", "logos", ".git", "venv", ".venv", ".tox", ".pixi"]
@@ -141,8 +134,8 @@ check-hidden = true
 
 [tool.ruff]
 line-length = 120
-target-version = "py312"
-include = ["\\.pyi?$"]
+target-version = "py310"
+extend-include = ["bin/ramalama"]
 exclude = [
   "/\\.git",
   "/\\.tox",
@@ -156,8 +149,11 @@ exclude = [
   "/.pixi"
 ]
 
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
 [tool.ruff.format]
-preview = true
+preview = false
 quote-style = "preserve"
 
 [tool.coverage]
@@ -168,18 +164,14 @@ lcov.output = "coverage/coverage.lcov"
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-markers = ["e2e", "distro_integration"]
-addopts = "-m 'not e2e' --color=yes --durations=10"
+markers = ["e2e", "distro_integration", "slow: tests that take more than ~30 seconds, usually running an inference server"]
+addopts = "-m 'not e2e and not slow' --color=yes --durations=10"
 
 [tool.setuptools.packages.find]
 include = ["ramalama", "ramalama.*"]
 
 [tool.setuptools.data-files]
 "share/ramalama" = ["shortnames/shortnames.conf", "docs/ramalama.conf"]
-"share/ramalama/inference" = [
-  "inference-spec/schema/*.json",
-  "inference-spec/engines/*",
-]
 "share/man/man1" = ["docs/*.1"]
 "share/man/man5" = ["docs/*.5"]
 "share/man/man7" = ["docs/*.7"]
@@ -200,6 +192,7 @@ pass_env = [
   "GITHUB_ACTIONS",
   "RAMALAMA_*",
 ]
+set_env = { COLUMNS = "120" }
 commands = [
   [
     "pytest",
@@ -212,13 +205,33 @@ commands = [
 
 [tool.tox.env.e2e]
 deps = [
-    "mlx-lm ; sys_platform == 'darwin' and platform_machine == 'arm64'"
+    "mlx-lm ; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "pytest-timeout"
 ]
 commands = [
   [
     "pytest",
-    "-m", "e2e",
+    "-m", "e2e and not slow",
     "-vvv",
+    "--timeout=900",
+    "--durations=10",
+    "--basetemp={envtmpdir}",
+    "--tb=short",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[tool.tox.env.slow]
+deps = [
+    "mlx-lm ; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "pytest-timeout"
+]
+commands = [
+  [
+    "pytest",
+    "-m", "slow",
+    "-vvv",
+    "--timeout=1200",
     "--durations=10",
     "--basetemp={envtmpdir}",
     "--tb=short",
@@ -261,3 +274,7 @@ dev = { features = ["dev"], solve-group = "default" }
 
 [tool.pixi.dependencies]
 tox = ">=4.30.2,<5"
+
+[tool.mypy]
+python_version = "3.9"
+exclude = ["setup\\.py"]

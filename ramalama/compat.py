@@ -1,20 +1,21 @@
 """ramalama compat module."""
 
+from __future__ import annotations
+
 import os
 import sys
 from contextlib import contextmanager
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
 
-# Python 3.10 doesn't have StrEnum
-try:
+if sys.version_info >= (3, 11):
     from enum import StrEnum
-except ImportError:
+else:
     from enum import Enum
 
     class StrEnum(str, Enum):  # type: ignore[no-redef]
         """StrEnum class for Python 3.10."""
 
-        def __str__(self):
+        def __str__(self) -> str:
             return self.value
 
 
@@ -32,7 +33,7 @@ else:
             delete = kwargs.pop('delete')
         else:
             delete = True
-        f = _NamedTemporaryFile(*args, **kwargs, delete=delete and delete_on_close)
+        f = _NamedTemporaryFile(*args, **kwargs, delete=delete and delete_on_close)  # type: ignore[call-overload]
         try:
             yield f
         finally:

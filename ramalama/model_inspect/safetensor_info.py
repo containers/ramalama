@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from typing import Any, Dict
 
@@ -5,7 +7,6 @@ from ramalama.model_inspect.base_info import ModelInfoBase, adjust_new_line
 
 
 class SafetensorModelInfo(ModelInfoBase):
-
     def __init__(
         self,
         Name: str,

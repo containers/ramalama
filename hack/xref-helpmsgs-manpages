@@ -398,15 +398,15 @@ sub ramalama_help {
         #
         # Start by identifying the section we're in...
         if ($line =~ /^positional\s+arguments:/) {
-            if (@_ == 0) {
+            if (@_ == 0 || $_[-1] eq 'sandbox') {
                 $section = 'commands';
             }
             else {
                 $section = 'options';
             }
         }
-        elsif ($line =~ /^(options):/) {
-            $section = lc $1;
+        elsif ($line =~ /^(options|optional\s+arguments):/) {
+            $section = 'options';
         }
 
         # ...then track commands and options. For subcommands, recurse.
@@ -519,7 +519,7 @@ sub ramalama_man {
         # The format is slightly different between ramalama.1.md and subcommands.
         elsif ($section eq 'commands') {
             # In ramalama.1.md
-            if ($line =~ /^\|\s*\[ramalama-(\S+?)\(\d\)\]/) {
+            if ($line =~ /^\|\s*\[ramalama-(\w+?)\(\d\)\]/) {
                 # $1 will be changed by recursion _*BEFORE*_ left-hand assignment
                 my $subcmd = $1;
                 $man{$subcmd} = ramalama_man("ramalama-$subcmd");

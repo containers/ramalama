@@ -26,12 +26,32 @@ spec:
         env:
         - name: TEST_ENV
           value: "test_value"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - CAP_CHOWN
+            - CAP_FOWNER
+            - CAP_FSETID
+            - CAP_KILL
+            - CAP_NET_BIND_SERVICE
+            - CAP_SETFCAP
+            - CAP_SETGID
+            - CAP_SETPCAP
+            - CAP_SETUID
+            - CAP_SYS_CHROOT
+            add:
+            - CAP_DAC_OVERRIDE
+          seLinuxOptions:
+            type: spc_t
         ports:
         - containerPort: 8080
           hostPort: 3000
         volumeMounts:
         - mountPath: /mnt/models/model.file
           name: model
+        - mountPath: /dev/accel
+          name: accel
         - mountPath: /dev/dri
           name: dri
         - mountPath: /dev/kfd
@@ -40,6 +60,9 @@ spec:
       - hostPath:
           path: /path/to/model.file
         name: model
+      - hostPath:
+          path: /dev/accel
+        name: accel
       - hostPath:
           path: /dev/dri
         name: dri

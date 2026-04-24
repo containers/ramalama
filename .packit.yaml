@@ -36,6 +36,7 @@ jobs:
     packages: [ramalama-centos]
     targets: &centos_copr_targets
       - centos-stream-10
+      - centos-stream-9
 
   # Run on commit to main branch
   - job: copr_build
@@ -81,6 +82,7 @@ jobs:
       - fedora-all
       - epel10
       - epel10.0
+      - epel9
 
   - job: koji_build
     trigger: commit
@@ -94,3 +96,4 @@ jobs:
       - fedora-branched # rawhide updates are created automatically
       - epel10
       - epel10.0
+      - epel9

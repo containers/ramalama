@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from functools import singledispatch
-from typing import Any, TypedDict
+from typing import Any, Optional, TypedDict
 
 from ramalama.chat_providers.base import ChatProvider, ChatRequestOptions, ChatStreamEvent
 from ramalama.chat_utils import (
@@ -58,43 +60,47 @@ def _(message: AssistantMessage) -> dict[str, Any]:
     if message.attachments:
         raise ValueError("Attachments are not supported by this provider.")
 
-    tool_calls = [
-        {
-            "id": call.id,
-            "type": "function",
-            "function": {
-                "name": call.name,
-                "arguments": json.dumps(call.arguments, ensure_ascii=False),
-            },
-        }
-        for call in message.tool_calls
-    ]
-    return {**message.metadata, 'content': message.text or "", 'role': message.role, 'tool_calls': tool_calls}
+    payload = {**message.metadata, 'content': message.text or "", 'role': message.role}
+
+    if message.tool_calls:
+        payload['tool_calls'] = [
+            {
+                "id": call.id,
+                "type": "function",
+                "function": {
+                    "name": call.name,
+                    "arguments": json.dumps(call.arguments, ensure_ascii=False),
+                },
+            }
+            for call in message.tool_calls
+        ]
+
+    return payload
 
 
-class CompletionsPayload(TypedDict, total=False):
+class RequiredCompletionsPayload(TypedDict):
     messages: list[dict[str, Any]]
-    model: str | None
-    temperature: float | None
-    max_tokens: int | None
     stream: bool
+
+
+class CompletionsPayload(RequiredCompletionsPayload, total=False):
+    model: str
+    temperature: float
+    max_tokens: int
 
 
 class OpenAICompletionsChatProvider(ChatProvider):
     provider = "openai"
     default_path = "/chat/completions"
 
-    def __init__(self, base_url: str, api_key: str | None = None):
+    def __init__(self, base_url: str, api_key: Optional[str] = None):
         super().__init__(base_url, api_key)
         self._stream_buffer: str = ""
 
     def build_payload(self, messages: Sequence[ChatMessageType], options: ChatRequestOptions) -> CompletionsPayload:
         payload: CompletionsPayload = {
             "messages": [message_to_completions_dict(m) for m in messages],
-            "model": options.model,
-            "temperature": options.temperature,
-            "max_tokens": options.max_tokens,
-            "stream": options.stream,
+            **options.to_dict(),
         }
         return payload
 
@@ -126,7 +132,7 @@ class OpenAICompletionsChatProvider(ChatProvider):
 
         return events
 
-    def _extract_delta(self, payload: Mapping[str, object]) -> str | None:
+    def _extract_delta(self, payload: Mapping[str, object]) -> Optional[str]:
         choices = payload.get("choices")
         if not isinstance(choices, list) or not choices:
             return None
@@ -164,7 +170,7 @@ def message_to_responses_dict(message: Any) -> dict[str, Any]:
 
 
 def create_responses_content(
-    text: str | None, attachments: list[AttachmentPart], content_type: str
+    text: Optional[str], attachments: list[AttachmentPart], content_type: str
 ) -> list[dict[str, Any]] | str:
     """
     TODO: Current structure doesn't correctly reflect document ordering
@@ -233,7 +239,7 @@ def _(message: AssistantMessage) -> dict[str, Any]:
 class ResponsesPayload(TypedDict, total=False):
     input: list[dict[str, Any]]
     model: str
-    temperature: float | None
+    temperature: Optional[float]
     max_completion_tokens: int
     stream: bool
 
@@ -242,7 +248,7 @@ class OpenAIResponsesChatProvider(ChatProvider):
     provider = "openai"
     default_path: str = "/responses"
 
-    def __init__(self, base_url: str, api_key: str | None = None):
+    def __init__(self, base_url: str, api_key: Optional[str] = None):
         super().__init__(base_url, api_key)
         self._stream_buffer: str = ""
 
@@ -307,7 +313,7 @@ class OpenAIResponsesChatProvider(ChatProvider):
         return hinted_type == "response.completed"
 
     @staticmethod
-    def _extract_responses_delta(event_type: str, payload: Mapping[str, Any]) -> str | None:
+    def _extract_responses_delta(event_type: str, payload: Mapping[str, Any]) -> Optional[str]:
         if not event_type:
             event_type = payload.get("type", "") if isinstance(payload, Mapping) else ""
 

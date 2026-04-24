@@ -1,120 +1,106 @@
 % ramalama-rag 1
 
 ## NAME
-ramalama\-rag - generate and convert Retrieval Augmented Generation (RAG) data from provided documents into an OCI Image
+ramalama\-rag - convert documents to a RAG vector database and package as a container image
 
 ## SYNOPSIS
-**ramalama rag** [options] [path ...] image
+**ramalama rag** [*options*] *documents* *destination*
 
 ## DESCRIPTION
-Generate RAG data from provided documents and convert into an OCI Image. This command uses a specific container image containing the docling
-tool to convert the specified content into a RAG vector database. If the image does not exist locally, RamaLama will pull the image
-down and launch a container to process the data.
+Convert documents into a Qdrant vector database and package the result as an
+OCI container image.  Instead of relying on a heavyweight container with
+PyTorch and the full Docling stack, this command uses lightweight llama.cpp
+servers to perform document conversion (via the Granite Docling VLM) and
+text embedding (via the EmbeddingGemma model).  The resulting container
+image contains only the vector database and can be used with
+`ramalama serve --rag`.
 
-NOTE: this command does not work without a container engine.
+The pipeline:
+
+1. Text files (.txt, .md, .html) are read directly.
+2. PDFs and images are converted page-by-page through the Granite Docling
+   VLM served by llama.cpp.
+3. All content is chunked by section headings.
+4. Chunks are embedded via the EmbeddingGemma model served by llama.cpp.
+5. Embeddings are stored in a Qdrant on-disk collection.
+6. The Qdrant database is packaged into a `FROM scratch` OCI image.
+
+Two containers work together: a llama.cpp container serves the AI models,
+and a lightweight RAG container runs the document processing pipeline.
+
+NOTE: this command requires a container engine (podman or docker).
 
 positional arguments:
 
-  *PATH*    Files/Directory containing PDF, DOCX, PPTX, XLSX, HTML,
-	    AsciiDoc & Markdown formatted files to be processed.
-	    Can be specified multiple times.
+  *DOCUMENTS*   File or directory containing PDF, images (PNG, JPG, etc.),
+            or text files (TXT, MD, HTML) to be processed.
 
-  *DESTINATION*   Path or OCI Image name to contain processed rag data
+  *DESTINATION*   Name for the output container image, or local path.
 
 ## OPTIONS
 
-#### **--env**=
+#### **--chunk-size**=*integer*
+Maximum tokens per chunk for embedding (default: 400). Smaller chunks
+are faster to embed but may lose context; larger chunks preserve more
+context but require more embedding capacity.
 
-Set environment variables inside of the container.
+#### **--ctx-size**, **-c**=*integer*
+Context size for the VLM server (default: 8192). Increase if processing
+complex PDF pages that produce many visual tokens.
 
-This option allows arbitrary environment variables that are available for the
-process to be launched inside of the container. If an environment variable is
-specified without a value, the container engine checks the host environment
-for a value and set the variable only if it is set on the host.
+#### **--docling-model**=*model*
+Granite Docling GGUF model used for document conversion
+(default: hf://ibm-granite/granite-docling-258M-GGUF).
 
-#### **--format**=*json* |  *markdown* | *qdrant* |
-Convert documents into the following formats
-
-| Type    | Description                                          |
-| ------- | ---------------------------------------------------- |
-| json    | JavaScript Object Notation. lightweight format for exchanging data |
-| markdown| Lightweight markup language using plain text editing |
-| qdrant  | Retrieval-Augmented Generation (RAG) Vector database Qdrant distribution |
-| milvus  | Retrieval-Augmented Generation (RAG) Vector database Milvus distribution |
+#### **--embed-ctx-size**=*integer*
+Context size for the embedding server (default: 0, auto-detected by
+llama.cpp based on the embedding model).
 
 #### **--help**, **-h**
 Print usage message
 
-#### **--image**=IMAGE
-OCI container image to run with specified AI model. RamaLama defaults to using
-images based on the accelerator it discovers. For example:
-`quay.io/ramalama/ramalama-rag`. See the table below for all default images.
-The default image tag is based on the minor version of the RamaLama package.
-Version 0.17.0 of RamaLama pulls an image with a `:0.17` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+#### **--image**=*IMAGE*
+OCI container image to use for the llama.cpp inference servers.
+Defaults to the accelerator-appropriate ramalama image.
 
-The default can be overridden in the ramalama.conf file or via the
-RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
-RamaLama to use the `quay.io/ramalama/aiimage:1.2` image.
+#### **--ngl**=*integer*
+Number of layers to offload to the GPU, if available (default: -1, auto).
 
-Accelerated images:
+#### **--rag-image**=*IMAGE*
+OCI container image for the RAG processing container.
+Defaults to the accelerator-appropriate ramalama-rag image.
 
-| Accelerator             | Image                          |
-| ------------------------| ------------------------------ |
-|  CPU, Apple             | quay.io/ramalama/ramalama-rag  |
-|  HIP_VISIBLE_DEVICES    | quay.io/ramalama/rocm-rag      |
-|  CUDA_VISIBLE_DEVICES   | quay.io/ramalama/cuda-rag      |
-|  ASAHI_VISIBLE_DEVICES  | quay.io/ramalama/asahi-rag     |
-|  INTEL_VISIBLE_DEVICES  | quay.io/ramalama/intel-gpu-rag |
-|  ASCEND_VISIBLE_DEVICES | quay.io/ramalama/cann-rag      |
-|  MUSA_VISIBLE_DEVICES   | quay.io/ramalama/musa-rag      |
-
-#### **--keep-groups**
-pass --group-add keep-groups to podman (default: False)
-If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
-
-#### **--network**=*none*
-sets the configuration for network namespaces when handling RUN instructions
-
-#### **--ocr**
-Sets the Docling OCR flag. OCR stands for Optical Character Recognition and is used to extract text from images within PDFs converting it into raw text that an LLM can understand. This feature is useful if the PDF's one is converting has a lot of embedded images with text. This process uses a great amount of RAM so the default is false.
-
-#### **--pull**=*policy*
-Pull image policy. The default is **missing**.
-
-- **always**: Always pull the image and throw an error if the pull fails.
-- **missing**: Only pull the image when it does not exist in the local containers storage. Throw an error if no image is found and the pull fails.
-- **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
-- **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
-
-#### **--selinux**=*true*
-Enable SELinux container separation
+#### **--threads**, **-t**=*integer*
+Number of CPU threads to use for llama.cpp inference.
+Defaults to half the available cores.
 
 ## EXAMPLES
 
+### Convert a directory of documents into a RAG image
 ```
-$ ramalama rag ./README.md https://github.com/containers/podman/blob/main/README.md quay.io/rhatdan/myrag
-100% |███████████████████████████████████████████████████████|  114.00 KB/    0.00 B 922.89 KB/s   59m 59s
-Building quay.io/ramalama/myrag...
-adding vectordb...
-c857ebc65c641084b34e39b740fdb6a2d9d2d97be320e6aa9439ed0ab8780fe0
+$ ramalama rag ./docs/ myrag:latest
+Found 5 file(s): 2 need VLM, 3 text-only
+Reading README.md (1/3)...
+Chunking documents...
+Embedding chunks via llama.cpp...
+Stored vectors in Qdrant.
+Building container image 'myrag:latest'...
+RAG image 'myrag:latest' created successfully.
 ```
 
+### Convert a single PDF
 ```
-$ ramalama rag --ocr README.md https://mysight.edu/document quay.io/rhatdan/myrag
+$ ramalama rag ./report.pdf quay.io/myuser/report-rag
 ```
 
+### Use a custom number of GPU layers
 ```
-$ ramalama rag --format markdown /tmp/internet.pdf /tmp/output
-$ ls /tmp/output/docs/tmp/
-/tmp/output/docs/tmp/internet.md
-$ ramalama rag --format json /tmp/internet.pdf /tmp/output
-$ ls /tmp/output/docs/tmp/
-/tmp/output/docs/tmp/internet.md
-/tmp/output/docs/tmp/internet.json
+$ ramalama rag --ngl 999 ./docs/ my-rag-image
 ```
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-serve(1)](ramalama-serve.1.md)**
 
 ## HISTORY
 Dec 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
+Mar 2026, Rewritten to use llama.cpp-based pipeline by Brian Mahabirsingh <bmahabir@bu.edu>

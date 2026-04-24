@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import http.server
 import json
 from abc import ABC, abstractmethod
@@ -7,7 +9,6 @@ from ramalama.daemon.service.model_runner import ModelRunner
 
 
 class APIHandler(ABC):
-
     def __init__(self, model_runner: ModelRunner):
         super().__init__()
 

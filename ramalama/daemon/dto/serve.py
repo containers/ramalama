@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass
 
@@ -7,7 +9,6 @@ from ramalama.daemon.dto.errors import MissingArgumentError
 
 @dataclass
 class ServeRequest:
-
     model_name: str
     runtime: str
     exec_args: dict[str, str]
@@ -69,7 +70,6 @@ class ServeRequest:
 
 @dataclass
 class ServeResponse:
-
     model_id: str
     serve_path: str
 
@@ -85,7 +85,6 @@ class ServeResponse:
 
 @dataclass
 class StopServeRequest:
-
     model_name: str
 
     @staticmethod

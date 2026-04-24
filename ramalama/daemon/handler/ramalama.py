@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import http.server
 import traceback
 import urllib.error
@@ -9,7 +11,6 @@ from ramalama.daemon.service.model_runner import ModelRunner
 
 
 class RamalamaHandler(http.server.SimpleHTTPRequestHandler):
-
     def __init__(self, model_store_path: str, model_runner: ModelRunner, request, client_address, server):
         self.request = request
         self.client_address = client_address

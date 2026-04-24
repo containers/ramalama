@@ -31,9 +31,6 @@ a = Analysis(
         ('shortnames/shortnames.conf', 'share/ramalama'),
         # Include ramalama.conf
         ('docs/ramalama.conf', 'share/ramalama'),
-        # Include inference spec files
-        ('inference-spec/schema/*.json', 'share/ramalama/inference'),
-        ('inference-spec/engines/*', 'share/ramalama/inference'),
         # Include completions
         ('completions/bash-completion/completions/*', 'share/bash-completion/completions'),
         ('completions/fish/vendor_completions.d/*', 'share/fish/vendor_completions.d'),
@@ -64,7 +61,6 @@ a = Analysis(
         'ramalama.file_loaders',
         'argcomplete',
         'yaml',
-        'jsonschema',
         'jinja2',
     ],
     hookspath=[],

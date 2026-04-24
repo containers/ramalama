@@ -9,10 +9,11 @@ DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 MYPIP ?= pip
 IMAGE ?= ramalama
-PROJECT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-EXCLUDE_DIRS := .venv venv .tox build
-EXCLUDE_OPTS := $(addprefix --exclude-dir=,$(EXCLUDE_DIRS))
-PYTHON_SCRIPTS := $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" $(EXCLUDE_OPTS) $(PROJECT_DIR) || true)
+PROJECT_DIR ?= $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+EXCLUDE_DIRS ?= .venv venv .tox build
+EXCLUDE_OPTS ?= $(addprefix --exclude-dir=,$(EXCLUDE_DIRS))
+PYTHON_SCRIPTS ?= $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" $(EXCLUDE_OPTS) $(PROJECT_DIR) || true)
+RUFF_TARGETS ?= ramalama scripts test bin/ramalama
 E2E_IMAGE ?= localhost/e2e:latest
 
 default: help
@@ -108,43 +109,36 @@ docs: docs-manpages docsite-docs
 docs-manpages:
 	$(MAKE) -C docs
 
+# Preprocess *.md.in into *.md only (no go-md2man). Used by man-check in CI.
+.PHONY: docs-manpages-md
+docs-manpages-md:
+	$(MAKE) -C docs manpages-md
+
 docsite-docs:
 	$(MAKE) -C docsite convert
 
-ifeq (compile,$(findstring compile,$(INSIDE_EMACS)))
-FLAKE8_ARGS += --format=pylint
-endif
-
 .PHONY: lint
 lint:
-ifneq (,$(wildcard /usr/bin/python3))
-	${PYTHON} -m compileall -q -x '\.venv' .
-endif
-	! grep -ri $(EXCLUDE_OPTS) "#\!/usr/bin/python3" .
-	flake8 $(FLAKE8_ARGS) $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	! git grep -n -- '#!/usr/bin/python3' -- ':!Makefile'
+	ruff check $(RUFF_TARGETS)
 	shellcheck *.sh */*.sh */*/*.sh
 
 .PHONY: check-format
 check-format:
-	black --check --diff $(PROJECT_DIR) $(PYTHON_SCRIPTS)
-	isort --check --diff $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	ruff check --select I $(RUFF_TARGETS)
+	ruff format --check $(RUFF_TARGETS)
 
 .PHONY: format
 format:
-	black $(PROJECT_DIR) $(PYTHON_SCRIPTS)
-	isort $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	ruff check --select I --fix $(RUFF_TARGETS)
+	ruff format $(RUFF_TARGETS)
 
 .PHONY: codespell
 codespell:
 	codespell $(PROJECT_DIR) $(PYTHON_SCRIPTS)
 
-.PHONY: test-run
-test-run:
-	_RAMALAMA_TEST=local RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/030-run.bats
-	_RAMALAMA_OPTIONS=--nocontainer _RAMALAMA_TEST=local bats -T test/system/030-run.bats
-
 .PHONY: man-check
-man-check:
+man-check: docs-manpages-md
 ifeq ($(OS),Linux)
 	hack/man-page-checker
 	hack/xref-helpmsgs-manpages
@@ -152,7 +146,7 @@ endif
 
 .PHONY: type-check
 type-check:
-	mypy $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test $(PROJECT_DIR)
+	mypy --check-untyped-defs $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test $(PROJECT_DIR)
 
 .PHONY: validate
 validate: codespell lint check-format man-check type-check
@@ -167,24 +161,12 @@ pypi-build:   clean
 pypi: pypi-build
 	python3 -m twine upload dist/*
 
-.PHONY: bats
-bats:
-	RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
-
-.PHONY: bats-nocontainer
-bats-nocontainer:
-	_RAMALAMA_TEST_OPTS=--nocontainer RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
-
-.PHONY: bats-docker
-bats-docker:
-	_RAMALAMA_TEST_OPTS=--engine=docker RAMALAMA=$(CURDIR)/bin/ramalama bats -T test/system/
-
 .PHONY: e2e-image
 e2e-image:
 	podman inspect $(E2E_IMAGE) &> /dev/null || \
 		podman build -t $(E2E_IMAGE) -f container-images/e2e/Containerfile .
 
-e2e-tests-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
+e2e-tests-in-container slow-tests-in-container: extra-opts = --security-opt unmask=/proc/* --device /dev/net/tun
 
 %-in-container: e2e-image
 	podman run --rm \
@@ -222,21 +204,26 @@ detailed-cov-tests: requires-tox
 
 .PHONY: e2e-tests
 e2e-tests: requires-tox
-	# This makefile target runs the new e2e-tests pytest based
 	tox -q -e e2e
 
 .PHONY: e2e-tests-nocontainer
 e2e-tests-nocontainer: requires-tox
-	# This makefile target runs the new e2e-tests pytest based
 	tox -q -e e2e -- --no-container
 
 .PHONY: e2e-tests-docker
 e2e-tests-docker: requires-tox
-	# This makefile target runs the new e2e-tests pytest based
 	tox -q -e e2e -- --container-engine=docker
 
+.PHONY: slow-tests
+slow-tests: requires-tox
+	tox -q -e slow
+
+.PHONY: slow-tests-docker
+slow-tests-docker: requires-tox
+	tox -q -e slow -- --container-engine=docker
+
 .PHONY: end-to-end-tests
-end-to-end-tests: validate e2e-tests e2e-tests-nocontainer ci
+end-to-end-tests: validate e2e-tests e2e-tests-nocontainer slow-tests ci
 	make clean
 	hack/tree_status.sh
 
@@ -248,15 +235,11 @@ tests: unit-tests end-to-end-tests
 
 .PHONY: rag-requirements
 rag-requirements:
-	touch container-images/common/requirements-rag.in
-	make -C container-images/common rag-requirements
+	touch container-images/common/*.in
+	make -C container-images/common tools-requirements requirements-rag.txt
 
 .PHONY: clean
 clean:
-	@find . -name \*~ -delete
-	@find . -name \*# -delete
-	@find . -name \*.rej -delete
-	@find . -name \*.orig -delete
 	make -C docs clean
 	make -C docsite clean clean-generated
-	rm -rf $$(<.gitignore)
+	find . -depth -print0 | git check-ignore --stdin -z | xargs -0 rm -rf

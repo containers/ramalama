@@ -2,14 +2,16 @@ name: Install RamaLama
 
 on:
   push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
 
 jobs:
   install_ramalama:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.repository_owner != 'containers'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]  # Runs on Ubuntu and macOS

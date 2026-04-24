@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/containers/ramalama?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: >-
+      event == "push" && target_branch == "main"
+  labels:
+    appstudio.openshift.io/application: ramalama
+    appstudio.openshift.io/component: cuda-tools
+    pipelines.appstudio.openshift.io/type: build
+  name: cuda-tools-on-push
+  namespace: ramalama-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/ramalama-tenant/cuda-tools:{{revision}}
+  - name: dockerfile
+    value: container-images/common/Containerfile.tools
+  - name: build-args
+    value:
+    - PARENT=docker.io/nvidia/cuda:12.8.1-devel-ubi9
+    - TORCH_BACKEND=cu128
+  pipelineRef:
+    name: push-pipeline
+  timeouts:
+    pipeline: 12h
+    finally: 15m
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-cuda-tools
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 from ramalama.chat import chat
@@ -40,9 +42,7 @@ class APITransport(TransportBase):
         return f"{self.model_organization}/{self.model_name}"
 
     def _get_entry_model_path(self, use_container: bool, should_generate: bool, dry_run: bool) -> str:
-        raise NotImplementedError(
-            f"{self.model} is provided over a hosted API preventing direct pulling of the model file."
-        )
+        return ''
 
     def _get_mmproj_path(self, use_container: bool, should_generate: bool, dry_run: bool):
         return None
@@ -52,9 +52,6 @@ class APITransport(TransportBase):
 
     def remove(self, args):
         raise NotImplementedError("Hosted API transports do not support removing remote models.")
-
-    def bench(self, args, cmd: list[str]):
-        raise NotImplementedError("bench is not supported for hosted API transports.")
 
     def run(self, args, server_cmd: list[str]):
         """Connect directly to the provider instead of launching a local server."""
@@ -69,12 +66,6 @@ class APITransport(TransportBase):
             self.provider.api_key = args.api_key
 
         chat(args, provider=self.provider)
-
-    def perplexity(self, args, cmd: list[str]):
-        raise NotImplementedError("perplexity is not supported for hosted API transports.")
-
-    def serve(self, args, cmd: list[str]):
-        raise NotImplementedError("Hosted API transports cannot be served locally.")
 
     def exists(self) -> bool:
         return True

@@ -4,11 +4,10 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from ramalama.command.factory import assemble_command
 from ramalama.common import MNT_DIR
-from ramalama.config import get_config
+from ramalama.config import ActiveConfig
 from ramalama.transports.base import Transport, compute_ports, compute_serving_port
-from ramalama.transports.oci import OCI
+from ramalama.transports.oci.oci import OCI
 from ramalama.transports.transport_factory import TransportFactory
 
 
@@ -18,16 +17,25 @@ class ARGS:
     container = True
 
 
-config = get_config()
-
-DEFAULT_PORT_RANGE = config.default_port_range
-DEFAULT_PORT = int(config.port)
-
 hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
 ms_granite_blob = "https://modelscope.cn/models/ibm-granite/granite-3b-code-base-2k-GGUF/file/view"
-_CONFIG = get_config()
+_CONFIG = ActiveConfig()
 DEFAULT_PORT = int(_CONFIG.port)
 DEFAULT_PORT_RANGE = _CONFIG.default_port_range
+
+
+@pytest.fixture
+def force_oci_image(monkeypatch):
+    from ramalama.transports.oci.strategy import OCIStrategyFactory
+
+    monkeypatch.setattr(OCIStrategyFactory, "resolve", lambda self, model: self.strategies("image"))
+
+
+@pytest.fixture
+def force_oci_artifact(monkeypatch):
+    from ramalama.transports.oci.strategy import OCIStrategyFactory
+
+    monkeypatch.setattr(OCIStrategyFactory, "resolve", lambda self, model: self.strategies("artifact"))
 
 
 @pytest.mark.parametrize(
@@ -86,7 +94,13 @@ DEFAULT_PORT_RANGE = _CONFIG.default_port_range
         ),
     ],
 )
-def test_extract_model_identifiers(model_input: str, expected_name: str, expected_tag: str, expected_orga: str):
+def test_extract_model_identifiers(
+    model_input: str,
+    expected_name: str,
+    expected_tag: str,
+    expected_orga: str,
+    force_oci_image,
+):
     args = ARGS()
     args.engine = "podman"
     name, tag, orga = TransportFactory(model_input, args).create().extract_model_identifiers()
@@ -171,39 +185,73 @@ def test_compute_serving_port(
                 assert outputPort == expectedOutput
 
 
+def test_rag_args_clears_port_override():
+    """Test that _rag_args removes port_override so model gets a random port."""
+    from ramalama.cli import _rag_args
+
+    args = Namespace(
+        port="8080",
+        port_override=True,
+        rag="localhost/rag-data:latest",
+        rag_image="localhost/rag-image:latest",
+        engine="podman",
+        name="myname",
+        debug=False,
+        api="",
+    )
+
+    random_port = "12345"
+    mock_compute_ports = Mock(return_value=[int(random_port)])
+    mock_socket_inst = MagicMock()
+    mock_socket_inst.bind = MagicMock(side_effect=[None])
+
+    with (
+        patch('ramalama.transports.base.compute_ports', mock_compute_ports),
+        patch('socket.socket', return_value=mock_socket_inst),
+    ):
+        rag_args = _rag_args(args)
+
+    # port_override must be removed so compute_serving_port picks a random port
+    assert not hasattr(args, 'port_override'), "port_override should be removed from model args"
+    # The model port must equal the mocked random port
+    assert args.port == random_port
+    # The RAG proxy should have gotten the user's original port
+    assert rag_args.port == "8080"
+    # model_port on the rag_args should match the model's assigned port
+    assert rag_args.model_port == random_port
+
+
 class TestMLXRuntime:
     """Test MLX runtime functionality"""
 
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
-    def test_mlx_validation_container_no_error(self, mock_machine, mock_system):
-        """Test that MLX runtime validation passes when mocking macOS with Apple Silicon"""
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
+    def test_mlx_post_process_args_container_no_error(self, mock_machine, mock_system):
+        """Test that MLX post_process_args passes on macOS with Apple Silicon"""
+        from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
+
         mock_system.return_value = "Darwin"
         mock_machine.return_value = "arm64"
 
         args = Namespace(runtime="mlx", container=True)
+        MlxPlugin().post_process_args(args)
 
-        model = Transport("test-model", "/tmp/store")
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
+    def test_mlx_post_process_args_non_macos_error(self, mock_machine, mock_system):
+        """Test that MLX post_process_args fails on non-macOS systems"""
+        from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
 
-        # Should not raise an error since we're mocking macOS with Apple Silicon
-        model.validate_args(args)
-
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
-    def test_mlx_validation_non_macos_error(self, mock_machine, mock_system):
-        """Test that MLX runtime fails on non-macOS systems"""
         mock_system.return_value = "Linux"
         mock_machine.return_value = "x86_64"
 
         args = Namespace(runtime="mlx", container=False, privileged=False)
 
-        model = Transport("test-model", "/tmp/store")
-
         with pytest.raises(ValueError, match="MLX runtime is only supported on macOS"):
-            model.validate_args(args)
+            MlxPlugin().post_process_args(args)
 
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
     def test_mlx_validation_success(self, mock_machine, mock_system):
         """Test that MLX runtime passes validation on macOS with --nocontainer"""
         mock_system.return_value = "Darwin"
@@ -216,15 +264,20 @@ class TestMLXRuntime:
         # Should not raise any exception
         model.validate_args(args)
 
-    @patch('ramalama.transports.base.platform.system')
-    @patch('ramalama.transports.base.platform.machine')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
     @patch('ramalama.transports.base.Transport.serve_nonblocking', return_value=MagicMock())
     @patch('ramalama.chat.chat')
     @patch('socket.socket')
     def test_mlx_run_uses_server_client_model(
         self, mock_socket_class, mock_chat, mock_serve_nonblocking, mock_machine, mock_system
     ):
-        """Test that MLX runtime uses server-client model in run method"""
+        """Test that MLX runtime uses server-client model in run command"""
+        import ramalama.plugins.loader as factory_module
+        import ramalama.transports.base as base_module
+        import ramalama.transports.transport_factory as tf_module
+        from ramalama.plugins.loader import get_runtime
+
         mock_system.return_value = "Darwin"
         mock_machine.return_value = "arm64"
 
@@ -235,7 +288,6 @@ class TestMLXRuntime:
         mock_socket.__exit__.return_value = False
         mock_socket_class.return_value = mock_socket
 
-        # Add all required arguments for the run method
         args = Namespace(
             subcommand="run",
             runtime="mlx",
@@ -243,90 +295,115 @@ class TestMLXRuntime:
             privileged=False,
             debug=False,
             MODEL="test-model",
-            ARGS=None,  # No prompt arguments
-            pull="missing",  # Required for get_model_path
-            dryrun=True,  # use dryrun to avoid file system checks
+            ARGS=None,
+            pull="missing",
+            dryrun=True,
             store="/tmp/store",
             port="8080",
             engine="podman",
+            rag=None,
+            name=None,
+            noout=False,
         )
 
         model = Transport(args.MODEL, args.store)
-        cmd = assemble_command(args)
 
-        with patch.object(model, 'get_container_name', return_value="test-container"):
-            with patch('sys.stdin.isatty', return_value=True):  # Mock tty for interactive mode
-                model.run(args, cmd)
+        with (
+            patch.object(tf_module, 'New', return_value=model),
+            patch.object(model, 'ensure_model_exists'),
+            patch.object(base_module, 'compute_serving_port', return_value="8080"),
+            patch.object(factory_module, 'assemble_command', return_value=[]),
+        ):
+            plugin = get_runtime("mlx")
+            plugin._run_handler(args)
+
+        # Verify that serve_nonblocking was called (server-client model)
+        mock_serve_nonblocking.assert_called_once()
 
         # Verify that chat.chat was called (parent process)
         mock_chat.assert_called_once()
-
-        # Verify that serve_nonblocking was called (indicating server-client model) and that the server_process is set
-        mock_serve_nonblocking.assert_called_once()
         assert mock_chat.call_args[0][0].server_process == mock_serve_nonblocking.return_value
 
-        # Verify args were set up correctly for server-client model
         # MLX runtime uses OpenAI-compatible endpoints under /v1
         assert args.url == "http://127.0.0.1:8080/v1"
 
 
-class TestOCIModelSetupMounts:
-    """Test the OCI model setup_mounts functionality that was refactored"""
+class TestOCIModelSetupMountsPodman:
+    """Test OCI model setup_mounts for Podman"""
 
     @pytest.fixture
-    def mock_engine(self):
-        """Create a mock engine for testing"""
+    def mock_podman_engine(self):
+        """Create a mock Podman engine for testing"""
         engine = Mock()
         engine.use_podman = True
+        engine.use_docker = False
         engine.add = Mock()
         return engine
 
     @pytest.fixture
-    def oci_model(self):
-        """Create an OCI model for testing"""
+    def oci_model_podman(self, force_oci_image):
+        """Create a Podman OCI model for testing"""
         model = OCI("test-registry.io/test-model:latest", "/tmp/store", "podman")
         return model
 
-    def test_setup_mounts_dryrun(self, oci_model, mock_engine):
+    def test_setup_mounts_dryrun(self, oci_model_podman, mock_podman_engine):
         """Test that setup_mounts returns early on dryrun"""
         args = Namespace(dryrun=True)
-        oci_model.engine = mock_engine
+        oci_model_podman.engine = mock_podman_engine
 
-        result = oci_model.setup_mounts(args)
+        result = oci_model_podman.setup_mounts(args)
 
         assert result is None
-        mock_engine.add.assert_not_called()
+        mock_podman_engine.add.assert_not_called()
 
-    def test_setup_mounts_oci_podman(self, oci_model, mock_engine):
+    def test_setup_mounts_oci_podman(self, oci_model_podman, mock_podman_engine):
         """Test OCI model mounting with Podman (image mount)"""
         args = Namespace(dryrun=False)
-        mock_engine.use_podman = True
-        oci_model.engine = mock_engine
+        oci_model_podman.engine = mock_podman_engine
 
-        oci_model.setup_mounts(args)
+        oci_model_podman.setup_mounts(args)
 
-        expected_mount = f"--mount=type=image,src={oci_model.model},destination={MNT_DIR},subpath=/models,rw=false"
-        mock_engine.add.assert_called_once_with([expected_mount])
+        expected_mount = (
+            f"--mount=type=image,src={oci_model_podman.model},destination={MNT_DIR},subpath=/models,rw=false"
+        )
+        mock_podman_engine.add.assert_called_once_with([expected_mount])
+
+
+class TestOCIModelSetupMountsDocker:
+    """Test OCI model setup_mounts for Docker"""
+
+    @pytest.fixture
+    def mock_docker_engine(self):
+        """Create a mock Docker engine for testing"""
+        engine = Mock()
+        engine.use_podman = False
+        engine.use_docker = True
+        engine.add = Mock()
+        return engine
+
+    @pytest.fixture
+    def oci_model_docker(self, force_oci_image):
+        """Create a Docker OCI model for testing"""
+        model = OCI("test-registry.io/test-model:latest", "/tmp/store", "docker")
+        return model
 
     @patch('ramalama.transports.base.populate_volume_from_image')
-    def test_setup_mounts_oci_docker(self, mock_populate_volume, oci_model, mock_engine):
+    def test_setup_mounts_oci_docker(self, mock_populate_volume, oci_model_docker, mock_docker_engine):
         """Test OCI model mounting with Docker (volume mount using populate_volume_from_image)"""
         args = Namespace(dryrun=False, container=True, generate=False, engine="docker")
-        mock_engine.use_podman = False
-        mock_engine.use_docker = True
-        oci_model.engine = mock_engine
+        oci_model_docker.engine = mock_docker_engine
 
         mock_volume_name = "ramalama-models-abc123"
         mock_populate_volume.return_value = mock_volume_name
 
-        oci_model.setup_mounts(args)
+        oci_model_docker.setup_mounts(args)
 
         # Verify populate_volume_from_image was called
         mock_populate_volume.assert_called_once()
         call_args = mock_populate_volume.call_args
-        assert call_args[0][0] == oci_model  # model argument
+        assert call_args[0][0] == oci_model_docker  # model argument
         assert call_args[0][1] is args
 
         # Verify mount command was added
         expected_mount = f"--mount=type=volume,src={mock_volume_name},dst={MNT_DIR},readonly"
-        mock_engine.add.assert_called_once_with([expected_mount])
+        mock_docker_engine.add.assert_called_once_with([expected_mount])

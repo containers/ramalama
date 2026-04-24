@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
+import pytest
+
 from ramalama.layered_config import LayeredMixin, build_subconfigs, deep_merge, extract_defaults
 
 
@@ -565,7 +567,7 @@ class TestLayeredMixin:
 
         config = self.LayeredTestConfig(layer1, layer2)
 
-        assert config.name == "layer1"
+        assert config.name == "layer2"
         assert config.value == 100  # from layer1
         assert config.is_set("name") is True
         assert config.is_set("value") is True
@@ -623,7 +625,7 @@ class TestLayeredMixin:
         config = self.LayeredTestConfig(layer1, layer2)
 
         expected_settings = {
-            "database": {"host": "localhost", "port": 5432, "password": "secret"},
+            "database": {"host": "localhost", "port": 5433, "password": "secret"},
             "logging": {"level": "debug", "file": "/var/log/app.log"},
         }
         assert config.settings == expected_settings
@@ -640,14 +642,14 @@ class TestLayeredMixin:
         assert not hasattr(config, "invalid_field")
 
     def test_layered_mixin_reverse_order_processing(self):
-        """Test that layers are processed in reverse order (last wins)."""
+        """Test that layers are processed in correct order (last wins)."""
         layer1 = {"name": "first"}
         layer2 = {"name": "second", "value": 2}
         layer3 = {"name": "third"}
 
         config = self.LayeredTestConfig(layer1, layer2, layer3)
 
-        assert config.name == "first"
+        assert config.name == "third"
         assert config.value == 2
 
     def test_layered_mixin_with_dataclass_subconfigs(self):
@@ -672,6 +674,32 @@ class TestLayeredMixin:
         config = LayeredConfigWithSubconfig(layer1, layer2)
 
         assert config.name == "layer1"
+        assert config.is_set("name") is True
         assert isinstance(config.subconfig, SubConfig)
-        assert config.subconfig.enabled is True
+        assert config.subconfig.enabled is False
         assert config.subconfig.timeout == 60
+
+    def test_layered_mixin_is_set(self):
+        """Test that is_set correctly tracks if a value has been explicitly set."""
+
+        @dataclass
+        class ConfigWithDefaults:
+            name: str = "default"
+            from_layer: int = 42
+            set_at_attribute: str = "changeme"
+
+        class LayeredConfigWithDefaults(LayeredMixin, ConfigWithDefaults):
+            pass
+
+        config = LayeredConfigWithDefaults({}, {"from_layer": 100})
+        assert config.is_set("name") is False
+        assert config.is_set("from_layer") is True
+        assert config.is_set("set_at_attribute") is False
+        config.set_at_attribute = "changed"
+        assert config.is_set("set_at_attribute") is True
+
+    def test_layered_mixin_set_unknown_field(self):
+        """Test that an error is raised for setting unknown fields."""
+        config = self.LayeredTestConfig({'name': 'value'})
+        with pytest.raises(AttributeError):
+            config.unknown_field = "value"

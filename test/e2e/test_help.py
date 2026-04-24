@@ -5,12 +5,12 @@ import re
 import string
 from pathlib import Path
 from subprocess import STDOUT, CalledProcessError
-from test.conftest import skip_if_no_container
-from test.e2e.utils import RamalamaExecWorkspace, check_output, get_ramalama_subcommands
 
 import pytest
 
 from ramalama.version import version as ramalama_version
+from test.conftest import skip_if_no_container
+from test.e2e.utils import RamalamaExecWorkspace, check_output, get_ramalama_subcommands
 
 DEFAULT_IMAGE_PATTERN = re.compile(
     r"--image IMAGE\s+(?P<help_msg>[\w\s]+)\s\(default:\s+(?P<image>[^:]+):(?P<image_tag>[^)]+)",
@@ -28,7 +28,7 @@ DEFAULT_CONTAINER_ENGINE_PATTERN = re.compile(
 )
 
 DEFAULT_RUNTIME_PATTERN = re.compile(
-    r"\s+specify the runtime to use; valid options are.*\s+\(default: (?P<runtime>[\w.]+)\)",
+    r"\s+specify the inference engine runtime to use \(default: (?P<runtime>[\w.]+)\)",
     re.MULTILINE,
 )
 
@@ -57,7 +57,7 @@ def test_help_command_flags():
     # Test for regression of #7273 (spurious "--remote" help on output)
     for help_opt in ["help", "-h", "--help"]:
         result = check_output(["ramalama", help_opt])
-        assert re.search(r"^usage: ramalama \[-h] \[--debug] \[--dryrun] \[--engine {podman,docker}]", result)
+        assert re.search(r"^usage: ramalama \[-h] \[-v] \[--debug.*] \[--dryrun] \[--engine {podman,docker}]", result)
 
 
 @pytest.mark.e2e
@@ -81,7 +81,7 @@ def test_help_output(subcommand):
     assert result.startswith(f"usage: ramalama {usage_cmd_name}")
 
     # Check if the option section is rendered
-    assert re.search("^options:$", result, re.MULTILINE)
+    assert re.search("^(options|optional arguments):$", result, re.MULTILINE)
 
 
 @pytest.mark.e2e
@@ -153,7 +153,7 @@ def test_default_image_by_env_variable_and_config(command):
 def test_default_container_engine():
     result = check_output(["ramalama", "--help"])
     match = DEFAULT_CONTAINER_ENGINE_PATTERN.search(result.replace("\n", ""))
-    assert match.group("engine") in ['podman', 'docker']
+    assert match and match.group("engine") in ['podman', 'docker']
 
 
 @pytest.mark.e2e
@@ -223,7 +223,7 @@ def test_default_runtime():
 @pytest.mark.e2e
 def test_default_runtime_variable_precedence():
     env_runtime = "mlx"
-    config_runtime = "lamma.cpp"
+    config_runtime = "llama.cpp"
     param_runtime = "vllm"
 
     config = f"""
@@ -390,5 +390,7 @@ def test_default_api_key():
     with RamalamaExecWorkspace(config=config, env_vars={"RAMALAMA_API_KEY": api_key}) as ctx:
         result = ctx.check_output(["ramalama", "chat", "--help"])
         match = f"default: {api_key}" in result
-        assert match, f"Environment variable should override config file: expected \
+        assert match, (
+            f"Environment variable should override config file: expected \
         {api_key}"
+        )

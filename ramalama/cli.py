@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import copy
 import errno
@@ -7,37 +9,29 @@ import shlex
 import subprocess
 import sys
 import urllib.error
-from dataclasses import asdict
 from datetime import datetime, timezone
 from functools import lru_cache
-from textwrap import dedent
-from typing import Any, get_args
+from typing import Any, Optional, get_args
 from urllib.parse import urlparse
-
-from ramalama.benchmarks.manager import BenchmarksManager
 
 # if autocomplete doesn't exist, just do nothing, don't break
 try:
     import argcomplete
 
-    suppressCompleter: type[argcomplete.completers.SuppressCompleter] | None = argcomplete.completers.SuppressCompleter
+    suppressCompleter: Optional[type[argcomplete.completers.SuppressCompleter]] = (
+        argcomplete.completers.SuppressCompleter
+    )
 except Exception:
     suppressCompleter = None
 
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
-from ramalama.benchmarks.utilities import print_bench_results
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.command.factory import assemble_command
 from ramalama.common import accel_image, exec_cmd, get_accel, perror
 from ramalama.config import (
-    GGUF_QUANTIZATION_MODES,
     SUPPORTED_ENGINES,
-    SUPPORTED_RUNTIMES,
+    ActiveConfig,
     coerce_to_bool,
-    get_config,
-    get_inference_schema_files,
-    get_inference_spec_files,
     load_file_config,
 )
 from ramalama.config_types import COLOR_OPTIONS
@@ -46,12 +40,10 @@ from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
-from ramalama.path_utils import file_uri_to_path
+from ramalama.plugins.loader import get_all_runtimes, get_runtime
 from ramalama.prompt_utils import default_prefix
-from ramalama.rag import RagTransport, rag_image
+from ramalama.rag import rag_image
 from ramalama.shortnames import Shortnames
-from ramalama.stack import Stack
-from ramalama.transports.api import APITransport
 from ramalama.transports.base import (
     MODEL_TYPES,
     NoGGUFModelFileFound,
@@ -70,21 +62,24 @@ LIST_SORT_ORDER_OPTIONS = ["desc", "asc"]
 
 @lru_cache(maxsize=1)
 def default_image() -> str:
-    return accel_image(get_config())
+    return accel_image(ActiveConfig())
 
 
 @lru_cache(maxsize=1)
 def default_rag_image() -> str:
-    return rag_image(get_config())
+    return rag_image(ActiveConfig())
+
+
+@lru_cache(maxsize=1)
+def default_tools_image() -> str:
+    from ramalama.tools import tools_image
+
+    return tools_image(ActiveConfig())
 
 
 @lru_cache(maxsize=1)
 def get_shortnames():
     return Shortnames()
-
-
-def assemble_command_lazy(cli_args: argparse.Namespace) -> list[str]:
-    return assemble_command(cli_args)
 
 
 class ParsedGenerateInput:
@@ -161,7 +156,8 @@ def available_metadata(prefix, parsed_args, **kwargs):
         # Therefore it needs to be done explicitly here in order to support it
         resolved_model = get_shortnames().resolve(parsed_args.MODEL)
 
-        metadata = New(resolved_model, parsed_args).inspect_metadata()
+        model = New(resolved_model, parsed_args)
+        metadata: dict = getattr(model, "inspect_metadata", lambda: {})()
         return [field for field in metadata.keys() if field.startswith(parsed_args.get)]
     return []
 
@@ -200,20 +196,27 @@ def init_cli():
 
 def parse_args_from_cmd(cmd: list[str]) -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     """Parse arguments based on a command string"""
-    config = get_config()
+    config = ActiveConfig()
     if any(arg in ("--dryrun", "--dry-run", "--generate") or arg.startswith("--generate=") for arg in sys.argv[1:]):
         config.dryrun = True
     # Phase 1: Parse the initial arguments to set CONFIG.runtime etc... as this can affect the subcommands
     initial_parser = get_initial_parser()
     initial_args, _ = initial_parser.parse_known_args(cmd)
-    for arg in initial_args.__dict__.keys():
-        if hasattr(config, arg):
+    for arg in initial_args.__dict__.keys() & config._fields:
+        if getattr(initial_args, arg) != getattr(config, arg):
             setattr(config, arg, getattr(initial_args, arg))
 
     # Phase 2: Re-parse the arguments with the subcommands enabled
     parser = get_parser()
     args = parser.parse_args(cmd)
     post_parse_setup(args)
+
+    # Update config field that store runtime specific config which can be overridden via the cli
+    # e.g Config.image and Config.rag_image etc...
+    # TODO(owalsh): refactor this to remove runtime specific config from the global config object
+    for arg in args.__dict__.keys() & config._fields:
+        if getattr(args, arg) != getattr(config, arg):
+            setattr(config, arg, getattr(args, arg))
     return parser, args
 
 
@@ -251,13 +254,14 @@ def create_argument_parser(description: str, add_help: bool = True):
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=add_help,
     )
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s version " + version())
     configure_arguments(parser)
     return parser
 
 
 def configure_arguments(parser):
     """Configure the command-line arguments for the parser."""
-    config = get_config()
+    config = ActiveConfig()
     verbosity_group = parser.add_mutually_exclusive_group()
     parser.add_argument(
         "--container",
@@ -304,8 +308,8 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     parser.add_argument(
         "--runtime",
         default=config.runtime,
-        choices=get_args(SUPPORTED_RUNTIMES),
-        help="specify the runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx'",
+        choices=list(get_all_runtimes().keys()),
+        help="specify the inference engine runtime to use",
     )
     parser.add_argument(
         "--store",
@@ -323,24 +327,24 @@ def configure_subcommands(parser):
     """Add subcommand parsers to the main argument parser."""
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
-    bench_parser(subparsers)
-    benchmarks_parser(subparsers)
+    # Register subcommands only for the selected runtime plugin so that help
+    # output only shows subcommands the active runtime actually supports.
+    # get_config().runtime is already set by Phase 1 of parse_args_from_cmd
+    # before configure_subcommands() is called in Phase 2.
+    runtime = ActiveConfig().runtime
+    get_runtime(runtime).register_subcommands(subparsers)
     chat_parser(subparsers)
     containers_parser(subparsers)
-    convert_parser(subparsers)
     help_parser(subparsers)
     info_parser(subparsers)
     inspect_parser(subparsers)
     list_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
-    perplexity_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
-    rag_parser(subparsers)
     rm_parser(subparsers)
-    run_parser(subparsers)
-    serve_parser(subparsers)
+    sandbox_parser(subparsers)
     stop_parser(subparsers)
     version_parser(subparsers)
     daemon_parser(subparsers)
@@ -401,12 +405,6 @@ def post_parse_setup(args):
     if hasattr(args, "runtime_args"):
         args.runtime_args = shlex.split(args.runtime_args)
 
-    # MLX runtime automatically requires --nocontainer
-    if getattr(args, "runtime", None) == "mlx":
-        if getattr(args, "container", None) is True:
-            logger.info("MLX runtime automatically uses --nocontainer mode")
-        args.container = False
-
     if hasattr(args, 'pull'):
         args.pull = normalize_pull_arg(args.pull, getattr(args, 'engine', None))
 
@@ -416,8 +414,14 @@ def post_parse_setup(args):
     elif getattr(args, 'quiet', False):
         log_level = LogLevel.ERROR
     else:
-        log_level = get_config().log_level or LogLevel.WARNING
+        log_level = ActiveConfig().log_level or LogLevel.WARNING
     configure_logger(log_level)
+
+    # Allow the runtime plugin to mutate and validate args after logger is configured
+    # (e.g. MlxPlugin enforces Apple Silicon and sets args.container = False)
+    runtime = getattr(args, "runtime", None)
+    if runtime is not None:
+        get_runtime(runtime).post_process_args(args)
 
 
 def login_parser(subparsers):
@@ -442,7 +446,7 @@ def login_parser(subparsers):
 
 
 def normalize_registry(registry):
-    registry = registry or get_config().transport
+    registry = registry or ActiveConfig().transport
 
     if not registry or registry == "" or registry.startswith("oci://"):
         return "oci://"
@@ -507,14 +511,7 @@ def human_duration(d):
     return "1 year" if d < 63072000 else f"{d // 31536000} years"
 
 
-def bench_cli(args):
-
-    model = New(args.MODEL, args)
-    model.ensure_model_exists(args)
-    model.bench(args, assemble_command_lazy(args))
-
-
-def add_network_argument(parser, dflt: str | None = "none"):
+def add_network_argument(parser, dflt: Optional[str] = "none"):
     # Disable network access by default, and give the option to pass any supported network mode into
     # podman if needed:
     # https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net
@@ -534,71 +531,6 @@ def add_network_argument(parser, dflt: str | None = "none"):
             type=str,
             help="set the network mode for the container",
         )
-
-
-def bench_parser(subparsers):
-    parser = subparsers.add_parser("bench", aliases=["benchmark"], help="benchmark specified AI Model")
-    runtime_options(parser, "bench")
-    parser.add_argument("MODEL", completer=local_models)
-    parser.add_argument(
-        "--format",
-        choices=["table", "json"],
-        default="table",
-        help="output format (table or json)",
-    )
-    parser.set_defaults(func=bench_cli)
-
-
-def benchmarks_parser(subparsers):
-    config = get_config()
-    storage_folder = config.benchmarks.storage_folder
-    epilog = f"Storage folder: {storage_folder}" if storage_folder else "Storage folder: not configured"
-    parser = subparsers.add_parser(
-        "benchmarks",
-        help="manage and view benchmark results",
-        epilog=epilog,
-    )
-    parser.set_defaults(func=lambda _: parser.print_help())
-
-    benchmarks_subparsers = parser.add_subparsers(dest="benchmarks_command", metavar="[command]")
-
-    list_parser = benchmarks_subparsers.add_parser("list", help="list benchmark results")
-    list_parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        help="limit number of results to display",
-    )
-    list_parser.add_argument(
-        "--offset",
-        type=int,
-        default=0,
-        help="offset for pagination",
-    )
-    list_parser.add_argument(
-        "--format",
-        choices=["table", "json"],
-        default="table",
-        help="output format (table or json)",
-    )
-    list_parser.set_defaults(func=benchmarks_list_cli)
-
-
-def benchmarks_list_cli(args):
-    """Display a list of benchmark results from storage."""
-    config = get_config()
-    bench_manager = BenchmarksManager(config.benchmarks.storage_folder)
-    results = bench_manager.list()
-
-    if not results:
-        print("No benchmark results found")
-        return
-
-    if args.format == "json":
-        output = [asdict(item) for item in results]
-        print(json.dumps(output, indent=2, sort_keys=True))
-    else:
-        print_bench_results(results)
 
 
 def containers_parser(subparsers):
@@ -621,6 +553,12 @@ def list_containers(args):
 
 def info_parser(subparsers):
     parser = subparsers.add_parser("info", help="display information pertaining to setup of RamaLama.")
+    parser.add_argument(
+        "--shortnames",
+        dest="shortnames",
+        action="store_true",
+        help="display available shortnames",
+    )
     parser.set_defaults(func=info_cli)
 
 
@@ -699,6 +637,14 @@ def _list_models(args):
 
 def info_cli(args: DefaultArgsType) -> None:
     shortnames = get_shortnames()
+    if getattr(args, 'shortnames', None):
+        for name in sorted(shortnames.shortnames):
+            config_source = shortnames.config_sources.get(name)
+            source = shortnames.shortnames[name]
+
+            message = f"{name}={source} ({config_source})"
+            print(message)
+        return
     info: dict[str, Any] = {
         "Accelerator": get_accel(),
         "Config": load_file_config(),
@@ -706,18 +652,19 @@ def info_cli(args: DefaultArgsType) -> None:
             "Name": args.engine,
         },
         "Image": default_image(),
-        "Inference": {
+        "Runtimes": {
             "Default": args.runtime,
-            "Engines": {spec: str(path) for spec, path in get_inference_spec_files().items()},
-            "Schema": {schema: str(path) for schema, path in get_inference_schema_files().items()},
+            "Available": list(get_all_runtimes().keys()),
         },
         "RagImage": default_rag_image(),
-        "Selinux": get_config().selinux,
+        "Selinux": ActiveConfig().selinux,
         "Shortnames": {
             "Files": shortnames.paths,
             "Names": shortnames.shortnames,
+            "Sources": list(set(shortnames.config_sources.values())),
         },
         "Store": args.store,
+        "ToolsImage": default_tools_image(),
         "UseContainer": args.container,
         "Version": version(),
     }
@@ -776,7 +723,7 @@ def help_cli(args):
 
 
 def pull_parser(subparsers):
-    config = get_config()
+    config = ActiveConfig()
     parser = subparsers.add_parser("pull", help="pull AI Model from Model registry to local storage")
     parser.add_argument("--authfile", help="path of the authentication file")
     parser.add_argument(
@@ -801,81 +748,8 @@ def pull_cli(args):
     model.pull(args)
 
 
-def convert_parser(subparsers):
-    config = get_config()
-    parser = subparsers.add_parser(
-        "convert",
-        help="convert AI Model from local storage to OCI Image",
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument(
-        "--carimage",
-        default=config.carimage,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--gguf",
-        choices=get_args(GGUF_QUANTIZATION_MODES),
-        nargs="?",
-        const=config.gguf_quantization_mode,  # Used if --gguf is provided without value
-        default=None,  # Used if --gguf is not provided
-        help=f"GGUF quantization format. If specified without value, {config.gguf_quantization_mode} is used.",
-    )
-    add_network_argument(parser)
-    parser.add_argument(
-        "--rag-image",
-        default=default_rag_image(),
-        help="Image to use for conversion to GGUF",
-        action=OverrideDefaultAction,
-        completer=local_images,
-    )
-    parser.add_argument(
-        "--image",
-        default=default_image(),
-        help="Image to use for quantization",
-        action=OverrideDefaultAction,
-        completer=local_images,
-    )
-    parser.add_argument(
-        "--pull",
-        dest="pull",
-        type=str,
-        default=config.pull,
-        choices=["always", "missing", "never", "newer"],
-        help="pull image policy",
-    )
-    parser.add_argument(
-        "--type",
-        default=config.convert_type,
-        choices=["artifact", "car", "raw"],
-        help="""\
-type of OCI Model Image to push.
-
-Model "artifact" stores the AI Model as an OCI Artifact.
-Model "car" includes base image with the model stored in a /models subdir.
-Model "raw" contains the model and a link file model.file to it stored at /.""",
-    )
-    parser.add_argument("SOURCE")  # positional argument
-    parser.add_argument("TARGET")  # positional argument
-    parser.set_defaults(func=convert_cli)
-
-
-def convert_cli(args):
-    if not args.container:
-        raise ValueError("convert command cannot be run with the --nocontainer option.")
-
-    target = args.TARGET
-    shortnames = get_shortnames()
-    tgt = shortnames.resolve(target)
-
-    model = TransportFactory(tgt, args).create_oci()
-
-    source_model = _get_source_model(args)
-    model.convert(source_model, args)
-
-
 def push_parser(subparsers):
-    config = get_config()
+    config = ActiveConfig()
     parser = subparsers.add_parser(
         "push",
         help="push AI Model from local storage to remote registry",
@@ -934,6 +808,8 @@ def push_cli(args):
 
     if args.TARGET:
         shortnames = get_shortnames()
+        if source_model.type == "OCI":
+            raise ValueError(f"converting from an OCI based image {args.SOURCE} is not supported")
         target = shortnames.resolve(args.TARGET)
 
     target_model = New(target, args)
@@ -954,41 +830,8 @@ def push_cli(args):
 
 
 def runtime_options(parser, command):
-    config = get_config()
-    if command in ["run", "serve"]:
-        parser.add_argument(
-            "--api",
-            default=config.api,
-            choices=["llama-stack", "none"],
-            help="unified API layer for for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.",
-        )
+    config = ActiveConfig()
     parser.add_argument("--authfile", help="path of the authentication file")
-    if command in ["run", "perplexity", "serve"]:
-        parser.add_argument(
-            "--cache-reuse",
-            dest="cache_reuse",
-            type=int,
-            default=config.cache_reuse,
-            help="min chunk size to attempt reusing from the cache via KV shifting",
-            completer=suppressCompleter,
-        )
-        parser.add_argument(
-            "-c",
-            "--ctx-size",
-            dest="context",
-            type=int,
-            default=config.ctx_size,
-            help="size of the prompt context (0 = loaded from model)",
-            completer=suppressCompleter,
-        )
-        parser.add_argument(
-            "--max-model-len",
-            dest="context",
-            type=int,
-            default=config.ctx_size,
-            help=argparse.SUPPRESS,
-            completer=suppressCompleter,
-        )
     if command == "serve":
         parser.add_argument(
             "-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode"
@@ -1009,27 +852,6 @@ def runtime_options(parser, command):
         help="environment variables to add to the running container",
         completer=local_env,
     )
-    if command == "serve":
-        parser.add_argument(
-            "--generate",
-            type=parse_generate_option,
-            choices=GENERATE_OPTIONS,
-            help="generate specified configuration format for running the AI Model as a service",
-        )
-        parser.add_argument(
-            "--add-to-unit",
-            dest="add_to_unit",
-            action='append',
-            type=str,
-            help="add KEY VALUE pair to generated unit file in the section SECTION (only valid with --generate)",
-            metavar="SECTION:KEY:VALUE",
-        )
-        parser.add_argument(
-            "--host",
-            default=config.host,
-            help="IP address to listen",
-            completer=suppressCompleter,
-        )
     parser.add_argument(
         "--image",
         default=default_image(),
@@ -1045,12 +867,6 @@ def runtime_options(parser, command):
         help="""pass `--group-add keep-groups` to podman.
 If GPU device on host is accessible to via group access, this option leaks the user groups into the container.""",
     )
-    if command == "run":
-        parser.add_argument(
-            "--keepalive", type=str, help="duration to keep a model loaded (e.g. 5m)", completer=suppressCompleter
-        )
-    if command == "serve":
-        parser.add_argument("--model-draft", help="Draft model", completer=local_models)
     parser.add_argument(
         "-n",
         "--name",
@@ -1058,45 +874,12 @@ If GPU device on host is accessible to via group access, this option leaks the u
         help="name of container in which the Model will be run",
         completer=suppressCompleter,
     )
-    if command in ["run", "perplexity", "serve"]:
-        parser.add_argument(
-            "--max-tokens",
-            dest="max_tokens",
-            type=int,
-            default=config.max_tokens,
-            help="maximum number of tokens to generate (0 = unlimited)",
-            completer=suppressCompleter,
-        )
     add_network_argument(parser, dflt=None)
-    parser.add_argument(
-        "--ngl",
-        dest="ngl",
-        type=int,
-        default=config.ngl,
-        help="number of layers to offload to the gpu, if available",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
-        "--thinking",
-        default=config.thinking,
-        help="enable/disable thinking mode in reasoning models",
-        action=CoerceToBool,
-    )
     parser.add_argument(
         "--oci-runtime",
         help="override the default OCI runtime used to launch the container",
         completer=suppressCompleter,
     )
-    if command in ["run", "serve"]:
-        parser.add_argument(
-            "-p",
-            "--port",
-            type=parse_port_option,
-            default=config.port,
-            action=OverrideDefaultAction,
-            help="port for AI Model server to listen on",
-            completer=suppressCompleter,
-        )
     parser.add_argument(
         "--privileged", dest="privileged", action="store_true", help="give extended privileges to container"
     )
@@ -1108,26 +891,6 @@ If GPU device on host is accessible to via group access, this option leaks the u
         choices=["always", "missing", "never", "newer"],
         help='pull image policy',
     )
-    if command in ["run", "serve"]:
-        parser.add_argument(
-            "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
-        )
-        parser.add_argument(
-            "--rag-image",
-            default=default_rag_image(),
-            help="OCI container image to run with the specified RAG data",
-            action=OverrideDefaultAction,
-            completer=local_images,
-        )
-    if command in ["perplexity", "run", "serve"]:
-        parser.add_argument(
-            "--runtime-args",
-            dest="runtime_args",
-            default="",
-            type=str,
-            help="arguments to add to runtime invocation",
-            completer=suppressCompleter,
-        )
     parser.add_argument("--seed", help="override random seed", completer=suppressCompleter)
     parser.add_argument(
         "--selinux",
@@ -1136,54 +899,11 @@ If GPU device on host is accessible to via group access, this option leaks the u
         help="Enable SELinux container separation",
     )
     parser.add_argument(
-        "--temp",
-        type=float,
-        default=config.temp,
-        help="temperature of the response from the AI model",
-        completer=suppressCompleter,
-    )
-    def_threads = default_threads()
-    parser.add_argument(
-        "-t",
-        "--threads",
-        type=int,
-        default=def_threads,
-        help=f"number of cpu threads to use, the default is {def_threads} on this system, -1 means use this default",
-        completer=suppressCompleter,
-    )
-    parser.add_argument(
         "--tls-verify",
         dest="tlsverify",
         default=True,
         help="require HTTPS and verify certificates when contacting registries",
     )
-    if command == "serve":
-        parser.add_argument(
-            "--webui",
-            dest="webui",
-            choices=["on", "off"],
-            default="on",
-            help="enable or disable the web UI (default: on)",
-        )
-        parser.add_argument(
-            "--dri",
-            dest="dri",
-            choices=["on", "off"],
-            default="on",
-            help="mount /dev/dri into the container when running llama-stack (default: on)",
-        )
-
-
-def default_threads():
-    config = get_config()
-    if config.threads < 0:
-        nproc = os.cpu_count()
-        if nproc and nproc > 4:
-            return int(nproc / 2)
-
-        return 4
-
-    return config.threads
 
 
 def chat_run_options(parser):
@@ -1199,9 +919,15 @@ def chat_run_options(parser):
     parser.add_argument(
         "--summarize-after",
         type=int,
-        default=get_config().summarize_after,
+        default=ActiveConfig().summarize_after,
         metavar="N",
         help="automatically summarize conversation history after N messages to prevent context growth (0=disabled)",
+    )
+    parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="continue to interactive chat mode after processing stdin or prompt arguments",
     )
 
 
@@ -1216,7 +942,7 @@ def chat_parser(subparsers):
     parser.add_argument(
         "--api-key",
         type=str,
-        default=get_config().api_key,
+        default=ActiveConfig().api_key,
         help="""OpenAI-compatible API key.
         Can also be set in ramalama.conf or via the RAMALAMA_API_KEY environment variable.""",
     )
@@ -1234,13 +960,13 @@ def chat_parser(subparsers):
         "--max-tokens",
         dest="max_tokens",
         type=int,
-        default=get_config().max_tokens,
+        default=ActiveConfig().max_tokens,
         help="maximum number of tokens to generate (0 = unlimited)",
     )
     parser.add_argument(
         "--temp",
         type=float,
-        default=float(get_config().temp),
+        default=float(ActiveConfig().temp),
         help="temperature of the response from the AI model",
     )
     parser.add_argument(
@@ -1252,7 +978,6 @@ def chat_parser(subparsers):
 def _rag_args(args):
     args.noout = not args.debug
     rag_args = copy.copy(args)
-    rag_args.subcommand = f"{args.subcommand} --rag"
     rag_args.MODEL = args.rag
     rag_args.image = args.rag_image
     if args.engine == "podman":
@@ -1264,110 +989,26 @@ def _rag_args(args):
     # If --port was specified, use it for the RAG proxy, and
     # select a random port for the model
     args.port = None
+    # Remove port_override so compute_serving_port picks a random port
+    # for the model container instead of returning the now-None args.port
+    if hasattr(args, 'port_override'):
+        delattr(args, 'port_override')
     rag_args.model_port = args.port = compute_serving_port(args, exclude=[rag_args.port])
+    args.rag = None
     rag_args.model_args = args
     rag_args.generate = ""
     return rag_args
 
 
-def run_parser(subparsers):
-    parser = subparsers.add_parser("run", help="run specified AI Model as a chatbot")
-    runtime_options(parser, "run")
-    chat_run_options(parser)
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
+def sandbox_parser(subparsers):
+    parser = subparsers.add_parser("sandbox", help="run an AI agent in a sandbox, backed by a local AI Model")
+    parser.set_defaults(func=lambda _: parser.print_help())
+    sandbox_subparsers = parser.add_subparsers(dest="sandbox_agent")
 
-    parser.add_argument(
-        "ARGS",
-        nargs="*",
-        help="overrides the default prompt, and the output is returned without entering the chatbot",
-        completer=suppressCompleter,
-    )
-    parser._actions.sort(key=lambda x: x.option_strings)
-    parser.set_defaults(func=run_cli)
+    from ramalama.sandbox import add_sandbox_subparsers
 
-
-def run_cli(args):
-
-    try:
-        # detect available port and update arguments
-        args.port = compute_serving_port(args)
-        model = New(args.MODEL, args)
-        model.ensure_model_exists(args)
-    except KeyError as e:
-        logger.debug(e)
-        try:
-            args.quiet = True
-            model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-            model.ensure_model_exists(args)
-        except Exception as exc:
-            raise e from exc
-
-    is_api_transport = isinstance(model, APITransport)
-
-    if args.rag and is_api_transport:
-        raise ValueError("ramalama run --rag is not supported for hosted API transports.")
-
-    if args.rag:
-        if not args.container:
-            raise ValueError("ramalama run --rag cannot be run with the --nocontainer option.")
-        args = _rag_args(args)
-
-        model = RagTransport(model, assemble_command_lazy(args.model_args), args)
-        model.ensure_model_exists(args)
-
-    model.run(args, assemble_command_lazy(args))
-
-
-def serve_parser(subparsers):
-    parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
-    runtime_options(parser, "serve")
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
-    parser.set_defaults(func=serve_cli)
-
-
-def serve_cli(args):
-
-    if not args.container:
-        args.detach = False
-
-    if args.api == "llama-stack":
-        if not args.container:
-            raise ValueError("ramalama serve --api llama-stack command cannot be run with the --nocontainer option.")
-
-        stack = Stack(args)
-        return stack.serve()
-
-    try:
-        # detect available port and update arguments
-        args.port = compute_serving_port(args)
-
-        model = New(args.MODEL, args)
-        model.ensure_model_exists(args)
-    except KeyError as e:
-        try:
-            if "://" in args.MODEL:
-                raise e
-            args.quiet = True
-            model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-            model.ensure_model_exists(args)
-            # Since this is a OCI model, prepend oci://
-            args.MODEL = f"oci://{args.MODEL}"
-
-        except Exception:
-            raise e
-
-    if isinstance(model, APITransport):
-        raise ValueError("ramalama serve is not supported for hosted API transports.")
-
-    if args.rag:
-        if not args.container:
-            raise ValueError("ramalama serve --rag cannot be run with the --nocontainer option.")
-        args = _rag_args(args)
-
-        model = RagTransport(model, assemble_command_lazy(args.model_args), args)
-        model.ensure_model_exists(args)
-
-    model.serve(args, assemble_command_lazy(args))
+    for sub_parser in add_sandbox_subparsers(sandbox_subparsers, local_images, local_models):
+        runtime_options(sub_parser, "sandbox")
 
 
 def stop_parser(subparsers):
@@ -1396,7 +1037,7 @@ def stop_container(args):
 
 
 def daemon_parser(subparsers) -> None:
-    config = get_config()
+    config = ActiveConfig()
     parser: ArgumentParserWithDefaults = subparsers.add_parser("daemon", help="daemon operations")
     parser.set_defaults(func=lambda _: parser.print_help())
 
@@ -1483,7 +1124,7 @@ def daemon_start_cli(args):
         "--port",
         "8080" if is_daemon_in_container else args.port,
         "--host",
-        get_config().host if is_daemon_in_container else args.host,
+        ActiveConfig().host if is_daemon_in_container else args.host,
     ]
     exec_cmd(daemon_cmd)
 
@@ -1497,101 +1138,6 @@ def daemon_run_cli(args):
 def version_parser(subparsers):
     parser = subparsers.add_parser("version", help="display version of RamaLama")
     parser.set_defaults(func=print_version)
-
-
-class AddPathOrUrl(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        if not isinstance(values, list):
-            raise ValueError("AddPathOrUrl can only be used with the settings `nargs='+'`")
-
-        setattr(namespace, self.dest, [])
-        namespace.urls = []
-        for value in values:
-            parsed = urlparse(value)
-            if parsed.scheme in ["http", "https"]:
-                namespace.urls.append(value)
-            else:
-                getattr(namespace, self.dest).append(file_uri_to_path(value))
-
-
-def rag_parser(subparsers):
-    config = get_config()
-    parser = subparsers.add_parser(
-        "rag",
-        help="generate and convert retrieval augmented generation (RAG) data from provided documents into an OCI Image",
-    )
-    parser.add_argument(
-        "--env",
-        dest="env",
-        action='append',
-        type=str,
-        default=config.env,
-        help="environment variables to add to the running RAG container",
-        completer=local_env,
-    )
-    parser.add_argument(
-        "--format",
-        default=config.rag_format,
-        help="Output format for RAG Data",
-        choices=["qdrant", "json", "markdown", "milvus"],
-    )
-    parser.add_argument(
-        "--image",
-        default=default_rag_image(),
-        help="Image to use for generating RAG data",
-        action=OverrideDefaultAction,
-        completer=local_images,
-    )
-    parser.add_argument(
-        "--keep-groups",
-        dest="podman_keep_groups",
-        default=config.keep_groups,
-        action="store_true",
-        help="""pass `--group-add keep-groups` to podman.
-If GPU device on host is accessible to via group access, this option leaks the user groups into the container.""",
-    )
-    add_network_argument(parser, dflt=None)
-    parser.add_argument(
-        "--pull",
-        dest="pull",
-        type=str,
-        default=config.pull,
-        choices=["always", "missing", "never", "newer"],
-        help='pull image policy',
-    )
-    parser.add_argument(
-        "--selinux",
-        default=config.selinux,
-        action=CoerceToBool,
-        help="Enable SELinux container separation",
-    )
-    parser.add_argument(
-        "PATHS",
-        nargs="+",
-        help=dedent("""
-        Files/URLs/Directory containing PDF, DOCX, PPTX, XLSX, HTML, AsciiDoc & Markdown
-        formatted files to be processed"""),
-        action=AddPathOrUrl,
-    )
-    parser.add_argument(
-        "DESTINATION", help="Path or OCI Image name to contain processed rag data", completer=suppressCompleter
-    )
-    parser.add_argument(
-        "--ocr",
-        dest="ocr",
-        default=config.ocr,
-        action="store_true",
-        help="Enable embedded image text extraction from PDF (Increases RAM Usage significantly)",
-    )
-    parser.set_defaults(func=rag_cli)
-
-
-def rag_cli(args):
-    from ramalama import rag as rag_module
-
-    rag = rag_module.Rag(args.DESTINATION)
-    args.inputdir = rag_module.INPUT_DIR
-    rag.generate(args, assemble_command_lazy(args))
 
 
 def rm_parser(subparsers):
@@ -1620,12 +1166,7 @@ def _rm_model(models, args):
 
         try:
             m = New(model, args)
-            if m.remove(args):
-                continue
-            # Failed to remove and might be OCI so attempt to remove OCI
-            if args.ignore:
-                _rm_oci_model(model, args)
-                continue
+            m.remove(args)
         except (KeyError, subprocess.CalledProcessError) as e:
             for prefix in MODEL_TYPES:
                 if model.startswith(prefix + "://"):
@@ -1667,20 +1208,6 @@ def rm_cli(args):
         raise Exception(f"Failed to remove the following models: {failed_names}")
 
 
-def perplexity_parser(subparsers):
-    parser = subparsers.add_parser("perplexity", help="calculate perplexity for specified AI Model")
-    runtime_options(parser, "perplexity")
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
-    parser.set_defaults(func=perplexity_cli)
-
-
-def perplexity_cli(args):
-
-    model = New(args.MODEL, args)
-    model.ensure_model_exists(args)
-    model.perplexity(args, assemble_command_lazy(args))
-
-
 def inspect_parser(subparsers):
     parser = subparsers.add_parser("inspect", help="inspect an AI Model")
     parser.add_argument("--all", dest="all", action="store_true", help="display all available information of AI Model")
@@ -1693,15 +1220,20 @@ def inspect_parser(subparsers):
         help="display specific metadata field of AI Model",
     )
     parser.add_argument("--json", dest="json", action="store_true", help="display AI Model information in JSON format")
-    parser.add_argument("MODEL", completer=local_models)  # positional argument
+    parser.add_argument("MODEL", nargs="?", completer=local_models)  # positional argument
     parser.set_defaults(func=inspect_cli)
 
 
 def inspect_cli(args):
+    if not args.MODEL:
+        parser = get_parser()
+        parser.error("inspect requires MODEL")
     args.pull = "never"
 
     model = New(args.MODEL, args)
-    print(model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun))
+    inspect = model.inspect(args.all, args.get == "all", args.get, args.json, args.dryrun)  # type: ignore[call-arg]
+
+    print(inspect)
 
 
 def main() -> None:
