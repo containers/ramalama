@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Union
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -187,3 +188,30 @@ def test_transport_factory_passes_scheme_to_get_chat_provider(monkeypatch):
     assert captured["scheme"] == "openai"
     assert isinstance(transport, APITransport)
     assert transport.provider is provider
+
+
+def test_hf_pull_surfaces_http_error_not_notimplementederror():
+    """Regression test: HTTP errors (e.g. 404) from HF API must be surfaced to
+    the user rather than being masked by the generic 'huggingface cli download
+    not available' NotImplementedError raised by get_cli_download_args()."""
+    from argparse import Namespace
+
+    args = Namespace(quiet=True, verify=True)
+    model = Huggingface("huggingface://Qwen/Qwen2.5-7B-Instruct-GGUF/model.gguf", "/tmp/store")
+
+    http_error_key = "failed to pull https://huggingface.co/...: HTTP Error 404: Not Found"
+
+    mock_store = MagicMock()
+    mock_store.get_cached_files.return_value = ("tag", [], False)
+    mock_store.base_path = "/tmp/store"
+
+    with patch.object(type(model), "model_store", new_callable=PropertyMock, return_value=mock_store):
+        with patch.object(model, "create_repository", side_effect=KeyError(http_error_key)):
+            with patch("ramalama.hf_style_repo_base.available", return_value=True):
+                with patch("os.makedirs"), patch("tempfile.TemporaryDirectory") as mock_tmpdir:
+                    mock_tmpdir.return_value.__enter__ = lambda s: "/tmp/fake"
+                    mock_tmpdir.return_value.__exit__ = lambda s, *a: False
+                    with pytest.raises(KeyError) as exc_info:
+                        model.pull(args)
+
+    assert http_error_key in str(exc_info.value)
