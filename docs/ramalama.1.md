@@ -25,7 +25,7 @@ Note: On macOS systems that use Podman for containers, configure the Podman mach
 
 Note: On systems with NVIDIA GPUs, see **[ramalama-cuda(7)](ramalama-cuda.7.md)** to correctly configure the host system.
 
-RamaLama CLI defaults can be modified via ramalama.conf files. Default settings for flags are defined in **[ramalama.conf(5)](ramalama.conf.5.md)**.
+RamaLama CLI defaults can be modified via `ramalama.conf` files. Default settings for flags are defined in **[ramalama.conf(5)](ramalama.conf.5.md)**.
 
 ## FEDORA SILVERBLUE AND TOOLBOX
 
@@ -56,7 +56,7 @@ Because RamaLama defaults to running AI models inside rootless containers using 
 
 RamaLama supports multiple AI model registries types called transports. Supported transports:
 
-| Transports               | Prefix                        | Web Site |
+| Transports               | Prefix                        | Website |
 | ------------------------ | ----------------------------- | -------- |
 | URL based                | https://, http://, file://    | `https://web.site/ai.model`, `file://tmp/ai.model` |
 | HuggingFace              | huggingface://, hf://, hf.co/ | [`huggingface.co`](https://www.huggingface.co) |
@@ -110,15 +110,15 @@ Print debug messages.
 Show container runtime command without executing it (default: False).
 
 #### **--engine**
-Run RamaLama using the specified container engine. Default is `podman` if installed, otherwise Docker.
-The default can be overridden in the ramalama.conf file or via the RAMALAMA_CONTAINER_ENGINE environment variable.
+Run RamaLama using the specified container engine. Default is Podman if installed, otherwise Docker.
+The default can be overridden in the `ramalama.conf` file or via the `RAMALAMA_CONTAINER_ENGINE` environment variable.
 
 #### **--help**, **-h**
 Show this help message and exit.
 
 #### **--nocontainer**
-Do not run RamaLama workloads in containers (default: False)
-The default can be overridden in the ramalama.conf file.
+Do not run RamaLama workloads in containers (default: False).
+The default can be overridden in the `ramalama.conf` file.
 
 Note: OCI images cannot be used with the `--nocontainer` option. This option disables automatic GPU acceleration, containerized environment isolation, and dynamic resource allocation.
 
@@ -127,11 +127,11 @@ Decrease output verbosity.
 
 #### **--runtime**=*llama.cpp* | *vLLM*
 Specify the runtime to use. Valid options are `llama.cpp` and `vLLM` (default: `llama.cpp`).
-The default can be overridden in the ramalama.conf file.
+The default can be overridden in the `ramalama.conf` file.
 
 #### **--store**=STORE
 Store AI Models in the specified directory (default rootless: `$HOME/.local/share/ramalama`, default rootful: `/var/lib/ramalama`).
-The default can be overridden in the ramalama.conf file.
+The default can be overridden in the `ramalama.conf` file.
 
 #### **--version**, **-v**
 Show the program version and exit.
@@ -166,18 +166,18 @@ Show the program version and exit.
 
 **ramalama.conf** (`/usr/share/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf`, `/etc/ramalama/ramalama.conf.d/*.conf`, `$HOME/.config/ramalama/ramalama.conf`, `$HOME/.config/ramalama/ramalama.conf.d/*.conf`)
 
-RamaLama has built-in defaults for command line options. These defaults can be overridden using the ramalama.conf configuration files.
+RamaLama has built-in defaults for command line options. These defaults can be overridden using the `ramalama.conf` configuration files.
 
 Distributions ship the `/usr/share/ramalama/ramalama.conf` file with their default settings. Administrators can override fields in this file by creating the `/etc/ramalama/ramalama.conf` file. Users can further modify defaults by creating the `$HOME/.config/ramalama/ramalama.conf` file. RamaLama merges its built-in defaults with specified fields from these files if they exist. Fields specified in the user's file override the administrator's file, which overrides the distribution's file, which overrides the built-in defaults.
 
-RamaLama uses built-in defaults if no ramalama.conf file is found.
+RamaLama uses built-in defaults if no `ramalama.conf` file is found.
 
-If the **RAMALAMA_CONFIG** environment variable is set, then its value is used for the ramalama.conf file rather than the default.
+If the `RAMALAMA_CONFIG` environment variable is set, then its value is used for the `ramalama.conf` file rather than the default.
 
 ## ENVIRONMENT VARIABLES
 
 RamaLama default behavior can also be overridden via environment variables,
-although the recommended way is to use the ramalama.conf file.
+although the recommended way is to use the `ramalama.conf` file.
 
 | ENV Name                  | Description                                |
 | ------------------------- | ------------------------------------------ |
