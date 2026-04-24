@@ -25,12 +25,14 @@ ociimage_car = "org.containers.type=ai.image.model.car"
 class OCI(Transport):
     type = "OCI"
 
-    def __init__(self, model: str, model_store_path: str, conman: str, ignore_stderr: bool = False):
-        # Must fix the tag before the base class parses the name
+    def format_model(self, model: str) -> str:
         model_name = model.split('/')[-1]
         if ":" not in model_name:
             model = f"{model}:latest"
-        super().__init__(model, model_store_path)
+        return model
+
+    def __init__(self, model: str, model_store_path: str, conman: str, ignore_stderr: bool = False):
+        super().__init__(self.format_model(model), model_store_path)
 
         if not conman:
             raise ValueError("RamaLama OCI Images requires a container engine")
