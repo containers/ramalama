@@ -50,3 +50,4 @@ class TestRagTransportLocalDB:
         rt = _build_rag_transport(str(missing), force_oci_image, str(tmp_path / "store"))
 
         assert rt.kind is RagSource.IMAGE
+        assert rt.model.endswith(":latest")
