@@ -6,11 +6,7 @@ import stat
 
 from ramalama.log_levels import LogLevel
 
-DEFAULT_LOG_DIR = (
-    "/var/log/ramalama"
-    if os.geteuid() == 0
-    else os.path.join(os.path.expanduser("~"), ".local", "state", "ramalama")
-)
+DEFAULT_LOG_DIR = os.path.join(os.path.expanduser("~"), ".local", "state", "ramalama")
 
 # Global logger
 logger = logging.getLogger("ramalama-daemon")
