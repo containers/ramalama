@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEFAULT_LLAMA_CPP_COMMIT="75f3bc94e649616162981c322e8e6b88ca5491e8" # b8779
+DEFAULT_LLAMA_CPP_COMMIT="15fa3c493bfcd040b5f4dcb29e1c998a0846de16" # b8920
 MESA_VULKAN_VERSION=25.3.6-102.fc43
 
 dnf_install_intel_gpu() {
@@ -77,7 +77,7 @@ dnf_install() {
     "gcc-c++" "cmake" "vim" "procps-ng" "git-core"
     "dnf-plugins-core" "gawk" "openssl-devel")
   local vulkan_rpms=("vulkan-headers" "vulkan-loader-devel" "vulkan-tools"
-    "spirv-tools" "glslc" "glslang")
+    "spirv-tools" "spirv-headers-devel" "glslc" "glslang")
   if is_rhel_based; then
     dnf_install_epel # All the UBI-based ones
     dnf --enablerepo=ubi-9-appstream-rpms install -y "${rpm_list[@]}" --exclude "${rpm_exclude_list}"
