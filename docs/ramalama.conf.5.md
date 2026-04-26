@@ -63,7 +63,7 @@ The `ramalama` table contains default runtime and CLI settings.
 Options: `llama-stack`, `none`.
 
 **api_key**="": OpenAI-compatible API key.
-Can also be set via `RAMALAMA_API_KEY`.
+This value can also be set via `RAMALAMA_API_KEY`.
 
 **Model conversion options:**
 
@@ -255,4 +255,4 @@ The `ramalama.user` table contains user preferences.
 **no_missing_gpu_prompt**=false
 
 When `no_missing_gpu_prompt = true`, RamaLama suppresses the interactive prompt on macOS Podman VMs without GPU acceleration (for example, `applehv`).
-Can also be set via `RAMALAMA_USER__NO_MISSING_GPU_PROMPT`.
+This value can also be set via `RAMALAMA_USER__NO_MISSING_GPU_PROMPT`.
