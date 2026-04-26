@@ -28,6 +28,8 @@ def configure_logger(lvl: LogLevel = LogLevel.WARNING, log_file: str = DEFAULT_L
         raise NotADirectoryError(log_file)
     if directory_stat.st_mode & 0o002:
         raise PermissionError(log_file)
+    if not os.access(log_file, os.W_OK):
+        raise PermissionError(log_file)
 
     log_file_path = os.path.join(log_file, "ramalama-daemon.log")
     flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
