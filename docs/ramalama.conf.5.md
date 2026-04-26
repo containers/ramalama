@@ -15,12 +15,16 @@ RamaLama reads the following global configuration paths:
 | `/usr/local/share/ramalama/ramalama.conf` | Linux |
 | `/etc/ramalama/ramalama.conf` | Linux |
 | `/etc/ramalama/ramalama.conf.d/*.conf` | Linux |
-| `$HOME/.local/.pipx/venvs/usr/share/ramalama/ramalama.conf` | pipx install on macOS |
+| `$HOME/.local/pipx/venvs/ramalama/share/ramalama/ramalama.conf` | pipx install |
 
 RamaLama reads the following user configuration paths:
 
 | Path | Notes |
 | --- | --- |
+| `$XDG_DATA_HOME/ramalama/ramalama.conf` | Preferred data path |
+| `$XDG_DATA_HOME/ramalama/ramalama.conf.d/*.conf` | Additional data snippets |
+| `$HOME/.local/share/ramalama/ramalama.conf` | Used when `$XDG_DATA_HOME` is unset |
+| `$HOME/.local/share/ramalama/ramalama.conf.d/*.conf` | Used when `$XDG_DATA_HOME` is unset |
 | `$XDG_CONFIG_HOME/ramalama/ramalama.conf` | Preferred user path |
 | `$XDG_CONFIG_HOME/ramalama/ramalama.conf.d/*.conf` | Additional user snippets |
 | `$HOME/.config/ramalama/ramalama.conf` | Used when `$XDG_CONFIG_HOME` is unset |
