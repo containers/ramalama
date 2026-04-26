@@ -7,7 +7,7 @@ import platform
 import tempfile
 from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import run_cmd
@@ -303,7 +303,7 @@ class OpenClaw(Agent):
             )
 
     def _write_config(self, args: OpenClawArgsType) -> str:
-        config = {
+        config: dict[str, Any] = {
             "models": {
                 "providers": {
                     "openai": {
