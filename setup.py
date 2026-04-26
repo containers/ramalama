@@ -9,8 +9,7 @@ import re
 from setuptools import find_packages, setup
 
 # Read version without importing ramalama (it may not be installable yet)
-_version_match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']',
-                           open("ramalama/version.py").read(), re.MULTILINE)
+_version_match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', open("ramalama/version.py").read(), re.MULTILINE)
 if not _version_match:
     raise RuntimeError("Unable to find __version__ in ramalama/version.py")
 __version__ = _version_match.group(1)
