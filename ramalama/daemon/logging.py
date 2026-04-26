@@ -16,6 +16,9 @@ def configure_logger(lvl: LogLevel = LogLevel.WARNING, log_file: str = DEFAULT_L
     if logger.hasHandlers():
         return
 
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        raise PermissionError("ramalama-daemon must not run as root")
+
     logger.setLevel(lvl)
 
     fmt = "%(asctime)s - %(levelname)s - %(message)s"
