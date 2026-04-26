@@ -1,73 +1,67 @@
 % ramalama.conf 5 RamaLama AI tool configuration file
 
 # NAME
-ramalama.conf - These configuration files specifies default
-configuration options and command-line flags for RamaLama.
+ramalama.conf - configuration files that define default RamaLama options and CLI flag values.
 
 # DESCRIPTION
-RamaLama reads all ramalama.conf files, if they exists
-and modify the defaults for running RamaLama on the host. ramalama.conf uses
-a TOML format that can be easily modified and versioned.
+Use `ramalama.conf` to set defaults for RamaLama commands.
+RamaLama reads config files in order and merges values, where later files override earlier ones.
 
-RamaLama reads the he following paths for global configuration that effects all users.
+RamaLama reads the following global configuration paths:
 
-| Paths       | Exception |
-| ----------------------------------- | ----------------------------------- |
-| __/usr/share/ramalama/ramalama.conf__       | On Linux |
-| __/usr/local/share/ramalama/ramalama.conf__ | On Linux |
-| __/etc/ramalama/ramalama.conf__             | On Linux |
-| __/etc/ramalama/ramalama.conf.d/\*.conf__   | On Linux |
-| __$HOME/.local/.pipx/venvs/usr/share/ramalama/ramalama.conf__ |On pipx installed macOS  |
+| Path | Notes |
+| --- | --- |
+| `/usr/share/ramalama/ramalama.conf` | Linux |
+| `/usr/local/share/ramalama/ramalama.conf` | Linux |
+| `/etc/ramalama/ramalama.conf` | Linux |
+| `/etc/ramalama/ramalama.conf.d/*.conf` | Linux |
+| `$HOME/.local/.pipx/venvs/usr/share/ramalama/ramalama.conf` | pipx install on macOS |
 
+RamaLama reads the following user configuration paths:
 
-For user specific configuration it reads
+| Path | Notes |
+| --- | --- |
+| `$XDG_CONFIG_HOME/ramalama/ramalama.conf` | Preferred user path |
+| `$XDG_CONFIG_HOME/ramalama/ramalama.conf.d/*.conf` | Additional user snippets |
+| `$HOME/.config/ramalama/ramalama.conf` | Used when `$XDG_CONFIG_HOME` is unset |
+| `$HOME/.config/ramalama/ramalama.conf.d/*.conf` | Used when `$XDG_CONFIG_HOME` is unset |
 
-| Paths                                       | Exception |
-| -----------------------------------         | ------------------------------ |
-| __$XDG_CONFIG_HOME/ramalama/ramalama.conf__           |       |
-| __$XDG_CONFIG_HOME/ramalama/ramalama.conf.d/\*.conf__ |       |
-| __$HOME/.config/ramalama/ramalama.conf__ | `$XDG_CONFIG_HOME` not set |
-| __$HOME/.config/ramalama/ramalama.conf.d/\*.conf__ | `$XDG_CONFIG_HOME` not set |
-
-Fields specified in ramalama conf files override the default options, as well as
-options in previously read ramalama conf files.
-
-Config files in the `.d` directories, are added in alpha numeric sorted order and must end in `.conf`.
+Notes:
+- Files in `.d` directories are loaded in alphanumeric order.
+- Files in `.d` directories must end with `.conf`.
 
 ## ENVIRONMENT VARIABLES
-If the `RAMALAMA_CONFIG` environment variable is set, all system and user
-config files are ignored and only the specified config file is loaded.
+If `RAMALAMA_CONFIG` is set, RamaLama ignores all default system/user config paths and loads only the specified file.
 
 # FORMAT
-The [TOML format][toml] is used as the encoding of the configuration file.
-Every option is nested under its table. No bare options are used. The format of
-TOML can be simplified to:
+RamaLama uses TOML.
+Every setting is nested under a table (no bare options).
 
-    [table1]
-    option = value
+```toml
+[table1]
+option = "value"
 
-    [table2]
-    option = value
+[table2]
+option = "value"
 
-    [table3]
-    option = value
-
-    [table3.subtable1]
-    option = value
+[table3.subtable1]
+option = "value"
+```
 
 ## RAMALAMA TABLE
-The ramalama table contains settings to configure and manage the OCI runtime.
+The `ramalama` table contains default runtime and CLI settings.
 
 `[[ramalama]]`
 
-**api**="none"
+**Core runtime options:**
 
-Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.
-Options: llama-stack, none
+**api**="none": Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.
+Options: `llama-stack`, `none`.
 
-**api_key**=""
+**api_key**="": OpenAI-compatible API key.
+Can also be set via `RAMALAMA_API_KEY`.
 
-OpenAI-compatible API key. Can also be set via the RAMALAMA_API_KEY environment variable.
+**Model conversion options:**
 
 **backend**="auto"
 
@@ -101,45 +95,31 @@ backend = "vulkan"  # Force Vulkan for all GPUs
 
 **carimage**="registry.access.redhat.com/ubi10-micro:latest"
 
-OCI model car image
+**container**=true: Run RamaLama in a container by default.
+Override via `RAMALAMA_IN_CONTAINER`.
 
-Image to be used when building and pushing --type=car models
+**convert_type**="raw": Default object type when converting models.
+Options: `artifact`, `car`, `raw`.
 
-**container**=true
+| Type | Description |
+| --- | --- |
+| `artifact` | Store AI models as OCI artifacts |
+| `car` | Traditional OCI image with model under `/models` |
+| `raw` | OCI image with only the model and `model.file` link file at `/` |
 
-Run RamaLama in the default container.
-RAMALAMA_IN_CONTAINER environment variable overrides this field.
+**ctx_size**=0: Prompt context size. 0 means use the model default.
 
-**convert_type**="raw"
+**Container and engine options:**
 
-Convert the MODEL to the specified OCI Object
-Options: artifact, car, raw
+**engine**="podman": Container engine.
+Valid options: podman, docker.
+Override via `RAMALAMA_CONTAINER_ENGINE`.
 
-| Type     | Description                                                   |
-| -------- | ------------------------------------------------------------- |
-| artifact | Store AI Models as artifacts                                  |
-| car      | Traditional OCI image including base image with the model stored in a /models subdir |
-| raw      | Traditional OCI image including only the model and a link file `model.file` pointed at it stored at /   |
+**env**=[]: Environment variables added to the container runtime environment.
+Example: "LLAMA_ARG_THREADS=10".
 
-
-**ctx_size**=0
-
-Size of the prompt context (0 = loaded from model)
-
-**engine**="podman"
-
-Run RamaLama using the specified container engine.
-Valid options are: Podman and Docker
-This field can be overridden by the RAMALAMA_CONTAINER_ENGINE environment variable.
-
-**env**=[]
-
-Environment variables to be added to the environment used when running in a container engine (e.g., Podman, Docker). For example "LLAMA_ARG_THREADS=10".
-
-**gguf_quantization_mode**="Q4_K_M"
-
-The quantization mode used when creating OCI formatted AI Models.
-Available options: Q2_K, Q3_K_S, Q3_K_M, Q3_K_L, Q4_0, Q4_K_S, Q4_K_M, Q5_0, Q5_K_S, Q5_K_M, Q6_K, Q8_0.
+**gguf_quantization_mode**="Q4_K_M": Quantization mode used while creating OCI-formatted AI models.
+Options: `Q2_K`, `Q3_K_S`, `Q3_K_M`, `Q3_K_L`, `Q4_0`, `Q4_K_S`, `Q4_K_M`, `Q5_0`, `Q5_K_S`, `Q5_K_M`, `Q6_K`, `Q8_0`.
 
 **host**="::" | "0.0.0.0"
 
@@ -153,63 +133,43 @@ RAMALAMA_IMAGE environment variable overrides this field.
 
 `[[ramalama.images]]`
 
-User-override entries for runtime-specific container images. Each runtime plugin
-defines its own built-in defaults; entries here override those defaults.
+User-override entries for runtime-specific container images.
 
-For the llama.cpp runtime, set GPU env var names to override the image for that
-accelerator:
+**keep_groups**=false: Pass `--group-add keep-groups` when using podman.
+Useful in some rootless GPU access setups.
 
-  HIP_VISIBLE_DEVICES    = "quay.io/ramalama/rocm"
-  CUDA_VISIBLE_DEVICES   = "quay.io/ramalama/cuda"
-  ASAHI_VISIBLE_DEVICES  = "quay.io/ramalama/asahi"
-  INTEL_VISIBLE_DEVICES  = "quay.io/ramalama/intel-gpu"
-  ASCEND_VISIBLE_DEVICES = "quay.io/ramalama/cann"
-  MUSA_VISIBLE_DEVICES   = "quay.io/ramalama/musa"
+**log_level**=warning: Logging level.
+Valid values: `debug`, `info`, `warning`, `error`, `critical`.
+`--debug` overrides this field and forces debug logging.
 
-For the vllm runtime, use `VLLM` to override the image regardless of GPU, or
-`VLLM_<GPU_ENV_VAR>` to override for a specific accelerator:
+**max_tokens**=0: Maximum number of tokens to generate.
+Set to 0 for unlimited output.
 
-  VLLM                        = "registry.redhat.io/rhelai1/ramalama-vllm"
-  VLLM_CUDA_VISIBLE_DEVICES   = "docker.io/vllm/vllm-openai"
+**Serving options:**
 
-**keep_groups**=false
+**prefix**="": Default prompt prefix for `chat` and `run`.
 
-Pass `--group-add keep-groups` to podman, when using podman.
-In some cases this is needed to access the gpu from a rootless container
+| Container Engine | Prefix |
+| --- | --- |
+| Podman | "🦭 > " |
+| Docker | "🐋 > " |
+| No Engine | "🦙 > " |
+| No emoji support | "> " |
 
-**log_level**=warning
-Set the logging level of RamaLama application.
-Valid Values:
-    debug, info, warning, error, critical
-Note: --debug option overrides this field and forces the system to debug
+**port**="8080": Initial port for service allocation.
+RamaLama attempts a range of 101 ports starting from this value.
 
-**max_tokens**=0
+**pull**="newer": Pull policy for runtime images.
 
-Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
-This parameter is mapped to the appropriate runtime-specific parameter when executing models.
+- `always`: Always pull, fail on pull error.
+- `missing`: Pull only when local image is missing.
+- `never`: Never pull; use local image only.
+- `newer`: Pull when remote digest differs; suppress pull errors if local image exists.
 
-**prefix**=""
-Specify default prefix for chat and run command. By default the prefix
-is based on the container engine used.
+**RAG and storage options:**
 
-| Container Engine| Prefix  |
-| --------------- | ------- |
-| Podman          | "🦭 > " |
-| Docker          | "🐋 > " |
-| No Engine       | "🦙 > " |
-| No EMOJI support| "> "    |
-
-**port**="8080"
-
-Specify initial port for a range of 101 ports for services to listen on.
-If this port is unavailable, another free port from this range will be selected.
-
-**pull**="newer"
-
-- **always**: Always pull the image and throw an error if the pull fails.
-- **missing**: Only pull the image when it does not exist in the local containers storage. Throw an error if no image is found and the pull fails.
-- **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
-- **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
+**rag_format**="qdrant": Default output format for `ramalama rag`.
+Options: `qdrant`, `json`, `markdown`, `milvus`.
 
 **rag_image**="quay.io/ramalama/ramalama-rag"
 
@@ -230,86 +190,62 @@ entries here override those defaults:
 Can also be overridden with the `--tools-image` flag on the command line or the
 RAMALAMA_TOOLS_IMAGE environment variable.
 
-**runtime**="llama.cpp"
+**runtime**="llama.cpp": Inference runtime.
+Options: `llama.cpp`, `vllm`, `mlx`.
 
-Specify the AI runtime to use; valid options are 'llama.cpp', 'vllm', and 'mlx' (default: llama.cpp)
-Options: llama.cpp, vllm, mlx
+**selinux**=false: Enable SELinux container separation enforcement.
 
-**selinux**=false
+**store**="$HOME/.local/share/ramalama": Directory where AI models and data are stored.
 
-SELinux container separation enforcement
+**summarize_after**=4: Automatically summarize chat history after N messages to limit context growth.
+Set to 0 to disable.
 
-**store**="$HOME/.local/share/ramalama"
+**temp**="0.8": Response sampling temperature.
+- Lower values: more deterministic output
+- Higher values: more creative output (higher hallucination risk)
 
-Store AI Models in the specified directory
+**Transport and HTTP options:**
 
-**summarize_after**=4
-
-Automatically summarize conversation history after N messages to prevent context growth.
-When enabled, ramalama will periodically condense older messages into a summary,
-keeping only recent messages and the summary. This prevents the context from growing
-indefinitely during long chat sessions. Set to 0 to disable (default: 4).
-
-**temp**="0.8"
-Temperature of the response from the AI Model
-llama.cpp explains this as:
-
-    The lower the number is, the more deterministic the response.
-
-    The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
-
-        Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories
-
-**transport**="ollama"
-
-Specify the default transport to be used for pulling and pushing of AI Models.
-Options: oci, ollama, huggingface.
-RAMALAMA_TRANSPORT environment variable overrides this field.
+**transport**="ollama": Default transport used for pull/push operations.
+Options: `oci`, `ollama`, `huggingface`.
+Override via `RAMALAMA_TRANSPORT`.
 
 `[[ramalama.http_client]]`
 
-Http client configuration
+**max_retries**=5: Maximum number of retries for failed downloads.
 
-**max_retries**=5
-
-The maximum number of times to retry a failed download
-
-**max_retry_delay**=30
-
-The maximum delay between retry attempts in seconds
+**max_retry_delay**=30: Maximum delay (seconds) between retry attempts.
 
 ## RAMALAMA.PROVIDER TABLE
-The `ramalama.provider` table configures hosted API providers that RamaLama can proxy to.
+The `ramalama.provider` table configures hosted API providers.
 
 `[[ramalama.provider]]`
 
-**openai**=""
-
-Configuration settings for the openai hosted provider
+**openai:**
+Configuration block for the OpenAI hosted provider.
 
 `[[ramalama.provider.openai]]`
 
 **api_key**=""
 
-Provider-specific API key used when invoking OpenAI-hosted transports. Overrides `RAMALAMA_API_KEY` when set.
+`ramalama.provider.openai.api_key` overrides `RAMALAMA_API_KEY` when set.
+
 ## RAMALAMA.BENCHMARKS TABLE
-The ramalama.benchmarks table contains benchmark related settings.
+The `ramalama.benchmarks` table contains benchmark settings.
 
 `[[ramalama.benchmarks]]`
 
-**storage_folder**="\<default store>/benchmarks"
+`storage_folder` defaults to `<default store>/benchmarks`.
 
-Manually specify where to save benchmark results.
-By default, this will be stored in the default model store directory under `benchmarks/`.
-Changing `ramalama.store` does not update this; set `ramalama.benchmarks.storage_folder` explicitly if needed.
+By default, benchmark results are saved in the configured store directory under benchmarks/.
+If you change `ramalama.store`, set `ramalama.benchmarks.storage_folder` explicitly if needed.
 
 ## RAMALAMA.USER TABLE
-The ramalama.user table contains user preference settings.
+The `ramalama.user` table contains user preferences.
 
 `[[ramalama.user]]`
 
 **no_missing_gpu_prompt**=false
 
-Suppress the interactive prompt when running on macOS with a Podman VM that does not support GPU acceleration (e.g., applehv provider). When set to true, RamaLama will automatically proceed without GPU support instead of prompting the user for confirmation. This is useful for automation and scripting scenarios where interactive prompts are not desired.
-
-Can also be set via the RAMALAMA_USER__NO_MISSING_GPU_PROMPT environment variable.
+When `no_missing_gpu_prompt = true`, RamaLama suppresses the interactive prompt on macOS Podman VMs without GPU acceleration (for example, `applehv`).
+Can also be set via `RAMALAMA_USER__NO_MISSING_GPU_PROMPT`.
