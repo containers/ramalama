@@ -168,9 +168,6 @@ RamaLama attempts a range of 101 ports starting from this value.
 
 **RAG and storage options:**
 
-**rag_format**="qdrant": Default output format for `ramalama rag`.
-Options: `qdrant`, `json`, `markdown`, `milvus`.
-
 **rag_image**="quay.io/ramalama/ramalama-rag"
 
 OCI container image used for RAG processing (doc2rag and rag_framework).
