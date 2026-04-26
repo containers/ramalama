@@ -73,11 +73,13 @@ class Stack:
         llama_stack_container = {
             "name": "llama-stack",
             "image": f"{self.stack_image}",
-            "args": ["llama", "stack", "run", "--image-type", "venv", "/etc/ramalama/ramalama-run.yaml"],
+            "args": [],
             "env_string": f"""\
         env:{common_env}
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}
+        - name: RAMALAMA_RUNTIME
+          value: \"{self.args.runtime}\"
         - name: INFERENCE_MODEL
           value: \"{self.model.model_alias}\"""",
             "port_string": f"""\
@@ -145,7 +147,8 @@ class Stack:
       - "{stack_port}:8123"
     environment:{compose_env}
       - RAMALAMA_URL=http://{self.name}:{self.model_port}
-      - INFERENCE_MODEL="{self.model.model_alias}"
+      - RAMALAMA_RUNTIME={self.args.runtime}
+      - INFERENCE_MODEL={self.model.model_alias}
     depends_on:
       - {self.model.model_name}
     restart: unless-stopped"""
