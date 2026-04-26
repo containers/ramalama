@@ -182,7 +182,7 @@ def test_sandbox_dryrun_openclaw_no_url_flag():
 @skip_if_no_container
 def test_sandbox_dryrun_openclaw_debug_verbose():
     """OpenClaw debug mode should pass --verbose to the agent command."""
-    result = check_output(_dryrun_cmd("openclaw") + ["--debug", "hello"])
+    result = check_output(["ramalama", "--debug", "--dryrun", "sandbox", "openclaw", TEST_MODEL, "hello"])
     assert "openclaw agent --verbose" in result
 
 
