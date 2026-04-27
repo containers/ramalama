@@ -218,9 +218,7 @@ class Kube:
 
         devices = get_gpu_devices()
         if devices:
-            limits = "".join(
-                f"\n             'podman.io/device={path}': 1" for path in devices.values()
-            )
+            limits = "".join(f"\n             'podman.io/device={path}': 1" for path in devices.values())
             return f"""
         resources:
           limits:{limits}"""
