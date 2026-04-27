@@ -5,7 +5,7 @@ import os
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import exec_cmd, genname, get_accel_env_vars, version_tagged_image
+from ramalama.common import exec_cmd, genname, get_accel_env_vars
 from ramalama.compat import NamedTemporaryFile
 from ramalama.compose import Compose
 from ramalama.config import ActiveConfig
@@ -28,7 +28,7 @@ class Stack:
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
         self.model_port = "8080"
-        self.stack_image = version_tagged_image(ActiveConfig().stack_image)
+        self.stack_image = f"""{ActiveConfig().stack_image}:{args.api.version}"""
         self.labels = ""
 
     def add_label(self, label):
@@ -69,11 +69,13 @@ class Stack:
         llama_stack_container = {
             "name": "llama-stack",
             "image": self.stack_image,
-            "args": ["llama", "stack", "run", "--image-type", "venv", "/etc/ramalama/ramalama-run.yaml"],
+            "args": [],
             "env_string": f"""\
         env:{common_env}
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}
+        - name: RAMALAMA_RUNTIME
+          value: {self.args.runtime}
         - name: INFERENCE_MODEL
           value: \"{self.model.model_alias}\"""",
             "port_string": f"""\
@@ -93,6 +95,7 @@ class Stack:
         mmproj_dest_path = self.model._get_mmproj_path(True, True, False)
         args2 = copy.copy(self.args)
         args2.port = self.model_port
+        args2.webui = 'off'
         exec_args = assemble_command(args2)
         return (
             self.model.model_name,
@@ -125,7 +128,7 @@ class Stack:
                 k.add("comment", f"# RamaLama service for {self.model.model_alias}")
                 k.add("comment", "# Serving RESTAPIs:")
                 k.add("comment", f"#    Llama Stack: {openai}")
-                k.add("comment", f"#    OpenAI:      {openai}/v1/openai\n")
+                k.add("comment", f"#    OpenAI:      {openai}/v1\n")
                 k.write(self.args.generate.output_dir)
                 return
 

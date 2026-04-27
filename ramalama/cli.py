@@ -29,6 +29,7 @@ from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import accel_image, exec_cmd, get_accel, perror
 from ramalama.config import (
+    DEFAULT_STACK_IMAGE_VERSION,
     SUPPORTED_ENGINES,
     ActiveConfig,
     coerce_to_bool,
@@ -55,6 +56,7 @@ from ramalama.transports.base import (
 from ramalama.transports.transport_factory import New, TransportFactory
 from ramalama.version import print_version, version
 
+API_OPTIONS = ["llama-stack", "none"]
 GENERATE_OPTIONS = ["quadlet", "kube", "quadlet/kube", "compose"]
 LIST_SORT_FIELD_OPTIONS = ["size", "modified", "name"]
 LIST_SORT_ORDER_OPTIONS = ["desc", "asc"]
@@ -106,6 +108,32 @@ def parse_generate_option(option: str) -> ParsedGenerateInput:
         output_dir = "."
 
     return ParsedGenerateInput(generate, output_dir)
+
+
+class ParsedApiInput:
+    def __init__(self, api: str, version: str):
+        self.api = api
+        self.version = version
+
+    def __str__(self):
+        return self.api
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __eq__(self, value):
+        return self.api == value
+
+
+def parse_api_option(option: str) -> ParsedApiInput:
+    # default to the latest version of the
+    api, version = option, ""
+    if api.count(":") > 0:
+        api, version = api.split(":", 1)
+    if api == "llama-stack" and version == "":
+        version = DEFAULT_STACK_IMAGE_VERSION
+
+    return ParsedApiInput(api, version)
 
 
 def parse_port_option(option: str) -> str:
