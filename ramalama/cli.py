@@ -44,6 +44,7 @@ from ramalama.plugins.loader import get_all_runtimes, get_runtime
 from ramalama.prompt_utils import default_prefix
 from ramalama.rag import rag_image
 from ramalama.shortnames import Shortnames
+from ramalama.stack import stack_image
 from ramalama.transports.base import (
     MODEL_TYPES,
     NoGGUFModelFileFound,
@@ -68,6 +69,11 @@ def default_image() -> str:
 @lru_cache(maxsize=1)
 def default_rag_image() -> str:
     return rag_image(ActiveConfig())
+
+
+@lru_cache(maxsize=1)
+def default_stack_image() -> str:
+    return stack_image(ActiveConfig())
 
 
 @lru_cache(maxsize=1)
@@ -835,6 +841,13 @@ def runtime_options(parser, command):
     if command == "serve":
         parser.add_argument(
             "-d", "--detach", action="store_true", dest="detach", help="run the container in detached mode"
+        )
+        parser.add_argument(
+            "--stack-image",
+            default=default_stack_image(),
+            help="OCI container image to run llama-stack server",
+            action=OverrideDefaultAction,
+            completer=local_images,
         )
     parser.add_argument(
         "--device",

@@ -5,15 +5,19 @@ import os
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import exec_cmd, genname, get_accel_env_vars, version_tagged_image
+from ramalama.common import exec_cmd, genname, get_accel_env_vars
 from ramalama.compat import NamedTemporaryFile
 from ramalama.compose import Compose
-from ramalama.config import ActiveConfig
+from ramalama.config import ActiveConfig, Config
 from ramalama.engine import add_labels
 from ramalama.kube import Kube
 from ramalama.plugins.loader import assemble_command
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
+
+
+def stack_image(config: Config) -> str:
+    return config.stack_image or config.default_stack_image
 
 
 class Stack:
@@ -28,7 +32,7 @@ class Stack:
         self.model = New(args.MODEL, args)
         self.model_type = self.model.type
         self.model_port = "8080"
-        self.stack_image = version_tagged_image(ActiveConfig().stack_image)
+        self.stack_image = stack_image(ActiveConfig())
         self.labels = ""
 
     def add_label(self, label):
@@ -68,12 +72,14 @@ class Stack:
         common_env = self._gen_kube_env(env_vars)
         llama_stack_container = {
             "name": "llama-stack",
-            "image": self.stack_image,
-            "args": ["llama", "stack", "run", "--image-type", "venv", "/etc/ramalama/ramalama-run.yaml"],
+            "image": f"{self.stack_image}",
+            "args": [],
             "env_string": f"""\
         env:{common_env}
         - name: RAMALAMA_URL
           value: http://127.0.0.1:{self.model_port}
+        - name: RAMALAMA_RUNTIME
+          value: \"{self.args.runtime}\"
         - name: INFERENCE_MODEL
           value: \"{self.model.model_alias}\"""",
             "port_string": f"""\
@@ -141,7 +147,8 @@ class Stack:
       - "{stack_port}:8123"
     environment:{compose_env}
       - RAMALAMA_URL=http://{self.name}:{self.model_port}
-      - INFERENCE_MODEL="{self.model.model_alias}"
+      - RAMALAMA_RUNTIME={self.args.runtime}
+      - INFERENCE_MODEL={self.model.model_alias}
     depends_on:
       - {self.model.model_name}
     restart: unless-stopped"""
