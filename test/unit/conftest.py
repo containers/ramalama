@@ -2,6 +2,8 @@ import os
 
 import pytest
 
+from ramalama.transports.oci.strategy import OCIStrategyFactory
+
 initial_env = os.environ.copy()
 setup_env_vars = {"RAMALAMA__USER__NO_MISSING_GPU_PROMPT": "True"}
 
@@ -23,3 +25,8 @@ def restores_user_environment_at_end_of_tests():
             os.environ[k] = initial_env[k]
         else:
             os.environ.pop(k)
+
+
+@pytest.fixture
+def force_oci_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(OCIStrategyFactory, "resolve", lambda self, model: self.strategies("image"))
