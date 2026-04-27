@@ -13,8 +13,12 @@ logger = logging.getLogger("ramalama-daemon")
 
 
 def configure_logger(lvl: LogLevel = LogLevel.WARNING, log_file: str = DEFAULT_LOG_DIR) -> None:
-    uid = os.geteuid() if hasattr(os, "geteuid") else (os.getuid() if hasattr(os, "getuid") else None)
-    if uid == 0:
+    uids = []
+    if hasattr(os, "geteuid"):
+        uids.append(os.geteuid())
+    if hasattr(os, "getuid"):
+        uids.append(os.getuid())
+    if any(uid == 0 for uid in uids):
         raise PermissionError("ramalama-daemon must not run as root")
 
     if logger.hasHandlers():
