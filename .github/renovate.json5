@@ -2,5 +2,21 @@
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "extends": [
         "github>containers/automation//renovate/defaults.json5"
+    ],
+    "ignorePaths": [
+        "container-images/common/*.txt"
+    ],
+    "packageRules": [
+        {
+            "groupName": "CI updates",
+            "matchCategories": ["ci"]
+        },
+        {
+            "groupName": "python updates",
+            "matchCategories": ["python"]
+        }
+    ],
+    "schedule": [
+        "before 9am on Monday"
     ]
 }
