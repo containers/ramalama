@@ -25,13 +25,6 @@ DEFAULT_PORT_RANGE = _CONFIG.default_port_range
 
 
 @pytest.fixture
-def force_oci_image(monkeypatch):
-    from ramalama.transports.oci.strategy import OCIStrategyFactory
-
-    monkeypatch.setattr(OCIStrategyFactory, "resolve", lambda self, model: self.strategies("image"))
-
-
-@pytest.fixture
 def force_oci_artifact(monkeypatch):
     from ramalama.transports.oci.strategy import OCIStrategyFactory
 
