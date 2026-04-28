@@ -215,6 +215,14 @@ class Kube:
         resources:
           limits:
              'nvidia.com/gpu=all': 1"""
+
+        devices = get_gpu_devices()
+        if devices:
+            limits = "".join(f"\n             'podman.io/device={path}': 1" for path in devices.values())
+            return f"""
+        resources:
+          limits:{limits}"""
+
         return ""
 
     def __gen_container(self, container_args):
