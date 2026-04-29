@@ -6,6 +6,7 @@ import pytest
 
 from ramalama.chat import RamaLamaShell, chat
 from ramalama.chat_utils import ImageURLPart
+from ramalama.compat import NamedTemporaryFile
 
 
 def _text_content(message):
@@ -23,7 +24,7 @@ class TestFileUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             with open(tmp_file.name, "w") as f:
                 f.write("This is test content for chat input")
 
@@ -41,6 +42,92 @@ class TestFileUploadChatIntegration:
             content = message.text or ""
             assert "This is test content for chat input" in content
             assert f"<!--start_document {tmp_file.name}-->" in content
+
+    @patch('urllib.request.urlopen')
+    @patch('urllib.request.Request')
+    def test_chat_with_file_input_single_file_attachment(self, mock_request, mock_urlopen):
+        """Test chat functionality with a single file input."""
+        # Mock the models endpoint response
+        mock_response = MagicMock()
+        mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
+        mock_urlopen.return_value = mock_response
+
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
+            with open(tmp_file.name, "w") as f:
+                f.write("This is test content for chat input")
+
+            mock_args = MagicMock()
+            mock_args.attachments = [tmp_file.name]
+            mock_args.rag = None
+            mock_args.ARGS = ["Please analyze this content:"]
+            mock_args.dryrun = False
+            mock_args.max_tokens = None
+            mock_args.runtime = 'llama.cpp'
+            mock_args.model = 'test-model'
+            mock_args.temp = '1.0'
+            mock_args.summarize_after = 0
+
+            shell = RamaLamaShell(mock_args)
+            shell.default("Please analyze this content:")
+
+            # Check that the system message was added to conversation history
+            assert len(shell.conversation_history) == 2
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            content = message.text or ""
+            assert "Please analyze this content:" in content
+
+            # check the attachment was added
+            message = shell.conversation_history[1]
+            assert message.role == "user"
+            content = message.text or ""
+            assert "This is test content for chat input" in content
+            assert f"<!--start_document {tmp_file.name}-->" in content
+
+            # check the attachment does not get readded on a subsequent event
+            shell.default("Can you simplify your summary?")
+            assert len(shell.conversation_history) == 3
+            message = shell.conversation_history[2]
+            assert message.role == "user"
+            content = message.text or ""
+            assert content == "Can you simplify your summary?"
+
+    @patch('urllib.request.urlopen')
+    @patch('urllib.request.Request')
+    @patch('ramalama.chat.perror')
+    def test_chat_with_directory_upload(self, mock_err, mock_request, mock_urlopen):
+        """Test chat functionality with a single file input."""
+        # Mock the models endpoint response
+        mock_response = MagicMock()
+        mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
+        mock_urlopen.return_value = mock_response
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            mock_args = MagicMock()
+            mock_args.attachments = [tmp_dir]
+            mock_args.rag = None
+            mock_args.ARGS = ["Please analyze this content:"]
+            mock_args.dryrun = False
+            mock_args.max_tokens = None
+            mock_args.runtime = 'llama.cpp'
+            mock_args.model = 'test-model'
+            mock_args.temp = '1.0'
+            mock_args.summarize_after = 0
+
+            shell = RamaLamaShell(mock_args)
+
+            shell.default("Please analyze this content:")
+            mock_err.assert_called_once()
+            assert (
+                mock_err.call_args.args[0] == f"The following attachments were not valid and were ignored: {tmp_dir}."
+            )
+
+            # Check that the system message was added to conversation history
+            assert len(shell.conversation_history) == 1
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            content = message.text or ""
+            assert "Please analyze this content:" in content
 
     @patch('urllib.request.urlopen')
     def test_chat_with_file_input_directory(self, mock_urlopen):
@@ -119,7 +206,7 @@ class TestFileUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             with open(tmp_file.name, "w") as f:
                 f.write("")
 
@@ -146,7 +233,7 @@ class TestFileUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             unicode_content = "Hello 世界! 🌍\nUnicode test: éñü\nEmoji: 🚀🎉"
             with open(tmp_file.name, "w") as f:
                 f.write(unicode_content)
@@ -233,7 +320,7 @@ class TestFileUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             with open(tmp_file.name, "w") as f:
                 f.write("File content")
 
@@ -254,7 +341,7 @@ class TestFileUploadChatIntegration:
 
     def test_chat_function_with_rag_and_dryrun(self):
         """Test that chat function works correctly with rag and dryrun."""
-        with tempfile.NamedTemporaryFile(suffix=".txt") as tmp_file:
+        with NamedTemporaryFile(suffix=".txt") as tmp_file:
             with open(tmp_file.name, "w") as f:
                 f.write("Test content")
 
@@ -287,9 +374,9 @@ class TestImageUploadChatIntegration:
         mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
         mock_urlopen.return_value = mock_response
 
-        with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp_file:
-            with open(tmp_file.name, "wb") as f:
-                f.write(b"fake image data")
+        with NamedTemporaryFile(suffix=".jpg", delete_on_close=False) as tmp_file:
+            tmp_file.write(b"fake image data")
+            tmp_file.close()
 
             mock_args = MagicMock()
             mock_args.rag = tmp_file.name
@@ -307,6 +394,57 @@ class TestImageUploadChatIntegration:
             assert isinstance(part, ImageURLPart)
             assert part.url.startswith("data:image/")
             assert "base64," in part.url
+
+    @patch('urllib.request.urlopen')
+    @patch('urllib.request.Request')
+    def test_chat_with_file_input_single_file_attachment(self, mock_request, mock_urlopen):
+        """Test chat functionality with a single file input."""
+        # Mock the models endpoint response
+        mock_response = MagicMock()
+        mock_response.__iter__.return_value = [b'{"data": [{"id": "test-model"}]}']
+        mock_urlopen.return_value = mock_response
+
+        with NamedTemporaryFile(suffix=".jpg", delete_on_close=False) as tmp_file:
+            tmp_file.write(b"fake image data")
+            tmp_file.close()
+
+            mock_args = MagicMock()
+            mock_args.attachments = [tmp_file.name]
+            mock_args.rag = None
+            mock_args.ARGS = ["Please analyze this image:"]
+            mock_args.dryrun = False
+            mock_args.max_tokens = None
+            mock_args.runtime = 'llama.cpp'
+            mock_args.model = 'test-model'
+            mock_args.temp = '1.0'
+            mock_args.summarize_after = 0
+
+            shell = RamaLamaShell(mock_args)
+            shell.default("Please analyze this image:")
+
+            # Check that the system message was added to conversation history
+            assert len(shell.conversation_history) == 2
+            message = shell.conversation_history[0]
+            assert message.role == "user"
+            content = message.text or ""
+            assert "Please analyze this image:" in content
+
+            # check the attachment was added
+            message = shell.conversation_history[1]
+            assert message.role == "user"
+            assert len(message.attachments) == 1
+            part = message.attachments[0]
+            assert isinstance(part, ImageURLPart)
+            assert part.url.startswith("data:image/")
+            assert "base64," in part.url
+
+            # check the attachment does not get readded on a subsequent event
+            shell.default("Can you simplify your summary?")
+            assert len(shell.conversation_history) == 3
+            message = shell.conversation_history[2]
+            assert message.role == "user"
+            content = message.text or ""
+            assert content == "Can you simplify your summary?"
 
     @patch('urllib.request.urlopen')
     def test_chat_with_image_input_directory(self, mock_urlopen):
