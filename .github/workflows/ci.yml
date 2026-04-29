@@ -139,7 +139,8 @@ jobs:
            sudo chown runner:runner /mnt/runner /home/runner/.local
            sudo mount --bind /mnt/runner /home/runner/.local
            sudo apt-get update
-           sudo apt-get install podman bash codespell
+           sudo apt-get purge firefox
+           sudo apt-get install bash codespell
            uv tool install tox --with tox-uv
            uv pip install ".[dev]"
 
@@ -154,9 +155,8 @@ jobs:
            sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
-           sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade -y podman crun
+           sudo apt-get install -y podman crun
 
       - name: run e2e-tests
         run: |
@@ -196,7 +196,8 @@ jobs:
         run: |
           df -h
           sudo apt-get update
-          sudo apt-get install podman bash codespell git cmake libcurl4-openssl-dev
+          sudo apt-get purge firefox
+          sudo apt-get install bash codespell git cmake libcurl4-openssl-dev
           sudo ./container-images/scripts/build_llama.sh
           sudo cp -a /tmp/install/bin/ /usr/
           sudo cp -a /tmp/install/lib/*.so* /usr/lib/
@@ -214,9 +215,8 @@ jobs:
            sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
-           sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade -y podman crun
+           sudo apt-get install -y podman crun
 
       - name: run e2e-tests-nocontainer
         run: |
@@ -255,6 +255,7 @@ jobs:
         shell: bash
         run: |
            sudo apt-get update
+           sudo apt-get purge firefox
            sudo apt-get install bash codespell
            uv tool install tox --with tox-uv
            uv pip install ".[dev]"
@@ -270,9 +271,8 @@ jobs:
            sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
-           sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade -y podman crun
+           sudo apt-get install -y podman crun
 
       - name: Free Disk Space Linux
         shell: bash
