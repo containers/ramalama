@@ -32,8 +32,7 @@ class Quadlet:
 
         if draft_model_paths is not None:
             src_draft_model_path, dest_draft_model_path = draft_model_paths
-            if src_draft_model_path.startswith("oci://"):
-                src_draft_model_path = src_draft_model_path.removeprefix("oci://")
+            src_draft_model_path = src_draft_model_path.removeprefix("oci://")
             self.model_parts.append((src_draft_model_path, dest_draft_model_path))
 
         if self.src_model_path.startswith("oci://"):

@@ -40,7 +40,7 @@ class Stack:
         cleanlabel = label.replace("=", ": ", 1)
         self.labels = f"{self.labels}\n        {cleanlabel}"
 
-    def _get_env_vars(self):
+    def _get_env_vars(self) -> dict:
         env_vars = {}
         if hasattr(self.args, "env"):
             for e in self.args.env:
@@ -48,26 +48,26 @@ class Stack:
                 env_vars[env[0]] = env[1]
         return env_vars
 
-    def _gen_compose_env(self, env_vars):
+    def _gen_compose_env(self, env_vars) -> str:
         compose_env = ""
         for k, v in env_vars.items():
             compose_env += f"""\n      - {k}={v}"""
         return compose_env
 
-    def _gen_kube_env(self, env_vars):
+    def _gen_kube_env(self, env_vars) -> str:
         kube_env = ""
         for k, v in env_vars.items():
             kube_env += f"""\n        - name: {k}
           value: {v}"""
         return kube_env
 
-    def _gen_server_env(self):
+    def _gen_server_env(self) -> str:
         accel_env_vars = get_accel_env_vars()
         if "MUSA_VISIBLE_DEVICES" in accel_env_vars:
             accel_env_vars["MTHREADS_VISIBLE_DEVICES"] = "all"
         return self._gen_kube_env(accel_env_vars)
 
-    def generate(self):
+    def generate(self) -> str:
         add_labels(self.args, self.add_label)
         env_vars = self._get_env_vars()
         common_env = self._gen_kube_env(env_vars)
