@@ -45,7 +45,7 @@ class Compose:
 
         # Model Volume
         volumes += self._gen_model_volume(self.src_model_path, self.dest_model_path)
-        if self.src_draft_model_path is not None:
+        if self.src_draft_model_path and self.dest_draft_model_path:
             volumes += self._gen_model_volume(self.src_draft_model_path, self.dest_draft_model_path)
 
         # RAG Volume
@@ -62,7 +62,7 @@ class Compose:
 
         return volumes
 
-    def _gen_model_volume(self, src_model_path, dest_model_path) -> str:
+    def _gen_model_volume(self, src_model_path: str, dest_model_path: str) -> str:
         return f'\n      - "{src_model_path}:{dest_model_path}:ro"'
 
     def _gen_rag_volume(self) -> str:

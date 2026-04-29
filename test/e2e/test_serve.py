@@ -605,6 +605,8 @@ def test_serve_generation(test_model, generate, env_vars):
     with RamalamaExecWorkspace(env_vars=env_vars) as ctx:
         # Pull model
         ctx.check_call(["ramalama", "pull", test_model])
+        test_model_draft = 'hf://ggml-org/gemma-3-270m-it-qat-GGUF:Q4_0'
+        ctx.check_call(["ramalama", "pull", test_model_draft])
 
         # Define the output dir if it's required and ensure it is created
         output_dir = (
@@ -613,6 +615,8 @@ def test_serve_generation(test_model, generate, env_vars):
             else Path(ctx.workspace_dir)
         )
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        extra_args = ["--model-draft", test_model_draft] if env_vars else []
 
         # Exec ramalama serve
         result = ctx.check_output(
@@ -628,7 +632,7 @@ def test_serve_generation(test_model, generate, env_vars):
                 "--generate",
                 generate.format(tmp_dir=ctx.workspace_dir, sep=os.sep),
                 test_model,
-            ]
+            ] + extra_args
         )
 
         with chdir(output_dir):
@@ -656,6 +660,9 @@ def test_serve_generation(test_model, generate, env_vars):
                     assert re.search(r".*- \"1234:1234\"", content)
                 else:
                     raise Exception("Invalid generate option")
+
+                assert len(re.findall(r'/mnt/models/smollm-135', content)) == 2
+                assert len(re.findall(r'/mnt/models/gemma-3', content)) == (2 if env_vars else 0)
 
                 if env_vars:
                     if "kube" in generate:
@@ -694,9 +701,12 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
     with RamalamaExecWorkspace() as ctx:
         # Pull model
         ctx.check_call(["ramalama", "pull", test_model])
+        test_model_draft = 'hf://ggml-org/gemma-3-270m-it-qat-GGUF:Q4_0'
+        ctx.check_call(["ramalama", "pull", test_model_draft])
 
         extra_args = ["--env", env_vars] if env_vars else []
         extra_args += ["--stack-image", "quay.io/ramalama/llama-stack:0.18"] if env_vars else []
+        extra_args += ["--model-draft", test_model_draft] if not env_vars else []
         extra_args += ['--runtime-args', '--top-p 1.0']
         # Exec ramalama serve
         result = ctx.check_output(
@@ -735,6 +745,10 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
                     assert not re.search(r"name: SEARCH_API_KEY", content)
                     assert not re.search(r'value: "?9999"?', content)
                     assert not re.search(r'quay.io/ramalama/llama-stack:0.18', content)
+
+                assert len(re.findall(r'/mnt/models/smollm-135', content)) == 2
+                assert len(re.findall(r'/mnt/models/gemma-3', content)) == (0 if env_vars else 2)
+
 
         elif generate == 'compose':
             # Test the expected output of the command execution

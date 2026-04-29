@@ -40,7 +40,7 @@ class Kube:
         self.image = args.image
         self.artifact = artifact
 
-    def _gen_volumes(self):
+    def _gen_volumes(self) -> Tuple[str, str]:
         mounts = """\
         volumeMounts:"""
 
@@ -82,7 +82,7 @@ class Kube:
         volumes += v
         return mounts, volumes
 
-    def _gen_devices(self):
+    def _gen_devices(self) -> Tuple[str, str]:
         mounts = ""
         volumes = ""
         for name, path in get_gpu_devices().items():
@@ -95,7 +95,7 @@ class Kube:
         name: {name}"""
         return mounts, volumes
 
-    def _gen_path_volume(self, volume_name, src_model_path, dest_model_path):
+    def _gen_path_volume(self, volume_name, src_model_path, dest_model_path) -> Tuple[str, str]:
         host_model_path = normalize_host_path_for_container(src_model_path)
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
@@ -109,14 +109,14 @@ class Kube:
         name: {volume_name}"""
         return mount, volume
 
-    def _gen_oci_volume(self, volume_name, src_model_path):
+    def _gen_oci_volume(self, volume_name, src_model_path) -> str:
         return f"""
       - image:
           reference: {src_model_path}
           pullPolicy: IfNotPresent
         name: {volume_name}"""
 
-    def _gen_rag_volume(self):
+    def _gen_rag_volume(self) -> Tuple[str, str]:
         mounts = f"""
         - mountPath: {RAG_DIR}
           name: rag"""
@@ -129,7 +129,7 @@ class Kube:
 
         return mounts, volumes
 
-    def _gen_chat_template_volume(self):
+    def _gen_chat_template_volume(self) -> Tuple[str, str]:
         host_chat_template_path = normalize_host_path_for_container(self.src_chat_template_path)
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
@@ -143,7 +143,7 @@ class Kube:
         name: chat-template"""
         return mount, volume
 
-    def _gen_mmproj_volume(self):
+    def _gen_mmproj_volume(self) -> Tuple[str, str]:
         host_mmproj_path = normalize_host_path_for_container(self.src_mmproj_path)
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
@@ -157,7 +157,7 @@ class Kube:
         name: mmproj"""
         return mount, volume
 
-    def __gen_ports(self):
+    def __gen_ports(self) -> str:
         if not hasattr(self.args, "port"):
             return ""
 
@@ -171,7 +171,7 @@ class Kube:
 
         return ports
 
-    def __gen_env_vars(self):
+    def __gen_env_vars(self) -> str:
         env_vars = get_accel_env_vars()
 
         if hasattr(self.args, "env"):
@@ -191,7 +191,7 @@ class Kube:
 
         return env_spec
 
-    def __gen_security_context(self):
+    def __gen_security_context(self) -> str:
         return """\
         securityContext:
           allowPrivilegeEscalation: false
@@ -212,7 +212,7 @@ class Kube:
           seLinuxOptions:
             type: spc_t"""
 
-    def __gen_resources(self):
+    def __gen_resources(self) -> str:
         if check_nvidia() == "cuda":
             return """
         resources:
@@ -228,7 +228,7 @@ class Kube:
 
         return ""
 
-    def __gen_container(self, container_args):
+    def __gen_container(self, container_args) -> str:
         content = f"""\
       - name: {container_args["name"]}
         image: {container_args["image"]}
@@ -251,7 +251,7 @@ class Kube:
 {container_args["resources_string"]}"""
         return content
 
-    def generate_content(self, name=None, labels="", container=None):
+    def generate_content(self, name=None, labels="", container=None) -> str:
         env_string = self.__gen_env_vars()
         port_string = self.__gen_ports()
         mounts_string, volume_string = self._gen_volumes()
