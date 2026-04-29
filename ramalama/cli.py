@@ -337,6 +337,8 @@ def configure_subcommands(parser):
     # output only shows subcommands the active runtime actually supports.
     # get_config().runtime is already set by Phase 1 of parse_args_from_cmd
     # before configure_subcommands() is called in Phase 2.
+    # These include the subcommands serve and run, which are handled
+    # in BaseInferenceRuntime and its subclasses
     runtime = ActiveConfig().runtime
     get_runtime(runtime).register_subcommands(subparsers)
     chat_parser(subparsers)

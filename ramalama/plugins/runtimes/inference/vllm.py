@@ -42,7 +42,10 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         if model is not None:
             model_path = model._get_entry_model_path(is_container, should_generate, dry_run)
             cmd += ["--model", model_path]
-            cmd += ["--served-model-name", model.model_alias]
+            if getattr(args, 'alias', None):
+                cmd += ["--served-model-name", args.alias]
+            else:
+                cmd += ["--served-model-name", model.model_alias]
 
         ctx_size = getattr(args, 'ctx_size', None)
         if ctx_size:
@@ -90,6 +93,17 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         parser = super()._register_serve_subcommand(subparsers)
         self._add_max_model_len_arg(parser)
         return parser
+
+    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
+        """Add vLLM-specific inference args to an already-created parser."""
+        super()._add_inference_args(parser, command)
+        if command == "serve":
+            parser.add_argument(
+                "--alias",
+                dest="alias",
+                help="model name alias (referenced in the requests and responses of the API)",
+                completer=suppressCompleter,
+            )
 
     def get_container_image(self, config: Any, detected_gpu_type: str) -> Optional[str]:
         if detected_gpu_type:

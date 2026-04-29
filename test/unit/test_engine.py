@@ -235,6 +235,26 @@ def test_is_healthy_success(mock_conn, mock_debug, health_status):
 
 
 @pytest.mark.parametrize(
+    "health_status",
+    [
+        pytest.param(200, id="health api ok"),
+        pytest.param(404, id="no health api"),
+    ],
+)
+@patch("ramalama.engine.logger.debug")
+@patch("ramalama.engine.HTTPConnection")
+def test_is_healthy_success_with_alias(mock_conn, mock_debug, health_status):
+    mock_health_resp = Mock(status=health_status)
+    mock_models_resp = Mock(status=200)
+    mock_models_resp.read.return_value = '{"models": [{"name": "alias"}]}'
+    mock_conn.return_value.getresponse.side_effect = [mock_health_resp, mock_models_resp]
+    args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False, alias='alias')
+    assert ramalama.engine.is_healthy(args, model_name="themodel")
+    assert mock_conn.return_value.getresponse.call_count == 2
+    assert mock_debug.call_args.args[0] == "llama.cpp server is ready"
+
+
+@pytest.mark.parametrize(
     "status, ok",
     [
         (500, False),

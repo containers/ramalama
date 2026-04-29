@@ -34,6 +34,7 @@ def make_ns(
     max_tokens=0,
     port="8080",
     host="::",
+    alias=None,
     logfile=None,
     debug=False,
     webui="on",
@@ -56,6 +57,7 @@ def make_ns(
         max_tokens=max_tokens,
         port=port,
         host=host,
+        alias=alias,
         logfile=logfile,
         debug=debug,
         webui=webui,
@@ -156,6 +158,7 @@ class TestLlamaCppPlugin:
         assert cmd[cmd.index("--model") + 1] == "/mnt/models/model.file"
         assert "--no-warmup" in cmd
         assert "--alias" in cmd
+        assert cmd[cmd.index("--alias") + 1] == 'mymodel'
         assert "-ngl" in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
@@ -296,6 +299,26 @@ class TestLlamaCppPlugin:
 
         assert "--seed" in cmd
         assert cmd[cmd.index("--seed") + 1] == "42"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_alias(self, mock_colorize):
+        ns = make_ns(alias='my_alias')
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--alias" in cmd
+        assert cmd[cmd.index("--alias") + 1] == "my_alias"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_alias_override_model_alias(self, mock_colorize, mock_new):
+        mock_model = make_transport_model(chat_template_path="/mnt/models/chat_template.file")
+        mock_new.return_value = mock_model
+
+        ns = make_ns(alias="my_alias", MODEL="ollama://mymodel")
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--alias" in cmd
+        assert cmd[cmd.index("--alias") + 1] == "my_alias"
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_debug(self, mock_colorize):
@@ -514,6 +537,7 @@ class TestVllmPlugin:
         assert isinstance(cmd[0], ContainerEntryPoint)
         assert "--model" in cmd
         assert "--served-model-name" in cmd
+        assert cmd[cmd.index("--served-model-name") + 1] == "mymodel"
         assert "--port" in cmd
 
     def test_serve_nocontainer(self):
@@ -543,6 +567,17 @@ class TestVllmPlugin:
 
         assert "--seed" in cmd
         assert cmd[cmd.index("--seed") + 1] == "123"
+
+    @patch("ramalama.plugins.runtimes.inference.vllm.New")
+    def test_serve_alias(self, mock_new):
+        mock_model = make_transport_model(chat_template_path="/mnt/models/chat_template.file")
+        mock_new.return_value = mock_model
+
+        ns = make_ns(alias="my_alias", MODEL="ollama://mymodel")
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--served-model-name" in cmd
+        assert cmd[cmd.index("--served-model-name") + 1] == "my_alias"
 
     def test_serve_seed_not_added_when_none(self):
         ns = make_ns(seed=None)

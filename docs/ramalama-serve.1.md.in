@@ -34,6 +34,8 @@ Useful, for instance, to add environment variables to the generated unit file, o
 
 Section, key and value are required and must be separated by colons.
 
+@@option alias
+
 @@option api
 
 @@option authfile

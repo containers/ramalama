@@ -83,7 +83,9 @@ class LlamaCppCommands:
         if not getattr(args, 'thinking', None):
             cmd += ["--reasoning-budget", "0"]
 
-        if model is not None:
+        if getattr(args, 'alias', None):
+            cmd += ["--alias", args.alias]
+        elif model is not None:
             cmd += ["--alias", model.model_alias]
 
         ctx_size = getattr(args, 'ctx_size', None)
