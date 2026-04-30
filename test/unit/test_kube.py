@@ -33,12 +33,18 @@ class Input:
         mmproj_file_exists: bool = False,
         args: Args = Args(),
         exec_args: list = None,
+        draft_model_dest_path: str = "",
+        draft_model_src_path: str = "",
+        draft_model_file_exists: bool = False,
         artifact: bool = False,
     ):
         self.model_name = model_name
         self.model_src_path = model_src_path
         self.model_dest_path = model_dest_path
         self.model_file_exists = model_file_exists
+        self.draft_model_src_path = draft_model_src_path
+        self.draft_model_dest_path = draft_model_dest_path
+        self.draft_model_file_exists = draft_model_file_exists
         self.chat_template_src_path = chat_template_src_path
         self.chat_template_dest_path = chat_template_dest_path
         self.chat_template_file_exists = chat_template_file_exists
@@ -66,6 +72,20 @@ DATA_PATH = Path(__file__).parent / "data" / "test_kube"
                 artifact=False,
             ),
             "basic_hostpath.yaml",
+        ),
+        (
+            Input(
+                model_name="tinyllama",
+                model_src_path="/path/to/model.file",
+                model_dest_path="/mnt/models/model.file",
+                model_file_exists=True,
+                draft_model_src_path="/path/to/model_draft.file",
+                draft_model_dest_path="/mnt/models/model_draft.file",
+                draft_model_file_exists=True,
+                exec_args=["llama-server", "--model", "/mnt/models/model.file"],
+                artifact=False,
+            ),
+            "draft_model_hostpath.yaml",
         ),
         (
             Input(
@@ -166,6 +186,7 @@ def test_kube_generate(input: Input, expected_file_name: str, monkeypatch):
 
     existence = {
         input.model_src_path: input.model_file_exists,
+        input.draft_model_src_path: input.draft_model_file_exists,
         input.chat_template_src_path: input.chat_template_file_exists,
         input.mmproj_src_path: input.mmproj_file_exists,
         "/dev/dri": True,
@@ -193,6 +214,10 @@ def test_kube_generate(input: Input, expected_file_name: str, monkeypatch):
     if input.mmproj_src_path:
         mmproj_paths = (input.mmproj_src_path, input.mmproj_dest_path)
 
+    draft_model_paths = None
+    if input.draft_model_src_path:
+        draft_model_paths = (input.draft_model_src_path, input.draft_model_dest_path)
+
     kube = Kube(
         input.model_name,
         (input.model_src_path, input.model_dest_path),
@@ -200,6 +225,7 @@ def test_kube_generate(input: Input, expected_file_name: str, monkeypatch):
         mmproj_paths,
         input.args,
         input.exec_args,
+        draft_model_paths,
         input.artifact,
     )
 
@@ -249,6 +275,7 @@ def test_kube_no_port(monkeypatch):
         None,
         args,
         ["llama-server"],
+        None,
         False,
     )
 
@@ -276,6 +303,7 @@ def test_kube_no_env_vars(monkeypatch):
         None,
         args,
         ["llama-server"],
+        None,
         False,
     )
 
@@ -303,6 +331,7 @@ def test_kube_no_devices(monkeypatch):
         None,
         args,
         ["llama-server"],
+        None,
         False,
     )
 

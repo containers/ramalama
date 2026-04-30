@@ -342,9 +342,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 help="enable/disable thinking mode in reasoning models",
                 action=CoerceToBool,
             )
+            parser.add_argument("--model-draft", help="Draft model", completer=local_models)
         self._add_threads_arg(parser)
         if command == "serve":
-            parser.add_argument("--model-draft", help="Draft model", completer=local_models)
             parser.add_argument(
                 "--webui",
                 dest="webui",

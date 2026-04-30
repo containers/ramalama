@@ -48,8 +48,8 @@ spec:
         volumeMounts:
         - mountPath: /mnt/models/model.file
           name: model
-        - mountPath: /mnt/models/chat_template
-          name: chat-template
+        - mountPath: /mnt/models/model_draft.file
+          name: model-draft
         - mountPath: /dev/accel
           name: accel
         - mountPath: /dev/dri
@@ -66,8 +66,8 @@ spec:
           path: /path/to/model.file
         name: model
       - hostPath:
-          path: /path/to/chat_template
-        name: chat-template
+          path: /path/to/model_draft.file
+        name: model-draft
       - hostPath:
           path: /dev/accel
         name: accel

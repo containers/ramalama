@@ -26,6 +26,9 @@ class Input:
         model_src_path: str = "",
         model_dest_path: str = "",
         model_file_exists: bool = True,
+        draft_model_src_path: str = None,
+        draft_model_dest_path: str = None,
+        draft_model_file_exists: bool = False,
         chat_template_src_path: str = "",
         chat_template_dest_path: str = "",
         chat_template_file_exists: bool = False,
@@ -39,6 +42,9 @@ class Input:
         self.model_src_path = model_src_path
         self.model_dest_path = model_dest_path
         self.model_file_exists = model_file_exists
+        self.draft_model_src_path = draft_model_src_path
+        self.draft_model_dest_path = draft_model_dest_path
+        self.draft_model_file_exists = draft_model_file_exists
         self.chat_template_src_path = chat_template_src_path
         self.chat_template_dest_path = chat_template_dest_path
         self.chat_template_file_exists = chat_template_file_exists
@@ -63,6 +69,17 @@ DATA_PATH = Path(__file__).parent / "data" / "test_compose"
                 exec_args=["llama-server", "--model", "/mnt/models/tinyllama.gguf"],
             ),
             "basic.yaml",
+        ),
+        (
+            Input(
+                model_name="smallllama",
+                model_src_path="/models/smallllama.gguf",
+                model_dest_path="/mnt/models/smallllama.gguf",
+                draft_model_src_path="/models/tinyllama.gguf",
+                draft_model_dest_path="/mnt/models/tinyllama.gguf",
+                exec_args=["llama-server", "--model", "/mnt/models/smallllama.gguf"],
+            ),
+            "with_model_draft.yaml",
         ),
         (
             Input(
@@ -161,6 +178,7 @@ def test_compose_generate(input_data: Input, expected_file_name: str, monkeypatc
 
     existence = {
         input_data.model_src_path: input_data.model_file_exists,
+        input_data.draft_model_src_path: input_data.draft_model_file_exists,
         input_data.chat_template_src_path: input_data.chat_template_file_exists,
         input_data.mmproj_src_path: input_data.mmproj_file_exists,
         "/data/rag_files": True,
@@ -173,6 +191,10 @@ def test_compose_generate(input_data: Input, expected_file_name: str, monkeypatc
     monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {"ACCEL_ENV": "true"})
     monkeypatch.setattr("ramalama.compose.version", lambda: "0.1.0-test")
 
+    draft_model_paths = (None, None)
+    if input_data.draft_model_src_path:
+        draft_model_paths = (input_data.draft_model_src_path, input_data.draft_model_dest_path)
+
     compose_generator = Compose(
         model_name=input_data.model_name,
         model_paths=(input_data.model_src_path, input_data.model_dest_path),
@@ -180,6 +202,7 @@ def test_compose_generate(input_data: Input, expected_file_name: str, monkeypatc
         mmproj_paths=(input_data.mmproj_src_path, input_data.mmproj_dest_path),
         args=input_data.args,
         exec_args=input_data.exec_args,
+        draft_model_paths=draft_model_paths,
     )
 
     generated_file = compose_generator.generate()
@@ -233,7 +256,7 @@ def test_compose_no_port_arg(monkeypatch):
     monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
     monkeypatch.setattr("ramalama.compose.version", lambda: "test")
 
-    compose = Compose("test", ("/a", "/b"), None, None, args, [])
+    compose = Compose("test", ("/a", "/b"), None, None, args, [], None)
     result = compose.generate().content
 
     assert 'ports:\n      - "8080:8080"' in result
@@ -246,7 +269,7 @@ def test_compose_no_env_vars(monkeypatch):
     monkeypatch.setattr("ramalama.compose.version", lambda: "test")
 
     args = Args()
-    compose = Compose("test", ("/a", "/b"), None, None, args, [])
+    compose = Compose("test", ("/a", "/b"), None, None, args, [], None)
     result = compose.generate().content
 
     assert "environment:" not in result
@@ -259,7 +282,7 @@ def test_compose_no_devices(monkeypatch):
     monkeypatch.setattr("ramalama.compose.version", lambda: "test")
 
     args = Args()
-    compose = Compose("test", ("/a", "/b"), None, None, args, [])
+    compose = Compose("test", ("/a", "/b"), None, None, args, [], None)
     result = compose.generate().content
 
     assert "devices:" not in result
