@@ -5,9 +5,10 @@ Convert RamaLama manpages to Docusaurus MDX format
 
 import glob
 import os
-import textwrap
 import re
+import textwrap
 from pathlib import Path
+
 
 def get_category_info(filename):
     """Determine category and output path based on manpage section"""
