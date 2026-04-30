@@ -6,10 +6,7 @@ import sys
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Mapping, Optional
-
-if TYPE_CHECKING:
-    from typing_extensions import TypeAlias
+from typing import Any, Literal, Mapping, Optional
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
 from ramalama.common import apple_vm, available, version_tagged_image
@@ -22,21 +19,6 @@ DEFAULT_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama")
 DEFAULT_STACK_IMAGE: str = version_tagged_image("quay.io/ramalama/llama-stack")
 DEFAULT_RAG_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-rag")
 DEFAULT_TOOLS_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-tools")
-GGUF_QUANTIZATION_MODES: TypeAlias = Literal[
-    "Q2_K",
-    "Q3_K_S",
-    "Q3_K_M",
-    "Q3_K_L",
-    "Q4_0",
-    "Q4_K_S",
-    "Q4_K_M",
-    "Q5_0",
-    "Q5_K_S",
-    "Q5_K_M",
-    "Q6_K",
-    "Q8_0",
-]
-DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"
 
 
 def _get_default_config_dirs() -> list[Path]:
@@ -174,7 +156,6 @@ class HTTPClientConfig:
 class BaseConfig:
     api: str = "none"
     api_key: Optional[str] = None
-    backend: Literal["auto", "vulkan", "rocm", "cuda", "sycl", "openvino"] = "auto"
     benchmarks: Benchmarks = field(default_factory=Benchmarks)
     carimage: str = "registry.access.redhat.com/ubi10-micro:latest"
     container: bool = None  # type: ignore
@@ -187,7 +168,6 @@ class BaseConfig:
     dryrun: bool = False
     engine: Optional[SUPPORTED_ENGINES] = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)
-    gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE
     host: str = field(default_factory=get_default_host)
     http_client: HTTPClientConfig = field(default_factory=HTTPClientConfig)
     image: str = None  # type: ignore
@@ -203,11 +183,11 @@ class BaseConfig:
     prefix: str = None  # type: ignore
     pull: str = "newer"
     runtime: SUPPORTED_RUNTIMES = "llama.cpp"
+    runtimes: dict[str, Any] = field(default_factory=dict)
     selinux: bool = False
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
     store: str = field(default_factory=get_default_store)
     summarize_after: int = 4
-    temp: str = "0.8"
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True

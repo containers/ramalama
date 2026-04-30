@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import platform
+from dataclasses import dataclass
 from http.client import HTTPConnection
 from typing import Any, Optional
 
@@ -12,19 +13,29 @@ from ramalama.plugins.runtimes.inference.common import BaseInferenceRuntime
 from ramalama.transports.transport_factory import New
 
 
+@dataclass
+class MlxConfig:
+    temp: float = 0.8
+
+    def __post_init__(self):
+        self.temp = float(self.temp)
+
+
 class MlxPlugin(BaseInferenceRuntime):
+    config_type = MlxConfig
+
     @property
     def name(self) -> str:
         return "mlx"
 
     def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         super()._add_inference_args(parser, command)
-        config = ActiveConfig()
+        rt_config = self.get_runtime_config(ActiveConfig())
         parser.add_argument(
             "--temp",
             dest="temp",
             type=float,
-            default=config.temp,
+            default=rt_config.temp,
             help="temperature of the response from the AI model",
             completer=suppressCompleter,
         )

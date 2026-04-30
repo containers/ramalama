@@ -18,8 +18,8 @@ from ramalama.compat import NamedTemporaryFile
 from ramalama.config import DEFAULT_IMAGE, load_config
 from ramalama.plugins.interface import InferenceRuntimePlugin
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
-from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin, get_available_backends
-from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
+from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppConfig, LlamaCppPlugin, get_available_backends
+from ramalama.plugins.runtimes.inference.mlx import MlxConfig, MlxPlugin
 from ramalama.plugins.runtimes.inference.vllm import VllmPlugin
 
 
@@ -119,6 +119,93 @@ def make_transport_model(
     model._get_chat_template_path.return_value = chat_template_path
     model.draft_model = draft_model
     return model
+
+
+class TestLlamaCppConfig:
+    @pytest.mark.parametrize("backend", ["auto", "vulkan", "rocm", "cuda", "sycl", "openvino", "cann", "musa"])
+    def test_accepts_valid_backend(self, backend):
+        config = LlamaCppConfig(backend=backend)
+        assert config.backend == backend
+
+    def test_defaults(self):
+        config = LlamaCppConfig()
+        assert config.backend == "auto"
+        assert config.cache_reuse == 256
+        assert config.ngl == -1
+        assert config.temp == 0.8
+        assert config.thinking is True
+        assert config.threads > 0
+
+    def test_coerces_string_values(self):
+        config = LlamaCppConfig(ngl="4", cache_reuse="512", temp="0.5", threads="8", thinking="false")
+        assert config.ngl == 4
+        assert config.cache_reuse == 512
+        assert config.temp == 0.5
+        assert config.threads == 8
+        assert config.thinking is False
+
+
+class TestSyncArgsToRuntimeConfig:
+    """Tests for RuntimePlugin.sync_args_to_runtime_config persistence."""
+
+    def setup_method(self):
+        self.plugin = LlamaCppPlugin()
+
+    def _make_config(self, runtimes=None):
+        config = MagicMock()
+        config.runtimes = runtimes or {}
+        return config
+
+    def test_overrides_persist_for_subsequent_get_runtime_config(self):
+        config = self._make_config()
+        args = make_ns(ngl=99, temp=0.5, threads=16, cache_reuse=512)
+        self.plugin.sync_args_to_runtime_config(args, config)
+
+        rt = self.plugin.get_runtime_config(config)
+        assert rt.ngl == 99
+        assert rt.temp == 0.5
+        assert rt.threads == 16
+        assert rt.cache_reuse == 512
+
+    def test_preserves_existing_values_when_args_match(self):
+        defaults = LlamaCppConfig()
+        config = self._make_config()
+        args = make_ns(ngl=defaults.ngl, temp=float(defaults.temp), cache_reuse=defaults.cache_reuse)
+        self.plugin.sync_args_to_runtime_config(args, config)
+
+        rt = self.plugin.get_runtime_config(config)
+        assert rt.ngl == defaults.ngl
+        assert rt.cache_reuse == defaults.cache_reuse
+
+    def test_merges_with_preexisting_runtime_config(self):
+        config = self._make_config(runtimes={"llama_cpp": {"backend": "cuda", "ngl": 10}})
+        args = make_ns(ngl=42)
+        self.plugin.sync_args_to_runtime_config(args, config)
+
+        rt = self.plugin.get_runtime_config(config)
+        assert rt.ngl == 42
+        assert rt.backend == "cuda"
+
+    def test_ignores_args_not_in_runtime_config(self):
+        config = self._make_config()
+        args = make_ns(port="9999", host="0.0.0.0")
+        self.plugin.sync_args_to_runtime_config(args, config)
+
+        rt = self.plugin.get_runtime_config(config)
+        assert not hasattr(rt, "port")
+        assert not hasattr(rt, "host")
+
+    def test_unknown_fields_in_config_are_ignored(self):
+        config = self._make_config(runtimes={"llama_cpp": {"backend": "cuda", "bogus": 123}})
+        rt = self.plugin.get_runtime_config(config)
+        assert rt.backend == "cuda"
+        assert not hasattr(rt, "bogus")
+
+    @pytest.mark.parametrize("bad_value", ["cuda", 42, ["a", "b"], True])
+    def test_non_mapping_runtime_config_raises(self, bad_value):
+        config = self._make_config(runtimes={"llama_cpp": bad_value})
+        with pytest.raises(ValueError, match=r"config\.runtimes\.llama_cpp must be a mapping"):
+            self.plugin.get_runtime_config(config)
 
 
 class TestLlamaCppPlugin:
@@ -473,14 +560,14 @@ class TestLlamaCppPlugin:
 
     def test_get_container_image_cuda(self):
         config = MagicMock()
-        config.backend = "auto"
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
         config.images.get.return_value = None
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
         assert image == version_tagged_image("quay.io/ramalama/cuda")
 
     def test_get_container_image_no_gpu(self):
         config = MagicMock()
-        config.backend = "auto"
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
         config.images.get.return_value = None
         config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
         image = self.plugin.get_container_image(config, "")
@@ -488,7 +575,7 @@ class TestLlamaCppPlugin:
 
     def test_get_container_image_user_override(self):
         config = MagicMock()
-        config.backend = "auto"
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
         config.images.get.side_effect = lambda key, default=None: {
             "CUDA_VISIBLE_DEVICES": "custom/cuda:v1.0",
         }.get(key, default)
@@ -604,6 +691,17 @@ class TestVllmPlugin:
         ns = make_rag_gen_ns()
         with pytest.raises(NotImplementedError):
             self.plugin.handle_subcommand("rag", ns)
+
+
+class TestMlxConfig:
+    def test_defaults(self):
+        config = MlxConfig()
+        assert config.temp == 0.8
+
+    def test_coerces_string_values(self):
+        config = MlxConfig(temp="0.5")
+        assert config.temp == 0.5
+        assert isinstance(config.temp, float)
 
 
 class TestMlxPlugin:
@@ -955,6 +1053,11 @@ class TestConfigureSubcommandsFiltering:
         ("cuda", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
         ("sycl", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),
         ("openvino", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/openvino")),
+        # Ascend and MUSA backends
+        ("cann", "ASCEND_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cann")),
+        ("auto", "ASCEND_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cann")),
+        ("musa", "MUSA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/musa")),
+        ("auto", "MUSA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/musa")),
         # Force backend even with different GPU (warns but allows)
         ("rocm", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
         ("cuda", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
@@ -967,7 +1070,7 @@ def test_backend_selection(backend: str, gpu_env: str, expected_result: str, mon
 
     with NamedTemporaryFile('w', delete_on_close=False) as f:
         f.write(f"""\
-[ramalama]
+[ramalama.runtimes.llama_cpp]
 backend = "{backend}"
             """)
         f.flush()
@@ -1010,7 +1113,7 @@ def test_backend_selection_windows(backend: str, gpu_env: str, expected_result: 
 
     with NamedTemporaryFile('w', delete_on_close=False) as f:
         f.write(f"""\
-[ramalama]
+[ramalama.runtimes.llama_cpp]
 backend = "{backend}"
             """)
         f.flush()
@@ -1054,8 +1157,10 @@ def test_vllm_backend_image_selection(gpu_env: str, backend: str, expected_image
     with NamedTemporaryFile('w', delete_on_close=False) as f:
         f.write(f"""\
 [ramalama]
-backend = "{backend}"
 runtime = "vllm"
+
+[ramalama.runtimes.llama_cpp]
+backend = "{backend}"
             """)
         f.flush()
 
@@ -1081,7 +1186,7 @@ def test_backend_incompatibility_warning(monkeypatch):
 
     with NamedTemporaryFile('w', delete_on_close=False) as f:
         f.write("""\
-[ramalama]
+[ramalama.runtimes.llama_cpp]
 backend = "cuda"
             """)
         f.flush()
@@ -1116,6 +1221,8 @@ backend = "cuda"
         ("CUDA_VISIBLE_DEVICES", ["auto", "cuda"]),  # NVIDIA
         ("INTEL_VISIBLE_DEVICES", ["auto", "vulkan", "sycl", "openvino"]),  # Intel (Vulkan preferred)
         ("ASAHI_VISIBLE_DEVICES", ["auto", "vulkan"]),  # Asahi
+        ("ASCEND_VISIBLE_DEVICES", ["auto", "cann"]),  # Ascend
+        ("MUSA_VISIBLE_DEVICES", ["auto", "musa"]),  # MUSA
         (None, ["auto", "vulkan"]),  # No GPU
     ],
 )

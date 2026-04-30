@@ -67,37 +67,7 @@ This value can also be set via `RAMALAMA_API_KEY`.
 
 **Model conversion options:**
 
-**backend**="auto"
-
-GPU backend to use for inference (default: auto).
-
-This setting affects which container image is selected and how GPU resources are utilized.
-
-Valid options: auto, vulkan, rocm, cuda, sycl, openvino
-
-- **auto** (default): Automatically selects the preferred backend based on detected GPU:
-  - AMD GPUs: vulkan (Linux/macOS) or rocm (Windows)
-  - NVIDIA GPUs: cuda
-  - Intel GPUs: vulkan (Linux/macOS) or sycl (Windows); openvino available as explicit option
-  - No GPU: vulkan (CPU fallback)
-
-- **vulkan**: Use Vulkan-based inference (compatible with AMD, Intel, and CPU)
-- **rocm**: Use AMD ROCm backend (AMD GPUs only)
-- **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
-- **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
-- **openvino**: Use Intel OpenVINO backend (Intel GPUs only); uses `quay.io/ramalama/openvino`
-
-**Platform-specific behavior**: On Windows, vulkan is not supported on WSL2, so vendor-specific backends (rocm for AMD, sycl for Intel) are automatically preferred when using `backend="auto"`.
-
-The RAMALAMA_BACKEND environment variable overrides this field.
-
-Example configuration:
-```toml
-[ramalama]
-backend = "vulkan"  # Force Vulkan for all GPUs
-```
-
-**carimage**="registry.access.redhat.com/ubi10-micro:latest"
+**carimage**="registry.access.redhat.com/ubi10-micro:latest": OCI model car image used when building and pushing `--type=car` models.
 
 **container**=true: Run RamaLama in a container by default.
 Override via `RAMALAMA_IN_CONTAINER`.
@@ -121,9 +91,6 @@ Override via `RAMALAMA_CONTAINER_ENGINE`.
 
 **env**=[]: Environment variables added to the container runtime environment.
 Example: "LLAMA_ARG_THREADS=10".
-
-**gguf_quantization_mode**="Q4_K_M": Quantization mode used while creating OCI-formatted AI models.
-Options: `Q2_K`, `Q3_K_S`, `Q3_K_M`, `Q3_K_L`, `Q4_0`, `Q4_K_S`, `Q4_K_M`, `Q5_0`, `Q5_K_S`, `Q5_K_M`, `Q6_K`, `Q8_0`.
 
 **host**="::" | "0.0.0.0"
 
@@ -207,10 +174,6 @@ Options: `llama.cpp`, `vllm`, `mlx`.
 **summarize_after**=4: Automatically summarize chat history after N messages to limit context growth.
 Set to 0 to disable.
 
-**temp**="0.8": Response sampling temperature.
-- Lower values: more deterministic output
-- Higher values: more creative output (higher hallucination risk)
-
 **Transport and HTTP options:**
 
 **transport**="ollama": Default transport used for pull/push operations.
@@ -256,3 +219,60 @@ The `ramalama.user` table contains user preferences.
 
 When `no_missing_gpu_prompt = true`, RamaLama suppresses the interactive prompt on macOS Podman VMs without GPU acceleration (for example, `applehv`).
 This value can also be set via `RAMALAMA_USER__NO_MISSING_GPU_PROMPT`.
+
+## RAMALAMA.RUNTIMES TABLE
+Runtime-specific configuration. Each runtime plugin defines its own config section
+under `[ramalama.runtimes.<name>]`. The key name uses underscores (e.g. `llama_cpp`
+for the "llama.cpp" runtime).
+
+`[[ramalama.runtimes.llama_cpp]]`
+
+**backend**="auto": GPU backend to use for inference.
+This setting affects which container image is selected and how GPU resources are utilized.
+
+Valid options: `auto`, `vulkan`, `rocm`, `cuda`, `sycl`, `openvino`, `cann`, `musa`.
+
+- **auto** (default): Automatically selects the preferred backend based on detected GPU:
+  - AMD GPUs: vulkan (Linux/macOS) or rocm (Windows)
+  - NVIDIA GPUs: cuda
+  - Intel GPUs: vulkan (Linux/macOS) or sycl (Windows); openvino available as explicit option
+  - Ascend NPUs: cann
+  - MUSA GPUs: musa
+  - No GPU: vulkan (CPU fallback)
+
+- **vulkan**: Use Vulkan-based inference (compatible with AMD, Intel, and CPU)
+- **rocm**: Use AMD ROCm backend (AMD GPUs only)
+- **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
+- **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
+- **openvino**: Use Intel OpenVINO backend (Intel GPUs only); uses `quay.io/ramalama/openvino`
+- **cann**: Use Huawei CANN backend (Ascend NPUs only); uses `quay.io/ramalama/cann`
+- **musa**: Use Moore Threads MUSA backend (MUSA GPUs only); uses `quay.io/ramalama/musa`
+
+**Platform-specific behavior**: On Windows, vulkan is not supported on WSL2, so vendor-specific backends (rocm for AMD, sycl for Intel) are automatically preferred when using `backend="auto"`.
+
+Example configuration:
+
+    [ramalama.runtimes.llama_cpp]
+    backend = "vulkan"  # Force Vulkan for all GPUs
+
+**cache_reuse**=256: Min chunk size to attempt reusing from the cache via KV shifting.
+
+**gguf_quantization_mode**="Q4_K_M": Quantization mode used when creating OCI-formatted AI models.
+Options: `Q2_K`, `Q3_K_S`, `Q3_K_M`, `Q3_K_L`, `Q4_0`, `Q4_K_S`, `Q4_K_M`, `Q5_0`, `Q5_K_S`, `Q5_K_M`, `Q6_K`, `Q8_0`.
+
+**ngl**=-1: Number of layers to offload to the GPU. Set to -1 to offload all layers.
+
+**temp**="0.8": Response sampling temperature.
+- Lower values: more deterministic output
+- Higher values: more creative output (higher hallucination risk)
+
+**thinking**=true: Enable/disable thinking mode in reasoning models.
+
+**threads**=4: Number of CPU threads to use for inference.
+Default is half the available CPU cores (minimum 4).
+
+`[[ramalama.runtimes.mlx]]`
+
+**temp**="0.8": Response sampling temperature.
+- Lower values: more deterministic output
+- Higher values: more creative output (higher hallucination risk)

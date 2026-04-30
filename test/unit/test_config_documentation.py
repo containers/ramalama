@@ -47,11 +47,12 @@ def get_documented_fields_in_conf():
     documented = set()
 
     # Subsections that contain their own field documentation (these fields should not be extracted)
-    subsections_with_fields = {'benchmarks', 'http_client', 'user'}
+    subsections_with_fields = {'benchmarks', 'http_client', 'user', 'runtimes'}
 
     # Track which section we're in to exclude nested fields under commented subsections
-    in_commented_nested_section = False
-    section_pattern = r'^\s*(#?)\s*\[ramalama\.([a-z_]+)\]'
+    in_nested_section = False
+    in_nested_section_is_commented = False
+    section_pattern = r'^\s*(#?)\s*\[ramalama\.([a-z_]+)(?:\.[a-z_]+)*\]'
     main_section_pattern = r'^\s*\[ramalama\]'
     prev_line_blank = False
 
@@ -60,7 +61,7 @@ def get_documented_fields_in_conf():
 
         # Check if we're at the main [ramalama] section
         if re.match(main_section_pattern, line):
-            in_commented_nested_section = False
+            in_nested_section = False
             prev_line_blank = current_line_blank
             continue
 
@@ -71,32 +72,35 @@ def get_documented_fields_in_conf():
             section_name = section_match.group(2)
             documented.add(section_name)
             # Skip fields if it's a commented nested section OR if it's a subsection with its own fields
-            in_commented_nested_section = is_commented or (section_name in subsections_with_fields)
+            in_nested_section = is_commented or (section_name in subsections_with_fields)
+            in_nested_section_is_commented = is_commented
             prev_line_blank = current_line_blank
             continue
 
         # Check if we hit a new uncommented section (which ends any nested section)
         if re.match(r'^\s*\[', line) and not line.strip().startswith('#'):
-            in_commented_nested_section = False
+            in_nested_section = False
 
-        # If we're in a commented subsection, stay in it until we see a clear exit point
-        # Exit point: blank line followed by a comment that starts a new field's documentation
-        if in_commented_nested_section:
+        # If we're in a nested subsection, skip its fields
+        if in_nested_section:
             # If this line has a field definition, skip it
             if '=' in line:
                 prev_line_blank = current_line_blank
                 continue
-            # If previous line was blank and this is a comment (but not empty), might be exiting
-            elif prev_line_blank and line.strip().startswith('#') and line.strip() not in ['#', '']:
-                # This looks like the start of a new field's documentation, exit
-                in_commented_nested_section = False
+            elif (
+                in_nested_section_is_commented
+                and prev_line_blank
+                and line.strip().startswith('#')
+                and line.strip() not in ['#', '']
+            ):
+                in_nested_section = False
             # Otherwise stay in the section
             else:
                 prev_line_blank = current_line_blank
                 continue
 
-        # Only match fields when not in a commented nested subsection
-        if not in_commented_nested_section:
+        # Only match fields when not in a nested subsection
+        if not in_nested_section:
             match = re.match(pattern, line)
             if match:
                 field_name = match.group(1)
@@ -128,12 +132,12 @@ def get_documented_fields_in_manpage():
     documented = set()
 
     # Subsections that contain their own **field** documentation (these fields should not be extracted)
-    subsections_with_fields = {'http_client', 'user'}
+    subsections_with_fields = {'http_client', 'user', 'runtimes'}
 
     # Track which section we're in
     current_section = None
     main_section_pattern = r'^`\[\[ramalama\]\]`$'
-    section_pattern = r'^`\[\[ramalama\.([a-z_]+)\]\]`'
+    section_pattern = r'^`\[\[ramalama\.([a-z_]+)(?:\.[a-z_]+)*\]\]`'
     in_main_section = False
 
     for line in lines:

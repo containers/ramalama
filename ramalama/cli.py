@@ -217,12 +217,12 @@ def parse_args_from_cmd(cmd: list[str]) -> tuple[argparse.ArgumentParser, argpar
     args = parser.parse_args(cmd)
     post_parse_setup(args)
 
-    # Update config field that store runtime specific config which can be overridden via the cli
-    # e.g Config.image and Config.rag_image etc...
-    # TODO(owalsh): refactor this to remove runtime specific config from the global config object
     for arg in args.__dict__.keys() & config._fields:
         if getattr(args, arg) != getattr(config, arg):
             setattr(config, arg, getattr(args, arg))
+
+    runtime_plugin = get_runtime(config.runtime)
+    runtime_plugin.sync_args_to_runtime_config(args, config)
     return parser, args
 
 
@@ -976,10 +976,13 @@ def chat_parser(subparsers):
         default=ActiveConfig().max_tokens,
         help="maximum number of tokens to generate (0 = unlimited)",
     )
+    config = ActiveConfig()
+    rt_config = get_runtime(config.runtime).get_runtime_config(config)
+    temp_default = rt_config.temp if rt_config and hasattr(rt_config, "temp") else 0.8
     parser.add_argument(
         "--temp",
         type=float,
-        default=float(ActiveConfig().temp),
+        default=temp_default,
         help="temperature of the response from the AI model",
     )
     parser.add_argument(
