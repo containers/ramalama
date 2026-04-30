@@ -6,6 +6,7 @@ import platform
 import random
 import re
 import string
+import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -665,7 +666,10 @@ def test_serve_generation(test_model, generate, env_vars):
                 else:
                     raise Exception("Invalid generate option")
 
-                assert len(re.findall(r'/mnt/models/smollm-135', content)) == 2
+                if sys.byteorder == "little":
+                    assert len(re.findall(r'/mnt/models/smollm-135', content)) == 2
+                else:
+                    assert len(re.findall(r'/mnt/models/stories260K-be', content)) == 2
                 assert len(re.findall(r'/mnt/models/gemma-3', content)) == (2 if env_vars else 0)
 
                 if env_vars:
@@ -750,7 +754,10 @@ def test_serve_generation_with_llama_api(test_model, generate, env_vars):
                     assert not re.search(r'value: "?9999"?', content)
                     assert not re.search(r'quay.io/ramalama/llama-stack:0.18', content)
 
-                assert len(re.findall(r'/mnt/models/smollm-135', content)) == 2
+                if sys.byteorder == "little":
+                    assert len(re.findall(r'/mnt/models/smollm-135', content)) == 2
+                else:
+                    assert len(re.findall(r'/mnt/models/stories260K-be', content)) == 2
                 assert len(re.findall(r'/mnt/models/gemma-3', content)) == (0 if env_vars else 2)
 
 
