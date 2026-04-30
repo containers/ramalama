@@ -38,6 +38,7 @@ def sandbox_ctx():
     [
         ["goose", r"run -i -\s*$"],
         ["opencode", r"run --thinking=true\s*$"],
+        ["openclaw", r"openclaw gateway run"],
     ],
 )
 def test_sandbox_dryrun_default(agent, cmd):
@@ -58,7 +59,7 @@ def test_sandbox_dryrun_default_windows():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_dryrun_network(agent):
     """Dryrun output should include container networking."""
     result = check_output(_dryrun_cmd(agent))
@@ -67,7 +68,7 @@ def test_sandbox_dryrun_network(agent):
 
 @pytest.mark.e2e
 @skip_if_no_container
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_dryrun_custom_model(agent):
     """Custom model should appear in the model server dryrun output."""
     result = check_output(_dryrun_cmd(agent)[:-1] + ["gpt-oss"])
@@ -76,7 +77,7 @@ def test_sandbox_dryrun_custom_model(agent):
 
 @pytest.mark.e2e
 @skip_if_no_container
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_dryrun_custom_workdir(agent):
     """--workdir should mount the directory and set --workdir=/work."""
     result = check_output(_dryrun_cmd(agent) + ["-w", "/tmp"])
@@ -147,6 +148,44 @@ def test_sandbox_dryrun_opencode_custom_image():
     assert "myopencode:v2" in result
 
 
+# --- OpenClaw-specific dryrun tests ---
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_sandbox_dryrun_openclaw_env_vars():
+    """Dryrun output should include OpenClaw environment variables."""
+    result = check_output(_dryrun_cmd("openclaw"))
+    assert "OPENAI_API_KEY=ramalama" in result
+    assert re.search(r"OPENAI_BASE_URL=http://localhost:\d+/v1", result)
+    assert "OPENCLAW_SKIP_CHANNELS=1" in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_sandbox_dryrun_openclaw_custom_image():
+    """Custom --openclaw-image should appear in the OpenClaw container command."""
+    result = check_output(_dryrun_cmd("openclaw") + ["--openclaw-image", "myopenclaw:v2"])
+    assert "myopenclaw:v2" in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_sandbox_dryrun_openclaw_no_url_flag():
+    """OpenClaw client command should rely on config gateway.port instead of --url."""
+    result = check_output(_dryrun_cmd("openclaw") + ["hello"])
+    assert "openclaw agent" in result
+    assert "--url" not in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_sandbox_dryrun_openclaw_debug_verbose():
+    """OpenClaw debug mode should pass --verbose to the agent command."""
+    result = check_output(["ramalama", "--debug", "--dryrun", "sandbox", "openclaw", TEST_MODEL, "hello"])
+    assert "openclaw agent --verbose" in result
+
+
 # --- Live run tests ---
 
 
@@ -155,7 +194,7 @@ def test_sandbox_dryrun_opencode_custom_image():
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "openclaw"])
 def test_sandbox_run(sandbox_ctx, agent):
     """Agent should run successfully."""
     result = sandbox_ctx.check_output(["ramalama", "sandbox", agent, "--thinking=off", TEST_MODEL, "hi"])
