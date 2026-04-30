@@ -1,5 +1,6 @@
 import sys
 from argparse import Namespace
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -235,3 +236,60 @@ def test_post_parse_setup_model_input(
     assert input_args.UNRESOLVED_MODEL == expected_unresolved
     assert input_args.MODEL == expected_resolved
     assert input_args.model == input_args.MODEL
+
+
+def test_list_models_from_store_preserves_json_schema(monkeypatch):
+    from ramalama.cli import _list_models_from_store
+
+    class _FakeStore:
+        def __init__(self, _):
+            pass
+
+        def list_models(self, engine, show_container):
+            assert engine == "podman"
+            assert not show_container
+            return {
+                "huggingface://ggml-org/gemma-3-12b-it-GGUF:latest": [
+                    SimpleNamespace(is_partial=False, size=4, modified=1)
+                ]
+            }
+
+    fake_shortnames = SimpleNamespace(shortnames={"gemma3:12b": "hf://ggml-org/gemma-3-12b-it-GGUF"})
+    monkeypatch.setattr("ramalama.cli.GlobalModelStore", _FakeStore)
+    monkeypatch.setattr("ramalama.cli.get_shortnames", lambda: fake_shortnames)
+
+    models = _list_models_from_store(
+        Namespace(store="/tmp/store", engine="podman", container=False, all=False, sort="name", order="desc")
+    )
+    assert len(models) == 1
+    assert models[0]["name"] == "hf://ggml-org/gemma-3-12b-it-GGUF"
+    assert "shortname" not in models[0]
+
+
+def test_list_cli_prints_shortname_column(capsys, monkeypatch):
+    from ramalama.cli import list_cli
+
+    monkeypatch.setattr(
+        "ramalama.cli._list_models",
+        lambda _: [
+            {
+                "name": "hf://ggml-org/gemma-3-12b-it-GGUF",
+                "modified": "2026-01-01T00:00:00+00:00",
+                "size": 4096,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "ramalama.cli.get_shortnames",
+        lambda: SimpleNamespace(shortnames={"gemma3:12b": "hf://ggml-org/gemma-3-12b-it-GGUF"}),
+    )
+
+    list_cli(Namespace(json=False, quiet=False, noheading=False))
+    output = capsys.readouterr().out
+
+    assert "SHORTNAME" in output
+    assert "NAME" in output
+    assert "MODIFIED" in output
+    assert "SIZE" in output
+    assert "gemma3:12b" in output
+    assert "hf://ggml-org/gemma-3-12b-it-GGUF" in output
