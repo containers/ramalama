@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout RamaLama
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -47,7 +47,7 @@ jobs:
           fi
 
       - name: Checkout marketing site repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ env.TARGET_REPO }}
           token: ${{ env.PUBLISH_TOKEN }}
