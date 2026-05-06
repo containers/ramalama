@@ -297,6 +297,15 @@ def configure_arguments(parser):
 The RAMALAMA_CONTAINER_ENGINE environment variable modifies default behaviour.""",
     )
     parser.add_argument(
+        "--engine-args",
+        dest="engine_args",
+        default=None,
+        metavar="ARGS",
+        help="""additional arguments for the container engine (podman or docker), as a shell-quoted string.
+Same rules as --runtime-args: pass extra flags such as --mount=... before the container image is appended.
+Example: --engine-args='--mount=type=bind,src=/path/mmproj.gguf,destination=/mnt/mmproj.gguf,ro'""",
+    )
+    parser.add_argument(
         "--nocontainer",
         dest="container",
         default=not config.container,
@@ -410,6 +419,12 @@ def post_parse_setup(args):
 
     if hasattr(args, "runtime_args"):
         args.runtime_args = shlex.split(args.runtime_args)
+
+    if hasattr(args, "engine_args"):
+        if args.engine_args:
+            args.engine_args = shlex.split(args.engine_args)
+        else:
+            args.engine_args = []
 
     if hasattr(args, 'pull'):
         args.pull = normalize_pull_arg(args.pull, getattr(args, 'engine', None))

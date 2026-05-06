@@ -18,7 +18,7 @@ from ramalama import chat
 from ramalama.common import ContainerEntryPoint
 from ramalama.compose import Compose
 from ramalama.config import ActiveConfig
-from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
+from ramalama.engine import Engine, append_engine_cli_extras, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.model_inspect.base_info import ModelInfoBase
 from ramalama.model_inspect.gguf_info import GGUFModelInfo
@@ -401,6 +401,7 @@ class Transport(TransportBase):
 
         self.setup_container(args)
         self.setup_mounts(args)
+        append_engine_cli_extras(args, self.engine)
 
         # Make sure Image precedes cmd_args
         self.engine.add([args.image] + cmd_args)
@@ -481,6 +482,7 @@ class Transport(TransportBase):
             # For container mode, set up the container and start it with subprocess
             self.setup_container(args)
             self.setup_mounts(args)
+            append_engine_cli_extras(args, self.engine)
             # Make sure Image precedes cmd_args
             self.engine.add([args.image] + cmd)
 

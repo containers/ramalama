@@ -170,6 +170,16 @@ def test_basic_dry_run():
             id="check --runtime-args=\"--foo='a b c'\"", marks=skip_if_no_container
         ),
         pytest.param(
+            ["--engine-args", "--label=ramalama.test=1"],
+            r".*--label=ramalama\.test=1",
+            None,
+            None,
+            True,
+            None,
+            id="check --engine-args",
+            marks=skip_if_no_container,
+        ),
+        pytest.param(
             ["--privileged"], r".*--privileged", None, None, True, None,
             id="check --privileged", marks=skip_if_no_container
         ),

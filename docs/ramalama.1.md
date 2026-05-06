@@ -113,6 +113,11 @@ Show container runtime command without executing it (default: False).
 Run RamaLama using the specified container engine. Default is Podman if installed, otherwise Docker.
 The default can be overridden in the `ramalama.conf` file or via the `RAMALAMA_CONTAINER_ENGINE` environment variable.
 
+#### **--engine-args**=*ARGS*
+Additional arguments for the container engine (Podman or Docker), as a shell-quoted string (same rules as **--runtime-args**).
+They are appended to the engine command after RamaLama-generated options and model bind mounts, and immediately before the container image name.
+Use this for extra **--mount** bindings (for example multimodal projector files) or other engine-specific flags.
+
 #### **--help**, **-h**
 Show this help message and exit.
 

@@ -292,6 +292,13 @@ def dry_run(args):
     print()
 
 
+def append_engine_cli_extras(args: Any, engine: BaseEngine) -> None:
+    """Append tokens from ``--engine-args`` (parsed to ``args.engine_args``) before image/cmd."""
+    extra = getattr(args, "engine_args", None) or []
+    if extra:
+        engine.add(list(extra))
+
+
 def images(args):
     conman = str(args.engine) if args.engine is not None else None
     if conman == "" or conman is None:

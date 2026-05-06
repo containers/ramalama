@@ -44,6 +44,7 @@ class BaseEngineArgsType(Protocol):
     dryrun: bool
     quiet: bool
     image: str
+    engine_args: Optional[List[str]]
     # Optional attributes (accessed via getattr)
     pull: Optional[str]
     network: Optional[str]

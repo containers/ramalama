@@ -41,7 +41,7 @@ from ramalama.common import (
     version_tagged_image,
 )
 from ramalama.config import ActiveConfig, DefaultConfig, coerce_to_bool
-from ramalama.engine import Engine, dry_run, image_inspect
+from ramalama.engine import Engine, append_engine_cli_extras, dry_run, image_inspect
 from ramalama.logger import logger
 from ramalama.path_utils import file_uri_to_path
 from ramalama.plugins.loader import assemble_command
@@ -199,6 +199,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 config = ActiveConfig()
                 should_pull = config.pull in ["always", "missing", "newer"]
                 args.tools_image = ensure_image(args.engine, args.tools_image, should_pull=should_pull)
+            append_engine_cli_extras(args, engine)
             engine.add_args(args.tools_image)
             engine.add_args(*self._cmd_convert(args))
             if args.dryrun:
@@ -221,6 +222,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             config = ActiveConfig()
             should_pull = config.pull in ["always", "missing", "newer"]
             args.image = ensure_image(args.engine, args.image, should_pull=should_pull)
+        append_engine_cli_extras(args, engine)
         engine.add_args(args.image)
         args = copy.copy(args)
         args.subcommand = "quantize"
@@ -648,6 +650,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
             if args.container:
                 model.setup_container(args)
                 model.setup_mounts(args)
+                append_engine_cli_extras(args, model.engine)
                 model.engine.add([args.image] + cmd)
                 model.engine.dryrun()
             else:
@@ -657,6 +660,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         if args.container:
             model.setup_container(args)
             model.setup_mounts(args)
+            append_engine_cli_extras(args, model.engine)
             model.engine.add([args.image] + cmd)
             result = model.engine.run_process()
         else:
