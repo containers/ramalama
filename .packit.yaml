@@ -81,7 +81,6 @@ jobs:
     dist_git_branches: &fedora_targets
       - fedora-all
       - epel10
-      - epel10.0
       - epel9
 
   - job: koji_build
@@ -95,5 +94,4 @@ jobs:
     dist_git_branches:
       - fedora-branched # rawhide updates are created automatically
       - epel10
-      - epel10.0
       - epel9
