@@ -60,7 +60,7 @@ dev = [
     "argcomplete~=3.0",
     "bcrypt",
     "codespell~=2.0",
-    "huggingface_hub~=1.13.0;python_version>=\"3.10\"",
+    "huggingface_hub~=1.14.0;python_version>=\"3.10\"",
     "hypothesis>=6.135.26",
     "pytest~=9.0;python_version>=\"3.10\"",
     "pytest~=8.0;python_version<\"3.10\"",
