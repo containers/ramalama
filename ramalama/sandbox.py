@@ -59,7 +59,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     parser.add_argument("MODEL", completer=model_comp)
     parser.add_argument(
         "--opencode-image",
-        default="ghcr.io/anomalyco/opencode:1.14.30",
+        default="ghcr.io/anomalyco/opencode:1.14.48",
         completer=img_comp,
         help="OpenCode container image",
     )
