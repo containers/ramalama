@@ -31,6 +31,8 @@ spec:
   - name: build-args
     value:
     - TORCH_BACKEND=rocm6.3
+  - name: skip-sbom
+    value: "true"
   pipelineRef:
     name: push-pipeline
   timeouts:

@@ -31,6 +31,10 @@ spec:
     description: Skip checks against built image
     name: skip-checks
     type: string
+  - default: "true"
+    description: Skip SBOM generation
+    name: skip-sbom
+    type: string
   - default: "false"
     description: Execute the build with network isolation
     name: hermetic
@@ -232,6 +236,8 @@ spec:
       value: $(tasks.init.results.http-proxy)
     - name: NO_PROXY
       value: $(tasks.init.results.no-proxy)
+    - name: SKIP_SBOM_GENERATION
+      value: $(params.skip-sbom)
     runAfter:
     - wait-for-parent-image
     - prefetch-dependencies
@@ -623,6 +629,11 @@ spec:
       - name: kind
         value: task
       resolver: bundles
+    when:
+    - input: $(params.skip-sbom)
+      operator: in
+      values:
+      - "false"
   workspaces:
   - name: git-auth
     optional: true
