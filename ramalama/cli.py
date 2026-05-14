@@ -371,6 +371,8 @@ def post_parse_setup(args):
                 return f"hf:/{url.path}"
             if url.hostname in ["ollama.com"]:
                 return f"ollama:/{url.path}"
+        if input.startswith("ollama.com/"):
+            return f"ollama://{input[len('ollama.com/') :]}"
         return input
 
     # Resolve the model input

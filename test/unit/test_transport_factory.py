@@ -45,7 +45,7 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
         (Input("modelscope://granite-code", "", ""), ModelScope, None),
         (Input("ms://granite-code", "", ""), ModelScope, None),
         (Input("ollama://granite-code", "", ""), Ollama, None),
-        (Input("ollama.com/library/granite-code", "", ""), Ollama, None),
+        (Input("ollama://library/granite-code", "", ""), Ollama, None),
         (Input("oci://granite-code", "", "podman"), OCI, None),
         (Input("docker://granite-code", "", "podman"), OCI, None),
         (Input("rlcr://granite-code", "", "podman"), RamalamaContainerRegistry, None),
@@ -98,7 +98,7 @@ def test_model_factory_create(input: Input, expected: type[Union[Huggingface, Ol
         (Input("modelscope://granite-code", "", ""), ValueError),
         (Input("ms://granite-code", "", ""), ValueError),
         (Input("ollama://granite-code", "", ""), ValueError),
-        (Input("ollama.com/library/granite-code", "", ""), None),
+        (Input("ollama://library/granite-code", "", ""), ValueError),
         (Input("granite-code", "ollama", ""), None),
         (Input("granite-code", "", ""), KeyError),
     ],
@@ -132,9 +132,9 @@ def test_validate_oci_model_input(input: Input, error):
         ),
         (Input("ms://granite-code", "", ""), "granite-code"),
         (Input("ollama://granite-code", "", ""), "granite-code"),
-        (Input("ollama.com/library/granite-code", "", ""), "granite-code"),
+        (Input("ollama://library/granite-code", "", ""), "granite-code"),
         (
-            Input("ollama.com/library/ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", "", ""),
+            Input("ollama://library/ibm-granite/granite-3b-code-base-2k-GGUF/granite-code", "", ""),
             "ibm-granite/granite-3b-code-base-2k-GGUF/granite-code",
         ),
         (Input("oci://granite-code", "", "podman"), "granite-code"),
@@ -169,6 +169,53 @@ def test_prune_model_input(input: Input, expected: str):
     args = ARGS(input.Engine)
     pruned_model_input = TransportFactory(input.Model, args, input.Transport).prune_model_input()
     assert pruned_model_input == expected
+
+
+def test_bare_model_with_slash_defaults_to_huggingface():
+    args = ARGS()
+    model = TransportFactory("org/model-name", args).create()
+    assert isinstance(model, Huggingface)
+
+
+def test_bare_model_without_slash_defaults_to_ollama():
+    transport_factory_module._ollama_default_warned = False
+    args = ARGS()
+    with pytest.warns(FutureWarning):
+        model = TransportFactory("granite-code", args).create()
+    assert isinstance(model, Ollama)
+
+
+def test_bare_model_without_slash_emits_deprecation_warning():
+    transport_factory_module._ollama_default_warned = False
+    args = ARGS()
+    with pytest.warns(FutureWarning, match="Defaulting to Ollama transport"):
+        TransportFactory("granite-code", args).create()
+
+
+def test_explicit_ollama_transport_emits_deprecation_warning():
+    transport_factory_module._ollama_default_warned = False
+    args = ARGS()
+    with pytest.warns(FutureWarning, match="Ollama models are no longer compatible"):
+        TransportFactory("granite-code", args, transport="ollama").create()
+
+
+def test_explicit_ollama_prefix_emits_deprecation_warning():
+    transport_factory_module._ollama_default_warned = False
+    args = ARGS()
+    with pytest.warns(FutureWarning, match="Ollama models are no longer compatible"):
+        TransportFactory("ollama://granite-code", args).create()
+
+
+def test_deprecation_warning_emitted_at_most_once():
+    transport_factory_module._ollama_default_warned = False
+    args = ARGS()
+    with pytest.warns(FutureWarning):
+        TransportFactory("model-a", args).create()
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        TransportFactory("model-b", args).create()
 
 
 def test_transport_factory_passes_scheme_to_get_chat_provider(monkeypatch):

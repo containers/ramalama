@@ -48,7 +48,7 @@ def _make_opencode_args(engine="podman"):
 def test_sandbox_model_positional(agent):
     """Sandbox cli should accept a model as a positional argument"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
-    assert args.MODEL == "hf://Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf"
+    assert args.MODEL == "hf://Qwen/Qwen3-4B-GGUF"
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode"])

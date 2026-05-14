@@ -15,7 +15,7 @@ def test_delete_non_existing_image():
         check_output(["ramalama", "rm", image_name], stderr=STDOUT)
 
     assert exc_info.value.returncode == 22
-    assert re.match(
+    assert re.search(
         f"Error: Model '{image_name}' not found",
         exc_info.value.output.decode("utf-8"),
     )

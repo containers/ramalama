@@ -199,6 +199,12 @@ def test_pull_verify(monkeypatch, option, value):
             "ollama://library/smollm:135m",
             "ollama://library/smollm:135m",
         ),
+        (
+            Namespace(MODEL="ollama.com/library/smollm:135m"),
+            "ollama.com/library/smollm:135m",
+            "ollama://library/smollm:135m",
+            "ollama://library/smollm:135m",
+        ),
         (Namespace(MODEL="tinyllama"), "tinyllama", "tinyllama", "hf://TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"),
         (
             Namespace(

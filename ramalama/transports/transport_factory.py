@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Optional, Union
 
@@ -25,19 +26,22 @@ from ramalama.transports.url import URL
 
 CLASS_MODEL_TYPES: TypeAlias = Union[Huggingface, Ollama, OCI, URL, ModelScope, RamalamaContainerRegistry, APITransport]
 
+_ollama_default_warned = False
+
 
 class TransportFactory:
     def __init__(
         self,
         model: str,
         args: StoreArgType,
-        transport: str = "ollama",
+        transport: Optional[str] = None,
         ignore_stderr: bool = False,
     ):
 
         self.model = model
         self.store_path = args.store
-        self.transport = transport
+        self._transport_is_implicit = transport is None and not model.startswith("ollama://")
+        self.transport = transport if transport is not None else "ollama"
         self.engine = args.engine
         self.ignore_stderr = ignore_stderr
         self.container = args.container
@@ -64,7 +68,8 @@ class TransportFactory:
             return Huggingface, self.create_huggingface
         if self.model.startswith(("modelscope://", "ms://")):
             return ModelScope, self.create_modelscope
-        if self.model.startswith(("ollama://", "ollama.com/library/")):
+        if self.model.startswith("ollama://"):
+            self._warn_ollama_deprecated()
             return Ollama, self.create_ollama
         if self.model.startswith(("oci://", "docker://")):
             return OCI, self.create_oci
@@ -74,17 +79,37 @@ class TransportFactory:
             return URL, self.create_url
         if self.model.startswith(("openai://")):
             return APITransport, self.create_api_transport
+        if self._transport_is_implicit and "/" in self.model:
+            return Huggingface, self.create_huggingface
         if self.transport == "huggingface":
             return Huggingface, self.create_huggingface
         if self.transport == "modelscope":
             return ModelScope, self.create_modelscope
         if self.transport == "ollama":
+            self._warn_ollama_deprecated()
             return Ollama, self.create_ollama
         if self.transport == "rlcr":
             return RamalamaContainerRegistry, self.create_rlcr
         if self.transport == "oci":
             return OCI, self.create_oci
         raise KeyError(f'transport "{self.transport}" not supported. Must be oci, huggingface, modelscope, or ollama.')
+
+    def _warn_ollama_deprecated(self) -> None:
+        global _ollama_default_warned
+        if _ollama_default_warned:
+            return
+        _ollama_default_warned = True
+        msg = ""
+        if self._transport_is_implicit:
+            msg = f"Defaulting to Ollama transport for '{self.model}'.\n"
+        warnings.warn(
+            f"{msg}Note: Ollama models are no longer compatible with llama.cpp. "
+            "Support for Ollama models will be removed in a future release. "
+            "Use the Hugging Face <org>/<model> shorthand format, "
+            "or specify a transport explicitly, e.g. huggingface:// or oci://.",
+            FutureWarning,
+            stacklevel=3,
+        )
 
     def prune_model_input(self) -> str:
 
@@ -99,7 +124,7 @@ class TransportFactory:
         elif self.model_cls == ModelScope:
             pruned_model_input = rm_until_substring(pruned_model_input, "modelscope.cn/")
         elif self.model_cls == Ollama:
-            pruned_model_input = rm_until_substring(pruned_model_input, "ollama.com/library/")
+            pruned_model_input = rm_until_substring(pruned_model_input, "library/")
 
         return pruned_model_input
 
@@ -171,5 +196,6 @@ class TransportFactory:
 
 def New(name, args, transport: Optional[str] = None) -> CLASS_MODEL_TYPES:
     if transport is None:
-        transport = ActiveConfig().transport
+        config = ActiveConfig()
+        transport = config.transport if config.is_set("transport") else None
     return TransportFactory(name, args, transport=transport).create()

@@ -69,11 +69,11 @@ def force_oci_artifact(monkeypatch):
             "2b-instruct-fp16",
             "ollama.com/huihui_ai",
         ),
-        ("ollama.com/library/granite-code", "granite-code", "latest", "library"),
+        ("ollama://library/granite-code", "granite-code", "latest", "library"),
         (
             "huihui_ai/granite3.1-dense-abliterated:2b-instruct-fp16",
             "granite3.1-dense-abliterated",
-            "2b-instruct-fp16",
+            "2B-INSTRUCT-FP16",
             "huihui_ai",
         ),
         ("oci://granite-code", "granite-code", "latest", ""),
@@ -94,9 +94,16 @@ def test_extract_model_identifiers(
     expected_orga: str,
     force_oci_image,
 ):
+    import ramalama.transports.transport_factory as tf_mod
+
+    tf_mod._ollama_default_warned = False
     args = ARGS()
     args.engine = "podman"
-    name, tag, orga = TransportFactory(model_input, args).create().extract_model_identifiers()
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        name, tag, orga = TransportFactory(model_input, args).create().extract_model_identifiers()
     assert name == expected_name
     assert tag == expected_tag
     assert orga == expected_orga
@@ -301,12 +308,16 @@ class TestMLXRuntime:
 
         model = Transport(args.MODEL, args.store)
 
+        import warnings
+
         with (
             patch.object(tf_module, 'New', return_value=model),
             patch.object(model, 'ensure_model_exists'),
             patch.object(base_module, 'compute_serving_port', return_value="8080"),
             patch.object(factory_module, 'assemble_command', return_value=[]),
+            warnings.catch_warnings(),
         ):
+            warnings.simplefilter("ignore", FutureWarning)
             plugin = get_runtime("mlx")
             plugin._run_handler(args)
 
