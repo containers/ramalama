@@ -32,6 +32,10 @@ spec:
     name: skip-checks
     type: string
   - default: "false"
+    description: Skip SBOM generation
+    name: skip-sbom
+    type: string
+  - default: "false"
     description: Execute the build with network isolation
     name: hermetic
     type: string
@@ -215,6 +219,8 @@ spec:
       value: "true"
     - name: BUILDAH_FORMAT
       value: $(params.buildah-format)
+    - name: SKIP_SBOM_GENERATION
+      value: $(params.skip-sbom)
     runAfter:
     - wait-for-parent-image
     - prefetch-dependencies
@@ -606,6 +612,11 @@ spec:
       - name: kind
         value: task
       resolver: bundles
+    when:
+    - input: $(params.skip-sbom)
+      operator: in
+      values:
+      - "false"
   workspaces:
   - name: git-auth
     optional: true
