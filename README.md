@@ -25,15 +25,6 @@
   </a>
 </p>
 
-
-<!-- <h3 align="center">
-  <a href="https://docs.ramalama.com/">Docs</a> &bull;
-  <a href="https://github.com/containers/ramalama/discussions" title="Community Page">Discussion</a> &bull;
-  <a href="https://blog.ramalama.com" title="RamaLama Blog">Blog</a>
-</h3> -->
-
-
-
 [RamaLama](https://ramalama.ai) strives to make working with AI simple, straightforward, and familiar by using OCI containers.
 <br>
 <br>
@@ -1284,15 +1275,9 @@ so if you like this tool, give some of these repos a :star:, and hey, give us a 
 
 ## Community
 
-For general questions and discussion, please use RamaLama's
+For general questions, ideas, and discussions, please use RamaLama's [Matrix room](https://matrix.to/#/#ramalama:fedoraproject.org) or [Discussions forum](https://github.com/containers/ramalama/discussions).
 
-[`Matrix`](https://matrix.to/#/#ramalama:fedoraproject.org)
-
-For discussions around issues/bugs and features, you can use the GitHub
-[Issues](https://github.com/containers/ramalama/issues)
-and
-[PRs](https://github.com/containers/ramalama/pulls)
-tracking system.
+For discussions around issues/bugs and features, you can use the GitHub [Issues](https://github.com/containers/ramalama/issues) and [PRs](https://github.com/containers/ramalama/pulls) tracking system.
 
 ### Community / Developer Meetups
 

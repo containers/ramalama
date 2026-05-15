@@ -95,11 +95,6 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          href: 'https://blog.ramalama.com',
-          label: 'Blog',
-          position: 'left',
-        },
-        {
           href: 'https://github.com/containers/ramalama',
           label: 'GitHub',
           position: 'right',
@@ -137,22 +132,18 @@ const config: Config = {
               label: 'Discord',
               href: 'https://discord.gg/MkCXuTRBUn',
             },
-            {
-              label: 'X',
-              href: 'https://x.com/RamaLamaLabs',
-            },
           ],
         },
         {
           title: 'More',
           items: [
             {
-              label: 'Blog',
-              href: 'https://blog.ramalama.com',
-            },
-            {
               label: 'GitHub',
               href: 'https://github.com/containers/ramalama',
+            },
+            {
+              label: 'PyPI',
+              href: 'https://pypi.org/project/ramalama/',
             },
           ],
         },
