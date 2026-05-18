@@ -27,7 +27,7 @@ except Exception:
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import accel_image, engine_cmd, exec_cmd, get_accel, in_toolbox, perror
+from ramalama.common import accel_image, engine_cmd, exec_cmd, in_toolbox, perror
 from ramalama.config import (
     SUPPORTED_ENGINES,
     ActiveConfig,
@@ -39,6 +39,7 @@ from ramalama.config import (
 from ramalama.config_types import COLOR_OPTIONS
 from ramalama.endian import EndianMismatchError
 from ramalama.host_utils import format_bind_host_for_url, format_vm_aware_publish_prefix
+from ramalama.hw_detect import detect_all_hardware
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
@@ -744,6 +745,24 @@ def _list_models(args):
     return _list_models_from_store(args)
 
 
+def _accelerator_info() -> dict[str, dict[str, Any]]:
+    return {
+        acc.accel_type: {
+            "devices": [
+                {
+                    "name": d.name,
+                    "memory_bytes": d.memory_bytes,
+                    "memory": human_readable_size(d.memory_bytes),
+                }
+                for d in acc.devices
+            ],
+            "total_memory_bytes": acc.total_memory_bytes,
+            "total_memory": human_readable_size(acc.total_memory_bytes),
+        }
+        for acc in detect_all_hardware()
+    }
+
+
 def info_cli(args: DefaultArgsType) -> None:
     shortnames = get_shortnames()
     if getattr(args, 'shortnames', None):
@@ -758,7 +777,7 @@ def info_cli(args: DefaultArgsType) -> None:
         print(json.dumps(get_runtime(args.runtime).list_devices(cast(argparse.Namespace, args)), indent=4))
         return
     info: dict[str, Any] = {
-        "Accelerator": get_accel(),
+        "Accelerators": _accelerator_info(),
         "Config": load_file_config(),
         "Engine": {
             "Name": args.engine,
