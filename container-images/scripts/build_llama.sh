@@ -266,8 +266,11 @@ configure_common_flags() {
   cuda)
     common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
     ;;
-  vulkan | asahi)
-    common_flags+=("-DGGML_VULKAN=1" "-DGGML_CPU_KLEIDIAI=ON" "-DGGML_KLEIDIAI_CACHE=ON" "-DGGML_OPENMP=ON" "-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=FLAME" "-DBLAS_INCLUDE_DIRS=/usr/include/blis")
+  vulkan)
+    common_flags+=("-DGGML_VULKAN=ON")
+    ;;
+  asahi)
+    common_flags+=("-DGGML_VULKAN=ON" "-DGGML_CPU_KLEIDIAI=ON" "-DGGML_KLEIDIAI_CACHE=ON" "-DGGML_OPENMP=ON" "-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=FLAME" "-DBLAS_INCLUDE_DIRS=/usr/include/blis")
     ;;
   intel-gpu)
     common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
