@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import configparser
 import os
+import sys
 import sysconfig
 
 
@@ -66,3 +67,60 @@ class Shortnames:
 
     def resolve(self, model: str) -> str:
         return self.shortnames.get(model, model)
+
+    @staticmethod
+    def sort_file(file_path: str, *, check: bool = False) -> bool:
+        """Sort shortnames.conf entries by key, preserving header comments.
+
+        Returns True if file is sorted. With check=True, returns False instead of writing.
+        """
+
+        with open(file_path) as f:
+            lines = f.readlines()
+
+        header: list[str] = []
+        entries: list[str] = []
+        in_entries = False
+        for line in lines:
+            if not in_entries:
+                header.append(line)
+                if line.strip().lower() == '[shortnames]':
+                    in_entries = True
+            else:
+                entries.append(line)
+
+        def is_mapping(line: str) -> bool:
+            return line.strip().startswith('"')
+
+        def entry_key(line: str) -> str:
+            s = line.strip()
+            return s[1 : s.index('"', 1)]
+
+        mappings = [line for line in entries if is_mapping(line)]
+        sorted_mappings = sorted(mappings, key=entry_key)
+
+        if mappings == sorted_mappings:
+            return True
+
+        if check:
+            return False
+
+        it = iter(sorted_mappings)
+        result = [next(it) if is_mapping(line) else line for line in entries]
+
+        with open(file_path, 'w') as f:
+            f.writelines(header)
+            f.writelines(result)
+
+        return True
+
+
+if __name__ == "__main__":
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    check = "--check" in sys.argv[1:]
+    if len(args) != 1:
+        print(f"Usage: {sys.argv[0]} [--check] <conf-file>", file=sys.stderr)
+        sys.exit(2)
+    if not Shortnames.sort_file(args[0], check=check):
+        print(f"ERROR: {args[0]} is not sorted by key. Run 'make format' to fix.", file=sys.stderr)
+        sys.exit(1)
