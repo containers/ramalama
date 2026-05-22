@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import configparser
 import os
+import re
 import sys
 import sysconfig
 
@@ -92,12 +93,38 @@ class Shortnames:
         def is_mapping(line: str) -> bool:
             return line.strip().startswith('"')
 
-        def entry_key(line: str) -> str:
+        def parse_key(line: str) -> str:
             s = line.strip()
             return s[1 : s.index('"', 1)]
 
+        def parse_tag_as_numeric(tag: str) -> float | None:
+            multipliers = {'b': 1e9, 'm': 1e6, 'k': 1e3}
+            m = re.search(r'(\d+)x(\d+\.?\d*)([bmk])\b', tag, re.IGNORECASE)
+            if m:
+                return float(m.group(1)) * float(m.group(2)) * multipliers[m.group(3).lower()]
+            m = re.search(r'(\d+\.?\d*)([bmk])\b', tag, re.IGNORECASE)
+            if m:
+                return float(m.group(1)) * multipliers[m.group(2).lower()]
+            m = re.search(r'(\d+\.?\d*)', tag)
+            if m:
+                return float(m.group(1))
+            return None
+
+        def entry_sort_key(line: str) -> tuple:
+            key = parse_key(line)
+            tag = key.split(':', 1)[1] if ':' in key else ''
+            num = parse_tag_as_numeric(tag)
+            return (num is not None, num, tag if num is None else '')
+
+        def entry_name(line: str) -> str:
+            key = parse_key(line)
+            return key.split(':')[0] if ':' in key else key
+
         mappings = [line for line in entries if is_mapping(line)]
-        sorted_mappings = sorted(mappings, key=entry_key)
+        # Pass 1: sort by tag — non-numeric tags first (lexically), then numeric tags by value
+        sorted_mappings = sorted(mappings, key=entry_sort_key)
+        # Pass 2: stable sort lexically by name
+        sorted_mappings = sorted(sorted_mappings, key=entry_name)
 
         if mappings == sorted_mappings:
             return True
