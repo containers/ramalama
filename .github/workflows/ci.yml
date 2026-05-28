@@ -322,7 +322,7 @@ jobs:
               python-version: '3.9'
               activate-environment: true
     name: E2E Tests (MacOS)${{ matrix.variant.title }}
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
