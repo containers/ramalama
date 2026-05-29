@@ -32,6 +32,8 @@ ramalama\-perplexity - calculate the perplexity value of an AI Model
 
 @@option name
 
+@@option ncmoe
+
 @@option network
 
 @@option ngl
