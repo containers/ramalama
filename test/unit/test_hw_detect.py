@@ -16,44 +16,48 @@ from ramalama.hw_detect import (
     AscendDetector,
     CpuDetector,
     DeviceInfo,
-    HardwareDetector,
     IntelDetector,
     MthreadsDetector,
     NvidiaDetector,
     VulkanDetector,
     _get_system_memory,
     _VulkanDeviceRaw,
+    clear_all_detection_caches,
     detect_all_hardware,
 )
 
 
 @pytest.fixture(autouse=True)
 def _clear_cache():
-    detect_all_hardware.cache_clear()
+    clear_all_detection_caches()
     yield
-    detect_all_hardware.cache_clear()
+    clear_all_detection_caches()
 
 
 class TestDetectNvidia:
     def test_single_gpu(self):
         mock_result = MagicMock()
-        mock_result.stdout = "24564, NVIDIA GeForce RTX 4090\n"
+        mock_result.stdout = "0, GPU-abc123, 24564, NVIDIA GeForce RTX 4090\n"
         with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
             result = NvidiaDetector().detect()
         assert len(result) == 1
         assert result[0].name == "NVIDIA GeForce RTX 4090"
         assert result[0].memory_bytes == 24564 * 1024 * 1024
+        assert result[0].index == 0
+        assert result[0].uuid == "GPU-abc123"
 
     def test_multi_gpu_returns_all(self):
         mock_result = MagicMock()
-        mock_result.stdout = "8192, NVIDIA GeForce RTX 3070\n24564, NVIDIA GeForce RTX 4090\n"
+        mock_result.stdout = "0, GPU-aaa, 8192, NVIDIA GeForce RTX 3070\n1, GPU-bbb, 24564, NVIDIA GeForce RTX 4090\n"
         with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
             result = NvidiaDetector().detect()
         assert len(result) == 2
         assert result[0].name == "NVIDIA GeForce RTX 3070"
         assert result[0].memory_bytes == 8192 * 1024 * 1024
+        assert result[0].index == 0
         assert result[1].name == "NVIDIA GeForce RTX 4090"
         assert result[1].memory_bytes == 24564 * 1024 * 1024
+        assert result[1].index == 1
 
     def test_nvidia_smi_not_found(self):
         with patch("ramalama.hw_detect.subprocess.run", side_effect=OSError):
@@ -103,6 +107,7 @@ class TestDetectAmdRocm:
         )
 
         with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
             patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd),
             patch.object(builtins, "open", mock_open(read_data="renoir\n")),
         ):
@@ -121,6 +126,7 @@ class TestDetectAmdRocm:
         )
 
         with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
             patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd),
             patch.object(builtins, "open", side_effect=OSError),
         ):
@@ -146,6 +152,7 @@ class TestDetectAmdRocm:
             raise OSError
 
         with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
             patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd),
             patch.object(builtins, "open", side_effect=fake_open),
         ):
@@ -163,13 +170,24 @@ class TestDetectAmdRocm:
             bank_props={"heap_type": 1, "size_in_bytes": 4 * 1024**3},
         )
 
-        with patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd):
+        with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
+            patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd),
+        ):
             result = AmdRocmDetector().detect()
 
         assert result == []
 
     def test_import_error(self):
-        with patch("ramalama.hw_detect.importlib.import_module", side_effect=ImportError):
+        with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
+            patch("ramalama.hw_detect.importlib.import_module", side_effect=ImportError),
+        ):
+            result = AmdRocmDetector().detect()
+        assert result == []
+
+    def test_arm64_returns_empty(self):
+        with patch("ramalama.hw_detect.platform.machine", return_value="aarch64"):
             result = AmdRocmDetector().detect()
         assert result == []
 
@@ -605,14 +623,23 @@ class TestDetectVulkan:
         assert result[0].name == "AMD Radeon RX 7900 XTX"
 
 
-def _make_mock_detector(accel_type, devices=None, error=None):
-    mock = MagicMock(spec=HardwareDetector)
-    mock.accel_type = accel_type
-    if error:
-        mock.detect.side_effect = error
-    else:
-        mock.detect.return_value = devices or []
-    return mock
+def _patch_all_detectors_empty():
+    """Context manager that patches all per-detector functions to return []."""
+    from contextlib import ExitStack
+
+    stack = ExitStack()
+    for name in [
+        "detect_asahi",
+        "detect_nvidia",
+        "detect_ascend",
+        "detect_amd_rocm",
+        "detect_intel",
+        "detect_mthreads",
+        "detect_apple_silicon",
+        "detect_vulkan",
+    ]:
+        stack.enter_context(patch(f"ramalama.hw_detect.{name}", return_value=[]))
+    return stack
 
 
 class TestDetectAllHardware:
@@ -621,13 +648,9 @@ class TestDetectAllHardware:
         amd_devices = [DeviceInfo("AMD Renoir", 8 * 1024**3)]
 
         with (
-            patch(
-                "ramalama.hw_detect._get_detectors",
-                return_value=[
-                    _make_mock_detector("cuda", nvidia_devices),
-                    _make_mock_detector("hip", amd_devices),
-                ],
-            ),
+            _patch_all_detectors_empty(),
+            patch("ramalama.hw_detect.detect_nvidia", return_value=nvidia_devices),
+            patch("ramalama.hw_detect.detect_amd_rocm", return_value=amd_devices),
             patch("ramalama.hw_detect._get_system_memory", return_value=32 * 1024**3),
             patch.object(CpuDetector, "_get_cpu_name", return_value=""),
         ):
@@ -640,7 +663,7 @@ class TestDetectAllHardware:
 
     def test_cpu_always_present(self):
         with (
-            patch("ramalama.hw_detect._get_detectors", return_value=[]),
+            _patch_all_detectors_empty(),
             patch("ramalama.hw_detect._get_system_memory", return_value=16 * 1024**3),
             patch.object(CpuDetector, "_get_cpu_name", return_value=""),
         ):
@@ -657,10 +680,8 @@ class TestDetectAllHardware:
         ]
 
         with (
-            patch(
-                "ramalama.hw_detect._get_detectors",
-                return_value=[_make_mock_detector("cuda", nvidia_devices)],
-            ),
+            _patch_all_detectors_empty(),
+            patch("ramalama.hw_detect.detect_nvidia", return_value=nvidia_devices),
             patch("ramalama.hw_detect._get_system_memory", return_value=32 * 1024**3),
             patch.object(CpuDetector, "_get_cpu_name", return_value=""),
         ):
@@ -673,13 +694,9 @@ class TestDetectAllHardware:
     def test_detector_exception_continues(self):
         amd_devices = [DeviceInfo("AMD Renoir", 8 * 1024**3)]
         with (
-            patch(
-                "ramalama.hw_detect._get_detectors",
-                return_value=[
-                    _make_mock_detector("cuda", error=RuntimeError("boom")),
-                    _make_mock_detector("hip", amd_devices),
-                ],
-            ),
+            _patch_all_detectors_empty(),
+            patch("ramalama.hw_detect.detect_nvidia", side_effect=RuntimeError("boom")),
+            patch("ramalama.hw_detect.detect_amd_rocm", return_value=amd_devices),
             patch("ramalama.hw_detect._get_system_memory", return_value=16 * 1024**3),
             patch.object(CpuDetector, "_get_cpu_name", return_value=""),
         ):

@@ -10,7 +10,8 @@ import time
 from http.client import HTTPConnection, HTTPException
 from typing import Optional
 
-from ramalama.common import ensure_image, genname, perror, set_accel_env_vars
+from ramalama.accel import set_accel_env_vars
+from ramalama.common import ensure_image, genname, perror
 from ramalama.config import ActiveConfig
 from ramalama.engine import create_network, remove_network
 from ramalama.plugins.interface import RuntimePlugin

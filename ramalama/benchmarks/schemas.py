@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, ClassVar, Literal, Optional, TypeVar, overload
 
-from ramalama.common import get_accel
+from ramalama.accel import get_accel
 
 VersionerT = TypeVar("VersionerT")
 
