@@ -13,6 +13,7 @@ from http.client import HTTPConnection
 from typing import Any, Literal, Optional, get_args
 from urllib.parse import urlparse
 
+from ramalama.accel import accel_image, get_gpu_type_env_vars, set_accel_env_vars, set_gpu_type_env_vars
 from ramalama.benchmarks.manager import BenchmarksManager
 from ramalama.benchmarks.schemas import BenchmarkRecord, get_benchmark_record
 from ramalama.benchmarks.utilities import parse_json, print_bench_results
@@ -31,15 +32,7 @@ from ramalama.cli import (
     runtime_options,
     suppressCompleter,
 )
-from ramalama.common import (
-    accel_image,
-    ensure_image,
-    get_gpu_type_env_vars,
-    run_cmd,
-    set_accel_env_vars,
-    set_gpu_type_env_vars,
-    version_tagged_image,
-)
+from ramalama.common import ensure_image, run_cmd, version_tagged_image
 from ramalama.config import ActiveConfig, DefaultConfig, coerce_to_bool
 from ramalama.engine import Engine, dry_run, image_inspect
 from ramalama.logger import logger

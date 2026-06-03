@@ -8,6 +8,7 @@ import re
 import struct
 import subprocess
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Optional
@@ -21,6 +22,8 @@ GiB = 1024 * 1024 * 1024
 class DeviceInfo:
     name: str
     memory_bytes: int
+    index: int = 0
+    uuid: str = ""
 
 
 @dataclass
@@ -30,7 +33,7 @@ class AcceleratorInfo:
     total_memory_bytes: int = 0
 
 
-# Intel Arc discrete GPU PCI device IDs → (name, VRAM in bytes)
+# Intel GPU PCI device IDs → (name, VRAM in bytes)
 # Source: https://dgpu-docs.intel.com/devices/hardware-table.html
 INTEL_GPU_SPECS: dict[str, tuple[str, int]] = {
     # Battlemage (Xe2)
@@ -62,7 +65,38 @@ INTEL_GPU_SPECS: dict[str, tuple[str, int]] = {
     "0x56bb": ("Intel Arc A310E", 4 * GiB),
     "0x56bc": ("Intel Arc A370E", 4 * GiB),
     "0x56bd": ("Intel Arc A350E", 4 * GiB),
+    # Integrated GPUs (Xe-LP / Xe-LPG) — VRAM is shared system memory
+    "0x46a6": ("Intel Alder Lake-P Graphics", 0),
+    "0x46a8": ("Intel Alder Lake-P Graphics", 0),
+    "0x46aa": ("Intel Alder Lake-P Graphics", 0),
+    "0x7d51": ("Intel Raptor Lake-P Graphics", 0),
+    "0x7d55": ("Intel Raptor Lake-P Graphics", 0),
+    "0x7dd5": ("Intel Raptor Lake-P Graphics", 0),
 }
+
+
+_PCI_IDS_PATHS = ["/usr/share/hwdata/pci.ids", "/usr/share/misc/pci.ids"]
+
+
+@lru_cache(maxsize=64)
+def _lookup_pci_device_name(vendor_id: str, device_id: str) -> Optional[str]:
+    for pci_ids_path in _PCI_IDS_PATHS:
+        try:
+            with open(pci_ids_path, "r", errors="replace") as f:
+                in_vendor = False
+                for line in f:
+                    if line.startswith("#") or line.strip() == "":
+                        continue
+                    if not line.startswith("\t"):
+                        in_vendor = line.startswith(vendor_id + " ")
+                        continue
+                    if in_vendor and line.startswith("\t") and not line.startswith("\t\t"):
+                        parts = line.strip().split("  ", 1)
+                        if len(parts) == 2 and parts[0] == device_id:
+                            return parts[1].strip()
+        except OSError:
+            continue
+    return None
 
 
 class HardwareDetector(ABC):
@@ -159,7 +193,7 @@ class NvidiaDetector(HardwareDetector):
     def detect(self) -> list[DeviceInfo]:
         try:
             result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=memory.total,name", "--format=csv,noheader,nounits"],
+                ["nvidia-smi", "--query-gpu=index,uuid,memory.total,name", "--format=csv,noheader,nounits"],
                 capture_output=True,
                 encoding="utf-8",
                 check=True,
@@ -169,14 +203,15 @@ class NvidiaDetector(HardwareDetector):
 
         devices: list[DeviceInfo] = []
         for line in result.stdout.strip().splitlines():
-            parts = [p.strip() for p in line.split(",", 1)]
-            if len(parts) != 2:
+            parts = [p.strip() for p in line.split(",", 3)]
+            if len(parts) != 4:
                 continue
             try:
-                memory_mib = int(parts[0])
+                idx = int(parts[0])
+                memory_mib = int(parts[2])
             except ValueError:
                 continue
-            devices.append(DeviceInfo(name=parts[1], memory_bytes=memory_mib * 1024 * 1024))
+            devices.append(DeviceInfo(name=parts[3], memory_bytes=memory_mib * 1024 * 1024, index=idx, uuid=parts[1]))
 
         return devices
 
@@ -228,13 +263,16 @@ class AmdRocmDetector(HardwareDetector):
         return "hip"
 
     def detect(self) -> list[DeviceInfo]:
+        if platform.machine() in ("arm64", "aarch64"):
+            return []
+
         try:
             amdkfd = importlib.import_module("ramalama.amdkfd")
         except ImportError:
             return []
 
         devices: list[DeviceInfo] = []
-        for np, props in amdkfd.gpus():
+        for i, (np, props) in enumerate(amdkfd.gpus()):
             if props["gfx_target_version"] < 90000:
                 continue
 
@@ -252,12 +290,15 @@ class AmdRocmDetector(HardwareDetector):
                         name = f.read().strip()
                 except OSError:
                     pass
-                if name:
+                device_id = props.get("device_id", 0)
+                if name and name != "ip discovery":
                     name = f"AMD {name.capitalize()}"
+                elif device_id:
+                    pci_name = _lookup_pci_device_name("1002", f"{device_id:04x}")
+                    name = f"AMD {pci_name}" if pci_name else f"AMD GPU (0x{device_id:04x})"
                 else:
-                    device_id = props.get("device_id", 0)
-                    name = f"AMD GPU (0x{device_id:04x})" if device_id else "AMD GPU"
-                devices.append(DeviceInfo(name=name, memory_bytes=mem_bytes))
+                    name = "AMD GPU"
+                devices.append(DeviceInfo(name=name, memory_bytes=mem_bytes, index=i))
 
         return devices
 
@@ -454,6 +495,23 @@ class _VulkanDeviceRaw:
 
 
 def _query_vulkan_devices() -> list[_VulkanDeviceRaw]:
+    # Suppress stderr during Vulkan API calls — some drivers (e.g. RADV) emit
+    # non-conformance warnings that are harmless for device enumeration.
+    try:
+        saved_stderr = os.dup(2)
+    except OSError:
+        return _query_vulkan_devices_inner()
+    try:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, 2)
+        os.close(devnull)
+        return _query_vulkan_devices_inner()
+    finally:
+        os.dup2(saved_stderr, 2)
+        os.close(saved_stderr)
+
+
+def _query_vulkan_devices_inner() -> list[_VulkanDeviceRaw]:
     import ctypes as ct
     import ctypes.util
 
@@ -694,32 +752,84 @@ def _get_system_memory() -> int:
     return 0
 
 
-def _get_detectors() -> list[HardwareDetector]:
-    return [
-        AsahiDetector(),
-        NvidiaDetector(),
-        AscendDetector(),
-        AmdRocmDetector(),
-        IntelDetector(),
-        MthreadsDetector(),
-        AppleSiliconDetector(),
-        VulkanDetector(),
-    ]
+@lru_cache(maxsize=1)
+def detect_asahi() -> list[DeviceInfo]:
+    return AsahiDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_nvidia() -> list[DeviceInfo]:
+    return NvidiaDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_ascend() -> list[DeviceInfo]:
+    return AscendDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_amd_rocm() -> list[DeviceInfo]:
+    return AmdRocmDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_intel() -> list[DeviceInfo]:
+    return IntelDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_mthreads() -> list[DeviceInfo]:
+    return MthreadsDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_apple_silicon() -> list[DeviceInfo]:
+    return AppleSiliconDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_vulkan() -> list[DeviceInfo]:
+    return VulkanDetector().detect()
+
+
+_DETECTOR_NAMES: list[tuple[str, str]] = [
+    ("asahi", "detect_asahi"),
+    ("cuda", "detect_nvidia"),
+    ("cann", "detect_ascend"),
+    ("hip", "detect_amd_rocm"),
+    ("intel", "detect_intel"),
+    ("musa", "detect_mthreads"),
+    ("metal", "detect_apple_silicon"),
+    ("vulkan", "detect_vulkan"),
+]
+
+
+def clear_all_detection_caches() -> None:
+    detect_asahi.cache_clear()
+    detect_nvidia.cache_clear()
+    detect_ascend.cache_clear()
+    detect_amd_rocm.cache_clear()
+    detect_intel.cache_clear()
+    detect_mthreads.cache_clear()
+    detect_apple_silicon.cache_clear()
+    detect_vulkan.cache_clear()
+    detect_all_hardware.cache_clear()
 
 
 @lru_cache(maxsize=1)
 def detect_all_hardware() -> tuple[AcceleratorInfo, ...]:
+    import ramalama.hw_detect as _self
+
     results: list[AcceleratorInfo] = []
-    for detector in _get_detectors():
+    for accel_type, fn_name in _DETECTOR_NAMES:
         try:
-            devices = detector.detect()
+            fn: Callable[[], list[DeviceInfo]] = getattr(_self, fn_name)
+            devices = fn()
             if devices:
                 total = sum(d.memory_bytes for d in devices)
-                results.append(
-                    AcceleratorInfo(accel_type=detector.accel_type, devices=devices, total_memory_bytes=total)
-                )
+                results.append(AcceleratorInfo(accel_type=accel_type, devices=devices, total_memory_bytes=total))
         except Exception as e:
-            logger.debug(f"Hardware detection failed for {detector.accel_type}: {e}")
+            logger.debug(f"Hardware detection failed for {accel_type}: {e}")
 
     cpu = CpuDetector()
     cpu_devices = cpu.detect()

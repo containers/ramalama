@@ -5,7 +5,8 @@ import os
 import shlex
 from typing import Optional
 
-from ramalama.common import RAG_DIR, get_accel_env_vars, get_gpu_devices
+from ramalama.accel import get_accel_env_vars, get_gpu_devices
+from ramalama.common import RAG_DIR
 from ramalama.file import PlainFile
 from ramalama.version import version
 

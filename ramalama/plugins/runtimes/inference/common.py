@@ -4,6 +4,7 @@ import argparse
 from abc import abstractmethod
 from typing import Any
 
+from ramalama.accel import accel_image, set_accel_env_vars
 from ramalama.cli import (
     GENERATE_OPTIONS,
     OverrideDefaultAction,
@@ -14,7 +15,7 @@ from ramalama.cli import (
     runtime_options,
     suppressCompleter,
 )
-from ramalama.common import ContainerEntryPoint, accel_image, ensure_image, set_accel_env_vars
+from ramalama.common import ContainerEntryPoint, ensure_image
 from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.plugins.interface import InferenceRuntimePlugin

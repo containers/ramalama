@@ -5,7 +5,8 @@ import os
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import exec_cmd, genname, get_accel_env_vars
+from ramalama.accel import get_accel_env_vars
+from ramalama.common import exec_cmd, genname
 from ramalama.compat import NamedTemporaryFile
 from ramalama.compose import Compose
 from ramalama.config import ActiveConfig, Config

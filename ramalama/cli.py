@@ -25,9 +25,10 @@ except Exception:
     suppressCompleter = None
 
 from ramalama import engine
+from ramalama.accel import accel_image
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import accel_image, exec_cmd, perror
+from ramalama.common import exec_cmd, perror
 from ramalama.config import (
     SUPPORTED_ENGINES,
     ActiveConfig,
@@ -650,13 +651,13 @@ def _accelerator_info() -> dict[str, dict[str, Any]]:
             "devices": [
                 {
                     "name": d.name,
-                    "memory_bytes": d.memory_bytes,
-                    "memory": human_readable_size(d.memory_bytes),
+                    "memory": d.memory_bytes,
+                    "memory_human": human_readable_size(d.memory_bytes),
                 }
                 for d in acc.devices
             ],
-            "total_memory_bytes": acc.total_memory_bytes,
-            "total_memory": human_readable_size(acc.total_memory_bytes),
+            "total_memory": acc.total_memory_bytes,
+            "total_memory_human": human_readable_size(acc.total_memory_bytes),
         }
         for acc in detect_all_hardware()
     }

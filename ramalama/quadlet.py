@@ -4,7 +4,8 @@ import os
 import shlex
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel, get_accel_env_vars
+from ramalama.accel import get_accel, get_accel_env_vars
+from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint
 from ramalama.file import UnitFile
 
 
