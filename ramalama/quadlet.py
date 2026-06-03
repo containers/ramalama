@@ -5,15 +5,9 @@ import shlex
 from typing import Optional, Tuple
 
 # Live reference for checking global vars
-import ramalama.common
-from ramalama.common import (
-    MNT_DIR,
-    RAG_DIR,
-    ContainerEntryPoint,
-    container_cuda_visible_devices,
-    get_accel,
-    get_accel_env_vars,
-)
+import ramalama.accel
+from ramalama.accel import container_cuda_visible_devices, get_accel, get_accel_env_vars
+from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint
 from ramalama.file import UnitFile
 from ramalama.host_utils import format_bind_host_publish_prefix, is_loopback_bind_host
 from ramalama.path_utils import normalize_host_path_for_container
@@ -113,7 +107,7 @@ class Quadlet:
             # The container toolkit brings in the NVIDIA device nodes itself, so
             # the host's GPU devices would only add ones that are not the GPU in
             # play, such as an iGPU. See get_gpu_devices().
-            for name in ramalama.common.nvidia_selected_devices or ["all"]:
+            for name in ramalama.accel.nvidia_selected_devices or ["all"]:
                 quadlet_file.add("Container", "AddDevice", f"nvidia.com/gpu={name}")
         else:
             quadlet_file.add("Container", "AddDevice", "-/dev/accel")

@@ -17,6 +17,7 @@ from http.client import HTTPConnection
 from typing import Any, Literal, Optional, get_args
 from urllib.parse import urlparse
 
+from ramalama.accel import accel_image, get_gpu_type_env_vars, set_accel_env_vars, set_gpu_type_env_vars
 from ramalama.benchmarks.manager import BenchmarksManager
 from ramalama.benchmarks.schemas import BenchmarkRecord, get_benchmark_record
 from ramalama.benchmarks.utilities import parse_json, print_bench_results
@@ -38,16 +39,12 @@ from ramalama.cli import (
 )
 from ramalama.common import (
     MNT_DIR,
-    accel_image,
     engine_cmd,
     ensure_image,
     genname,
-    get_gpu_type_env_vars,
     has_nvidia_vulkan_icd,
     is_windows_or_wsl,
     run_cmd,
-    set_accel_env_vars,
-    set_gpu_type_env_vars,
     version_tagged_image,
 )
 from ramalama.compose import Compose

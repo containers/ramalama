@@ -333,7 +333,7 @@ def test_quadlet_nvidia_selection(monkeypatch):
     monkeypatch.setattr("os.path.exists", lambda path: False)
     monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
     monkeypatch.setattr("ramalama.quadlet.get_accel_env_vars", lambda: {"CUDA_VISIBLE_DEVICES": "1,2"})
-    monkeypatch.setattr("ramalama.common.nvidia_selected_devices", ["1", "2"])
+    monkeypatch.setattr("ramalama.accel.nvidia_selected_devices", ["1", "2"])
 
     files = Quadlet("tinyllama", ("/blob", "model"), None, None, Args(), [], False, None, None).generate()
     with io.StringIO() as sio:

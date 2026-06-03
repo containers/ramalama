@@ -35,7 +35,7 @@ class TestEngine(unittest.TestCase):
             patch("ramalama.engine.get_accel_env_vars", return_value={"CUDA_VISIBLE_DEVICES": visible_devices}),
             patch("glob.glob", return_value=[]),
             patch.object(ramalama.common, "podman_machine_accel", False),
-            patch.object(ramalama.common, "nvidia_selected_devices", list(selected)),
+            patch.object(ramalama.accel, "nvidia_selected_devices", list(selected)),
         ):
             engine.add_device_options()
         return engine.exec_args
@@ -69,7 +69,7 @@ class TestEngine(unittest.TestCase):
             patch("os.path.exists", lambda path: path in host_devices),
             patch("glob.glob", lambda path: [path] if path in host_devices else []),
             patch.object(ramalama.common, "podman_machine_accel", False),
-            patch.object(ramalama.common, "nvidia_selected_devices", []),
+            patch.object(ramalama.accel, "nvidia_selected_devices", []),
         ):
             engine.add_device_options()
         return engine.exec_args

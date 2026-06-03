@@ -36,7 +36,7 @@ def runtime(monkeypatch):
     ],
 )
 def test_builtin_help_does_not_probe_gpu(command, capsys):
-    with patch("ramalama.common.get_accel", side_effect=AssertionError("unexpected GPU probe")):
+    with patch("ramalama.accel.get_accel", side_effect=AssertionError("unexpected GPU probe")):
         with pytest.raises(SystemExit) as exc:
             parse_args_from_cmd([command, "--help"])
     assert exc.value.code == 0
