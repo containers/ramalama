@@ -6,6 +6,7 @@ import os
 from abc import abstractmethod
 from typing import Any
 
+from ramalama.accel import accel_image, set_accel_env_vars
 from ramalama.cli import (
     GENERATE_OPTIONS,
     OverrideDefaultAction,
@@ -16,13 +17,7 @@ from ramalama.cli import (
     runtime_options,
     suppressCompleter,
 )
-from ramalama.common import (
-    ContainerEntryPoint,
-    accel_image,
-    ensure_image,
-    sanitize_filename,
-    set_accel_env_vars,
-)
+from ramalama.common import ContainerEntryPoint, ensure_image, sanitize_filename
 from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.model_store.reffile import StoreFileType

@@ -16,12 +16,12 @@ from time import perf_counter
 
 
 def sample(mode, command):
-    from ramalama import cli, common
+    from ramalama import accel, cli
 
     if mode == "gpu":
-        common.get_accel.cache_clear()
+        accel.get_accel.cache_clear()
         start = perf_counter()
-        common.get_accel()
+        accel.get_accel()
     else:
         if mode == "full":
             get_parser = cli.get_parser

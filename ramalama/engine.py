@@ -13,16 +13,19 @@ from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from typing import Any, Optional
 
 # Live reference for checking global vars
+import ramalama.accel
 import ramalama.common
-from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import (
+from ramalama.accel import (
     check_nvidia,
     container_cuda_visible_devices,
+    get_accel_env_vars,
+    get_gpu_devices,
+)
+from ramalama.arg_types import BaseEngineArgsType
+from ramalama.common import (
     engine_cmd,
     exec_cmd,
     genname,
-    get_accel_env_vars,
-    get_gpu_devices,
     host_path,
     is_windows_or_wsl,
     perror,
@@ -138,7 +141,7 @@ class BaseEngine(ABC):
                 # backend never reads that variable, it indexes Vulkan's own
                 # device enumeration, so a narrowed selection is only honoured
                 # if the container cannot see the other GPUs in the first place.
-                selected = ramalama.common.nvidia_selected_devices
+                selected = ramalama.accel.nvidia_selected_devices
                 if self.use_docker:
                     # docker's csv parser needs the quotes to keep a
                     # comma-separated device list in one field.

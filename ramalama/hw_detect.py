@@ -2,25 +2,72 @@ from __future__ import annotations
 
 import glob
 import importlib
+import json
 import os
 import platform
 import re
 import struct
 import subprocess
+import sys
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Optional
 
+from ramalama.common import host_cmd
 from ramalama.logger import logger
 
 GiB = 1024 * 1024 * 1024
+
+# Detection probes talk to GPU drivers, which can wedge: nvidia-smi after a GPU
+# fault, npu-smi against a reset NPU. detect_all_hardware() runs every probe
+# rather than stopping at the first hit, so one hang stalls `ramalama info`
+# indefinitely. Cap each probe instead.
+PROBE_TIMEOUT_SECONDS = 10
+
+
+def _probe(cmd: list[str]) -> Optional[str]:
+    """Run a hardware detection command, returning stdout, or None on failure.
+
+    Centralises what every probe needs and several had been missing: a timeout,
+    stdin closed so a prompting tool cannot block on the terminal, and a debug
+    trace of what ran.
+    """
+    logger.debug(f"hw probe: {' '.join(cmd)}")
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            encoding="utf-8",
+            check=True,
+            stdin=subprocess.DEVNULL,
+            timeout=PROBE_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        logger.debug(f"hw probe failed ({cmd[0]}): {e}")
+        return None
+    return result.stdout
+
+
+@lru_cache(maxsize=8)
+def _sysctl(name: str) -> Optional[str]:
+    """Read a Darwin sysctl value.
+
+    Cached because CpuDetector, AppleSiliconDetector and _get_system_memory()
+    between them ask for the same two keys, which previously forked sysctl four
+    times for two distinct values.
+    """
+    out = _probe(["sysctl", "-n", name])
+    return out.strip() if out else None
 
 
 @dataclass
 class DeviceInfo:
     name: str
     memory_bytes: int
+    index: int = 0
+    uuid: str = ""
 
 
 @dataclass
@@ -30,7 +77,7 @@ class AcceleratorInfo:
     total_memory_bytes: int = 0
 
 
-# Intel Arc discrete GPU PCI device IDs → (name, VRAM in bytes)
+# Intel GPU PCI device IDs → (name, VRAM in bytes)
 # Source: https://dgpu-docs.intel.com/devices/hardware-table.html
 INTEL_GPU_SPECS: dict[str, tuple[str, int]] = {
     # Battlemage (Xe2)
@@ -62,7 +109,38 @@ INTEL_GPU_SPECS: dict[str, tuple[str, int]] = {
     "0x56bb": ("Intel Arc A310E", 4 * GiB),
     "0x56bc": ("Intel Arc A370E", 4 * GiB),
     "0x56bd": ("Intel Arc A350E", 4 * GiB),
+    # Integrated GPUs (Xe-LP / Xe-LPG) — VRAM is shared system memory
+    "0x46a6": ("Intel Alder Lake-P Graphics", 0),
+    "0x46a8": ("Intel Alder Lake-P Graphics", 0),
+    "0x46aa": ("Intel Alder Lake-P Graphics", 0),
+    "0x7d51": ("Intel Raptor Lake-P Graphics", 0),
+    "0x7d55": ("Intel Raptor Lake-P Graphics", 0),
+    "0x7dd5": ("Intel Raptor Lake-P Graphics", 0),
 }
+
+
+_PCI_IDS_PATHS = ["/usr/share/hwdata/pci.ids", "/usr/share/misc/pci.ids"]
+
+
+@lru_cache(maxsize=64)
+def _lookup_pci_device_name(vendor_id: str, device_id: str) -> Optional[str]:
+    for pci_ids_path in _PCI_IDS_PATHS:
+        try:
+            with open(pci_ids_path, "r", errors="replace") as f:
+                in_vendor = False
+                for line in f:
+                    if line.startswith("#") or line.strip() == "":
+                        continue
+                    if not line.startswith("\t"):
+                        in_vendor = line.startswith(vendor_id + " ")
+                        continue
+                    if in_vendor and line.startswith("\t") and not line.startswith("\t\t"):
+                        parts = line.strip().split("  ", 1)
+                        if len(parts) == 2 and parts[0] == device_id:
+                            return parts[1].strip()
+        except OSError:
+            continue
+    return None
 
 
 class HardwareDetector(ABC):
@@ -97,15 +175,9 @@ class CpuDetector(HardwareDetector):
                 pass
 
         if system == "Darwin":
-            try:
-                result = subprocess.run(
-                    ["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, encoding="utf-8", check=True
-                )
-                brand = result.stdout.strip()
-                if brand:
-                    return brand
-            except (OSError, subprocess.CalledProcessError):
-                pass
+            brand = _sysctl("machdep.cpu.brand_string")
+            if brand:
+                return brand
 
         if system == "Windows":
             try:
@@ -157,26 +229,23 @@ class NvidiaDetector(HardwareDetector):
         return "cuda"
 
     def detect(self) -> list[DeviceInfo]:
-        try:
-            result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=memory.total,name", "--format=csv,noheader,nounits"],
-                capture_output=True,
-                encoding="utf-8",
-                check=True,
-            )
-        except (OSError, subprocess.CalledProcessError):
+        output = _probe(
+            host_cmd(["nvidia-smi", "--query-gpu=index,uuid,memory.total,name", "--format=csv,noheader,nounits"])
+        )
+        if output is None:
             return []
 
         devices: list[DeviceInfo] = []
-        for line in result.stdout.strip().splitlines():
-            parts = [p.strip() for p in line.split(",", 1)]
-            if len(parts) != 2:
+        for line in output.strip().splitlines():
+            parts = [p.strip() for p in line.split(",", 3)]
+            if len(parts) != 4:
                 continue
             try:
-                memory_mib = int(parts[0])
+                idx = int(parts[0])
+                memory_mib = int(parts[2])
             except ValueError:
                 continue
-            devices.append(DeviceInfo(name=parts[1], memory_bytes=memory_mib * 1024 * 1024))
+            devices.append(DeviceInfo(name=parts[3], memory_bytes=memory_mib * 1024 * 1024, index=idx, uuid=parts[1]))
 
         return devices
 
@@ -187,38 +256,47 @@ class AscendDetector(HardwareDetector):
         return "cann"
 
     def detect(self) -> list[DeviceInfo]:
-        try:
-            result = subprocess.run(["npu-smi", "info"], capture_output=True, encoding="utf-8", check=True)
-        except (OSError, subprocess.CalledProcessError):
+        output = _probe(host_cmd(["npu-smi", "info"]))
+        if output is None:
             return []
 
         devices: list[DeviceInfo] = []
-        current_name = "Ascend NPU"
+        # None until an NPU row is seen, so that a layout this parser does not
+        # recognise yields no devices rather than a phantom "Ascend NPU".
+        current_name: Optional[str] = None
         current_memory = 0
 
-        for line in result.stdout.splitlines():
+        def flush() -> None:
+            nonlocal current_name, current_memory
+            if current_name is not None:
+                # Memory is not required. npu-smi layouts vary by version and
+                # board, and check_ascend() needs only that an NPU is present;
+                # dropping a device whose memory columns did not parse lost
+                # CANN support altogether on hardware that is otherwise usable.
+                devices.append(DeviceInfo(name=current_name, memory_bytes=current_memory, index=len(devices)))
+            current_name = None
+            current_memory = 0
+
+        for line in output.splitlines():
             cells = [c.strip() for c in line.split("|")]
             if len(cells) >= 3:
-                first = cells[1] if len(cells) > 1 else ""
-                parts = first.split()
-                if len(parts) >= 2 and parts[0].isdigit():
-                    if current_memory > 0:
-                        devices.append(DeviceInfo(name=current_name, memory_bytes=current_memory))
+                parts = cells[1].split()
+                # An NPU row reads "0     910B3", naming the board. The chip
+                # sub-row that follows reads "0       0" — both numeric — and
+                # is the same device, so it must not start a new one.
+                if len(parts) >= 2 and parts[0].isdigit() and not parts[1].isdigit():
+                    flush()
                     current_name = f"Ascend {parts[1]}"
-                    current_memory = 0
 
             for match in re.finditer(r"(\d+)\s*/\s*(\d+)", line):
                 try:
-                    total_mb = int(match.group(2))
-                    total_bytes = total_mb * 1024 * 1024
-                    if total_bytes > current_memory:
-                        current_memory = total_bytes
+                    total_bytes = int(match.group(2)) * 1024 * 1024
                 except ValueError:
                     continue
+                if total_bytes > current_memory:
+                    current_memory = total_bytes
 
-        if current_memory > 0:
-            devices.append(DeviceInfo(name=current_name, memory_bytes=current_memory))
-
+        flush()
         return devices
 
 
@@ -228,22 +306,39 @@ class AmdRocmDetector(HardwareDetector):
         return "hip"
 
     def detect(self) -> list[DeviceInfo]:
+        if platform.machine() in ("arm64", "aarch64"):
+            return []
+
         try:
             amdkfd = importlib.import_module("ramalama.amdkfd")
         except ImportError:
             return []
 
-        devices: list[DeviceInfo] = []
-        for np, props in amdkfd.gpus():
-            if props["gfx_target_version"] < 90000:
-                continue
+        # Nothing below can assume a shape: this is whatever the kfd topology
+        # files hold. get_accel() reaches this detector via check_rocm_amd()
+        # with no guard of its own, so a missing key or a non-integer value
+        # must cost at most the device it came from, not abort `ramalama run`.
+        try:
+            gpus = list(amdkfd.gpus())
+        except (OSError, KeyError, ValueError) as e:
+            logger.debug(f"AMD kfd topology unreadable: {e}")
+            return []
 
-            mem_banks_count = int(props["mem_banks_count"])
-            mem_bytes = 0
-            for bank in range(mem_banks_count):
-                bank_props = amdkfd.parse_props(np + f"/mem_banks/{bank}/properties")
-                if bank_props["heap_type"] in [amdkfd.HEAP_TYPE_FB_PUBLIC, amdkfd.HEAP_TYPE_FB_PRIVATE]:
-                    mem_bytes += int(bank_props["size_in_bytes"])
+        devices: list[DeviceInfo] = []
+        for i, (np, props) in enumerate(gpus):
+            try:
+                if props["gfx_target_version"] < 90000:
+                    continue
+
+                mem_banks_count = int(props["mem_banks_count"])
+                mem_bytes = 0
+                for bank in range(mem_banks_count):
+                    bank_props = amdkfd.parse_props(np + f"/mem_banks/{bank}/properties")
+                    if bank_props["heap_type"] in [amdkfd.HEAP_TYPE_FB_PUBLIC, amdkfd.HEAP_TYPE_FB_PRIVATE]:
+                        mem_bytes += int(bank_props["size_in_bytes"])
+            except (OSError, KeyError, ValueError, TypeError) as e:
+                logger.debug(f"Skipping AMD GPU {np}: {e}")
+                continue
 
             if mem_bytes > 0:
                 name = ""
@@ -252,12 +347,15 @@ class AmdRocmDetector(HardwareDetector):
                         name = f.read().strip()
                 except OSError:
                     pass
-                if name:
+                device_id = props.get("device_id", 0)
+                if name and name != "ip discovery":
                     name = f"AMD {name.capitalize()}"
+                elif device_id:
+                    pci_name = _lookup_pci_device_name("1002", f"{device_id:04x}")
+                    name = f"AMD {pci_name}" if pci_name else f"AMD GPU (0x{device_id:04x})"
                 else:
-                    device_id = props.get("device_id", 0)
-                    name = f"AMD GPU (0x{device_id:04x})" if device_id else "AMD GPU"
-                devices.append(DeviceInfo(name=name, memory_bytes=mem_bytes))
+                    name = "AMD GPU"
+                devices.append(DeviceInfo(name=name, memory_bytes=mem_bytes, index=i))
 
         return devices
 
@@ -284,9 +382,38 @@ class IntelDetector(HardwareDetector):
 
             if device_id in INTEL_GPU_SPECS:
                 gpu_name, vram = INTEL_GPU_SPECS[device_id]
+                # The table keys VRAM off the PCI device ID, which identifies
+                # the silicon and not the board: the 8GB and 16GB Arc A770 share
+                # 0x56a0. Prefer what the driver reports, and fall back to the
+                # table only where the driver exposes nothing.
+                measured = self._read_linux_vram(os.path.dirname(fp))
+                if measured:
+                    vram = measured
+                elif vram == 0:
+                    # An integrated GPU has no VRAM of its own; it carves out of
+                    # system RAM. Reporting 0 here is indistinguishable from a
+                    # failed probe, so report what it can actually draw on.
+                    vram = _get_system_memory()
                 devices.append(DeviceInfo(name=gpu_name, memory_bytes=vram))
 
         return devices
+
+    @staticmethod
+    def _read_linux_vram(device_dir: str) -> int:
+        """VRAM as the i915/xe driver reports it, or 0 when it does not.
+
+        Discrete Intel GPUs expose local memory as ``lmem_total_bytes`` under
+        the card's DRM node. Integrated parts have no such file.
+        """
+        for path in sorted(glob.glob(os.path.join(device_dir, "drm", "card*", "lmem_total_bytes"))):
+            try:
+                with open(path, "r") as f:
+                    value = int(f.read().strip())
+            except (OSError, ValueError):
+                continue
+            if value > 0:
+                return value
+        return 0
 
     def _detect_windows(self) -> list[DeviceInfo]:
         devices: list[DeviceInfo] = []
@@ -296,16 +423,21 @@ class IntelDetector(HardwareDetector):
             w = wmi.WMI()
             for gpu in w.Win32_VideoController():
                 gpu_name = gpu.Name or ""
+                # Any Intel display adapter counts, discrete or integrated.
+                # Narrowing this to "arc" dropped every Iris Xe and UHD part,
+                # which the Linux table deliberately keeps, so a laptop that
+                # had been getting the intel-gpu image silently fell to CPU.
                 if "intel" not in gpu_name.lower():
-                    continue
-                if "arc" not in gpu_name.lower():
                     continue
 
                 memory = self._read_windows_vram(gpu.PNPDeviceID)
-                if memory is None or memory == 0:
+                if not memory:
+                    # AdapterRAM is a 32-bit field, so it saturates at 4GiB and
+                    # can come back as None; treat it as a hint, never a gate.
                     memory = gpu.AdapterRAM or 0
-                if memory > 0:
-                    devices.append(DeviceInfo(name=gpu_name, memory_bytes=memory))
+                if memory <= 0:
+                    memory = _get_system_memory()
+                devices.append(DeviceInfo(name=gpu_name, memory_bytes=max(memory, 0)))
         except Exception as e:
             logger.debug(f"Intel Windows detection failed: {e}")
 
@@ -317,9 +449,7 @@ class IntelDetector(HardwareDetector):
             return None
 
         try:
-            import importlib as _il
-
-            winreg = _il.import_module("winreg")
+            winreg = importlib.import_module("winreg")
 
             video_class_key = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}"
             hklm = getattr(winreg, "HKEY_LOCAL_MACHINE")
@@ -369,27 +499,41 @@ class MthreadsDetector(HardwareDetector):
         return "musa"
 
     def detect(self) -> list[DeviceInfo]:
-        try:
-            result = subprocess.run(["mthreads-gmi", "-q", "--json"], capture_output=True, encoding="utf-8", check=True)
-        except (OSError, subprocess.CalledProcessError):
-            return []
+        output = _probe(host_cmd(["mthreads-gmi", "-q", "--json"]))
+        if output is None:
+            return self._detect_without_json()
 
         try:
-            import json
-
-            data = json.loads(result.stdout)
-        except (ValueError, KeyError):
-            return []
+            data = json.loads(output)
+        except ValueError:
+            return self._detect_without_json()
 
         devices: list[DeviceInfo] = []
         for gpu in data.get("GPU", []):
             name = gpu.get("Product Name", "Moore Threads GPU")
             total_str = gpu.get("FB Memory Usage", {}).get("Total", "")
             total_bytes = self._parse_memory_string(total_str)
-            if total_bytes > 0:
-                devices.append(DeviceInfo(name=name or "Moore Threads GPU", memory_bytes=total_bytes))
+            # Memory is reported where it parses, but is not what makes this a
+            # GPU: check_mthreads() needs only that one is present.
+            devices.append(DeviceInfo(name=name or "Moore Threads GPU", memory_bytes=total_bytes))
 
+        # Valid JSON that enumerates no GPU is the tool saying so; only an
+        # unreadable payload warrants second-guessing it in _detect_without_json.
         return devices
+
+    @staticmethod
+    def _detect_without_json() -> list[DeviceInfo]:
+        """Fall back to bare ``mthreads-gmi``, which is all older drivers have.
+
+        ``-q --json`` are flags this detector introduced; a host whose
+        mthreads-gmi predates them either exits non-zero or prints its ordinary
+        table, and would otherwise lose MUSA entirely — a plain invocation
+        succeeding was previously the whole test for a Moore Threads GPU.
+        """
+        if _probe(host_cmd(["mthreads-gmi"])) is None:
+            return []
+        logger.debug("mthreads-gmi has no JSON output; reporting a GPU without memory details")
+        return [DeviceInfo(name="Moore Threads GPU", memory_bytes=0)]
 
     @staticmethod
     def _parse_memory_string(s: str) -> int:
@@ -419,22 +563,15 @@ class AppleSiliconDetector(HardwareDetector):
         if platform.system() != "Darwin":
             return []
 
+        memsize = _sysctl("hw.memsize")
+        if memsize is None:
+            return []
         try:
-            result = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, encoding="utf-8", check=True)
-            total_mem = int(result.stdout.strip())
-        except (OSError, subprocess.CalledProcessError, ValueError):
+            total_mem = int(memsize)
+        except ValueError:
             return []
 
-        name = "Apple Silicon"
-        try:
-            brand_result = subprocess.run(
-                ["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, encoding="utf-8", check=True
-            )
-            brand = brand_result.stdout.strip()
-            if brand:
-                name = brand
-        except (OSError, subprocess.CalledProcessError):
-            pass
+        name = _sysctl("machdep.cpu.brand_string") or "Apple Silicon"
 
         return [DeviceInfo(name=name, memory_bytes=total_mem)]
 
@@ -453,7 +590,82 @@ class _VulkanDeviceRaw:
     heaps: list[tuple[int, int]]  # (size, flags)
 
 
+_VULKAN_PROBE_CODE = (
+    "import json;"
+    "from ramalama.hw_detect import _query_vulkan_devices_inprocess as q;"
+    "print(json.dumps([[d.name, d.device_type, [list(h) for h in d.heaps]] for d in q()]))"
+)
+
+
 def _query_vulkan_devices() -> list[_VulkanDeviceRaw]:
+    """Enumerate Vulkan devices in a child process.
+
+    Creating a VkInstance runs vendor driver initialisation inside this
+    process, and a broken ICD — not rare on hybrid-graphics laptops, stale
+    Mesa/RADV installs, or under WSL — can segfault or abort() rather than
+    return an error code. No ``except`` can catch that, so in-process it takes
+    `ramalama info` down entirely where every other detector merely reports
+    nothing. Pay for a fork and let such a crash land in the child.
+    """
+    package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(p for p in (package_root, env.get("PYTHONPATH", "")) if p)
+
+    logger.debug("hw probe: vulkan (isolated)")
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", _VULKAN_PROBE_CODE],
+            capture_output=True,
+            encoding="utf-8",
+            check=True,
+            stdin=subprocess.DEVNULL,
+            timeout=PROBE_TIMEOUT_SECONDS,
+            env=env,
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        logger.debug(f"Vulkan probe failed: {e}")
+        return []
+
+    try:
+        entries = json.loads(result.stdout)
+    except ValueError as e:
+        logger.debug(f"Vulkan probe output unparseable: {e}")
+        return []
+
+    devices: list[_VulkanDeviceRaw] = []
+    for entry in entries:
+        try:
+            name, device_type, heaps = entry
+            devices.append(
+                _VulkanDeviceRaw(
+                    name=str(name),
+                    device_type=int(device_type),
+                    heaps=[(int(size), int(flags)) for size, flags in heaps],
+                )
+            )
+        except (TypeError, ValueError) as e:
+            logger.debug(f"Skipping malformed Vulkan probe entry: {e}")
+    return devices
+
+
+def _query_vulkan_devices_inprocess() -> list[_VulkanDeviceRaw]:
+    # Suppress stderr during Vulkan API calls — some drivers (e.g. RADV) emit
+    # non-conformance warnings that are harmless for device enumeration.
+    try:
+        saved_stderr = os.dup(2)
+    except OSError:
+        return _query_vulkan_devices_inner()
+    try:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, 2)
+        os.close(devnull)
+        return _query_vulkan_devices_inner()
+    finally:
+        os.dup2(saved_stderr, 2)
+        os.close(saved_stderr)
+
+
+def _query_vulkan_devices_inner() -> list[_VulkanDeviceRaw]:
     import ctypes as ct
     import ctypes.util
 
@@ -661,11 +873,12 @@ def _get_system_memory() -> int:
             pass
 
     if system == "Darwin":
-        try:
-            result = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, encoding="utf-8", check=True)
-            return int(result.stdout.strip())
-        except (OSError, subprocess.CalledProcessError, ValueError):
-            pass
+        memsize = _sysctl("hw.memsize")
+        if memsize is not None:
+            try:
+                return int(memsize)
+            except ValueError:
+                pass
 
     if system == "Windows":
         try:
@@ -694,32 +907,94 @@ def _get_system_memory() -> int:
     return 0
 
 
-def _get_detectors() -> list[HardwareDetector]:
-    return [
-        AsahiDetector(),
-        NvidiaDetector(),
-        AscendDetector(),
-        AmdRocmDetector(),
-        IntelDetector(),
-        MthreadsDetector(),
-        AppleSiliconDetector(),
-        VulkanDetector(),
-    ]
+@lru_cache(maxsize=1)
+def detect_asahi() -> list[DeviceInfo]:
+    return AsahiDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_nvidia() -> list[DeviceInfo]:
+    return NvidiaDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_ascend() -> list[DeviceInfo]:
+    return AscendDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_amd_rocm() -> list[DeviceInfo]:
+    return AmdRocmDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_intel() -> list[DeviceInfo]:
+    return IntelDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_mthreads() -> list[DeviceInfo]:
+    return MthreadsDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_apple_silicon() -> list[DeviceInfo]:
+    return AppleSiliconDetector().detect()
+
+
+@lru_cache(maxsize=1)
+def detect_vulkan() -> list[DeviceInfo]:
+    return VulkanDetector().detect()
+
+
+_DETECTOR_NAMES: list[tuple[str, str]] = [
+    ("asahi", "detect_asahi"),
+    ("cuda", "detect_nvidia"),
+    ("cann", "detect_ascend"),
+    ("hip", "detect_amd_rocm"),
+    ("intel", "detect_intel"),
+    ("musa", "detect_mthreads"),
+    ("metal", "detect_apple_silicon"),
+    ("vulkan", "detect_vulkan"),
+]
+
+
+def clear_all_detection_caches() -> None:
+    detect_asahi.cache_clear()
+    detect_nvidia.cache_clear()
+    detect_ascend.cache_clear()
+    detect_amd_rocm.cache_clear()
+    detect_intel.cache_clear()
+    detect_mthreads.cache_clear()
+    detect_apple_silicon.cache_clear()
+    detect_vulkan.cache_clear()
+    detect_all_hardware.cache_clear()
+    _sysctl.cache_clear()
+
+    # check_nvidia() and get_accel() memoise answers derived from the detectors
+    # above, so clearing only the detect_* caches leaves the previous run's
+    # accelerator — and the *_VISIBLE_DEVICES it exported — in place. Imported
+    # here because accel imports hw_detect, not the other way round.
+    from ramalama import accel
+
+    accel.check_nvidia.cache_clear()
+    accel.get_accel.cache_clear()
 
 
 @lru_cache(maxsize=1)
 def detect_all_hardware() -> tuple[AcceleratorInfo, ...]:
+    import ramalama.hw_detect as _self
+
     results: list[AcceleratorInfo] = []
-    for detector in _get_detectors():
+    for accel_type, fn_name in _DETECTOR_NAMES:
         try:
-            devices = detector.detect()
+            fn: Callable[[], list[DeviceInfo]] = getattr(_self, fn_name)
+            devices = fn()
             if devices:
                 total = sum(d.memory_bytes for d in devices)
-                results.append(
-                    AcceleratorInfo(accel_type=detector.accel_type, devices=devices, total_memory_bytes=total)
-                )
+                results.append(AcceleratorInfo(accel_type=accel_type, devices=devices, total_memory_bytes=total))
         except Exception as e:
-            logger.debug(f"Hardware detection failed for {detector.accel_type}: {e}")
+            logger.debug(f"Hardware detection failed for {accel_type}: {e}")
 
     cpu = CpuDetector()
     cpu_devices = cpu.detect()

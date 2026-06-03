@@ -6,7 +6,8 @@ import platform
 import re
 from typing import Optional, Tuple
 
-from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, check_nvidia, get_accel_env_vars, get_gpu_devices
+from ramalama.accel import check_nvidia, get_accel_env_vars, get_gpu_devices
+from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint
 from ramalama.file import PlainFile
 from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.tls import tls_mounts

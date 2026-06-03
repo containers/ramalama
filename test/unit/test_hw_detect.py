@@ -1,6 +1,7 @@
 import builtins
 import json
 import subprocess
+import sys
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
@@ -16,44 +17,50 @@ from ramalama.hw_detect import (
     AscendDetector,
     CpuDetector,
     DeviceInfo,
-    HardwareDetector,
     IntelDetector,
     MthreadsDetector,
     NvidiaDetector,
     VulkanDetector,
     _get_system_memory,
+    _probe,
+    _query_vulkan_devices,
     _VulkanDeviceRaw,
+    clear_all_detection_caches,
     detect_all_hardware,
 )
 
 
 @pytest.fixture(autouse=True)
 def _clear_cache():
-    detect_all_hardware.cache_clear()
+    clear_all_detection_caches()
     yield
-    detect_all_hardware.cache_clear()
+    clear_all_detection_caches()
 
 
 class TestDetectNvidia:
     def test_single_gpu(self):
         mock_result = MagicMock()
-        mock_result.stdout = "24564, NVIDIA GeForce RTX 4090\n"
+        mock_result.stdout = "0, GPU-abc123, 24564, NVIDIA GeForce RTX 4090\n"
         with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
             result = NvidiaDetector().detect()
         assert len(result) == 1
         assert result[0].name == "NVIDIA GeForce RTX 4090"
         assert result[0].memory_bytes == 24564 * 1024 * 1024
+        assert result[0].index == 0
+        assert result[0].uuid == "GPU-abc123"
 
     def test_multi_gpu_returns_all(self):
         mock_result = MagicMock()
-        mock_result.stdout = "8192, NVIDIA GeForce RTX 3070\n24564, NVIDIA GeForce RTX 4090\n"
+        mock_result.stdout = "0, GPU-aaa, 8192, NVIDIA GeForce RTX 3070\n1, GPU-bbb, 24564, NVIDIA GeForce RTX 4090\n"
         with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
             result = NvidiaDetector().detect()
         assert len(result) == 2
         assert result[0].name == "NVIDIA GeForce RTX 3070"
         assert result[0].memory_bytes == 8192 * 1024 * 1024
+        assert result[0].index == 0
         assert result[1].name == "NVIDIA GeForce RTX 4090"
         assert result[1].memory_bytes == 24564 * 1024 * 1024
+        assert result[1].index == 1
 
     def test_nvidia_smi_not_found(self):
         with patch("ramalama.hw_detect.subprocess.run", side_effect=OSError):
@@ -103,6 +110,7 @@ class TestDetectAmdRocm:
         )
 
         with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
             patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd),
             patch.object(builtins, "open", mock_open(read_data="renoir\n")),
         ):
@@ -121,6 +129,7 @@ class TestDetectAmdRocm:
         )
 
         with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
             patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd),
             patch.object(builtins, "open", side_effect=OSError),
         ):
@@ -146,6 +155,7 @@ class TestDetectAmdRocm:
             raise OSError
 
         with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
             patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd),
             patch.object(builtins, "open", side_effect=fake_open),
         ):
@@ -163,13 +173,24 @@ class TestDetectAmdRocm:
             bank_props={"heap_type": 1, "size_in_bytes": 4 * 1024**3},
         )
 
-        with patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd):
+        with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
+            patch("ramalama.hw_detect.importlib.import_module", return_value=mock_amdkfd),
+        ):
             result = AmdRocmDetector().detect()
 
         assert result == []
 
     def test_import_error(self):
-        with patch("ramalama.hw_detect.importlib.import_module", side_effect=ImportError):
+        with (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
+            patch("ramalama.hw_detect.importlib.import_module", side_effect=ImportError),
+        ):
+            result = AmdRocmDetector().detect()
+        assert result == []
+
+    def test_arm64_returns_empty(self):
+        with patch("ramalama.hw_detect.platform.machine", return_value="aarch64"):
             result = AmdRocmDetector().detect()
         assert result == []
 
@@ -466,12 +487,30 @@ class TestDetectMthreads:
             result = MthreadsDetector().detect()
         assert result == []
 
-    def test_invalid_json(self):
+    def test_invalid_json_falls_back_to_bare_probe(self):
+        # An mthreads-gmi predating "-q --json" prints its ordinary table
+        # instead. The tool ran, so there is a GPU; report it without details
+        # rather than losing MUSA the way requiring JSON did.
         mock_result = MagicMock()
         mock_result.stdout = "not json"
         with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
             result = MthreadsDetector().detect()
+        assert len(result) == 1
+        assert result[0].name == "Moore Threads GPU"
+        assert result[0].memory_bytes == 0
+
+    def test_invalid_json_and_no_bare_command(self):
+        mock_result = MagicMock()
+        mock_result.stdout = "not json"
+        with patch("ramalama.hw_detect.subprocess.run", side_effect=[mock_result, OSError()]):
+            result = MthreadsDetector().detect()
         assert result == []
+
+    def test_command_missing_tries_bare_then_gives_up(self):
+        with patch("ramalama.hw_detect.subprocess.run", side_effect=OSError) as mock_run:
+            result = MthreadsDetector().detect()
+        assert result == []
+        assert mock_run.call_count == 2
 
 
 class TestParseMemoryString:
@@ -605,14 +644,23 @@ class TestDetectVulkan:
         assert result[0].name == "AMD Radeon RX 7900 XTX"
 
 
-def _make_mock_detector(accel_type, devices=None, error=None):
-    mock = MagicMock(spec=HardwareDetector)
-    mock.accel_type = accel_type
-    if error:
-        mock.detect.side_effect = error
-    else:
-        mock.detect.return_value = devices or []
-    return mock
+def _patch_all_detectors_empty():
+    """Context manager that patches all per-detector functions to return []."""
+    from contextlib import ExitStack
+
+    stack = ExitStack()
+    for name in [
+        "detect_asahi",
+        "detect_nvidia",
+        "detect_ascend",
+        "detect_amd_rocm",
+        "detect_intel",
+        "detect_mthreads",
+        "detect_apple_silicon",
+        "detect_vulkan",
+    ]:
+        stack.enter_context(patch(f"ramalama.hw_detect.{name}", return_value=[]))
+    return stack
 
 
 class TestDetectAllHardware:
@@ -621,13 +669,9 @@ class TestDetectAllHardware:
         amd_devices = [DeviceInfo("AMD Renoir", 8 * 1024**3)]
 
         with (
-            patch(
-                "ramalama.hw_detect._get_detectors",
-                return_value=[
-                    _make_mock_detector("cuda", nvidia_devices),
-                    _make_mock_detector("hip", amd_devices),
-                ],
-            ),
+            _patch_all_detectors_empty(),
+            patch("ramalama.hw_detect.detect_nvidia", return_value=nvidia_devices),
+            patch("ramalama.hw_detect.detect_amd_rocm", return_value=amd_devices),
             patch("ramalama.hw_detect._get_system_memory", return_value=32 * 1024**3),
             patch.object(CpuDetector, "_get_cpu_name", return_value=""),
         ):
@@ -640,7 +684,7 @@ class TestDetectAllHardware:
 
     def test_cpu_always_present(self):
         with (
-            patch("ramalama.hw_detect._get_detectors", return_value=[]),
+            _patch_all_detectors_empty(),
             patch("ramalama.hw_detect._get_system_memory", return_value=16 * 1024**3),
             patch.object(CpuDetector, "_get_cpu_name", return_value=""),
         ):
@@ -657,10 +701,8 @@ class TestDetectAllHardware:
         ]
 
         with (
-            patch(
-                "ramalama.hw_detect._get_detectors",
-                return_value=[_make_mock_detector("cuda", nvidia_devices)],
-            ),
+            _patch_all_detectors_empty(),
+            patch("ramalama.hw_detect.detect_nvidia", return_value=nvidia_devices),
             patch("ramalama.hw_detect._get_system_memory", return_value=32 * 1024**3),
             patch.object(CpuDetector, "_get_cpu_name", return_value=""),
         ):
@@ -673,13 +715,9 @@ class TestDetectAllHardware:
     def test_detector_exception_continues(self):
         amd_devices = [DeviceInfo("AMD Renoir", 8 * 1024**3)]
         with (
-            patch(
-                "ramalama.hw_detect._get_detectors",
-                return_value=[
-                    _make_mock_detector("cuda", error=RuntimeError("boom")),
-                    _make_mock_detector("hip", amd_devices),
-                ],
-            ),
+            _patch_all_detectors_empty(),
+            patch("ramalama.hw_detect.detect_nvidia", side_effect=RuntimeError("boom")),
+            patch("ramalama.hw_detect.detect_amd_rocm", return_value=amd_devices),
             patch("ramalama.hw_detect._get_system_memory", return_value=16 * 1024**3),
             patch.object(CpuDetector, "_get_cpu_name", return_value=""),
         ):
@@ -716,3 +754,310 @@ class TestIntelGpuSpecs:
     def test_device_id_to_name(self, device_id, expected_name):
         name, _ = INTEL_GPU_SPECS[device_id]
         assert name == expected_name
+
+
+class TestProbe:
+    def test_timeout_is_applied(self):
+        with patch("ramalama.hw_detect.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="ok")
+            assert _probe(["some-tool"]) == "ok"
+        kwargs = mock_run.call_args.kwargs
+        # A wedged driver tool must not hang `ramalama info` forever, and a
+        # tool that prompts must not block on the terminal.
+        assert kwargs["timeout"] > 0
+        assert kwargs["stdin"] == subprocess.DEVNULL
+
+    @pytest.mark.parametrize(
+        "failure",
+        [
+            OSError("not found"),
+            subprocess.CalledProcessError(1, "some-tool"),
+            subprocess.TimeoutExpired("some-tool", 10),
+        ],
+    )
+    def test_failures_return_none(self, failure):
+        with patch("ramalama.hw_detect.subprocess.run", side_effect=failure):
+            assert _probe(["some-tool"]) is None
+
+
+class TestDetectAscendChipRows:
+    # A 310P reports a chip sub-row whose first cell is "0       0" — both
+    # numeric — for the same NPU the row above named.
+    NPU_SMI_CHIP_ROWS = """\
++===========================+===============+====================================================+
+| 0     310P3               | OK            | 12.3        45                100  / 2048          |
+| 0       0                 | 0000:3B:00.0  | 0           1027 / 21527                           |
++===========================+===============+====================================================+
+"""
+
+    NPU_SMI_NO_MEMORY = """\
++===========================+===============+==============================+
+| 0     910B3               | OK            | 92.2        42               |
++===========================+===============+==============================+
+"""
+
+    def test_chip_row_is_not_a_second_device(self):
+        mock_result = MagicMock()
+        mock_result.stdout = self.NPU_SMI_CHIP_ROWS
+        with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
+            result = AscendDetector().detect()
+
+        assert len(result) == 1
+        # The board name from the NPU row survives; it is not overwritten by
+        # the numeric chip row, which would have produced "Ascend 0".
+        assert result[0].name == "Ascend 310P3"
+        assert result[0].memory_bytes == 21527 * 1024 * 1024
+
+    def test_npu_without_parseable_memory_is_still_detected(self):
+        # npu-smi layouts vary by version and board. check_ascend() needs only
+        # that an NPU is present, so an unreadable memory column must not cost
+        # CANN support entirely.
+        mock_result = MagicMock()
+        mock_result.stdout = self.NPU_SMI_NO_MEMORY
+        with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
+            result = AscendDetector().detect()
+
+        assert len(result) == 1
+        assert result[0].name == "Ascend 910B3"
+        assert result[0].memory_bytes == 0
+
+    def test_unrecognised_layout_yields_no_phantom_device(self):
+        mock_result = MagicMock()
+        mock_result.stdout = "some unexpected banner\nwith 10 / 20 numbers\n"
+        with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
+            assert AscendDetector().detect() == []
+
+
+class TestDetectIntelWindows:
+    """Restores the Windows WMI coverage dropped when test_common.py split."""
+
+    @staticmethod
+    def _wmi_with(*names):
+        mock_wmi = MagicMock()
+        controllers = []
+        for n in names:
+            gpu = MagicMock()
+            gpu.Name = n
+            gpu.PNPDeviceID = None
+            gpu.AdapterRAM = None
+            controllers.append(gpu)
+        mock_wmi.WMI.return_value.Win32_VideoController.return_value = controllers
+        return patch.dict("sys.modules", {"wmi": mock_wmi}), mock_wmi
+
+    def test_integrated_intel_gpu_detected(self):
+        # The regression this guards: narrowing to "arc" dropped every Iris Xe
+        # and UHD part, silently falling back to CPU on those laptops.
+        patcher, _ = self._wmi_with("Intel(R) UHD Graphics 770")
+        with patcher, patch("ramalama.hw_detect._get_system_memory", return_value=32 * 1024**3):
+            result = IntelDetector()._detect_windows()
+        assert len(result) == 1
+        assert result[0].name == "Intel(R) UHD Graphics 770"
+        assert result[0].memory_bytes == 32 * 1024**3
+
+    def test_arc_gpu_detected(self):
+        patcher, _ = self._wmi_with("Intel(R) Arc(TM) A770 Graphics")
+        with patcher, patch("ramalama.hw_detect._get_system_memory", return_value=0):
+            result = IntelDetector()._detect_windows()
+        assert len(result) == 1
+        assert result[0].name == "Intel(R) Arc(TM) A770 Graphics"
+
+    def test_no_intel_gpu(self):
+        patcher, _ = self._wmi_with("NVIDIA GeForce RTX 4090")
+        with patcher:
+            assert IntelDetector()._detect_windows() == []
+
+    def test_mixed_vendors(self):
+        patcher, _ = self._wmi_with("NVIDIA GeForce RTX 4090", "Intel(R) Arc(TM) A770 Graphics")
+        with patcher, patch("ramalama.hw_detect._get_system_memory", return_value=0):
+            result = IntelDetector()._detect_windows()
+        assert len(result) == 1
+        assert result[0].name == "Intel(R) Arc(TM) A770 Graphics"
+
+    def test_wmi_failure(self):
+        patcher, mock_wmi = self._wmi_with("Intel(R) Arc(TM) A770 Graphics")
+        mock_wmi.WMI.side_effect = Exception("WMI not available")
+        with patcher:
+            assert IntelDetector()._detect_windows() == []
+
+    def test_registry_vram_preferred(self):
+        patcher, mock_wmi = self._wmi_with("Intel(R) Arc(TM) A770 Graphics")
+        with patcher, patch.object(IntelDetector, "_read_windows_vram", return_value=8 * 1024**3):
+            result = IntelDetector()._detect_windows()
+        assert result[0].memory_bytes == 8 * 1024**3
+
+
+class TestIntelLinuxVram:
+    @staticmethod
+    def _xe_glob_factory(lmem_paths):
+        def _glob(pattern):
+            if pattern.endswith("lmem_total_bytes"):
+                return lmem_paths
+            if "xe" in pattern:
+                return ["/sys/bus/pci/drivers/xe/0000:03:00.0/device"]
+            return []
+
+        return _glob
+
+    def test_driver_reported_vram_wins_over_table(self):
+        # 0x56a0 is both the 8GB and the 16GB A770; the table cannot tell them
+        # apart, so what the driver reports has to win.
+        lmem = "/sys/bus/pci/drivers/xe/0000:03:00.0/drm/card0/lmem_total_bytes"
+        contents = {"/sys/bus/pci/drivers/xe/0000:03:00.0/device": "0x56a0\n", lmem: str(8 * 1024**3)}
+
+        def fake_open(fp, *a, **kw):
+            return mock_open(read_data=contents[fp])()
+
+        with patch("ramalama.hw_detect.glob.glob", side_effect=self._xe_glob_factory([lmem])):
+            with patch("builtins.open", side_effect=fake_open):
+                result = IntelDetector()._detect_linux()
+
+        assert len(result) == 1
+        assert result[0].name == "Intel Arc A770"
+        assert result[0].memory_bytes == 8 * 1024**3
+
+    def test_table_used_when_driver_reports_nothing(self):
+        contents = {"/sys/bus/pci/drivers/xe/0000:03:00.0/device": "0x56a0\n"}
+
+        def fake_open(fp, *a, **kw):
+            return mock_open(read_data=contents[fp])()
+
+        with patch("ramalama.hw_detect.glob.glob", side_effect=self._xe_glob_factory([])):
+            with patch("builtins.open", side_effect=fake_open):
+                result = IntelDetector()._detect_linux()
+
+        assert result[0].memory_bytes == 16 * 1024**3
+
+    def test_integrated_reports_shared_system_memory(self):
+        # 0 reads as a failed probe; an iGPU draws on system RAM, so say so.
+        contents = {"/sys/bus/pci/drivers/xe/0000:03:00.0/device": "0x7d55\n"}
+
+        def fake_open(fp, *a, **kw):
+            return mock_open(read_data=contents[fp])()
+
+        with patch("ramalama.hw_detect.glob.glob", side_effect=self._xe_glob_factory([])):
+            with patch("builtins.open", side_effect=fake_open):
+                with patch("ramalama.hw_detect._get_system_memory", return_value=32 * 1024**3):
+                    result = IntelDetector()._detect_linux()
+
+        assert result[0].name == "Intel Raptor Lake-P Graphics"
+        assert result[0].memory_bytes == 32 * 1024**3
+
+
+class TestAmdRocmMalformedTopology:
+    # platform.machine must be patched before importlib.import_module: mock
+    # resolves a target string through import_module, so patching that first
+    # would resolve "ramalama.hw_detect.platform" to the mock module and leave
+    # the real platform.machine in place. That reads as a pass on x86_64 and
+    # fails on an arm64 host, where detect() returns early.
+    @staticmethod
+    def _patched(fake, read_data="navi31"):
+        return (
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
+            patch("ramalama.hw_detect.importlib.import_module", return_value=fake),
+            patch.object(builtins, "open", mock_open(read_data=read_data)),
+        )
+
+    def test_missing_key_does_not_raise(self):
+        # get_accel() -> check_rocm_amd() reaches this detector unguarded, so a
+        # malformed kfd properties file must cost the device, not the command.
+        fake = MagicMock()
+        fake.gpus.return_value = [("/sys/.../node0", {})]
+        machine, import_module, open_ = self._patched(fake)
+        with machine, import_module, open_:
+            assert AmdRocmDetector().detect() == []
+
+    def test_non_integer_value_does_not_raise(self):
+        fake = MagicMock()
+        fake.gpus.return_value = [("/sys/.../node0", {"gfx_target_version": 90000, "mem_banks_count": "lots"})]
+        machine, import_module, open_ = self._patched(fake)
+        with machine, import_module, open_:
+            assert AmdRocmDetector().detect() == []
+
+    def test_unreadable_topology_does_not_raise(self):
+        fake = MagicMock()
+        fake.gpus.side_effect = OSError("no kfd")
+        machine, import_module, open_ = self._patched(fake)
+        with machine, import_module, open_:
+            assert AmdRocmDetector().detect() == []
+
+    def test_one_bad_gpu_does_not_hide_the_others(self):
+        good = {"gfx_target_version": 90000, "mem_banks_count": 1}
+        fake = MagicMock()
+        fake.gpus.return_value = [("/sys/.../node0", {}), ("/sys/.../node1", good)]
+        fake.HEAP_TYPE_FB_PUBLIC = 1
+        fake.HEAP_TYPE_FB_PRIVATE = 2
+        fake.parse_props.return_value = {"heap_type": 1, "size_in_bytes": 16 * 1024**3}
+        machine, import_module, open_ = self._patched(fake)
+        with machine, import_module, open_:
+            result = AmdRocmDetector().detect()
+        assert len(result) == 1
+        assert result[0].memory_bytes == 16 * 1024**3
+
+    def test_arm64_host_detects_nothing(self):
+        # The guard these tests patch away, asserted directly so that the
+        # patching above cannot quietly become a no-op again.
+        fake = MagicMock()
+        fake.gpus.return_value = [("/sys/.../node0", {"gfx_target_version": 90000, "mem_banks_count": 1})]
+        with (
+            patch("ramalama.hw_detect.platform.machine", return_value="arm64"),
+            patch("ramalama.hw_detect.importlib.import_module", return_value=fake),
+        ):
+            assert AmdRocmDetector().detect() == []
+        fake.gpus.assert_not_called()
+
+
+class TestVulkanProbeIsolation:
+    def test_probe_runs_out_of_process(self):
+        payload = json.dumps([["AMD Radeon RX 7900 XTX", 2, [[25149440000, VK_MEMORY_HEAP_DEVICE_LOCAL_BIT]]]])
+        with patch("ramalama.hw_detect.subprocess.run", return_value=MagicMock(stdout=payload)) as mock_run:
+            result = _query_vulkan_devices()
+
+        # Driver initialisation happens in a child, so an ICD that segfaults or
+        # abort()s cannot take `ramalama info` down with it.
+        assert mock_run.call_args.args[0][0] == sys.executable
+        assert mock_run.call_args.kwargs["timeout"] > 0
+        assert len(result) == 1
+        assert result[0].name == "AMD Radeon RX 7900 XTX"
+        assert result[0].heaps == [(25149440000, VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)]
+
+    @pytest.mark.parametrize(
+        "failure",
+        [
+            subprocess.CalledProcessError(-11, "python"),  # SIGSEGV in a broken ICD
+            subprocess.TimeoutExpired("python", 10),
+            OSError("no interpreter"),
+        ],
+    )
+    def test_child_crash_is_survivable(self, failure):
+        with patch("ramalama.hw_detect.subprocess.run", side_effect=failure):
+            assert _query_vulkan_devices() == []
+
+    def test_unparseable_output(self):
+        with patch("ramalama.hw_detect.subprocess.run", return_value=MagicMock(stdout="not json")):
+            assert _query_vulkan_devices() == []
+
+    def test_malformed_entry_is_skipped(self):
+        payload = json.dumps([["ok", 2, [[1, 1]]], ["bad"]])
+        with patch("ramalama.hw_detect.subprocess.run", return_value=MagicMock(stdout=payload)):
+            result = _query_vulkan_devices()
+        assert len(result) == 1
+        assert result[0].name == "ok"
+
+
+class TestClearAllDetectionCaches:
+    def test_clears_accelerator_selection_caches(self):
+        from ramalama import accel
+
+        # These memoise answers derived from the detect_* caches, so leaving
+        # them populated hands back the previous run's accelerator.
+        with patch("ramalama.hw_detect.detect_nvidia", return_value=[]):
+            accel.check_nvidia()
+            accel.get_accel()
+
+        assert accel.check_nvidia.cache_info().currsize == 1
+        assert accel.get_accel.cache_info().currsize == 1
+
+        clear_all_detection_caches()
+
+        assert accel.check_nvidia.cache_info().currsize == 0
+        assert accel.get_accel.cache_info().currsize == 0

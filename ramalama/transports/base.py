@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from ramalama.chat import ChatOperationalArgs
     from ramalama.transports.oci.oci import OCI
 
+from ramalama.accel import set_accel_env_vars
 from ramalama.common import (
     MNT_DIR,
     exec_cmd,
@@ -41,7 +42,6 @@ from ramalama.common import (
     perror,
     populate_volume_from_image,
     run_cmd,
-    set_accel_env_vars,
 )
 from ramalama.logger import logger
 from ramalama.path_utils import get_container_mount_path
