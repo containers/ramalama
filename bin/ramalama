@@ -8,17 +8,15 @@ def main():
     if not sys.stdout.isatty():
         sys.stdout.reconfigure(line_buffering=True)
 
-    if sys.platform != 'win32':
-        # default TMPDIR environment to /var/tmp on non Windows platforms
-        os.environ["TMPDIR"] = os.getenv("TMPDIR", "/var/tmp")
-
     sys.path.insert(0, './')
     try:
         import ramalama
+        from ramalama.config import ensure_tmpdir, load_config
     except Exception:
         print(f"ramalama module not found in sys.path: {sys.path}", file=sys.stderr)
         raise
 
+    ensure_tmpdir(load_config())
     ramalama.cli.main()
 
 

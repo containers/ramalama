@@ -192,8 +192,9 @@ although the recommended way is to use the `ramalama.conf` file.
 | RAMALAMA_IMAGE            | container image to use for serving AI Models |
 | RAMALAMA_IN_CONTAINER     | run RamaLama in the default container     |
 | RAMALAMA_STORE            | location to store AI Models               |
+| RAMALAMA_TEMPDIR          | temporary directory; see **tempdir** in ramalama.conf(5) |
 | RAMALAMA_TRANSPORT        | default AI Model transport (ollama, huggingface, OCI) |
-| TMPDIR                    | directory for temporary files; defaults to `/var/tmp` if unset |
+| TMPDIR                    | host temporary directory; used when **tempdir** is not configured |
 
 ## SEE ALSO
 **[podman(1)](https://github.com/containers/podman/blob/main/docs/source/markdown/podman.1.md)**, **docker(1)**, **[ramalama.conf(5)](ramalama.conf.5.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**, **[ramalama-macos(7)](ramalama-macos.7.md)**

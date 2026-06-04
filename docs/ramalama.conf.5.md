@@ -171,6 +171,10 @@ Options: `llama.cpp`, `vllm`, `mlx`.
 
 **store**="$HOME/.local/share/ramalama": Directory where AI models and data are stored.
 
+**tempdir**="": Directory for temporary files used by operations such as convert and RAG.
+When set in `ramalama.conf` or via `RAMALAMA_TEMPDIR`, this value is applied as `TMPDIR` and overrides the host environment.
+When unset, the host `TMPDIR` is used. On Unix, if `TMPDIR` is unset or empty, `/var/tmp` is used.
+
 **summarize_after**=4: Automatically summarize chat history after N messages to limit context growth.
 Set to 0 to disable.
 

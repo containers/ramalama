@@ -19,6 +19,7 @@ DEFAULT_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama")
 DEFAULT_STACK_IMAGE: str = version_tagged_image("quay.io/ramalama/llama-stack")
 DEFAULT_RAG_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-rag")
 DEFAULT_TOOLS_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-tools")
+DEFAULT_TMPDIR = "/var/tmp"
 
 
 def _get_default_config_dirs() -> list[Path]:
@@ -188,6 +189,7 @@ class BaseConfig:
     settings: RamalamaSettings = field(default_factory=RamalamaSettings)
     store: str = field(default_factory=get_default_store)
     summarize_after: int = 4
+    tempdir: Optional[str] = None
     transport: str = "ollama"
     user: UserConfig = field(default_factory=UserConfig)
     verify: bool = True
@@ -301,6 +303,25 @@ def load_env_config(env: Optional[Mapping[str, str]] = None) -> dict[str, Any]:
     if log_level := config.get("log_level"):
         config["log_level"] = coerce_log_level(log_level)
     return config
+
+
+def ensure_tmpdir(config: Optional[Config] = None) -> None:
+    """Set ``TMPDIR`` for tempfile-backed operations.
+
+    When ``tempdir`` is set in ``ramalama.conf`` (or via ``RAMALAMA_TEMPDIR``), it
+    overrides the host ``TMPDIR``. Otherwise the host value is kept. On Unix, if
+    neither is set, ``/var/tmp`` is used.
+    """
+    if sys.platform == "win32":
+        return
+    if config is not None and config.is_set("tempdir"):
+        value = (config.tempdir or "").strip()
+        if value:
+            os.environ["TMPDIR"] = os.path.expanduser(value)
+            return
+    if os.environ.get("TMPDIR", "").strip():
+        return
+    os.environ["TMPDIR"] = DEFAULT_TMPDIR
 
 
 def load_config(env: Optional[Mapping[str, str]] = None) -> Config:
