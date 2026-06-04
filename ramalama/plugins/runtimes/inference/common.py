@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 from abc import abstractmethod
 from typing import Any
 
@@ -196,9 +197,10 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         except KeyError as e:
             logger.debug(e)
             try:
-                args.quiet = True
-                model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-                model.ensure_model_exists(args)
+                probe_args = copy.copy(args)
+                probe_args.quiet = True
+                model = TransportFactory(args.MODEL, probe_args, ignore_stderr=True).create_oci()
+                model.ensure_model_exists(probe_args)
             except Exception as exc:
                 raise e from exc
 
@@ -227,9 +229,10 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             try:
                 if "://" in args.MODEL:
                     raise e
-                args.quiet = True
-                model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-                model.ensure_model_exists(args)
+                probe_args = copy.copy(args)
+                probe_args.quiet = True
+                model = TransportFactory(args.MODEL, probe_args, ignore_stderr=True).create_oci()
+                model.ensure_model_exists(probe_args)
                 # Since this is a OCI model, prepend oci://
                 args.MODEL = f"oci://{args.MODEL}"
 
