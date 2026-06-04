@@ -147,7 +147,9 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         if args.container and not args.dryrun:
             config = ActiveConfig()
             should_pull = config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
+            args.image = ensure_image(
+                config.engine, accel_image(config), should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
 
         cmd = assemble_command(args)
         if len(cmd) > 0 and isinstance(cmd[0], ContainerEntryPoint):
@@ -163,7 +165,9 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             config = ActiveConfig()
             generate = getattr(args, "generate", None)
             should_pull = False if generate else config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
+            args.image = ensure_image(
+                config.engine, accel_image(config), should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
 
         cmd = assemble_command(args)
         if getattr(args, "generate", None):

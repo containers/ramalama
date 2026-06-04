@@ -198,7 +198,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             if not args.dryrun:
                 config = ActiveConfig()
                 should_pull = config.pull in ["always", "missing", "newer"]
-                args.tools_image = ensure_image(args.engine, args.tools_image, should_pull=should_pull)
+                args.tools_image = ensure_image(
+                    args.engine, args.tools_image, should_pull=should_pull, quiet=getattr(args, "quiet", False)
+                )
             engine.add_args(args.tools_image)
             engine.add_args(*self._cmd_convert(args))
             if args.dryrun:
@@ -220,7 +222,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if not args.dryrun:
             config = ActiveConfig()
             should_pull = config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(args.engine, args.image, should_pull=should_pull)
+            args.image = ensure_image(
+                args.engine, args.image, should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
         engine.add_args(args.image)
         args = copy.copy(args)
         args.subcommand = "quantize"

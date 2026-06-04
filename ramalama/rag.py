@@ -94,7 +94,9 @@ class Rag:
         if not args.dryrun:
             config = ActiveConfig()
             should_pull = config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(args.engine, args.image, should_pull=should_pull)
+            args.image = ensure_image(
+                args.engine, args.image, should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
         engine.add_args(args.image)
         engine.add_args(*cmd)
         try:
