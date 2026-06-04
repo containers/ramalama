@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import subprocess
 from collections.abc import Callable
 from functools import lru_cache
 from typing import TYPE_CHECKING, Literal, Optional, Protocol, TypedDict, Union, cast, get_args
@@ -69,9 +70,14 @@ def load_cdi_config(spec_dirs: list[str]) -> Optional[CDI_RETURN_TYPE]:
 
 
 def get_podman_machine_cdi_config() -> Optional[CDI_RETURN_TYPE]:
-    cdi_config = run_cmd(["podman", "machine", "ssh", "cat", "/etc/cdi/nvidia.yaml"], encoding="utf-8").stdout.strip()
-    if cdi_config:
-        return yaml.safe_load(cdi_config)
+    try:
+        cdi_config = run_cmd(
+            ["podman", "machine", "ssh", "cat", "/etc/cdi/nvidia.yaml"], encoding="utf-8"
+        ).stdout.strip()
+        if cdi_config:
+            return yaml.safe_load(cdi_config)
+    except (OSError, subprocess.CalledProcessError, yaml.YAMLError) as e:
+        logger.debug(f"Failed to read CDI config from podman machine: {e}")
     return None
 
 
