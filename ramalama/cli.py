@@ -27,7 +27,7 @@ except Exception:
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import accel_image, exec_cmd, get_accel, perror
+from ramalama.common import accel_image, ensure_tmpdir, exec_cmd, get_accel, perror
 from ramalama.config import (
     SUPPORTED_ENGINES,
     ActiveConfig,
@@ -1255,6 +1255,8 @@ def inspect_cli(args):
 
 
 def main() -> None:
+    ensure_tmpdir()
+
     def eprint(e: Exception | str, exit_code: int):
         try:
             if args.debug:

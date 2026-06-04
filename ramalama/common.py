@@ -43,6 +43,26 @@ RAG_CONTENT = f"{MNT_DIR}/vector.db"
 
 MIN_VRAM_BYTES = 1073741824  # 1GiB
 
+DEFAULT_TMPDIR = "/var/tmp"
+
+
+def ensure_tmpdir() -> None:
+    """Default TMPDIR to /var/tmp when unset or empty (non-Windows).
+
+    Packaged installs invoke ``ramalama.cli:main`` directly and do not run
+    ``bin/ramalama``, so this must run at CLI startup. ``RAMALAMA_TMPDIR`` is
+    used only when ``TMPDIR`` is unset or empty.
+    """
+    if sys.platform == "win32":
+        return
+    tmpdir = os.environ.get("TMPDIR", "").strip()
+    if not tmpdir:
+        tmpdir = os.environ.get("RAMALAMA_TMPDIR", "").strip()
+    if not tmpdir:
+        tmpdir = DEFAULT_TMPDIR
+    os.environ["TMPDIR"] = tmpdir
+
+
 SPLIT_MODEL_PATH_RE = r'(.*?)(?:/)?([^/]*)-00001-of-(\d{5})\.gguf'
 
 

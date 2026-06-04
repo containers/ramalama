@@ -16,11 +16,13 @@ from ramalama.cli import (
     parse_args_from_cmd,
 )
 from ramalama.common import (
+    DEFAULT_TMPDIR,
     _check_intel_windows,
     accel_image,
     check_intel,
     check_nvidia,
     ensure_image,
+    ensure_tmpdir,
     find_in_cdi,
     get_accel,
     load_cdi_config,
@@ -688,3 +690,24 @@ class TestPopulateVolumeFromImage:
 
             result = populate_volume_from_image(mock_model, Mock(engine="docker"), "test.gguf")
             assert result == expected_volume
+
+
+@pytest.mark.skipif(platform == "win32", reason="TMPDIR default is Unix-only")
+@pytest.mark.parametrize(
+    "env, expected",
+    [
+        ({}, DEFAULT_TMPDIR),
+        ({"TMPDIR": ""}, DEFAULT_TMPDIR),
+        ({"TMPDIR": "   "}, DEFAULT_TMPDIR),
+        ({"TMPDIR": "/custom/tmp"}, "/custom/tmp"),
+        ({"RAMALAMA_TMPDIR": "/ramalama/tmp"}, "/ramalama/tmp"),
+        ({"TMPDIR": "/custom/tmp", "RAMALAMA_TMPDIR": "/ramalama/tmp"}, "/custom/tmp"),
+    ],
+)
+def test_ensure_tmpdir(env, expected, monkeypatch):
+    monkeypatch.delenv("TMPDIR", raising=False)
+    monkeypatch.delenv("RAMALAMA_TMPDIR", raising=False)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    ensure_tmpdir()
+    assert os.environ["TMPDIR"] == expected
