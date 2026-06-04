@@ -495,7 +495,9 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
 
         # Push test model to the container registry in different modes
         for model_type_flag in [[], ["--type=car"], ["--type=raw"]]:
-            ctx.check_call(["ramalama", "push"] + model_type_flag + auth_flags + [test_model, test_image_url])
+            ctx.check_call(
+                ["ramalama", "push"] + model_type_flag + auth_flags + [test_model, test_image_url], timeout=180
+            )
 
         # Generate a quadlet
         result = ctx.check_output(
