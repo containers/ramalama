@@ -301,7 +301,7 @@ class OCI(Transport):
     def push(self, source_model, args):
         target = self.model
         source = source_model.model
-        conman_args = [self.conman, "push"]
+        conman_args = [self.conman, "--log-level=trace", "push"]
         type = "image"
         if args.type == "artifact":
             type = args.type

@@ -112,6 +112,8 @@ def container_registry():
             )
         finally:
             print(f"--- Registry logs ({registry_name}) ---", flush=True)
+            subprocess.run([ramalama_container_engine, "inspect", registry_name], check=False)
+            subprocess.run([ramalama_container_engine, "volume", "inspect", "--all"], check=False)
             subprocess.run([ramalama_container_engine, "logs", registry_name], check=False)
             subprocess.run([ramalama_container_engine, "stop", registry_name], check=False)
 
