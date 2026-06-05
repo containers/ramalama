@@ -9,7 +9,8 @@ from textwrap import dedent
 from typing import Optional, Union
 
 import ramalama.annotations as oci_annotations
-from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd, set_accel_env_vars
+from ramalama.accel import set_accel_env_vars
+from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd
 from ramalama.engine import BuildEngine, dry_run
 from ramalama.oci_tools import OciRef, engine_supports_manifest_attributes
 from ramalama.transports.base import Transport

@@ -14,8 +14,9 @@ from typing import Any, Optional
 
 # Live reference for checking global vars
 import ramalama.common
+from ramalama.accel import check_nvidia, get_accel_env_vars
 from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
+from ramalama.common import exec_cmd, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import ActiveConfig
 from ramalama.logger import logger

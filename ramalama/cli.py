@@ -25,9 +25,10 @@ except Exception:
     suppressCompleter = None
 
 from ramalama import engine
+from ramalama.accel import accel_image
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import accel_image, exec_cmd, get_accel, perror
+from ramalama.common import exec_cmd, perror
 from ramalama.config import (
     SUPPORTED_ENGINES,
     ActiveConfig,
@@ -36,6 +37,7 @@ from ramalama.config import (
 )
 from ramalama.config_types import COLOR_OPTIONS
 from ramalama.endian import EndianMismatchError
+from ramalama.hw_detect import detect_all_hardware
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
@@ -643,6 +645,24 @@ def _list_models(args):
     return _list_models_from_store(args)
 
 
+def _accelerator_info() -> dict[str, dict[str, Any]]:
+    return {
+        acc.accel_type: {
+            "devices": [
+                {
+                    "name": d.name,
+                    "memory": d.memory_bytes,
+                    "memory_human": human_readable_size(d.memory_bytes),
+                }
+                for d in acc.devices
+            ],
+            "total_memory": acc.total_memory_bytes,
+            "total_memory_human": human_readable_size(acc.total_memory_bytes),
+        }
+        for acc in detect_all_hardware()
+    }
+
+
 def info_cli(args: DefaultArgsType) -> None:
     shortnames = get_shortnames()
     if getattr(args, 'shortnames', None):
@@ -654,7 +674,7 @@ def info_cli(args: DefaultArgsType) -> None:
             print(message)
         return
     info: dict[str, Any] = {
-        "Accelerator": get_accel(),
+        "Accelerators": _accelerator_info(),
         "Config": load_file_config(),
         "Engine": {
             "Name": args.engine,
