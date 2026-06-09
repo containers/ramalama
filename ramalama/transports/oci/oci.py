@@ -301,11 +301,18 @@ class OCI(Transport):
     def push(self, source_model, args):
         target = self.model
         source = source_model.model
-        conman_args = [self.conman, "--log-level=trace", "push"]
+        conman_args = [self.conman, "push"]
         type = "image"
         if args.type == "artifact":
             type = args.type
             conman_args.insert(1, "artifact")
+        elif self.conman != "docker":
+            type = "manifest"
+            conman_args.insert(1, "manifest")
+
+        # XXX debug
+        conman_args.insert(1, "--log-level=trace")
+        # XXX end debug
 
         perror(f"Pushing {type} {self.model} ...")
         if args.authfile:
