@@ -478,7 +478,6 @@ def test_generation_with_bad_add_to_unit_flag_value(test_model):
 @pytest.mark.slow
 @skip_if_no_container
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")
-@pytest.mark.skip(reason="pushing to the local registry hangs since Fedora 44")
 def test_quadlet_and_kube_generation_with_container_registry(container_registry, is_container, test_model):
     with RamalamaExecWorkspace() as ctx:
         authfile = (Path(ctx.workspace_dir) / "authfile.json").as_posix()
