@@ -51,7 +51,7 @@ commands:
   - name: convert
     inference_engine:
       name: "convert hf to gguf"
-      binary: "convert_hf_to_gguf.py"
+      binary: "llama-convert-hf-to-gguf"
       options:
         - name: "--outfile"
           description: "Output file for the converted model"

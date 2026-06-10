@@ -505,7 +505,7 @@ class TestLlamaCppPlugin:
         ns = make_ns(MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("convert", ns)
 
-        expected_entry = "--convert" if container_image_is_ggml else "convert_hf_to_gguf.py"
+        expected_entry = "--convert" if container_image_is_ggml else "llama-convert-hf-to-gguf"
         assert cmd[0] == expected_entry
         assert "--outfile" in cmd
         assert "/output/mymodel.gguf" in cmd
