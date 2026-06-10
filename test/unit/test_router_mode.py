@@ -8,11 +8,11 @@ import pytest
 from test_inference_engine_plugins import make_ns
 
 from ramalama.cli import configure_subcommands
-from ramalama.plugins.runtimes.inference.common import _enumerate_store_gguf_models
+from ramalama.plugins.runtimes.inference.common import enumerate_store_gguf_models
 from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin
 
 # ---------------------------------------------------------------------------
-# _enumerate_store_gguf_models
+# enumerate_store_gguf_models
 # ---------------------------------------------------------------------------
 
 
@@ -35,13 +35,13 @@ class TestEnumerateStoreGgufModels:
         ref = MagicMock()
         ref.model_files = [sf]
 
-        models = _enumerate_store_gguf_models(
+        ref_cls = MagicMock()
+        ref_cls.from_path = MagicMock(return_value=ref)
+        models = enumerate_store_gguf_models(
             store,
             "refs",
-            "snapshots",
             "blobs",
-            MagicMock,
-            lambda path, snap_dir: ref,
+            ref_cls,
         )
 
         assert len(models) == 1
@@ -53,13 +53,11 @@ class TestEnumerateStoreGgufModels:
         store.path = str(tmp_path)
         tmp_path.mkdir(exist_ok=True)
 
-        models = _enumerate_store_gguf_models(
+        models = enumerate_store_gguf_models(
             store,
             "refs",
-            "snapshots",
             "blobs",
             MagicMock,
-            lambda p, s: None,
         )
         assert models == []
 
@@ -116,10 +114,11 @@ class TestServeRouter:
         with pytest.raises(SystemExit):
             self.plugin._serve_router(args)
 
-    @patch("ramalama.plugins.runtimes.inference.llama_cpp._enumerate_store_gguf_models", return_value=[])
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.enumerate_store_gguf_models", return_value=[])
+    @patch.object(LlamaCppPlugin, "_migrate_store_ref_files")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp.set_accel_env_vars")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp.compute_serving_port", return_value="8080")
-    def test_no_models_exits(self, mock_port, mock_accel, mock_enum):
+    def test_no_models_exits(self, mock_port, mock_accel, mock_migrate, mock_enum):
         args = argparse.Namespace(container=True, store="/fake/store", port="8080", MODEL=[])
         with pytest.raises(SystemExit):
             self.plugin._serve_router(args)

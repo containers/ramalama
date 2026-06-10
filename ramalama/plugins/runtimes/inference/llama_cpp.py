@@ -50,7 +50,7 @@ from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.reffile import RefJSONFile, migrate_reffile_to_refjsonfile
 from ramalama.path_utils import file_uri_to_path, get_container_mount_path
 from ramalama.plugins.loader import assemble_command
-from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin, _enumerate_store_gguf_models
+from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin, enumerate_store_gguf_models
 from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
     LlamaCppCommands,
     _default_threads,
@@ -470,13 +470,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             models = self._resolve_specified_models(args)
         else:
             store = GlobalModelStore(args.store)
-            models = _enumerate_store_gguf_models(
+            self._migrate_store_ref_files(store)
+            models = enumerate_store_gguf_models(
                 store,
                 DIRECTORY_NAME_REFS,
-                DIRECTORY_NAME_SNAPSHOTS,
                 DIRECTORY_NAME_BLOBS,
                 RefJSONFile,
-                migrate_reffile_to_refjsonfile,
             )
 
         if not models:
@@ -503,6 +502,17 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             engine.dryrun()
             return
         engine.exec()
+
+    @staticmethod
+    def _migrate_store_ref_files(store: Any) -> None:
+        """Migrate any old-format ref files to JSON before enumeration."""
+        for root, subdirs, _ in os.walk(store.path):
+            if DIRECTORY_NAME_REFS not in subdirs:
+                continue
+            ref_dir = os.path.join(root, DIRECTORY_NAME_REFS)
+            for ref_file_name in os.listdir(ref_dir):
+                ref_file_path = os.path.join(ref_dir, ref_file_name)
+                migrate_reffile_to_refjsonfile(ref_file_path, os.path.join(root, DIRECTORY_NAME_SNAPSHOTS))
 
     @staticmethod
     def _resolve_specified_models(args: argparse.Namespace) -> list[tuple[str, str]]:
@@ -604,13 +614,11 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         self._add_rag_args(parser)
         return parser
 
+    def _add_model_argument(self, parser: "argparse.ArgumentParser") -> None:
+        parser.add_argument("MODEL", nargs="*", default=[], completer=local_models)
+
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_serve_subcommand(subparsers)
-        for action in parser._actions:
-            if hasattr(action, 'dest') and action.dest == 'MODEL':
-                action.nargs = '*'
-                action.default = []
-                break
         self._add_rag_args(parser)
         parser.add_argument(
             "--models-max",

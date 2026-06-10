@@ -4,7 +4,6 @@ import argparse
 import copy
 import os
 from abc import abstractmethod
-from collections.abc import Callable
 from typing import Any
 
 from ramalama.cli import (
@@ -140,11 +139,15 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         parser.set_defaults(func=self._run_handler)
         return parser
 
+    def _add_model_argument(self, parser: "argparse.ArgumentParser") -> None:
+        """Add the MODEL positional argument. Override to change nargs or defaults."""
+        parser.add_argument("MODEL", completer=local_models)
+
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = subparsers.add_parser("serve", help="serve REST API on specified AI Model")
         runtime_options(parser, "serve")
         self._add_inference_args(parser, "serve")
-        parser.add_argument("MODEL", completer=local_models)
+        self._add_model_argument(parser)
         parser.set_defaults(func=self._serve_handler)
         return parser
 
@@ -254,13 +257,11 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         self._do_serve(args, model)
 
 
-def _enumerate_store_gguf_models(
+def enumerate_store_gguf_models(
     store: Any,
     refs_dir_name: str,
-    snapshots_dir_name: str,
     blobs_dir_name: str,
     ref_json_cls: Any,
-    migrate_fn: Callable[[str, str], Any],
 ) -> list[tuple[str, str]]:
     """Walk the model store and return (host_blob_path, readable_name.gguf) for each GGUF model."""
     models: list[tuple[str, str]] = []
@@ -273,9 +274,7 @@ def _enumerate_store_gguf_models(
         ref_dir = os.path.join(root, refs_dir_name)
         for ref_file_name in os.listdir(ref_dir):
             ref_file_path = os.path.join(ref_dir, ref_file_name)
-            ref_file = migrate_fn(ref_file_path, os.path.join(root, snapshots_dir_name))
-            if ref_file is None:
-                ref_file = ref_json_cls.from_path(ref_file_path)
+            ref_file = ref_json_cls.from_path(ref_file_path)
 
             tag, _ = os.path.splitext(ref_file_name)
             model_rel = root.replace(store.path, "").lstrip(os.sep)
