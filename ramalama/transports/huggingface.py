@@ -27,8 +27,12 @@ sudo dnf install python3-huggingface-hub
 """
 
 
-def huggingface_token():
-    """Return cached Hugging Face token if it exists otherwise None"""
+def huggingface_token() -> str | None:
+    """Return Hugging Face token from HF_TOKEN env var or cached token file, otherwise None"""
+    token = os.environ.get("HF_TOKEN")
+    if token:
+        return token
+
     token_path = os.path.expanduser(os.path.join("~", ".cache", "huggingface", "token"))
     if os.path.exists(token_path):
         try:
@@ -36,6 +40,8 @@ def huggingface_token():
                 return tokenfile.read().strip()
         except OSError:
             pass
+
+    return None
 
 
 def extract_huggingface_checksum(data):
