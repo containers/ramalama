@@ -17,7 +17,6 @@ spec:
     - linux-d160-m4xlarge/arm64
     - linux/ppc64le
     - linux/s390x
-    - linux-g64xlarge/amd64
   - name: commands
     description: Test commands to run
     type: array

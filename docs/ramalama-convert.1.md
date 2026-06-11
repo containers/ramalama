@@ -35,7 +35,7 @@ sets the configuration for network namespaces when handling RUN instructions
 Pull image policy. The default is **missing**.
 
 #### **--tools-image**=IMAGE
-Image to use when converting to GGUF format (when the `--gguf` option has been specified). The image must have the `convert_hf_to_gguf.py` script
+Image to use when converting to GGUF format (when the `--gguf` option has been specified). The image must have the `llama-convert-hf-to-gguf` script
 executable and available in the `PATH`. The script is available from the `llama.cpp` GitHub repo. Defaults to the current
 `quay.io/ramalama/ramalama-tools` image.
 
