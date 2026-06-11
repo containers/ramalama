@@ -608,6 +608,7 @@ def human_readable_size(size):
 def _list_models_from_store(args):
 
     models = GlobalModelStore(args.store).list_models(engine=args.engine, show_container=args.container)
+    shortnames = get_shortnames()
 
     ret = []
     local_timezone = datetime.now().astimezone().tzinfo
@@ -619,6 +620,8 @@ def _list_models_from_store(args):
             continue
 
         model = trim_model_name(model)
+        display_name = f"{model} (partial)" if is_partially_downloaded else model
+        shortname = shortnames.lookup(model) or ""
         size_sum = 0
         last_modified = 0.0
         for file in files:
@@ -627,7 +630,8 @@ def _list_models_from_store(args):
 
         ret.append(
             {
-                "name": f"{model} (partial)" if is_partially_downloaded else model,
+                "shortname": shortname,
+                "name": display_name,
                 "modified": datetime.fromtimestamp(last_modified, tz=local_timezone).isoformat(),
                 "size": size_sum,
             }
@@ -693,6 +697,7 @@ def list_cli(args):
         return
 
     # Calculate maximum width for each column
+    shortname_width = len("SHORTNAME")
     name_width = len("NAME")
     modified_width = len("MODIFIED")
     size_width = len("SIZE")
@@ -705,19 +710,26 @@ def list_cli(args):
             pass
         # update the size to be human readable
         model["size"] = human_readable_size(model["size"])
+        shortname_width = max(shortname_width, len(model["shortname"]))
         name_width = max(name_width, len(model["name"]))
         modified_width = max(modified_width, len(model["modified"]))
         size_width = max(size_width, len(model["size"]))
 
     if not args.quiet and not args.noheading and not args.json:
-        print(f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} {'SIZE':<{size_width}}")
+        print(
+            f"{'SHORTNAME':<{shortname_width}} {'NAME':<{name_width}} "
+            f"{'MODIFIED':<{modified_width}} {'SIZE':<{size_width}}"
+        )
 
     for model in models:
         if args.quiet:
             print(model["name"])
         else:
             modified = model['modified']
-            print(f"{model['name']:<{name_width}} {modified:<{modified_width}} {model['size'].upper():<{size_width}}")
+            print(
+                f"{model['shortname']:<{shortname_width}} {model['name']:<{name_width}} "
+                f"{modified:<{modified_width}} {model['size'].upper():<{size_width}}"
+            )
 
 
 def help_parser(subparsers):
