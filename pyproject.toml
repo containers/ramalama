@@ -190,6 +190,7 @@ package = "wheel"
 extras = ["dev", "cov"]
 pass_env = [
   "GITHUB_ACTIONS",
+  "HF_TOKEN",
   "RAMALAMA_*",
 ]
 set_env = { COLUMNS = "120" }

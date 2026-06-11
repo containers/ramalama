@@ -97,6 +97,8 @@ jobs:
         with: ${{ matrix.variant.uv-options }}
 
       - name: Run unit tests
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           uv run -- make unit-tests
 
@@ -159,6 +161,8 @@ jobs:
            sudo apt-get upgrade -y podman crun
 
       - name: run e2e-tests
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
            make e2e-tests
 
@@ -219,6 +223,8 @@ jobs:
            sudo apt-get upgrade -y podman crun
 
       - name: run e2e-tests-nocontainer
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
            make e2e-tests-nocontainer
 
@@ -298,6 +304,8 @@ jobs:
            df -h
 
       - name: run e2e-tests-docker
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
            docker info
            make e2e-tests-docker
@@ -344,6 +352,8 @@ jobs:
 
       - name: run e2e-tests-nocontainer
         shell: bash
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           make e2e-tests-nocontainer
 
@@ -454,6 +464,7 @@ jobs:
         shell: pwsh
         env:
           RAMALAMA_CONTAINER_ENGINE: podman
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           Write-Host "Running E2E tests..."
           # Add uv tools to PATH
