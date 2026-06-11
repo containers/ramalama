@@ -200,7 +200,7 @@ def test_sandbox_run_cmdline(sandbox_ctx, tmp_path, container_engine, agent):
 def test_sandbox_run_stdin(sandbox_ctx, tmp_path, agent):
     """Agent should successfully execute instructions provided on stdin"""
     fpath = tmp_path / "stdin.txt"
-    fpath.write_text("What is the atomic number of molybdenum?")
+    fpath.write_text("What is 6 times 7?")
     result = sandbox_ctx.check_output(
         ["ramalama", "sandbox", agent, "--thinking=off", "--seed=1", "--temp=0", TEST_MODEL], stdin=fpath.open()
     )
