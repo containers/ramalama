@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 from abc import abstractmethod
 from typing import Any
 
@@ -147,7 +148,9 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         if args.container and not args.dryrun:
             config = ActiveConfig()
             should_pull = config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
+            args.image = ensure_image(
+                config.engine, accel_image(config), should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
 
         cmd = assemble_command(args)
         if len(cmd) > 0 and isinstance(cmd[0], ContainerEntryPoint):
@@ -163,7 +166,9 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             config = ActiveConfig()
             generate = getattr(args, "generate", None)
             should_pull = False if generate else config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
+            args.image = ensure_image(
+                config.engine, accel_image(config), should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
 
         cmd = assemble_command(args)
         if getattr(args, "generate", None):
@@ -192,9 +197,10 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
         except KeyError as e:
             logger.debug(e)
             try:
-                args.quiet = True
-                model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-                model.ensure_model_exists(args)
+                probe_args = copy.copy(args)
+                probe_args.quiet = True
+                model = TransportFactory(args.MODEL, probe_args, ignore_stderr=True).create_oci()
+                model.ensure_model_exists(probe_args)
             except Exception as exc:
                 raise e from exc
 
@@ -223,9 +229,10 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             try:
                 if "://" in args.MODEL:
                     raise e
-                args.quiet = True
-                model = TransportFactory(args.MODEL, args, ignore_stderr=True).create_oci()
-                model.ensure_model_exists(args)
+                probe_args = copy.copy(args)
+                probe_args.quiet = True
+                model = TransportFactory(args.MODEL, probe_args, ignore_stderr=True).create_oci()
+                model.ensure_model_exists(probe_args)
                 # Since this is a OCI model, prepend oci://
                 args.MODEL = f"oci://{args.MODEL}"
 

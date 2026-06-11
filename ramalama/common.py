@@ -718,7 +718,7 @@ def accel_image(config: Config, images: Optional[dict[str, str]] = None, conf_ke
     return latest_tagged_image(images.get(gpu_type, getattr(config, f"default_{conf_key}")))
 
 
-def ensure_image(conman: Optional[str], image: str, should_pull: bool = False) -> str:
+def ensure_image(conman: Optional[str], image: str, should_pull: bool = False, quiet: bool = False) -> str:
     """Check if image exists locally; optionally pull it.
 
     Returns the image string on success. If conman is falsy, returns image unchanged.
@@ -739,8 +739,9 @@ def ensure_image(conman: Optional[str], image: str, should_pull: bool = False) -
     if not should_pull:
         return image
 
+    pull_stdout = subprocess.DEVNULL if quiet else None
     try:
-        run_cmd([conman, "pull", image], ignore_stderr=True)
+        run_cmd([conman, "pull", image], stdout=pull_stdout, ignore_stderr=quiet)
         return image
     except Exception:
         pass
@@ -752,7 +753,7 @@ def ensure_image(conman: Optional[str], image: str, should_pull: bool = False) -
     if base and base.startswith("quay.io/ramalama/"):
         latest = latest_tagged_image(base)
         try:
-            run_cmd([conman, "pull", latest], ignore_stderr=True)
+            run_cmd([conman, "pull", latest], stdout=pull_stdout, ignore_stderr=quiet)
             return latest
         except Exception as e:
             raise ValueError(f"Failed to pull image {image} or {latest}: {e}")
