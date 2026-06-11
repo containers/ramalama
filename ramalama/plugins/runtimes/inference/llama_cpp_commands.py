@@ -275,7 +275,7 @@ class LlamaCppCommands:
         return cmd
 
     def _cmd_convert(self, args: argparse.Namespace) -> list[str]:
-        cmd = ["convert_hf_to_gguf.py"] if not self._container_image_is_ggml(args) else ["--convert"]  # type: ignore[attr-defined]
+        cmd = ["llama-convert-hf-to-gguf"] if not self._container_image_is_ggml(args) else ["--convert"]  # type: ignore[attr-defined]
         model_name = self._get_model_name(args)
         cmd += ["--outfile", f"/output/{model_name}.gguf", "/model"]
         return cmd

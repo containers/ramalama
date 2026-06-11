@@ -99,7 +99,9 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
         config = ActiveConfig()
         if not args.dryrun:
             should_pull = config.pull in ["always", "missing", "newer"]
-            rag_image = ensure_image(args.engine, rag_image, should_pull=should_pull)
+            rag_image = ensure_image(
+                args.engine, rag_image, should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
         args.image = rag_image
         # Image is already pulled by ensure_image, avoid re-pulling during podman run
         args.pull = "never"

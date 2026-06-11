@@ -68,19 +68,21 @@ def container_registry():
             passwd_hash = bcrypt.hashpw(registry_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
             pwfile.write(f"{registry_username}:{passwd_hash}")
 
-        # Start the registry
+        # Start the registry with --network=host to avoid pasta port-forwarding
+        # issues with large blob uploads on newer Fedora/podman versions.
         # fmt: off
         subprocess.run(
             [
                 ramalama_container_engine, "run", "-d", "--rm",
                 "--name", registry_name,
-                "-p", f"{registry_port}:5000",
+                "--network=host",
                 "-v", f"{work_dir.as_posix()}:/auth:Z",
                 "-e", "REGISTRY_AUTH=htpasswd",
                 "-e", "REGISTRY_AUTH_HTPASSWD_REALM='Registry Realm'",
                 "-e", "REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd",
                 "-e", "REGISTRY_HTTP_TLS_CERTIFICATE=/auth/domain.crt",
                 "-e", "REGISTRY_HTTP_TLS_KEY=/auth/domain.key",
+                "-e", f"REGISTRY_HTTP_ADDR=0.0.0.0:{registry_port}",
                 registry_image,
             ],
             check=True,
