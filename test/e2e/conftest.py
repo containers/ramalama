@@ -12,6 +12,7 @@ from tempfile import TemporaryDirectory
 import bcrypt
 import pytest
 import requests
+import urllib3
 
 from test.conftest import ramalama_container_engine
 
@@ -67,25 +68,41 @@ def container_registry():
             passwd_hash = bcrypt.hashpw(registry_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
             pwfile.write(f"{registry_username}:{passwd_hash}")
 
-        # Start the registry
+        # Start the registry with --network=host to avoid pasta port-forwarding
+        # issues with large blob uploads on newer Fedora/podman versions.
         # fmt: off
         subprocess.run(
             [
                 ramalama_container_engine, "run", "-d", "--rm",
                 "--name", registry_name,
-                "-p", f"{registry_port}:5000",
+                "--network=host",
                 "-v", f"{work_dir.as_posix()}:/auth:Z",
                 "-e", "REGISTRY_AUTH=htpasswd",
                 "-e", "REGISTRY_AUTH_HTPASSWD_REALM='Registry Realm'",
                 "-e", "REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd",
                 "-e", "REGISTRY_HTTP_TLS_CERTIFICATE=/auth/domain.crt",
                 "-e", "REGISTRY_HTTP_TLS_KEY=/auth/domain.key",
+                "-e", f"REGISTRY_HTTP_ADDR=0.0.0.0:{registry_port}",
                 registry_image,
             ],
             check=True,
         )
         # fmt: on
-        time.sleep(2)
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        start_time = time.time()
+        while time.time() - start_time < 30:
+            try:
+                resp = requests.get(
+                    f"https://localhost:{registry_port}/v2/",
+                    verify=False,
+                    timeout=1,
+                )
+                if resp.status_code in (200, 401):
+                    break
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                time.sleep(0.5)
+        else:
+            pytest.fail(f"Registry {registry_name} did not become ready within 30s")
 
         try:
             yield Registry(
@@ -96,6 +113,8 @@ def container_registry():
                 port=registry_port,
             )
         finally:
+            print(f"--- Registry logs ({registry_name}) ---", flush=True)
+            subprocess.run([ramalama_container_engine, "logs", registry_name], check=False)
             subprocess.run([ramalama_container_engine, "stop", registry_name], check=False)
 
 

@@ -127,11 +127,13 @@ lint:
 check-format:
 	ruff check --select I $(RUFF_TARGETS)
 	ruff format --check $(RUFF_TARGETS)
+	$(PYTHON) ramalama/shortnames.py --check shortnames/shortnames.conf
 
 .PHONY: format
 format:
 	ruff check --select I --fix $(RUFF_TARGETS)
 	ruff format $(RUFF_TARGETS)
+	$(PYTHON) ramalama/shortnames.py shortnames/shortnames.conf
 
 .PHONY: codespell
 codespell:

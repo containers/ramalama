@@ -178,7 +178,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         return "llama.cpp"
 
     def _convert_to_gguf(self, outdir, source_model, args):
-        """Run convert_hf_to_gguf.py inside a container to produce a GGUF file."""
+        """Run llama-convert-hf-to-gguf inside a container to produce a GGUF file."""
         with tempfile.TemporaryDirectory(prefix="RamaLama_convert_src_") as srcdir:
             ref_file = source_model.model_store.get_ref_file(source_model.model_tag)
             for file in ref_file.files:
@@ -198,7 +198,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             if not args.dryrun:
                 config = ActiveConfig()
                 should_pull = config.pull in ["always", "missing", "newer"]
-                args.tools_image = ensure_image(args.engine, args.tools_image, should_pull=should_pull)
+                args.tools_image = ensure_image(
+                    args.engine, args.tools_image, should_pull=should_pull, quiet=getattr(args, "quiet", False)
+                )
             engine.add_args(args.tools_image)
             engine.add_args(*self._cmd_convert(args))
             if args.dryrun:
@@ -220,7 +222,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if not args.dryrun:
             config = ActiveConfig()
             should_pull = config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(args.engine, args.image, should_pull=should_pull)
+            args.image = ensure_image(
+                args.engine, args.image, should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
         engine.add_args(args.image)
         args = copy.copy(args)
         args.subcommand = "quantize"

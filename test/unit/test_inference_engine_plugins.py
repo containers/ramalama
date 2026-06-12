@@ -505,7 +505,7 @@ class TestLlamaCppPlugin:
         ns = make_ns(MODEL="ollama://mymodel")
         cmd = self.plugin.handle_subcommand("convert", ns)
 
-        expected_entry = "--convert" if container_image_is_ggml else "convert_hf_to_gguf.py"
+        expected_entry = "--convert" if container_image_is_ggml else "llama-convert-hf-to-gguf"
         assert cmd[0] == expected_entry
         assert "--outfile" in cmd
         assert "/output/mymodel.gguf" in cmd
@@ -552,7 +552,7 @@ class TestLlamaCppPlugin:
             mock_cfg.return_value.pull = "missing"
             self.plugin._quantize(mock_source, args, "/model_dir")
 
-        mock_ensure_image.assert_called_once_with("podman", default_image, should_pull=True)
+        mock_ensure_image.assert_called_once_with("podman", default_image, should_pull=True, quiet=False)
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp.ensure_image")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
