@@ -227,7 +227,7 @@ cmake_steps() {
 configure_common_flags() {
   common_flags=(
       "-DGGML_CCACHE=OFF" "-DGGML_RPC=ON" "-DCMAKE_INSTALL_PREFIX=/tmp/install"
-      "-DLLAMA_BUILD_TESTS=OFF" "-DLLAMA_BUILD_EXAMPLES=OFF" "-DGGML_BUILD_TESTS=OFF" "-DGGML_BUILD_EXAMPLES=OFF"
+      "-DLLAMA_BUILD_TESTS=OFF" "-DLLAMA_BUILD_EXAMPLES=OFF" "-DGGML_BUILD_TESTS=OFF" "-DGGML_BUILD_EXAMPLES=OFF" "-DCMAKE_C_FLAGS=-march=native -mtune=native" "-DCMAKE_CXX_FLAGS=-march=native -mtune=native"
   )
   if [ "$containerfile" = "cann" ]; then
       :
@@ -270,7 +270,7 @@ configure_common_flags() {
     common_flags+=("-DGGML_VULKAN=ON")
     ;;
   asahi)
-    common_flags+=("-DGGML_VULKAN=ON" "-DGGML_CPU_KLEIDIAI=ON" "-DGGML_KLEIDIAI_CACHE=ON" "-DGGML_OPENMP=ON" "-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=FLAME" "-DBLAS_INCLUDE_DIRS=/usr/include/blis")
+    common_flags+=("-DGGML_VULKAN=ON" "-DGGML_CPU_KLEIDIAI=ON" "-DGGML_KLEIDIAI_CACHE=ON" "-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=FLAME" "-DBLAS_INCLUDE_DIRS=/usr/include/blis")
     ;;
   intel-gpu)
     common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
@@ -324,6 +324,7 @@ clone_and_build_kleidiai() {
       rm -rf kleidiai
   fi
 }
+
 
 cleanup() {
   available dnf && dnf -y clean all
