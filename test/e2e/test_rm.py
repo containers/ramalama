@@ -16,7 +16,7 @@ def test_delete_non_existing_image():
 
     assert exc_info.value.returncode == 22
     assert re.search(
-        f"Error: Model '{image_name}' not found",
+        "not a known shortname and no transport was specified",
         exc_info.value.output.decode("utf-8"),
     )
 

@@ -66,11 +66,9 @@ RamaLama supports multiple AI model registries types called transports. Supporte
 | OCI Container Registries | oci://                        | [`opencontainers.org`](https://opencontainers.org) |
 |                          |                               | Examples: [`quay.io`](https://quay.io), [`Docker Hub`](https://docker.io), [`Artifactory`](https://artifactory.com) |
 
-Models specified in the Hugging Face `<org>/<model>` format are automatically pulled from Hugging Face. For models specified without an organization (e.g. `granite-code`), RamaLama currently defaults to the Ollama transport. **Note:** Ollama models are no longer compatible with llama.cpp, and support for the Ollama transport will be removed in a future release. Users should migrate to Hugging Face models.
+Models specified in the Hugging Face `<org>/<model>` format are automatically pulled from Hugging Face. Models can also be specified using a shortname (e.g. `tiny`) which is resolved via `shortnames.conf`, or with an explicit transport prefix such as `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, or `file://`.
 
-The default transport can be overridden in the `ramalama.conf` file or via the `RAMALAMA_TRANSPORT` environment variable. Running `export RAMALAMA_TRANSPORT=huggingface` changes RamaLama to use the HuggingFace transport.
-
-Modify individual model transports by specifying the `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, `file://` prefix to the model.
+The default transport can be overridden in the `ramalama.conf` file or via the `RAMALAMA_TRANSPORT` environment variable. Running `export RAMALAMA_TRANSPORT=huggingface` changes RamaLama to use the HuggingFace transport for unqualified model names.
 
 URL support means if a model is on a web site or even on your local system, you can run it directly.
 
@@ -192,7 +190,7 @@ although the recommended way is to use the `ramalama.conf` file.
 | RAMALAMA_IMAGE            | container image to use for serving AI Models |
 | RAMALAMA_IN_CONTAINER     | run RamaLama in the default container     |
 | RAMALAMA_STORE            | location to store AI Models               |
-| RAMALAMA_TRANSPORT        | default AI Model transport (ollama, huggingface, OCI) |
+| RAMALAMA_TRANSPORT        | default AI Model transport (huggingface, OCI, ollama) |
 | TMPDIR                    | directory for temporary files; defaults to `/var/tmp` if unset |
 
 ## SEE ALSO

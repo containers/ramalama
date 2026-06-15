@@ -633,7 +633,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
 
         shortnames = get_shortnames()
         tgt = shortnames.resolve(args.TARGET)
-        model = TransportFactory(tgt, args).create_oci()
+        model = TransportFactory(tgt, args, transport="oci").create_oci()
         source_model = _get_source_model(args)
         model.convert(source_model, args)
 

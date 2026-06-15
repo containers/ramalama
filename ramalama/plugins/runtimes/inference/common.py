@@ -199,7 +199,7 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             try:
                 probe_args = copy.copy(args)
                 probe_args.quiet = True
-                model = TransportFactory(args.MODEL, probe_args, ignore_stderr=True).create_oci()
+                model = TransportFactory(args.MODEL, probe_args, transport="oci", ignore_stderr=True).create_oci()
                 model.ensure_model_exists(probe_args)
             except Exception as exc:
                 raise e from exc
@@ -231,7 +231,7 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
                     raise e
                 probe_args = copy.copy(args)
                 probe_args.quiet = True
-                model = TransportFactory(args.MODEL, probe_args, ignore_stderr=True).create_oci()
+                model = TransportFactory(args.MODEL, probe_args, transport="oci", ignore_stderr=True).create_oci()
                 model.ensure_model_exists(probe_args)
                 # Since this is a OCI model, prepend oci://
                 args.MODEL = f"oci://{args.MODEL}"
