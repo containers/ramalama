@@ -50,5 +50,7 @@ jobs:
           ramalama info
 
       - name: RamaLama pull
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           ramalama pull tinyllama
