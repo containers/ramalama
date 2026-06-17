@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import shutil
+import sys
 import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -34,6 +35,7 @@ from ramalama.cli import (
 from ramalama.common import (
     accel_image,
     ensure_image,
+    genname,
     get_gpu_type_env_vars,
     run_cmd,
     set_accel_env_vars,
@@ -43,9 +45,12 @@ from ramalama.common import (
 from ramalama.config import ActiveConfig, DefaultConfig, coerce_to_bool
 from ramalama.engine import Engine, dry_run, image_inspect
 from ramalama.logger import logger
-from ramalama.path_utils import file_uri_to_path
+from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
+from ramalama.model_store.global_store import GlobalModelStore
+from ramalama.model_store.reffile import RefJSONFile, migrate_reffile_to_refjsonfile
+from ramalama.path_utils import file_uri_to_path, get_container_mount_path
 from ramalama.plugins.loader import assemble_command
-from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
+from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin, enumerate_store_gguf_models
 from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
     LlamaCppCommands,
     _default_threads,
@@ -91,6 +96,13 @@ class LlamaCppConfig:
         self.threads = int(self.threads)
         if self.thinking is not None:
             self.thinking = coerce_to_bool(self.thinking)
+
+
+def _positive_int(value: str) -> int:
+    ivalue = int(value)
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError(f"--models-max must be a positive integer, got {value}")
+    return ivalue
 
 
 class AddPathOrUrl(argparse.Action):
@@ -262,7 +274,14 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         model_names = [m["name"] for m in body["models"]]
         if not model_name:
-            model_name = New(args.MODEL, args).model_alias
+            if hasattr(args, 'MODEL') and isinstance(args.MODEL, str):
+                model_name = New(args.MODEL, args).model_alias
+            else:
+                if not model_names:
+                    logger.debug(f"{self.name} {container_name} /models returned no available models yet")
+                    return False
+                logger.debug(f"{self.name} {container_name} is ready (router mode)")
+                return True
 
         if model_name not in model_names:
             logger.debug(
@@ -425,6 +444,98 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             return
         super()._do_serve(args, model)
 
+    def _serve_handler(self, args: argparse.Namespace) -> None:
+        if not args.container:
+            args.detach = False
+
+        if len(args.MODEL) != 1:
+            return self._serve_router(args)
+
+        args.MODEL = args.MODEL[0]
+        if isinstance(getattr(args, "model", None), list):
+            args.model = args.MODEL
+
+        super()._serve_handler(args)
+
+    def _serve_router(self, args: argparse.Namespace) -> None:
+        """Serve multiple models using llama.cpp router mode (container-only)."""
+        if not args.container:
+            sys.exit("Error: multi-model router mode requires a container runtime.")
+
+        set_accel_env_vars()
+        args.port = compute_serving_port(args)
+        args.router_mode = True
+
+        if args.MODEL:
+            models = self._resolve_specified_models(args)
+        else:
+            store = GlobalModelStore(args.store)
+            self._migrate_store_ref_files(store)
+            models = enumerate_store_gguf_models(
+                store,
+                DIRECTORY_NAME_REFS,
+                DIRECTORY_NAME_BLOBS,
+                RefJSONFile,
+            )
+
+        if not models:
+            sys.exit("Error: no GGUF models found in the model store. Pull a model first with: ramalama pull <model>")
+
+        if args.container and not args.dryrun:
+            config = ActiveConfig()
+            should_pull = config.pull in ["always", "missing", "newer"]
+            args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
+
+        cmd = assemble_command(args)
+        engine = Engine(args)
+        name = getattr(args, "name", None) or genname()
+        engine.add(["--label", "ai.ramalama", "--name", name, "--env=HOME=/tmp", "--init"])
+
+        for host_path, container_name in models:
+            mount_path = f"/mnt/models/{container_name}"
+            container_host_path = get_container_mount_path(host_path)
+            engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro"])
+
+        engine.add([args.image] + cmd)
+
+        if args.dryrun:
+            engine.dryrun()
+            return
+        engine.exec()
+
+    @staticmethod
+    def _migrate_store_ref_files(store: Any) -> None:
+        """Migrate any old-format ref files to JSON before enumeration."""
+        for root, subdirs, _ in os.walk(store.path):
+            if DIRECTORY_NAME_REFS not in subdirs:
+                continue
+            ref_dir = os.path.join(root, DIRECTORY_NAME_REFS)
+            for ref_file_name in os.listdir(ref_dir):
+                ref_file_path = os.path.join(ref_dir, ref_file_name)
+                migrate_reffile_to_refjsonfile(ref_file_path, os.path.join(root, DIRECTORY_NAME_SNAPSHOTS))
+
+    @staticmethod
+    def _resolve_specified_models(args: argparse.Namespace) -> list[tuple[str, str]]:
+        """Resolve user-specified model names to (host_blob_path, container_name.gguf) tuples."""
+        models: list[tuple[str, str]] = []
+        seen_names: set[str] = set()
+        for model_name in args.MODEL:
+            model = New(model_name, args)
+            model.ensure_model_exists(args)
+            host_path = model._get_entry_model_path(False, False, False)
+            alias = model.model_alias.replace("/", "-")
+            name = f"{alias}.gguf"
+            if name in seen_names:
+                i = 2
+                candidate = f"{alias}-{i}.gguf"
+                while candidate in seen_names:
+                    i += 1
+                    candidate = f"{alias}-{i}.gguf"
+                name = candidate
+            seen_names.add(name)
+            models.append((host_path, name))
+        return models
+
     def _add_rag_args(self, parser: "argparse.ArgumentParser") -> None:
         parser.add_argument(
             "--rag", help="RAG vector database or OCI Image to be served with the model", completer=local_models
@@ -503,9 +614,20 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         self._add_rag_args(parser)
         return parser
 
+    def _add_model_argument(self, parser: "argparse.ArgumentParser") -> None:
+        parser.add_argument("MODEL", nargs="*", default=[], completer=local_models)
+
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_serve_subcommand(subparsers)
         self._add_rag_args(parser)
+        parser.add_argument(
+            "--models-max",
+            dest="models_max",
+            type=_positive_int,
+            default=4,
+            help="maximum number of models to load concurrently in router mode (default: 4)",
+            completer=suppressCompleter,
+        )
         return parser
 
     def register_subcommands(self, subparsers: "argparse._SubParsersAction") -> None:

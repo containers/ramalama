@@ -18,7 +18,13 @@ from ramalama.compat import NamedTemporaryFile
 from ramalama.config import DEFAULT_IMAGE, load_config
 from ramalama.plugins.interface import InferenceRuntimePlugin
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
-from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppConfig, LlamaCppPlugin, get_available_backends
+from ramalama.plugins.runtimes.inference.llama_cpp import (
+    LlamaCppConfig,
+    LlamaCppPlugin,
+    backend_to_gpu_env,
+    get_available_backends,
+    get_gpu_backend_preferences,
+)
 from ramalama.plugins.runtimes.inference.mlx import MlxConfig, MlxPlugin
 from ramalama.plugins.runtimes.inference.vllm import VllmPlugin
 
@@ -1273,3 +1279,40 @@ def test_get_available_backends_windows(gpu_env: Optional[str], expected_backend
 
     with patch.dict("os.environ", env, clear=True):
         assert get_available_backends() == expected_backends
+
+
+# ---------------------------------------------------------------------------
+# backend_to_gpu_env and get_gpu_backend_preferences
+# ---------------------------------------------------------------------------
+
+
+class TestBackendHelpers:
+    """Direct tests for backend helper functions."""
+
+    @pytest.mark.parametrize(
+        "backend,expected",
+        [
+            ("vulkan", "GGML_VK_VISIBLE_DEVICES"),
+            ("rocm", "HIP_VISIBLE_DEVICES"),
+            ("cuda", "CUDA_VISIBLE_DEVICES"),
+            ("sycl", "INTEL_VISIBLE_DEVICES"),
+            ("cann", "ASCEND_VISIBLE_DEVICES"),
+            ("musa", "MUSA_VISIBLE_DEVICES"),
+            ("nonexistent", ""),
+        ],
+    )
+    def test_backend_to_gpu_env(self, backend, expected):
+        assert backend_to_gpu_env(backend) == expected
+
+    def test_gpu_backend_preferences_nvidia(self):
+        prefs = get_gpu_backend_preferences("CUDA_VISIBLE_DEVICES")
+        assert prefs == ["cuda"]
+
+    def test_gpu_backend_preferences_amd(self):
+        prefs = get_gpu_backend_preferences("HIP_VISIBLE_DEVICES")
+        assert "vulkan" in prefs
+        assert "rocm" in prefs
+
+    def test_gpu_backend_preferences_unknown(self):
+        prefs = get_gpu_backend_preferences("UNKNOWN_DEVICES")
+        assert prefs == []
