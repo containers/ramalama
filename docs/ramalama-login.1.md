@@ -9,7 +9,7 @@ ramalama\-login - login to remote registry
 ## DESCRIPTION
 login to remote model registry
 
-By default, RamaLama uses the Ollama registry transport. You can override this default by configuring the `ramalama.conf` file or setting the `RAMALAMA_TRANSPORTS` environment variable. Ensure a registry transport is set before attempting to log in.
+Log in to a remote model registry. You can configure the default transport by setting the `ramalama.conf` file or the `RAMALAMA_TRANSPORT` environment variable. Ensure a registry transport is set before attempting to log in.
 
 ## OPTIONS
 Options are specific to registry types.

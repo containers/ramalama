@@ -176,8 +176,8 @@ Set to 0 to disable.
 
 **Transport and HTTP options:**
 
-**transport**="ollama": Default transport used for pull/push operations.
-Options: `oci`, `ollama`, `huggingface`.
+**transport**="": Default transport used for unqualified model names.
+Options: `huggingface`, `oci`, `ollama`. When unset, unqualified names are resolved via `shortnames.conf`.
 Override via `RAMALAMA_TRANSPORT`.
 
 `[[ramalama.http_client]]`

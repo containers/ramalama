@@ -40,7 +40,7 @@ def test_pull_non_existing_model():
             ctx.check_output(["ramalama", "pull", random_model_name], stderr=STDOUT)
         assert exc_info.value.returncode == 22
         assert re.search(
-            rf".*Error: Manifest for {random_model_name}:latest was not found in the Ollama registry",
+            r".*not a known shortname and no transport was specified",
             exc_info.value.output.decode("utf-8"),
         )
 

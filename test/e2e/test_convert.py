@@ -116,7 +116,7 @@ def test_convert(in_model, out_model, extra_params, expected):
             marks=[skip_if_no_container]
         ),
         pytest.param(
-            "bogus", "foobar", 22, ".*Error: Manifest for bogus:latest was not found in the Ollama registry",
+            "bogus", "foobar", 22, ".*not a known shortname and no transport was specified",
             id="raise error if model doesn't exist",
             marks=[skip_if_no_container]
         ),

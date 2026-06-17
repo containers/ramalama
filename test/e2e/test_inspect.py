@@ -25,7 +25,7 @@ def test_inspect_non_existent_model(shared_ctx):
     with pytest.raises(CalledProcessError) as exc_info:
         ctx.check_output(["ramalama", "inspect", model_name], stderr=STDOUT)
     assert exc_info.value.returncode == 22
-    assert f"Error: No ref file found for '{model_name}'. Please pull model." in exc_info.value.output.decode("utf-8")
+    assert "not a known shortname and no transport was specified" in exc_info.value.output.decode("utf-8")
 
 
 @pytest.mark.e2e

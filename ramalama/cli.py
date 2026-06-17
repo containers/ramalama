@@ -832,17 +832,15 @@ def push_cli(args):
             raise ValueError(f"converting from an OCI based image {args.SOURCE} is not supported")
         target = shortnames.resolve(args.TARGET)
 
-    target_model = New(target, args)
-
     try:
+        target_model = New(target, args)
         target_model.push(source_model, args)
-    except NotImplementedError as e:
+    except (KeyError, NotImplementedError) as e:
         for mtype in MODEL_TYPES:
             if target.startswith(mtype + "://"):
                 raise e
         try:
-            # attempt to push as a container image
-            m = TransportFactory(target, args).create_oci()
+            m = TransportFactory(target, args, transport="oci").create_oci()
             m.push(source_model, args)
         except Exception as e1:
             logger.debug(e1)
@@ -1181,7 +1179,7 @@ def rm_parser(subparsers):
 def _rm_oci_model(model, args) -> bool:
     # attempt to remove as a container image
     try:
-        m = TransportFactory(model, args, ignore_stderr=True).create_oci()
+        m = TransportFactory(model, args, transport="oci", ignore_stderr=True).create_oci()
         return m.remove(args)
     except Exception:
         return False
