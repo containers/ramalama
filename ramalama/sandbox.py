@@ -23,6 +23,10 @@ def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
         help="local directory to mount into the sandbox container at /work",
     )
     parser.add_argument(
+        "--llm-endpoint",
+        help="OpenAI compatible endpoint. Defaults to localhost with computed or given port.",
+    )
+    parser.add_argument(
         "ARGS",
         nargs="*",
         help="instructions for the sandbox to process non-interactively",
@@ -71,6 +75,11 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
 class SandboxEngineArgsType(BaseEngineArgsType):
     ARGS: list[str]
     workdir: Optional[str]
+    llm_endpoint: Optional[str]
+    url: str
+
+
+#    name: str
 
 
 class SandboxEngine(Engine):
@@ -86,7 +95,8 @@ class SandboxEngine(Engine):
         return getattr(self.args, "subcommand", "") == "sandbox"
 
     def add_network(self) -> None:
-        self.add_args(f"--network=container:{self.args.name}")  # type: ignore[attr-defined]
+        if not getattr(self.args, "llm_endpoint", None):
+            self.add_args(f"--network=container:{self.args.name}")  # type: ignore[attr-defined]
 
     def add_workdir(self, args: SandboxEngineArgsType):
         if args.workdir:
@@ -149,7 +159,7 @@ class Goose(Agent):
 
     def add_env_options(self, args: GooseArgsType) -> None:
         self.engine.add_env_option("GOOSE_PROVIDER=openai")
-        self.engine.add_env_option(f"OPENAI_HOST=http://localhost:{args.port}")
+        self.engine.add_env_option(f"OPENAI_HOST={args.url}")
         self.engine.add_env_option("OPENAI_API_KEY=ramalama")
         self.engine.add_env_option(f"GOOSE_MODEL={self.model_name}")
         self.engine.add_env_option("GOOSE_TELEMETRY_ENABLED=false")
@@ -190,7 +200,7 @@ class OpenCode(Agent):
                     "npm": "@ai-sdk/openai-compatible",
                     "name": "RamaLama",
                     "options": {
-                        "baseURL": f"http://localhost:{args.port}/v1",
+                        "baseURL": f"{args.url}/v1",
                         "apiKey": "ramalama",
                     },
                     "models": {
@@ -218,28 +228,40 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
     if not args.container:  # type: ignore[attr-defined]
         raise ValueError("ramalama sandbox requires a container engine")
 
-    args.port = compute_serving_port(args)
-
     model = New(args.MODEL, args)
-    model.ensure_model_exists(args)
 
-    runtime = get_runtime(ActiveConfig().runtime)
-    cmd = runtime.handle_subcommand("serve", cast(argparse.Namespace, args))
-
-    model.serve_nonblocking(args, cmd)  # type: ignore[union-attr]
-
-    agent = agent_cls(args, model.model_alias)
+    if not args.llm_endpoint:
+        args.port = compute_serving_port(args)
+        args.url = f"""http://localhost:{args.port}"""
+    else:
+        args.url = args.llm_endpoint
 
     if args.dryrun:
+        # args.name = args.name or "ramalama"
+        agent = agent_cls(args, model.model_alias)
         agent.engine.dryrun()
         return
 
-    try:
-        # Wait for model server to be healthy
-        model.wait_for_healthy(args)  # type: ignore[union-attr]
+    if not args.llm_endpoint:
+        model.ensure_model_exists(args)
 
-        # Launch agent
+        runtime = get_runtime(ActiveConfig().runtime)
+        cmd = runtime.handle_subcommand("serve", cast(argparse.Namespace, args))
+
+        model.serve_nonblocking(args, cmd)  # type: ignore[union-attr]
+
+        agent = agent_cls(args, model.model_alias)
+
+        try:
+            # Wait for model server to be healthy
+            model.wait_for_healthy(args)  # type: ignore[union-attr]
+
+            # Launch agent
+            agent.run()
+        finally:
+            args.ignore = True  # type: ignore[attr-defined]
+            stop_container(args, args.name, remove=True)  # type: ignore[attr-defined]
+    else:
+        # Just launch agent
+        agent = agent_cls(args, model.model_alias)
         agent.run()
-    finally:
-        args.ignore = True  # type: ignore[attr-defined]
-        stop_container(args, args.name, remove=True)  # type: ignore[attr-defined]
