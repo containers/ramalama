@@ -41,6 +41,8 @@ exits, the model server container is automatically stopped and removed.
 
 @@option keep-groups
 
+@@option llm-endpoint
+
 @@option logfile
 
 @@option max-tokens
