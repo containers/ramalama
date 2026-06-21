@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import platform
 from collections.abc import Callable
 from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import run_cmd
+from ramalama.common import genname, run_cmd
 from ramalama.config import DEFAULT_PI_IMAGE as CONFIG_DEFAULT_PI_IMAGE
 from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, stop_container
@@ -22,18 +23,21 @@ def default_pi_image() -> str:
     return ActiveConfig().default_pi_image
 
 
-def _pi_provider_id(port: str | int | None) -> str:
-    if port is None:
-        raise ValueError("pi sandbox requires a resolved serving port")
-    return f"llama-server=http://localhost:{port}"
-
-
 def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
     """Add --workdir and ARGS arguments shared by all sandbox subcommands."""
     parser.add_argument(
         "-w",
         "--workdir",
         help="local directory to mount into the sandbox container at /work",
+    )
+    parser.add_argument(
+        "--url",
+        help="OpenAI compatible endpoint. Defaults to localhost with computed or given port.",
+    )
+    parser.add_argument(
+        "--api-key",
+        default="ramalama",
+        help="OpenAI-compatible API key.",
     )
     parser.add_argument(
         "ARGS",
@@ -98,6 +102,11 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
 class SandboxEngineArgsType(BaseEngineArgsType):
     ARGS: list[str]
     workdir: Optional[str]
+    url: Optional[str]
+    api_key: Optional[str]
+    start_model_server: bool
+    name: str
+    model: str
 
 
 class SandboxEngine(Engine):
@@ -113,7 +122,8 @@ class SandboxEngine(Engine):
         return getattr(self.args, "subcommand", "") == "sandbox"
 
     def add_network(self) -> None:
-        self.add_args(f"--network=container:{self.args.name}")  # type: ignore[attr-defined]
+        if getattr(self.args, "start_model_server", True):
+            self.add_args(f"--network=container:{self.args.name}")  # type: ignore[attr-defined]
 
     def add_workdir(self, args: SandboxEngineArgsType):
         if args.workdir:
@@ -176,8 +186,8 @@ class Goose(Agent):
 
     def add_env_options(self, args: GooseArgsType) -> None:
         self.engine.add_env_option("GOOSE_PROVIDER=openai")
-        self.engine.add_env_option(f"OPENAI_HOST=http://localhost:{args.port}")
-        self.engine.add_env_option("OPENAI_API_KEY=ramalama")
+        self.engine.add_env_option(f"OPENAI_HOST={args.url}")
+        self.engine.add_env_option(f"OPENAI_API_KEY={args.api_key}")
         self.engine.add_env_option(f"GOOSE_MODEL={self.model_name}")
         self.engine.add_env_option("GOOSE_TELEMETRY_ENABLED=false")
         self.engine.add_env_option("GOOSE_CLI_SHOW_THINKING=true")
@@ -217,8 +227,8 @@ class OpenCode(Agent):
                     "npm": "@ai-sdk/openai-compatible",
                     "name": "RamaLama",
                     "options": {
-                        "baseURL": f"http://localhost:{args.port}/v1",
-                        "apiKey": "ramalama",
+                        "baseURL": f"{args.url}/v1",
+                        "apiKey": args.api_key,
                     },
                     "models": {
                         self.model_name: {
@@ -245,7 +255,7 @@ class Pi(Agent):
 
     def __init__(self, args: PiArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
-        provider_id = _pi_provider_id(args.port)
+        provider_id = f"llama-server={args.url}"
         self.engine.add_name(f"pi-{args.name}")  # type: ignore[attr-defined]
         self.add_provider_discovery_env(args)
         self.engine.add_workdir(args)
@@ -258,7 +268,7 @@ class Pi(Agent):
     def add_provider_discovery_env(self, args: PiArgsType) -> None:
         # pi-llama-cpp discovers and registers providers from LLAMA_SERVER_URL;
         # --provider then selects the matching provider id for the active session.
-        self.engine.add_env_option(f"LLAMA_SERVER_URL=http://localhost:{args.port}")
+        self.engine.add_env_option(f"LLAMA_SERVER_URL={args.url}")
 
 
 def run_sandbox_goose(args: GooseArgsType):
@@ -279,28 +289,44 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
     if not args.container:  # type: ignore[attr-defined]
         raise ValueError("ramalama sandbox requires a container engine")
 
-    args.port = compute_serving_port(args)
+    sb_args = copy.copy(args)
+    sb_args.start_model_server = args.url is None
+    if not sb_args.start_model_server:
+        sb_args.name = sb_args.name or genname()
 
-    model = New(args.MODEL, args)
-    model.ensure_model_exists(args)
+        if sb_args.dryrun:
+            agent = agent_cls(sb_args, sb_args.model)
+            agent.engine.dryrun()
+            return
 
-    runtime = get_runtime(ActiveConfig().runtime)
-    cmd = runtime.handle_subcommand("serve", cast(argparse.Namespace, args))
-
-    model.serve_nonblocking(args, cmd)  # type: ignore[union-attr]
-
-    agent = agent_cls(args, model.model_alias)
-
-    if args.dryrun:
-        agent.engine.dryrun()
-        return
-
-    try:
-        # Wait for model server to be healthy
-        model.wait_for_healthy(args)  # type: ignore[union-attr]
-
-        # Launch agent
+        # Just launch agent
+        agent = agent_cls(sb_args, sb_args.model)
         agent.run()
-    finally:
-        args.ignore = True  # type: ignore[attr-defined]
-        stop_container(args, args.name, remove=True)  # type: ignore[attr-defined]
+    else:
+        model = New(sb_args.MODEL, sb_args)
+        sb_args.port = compute_serving_port(sb_args)
+        sb_args.url = f"""http://localhost:{sb_args.port}"""
+
+        if sb_args.dryrun:
+            agent = agent_cls(sb_args, model.model_alias)
+            agent.engine.dryrun()
+            return
+
+        model.ensure_model_exists(sb_args)
+
+        runtime = get_runtime(ActiveConfig().runtime)
+        cmd = runtime.handle_subcommand("serve", cast(argparse.Namespace, sb_args))
+
+        model.serve_nonblocking(sb_args, cmd)  # type: ignore[union-attr]
+
+        agent = agent_cls(sb_args, model.model_alias)
+
+        try:
+            # Wait for model server to be healthy
+            model.wait_for_healthy(sb_args)  # type: ignore[union-attr]
+
+            # Launch agent
+            agent.run()
+        finally:
+            sb_args.ignore = True  # type: ignore[attr-defined]
+            stop_container(sb_args, sb_args.name, remove=True)  # type: ignore[attr-defined]

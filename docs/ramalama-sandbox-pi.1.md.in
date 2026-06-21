@@ -19,7 +19,14 @@ Two containers are started: a model server (llama-server) and the agent
 container. They communicate via container networking. When the agent session
 exits, the model server container is automatically stopped and removed.
 
+If the url is not given then two containers are started: a model server (llama-server) and the agent
+container. They communicate via container networking. When the agent session
+exits, the model server container is automatically stopped and removed.
+Otherwise only the agent container starts using the given url for the openai compatible model server.
+
 ## OPTIONS
+
+@@option api-key
 
 @@option authfile
 
@@ -80,6 +87,8 @@ exits, the model server container is automatically stopped and removed.
 @@option threads
 
 @@option tls-verify
+
+@@option url
 
 @@option webui
 
