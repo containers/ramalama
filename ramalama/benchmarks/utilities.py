@@ -40,8 +40,9 @@ def print_bench_results(records: list[BenchmarkRecord]):
         model = result.model_filename or ""
         params = f"{result.model_n_params / 1e9:.2f} B" if result.model_n_params else "-"
         backend = result.gpu_info or result.cpu_info or "CPU"
-        ngl = str(result.n_gpu_layers) if result.n_gpu_layers else "-"
-        threads = str(result.n_threads) if result.n_threads else "-"
+        ngl = str(result.n_gpu_layers) if result.n_gpu_layers is not None else "-"
+        ncmoe = str(result.n_cpu_moe) if result.n_cpu_moe is not None else "-"
+        threads = str(result.n_threads) if result.n_threads is not None else "-"
 
         # Format test type
         if result.n_prompt and result.n_gen:
@@ -68,6 +69,7 @@ def print_bench_results(records: list[BenchmarkRecord]):
                 "params": params,
                 "backend": backend,
                 "ngl": ngl,
+                "ncmoe": ncmoe,
                 "threads": threads,
                 "test": test,
                 "t/s": t_s,
@@ -76,14 +78,18 @@ def print_bench_results(records: list[BenchmarkRecord]):
             }
         )
 
+    column_order = ["id", "model", "params", "backend", "ngl", "ncmoe", "threads", "test", "t/s", "engine", "date"]
+    headers = [column for column in column_order if column in rows[0]]
+
     optional_fields = ["id", "engine", "date"]
     for field in optional_fields:
         if all(not row.get(field) for row in rows):
-            for row in rows:
-                row.pop(field, None)
+            headers.remove(field)
 
-    column_order = ["id", "model", "params", "backend", "ngl", "threads", "test", "t/s", "engine", "date"]
-    headers = [column for column in column_order if column in rows[0]]
+    fields_with_defaults = {"ngl": "99", "ncmoe": "0"}
+    for key, default in fields_with_defaults.items():
+        if all((row.get(key) in [default, '-']) for row in rows):
+            headers.remove(key)
 
     col_widths: dict[str, int] = {}
     for header in headers:

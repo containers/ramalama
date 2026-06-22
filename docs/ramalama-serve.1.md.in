@@ -98,6 +98,8 @@ appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
 
 @@option name
 
+@@option ncmoe
+
 @@option network
 
 @@option ngl

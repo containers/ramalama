@@ -32,6 +32,7 @@ from ramalama.plugins.runtimes.inference.vllm import VllmPlugin
 def make_ns(
     container=True,
     ngl=None,
+    ncmoe=None,
     threads=4,
     temp=0.8,
     seed=None,
@@ -54,6 +55,7 @@ def make_ns(
     ns = argparse.Namespace(
         container=container,
         ngl=ngl,
+        ncmoe=ncmoe,
         threads=threads,
         temp=temp,
         seed=seed,
@@ -143,8 +145,9 @@ class TestLlamaCppConfig:
         assert config.threads > 0
 
     def test_coerces_string_values(self):
-        config = LlamaCppConfig(ngl="4", cache_reuse="512", temp="0.5", threads="8", thinking="false")
+        config = LlamaCppConfig(ngl="4", ncmoe="128", cache_reuse="512", temp="0.5", threads="8", thinking="false")
         assert config.ngl == "4"
+        assert config.ncmoe == 128
         assert config.cache_reuse == 512
         assert config.temp == 0.5
         assert config.threads == 8
@@ -164,11 +167,12 @@ class TestSyncArgsToRuntimeConfig:
 
     def test_overrides_persist_for_subsequent_get_runtime_config(self):
         config = self._make_config()
-        args = make_ns(ngl=99, temp=0.5, threads=16, cache_reuse=512)
+        args = make_ns(ngl=99, ncmoe=256, temp=0.5, threads=16, cache_reuse=512)
         self.plugin.sync_args_to_runtime_config(args, config)
 
         rt = self.plugin.get_runtime_config(config)
         assert rt.ngl == "99"
+        assert rt.ncmoe == 256
         assert rt.temp == 0.5
         assert rt.threads == 16
         assert rt.cache_reuse == 512
@@ -176,20 +180,24 @@ class TestSyncArgsToRuntimeConfig:
     def test_preserves_existing_values_when_args_match(self):
         defaults = LlamaCppConfig()
         config = self._make_config()
-        args = make_ns(ngl=defaults.ngl, temp=float(defaults.temp), cache_reuse=defaults.cache_reuse)
+        args = make_ns(
+            ngl=defaults.ngl, ncmoe=defaults.ncmoe, temp=float(defaults.temp), cache_reuse=defaults.cache_reuse
+        )
         self.plugin.sync_args_to_runtime_config(args, config)
 
         rt = self.plugin.get_runtime_config(config)
         assert rt.ngl == defaults.ngl
+        assert rt.ncmoe == defaults.ncmoe
         assert rt.cache_reuse == defaults.cache_reuse
 
     def test_merges_with_preexisting_runtime_config(self):
-        config = self._make_config(runtimes={"llama_cpp": {"backend": "cuda", "ngl": 10}})
-        args = make_ns(ngl=42)
+        config = self._make_config(runtimes={"llama_cpp": {"backend": "cuda", "ngl": 10, "ncmoe": 10}})
+        args = make_ns(ngl=42, ncmoe=42)
         self.plugin.sync_args_to_runtime_config(args, config)
 
         rt = self.plugin.get_runtime_config(config)
         assert rt.ngl == "42"
+        assert rt.ncmoe == 42
         assert rt.backend == "cuda"
 
     def test_ignores_args_not_in_runtime_config(self):
@@ -356,6 +364,21 @@ class TestLlamaCppPlugin:
         cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "-ngl" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_ncmoe(self, mock_colorize):
+        ns = make_ns(ncmoe=128)
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "-ncmoe" in cmd
+        assert cmd[cmd.index("-ncmoe") + 1] == "128"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_ncmoe_default_omitted(self, mock_colorize):
+        ns = make_ns()
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "-ncmoe" not in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_max_tokens(self, mock_colorize):
@@ -908,7 +931,7 @@ class TestConfigureSubcommandsFiltering:
         subparser = name_map[subcommand]
         return {opt for action in subparser._actions for opt in action.option_strings}
 
-    def test_llama_cpp_run_has_ngl(self, monkeypatch):
+    def test_llama_cpp_run_has_ngl_and_ncmoe(self, monkeypatch):
         from ramalama.cli import configure_subcommands
         from ramalama.config import ActiveConfig
 
@@ -917,8 +940,9 @@ class TestConfigureSubcommandsFiltering:
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
         assert "--ngl" in opts
+        assert "--ncmoe" in opts
 
-    def test_mlx_run_no_ngl(self, monkeypatch):
+    def test_mlx_run_no_ngl_or_ncmoe(self, monkeypatch):
         from ramalama.cli import configure_subcommands
         from ramalama.config import ActiveConfig
 
@@ -927,6 +951,7 @@ class TestConfigureSubcommandsFiltering:
         configure_subcommands(parser)
         opts = self._subparser_option_strings(parser, "run")
         assert "--ngl" not in opts
+        assert "--ncmoe" not in opts
 
     def test_mlx_run_has_max_tokens(self, monkeypatch):
         from ramalama.cli import configure_subcommands

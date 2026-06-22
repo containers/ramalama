@@ -83,6 +83,7 @@ class LlamaCppConfig:
     cache_reuse: Optional[int] = None
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE  # type: ignore[assignment]
     ngl: Optional[str] = None
+    ncmoe: Optional[int] = None
     temp: float = 0.8
     thinking: Optional[bool] = None
     threads: int = field(default_factory=_default_threads)
@@ -92,6 +93,8 @@ class LlamaCppConfig:
             self.cache_reuse = int(self.cache_reuse)
         if self.ngl is not None:
             self.ngl = str(self.ngl)
+        if self.ncmoe is not None:
+            self.ncmoe = int(self.ncmoe)
         self.temp = float(self.temp)
         self.threads = int(self.threads)
         if self.thinking is not None:
@@ -352,6 +355,15 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             completer=suppressCompleter,
         )
 
+    def _add_ncmoe_arg(self, parser: "argparse.ArgumentParser") -> None:
+        parser.add_argument(
+            "--ncmoe",
+            dest="ncmoe",
+            type=int,
+            help="keep the Mixture of Experts (MoE) weights of the first N layers in the CPU",
+            completer=suppressCompleter,
+        )
+
     def _add_threads_arg(self, parser: "argparse.ArgumentParser") -> None:
         rt_config = self.get_runtime_config(ActiveConfig())
         parser.add_argument(
@@ -388,6 +400,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             completer=suppressCompleter,
         )
         self._add_ngl_arg(parser)
+        self._add_ncmoe_arg(parser)
         if command in ["run", "serve"]:
             parser.add_argument(
                 "--logfile",
@@ -638,6 +651,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         runtime_options(bench_parser, "bench")
         self._add_backend_arg(bench_parser)
         self._add_ngl_arg(bench_parser)
+        self._add_ncmoe_arg(bench_parser)
         self._add_threads_arg(bench_parser)
         bench_parser.add_argument(
             "--runtime-args",

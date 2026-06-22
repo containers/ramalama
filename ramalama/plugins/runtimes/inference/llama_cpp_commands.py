@@ -113,6 +113,10 @@ class LlamaCppCommands:
                 ngl_str = "all" if ngl == "-1" or ngl == -1 else str(ngl)
                 cmd += ["-ngl", ngl_str]
 
+            ncmoe = getattr(args, 'ncmoe', None)
+            if ncmoe is not None:
+                cmd += ["-ncmoe", str(ncmoe)]
+
             model_draft = getattr(args, 'model_draft', None)
             if model_draft:
                 draft_path = ""
@@ -170,6 +174,10 @@ class LlamaCppCommands:
             ngl_str = "all" if ngl == "-1" or ngl == -1 else str(ngl)
             cmd += ["-ngl", ngl_str]
 
+        ncmoe = getattr(args, 'ncmoe', None)
+        if ncmoe is not None:
+            cmd += ["-ncmoe", str(ncmoe)]
+
         model_draft = getattr(args, 'model_draft', None)
         if model_draft:
             if ngl is not None:
@@ -198,6 +206,10 @@ class LlamaCppCommands:
         if ngl is not None:
             ngl_str = "all" if ngl == "-1" or ngl == -1 else str(ngl)
             cmd += ["-ngl", ngl_str]
+
+        ncmoe = getattr(args, 'ncmoe', None)
+        if ncmoe is not None:
+            cmd += ["-ncmoe", str(ncmoe)]
 
         model_draft = getattr(args, 'model_draft', None)
         if model_draft:

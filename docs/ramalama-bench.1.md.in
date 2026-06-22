@@ -28,6 +28,8 @@ ramalama\-bench - benchmark specified AI Model
 
 @@option name
 
+@@option ncmoe
+
 @@option network
 
 @@option ngl

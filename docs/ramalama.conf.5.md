@@ -262,6 +262,8 @@ Options: `Q2_K`, `Q3_K_S`, `Q3_K_M`, `Q3_K_L`, `Q4_0`, `Q4_K_S`, `Q4_K_M`, `Q5_0
 
 **ngl**=-1: Number of layers to offload to the GPU. Set to -1 to offload all layers.
 
+**ncmoe**=0: Keep the Mixture of Experts (MoE) weights of the first N layers in the CPU.  
+
 **temp**="0.8": Response sampling temperature.
 - Lower values: more deterministic output
 - Higher values: more creative output (higher hallucination risk)
