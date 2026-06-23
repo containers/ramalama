@@ -2,7 +2,23 @@ import os
 import tempfile
 from unittest.mock import patch
 
-from ramalama.transports.huggingface import huggingface_token
+from ramalama.transports.huggingface import huggingface_endpoint, huggingface_token
+
+
+def test_huggingface_endpoint_default() -> None:
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("HF_ENDPOINT", None)
+        assert huggingface_endpoint() == "https://huggingface.co"
+
+
+def test_huggingface_endpoint_from_env() -> None:
+    with patch.dict(os.environ, {"HF_ENDPOINT": "https://my-mirror.example.com"}):
+        assert huggingface_endpoint() == "https://my-mirror.example.com"
+
+
+def test_huggingface_endpoint_strips_trailing_slash() -> None:
+    with patch.dict(os.environ, {"HF_ENDPOINT": "https://my-mirror.example.com/"}):
+        assert huggingface_endpoint() == "https://my-mirror.example.com"
 
 
 def test_huggingface_token_from_env() -> None:
