@@ -40,6 +40,12 @@ spec:
       value: $(params.cmd)
     - name: RESULTS_TEST_OUTPUT_PATH
       value: $(results.TEST_OUTPUT.path)
+    - name: HF_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: huggingface-token
+          key: token
+          optional: true
     args:
     - $(params.envs[*])
     script: |
@@ -80,11 +86,15 @@ spec:
 
       mkdir -p scripts
 
-      PODMAN_ENV=()
+      touch scripts/test.env
+      chmod 0600 scripts/test.env
       while [ $# -ne 0 ]; do
-        PODMAN_ENV+=("-e" "$1")
+        printf '%s\n' "$1" >> scripts/test.env
         shift
       done
+      if [ -v HF_TOKEN ]; then
+        printenv -0 HF_TOKEN | xargs -0 printf 'HF_TOKEN=%s\n' >> scripts/test.env
+      fi
 
       cat > scripts/test.sh <<SCRIPTEOF
       #!/bin/bash -ex
@@ -132,9 +142,9 @@ spec:
       --security-opt label=disable \
       --security-opt unmask=/proc/* \
       --device /dev/net/tun \
+      --env-file "\$(dirname \$0)/test.env" \
       -v \$TEMP_DIR:/tmp \
       \${EXTRA_ARGS[*]} \
-      ${PODMAN_ENV[*]} \
       $TEST_IMAGE $TEST_CMD
       SCRIPTEOF
       chmod +x scripts/test.sh
