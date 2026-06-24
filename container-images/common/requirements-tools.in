@@ -1,2 +1,2 @@
 # install llama-convert-hf-to-gguf and dependencies
-git+https://github.com/ggml-org/llama.cpp@b9512
+git+https://github.com/ggml-org/llama.cpp@b9701
