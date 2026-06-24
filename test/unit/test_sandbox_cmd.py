@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from ramalama.cli import parse_args_from_cmd
-from ramalama.sandbox import Goose, OpenCode
+from ramalama.sandbox import Goose, OpenCode, Pi
 
 TEST_MODEL = "qwen3:4b"
 
@@ -41,17 +41,42 @@ def _make_opencode_args(engine="podman"):
     )
 
 
-# --- Parametrized tests shared by both agents ---
+def _make_pi_args(engine="podman"):
+    """Create minimal args for Pi tests."""
+    return SimpleNamespace(
+        engine=engine,
+        dryrun=False,
+        quiet=True,
+        pi_image="docker.io/michaelwadman/pi-agent:latest",
+        name="ramalama_model_abc",
+        port="8080",
+        thinking=False,
+        workdir=None,
+        subcommand="sandbox",
+        ARGS=[],
+    )
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+def _agent_args(agent):
+    """Return (args_namespace, Agent_class) for the given agent name."""
+    if agent == "goose":
+        return _make_args(), Goose
+    if agent == "pi":
+        return _make_pi_args(), Pi
+    return _make_opencode_args(), OpenCode
+
+
+# --- Parametrized tests shared by all agents ---
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_model_positional(agent):
     """Sandbox cli should accept a model as a positional argument"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
     assert args.MODEL == "hf://bartowski/Qwen_Qwen3-4B-GGUF"
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_requires_container_engine(agent):
     """Sandbox cli should raise when no container engine is configured"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
@@ -60,14 +85,14 @@ def test_sandbox_requires_container_engine(agent):
         args.func(args)
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_subcommand(agent):
     """CLI should handle sandbox subcommand"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
     assert args.subcommand == "sandbox"
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_agent_subcommand(agent):
     """CLI should set sandbox_agent correctly"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
@@ -75,21 +100,21 @@ def test_sandbox_agent_subcommand(agent):
     assert args.sandbox_agent == agent
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_thinking(agent):
     """Inference-specific options like 'thinking' should be handled"""
     _, args = parse_args_from_cmd(["sandbox", agent, "--thinking=off", TEST_MODEL])
     assert not args.thinking
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_workdir_default_none(agent):
     """Default workdir option should be None"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
     assert args.workdir is None
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_workdir_option(agent):
     """CLI should parse -w/--workdir."""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL, "-w", "/tmp"])
@@ -107,43 +132,44 @@ def test_sandbox_no_subcommand(capsys):
     captured = capsys.readouterr()
     assert "goose" in captured.out
     assert "opencode" in captured.out
+    assert "pi" in captured.out
 
 
 # --- Parametrized agent construction tests ---
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_agent_network(agent):
     """Agent should setup container networking"""
-    args = _make_args() if agent == "goose" else _make_opencode_args()
-    obj = Goose(args, "test-model") if agent == "goose" else OpenCode(args, "test-model")
+    args, cls = _agent_args(agent)
+    obj = cls(args, "test-model")
     assert "--network=container:ramalama_model_abc" in obj.engine.exec_args
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_agent_interactive(agent):
     """Agent should set the -i option"""
-    args = _make_args() if agent == "goose" else _make_opencode_args()
-    obj = Goose(args, "test-model") if agent == "goose" else OpenCode(args, "test-model")
+    args, cls = _agent_args(agent)
+    obj = cls(args, "test-model")
     assert "-i" in obj.engine.exec_args
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_agent_workdir(agent):
     """Agent should add -v and --workdir=/work when workdir is set."""
-    args = _make_args() if agent == "goose" else _make_opencode_args()
+    args, cls = _agent_args(agent)
     args.workdir = "/tmp/myproject"
-    obj = Goose(args, "test-model") if agent == "goose" else OpenCode(args, "test-model")
+    obj = cls(args, "test-model")
     cmd = obj.engine.exec_args
     assert "--workdir=/work" in cmd
     assert "/tmp/myproject:/work:rw" in cmd
 
 
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_agent_no_workdir(agent):
     """Agent should not add volume or --workdir when workdir is not set."""
-    args = _make_args() if agent == "goose" else _make_opencode_args()
-    obj = Goose(args, "test-model") if agent == "goose" else OpenCode(args, "test-model")
+    args, cls = _agent_args(agent)
+    obj = cls(args, "test-model")
     cmd = obj.engine.exec_args
     assert "--workdir=/work" not in cmd
     assert "-v" not in cmd
@@ -263,3 +289,73 @@ def test_opencode_args():
     args.ARGS = ["hello", "ramalama"]
     opencode = OpenCode(args, "test-model")
     assert opencode.engine.exec_args[-4:] == ["run", "--thinking=true", "hello", "ramalama"]
+
+
+# --- Pi-specific tests ---
+
+
+def test_pi_default_image():
+    """Pi subcommand should provide a default pi image"""
+    _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
+    assert args.pi_image.startswith("docker.io/michaelwadman/pi-agent:")
+
+
+def test_pi_custom_image():
+    """Pi subcommand should handle the --pi-image option"""
+    _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL, "--pi-image", "myimage:v1"])
+    assert args.pi_image == "myimage:v1"
+
+
+def test_pi_env_vars():
+    """Pi should set LLAMA_SERVER_URL for pi-llama-cpp extension"""
+    args = _make_pi_args()
+    pi = Pi(args, "Qwen3-4B-Q4_K_M")
+    cmd = pi.engine.exec_args
+    assert "run" in cmd
+    assert "--rm" in cmd
+    assert f"LLAMA_SERVER_URL=http://localhost:{args.port}" in cmd
+    shell_cmd = cmd[-1]
+    assert f"--provider llama-server=http://localhost:{args.port}" in shell_cmd
+    assert "--model Qwen3-4B-Q4_K_M" in shell_cmd
+
+
+def test_pi_entrypoint():
+    """Pi should override entrypoint to install extensions before launching pi"""
+    args = _make_pi_args()
+    pi = Pi(args, "test-model")
+    cmd = pi.engine.exec_args
+    assert "--entrypoint" in cmd
+    entrypoint_idx = cmd.index("--entrypoint")
+    assert cmd[entrypoint_idx + 1] == "sh"
+    assert cmd[-2] == "-c"
+    assert "pi install npm:pi-llama-cpp" in cmd[-1]
+    assert "pi install npm:pi-web-access" in cmd[-1]
+    assert f"--provider llama-server=http://localhost:{args.port}" in cmd[-1]
+    assert "--model test-model" in cmd[-1]
+
+
+def test_pi_with_tty(monkeypatch):
+    """Pi should launch interactive session when run with a tty and no ARGS"""
+    monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: True)
+    args = _make_pi_args()
+    pi = Pi(args, "test-model")
+    shell_cmd = pi.engine.exec_args[-1]
+    assert shell_cmd.endswith(f"exec pi --provider llama-server=http://localhost:{args.port} --model test-model")
+
+
+def test_pi_no_tty(monkeypatch):
+    """Pi should read from stdin when run without a tty"""
+    monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: False)
+    args = _make_pi_args()
+    pi = Pi(args, "test-model")
+    shell_cmd = pi.engine.exec_args[-1]
+    assert "-p -" in shell_cmd
+
+
+def test_pi_args():
+    """Pi should pass args as prompt when args are passed on the command-line"""
+    args = _make_pi_args()
+    args.ARGS = ["hello", "ramalama"]
+    pi = Pi(args, "test-model")
+    shell_cmd = pi.engine.exec_args[-1]
+    assert "-p hello ramalama" in shell_cmd

@@ -67,6 +67,20 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     parser.set_defaults(func=run_sandbox_opencode)
     yield parser
 
+    parser = subparsers.add_parser("pi", help="run Pi in a sandbox, backed by a local AI Model")
+    if getattr(runtime, "_add_inference_args", None):
+        runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
+    parser.add_argument("MODEL", completer=model_comp)
+    parser.add_argument(
+        "--pi-image",
+        default="docker.io/michaelwadman/pi-agent:latest",
+        completer=img_comp,
+        help="Pi container image",
+    )
+    _add_common_sandbox_args(parser)
+    parser.set_defaults(func=run_sandbox_pi)
+    yield parser
+
 
 class SandboxEngineArgsType(BaseEngineArgsType):
     ARGS: list[str]
@@ -204,12 +218,53 @@ class OpenCode(Agent):
         self.engine.add_env_option(f"OPENCODE_CONFIG_CONTENT={json.dumps(config)}")
 
 
+class PiArgsType(SandboxEngineArgsType):
+    pi_image: str
+
+
+class Pi(Agent):
+    """
+    Run Pi in a sandbox.
+    Environment variables and configuration required by Pi will be set, and any workdir specified will be mounted into
+    the container. If args are provided, they will be passed to Pi to process non-interactively. If there are no
+    arguments and stdin is a tty, an interactive session will be started. Otherwise, instructions will be read from
+    stdin.
+    """
+
+    def __init__(self, args: PiArgsType, model_name: str) -> None:
+        super().__init__(args, model_name)
+        self.engine.add_name(f"pi-{args.name}")  # type: ignore[attr-defined]
+        self.add_env_options(args)
+        self.engine.add_workdir(args)
+        self.engine.add_args("--entrypoint", "sh")
+        self.engine.add_args(args.pi_image)
+        pi_args = ["--provider", f"llama-server=http://localhost:{args.port}", "--model", self.model_name]
+        if args.ARGS:
+            pi_args += ["-p", " ".join(args.ARGS)]
+        elif not self.engine.use_tty():
+            pi_args += ["-p", "-"]
+        self.engine.add_args(
+            "-c",
+            "pi install npm:pi-llama-cpp > /dev/null 2>&1"
+            " && pi install npm:pi-web-access > /dev/null 2>&1"
+            ' && mkdir -p ~/.pi && echo \'{"workflow":"none"}\' > ~/.pi/web-search.json'
+            f' && exec pi {" ".join(pi_args)}',
+        )
+
+    def add_env_options(self, args: PiArgsType) -> None:
+        self.engine.add_env_option(f"LLAMA_SERVER_URL=http://localhost:{args.port}")
+
+
 def run_sandbox_goose(args: GooseArgsType):
     run_sandbox(args, Goose)
 
 
 def run_sandbox_opencode(args: OpenCodeArgsType):
     run_sandbox(args, OpenCode)
+
+
+def run_sandbox_pi(args: PiArgsType):
+    run_sandbox(args, Pi)
 
 
 def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
