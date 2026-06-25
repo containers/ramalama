@@ -7,7 +7,6 @@ from ramalama.cli import parse_args_from_cmd
 from ramalama.sandbox import DEFAULT_PI_IMAGE, Goose, OpenCode, Pi
 
 TEST_MODEL = "qwen3:4b"
-TEST_MODEL_RESOLVED = "hf://Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf"
 
 
 def _make_args(engine="podman"):
@@ -74,7 +73,7 @@ def _agent_args(agent):
 def test_sandbox_model_positional(agent):
     """Sandbox cli should accept a model as a positional argument"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
-    assert args.MODEL == TEST_MODEL_RESOLVED
+    assert args.MODEL == "hf://bartowski/Qwen_Qwen3-4B-GGUF"
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
