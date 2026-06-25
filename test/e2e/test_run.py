@@ -289,6 +289,28 @@ def test_run_model_with_prompt(shared_ctx_with_models, test_model):
     ctx.check_call(run_cmd)
 
 
+@pytest.mark.e2e
+@pytest.mark.slow
+def test_run_model_with_prompt_and_attachments(shared_ctx_with_models, test_model):
+    import platform
+
+    from ramalama.compat import NamedTemporaryFile
+
+    ctx = shared_ctx_with_models
+
+    with NamedTemporaryFile(suffix=".txt", delete_on_close=False) as temp_file:
+        temp_file.write("First line\nSecond line\nThird line.")
+        temp_file.close()
+
+        run_cmd = ["ramalama", "run", "--temp", "0", "--attach", temp_file.name]
+        if platform.system() in ["Darwin", "Windows"]:
+            # FIXME: continues rambling on Windows and macOS without --max-token
+            run_cmd.extend(["--max-tokens", "100"])
+
+        run_cmd.extend([test_model, "How many lines are in the attached file?"])
+        ctx.check_call(run_cmd)
+
+
 _file_uri_id_suffix = 'C:/dir/file' if platform.system() == "Windows" else '/absolute_dir/file'
 _file_uri_id_relative = "relative_dir/file"
 
