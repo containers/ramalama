@@ -3,4 +3,5 @@
 ####> If this file is edited, make sure the changes
 ####> are applicable to all of those.
 #### **--pi-image**=*IMAGE*
-Pi container image
+Pi agent container image. The default is `quay.io/ramalama/pi-agent`
+tagged for the RamaLama minor release.

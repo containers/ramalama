@@ -4,9 +4,10 @@ from types import SimpleNamespace
 import pytest
 
 from ramalama.cli import parse_args_from_cmd
-from ramalama.sandbox import Goose, OpenCode, Pi
+from ramalama.sandbox import DEFAULT_PI_IMAGE, Goose, OpenCode, Pi
 
 TEST_MODEL = "qwen3:4b"
+TEST_MODEL_RESOLVED = "hf://Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf"
 
 
 def _make_args(engine="podman"):
@@ -47,7 +48,7 @@ def _make_pi_args(engine="podman"):
         engine=engine,
         dryrun=False,
         quiet=True,
-        pi_image="docker.io/michaelwadman/pi-agent:latest",
+        pi_image=DEFAULT_PI_IMAGE,
         name="ramalama_model_abc",
         port="8080",
         thinking=False,
@@ -73,7 +74,7 @@ def _agent_args(agent):
 def test_sandbox_model_positional(agent):
     """Sandbox cli should accept a model as a positional argument"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
-    assert args.MODEL == "hf://bartowski/Qwen_Qwen3-4B-GGUF"
+    assert args.MODEL == TEST_MODEL_RESOLVED
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
@@ -297,7 +298,7 @@ def test_opencode_args():
 def test_pi_default_image():
     """Pi subcommand should provide a default pi image"""
     _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
-    assert args.pi_image.startswith("docker.io/michaelwadman/pi-agent:")
+    assert args.pi_image == DEFAULT_PI_IMAGE
 
 
 def test_pi_custom_image():
@@ -314,24 +315,28 @@ def test_pi_env_vars():
     assert "run" in cmd
     assert "--rm" in cmd
     assert f"LLAMA_SERVER_URL=http://localhost:{args.port}" in cmd
-    shell_cmd = cmd[-1]
-    assert f"--provider llama-server=http://localhost:{args.port}" in shell_cmd
-    assert "--model Qwen3-4B-Q4_K_M" in shell_cmd
+    assert "--provider" in cmd
+    assert f"llama-server=http://localhost:{args.port}" in cmd
+    assert "--model" in cmd
+    assert "Qwen3-4B-Q4_K_M" in cmd
 
 
-def test_pi_entrypoint():
-    """Pi should override entrypoint to install extensions before launching pi"""
+def test_pi_entrypoint(monkeypatch):
+    """Pi should rely on the image entrypoint and not install extensions at runtime"""
+    monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: True)
     args = _make_pi_args()
     pi = Pi(args, "test-model")
     cmd = pi.engine.exec_args
-    assert "--entrypoint" in cmd
-    entrypoint_idx = cmd.index("--entrypoint")
-    assert cmd[entrypoint_idx + 1] == "sh"
-    assert cmd[-2] == "-c"
-    assert "pi install npm:pi-llama-cpp" in cmd[-1]
-    assert "pi install npm:pi-web-access" in cmd[-1]
-    assert f"--provider llama-server=http://localhost:{args.port}" in cmd[-1]
-    assert "--model test-model" in cmd[-1]
+    assert "--entrypoint" not in cmd
+    assert "pi install npm:pi-llama-cpp" not in cmd
+    assert "pi install npm:pi-web-access" not in cmd
+    assert cmd[-5:] == [
+        args.pi_image,
+        "--provider",
+        f"llama-server=http://localhost:{args.port}",
+        "--model",
+        "test-model",
+    ]
 
 
 def test_pi_with_tty(monkeypatch):
@@ -339,8 +344,13 @@ def test_pi_with_tty(monkeypatch):
     monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: True)
     args = _make_pi_args()
     pi = Pi(args, "test-model")
-    shell_cmd = pi.engine.exec_args[-1]
-    assert shell_cmd.endswith(f"exec pi --provider llama-server=http://localhost:{args.port} --model test-model")
+    assert pi.engine.exec_args[-5:] == [
+        args.pi_image,
+        "--provider",
+        f"llama-server=http://localhost:{args.port}",
+        "--model",
+        "test-model",
+    ]
 
 
 def test_pi_no_tty(monkeypatch):
@@ -348,8 +358,7 @@ def test_pi_no_tty(monkeypatch):
     monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: False)
     args = _make_pi_args()
     pi = Pi(args, "test-model")
-    shell_cmd = pi.engine.exec_args[-1]
-    assert "-p -" in shell_cmd
+    assert pi.engine.exec_args[-2:] == ["-p", "-"]
 
 
 def test_pi_args():
@@ -357,5 +366,4 @@ def test_pi_args():
     args = _make_pi_args()
     args.ARGS = ["hello", "ramalama"]
     pi = Pi(args, "test-model")
-    shell_cmd = pi.engine.exec_args[-1]
-    assert "-p hello ramalama" in shell_cmd
+    assert pi.engine.exec_args[-2:] == ["-p", "hello ramalama"]

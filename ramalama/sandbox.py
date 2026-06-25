@@ -7,12 +7,14 @@ from collections.abc import Callable
 from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import run_cmd
+from ramalama.common import run_cmd, version_tagged_image
 from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, stop_container
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
+
+DEFAULT_PI_IMAGE = version_tagged_image("quay.io/ramalama/pi-agent")
 
 
 def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
@@ -73,7 +75,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     parser.add_argument("MODEL", completer=model_comp)
     parser.add_argument(
         "--pi-image",
-        default="docker.io/michaelwadman/pi-agent:latest",
+        default=DEFAULT_PI_IMAGE,
         completer=img_comp,
         help="Pi container image",
     )
@@ -236,20 +238,13 @@ class Pi(Agent):
         self.engine.add_name(f"pi-{args.name}")  # type: ignore[attr-defined]
         self.add_env_options(args)
         self.engine.add_workdir(args)
-        self.engine.add_args("--entrypoint", "sh")
         self.engine.add_args(args.pi_image)
         pi_args = ["--provider", f"llama-server=http://localhost:{args.port}", "--model", self.model_name]
         if args.ARGS:
             pi_args += ["-p", " ".join(args.ARGS)]
         elif not self.engine.use_tty():
             pi_args += ["-p", "-"]
-        self.engine.add_args(
-            "-c",
-            "pi install npm:pi-llama-cpp > /dev/null 2>&1"
-            " && pi install npm:pi-web-access > /dev/null 2>&1"
-            ' && mkdir -p ~/.pi && echo \'{"workflow":"none"}\' > ~/.pi/web-search.json'
-            f' && exec pi {" ".join(pi_args)}',
-        )
+        self.engine.add(pi_args)
 
     def add_env_options(self, args: PiArgsType) -> None:
         self.engine.add_env_option(f"LLAMA_SERVER_URL=http://localhost:{args.port}")

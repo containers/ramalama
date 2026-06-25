@@ -1,0 +1,52 @@
+FROM quay.io/fedora/fedora:44
+
+ARG PI_VERSION=0.80.2
+ARG NODE_VERSION=26.4.0
+ARG PI_LLAMA_CPP_VERSION=0.7.2
+ARG PI_WEB_ACCESS_VERSION=0.12.0
+
+ENV TERM=xterm-256color \
+    HOME=/home/node \
+    GIT_CONFIG_GLOBAL=/home/node/.gitconfig
+
+RUN dnf -y --nodocs --setopt=install_weak_deps=false install \
+        bash \
+        ca-certificates \
+        curl \
+        fd-find \
+        file \
+        git-core \
+        jq \
+        libatomic \
+        openssh-clients \
+        ripgrep \
+        xz \
+    && dnf -y clean all \
+    && rm -rf /var/cache/dnf
+
+RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz \
+    | tar -xJf - --strip-components=1 -C /usr/local
+
+RUN mkdir -p /app /home/node/.pi /home/node/.ssh \
+    && chgrp -R 0 /app /home/node \
+    && chmod -R g=u /app /home/node \
+    && chmod 700 /home/node/.ssh
+
+RUN echo "Include /home/node/.ssh/config" >> /etc/ssh/ssh_config \
+    && echo "IdentityFile /home/node/.ssh/id_rsa" >> /etc/ssh/ssh_config \
+    && echo "IdentityFile /home/node/.ssh/id_ed25519" >> /etc/ssh/ssh_config \
+    && echo "IdentityFile /home/node/.ssh/id_ecdsa" >> /etc/ssh/ssh_config \
+    && echo "IdentityFile /home/node/.ssh/id_dsa" >> /etc/ssh/ssh_config \
+    && echo "UserKnownHostsFile /home/node/.ssh/known_hosts" >> /etc/ssh/ssh_config \
+    && echo "StrictHostKeyChecking accept-new" >> /etc/ssh/ssh_config
+
+RUN npm install -g --ignore-scripts @earendil-works/pi-coding-agent@${PI_VERSION} \
+    && pi install npm:pi-llama-cpp@${PI_LLAMA_CPP_VERSION} \
+    && pi install npm:pi-web-access@${PI_WEB_ACCESS_VERSION} \
+    && npm cache clean --force \
+    && echo '{"workflow":"none"}' > /home/node/.pi/web-search.json \
+    && rm -rf /tmp/* /root/.npm
+
+WORKDIR /app
+
+ENTRYPOINT [ "pi" ]
