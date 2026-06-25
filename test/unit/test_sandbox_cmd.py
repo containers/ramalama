@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.cli import parse_args_from_cmd
-from ramalama.sandbox import DEFAULT_PI_IMAGE, Goose, OpenCode, Pi
+from ramalama.sandbox import DEFAULT_PI_IMAGE, Goose, OpenCode, Pi, _pi_provider_id
 
 TEST_MODEL = "qwen3:4b"
 
@@ -293,6 +293,17 @@ def test_opencode_args():
 
 
 # --- Pi-specific tests ---
+
+
+def test_pi_provider_id():
+    """Pi provider id should be derived from the local llama.cpp server port."""
+    assert _pi_provider_id("8080") == "llama-server=http://localhost:8080"
+
+
+def test_pi_provider_id_requires_port():
+    """Pi provider id should reject a missing port."""
+    with pytest.raises(ValueError, match="requires a resolved serving port"):
+        _pi_provider_id(None)
 
 
 def test_pi_default_image():

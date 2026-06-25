@@ -22,6 +22,12 @@ def default_pi_image() -> str:
     return ActiveConfig().default_pi_image
 
 
+def _pi_provider_id(port: str | int | None) -> str:
+    if port is None:
+        raise ValueError("pi sandbox requires a resolved serving port")
+    return f"llama-server=http://localhost:{port}"
+
+
 def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
     """Add --workdir and ARGS arguments shared by all sandbox subcommands."""
     parser.add_argument(
@@ -232,23 +238,24 @@ class PiArgsType(SandboxEngineArgsType):
 class Pi(Agent):
     """
     Run Pi in a sandbox.
-    Environment variables and configuration required by Pi will be set, and any workdir specified will be mounted into
-    the container. If args are provided, they will be passed to Pi to process non-interactively. Otherwise, Pi will
-    choose its interactive or print behavior based on whether stdin is attached to a tty.
+    Environment variables and provider selection required by Pi will be set, and any workdir specified will be mounted
+    into the container. If args are provided, they will be passed to Pi to process non-interactively. Otherwise, Pi
+    will choose its interactive or print behavior based on whether stdin is attached to a tty.
     """
 
     def __init__(self, args: PiArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
+        provider_id = _pi_provider_id(args.port)
         self.engine.add_name(f"pi-{args.name}")  # type: ignore[attr-defined]
-        self.add_env_options(args)
+        self.add_provider_discovery_env(args)
         self.engine.add_workdir(args)
         self.engine.add_args(args.pi_image)
-        pi_args = ["--provider", f"llama-server=http://localhost:{args.port}", "--model", self.model_name]
+        pi_args = ["--provider", provider_id, "--model", self.model_name]
         if args.ARGS:
             pi_args += ["-p", " ".join(args.ARGS)]
         self.engine.add(pi_args)
 
-    def add_env_options(self, args: PiArgsType) -> None:
+    def add_provider_discovery_env(self, args: PiArgsType) -> None:
         # pi-llama-cpp discovers and registers providers from LLAMA_SERVER_URL;
         # --provider then selects the matching provider id for the active session.
         self.engine.add_env_option(f"LLAMA_SERVER_URL=http://localhost:{args.port}")
