@@ -19,6 +19,7 @@ DEFAULT_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama")
 DEFAULT_STACK_IMAGE: str = version_tagged_image("quay.io/ramalama/llama-stack")
 DEFAULT_RAG_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-rag")
 DEFAULT_TOOLS_IMAGE: str = version_tagged_image("quay.io/ramalama/ramalama-tools")
+DEFAULT_PI_IMAGE: str = version_tagged_image("quay.io/ramalama/pi-agent")
 
 
 def _get_default_config_dirs() -> list[Path]:
@@ -165,6 +166,7 @@ class BaseConfig:
     default_rag_image: str = DEFAULT_RAG_IMAGE
     default_tools_image: str = DEFAULT_TOOLS_IMAGE
     default_stack_image: str = DEFAULT_STACK_IMAGE
+    default_pi_image: str = DEFAULT_PI_IMAGE
     dryrun: bool = False
     engine: Optional[SUPPORTED_ENGINES] = field(default_factory=get_default_engine)
     env: list[str] = field(default_factory=list)

@@ -1,5 +1,6 @@
 import json
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 
@@ -298,6 +299,19 @@ def test_pi_default_image():
     """Pi subcommand should provide a default pi image"""
     _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
     assert args.pi_image == DEFAULT_PI_IMAGE
+
+
+def test_pi_default_image_env_override():
+    """Pi subcommand should honor the configured default pi image."""
+    with patch("ramalama.config.load_file_config", return_value={}):
+        from ramalama.config import load_config
+
+        cfg = load_config({"RAMALAMA_DEFAULT_PI_IMAGE": "custom/pi-agent:latest"})
+
+    with patch("ramalama.sandbox.ActiveConfig", return_value=cfg):
+        _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
+
+    assert args.pi_image == "custom/pi-agent:latest"
 
 
 def test_pi_custom_image():

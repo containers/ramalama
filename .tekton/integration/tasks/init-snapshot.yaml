@@ -25,6 +25,8 @@ spec:
     description: URI of the ramalama-tools image included in the snapshot
   - name: stack-image
     description: URI of the llama-stack image included in the snapshot
+  - name: pi-agent-image
+    description: URI of the pi-agent image included in the snapshot
   - name: cuda-image
     description: URI of the cuda image included in the snapshot
   - name: cuda-tools-image
@@ -65,6 +67,8 @@ spec:
       value: $(results.ramalama-tools-image.path)
     - name: RESULTS_STACK_IMAGE_PATH
       value: $(results.stack-image.path)
+    - name: RESULTS_PI_AGENT_IMAGE_PATH
+      value: $(results.pi-agent-image.path)
     - name: RESULTS_CUDA_IMAGE_PATH
       value: $(results.cuda-image.path)
     - name: RESULTS_CUDA_TOOLS_IMAGE_PATH
@@ -92,6 +96,8 @@ spec:
       component_image ramalama-tools | tee "$RESULTS_RAMALAMA_TOOLS_IMAGE_PATH"
       echo
       component_image llama-stack | tee "$RESULTS_STACK_IMAGE_PATH"
+      echo
+      component_image pi-agent | tee "$RESULTS_PI_AGENT_IMAGE_PATH"
       echo
       component_image cuda | tee "$RESULTS_CUDA_IMAGE_PATH"
       echo

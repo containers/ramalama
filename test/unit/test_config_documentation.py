@@ -17,6 +17,7 @@ def get_config_fields():
         'settings',  # Internal RamalamaSettings, not user-configurable
         'default_image',  # Internal constant, users configure 'image' instead
         'default_rag_image',  # Internal constant, users configure 'rag_image' instead
+        'default_pi_image',  # Internal constant used for sandbox pi image selection
         'default_tools_image',  # Internal constant, users configure via tools_images
         'tools_image',  # Users configure via tools_images, not directly documented
         'default_stack_image',  # Internal constant for stack operations

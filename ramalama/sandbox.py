@@ -7,14 +7,19 @@ from collections.abc import Callable
 from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import run_cmd, version_tagged_image
-from ramalama.config import ActiveConfig
+from ramalama.common import run_cmd
+from ramalama.config import ActiveConfig, DEFAULT_PI_IMAGE as CONFIG_DEFAULT_PI_IMAGE
 from ramalama.engine import Engine, stop_container
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
 
-DEFAULT_PI_IMAGE = version_tagged_image("quay.io/ramalama/pi-agent")
+
+DEFAULT_PI_IMAGE = CONFIG_DEFAULT_PI_IMAGE
+
+
+def default_pi_image() -> str:
+    return ActiveConfig().default_pi_image
 
 
 def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
@@ -75,7 +80,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     parser.add_argument("MODEL", completer=model_comp)
     parser.add_argument(
         "--pi-image",
-        default=DEFAULT_PI_IMAGE,
+        default=default_pi_image(),
         completer=img_comp,
         help="Pi container image",
     )

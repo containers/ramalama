@@ -4,6 +4,7 @@ ARG PI_VERSION=0.80.2
 ARG NODE_VERSION=26.4.0
 ARG PI_LLAMA_CPP_VERSION=0.7.2
 ARG PI_WEB_ACCESS_VERSION=0.12.0
+ARG TARGETARCH
 
 ENV TERM=xterm-256color \
     HOME=/home/node \
@@ -24,7 +25,12 @@ RUN dnf -y --nodocs --setopt=install_weak_deps=false install \
     && dnf -y clean all \
     && rm -rf /var/cache/dnf
 
-RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz \
+RUN case "${TARGETARCH:-$(uname -m)}" in \
+        amd64|x86_64) node_arch=x64 ;; \
+        arm64|aarch64) node_arch=arm64 ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" \
     | tar -xJf - --strip-components=1 -C /usr/local
 
 RUN mkdir -p /app /home/node/.pi /home/node/.ssh \
