@@ -8,12 +8,12 @@ from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import run_cmd
-from ramalama.config import ActiveConfig, DEFAULT_PI_IMAGE as CONFIG_DEFAULT_PI_IMAGE
+from ramalama.config import DEFAULT_PI_IMAGE as CONFIG_DEFAULT_PI_IMAGE
+from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, stop_container
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
-
 
 DEFAULT_PI_IMAGE = CONFIG_DEFAULT_PI_IMAGE
 
@@ -233,9 +233,8 @@ class Pi(Agent):
     """
     Run Pi in a sandbox.
     Environment variables and configuration required by Pi will be set, and any workdir specified will be mounted into
-    the container. If args are provided, they will be passed to Pi to process non-interactively. If there are no
-    arguments and stdin is a tty, an interactive session will be started. Otherwise, instructions will be read from
-    stdin.
+    the container. If args are provided, they will be passed to Pi to process non-interactively. Otherwise, Pi will
+    choose its interactive or print behavior based on whether stdin is attached to a tty.
     """
 
     def __init__(self, args: PiArgsType, model_name: str) -> None:
@@ -247,11 +246,11 @@ class Pi(Agent):
         pi_args = ["--provider", f"llama-server=http://localhost:{args.port}", "--model", self.model_name]
         if args.ARGS:
             pi_args += ["-p", " ".join(args.ARGS)]
-        elif not self.engine.use_tty():
-            pi_args += ["-p", "-"]
         self.engine.add(pi_args)
 
     def add_env_options(self, args: PiArgsType) -> None:
+        # pi-llama-cpp discovers and registers providers from LLAMA_SERVER_URL;
+        # --provider then selects the matching provider id for the active session.
         self.engine.add_env_option(f"LLAMA_SERVER_URL=http://localhost:{args.port}")
 
 

@@ -367,11 +367,17 @@ def test_pi_with_tty(monkeypatch):
 
 
 def test_pi_no_tty(monkeypatch):
-    """Pi should read from stdin when run without a tty"""
+    """Pi should rely on piped stdin without appending a sentinel prompt argument."""
     monkeypatch.setattr("ramalama.engine.sys.stdin.isatty", lambda: False)
     args = _make_pi_args()
     pi = Pi(args, "test-model")
-    assert pi.engine.exec_args[-2:] == ["-p", "-"]
+    assert pi.engine.exec_args[-5:] == [
+        args.pi_image,
+        "--provider",
+        f"llama-server=http://localhost:{args.port}",
+        "--model",
+        "test-model",
+    ]
 
 
 def test_pi_args():
