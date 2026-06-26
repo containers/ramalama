@@ -38,6 +38,7 @@ def sandbox_ctx():
     [
         ["goose", r"run -i -\s*$"],
         ["opencode", r"run --thinking=true\s*$"],
+        ["pi", r"--provider llama-server=http://localhost:\d+\s+--model\s+\S+"],
     ],
 )
 def test_sandbox_dryrun_default(agent, cmd):
@@ -58,7 +59,7 @@ def test_sandbox_dryrun_default_windows():
 
 @pytest.mark.e2e
 @skip_if_no_container
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_dryrun_network(agent):
     """Dryrun output should include container networking."""
     result = check_output(_dryrun_cmd(agent))
@@ -67,7 +68,7 @@ def test_sandbox_dryrun_network(agent):
 
 @pytest.mark.e2e
 @skip_if_no_container
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_dryrun_custom_model(agent):
     """Custom model should appear in the model server dryrun output."""
     result = check_output(_dryrun_cmd(agent)[:-1] + ["gpt-oss"])
@@ -76,7 +77,7 @@ def test_sandbox_dryrun_custom_model(agent):
 
 @pytest.mark.e2e
 @skip_if_no_container
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_dryrun_custom_workdir(agent):
     """--workdir should mount the directory and set --workdir=/work."""
     result = check_output(_dryrun_cmd(agent) + ["-w", "/tmp"])
@@ -147,6 +148,26 @@ def test_sandbox_dryrun_opencode_custom_image():
     assert "myopencode:v2" in result
 
 
+# --- Pi-specific dryrun tests ---
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_sandbox_dryrun_pi_env_vars():
+    """Dryrun output should include Pi environment and provider configuration."""
+    result = check_output(_dryrun_cmd("pi"))
+    assert re.search(r"LLAMA_SERVER_URL=http://localhost:\d+", result)
+    assert re.search(r"--provider llama-server=http://localhost:\d+", result)
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_sandbox_dryrun_pi_custom_image():
+    """Custom --pi-image should appear in the pi container command."""
+    result = check_output(_dryrun_cmd("pi") + ["--pi-image", "mypi:v2"])
+    assert "mypi:v2" in result
+
+
 # --- Live run tests ---
 
 
@@ -155,7 +176,7 @@ def test_sandbox_dryrun_opencode_custom_image():
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_run(sandbox_ctx, agent):
     """Agent should run successfully."""
     result = sandbox_ctx.check_output(["ramalama", "sandbox", agent, "--thinking=off", TEST_MODEL, "hi"])
@@ -167,7 +188,7 @@ def test_sandbox_run(sandbox_ctx, agent):
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_run_cmdline(sandbox_ctx, tmp_path, container_engine, agent):
     """Agent should successfully execute instructions provided on the command-line."""
     # Not sure how to grant container user 1000 permissions to write to the
@@ -196,7 +217,7 @@ def test_sandbox_run_cmdline(sandbox_ctx, tmp_path, container_engine, agent):
 @skip_if_ppc64le
 @skip_if_s390x
 @skip_if_windows
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_run_stdin(sandbox_ctx, tmp_path, agent):
     """Agent should successfully execute instructions provided on stdin"""
     fpath = tmp_path / "stdin.txt"

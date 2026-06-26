@@ -501,6 +501,16 @@ class TestLoadEnvConfig:
         assert "stack_image" in result
         assert result["stack_image"] == "custom/llama-stack:latest"
 
+    def test_default_pi_image(self):
+        """Test that the pi sandbox default image can be set from an env var."""
+        env = {
+            "RAMALAMA_DEFAULT_PI_IMAGE": "custom/pi-agent:latest",
+        }
+        with patch("ramalama.config.load_file_config", return_value={}):
+            cfg = load_config(env)
+
+        assert getattr(cfg, "default_pi_image", None) == "custom/pi-agent:latest"
+
 
 class TestConfigIntegration:
     """Integration tests for the complete config system with deep merge and env loading."""

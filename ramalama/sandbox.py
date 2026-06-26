@@ -8,11 +8,24 @@ from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import run_cmd
+from ramalama.config import DEFAULT_PI_IMAGE as CONFIG_DEFAULT_PI_IMAGE
 from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, stop_container
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
+
+DEFAULT_PI_IMAGE = CONFIG_DEFAULT_PI_IMAGE
+
+
+def default_pi_image() -> str:
+    return ActiveConfig().default_pi_image
+
+
+def _pi_provider_id(port: str | int | None) -> str:
+    if port is None:
+        raise ValueError("pi sandbox requires a resolved serving port")
+    return f"llama-server=http://localhost:{port}"
 
 
 def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
@@ -65,6 +78,20 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     )
     _add_common_sandbox_args(parser)
     parser.set_defaults(func=run_sandbox_opencode)
+    yield parser
+
+    parser = subparsers.add_parser("pi", help="run Pi in a sandbox, backed by a local AI Model")
+    if getattr(runtime, "_add_inference_args", None):
+        runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
+    parser.add_argument("MODEL", completer=model_comp)
+    parser.add_argument(
+        "--pi-image",
+        default=default_pi_image(),
+        completer=img_comp,
+        help="Pi container image",
+    )
+    _add_common_sandbox_args(parser)
+    parser.set_defaults(func=run_sandbox_pi)
     yield parser
 
 
@@ -204,12 +231,46 @@ class OpenCode(Agent):
         self.engine.add_env_option(f"OPENCODE_CONFIG_CONTENT={json.dumps(config)}")
 
 
+class PiArgsType(SandboxEngineArgsType):
+    pi_image: str
+
+
+class Pi(Agent):
+    """
+    Run Pi in a sandbox.
+    Environment variables and provider selection required by Pi will be set, and any workdir specified will be mounted
+    into the container. If args are provided, they will be passed to Pi to process non-interactively. Otherwise, Pi
+    will choose its interactive or print behavior based on whether stdin is attached to a tty.
+    """
+
+    def __init__(self, args: PiArgsType, model_name: str) -> None:
+        super().__init__(args, model_name)
+        provider_id = _pi_provider_id(args.port)
+        self.engine.add_name(f"pi-{args.name}")  # type: ignore[attr-defined]
+        self.add_provider_discovery_env(args)
+        self.engine.add_workdir(args)
+        self.engine.add_args(args.pi_image)
+        pi_args = ["--provider", provider_id, "--model", self.model_name]
+        if args.ARGS:
+            pi_args += ["-p", " ".join(args.ARGS)]
+        self.engine.add(pi_args)
+
+    def add_provider_discovery_env(self, args: PiArgsType) -> None:
+        # pi-llama-cpp discovers and registers providers from LLAMA_SERVER_URL;
+        # --provider then selects the matching provider id for the active session.
+        self.engine.add_env_option(f"LLAMA_SERVER_URL=http://localhost:{args.port}")
+
+
 def run_sandbox_goose(args: GooseArgsType):
     run_sandbox(args, Goose)
 
 
 def run_sandbox_opencode(args: OpenCodeArgsType):
     run_sandbox(args, OpenCode)
+
+
+def run_sandbox_pi(args: PiArgsType):
+    run_sandbox(args, Pi)
 
 
 def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):

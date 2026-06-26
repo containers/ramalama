@@ -60,6 +60,7 @@ spec:
       - RAMALAMA_DEFAULT_RAG_IMAGE=$(tasks.init.results.ramalama-rag-image)
       - RAMALAMA_DEFAULT_TOOLS_IMAGE=$(tasks.init.results.ramalama-tools-image)
       - RAMALAMA_STACK_IMAGE=$(tasks.init.results.stack-image)
+      - RAMALAMA_DEFAULT_PI_IMAGE=$(tasks.init.results.pi-agent-image)
       - >-
         RAMALAMA_IMAGES={"CUDA_VISIBLE_DEVICES": "$(tasks.init.results.cuda-image)"}
       - >-
