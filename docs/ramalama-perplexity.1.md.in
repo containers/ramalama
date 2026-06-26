@@ -20,6 +20,8 @@ ramalama\-perplexity - calculate the perplexity value of an AI Model
 
 @@option device
 
+@@option engine-args
+
 @@option env
 
 @@option help

@@ -31,6 +31,8 @@ exits, the model server container is automatically stopped and removed.
 
 @@option device
 
+@@option engine-args
+
 @@option env
 
 @@option help

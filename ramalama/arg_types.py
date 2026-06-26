@@ -45,6 +45,7 @@ class BaseEngineArgsType(Protocol):
     quiet: bool
     image: str
     # Optional attributes (accessed via getattr)
+    engine_args: Optional[List[str]]
     pull: Optional[str]
     network: Optional[str]
     oci_runtime: Optional[str]
