@@ -31,6 +31,7 @@ class BaseEngine(ABC):
         self.use_podman: bool = base == "podman"
         self.args = args
         self.exec_args: list[str] = [self.args.engine]
+        self._engine_extras_added = False
         self.base_args()
         self.add_labels()
         self.add_network()
@@ -135,6 +136,20 @@ class BaseEngine(ABC):
 
     def add_args(self, *args: str) -> None:
         self.add(args)
+
+    def add_pre_image_extras(self) -> None:
+        """Append ``--engine-args`` tokens once, after mounts and before the container image."""
+        if self._engine_extras_added:
+            return
+        self._engine_extras_added = True
+        extra = getattr(self.args, "engine_args", None) or []
+        if extra:
+            self.add(list(extra))
+
+    def add_container_image(self, image: str, cmd: Sequence[str] = ()) -> None:
+        """Append engine extras (if any), then the container image and command."""
+        self.add_pre_image_extras()
+        self.add([image, *cmd])
 
     def add_volume(self, src: str, dest: str, *, opts="ro"):
         self.add_args("-v", f"{normalize_host_path_for_container(src)}:{dest}:{opts}{self.relabel()}")
