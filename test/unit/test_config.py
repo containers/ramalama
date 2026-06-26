@@ -1,11 +1,14 @@
 import os
+import sys
 from unittest.mock import patch
 
 import pytest
 
 from ramalama.config import (
+    DEFAULT_TMPDIR,
     ActiveConfig,
     BaseConfig,
+    ensure_tmpdir,
     get_default_engine,
     get_default_store,
     load_config,
@@ -680,3 +683,41 @@ class TestConfigIntegration:
             # Values not set in any layer should return False
             assert cfg.is_set("host") is False
             assert cfg.is_set("port") is False
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="TMPDIR default is non-Windows only")
+class TestEnsureTmpdir:
+    def test_config_tempdir_overrides_host(self, monkeypatch):
+        monkeypatch.setenv("TMPDIR", "/host/tmp")
+        with patch("ramalama.config.load_file_config", return_value={"tempdir": "/config/tmp"}):
+            config = load_config()
+        ensure_tmpdir(config)
+        assert os.environ["TMPDIR"] == "/config/tmp"
+
+    def test_host_tmpdir_when_config_unset(self, monkeypatch):
+        monkeypatch.setenv("TMPDIR", "/host/tmp")
+        with patch("ramalama.config.load_file_config", return_value={}):
+            config = load_config()
+        ensure_tmpdir(config)
+        assert os.environ["TMPDIR"] == "/host/tmp"
+
+    def test_default_var_tmp_when_unset(self, monkeypatch):
+        monkeypatch.delenv("TMPDIR", raising=False)
+        with patch("ramalama.config.load_file_config", return_value={}):
+            config = load_config()
+        ensure_tmpdir(config)
+        assert os.environ["TMPDIR"] == DEFAULT_TMPDIR
+
+    def test_empty_host_tmpdir_uses_default(self, monkeypatch):
+        monkeypatch.setenv("TMPDIR", "   ")
+        with patch("ramalama.config.load_file_config", return_value={}):
+            config = load_config()
+        ensure_tmpdir(config)
+        assert os.environ["TMPDIR"] == DEFAULT_TMPDIR
+
+    def test_env_layer_tempdir_overrides_host(self, monkeypatch):
+        monkeypatch.setenv("TMPDIR", "/host/tmp")
+        with patch("ramalama.config.load_file_config", return_value={}):
+            config = load_config({"RAMALAMA_TEMPDIR": "/env/tmp"})
+        ensure_tmpdir(config)
+        assert os.environ["TMPDIR"] == "/env/tmp"

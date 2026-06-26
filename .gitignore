@@ -29,3 +29,4 @@ uv.lock
 !.pixi/config.toml
 *~
 *#
+.mypy_cache
