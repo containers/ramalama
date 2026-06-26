@@ -1,5 +1,5 @@
 ####> This option file is used in:
-####>   ramalama perplexity, ramalama run, ramalama sandbox goose, ramalama sandbox opencode, ramalama serve
+####>   ramalama perplexity, ramalama run, ramalama sandbox goose, ramalama sandbox opencode, ramalama sandbox pi, ramalama serve
 ####> If this file is edited, make sure the changes
 ####> are applicable to all of those.
 #### **--temp**="0.8"

@@ -32,6 +32,7 @@ from ramalama.config import (
     SUPPORTED_ENGINES,
     ActiveConfig,
     coerce_to_bool,
+    ensure_tmpdir,
     load_file_config,
 )
 from ramalama.config_types import COLOR_OPTIONS
@@ -1278,6 +1279,7 @@ def main() -> None:
     args: argparse.Namespace
     try:
         parser, args = init_cli()
+        ensure_tmpdir(ActiveConfig())
         try:
             import argcomplete
 
