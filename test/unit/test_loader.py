@@ -30,6 +30,7 @@ def make_cli_args(**kwargs) -> argparse.Namespace:
         "thinking": True,
         "model_draft": None,
         "runtime_args": [],
+        "engine_args": [],
         "gguf": None,
     }
     defaults.update(kwargs)

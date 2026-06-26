@@ -184,6 +184,10 @@ class Stack:
             if not self.args.detach:
                 exec_args.append("--wait")
 
+            extra = getattr(self.args, "engine_args", None) or []
+            if extra:
+                exec_args.extend(extra)
+
             exec_args.append(yaml_file.name)
             exec_cmd(exec_args)
 
@@ -200,6 +204,9 @@ class Stack:
                 self.args.engine,
                 "kube",
                 "down",
-                yaml_file.name,
             ]
+            extra = getattr(self.args, "engine_args", None) or []
+            if extra:
+                exec_args.extend(extra)
+            exec_args.append(yaml_file.name)
             exec_cmd(exec_args)

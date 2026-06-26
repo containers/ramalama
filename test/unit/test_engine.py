@@ -92,6 +92,19 @@ class TestEngine(unittest.TestCase):
         self.assertIn("-p", engine.exec_args)
         self.assertIn("8080:8080", engine.exec_args)
 
+    def test_add_container_image_applies_engine_args_after_mounts(self):
+        args = Namespace(**vars(self.base_args), engine_args=["--label=custom=1"])
+        engine = ramalama.engine.Engine(args)
+        engine.add_volume("/host/model", "/model")
+        engine.add_container_image("my-image:latest", ["llama-server"])
+        mount_index = engine.exec_args.index("-v")
+        extras_index = engine.exec_args.index("--label=custom=1")
+        image_index = engine.exec_args.index("my-image:latest")
+        cmd_index = engine.exec_args.index("llama-server")
+        self.assertLess(mount_index, extras_index)
+        self.assertLess(extras_index, image_index)
+        self.assertLess(image_index, cmd_index)
+
     @patch('ramalama.engine.run_cmd')
     def test_images(self, mock_run_cmd):
         mock_run_cmd.return_value.stdout = b"image1\nimage2\n"
