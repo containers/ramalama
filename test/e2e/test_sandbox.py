@@ -85,6 +85,24 @@ def test_sandbox_dryrun_custom_workdir(agent):
     assert "--workdir=/work" in result
 
 
+@pytest.mark.e2e
+@skip_if_no_container
+@pytest.mark.parametrize("agent", ["goose", "opencode"])
+def test_sandbox_dryrun_llm_endpoint(agent):
+    """--llm-endpoint should overwrite the openai endpoint url."""
+    result = check_output(_dryrun_cmd(agent) + ["--llm-endpoint", "http://model.server.local:8321/"])
+    assert "http://model.server.local:8321/" in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+@pytest.mark.parametrize("agent", ["goose", "opencode"])
+def test_sandbox_dryrun_port(agent):
+    """--port should overwrite the default port for the localhost endpoint."""
+    result = check_output(_dryrun_cmd(agent) + ["--port", "8321"])
+    assert "http://localhost:8321" in result
+
+
 # --- Goose-specific dryrun tests ---
 
 
