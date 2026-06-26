@@ -16,6 +16,8 @@ ramalama\-bench - benchmark specified AI Model
 
 @@option device
 
+@@option engine-args
+
 @@option env
 
 @@option format

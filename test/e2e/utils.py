@@ -1,13 +1,32 @@
+import json
 import ntpath
 import os
 import platform
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 from test.conftest import ramalama_container, ramalama_container_engine
+
+
+def _rewrite_ramalama_cmd(args: tuple) -> tuple:
+    """Run the CLI with ``sys.executable`` so subprocess uses the same tree as pytest (via PYTHONPATH).
+
+    We avoid ``python -m ramalama`` because that requires ``ramalama/__main__.py`` to be present in the
+    installed package; without it, importing ``test.e2e.test_help`` (which calls ``get_ramalama_subcommands()``
+    at collection time) breaks the whole pytest session including unit tests.
+    """
+    if not args or not isinstance(args[0], (list, tuple)):
+        return args
+    cmd = list(args[0])
+    if len(cmd) < 1 or cmd[0] != "ramalama":
+        return args
+    argv_json = json.dumps(cmd)
+    code = "import json, sys; sys.argv = json.loads(" + repr(argv_json) + "); from ramalama.cli import main; main()"
+    return ([sys.executable, "-c", code],) + args[1:]
 
 
 class RamalamaExecWorkspace:
@@ -88,10 +107,12 @@ class RamalamaExecWorkspace:
         return kwargs
 
     def check_output(self, *args, **kwargs):
+        args = _rewrite_ramalama_cmd(args)
         kwargs = self._prepare_kwargs(kwargs)
         return subprocess.check_output(*args, **kwargs).decode("utf-8")
 
     def check_call(self, *args, **kwargs):
+        args = _rewrite_ramalama_cmd(args)
         kwargs = self._prepare_kwargs(kwargs)
         return subprocess.check_call(*args, **kwargs)
 

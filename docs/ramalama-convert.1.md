@@ -15,24 +15,50 @@ Note: The convert command must be run with containers. Use of the --nocontainer 
 
 ## OPTIONS
 
+
+[//]: # (BEGIN included file options/engine-args.md)
+#### **--engine-args**="*args*"
+Add *args* to the **podman** or **docker** invocation (before the container image), after RamaLama-generated options and model bind mounts.
+The option may be specified multiple times; each value is shell-split and all tokens are passed to the engine in order.
+Use for extra **--mount** flags (for example multimodal projector files) or other engine-specific options. Shell-quoting rules match **--runtime-args**.
+
+[//]: # (END   included file options/engine-args.md)
+
 #### **--gguf**=*Q2_K* | *Q3_K_S* | *Q3_K_M* | *Q3_K_L* | *Q4_0* | *Q4_K_S* | *Q4_K_M* | *Q5_0* | *Q5_K_S* | *Q5_K_M* | *Q6_K* | *Q8_0* 
 
 Convert Safetensor models into a GGUF with the specified quantization format. To learn more about model quantization, read llama.cpp documentation:
 https://github.com/ggml-org/llama.cpp/blob/master/tools/quantize/README.md
 
+
+[//]: # (BEGIN included file options/help.md)
 #### **--help**, **-h**
-Print usage message
+Show this help message and exit
+
+[//]: # (END   included file options/help.md)
 
 #### **--image**=IMAGE
 Image to use for model quantization when converting to GGUF format (when the `--gguf` option has been specified). The image must have the
 `llama-quantize` executable available on the `PATH`. Defaults to the appropriate `ramalama` image based on available accelerators. If no
 accelerators are available, the current `quay.io/ramalama/ramalama` image will be used.
 
-#### **--network**=*none*
-sets the configuration for network namespaces when handling RUN instructions
 
+[//]: # (BEGIN included file options/network.md)
+#### **--network**=*none*
+set the network mode for the container
+
+[//]: # (END   included file options/network.md)
+
+
+[//]: # (BEGIN included file options/pull.md)
 #### **--pull**=*policy*
 Pull image policy. The default is **missing**.
+
+- **always**: Always pull the image and throw an error if the pull fails.
+- **missing**: Only pull the image when it does not exist in the local containers storage. Throw an error if no image is found and the pull fails.
+- **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
+- **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
+
+[//]: # (END   included file options/pull.md)
 
 #### **--tools-image**=IMAGE
 Image to use when converting to GGUF format (when the `--gguf` option has been specified). The image must have the `llama-convert-hf-to-gguf` script
