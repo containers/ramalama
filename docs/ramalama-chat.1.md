@@ -18,9 +18,7 @@ continue to an interactive chat session after processing the initial prompt.
 
 ## OPTIONS
 
-#### **--api-key**
-OpenAI-compatible API key.
-Can also be set via the RAMALAMA_API_KEY environment variable.
+@@option api-key
 
 #### **--color**
 Indicate whether or not to use color in the chat.

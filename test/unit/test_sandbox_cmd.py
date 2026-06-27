@@ -18,6 +18,7 @@ def _make_args(engine="podman"):
         quiet=True,
         goose_image="ghcr.io/aaif-goose/goose:latest",
         llm_endpoint=None,
+        api_key="ramalama",
         name="ramalama_model_abc",
         url="http://localhost:8080",
         thinking=False,
@@ -35,6 +36,7 @@ def _make_opencode_args(engine="podman"):
         quiet=True,
         opencode_image="ghcr.io/anomalyco/opencode:latest",
         llm_endpoint=None,
+        api_key="secret",
         name="ramalama_model_abc",
         url="http://localhost:8080",
         thinking=False,
@@ -51,6 +53,8 @@ def _make_pi_args(engine="podman"):
         dryrun=False,
         quiet=True,
         pi_image=DEFAULT_PI_IMAGE,
+        llm_endpoint=None,
+        api_key=None,
         name="ramalama_model_abc",
         port="8080",
         thinking=False,
@@ -265,7 +269,7 @@ def test_opencode_env_vars():
     assert config["model"] == "ramalama/Qwen3-4B-Q4_K_M"
     assert config["provider"]["ramalama"]["npm"] == "@ai-sdk/openai-compatible"
     assert config["provider"]["ramalama"]["options"]["baseURL"] == "http://localhost:8080/v1"
-    assert config["provider"]["ramalama"]["options"]["apiKey"] == "ramalama"
+    assert config["provider"]["ramalama"]["options"]["apiKey"] == "secret"
     assert "Qwen3-4B-Q4_K_M" in config["provider"]["ramalama"]["models"]
 
 

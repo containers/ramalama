@@ -21,6 +21,8 @@ exits, the model server container is automatically stopped and removed.
 
 ## OPTIONS
 
+@@option api-key
+
 @@option authfile
 
 @@option backend

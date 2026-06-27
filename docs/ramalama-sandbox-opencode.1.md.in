@@ -22,6 +22,8 @@ Otherwise only the agent container starts using the given llm-endpoint for the m
 
 ## OPTIONS
 
+@@option api-key
+
 @@option authfile
 
 @@option backend
