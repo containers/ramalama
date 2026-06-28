@@ -22,12 +22,6 @@ def default_pi_image() -> str:
     return ActiveConfig().default_pi_image
 
 
-def _pi_provider_id(port: str | int | None) -> str:
-    if port is None:
-        raise ValueError("pi sandbox requires a resolved serving port")
-    return f"llama-server=http://localhost:{port}"
-
-
 def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
     """Add --workdir and ARGS arguments shared by all sandbox subcommands."""
     parser.add_argument(
@@ -260,7 +254,7 @@ class Pi(Agent):
 
     def __init__(self, args: PiArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
-        provider_id = _pi_provider_id(args.port)
+        provider_id = f"llama-server={args.url}"
         self.engine.add_name(f"pi-{args.name}")  # type: ignore[attr-defined]
         self.add_provider_discovery_env(args)
         self.engine.add_workdir(args)

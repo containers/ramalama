@@ -258,7 +258,7 @@ def test_sandbox_run_stdin(sandbox_ctx, tmp_path, agent):
 
 
 @pytest.mark.e2e
-#@pytest.mark.slow
+@pytest.mark.slow
 @skip_if_docker
 @skip_if_no_container
 @skip_if_ppc64le
@@ -287,8 +287,6 @@ def test_sandbox_using_llm_endpoint(caplog, agent):
                 container_name,
                 "--port",
                 str(container_port),
-                "--dri",
-                "off",
                 test_model,
             ],
             stderr=subprocess.STDOUT,
@@ -308,7 +306,7 @@ def test_sandbox_using_llm_endpoint(caplog, agent):
                     "--llm-endpoint",
                     f"http://host.containers.internal:{container_port}",
                     model,
-                    "What is your name"
+                    "What is your name",
                 ],
                 stderr=subprocess.STDOUT,
             )

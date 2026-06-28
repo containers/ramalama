@@ -1,5 +1,5 @@
 ####> This option file is used in:
-####>   ramalama run, ramalama serve
+####>   ramalama sandbox goose, ramalama sandbox opencode, ramalama sandbox pi
 ####> If this file is edited, make sure the changes
 ####> are applicable to all of those.
 #### **--api-key**

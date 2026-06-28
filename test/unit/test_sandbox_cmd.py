@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.cli import parse_args_from_cmd
-from ramalama.sandbox import DEFAULT_PI_IMAGE, Goose, OpenCode, Pi, _pi_provider_id
+from ramalama.sandbox import DEFAULT_PI_IMAGE, Goose, OpenCode, Pi
 
 TEST_MODEL = "qwen3:4b"
 
@@ -54,9 +54,9 @@ def _make_pi_args(engine="podman"):
         quiet=True,
         pi_image=DEFAULT_PI_IMAGE,
         llm_endpoint=None,
-        api_key=None,
+        api_key="secret",
         name="ramalama_model_abc",
-        port="8080",
+        url="http://localhost:8080",
         thinking=False,
         workdir=None,
         subcommand="sandbox",
@@ -301,17 +301,6 @@ def test_opencode_args():
 # --- Pi-specific tests ---
 
 
-def test_pi_provider_id():
-    """Pi provider id should be derived from the local llama.cpp server port."""
-    assert _pi_provider_id("8080") == "llama-server=http://localhost:8080"
-
-
-def test_pi_provider_id_requires_port():
-    """Pi provider id should reject a missing port."""
-    with pytest.raises(ValueError, match="requires a resolved serving port"):
-        _pi_provider_id(None)
-
-
 def test_pi_default_image():
     """Pi subcommand should provide a default pi image"""
     _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
@@ -344,9 +333,9 @@ def test_pi_env_vars():
     cmd = pi.engine.exec_args
     assert "run" in cmd
     assert "--rm" in cmd
-    assert f"LLAMA_SERVER_URL=http://localhost:{args.port}" in cmd
+    assert f"LLAMA_SERVER_URL={args.url}" in cmd
     assert "--provider" in cmd
-    assert f"llama-server=http://localhost:{args.port}" in cmd
+    assert f"llama-server={args.url}" in cmd
     assert "--model" in cmd
     assert "Qwen3-4B-Q4_K_M" in cmd
 
@@ -363,7 +352,7 @@ def test_pi_entrypoint(monkeypatch):
     assert cmd[-5:] == [
         args.pi_image,
         "--provider",
-        f"llama-server=http://localhost:{args.port}",
+        f"llama-server={args.url}",
         "--model",
         "test-model",
     ]
@@ -377,7 +366,7 @@ def test_pi_with_tty(monkeypatch):
     assert pi.engine.exec_args[-5:] == [
         args.pi_image,
         "--provider",
-        f"llama-server=http://localhost:{args.port}",
+        f"llama-server={args.url}",
         "--model",
         "test-model",
     ]
@@ -391,7 +380,7 @@ def test_pi_no_tty(monkeypatch):
     assert pi.engine.exec_args[-5:] == [
         args.pi_image,
         "--provider",
-        f"llama-server=http://localhost:{args.port}",
+        f"llama-server={args.url}",
         "--model",
         "test-model",
     ]
