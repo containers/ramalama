@@ -208,7 +208,7 @@ def test_sandbox_dryrun_pi_custom_image():
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_run(sandbox_ctx, agent):
     """Agent should run successfully."""
-    result = sandbox_ctx.check_output(["ramalama", "sandbox", agent, "--thinking=off", TEST_MODEL, "hi"])
+    result = sandbox_ctx.check_output(["ramalama", "sandbox", agent, "--thinking=off", "--prompt", "hi", TEST_MODEL])
     assert result
 
 
@@ -224,13 +224,19 @@ def test_sandbox_run_cmdline(sandbox_ctx, tmp_path, container_engine, agent):
     # local user's directory under docker
     if container_engine == "docker":
         tmp_path.chmod(0o777)
-    # fmt: off
     result = sandbox_ctx.check_output(
         [
-            "ramalama", "sandbox", agent, "-w", tmp_path, "--seed=1", "--temp=0", TEST_MODEL,
-            "Please", "create", "a", "pyproject.toml", "for", "a", "project", "called",
-            "ramalama", "and", "write", "it", "to", "the", "current", "directory.",
-            "Ensure", "it", "contains", "a", "project", "section.",
+            "ramalama",
+            "sandbox",
+            agent,
+            "-w",
+            tmp_path,
+            "--seed=1",
+            "--temp=0",
+            "--prompt",
+            "Please create a pyproject.toml for a project called ramalama "
+            "and write it to the current directory. Ensure it contains a project section.",
+            TEST_MODEL,
         ]
     )
     pyproject = tmp_path / "pyproject.toml"

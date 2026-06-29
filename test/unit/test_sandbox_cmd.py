@@ -78,7 +78,23 @@ def _agent_args(agent):
 def test_sandbox_model_positional(agent):
     """Sandbox cli should accept a model as a positional argument"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
-    assert args.MODEL == "hf://bartowski/Qwen_Qwen3-4B-GGUF"
+    assert isinstance(args.MODEL, list)
+    assert len(args.MODEL) == 1
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_no_model(agent):
+    """Sandbox cli should accept no model (router mode)"""
+    _, args = parse_args_from_cmd(["sandbox", agent])
+    assert args.MODEL == []
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_multiple_models(agent):
+    """Sandbox cli should accept multiple models (router mode)"""
+    _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL, TEST_MODEL])
+    assert isinstance(args.MODEL, list)
+    assert len(args.MODEL) == 2
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
@@ -228,9 +244,9 @@ def test_goose_no_tty(monkeypatch):
 def test_goose_args():
     """Goose should run "run -t" when args are passed on the command-line"""
     args = _make_args()
-    args.ARGS = ["hello", "ramalama"]
+    args.ARGS = "hello ramalama"
     goose = Goose(args, "test-model")
-    assert goose.engine.exec_args[-3:] == ["run", "-t", " ".join(args.ARGS)]
+    assert goose.engine.exec_args[-3:] == ["run", "-t", "hello ramalama"]
 
 
 # --- OpenCode-specific tests ---
@@ -291,9 +307,9 @@ def test_opencode_no_tty(monkeypatch):
 def test_opencode_args():
     """OpenCode should run "run <message>" when args are passed on the command-line"""
     args = _make_opencode_args()
-    args.ARGS = ["hello", "ramalama"]
+    args.ARGS = "hello ramalama"
     opencode = OpenCode(args, "test-model")
-    assert opencode.engine.exec_args[-4:] == ["run", "--thinking=true", "hello", "ramalama"]
+    assert opencode.engine.exec_args[-3:] == ["run", "--thinking=true", "hello ramalama"]
 
 
 # --- Pi-specific tests ---
@@ -387,6 +403,76 @@ def test_pi_no_tty(monkeypatch):
 def test_pi_args():
     """Pi should pass args as prompt when args are passed on the command-line"""
     args = _make_pi_args()
-    args.ARGS = ["hello", "ramalama"]
+    args.ARGS = "hello ramalama"
     pi = Pi(args, "test-model")
     assert pi.engine.exec_args[-2:] == ["-p", "hello ramalama"]
+
+
+# --- Router-mode agent tests ---
+
+
+def test_goose_router_mode():
+    """Goose should omit GOOSE_MODEL in router mode (empty model_name)"""
+    args = _make_args()
+    goose = Goose(args, "")
+    cmd = goose.engine.exec_args
+    for arg in cmd:
+        assert not arg.startswith("GOOSE_MODEL="), "GOOSE_MODEL should not be set in router mode"
+
+
+def test_opencode_router_mode():
+    """OpenCode should populate models from router_model_ids when available"""
+    args = _make_opencode_args()
+    args.router_model_ids = ["model-a", "model-b"]
+    opencode = OpenCode(args, "model-a")
+    cmd = opencode.engine.exec_args
+    config_arg = None
+    for arg in cmd:
+        if arg.startswith("OPENCODE_CONFIG_CONTENT="):
+            config_arg = arg
+            break
+    assert config_arg is not None
+    config_json = config_arg.split("=", 1)[1]
+    config = json.loads(config_json)
+    assert config["model"] == "ramalama/model-a"
+    models = config["provider"]["ramalama"]["models"]
+    assert "model-a" in models
+    assert "model-b" in models
+
+
+def test_opencode_router_mode_no_models():
+    """OpenCode should omit model-specific config when no models discovered"""
+    args = _make_opencode_args()
+    opencode = OpenCode(args, "")
+    cmd = opencode.engine.exec_args
+    config_arg = None
+    for arg in cmd:
+        if arg.startswith("OPENCODE_CONFIG_CONTENT="):
+            config_arg = arg
+            break
+    assert config_arg is not None
+    config_json = config_arg.split("=", 1)[1]
+    config = json.loads(config_json)
+    assert "model" not in config
+    assert "models" not in config["provider"]["ramalama"]
+
+
+def test_pi_router_mode():
+    """Pi should omit --model in router mode (empty model_name)"""
+    args = _make_pi_args()
+    pi = Pi(args, "")
+    cmd = pi.engine.exec_args
+    assert "--model" not in cmd
+    assert "--provider" in cmd
+
+
+def test_sandbox_prompt_option():
+    """Sandbox cli should accept --prompt for non-interactive instructions"""
+    _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL, "--prompt", "hello world"])
+    assert args.ARGS == "hello world"
+
+
+def test_sandbox_prompt_default_none():
+    """Sandbox cli should default ARGS to None when --prompt is not specified"""
+    _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
+    assert args.ARGS is None

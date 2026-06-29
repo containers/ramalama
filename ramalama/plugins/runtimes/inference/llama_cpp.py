@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import shutil
+import subprocess
 import sys
 import tempfile
 from collections.abc import Mapping
@@ -312,7 +313,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         except ValueError:
             logger.debug(f"{self.name} {container_name} /models does not include a model list in the response")
             return False
-
         if not model_name:
             if hasattr(args, 'MODEL') and isinstance(args.MODEL, str):
                 model_name = New(args.MODEL, args).model_alias
@@ -539,13 +539,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         super()._serve_handler(args)
 
-    def _serve_router(self, args: argparse.Namespace) -> None:
-        """Serve multiple models using llama.cpp router mode (container-only)."""
+    def _build_router_engine(self, args: argparse.Namespace) -> Engine:
+        """Resolve models and build an Engine with bind mounts for router mode."""
         if not args.container:
             sys.exit("Error: multi-model router mode requires a container runtime.")
 
         set_accel_env_vars()
-        args.port = compute_serving_port(args)
         args.router_mode = True
 
         if args.MODEL:
@@ -563,27 +562,45 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if not models:
             sys.exit("Error: no GGUF models found in the model store. Pull a model first with: ramalama pull <model>")
 
-        if args.container and not args.dryrun:
+        if not args.dryrun and not getattr(args, "image", None):
             config = ActiveConfig()
             should_pull = config.pull in ["always", "missing", "newer"]
             args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
 
-        cmd = assemble_command(args)
+        cmd = self.handle_subcommand("serve", args)
         engine = Engine(args)
         name = getattr(args, "name", None) or genname()
+        args.name = name
         engine.add(["--label", "ai.ramalama", "--name", name, "--env=HOME=/tmp", "--init"])
 
         for host_path, container_name in models:
             mount_path = f"/mnt/models/{container_name}"
             container_host_path = get_container_mount_path(host_path)
-            engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro"])
+            engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro{engine.relabel()}"])
 
         engine.add([args.image] + cmd)
+        return engine
+
+    def _serve_router(self, args: argparse.Namespace) -> None:
+        """Serve multiple models using llama.cpp router mode (container-only)."""
+        args.port = compute_serving_port(args)
+        engine = self._build_router_engine(args)
 
         if args.dryrun:
             engine.dryrun()
             return
         engine.exec()
+
+    def serve_router_nonblocking(self, args: argparse.Namespace) -> None:
+        """Start the router-mode server non-blocking (for sandbox use)."""
+        args.detach = True
+        engine = self._build_router_engine(args)
+
+        if args.dryrun:
+            engine.dryrun()
+            return
+
+        subprocess.Popen(engine.exec_args)
 
     @staticmethod
     def _migrate_store_ref_files(store: Any) -> None:
