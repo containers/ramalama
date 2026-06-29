@@ -4,13 +4,15 @@ import argparse
 import json
 import platform
 from collections.abc import Callable
+from functools import partial
+from http.client import HTTPConnection
 from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import run_cmd
 from ramalama.config import DEFAULT_PI_IMAGE as CONFIG_DEFAULT_PI_IMAGE
 from ramalama.config import ActiveConfig
-from ramalama.engine import Engine, stop_container
+from ramalama.engine import Engine, is_healthy, stop_container, wait_for_healthy
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
@@ -29,16 +31,27 @@ def _pi_provider_id(port: str | int | None) -> str:
 
 
 def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
-    """Add --workdir and ARGS arguments shared by all sandbox subcommands."""
+    """Add --workdir and --prompt arguments shared by all sandbox subcommands."""
     parser.add_argument(
         "-w",
         "--workdir",
         help="local directory to mount into the sandbox container at /work",
     )
     parser.add_argument(
-        "ARGS",
-        nargs="*",
+        "--prompt",
+        dest="ARGS",
         help="instructions for the sandbox to process non-interactively",
+    )
+
+
+def _add_router_args(parser: argparse.ArgumentParser) -> None:
+    """Add --models-max argument for router mode."""
+    parser.add_argument(
+        "--models-max",
+        dest="models_max",
+        type=int,
+        default=4,
+        help="maximum number of models to load concurrently in router mode",
     )
 
 
@@ -55,7 +68,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
         # Consider adding this to the plugin interface for commands which need to run an
         # inference server
         runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
-    parser.add_argument("MODEL", completer=model_comp)
+    parser.add_argument("MODEL", nargs="*", default=[], completer=model_comp)
     parser.add_argument(
         "--goose-image",
         default="ghcr.io/aaif-goose/goose:1.33.1",
@@ -63,13 +76,14 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
         help="Goose container image",
     )
     _add_common_sandbox_args(parser)
+    _add_router_args(parser)
     parser.set_defaults(func=run_sandbox_goose)
     yield parser
 
     parser = subparsers.add_parser("opencode", help="run OpenCode in a sandbox, backed by a local AI Model")
     if getattr(runtime, "_add_inference_args", None):
         runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
-    parser.add_argument("MODEL", completer=model_comp)
+    parser.add_argument("MODEL", nargs="*", default=[], completer=model_comp)
     parser.add_argument(
         "--opencode-image",
         default="ghcr.io/anomalyco/opencode:1.14.48",
@@ -77,13 +91,14 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
         help="OpenCode container image",
     )
     _add_common_sandbox_args(parser)
+    _add_router_args(parser)
     parser.set_defaults(func=run_sandbox_opencode)
     yield parser
 
     parser = subparsers.add_parser("pi", help="run Pi in a sandbox, backed by a local AI Model")
     if getattr(runtime, "_add_inference_args", None):
         runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
-    parser.add_argument("MODEL", completer=model_comp)
+    parser.add_argument("MODEL", nargs="*", default=[], completer=model_comp)
     parser.add_argument(
         "--pi-image",
         default=default_pi_image(),
@@ -91,12 +106,13 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
         help="Pi container image",
     )
     _add_common_sandbox_args(parser)
+    _add_router_args(parser)
     parser.set_defaults(func=run_sandbox_pi)
     yield parser
 
 
 class SandboxEngineArgsType(BaseEngineArgsType):
-    ARGS: list[str]
+    ARGS: Optional[str]
     workdir: Optional[str]
 
 
@@ -168,7 +184,7 @@ class Goose(Agent):
         self.engine.add_workdir(args)
         self.engine.add_args(args.goose_image)
         if args.ARGS:
-            self.engine.add_args("run", "-t", " ".join(args.ARGS))
+            self.engine.add_args("run", "-t", args.ARGS)
         elif self.engine.use_tty():
             self.engine.add_args("session")
         else:
@@ -178,7 +194,8 @@ class Goose(Agent):
         self.engine.add_env_option("GOOSE_PROVIDER=openai")
         self.engine.add_env_option(f"OPENAI_HOST=http://localhost:{args.port}")
         self.engine.add_env_option("OPENAI_API_KEY=ramalama")
-        self.engine.add_env_option(f"GOOSE_MODEL={self.model_name}")
+        if self.model_name:
+            self.engine.add_env_option(f"GOOSE_MODEL={self.model_name}")
         self.engine.add_env_option("GOOSE_TELEMETRY_ENABLED=false")
         self.engine.add_env_option("GOOSE_CLI_SHOW_THINKING=true")
 
@@ -205,29 +222,36 @@ class OpenCode(Agent):
         if args.ARGS or not self.engine.use_tty():
             # Use the "run" command to process args from the command-line or stdin non-interatively
             self.engine.add_args("run", "--thinking=true")
-            self.engine.add(args.ARGS)
+            if args.ARGS:
+                self.engine.add_args(args.ARGS)
         # Running on a tty with no arguments will start the TUI for an interactive session
 
     def add_env_options(self, args: OpenCodeArgsType) -> None:
-        config = {
-            "$schema": "https://opencode.ai/config.json",
-            "model": f"ramalama/{self.model_name}",
-            "provider": {
-                "ramalama": {
-                    "npm": "@ai-sdk/openai-compatible",
-                    "name": "RamaLama",
-                    "options": {
-                        "baseURL": f"http://localhost:{args.port}/v1",
-                        "apiKey": "ramalama",
-                    },
-                    "models": {
-                        self.model_name: {
-                            "name": self.model_name,
-                        },
-                    },
-                },
+        provider_config: dict = {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "RamaLama",
+            "options": {
+                "baseURL": f"http://localhost:{args.port}/v1",
+                "apiKey": "ramalama",
             },
         }
+        router_model_ids = getattr(args, "router_model_ids", None)
+        if router_model_ids:
+            provider_config["models"] = {mid: {"name": mid} for mid in router_model_ids}
+        elif self.model_name:
+            provider_config["models"] = {
+                self.model_name: {
+                    "name": self.model_name,
+                },
+            }
+        config: dict = {
+            "$schema": "https://opencode.ai/config.json",
+            "provider": {
+                "ramalama": provider_config,
+            },
+        }
+        if self.model_name:
+            config["model"] = f"ramalama/{self.model_name}"
         self.engine.add_env_option(f"OPENCODE_CONFIG_CONTENT={json.dumps(config)}")
 
 
@@ -250,9 +274,11 @@ class Pi(Agent):
         self.add_provider_discovery_env(args)
         self.engine.add_workdir(args)
         self.engine.add_args(args.pi_image)
-        pi_args = ["--provider", provider_id, "--model", self.model_name]
+        pi_args = ["--provider", provider_id]
+        if self.model_name:
+            pi_args += ["--model", self.model_name]
         if args.ARGS:
-            pi_args += ["-p", " ".join(args.ARGS)]
+            pi_args += ["-p", args.ARGS]
         self.engine.add(pi_args)
 
     def add_provider_discovery_env(self, args: PiArgsType) -> None:
@@ -273,7 +299,7 @@ def run_sandbox_pi(args: PiArgsType):
     run_sandbox(args, Pi)
 
 
-def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
+def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
     """Orchestrate model server and sandbox containers."""
 
     if not args.container:  # type: ignore[attr-defined]
@@ -281,6 +307,16 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
 
     args.port = compute_serving_port(args)
 
+    models: list = args.MODEL  # type: ignore[assignment]
+    if len(models) == 1:
+        args.MODEL = models[0]
+        _run_sandbox_single_model(args, agent_cls)
+    else:
+        _run_sandbox_router(args, agent_cls)
+
+
+def _run_sandbox_single_model(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
+    """Run sandbox with a single model (original behavior)."""
     model = New(args.MODEL, args)
     model.ensure_model_exists(args)
 
@@ -296,10 +332,56 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]):
         return
 
     try:
-        # Wait for model server to be healthy
         model.wait_for_healthy(args)  # type: ignore[union-attr]
+        agent.run()
+    finally:
+        args.ignore = True  # type: ignore[attr-defined]
+        stop_container(args, args.name, remove=True)  # type: ignore[attr-defined]
 
-        # Launch agent
+
+def _query_router_models(port: int | str) -> list[str]:
+    """Query the llama.cpp router server for available model IDs."""
+    conn = None
+    try:
+        conn = HTTPConnection("127.0.0.1", int(port), timeout=5)
+        conn.request("GET", "/v1/models")
+        resp = conn.getresponse()
+        if resp.status != 200:
+            return []
+        body = json.loads(resp.read())
+        return [m.get("id", "") for m in body.get("data", []) if m.get("id")]
+    except Exception:
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+
+def _run_sandbox_router(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
+    """Run sandbox in router mode (zero or multiple models)."""
+    runtime = get_runtime(ActiveConfig().runtime)
+
+    serve_router = getattr(runtime, "serve_router_nonblocking", None)
+    if serve_router is None:
+        raise ValueError("Router mode (zero or multiple models) is only supported with the llama.cpp runtime.")
+
+    serve_router(cast(argparse.Namespace, args))
+
+    if args.dryrun:
+        agent = agent_cls(args, "")
+        agent.engine.dryrun()
+        return
+
+    try:
+        wait_for_healthy(args, partial(is_healthy))
+
+        if args.port is None:
+            raise ValueError("Router mode requires a resolved serving port")
+        model_ids = _query_router_models(args.port)
+        args.router_model_ids = model_ids  # type: ignore[attr-defined]
+        first_model = model_ids[0] if model_ids else ""
+
+        agent = agent_cls(args, first_model)
         agent.run()
     finally:
         args.ignore = True  # type: ignore[attr-defined]
