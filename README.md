@@ -177,6 +177,7 @@ RamaLama then pulls AI Models from model registries, starting a chatbot or REST 
 | Hardware                           | Enabled                     |
 | :--------------------------------- | :-------------------------: |
 | CPU                                | &check;                     |
+| Intel Mac (CPU)                    | &check; llama.cpp           |
 | Apple Silicon GPU (Linux / Asahi)  | &check;                     |
 | Apple Silicon GPU (macOS)          | &check; llama.cpp or MLX    |
 | Apple Silicon GPU (podman-machine) | &check;                     |
@@ -209,7 +210,16 @@ See the [Intel hardware table](https://dgpu-docs.intel.com/devices/hardware-tabl
 ### Moore Threads GPUs
 On systems with Moore Threads GPUs, see [ramalama-musa](docs/ramalama-musa.7.md) documentation for the correct host system configuration.
 
-### MLX Runtime (macOS only)
+### Intel Mac (CPU only)
+Intel-based Macs are supported for CPU inference with the default **llama.cpp** runtime. GPU acceleration (MLX, libkrun GPU passthrough) is **not** available on Intel Macs.
+
+Use either:
+- **Containers** (recommended): install [Podman](https://podman.io/) or Docker, then run `ramalama run <model>` as usual.
+- **Native**: install `llama.cpp` with Homebrew (`brew install llama.cpp`) and run with `--nocontainer`.
+
+See the [macOS Installation Guide](docs/MACOS_INSTALL.md#intel-mac-cpu-only) for details.
+
+### MLX Runtime (Apple Silicon macOS only)
 The MLX runtime provides optimized inference for Apple Silicon Macs. MLX requires:
 - macOS operating system
 - Apple Silicon hardware (M1, M2, M3, or later)
