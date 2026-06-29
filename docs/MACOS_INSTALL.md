@@ -66,8 +66,7 @@ container = false
 
 The easiest way to install RamaLama on macOS is using our self-contained `.pkg` installer. This method includes Python and all dependencies, so you don't need to install anything else (except for the Prerequisites listed above).
 
-**Note: Even though installer works on Intel macs, `ramalama` itself does not work. Intel macs are not supoorted**
-
+**Note: Even though installer works on Intel macs, `ramalama` itself does not work. Intel macs are not supported**
 ### Download and Install
 
 1. Download the latest installer from the [Releases page](https://github.com/containers/ramalama/releases)
