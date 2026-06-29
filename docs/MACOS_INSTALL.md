@@ -238,7 +238,7 @@ ramalama --help
 ## System Requirements
 
 - macOS 10.15 (Catalina) or later
-- Apple Silicon (M1/M2/M3) processor. **Intel not supported**
+- Apple Silicon (M1/M2/M3) processor. **Intel Macs are not supported**
 - 4GB RAM minimum (8GB+ recommended for running models)
 - 10GB free disk space
 - Podman or Docker
