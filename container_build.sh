@@ -204,7 +204,7 @@ process_all_targets() {
   for i in ./container-images/*; do
     i=$(basename "$i")
     # skip these directories
-    if [[ "$i" =~ ^(scripts|ramalama|common)$ ]]; then
+    if [[ "$i" =~ ^(scripts|ramalama|common|hfmirror)$ ]]; then
       continue
     fi
 

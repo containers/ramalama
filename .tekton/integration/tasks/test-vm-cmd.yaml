@@ -95,6 +95,7 @@ spec:
       if [ -v HF_TOKEN ]; then
         printenv -0 HF_TOKEN | xargs -0 printf 'HF_TOKEN=%s\n' >> scripts/test.env
       fi
+      echo 'HF_ENDPOINT=http://hfmirror:5000' >> scripts/test.env
 
       cat > scripts/test.sh <<SCRIPTEOF
       #!/bin/bash -ex
@@ -133,12 +134,18 @@ spec:
         sed -e 's|/usr/share/vulkan|/etc/vulkan|' /etc/cdi/nvidia.yaml > /tmp/nvidia.yaml
         EXTRA_ARGS+=("-v" "/tmp/nvidia.yaml:/etc/cdi/nvidia.yaml")
       fi
+      podman network create testnet || true
+      podman pull quay.io/ramalama/hfmirror:latest
+      podman run -d --name hfmirror --network testnet -p 5000:5000 quay.io/ramalama/hfmirror:latest
+      timeout 120 bash -c 'until curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1; do sleep 2; done'
+
       podman pull $TEST_IMAGE
 
       TEMP_DIR=\$(mktemp -d -p \$PWD e2e-test.XXXXXX)
 
       podman run \
       --userns=keep-id \
+      --network testnet \
       --security-opt label=disable \
       --security-opt unmask=/proc/* \
       --device /dev/net/tun \

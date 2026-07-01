@@ -160,9 +160,15 @@ jobs:
            # Install specific podman version
            sudo apt-get upgrade -y podman crun
 
+      - name: Start HF mirror
+        run: |
+          podman run -d --name hfmirror -p 5000:5000 quay.io/ramalama/hfmirror:latest
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1; do sleep 2; done'
+
       - name: run e2e-tests
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_ENDPOINT: http://127.0.0.1:5000
         run: |
            make e2e-tests
 
@@ -222,9 +228,15 @@ jobs:
            # Install specific podman version
            sudo apt-get upgrade -y podman crun
 
+      - name: Start HF mirror
+        run: |
+          podman run -d --name hfmirror -p 5000:5000 quay.io/ramalama/hfmirror:latest
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1; do sleep 2; done'
+
       - name: run e2e-tests-nocontainer
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_ENDPOINT: http://127.0.0.1:5000
         run: |
            make e2e-tests-nocontainer
 
@@ -303,9 +315,15 @@ jobs:
            sudo mount --bind /mnt/runner /home/runner/.local
            df -h
 
+      - name: Start HF mirror
+        run: |
+          docker run -d --name hfmirror -p 5000:5000 quay.io/ramalama/hfmirror:latest
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1; do sleep 2; done'
+
       - name: run e2e-tests-docker
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_ENDPOINT: http://127.0.0.1:5000
         run: |
            docker info
            make e2e-tests-docker
@@ -350,10 +368,33 @@ jobs:
         shell: bash
         run: ./.github/scripts/install-ollama.sh
 
+      - uses: actions/cache@v4
+        id: hfmirror-cache
+        with:
+          path: /tmp/hfmirror/models
+          key: hfmirror-models-v1
+
+      - name: Install crane
+        if: steps.hfmirror-cache.outputs.cache-hit != 'true'
+        uses: imjasonh/setup-crane@v0.4
+
+      - name: Extract models from container image
+        if: steps.hfmirror-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /tmp/hfmirror
+          crane export quay.io/ramalama/hfmirror:latest - | tar -xf - -C /tmp/hfmirror --strip-components=1 data/models
+
+      - name: Start HF mirror
+        run: |
+          uv pip install flask
+          HFMIRROR_MODELS_DIR=/tmp/hfmirror/models HFMIRROR_INDEX="" python3 container-images/hfmirror/server.py &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1 && break || sleep 2; done
+
       - name: run e2e-tests-nocontainer
         shell: bash
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_ENDPOINT: http://127.0.0.1:5000
         run: |
           make e2e-tests-nocontainer
 
@@ -460,11 +501,35 @@ jobs:
 
           openssl version
 
+      - name: Start HF mirror
+        shell: pwsh
+        run: |
+          podman run -d --name hfmirror -p 5000:5000 quay.io/ramalama/hfmirror:latest
+          $maxAttempts = 60
+          $attempt = 0
+          while ($attempt -lt $maxAttempts) {
+            try {
+              Invoke-WebRequest -Uri http://127.0.0.1:5000/v2/ -UseBasicParsing | Out-Null
+              Write-Host "HF mirror is ready!"
+              break
+            }
+            catch {
+              $attempt++
+              Write-Host "Waiting for HF mirror (attempt $attempt/$maxAttempts)..."
+              Start-Sleep -Seconds 2
+            }
+          }
+          if ($attempt -eq $maxAttempts) {
+            Write-Error "HF mirror failed to start"
+            exit 1
+          }
+
       - name: Run E2E tests
         shell: pwsh
         env:
           RAMALAMA_CONTAINER_ENGINE: podman
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_ENDPOINT: http://127.0.0.1:5000
         run: |
           Write-Host "Running E2E tests..."
           # Add uv tools to PATH
