@@ -263,7 +263,7 @@ def test_sandbox_run_stdin(sandbox_ctx, tmp_path, agent):
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
-@pytest.mark.parametrize("agent", ["goose", "opencode"])
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_using_llm_endpoint(caplog, agent):
     # Configure logging for requests
     caplog.set_level(logging.CRITICAL, logger="requests")
