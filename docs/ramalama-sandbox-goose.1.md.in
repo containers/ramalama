@@ -4,16 +4,19 @@
 ramalama\-sandbox\-goose - run Goose in a sandbox, backed by a local AI Model
 
 ## SYNOPSIS
-**ramalama sandbox goose** [*options*] *model* [arg ...]
+**ramalama sandbox goose** [*options*] [*model* ...]
 
 ## DESCRIPTION
 Run Goose in a container, connected to a local model server also running
 in a container. Goose uses the model for reasoning and tool calling.
 
-When run with no arguments after the model, an interactive session is
-launched. If one or more arguments are provided, they are passed to the agent
-as instructions to process non-interactively. Commands may also be passed via
-stdin.
+When a single model is specified, the server loads that model directly.
+When zero or multiple models are specified, the server starts in router mode
+using llama.cpp's --models-dir, dynamically loading and unloading models.
+With no models, all GGUF models in the store are served.
+
+Use **--prompt** to pass instructions for non-interactive processing.
+Commands may also be passed via stdin.
 
 Two containers are started: a model server (llama-server) and the agent
 container. They communicate via container networking. When the agent session
@@ -49,6 +52,8 @@ exits, the model server container is automatically stopped and removed.
 
 @@option model-draft
 
+@@option models-max
+
 @@option name
 
 @@option ncmoe
@@ -62,6 +67,8 @@ exits, the model server container is automatically stopped and removed.
 @@option port
 
 @@option privileged
+
+@@option prompt
 
 @@option pull
 
@@ -107,7 +114,7 @@ ramalama sandbox goose -w ./src qwen3:4b
 
 Request the agent to perform actions non-interactively:
 ```
-ramalama sandbox goose -w ./src qwen3:4b Please analyze the source code in the current directory
+ramalama sandbox goose -w ./src qwen3:4b --prompt "Please analyze the source code in the current directory"
 ```
 
 Send instructions to the agent via stdin:
