@@ -2,8 +2,6 @@
 
 import sys
 
-from ramalama.config import ActiveConfig, ensure_tmpdir
-
 
 def main():
     if not sys.stdout.isatty():
@@ -15,6 +13,8 @@ def main():
     except Exception:
         print(f"ramalama module not found in sys.path: {sys.path}", file=sys.stderr)
         raise
+
+    from ramalama.config import ActiveConfig, ensure_tmpdir
 
     ensure_tmpdir(ActiveConfig())
     ramalama.cli.main()
