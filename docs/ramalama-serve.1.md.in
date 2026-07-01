@@ -64,6 +64,8 @@ Use the `ramalama stop` command to stop the container running the served ramalam
 #### **--dri**=*on* | *off*
 Enable or disable mounting `/dev/dri` into the container when running with `--api=llama-stack` (enabled by default). Use to prevent access to the host device when not required, or avoid errors in environments where `/dev/dri` is not available.
 
+@@option engine-args
+
 @@option env
 
 #### **--generate**=type
