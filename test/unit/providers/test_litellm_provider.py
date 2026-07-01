@@ -52,9 +52,7 @@ class TestLiteLLMProvider:
         assert headers == {}
 
     def test_parse_stream_chunk(self):
-        chunk_data = {
-            "choices": [{"delta": {"content": "Hello from LiteLLM"}}]
-        }
+        chunk_data = {"choices": [{"delta": {"content": "Hello from LiteLLM"}}]}
         chunk = b"data: " + json.dumps(chunk_data).encode("utf-8") + b"\n\n"
         events = list(self.provider.parse_stream_chunk(chunk))
 
