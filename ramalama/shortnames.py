@@ -5,7 +5,6 @@ import os
 import re
 import sys
 import sysconfig
-from typing import Optional
 
 
 class Shortnames:
@@ -63,10 +62,6 @@ class Shortnames:
                     target = self._strip_quotes(value)
                     self.shortnames[name] = target
                     self.config_sources[name] = real_path
-
-        self._targets: dict[str, list[str]] = {}
-        for name, target in self.shortnames.items():
-            self._targets.setdefault(target, []).append(name)
 
     def _strip_quotes(self, s) -> str:
         return s.strip("'\"")
@@ -145,13 +140,6 @@ class Shortnames:
             f.writelines(result)
 
         return True
-
-    def lookup(self, model: str) -> Optional[str]:
-        """Return the preferred shortname for a resolved model URI, if any."""
-        names = self._targets.get(model)
-        if not names:
-            return None
-        return min(names)
 
 
 if __name__ == "__main__":

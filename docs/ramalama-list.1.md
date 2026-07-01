@@ -9,9 +9,7 @@ ramalama\-list - list all downloaded AI Models
 **ramalama ls** [*options*]
 
 ## DESCRIPTION
-List all the AI Models in local storage.
-
-When a downloaded model URI matches an entry in **shortnames.conf**, the table includes a **SHORTNAME** column with the corresponding alias (for example **gemma3:12b** for **hf://ggml-org/gemma-3-12b-it-GGUF**). Models with no configured alias leave **SHORTNAME** empty. See **ramalama-info(1)** for the configured shortname mappings.
+List all the AI Models in local storage
 
 ## OPTIONS
 
@@ -35,34 +33,21 @@ field used to sort the AI Models. Valid options are 'name', 'size', and 'modifie
 
 ## EXAMPLES
 
-List all Models downloaded to the local store
-```console
+List all Models downloaded to users homedir
+```
 $ ramalama list
-SHORTNAME   NAME                                                                MODIFIED     SIZE
-smollm:135m ollama://smollm:135m                                                16 hours ago 5.5M
-            huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf 14 hours ago 460M
-            ollama://granite-code:3b (partial)                                  5 days ago   1.9G
-            ollama://granite-code:latest                                        1 day ago    1.9G
-            ollama://moondream:latest                                           6 days ago   791M
+NAME                                                                MODIFIED     SIZE
+ollama://smollm:135m                                                16 hours ago 5.5M
+huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf 14 hours ago 460M
+ollama://granite-code:3b (partial)                                  5 days ago   1.9G
+ollama://granite-code:latest                                        1 day ago    1.9G
+ollama://moondream:latest                                           6 days ago   791M
 ```
 
-List all Models in JSON format (each object includes **shortname**, **name**, **modified**, and **size**)
-```json
+List all Models in json format
+```
 $ ramalama list --json
-[
-  {
-    "shortname": "gemma3:12b",
-    "name": "hf://ggml-org/gemma-3-12b-it-GGUF",
-    "modified": "2026-05-21T12:00:00+00:00",
-    "size": 8150000000
-  },
-  {
-    "shortname": "",
-    "name": "ollama://moondream:latest",
-    "modified": "2026-05-15T08:00:00+00:00",
-    "size": 829000000
-  }
-]
+{"models": [{"name": "oci://quay.io/mmortari/gguf-py-example/v1/example.gguf", "modified": 427330, "size": "4.0K"}, {"name": "huggingface://afrideva/Tiny-Vicuna-1B-GGUF/tiny-vicuna-1b.q2_k.gguf", "modified": 427333, "size": "460M"}, {"name": "ollama://smollm:135m", "modified": 420833, "size": "5.5M"}, {"name": "ollama://mistral:latest", "modified": 433998, "size": "3.9G"}, {"name": "ollama://granite-code:latest", "modified": 2180483, "size": "1.9G"}, {"name": "ollama://tinyllama:latest", "modified": 364870, "size": "609M"}, {"name": "ollama://tinyllama:1.1b", "modified": 364866, "size": "609M"}]}
 ```
 
 ## SEE ALSO
