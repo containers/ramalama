@@ -27,6 +27,11 @@ sudo dnf install python3-huggingface-hub
 """
 
 
+def huggingface_endpoint() -> str:
+    """Return Hugging Face base URL from HF_ENDPOINT env var, defaulting to https://huggingface.co"""
+    return os.environ.get("HF_ENDPOINT", HuggingfaceRepository.REGISTRY_URL).rstrip("/")
+
+
 def huggingface_token() -> str | None:
     """Return Hugging Face token from HF_TOKEN env var or cached token file, otherwise None"""
     if "HF_TOKEN" in os.environ:
@@ -54,7 +59,7 @@ def extract_huggingface_checksum(data):
 
 def fetch_checksum_from_api(organization, file):
     """Fetch the SHA-256 checksum from the model's metadata API for a given file."""
-    checksum_api_url = f"{HuggingfaceRepository.REGISTRY_URL}/{organization}/raw/main/{file}"
+    checksum_api_url = f"{huggingface_endpoint()}/{organization}/raw/main/{file}"
     headers = {}
     token = huggingface_token()
     if token is not None:
@@ -67,7 +72,7 @@ def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
     # Replicate llama.cpp -hf logic
     # https://github.com/ggml-org/llama.cpp/blob/7f323a589f8684c0eb722e7309074cb5eac0c8b5/common/arg.cpp#L611
     token = huggingface_token()
-    repo_manifest_url = f"{HuggingfaceRepository.REGISTRY_URL}/v2/{repo_name}/manifests/{tag}"
+    repo_manifest_url = f"{huggingface_endpoint()}/v2/{repo_name}/manifests/{tag}"
     logger.debug(f"Fetching repo manifest from {repo_manifest_url}")
     request = urllib.request.Request(
         url=repo_manifest_url,
@@ -87,7 +92,7 @@ def fetch_repo_manifest(repo_name: str, tag: str = "latest"):
 def fetch_repo_files(repo_name: str, revision: str = "main"):
     """Fetch the list of files in a HuggingFace repository using the Files API with pagination support."""
     token = huggingface_token()
-    base_api_url = f"https://huggingface.co/api/models/{repo_name}/tree/{revision}"
+    base_api_url = f"{huggingface_endpoint()}/api/models/{repo_name}/tree/{revision}"
 
     all_files = []
     next_url: Optional[str] = base_api_url
@@ -151,7 +156,7 @@ class HuggingfaceRepository(HFStyleRepository):
 
     def _fetch_manifest_metadata(self):
         # Repo org/name. Fetch repo manifest to determine model/mmproj file
-        self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/{self.name}/resolve/main"
+        self.blob_url = f"{huggingface_endpoint()}/{self.organization}/{self.name}/resolve/main"
 
         try:
             self.manifest = fetch_repo_manifest(f"{self.organization}/{self.name}", self.tag)
@@ -249,7 +254,7 @@ class HuggingfaceRepository(HFStyleRepository):
 class HuggingfaceRepositoryModel(HuggingfaceRepository):
     def fetch_metadata(self):
         # Model url. organization is <org>/<repo>, name is model file path
-        self.blob_url = f"{HuggingfaceRepository.REGISTRY_URL}/{self.organization}/resolve/main"
+        self.blob_url = f"{huggingface_endpoint()}/{self.organization}/resolve/main"
         self.model_hash = f"sha256:{fetch_checksum_from_api(self.organization, self.name)}"
         self.model_filename = self.name
         token = huggingface_token()
@@ -281,7 +286,7 @@ class Huggingface(HFStyleRepoModel):
         return missing_huggingface
 
     def get_registry_url(self):
-        return self.REGISTRY_URL
+        return f"{huggingface_endpoint()}/v2/"
 
     def get_accept_header(self):
         return self.ACCEPT
