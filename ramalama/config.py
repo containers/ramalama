@@ -130,8 +130,15 @@ class OpenaiProviderConfig:
 
 
 @dataclass
+class LitellmProviderConfig:
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+
+
+@dataclass
 class ProviderConfig:
     openai: OpenaiProviderConfig = field(default_factory=OpenaiProviderConfig)
+    litellm: LitellmProviderConfig = field(default_factory=LitellmProviderConfig)
 
 
 @dataclass
