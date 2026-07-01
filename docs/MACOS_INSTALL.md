@@ -2,12 +2,61 @@
 
 This guide covers the different ways to install RamaLama on macOS.
 
-## GPU acceleration options
+## Platform support
+
+RamaLama runs on both **Intel** and **Apple Silicon** Macs. What differs is
+which runtimes and accelerators are available:
+
+| Platform | Default runtime | GPU acceleration |
+| :------- | :-------------- | :--------------- |
+| Apple Silicon (M1/M2/M3+) | llama.cpp (container) or MLX (`--nocontainer`) | MLX native, or libkrun GPU passthrough in Podman |
+| Intel Mac | llama.cpp (container or `--nocontainer`) | Not supported (CPU only) |
+
+On Intel Macs, do **not** use `--runtime=mlx` or install `mlx-lm`; MLX requires
+Apple Silicon hardware.
+
+## Intel Mac (CPU only)
+
+Intel Macs use the default **llama.cpp** runtime with CPU inference only.
+There is no GPU passthrough or MLX support on this hardware.
+
+### Option A: Containers (recommended)
+
+Install Podman or Docker, then use RamaLama normally:
+
+```bash
+brew install podman   # or: brew install docker
+podman machine init && podman machine start   # Podman only
+
+ramalama pull tinyllama
+ramalama run tinyllama
+```
+
+RamaLama pulls the standard CPU container image (`quay.io/ramalama/ramalama`).
+
+### Option B: Native (no container)
+
+Install llama.cpp on the host and run with `--nocontainer`:
+
+```bash
+brew install llama.cpp
+ramalama --nocontainer run tinyllama
+```
+
+You can persist this in `$HOME/.config/ramalama/ramalama.conf`:
+
+```
+[machine]
+container = false
+```
+
+## Apple Silicon GPU acceleration options
 
 GPU passthrough from a container has unique challenges on macOS, and
 it is not yet as fast as running outside of a container (at the time
-of writing, performance from a container is around 75-80% of native). We
-therefore offer two different options for running ramalama on macOS:
+of writing, performance from a container is around 75-80% of native). On
+**Apple Silicon** Macs we therefore offer two different options for GPU
+acceleration:
 
 - Within a podman container, using krunkit for GPU passthrough
 - Without a container, using MLX directly

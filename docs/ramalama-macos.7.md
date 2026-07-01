@@ -2,7 +2,12 @@
 
 # Configure Podman Machine on Mac for GPU Acceleration
 
-Leveraging GPU acceleration on a Mac with Podman requires the configuration of
+**Intel Macs:** GPU acceleration is not supported. Use the default llama.cpp
+runtime with CPU inference in a Podman/Docker container or with
+`--nocontainer` and host `llama.cpp`. See
+[MACOS_INSTALL.md](https://github.com/containers/ramalama/blob/main/docs/MACOS_INSTALL.md#intel-mac-cpu-only).
+
+**Apple Silicon Macs:** Leveraging GPU acceleration on a Mac with Podman requires the configuration of
 the `libkrun` machine provider.
 
 This can be done by either setting an environment variable or modifying the
