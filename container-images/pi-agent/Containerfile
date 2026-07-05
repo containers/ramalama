@@ -2,7 +2,6 @@ FROM quay.io/fedora/fedora:44
 
 ARG PI_VERSION=0.80.7
 ARG NODE_VERSION=26.5.0
-ARG PI_LLAMA_CPP_VERSION=0.8.1
 ARG PI_WEB_ACCESS_VERSION=0.13.0
 ARG TARGETARCH
 
@@ -43,7 +42,7 @@ RUN echo "Include /home/node/.ssh/config" >> /etc/ssh/ssh_config \
     && echo "StrictHostKeyChecking accept-new" >> /etc/ssh/ssh_config
 
 RUN npm install -g --ignore-scripts @earendil-works/pi-coding-agent@${PI_VERSION} \
-    && pi install npm:pi-llama-cpp@${PI_LLAMA_CPP_VERSION} \
+    && pi install npm:pi-llama-server@1.1.0 \
     && pi install npm:pi-web-access@${PI_WEB_ACCESS_VERSION} \
     && npm cache clean --force \
     && echo '{"workflow":"none"}' > /home/node/.pi/web-search.json \

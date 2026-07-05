@@ -6,7 +6,7 @@ import pytest
 
 from ramalama.cli import parse_args_from_cmd
 from ramalama.config import DEFAULT_PI_IMAGE
-from ramalama.sandbox import Goose, OpenCode, Pi
+from ramalama.sandbox import Goose, OpenCode, Pi, _pi_provider_id
 
 TEST_MODEL = "qwen3:4b"
 
@@ -315,6 +315,10 @@ def test_opencode_args():
 # --- Pi-specific tests ---
 
 
+def test_pi_provider_id():
+    """Pi provider id should be the pi-llama-server extension's registered name."""
+    assert _pi_provider_id() == "llama-server"
+
 def test_pi_default_image():
     """Pi subcommand should provide a default pi image"""
     _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
@@ -341,7 +345,7 @@ def test_pi_custom_image():
 
 
 def test_pi_env_vars():
-    """Pi should set LLAMA_SERVER_URL for pi-llama-cpp extension"""
+    """Pi should set LLAMA_SERVER_URL for pi-llama-server extension"""
     args = _make_pi_args()
     pi = Pi(args, "Qwen3-4B-Q4_K_M")
     cmd = pi.engine.exec_args
@@ -349,7 +353,7 @@ def test_pi_env_vars():
     assert "--rm" in cmd
     assert f"LLAMA_SERVER_URL={args.url}" in cmd
     assert "--provider" in cmd
-    assert f"llama-server={args.url}" in cmd
+    assert "llama-server" in cmd
     assert "--model" in cmd
     assert "Qwen3-4B-Q4_K_M" in cmd
 
@@ -361,12 +365,12 @@ def test_pi_entrypoint(monkeypatch):
     pi = Pi(args, "test-model")
     cmd = pi.engine.exec_args
     assert "--entrypoint" not in cmd
-    assert "pi install npm:pi-llama-cpp" not in cmd
+    assert "pi install npm:pi-llama-server" not in cmd
     assert "pi install npm:pi-web-access" not in cmd
     assert cmd[-5:] == [
         args.pi_image,
         "--provider",
-        f"llama-server={args.url}",
+        "llama-server",
         "--model",
         "test-model",
     ]
@@ -380,7 +384,7 @@ def test_pi_with_tty(monkeypatch):
     assert pi.engine.exec_args[-5:] == [
         args.pi_image,
         "--provider",
-        f"llama-server={args.url}",
+        "llama-server",
         "--model",
         "test-model",
     ]
@@ -394,7 +398,7 @@ def test_pi_no_tty(monkeypatch):
     assert pi.engine.exec_args[-5:] == [
         args.pi_image,
         "--provider",
-        f"llama-server={args.url}",
+        "llama-server",
         "--model",
         "test-model",
     ]

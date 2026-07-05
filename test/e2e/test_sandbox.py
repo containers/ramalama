@@ -49,7 +49,7 @@ def sandbox_ctx():
     [
         ["goose", r"run -i -\s*$"],
         ["opencode", r"run --thinking=true\s*$"],
-        ["pi", r"--provider llama-server=http://localhost:\d+\s+--model\s+\S+"],
+        ["pi", r"--provider llama-server\s+--model\s+\S+"],
     ],
 )
 def test_sandbox_dryrun_default(agent, cmd):
@@ -186,7 +186,7 @@ def test_sandbox_dryrun_pi_env_vars():
     """Dryrun output should include Pi environment and provider configuration."""
     result = check_output(_dryrun_cmd("pi"))
     assert re.search(r"LLAMA_SERVER_URL=http://localhost:\d+", result)
-    assert re.search(r"--provider llama-server=http://localhost:\d+", result)
+    assert re.search(r"--provider llama-server", result)
 
 
 @pytest.mark.e2e

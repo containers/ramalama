@@ -22,6 +22,10 @@ def default_pi_image() -> str:
     return ActiveConfig().default_pi_image
 
 
+def _pi_provider_id() -> str:
+    return "llama-server"
+
+
 def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
     """Add --workdir and --prompt arguments shared by all sandbox subcommands."""
     parser.add_argument(
@@ -51,7 +55,7 @@ def _add_router_args(parser: argparse.ArgumentParser) -> None:
         "--models-max",
         dest="models_max",
         type=int,
-        default=4,
+        default=1,
         help="maximum number of models to load concurrently in router mode",
     )
 
@@ -276,7 +280,7 @@ class Pi(Agent):
 
     def __init__(self, args: PiArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
-        provider_id = f"llama-server={args.url}"
+        provider_id = _pi_provider_id()
         self.engine.add_name(f"pi-{args.name}")  # type: ignore[attr-defined]
         self.add_provider_discovery_env(args)
         self.engine.add_workdir(args)
@@ -289,7 +293,7 @@ class Pi(Agent):
         self.engine.add(pi_args)
 
     def add_provider_discovery_env(self, args: PiArgsType) -> None:
-        # pi-llama-cpp discovers and registers providers from LLAMA_SERVER_URL;
+        # pi-llama-server discovers and registers providers from LLAMA_SERVER_URL;
         # --provider then selects the matching provider id for the active session.
         self.engine.add_env_option(f"LLAMA_SERVER_URL={args.url}")
 
