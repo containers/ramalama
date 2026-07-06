@@ -8,6 +8,7 @@ import platform
 import shutil
 import sys
 import tempfile
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from http.client import HTTPConnection
@@ -185,6 +186,30 @@ _LLAMA_CPP_IMAGES: dict[str, str] = {
 }
 
 
+def parse_models_payload(payload: Any) -> list[str]:
+    """Parse model identifiers from a llama-server /models response body."""
+    if not isinstance(payload, Mapping):
+        raise ValueError("Invalid model list payload")
+
+    if isinstance(payload.get("models"), list):
+        models: list[str] = []
+        for entry in payload["models"]:
+            if not isinstance(entry, Mapping):
+                continue
+            if name := entry.get("name") or entry.get("model"):
+                models.append(str(name))
+        return models
+
+    if isinstance(payload.get("data"), list):
+        models = []
+        for entry in payload["data"]:
+            if isinstance(entry, Mapping) and (model_id := entry.get("id")):
+                models.append(str(model_id))
+        return models
+
+    raise ValueError("Invalid model list payload")
+
+
 class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     config_type = LlamaCppConfig
 
@@ -271,11 +296,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             return False
 
         body = json.loads(content)
-        if "models" not in body:
+        try:
+            model_names = parse_models_payload(body)
+        except ValueError:
             logger.debug(f"{self.name} {container_name} /models does not include a model list in the response")
             return False
 
-        model_names = [m["name"] for m in body["models"]]
         if not model_name:
             if hasattr(args, 'MODEL') and isinstance(args.MODEL, str):
                 model_name = New(args.MODEL, args).model_alias

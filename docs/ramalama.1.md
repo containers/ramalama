@@ -151,6 +151,7 @@ Show the program version and exit.
 | [ramalama-list(1)](ramalama-list.1.md)            |list all downloaded AI Models|
 | [ramalama-login(1)](ramalama-login.1.md)          |login to remote registry|
 | [ramalama-logout(1)](ramalama-logout.1.md)        |logout from remote registry|
+| [ramalama-models(1)](ramalama-models.1.md)        |list models served by a running inference server|
 | [ramalama-perplexity(1)](ramalama-perplexity.1.md)|calculate the perplexity value of an AI Model|
 | [ramalama-pull(1)](ramalama-pull.1.md)            |pull AI Models from Model registries to local storage|
 | [ramalama-push(1)](ramalama-push.1.md)            |push AI Models from local storage to remote registries|

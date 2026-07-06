@@ -348,6 +348,7 @@ def configure_subcommands(parser):
     list_parser(subparsers)
     login_parser(subparsers)
     logout_parser(subparsers)
+    models_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
     rm_parser(subparsers)
@@ -595,6 +596,61 @@ def list_parser(subparsers):
     parser.set_defaults(func=list_cli)
 
 
+def _format_model_server_host(host: str) -> str:
+    host = host.strip("[]")
+    if host in ("0.0.0.0", "::"):
+        return "127.0.0.1"
+    if ":" in host:
+        return f"[{host}]"
+    return host
+
+
+def _default_model_server_url() -> str:
+    config = ActiveConfig()
+    return f"http://{_format_model_server_host(config.host)}:{config.port}"
+
+
+def models_parser(subparsers):
+    config = ActiveConfig()
+    default_url = _default_model_server_url()
+    parser = subparsers.add_parser(
+        "models",
+        help="list models served by a running inference server",
+    )
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        default=config.api_key,
+        help="""OpenAI-compatible API key.
+        Can also be set in ramalama.conf or via the RAMALAMA_API_KEY environment variable.""",
+    )
+    parser.add_argument("--json", dest="json", action="store_true", help="print model list in json format")
+    parser.add_argument(
+        "--url",
+        type=str,
+        default=default_url,
+        help=f"model server URL (default: {default_url})",
+    )
+    parser.set_defaults(func=models_cli)
+
+
+def models_cli(args):
+    from ramalama.model_server import ModelServerError, list_server_models
+
+    try:
+        models = list_server_models(args.url, getattr(args, "api_key", None))
+    except ModelServerError as exc:
+        perror(str(exc))
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps(models))
+        return
+
+    for model in models:
+        print(model)
+
+
 def human_readable_size(size):
     for unit in ["B", "KB", "MB", "GB", "TB"]:
         if size < 1024:
@@ -691,8 +747,6 @@ def info_cli(args: DefaultArgsType) -> None:
 
 def list_cli(args):
     models = _list_models(args)
-
-    # If JSON output is requested
     if args.json:
         print(json.dumps(models))
         return
