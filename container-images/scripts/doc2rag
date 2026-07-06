@@ -539,11 +539,11 @@ def run_pipeline(args):
 # ---------------------------------------------------------------------------
 parser = argparse.ArgumentParser(description="Convert documents into a Qdrant RAG vector database")
 parser.add_argument("--debug", action="store_true", help="Enable debug logging")
-parser.add_argument("--api-url", dest="api_url", help="URL of the llama.cpp VLM server for document conversion")
+parser.add_argument("--api-url", dest="api_url", help="URL of the llama.cpp OCR server for text extraction")
 parser.add_argument("--embed-url", dest="embed_url", help="URL of the llama.cpp embedding server")
 parser.add_argument("--embed-model", dest="embed_model", help="Name of the embedding model (stored in metadata)")
 parser.add_argument("--chunk-size", dest="chunk_size", type=int, default=400, help="Max tokens per chunk (default: 400)")
-parser.add_argument("--ctx-size", dest="ctx_size", type=int, default=8192, help="Context size of the VLM server (default: 8192)")
+parser.add_argument("--ctx-size", dest="ctx_size", type=int, default=8192, help="Context size of the OCR server (default: 8192)")
 parser.add_argument("--caption-url", dest="caption_url", help="URL of a VLM server for image captioning (e.g. Gemma 4)")
 parser.add_argument("output", help="Output directory for the Qdrant database")
 parser.add_argument("sources", nargs="+", help="Source files or directories to process")
