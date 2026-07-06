@@ -35,7 +35,7 @@ def register_rag_subcommand(plugin, subparsers):
         "--docling-model",
         dest="docling_model",
         default="hf://ibm-granite/granite-docling-258M-GGUF",
-        help="Granite Docling GGUF model for document conversion",
+        help="Granite Docling GGUF model for OCR (optical character recognition) text extraction from images and PDFs",
         completer=suppressCompleter,
     )
     parser.add_argument(
@@ -51,7 +51,7 @@ def register_rag_subcommand(plugin, subparsers):
         dest="ctx_size",
         type=int,
         default=8192,
-        help="context size for the VLM server (default: 8192)",
+        help="context size for the OCR server (default: 8192)",
         completer=suppressCompleter,
     )
     parser.add_argument(
