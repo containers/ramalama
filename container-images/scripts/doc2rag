@@ -516,6 +516,13 @@ def run_pipeline(args):
         sys.stderr.write("\n")
     perror(f"  {len(chunks)} chunks created")
 
+    if not chunks:
+        raise ValueError(
+            "No text was extracted from the provided documents. "
+            "Granite Docling uses OCR to extract text from images and PDFs. "
+            "If your files contain no readable text, consider using --caption-images for full image processing."
+        )
+
     # Embed and store
     if not args.embed_url:
         raise ValueError("--embed-url is required for embedding")
