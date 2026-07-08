@@ -60,7 +60,8 @@ class HttpClient:
 
     def urlopen(self, url, headers):
         headers["Range"] = f"bytes={self.file_size}-"
-        logger.debug(f"Running urlopen {url} with headers: {headers}")
+        safe_headers = {k: ("****" if k.lower() == "authorization" else v) for k, v in headers.items()}
+        logger.debug(f"Running urlopen {url} with headers: {safe_headers}")
         request = urllib.request.Request(url, headers=headers)
         self.response = urllib.request.urlopen(request)
 
