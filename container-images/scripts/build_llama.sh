@@ -2,6 +2,7 @@
 
 DEFAULT_LLAMA_CPP_COMMIT="24bba7b98ea1544cc89352c7a573baedcb831a64" # b9701
 MESA_VULKAN_VERSION=25.3.6-102.fc44
+DEFAULT_KLEIDIAI_COMMIT="8a3aadbcbb75ddc229bce67fcbb8c3dbebd295ab" # 8a3aadbc
 
 dnf_install_remoting() {
     dnf install -y libdrm-devel
@@ -23,6 +24,7 @@ dnf_install_asahi() {
   dnf copr enable -y @asahi/fedora-remix-branding
   dnf install -y asahi-repos
   dnf install -y mesa-vulkan-drivers "${vulkan_rpms[@]}"
+  dnf install -y blis-devel
 }
 
 dnf_install_cuda() {
@@ -265,8 +267,11 @@ configure_common_flags() {
   cuda)
     common_flags+=("-DGGML_CUDA=ON" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined")
     ;;
-  vulkan | asahi)
-    common_flags+=("-DGGML_VULKAN=1")
+  vulkan)
+    common_flags+=("-DGGML_VULKAN=ON")
+    ;;
+  asahi)
+    common_flags+=("-DGGML_VULKAN=ON" "-DGGML_CPU_KLEIDIAI=ON" "-DGGML_KLEIDIAI_CACHE=ON" "-DGGML_BLAS=ON" "-DGGML_BLAS_VENDOR=FLAME" "-DBLAS_INCLUDE_DIRS=/usr/include/blis")
     ;;
   intel-gpu)
     common_flags+=("-DGGML_SYCL=ON" "-DCMAKE_C_COMPILER=icx" "-DCMAKE_CXX_COMPILER=icpx")
@@ -307,6 +312,20 @@ clone_and_build_llama_cpp() {
       rm -rf llama.cpp
   fi
 }
+
+
+clone_and_build_kleidiai() {
+  local kleidiai_commit="${KLEIDIAI_PULL_REF:-$DEFAULT_KLEIDIAI_COMMIT}"
+  git_clone_specific_commit "${KLEIDIAI_REPO:-https://gitlab.arm.com/kleidi/kleidiai.git}" "$kleidiai_commit"
+  cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/install -DCMAKE_INSTALL_LIBDIR=lib64 -S . -B build/  2>&1 | cmake_check_warnings
+  cmake --build ./build -j"$(nproc)" 2>&1 | cmake_check_warnings
+  cmake --install build 2>&1 | cmake_check_warnings
+  cd ..
+  if [[ "${RAMALAMA_IMAGE_BUILD_DEBUG_MODE:-}" != y ]]; then
+      rm -rf kleidiai
+  fi
+}
+
 
 cleanup() {
   available dnf && dnf -y clean all
@@ -358,6 +377,10 @@ main() {
   available dnf && dnf_install
 
   setup_build_env
+
+  if [[ "$containerfile" == "asahi" ]]; then
+    clone_and_build_kleidiai
+  fi
 
   clone_and_build_llama_cpp
 
