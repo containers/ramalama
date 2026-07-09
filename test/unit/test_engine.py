@@ -166,6 +166,23 @@ def test_is_healthy_conn(mock_conn):
 
 
 @pytest.mark.parametrize(
+    "host, expected_host",
+    [
+        pytest.param("0.0.0.0", "127.0.0.1", id="ipv4-wildcard"),
+        pytest.param("::", "127.0.0.1", id="ipv6-wildcard"),
+        pytest.param("[::]", "127.0.0.1", id="ipv6-wildcard-bracketed"),
+        pytest.param("192.168.1.100", "192.168.1.100", id="ipv4-host"),
+        pytest.param("::1", "::1", id="ipv6-loopback"),
+    ],
+)
+@patch("ramalama.engine.HTTPConnection")
+def test_is_healthy_uses_host_arg(mock_conn, host, expected_host):
+    args = Namespace(MODEL="themodel", name="thecontainer", port=8080, debug=False, host=host)
+    ramalama.engine.is_healthy(args, model_name="themodel")
+    mock_conn.assert_called_once_with(expected_host, args.port, timeout=3)
+
+
+@pytest.mark.parametrize(
     "health_status, models_status, models_body, models_msg",
     [
         pytest.param(503, None, "", "", id="health api returns 503 loading"),
