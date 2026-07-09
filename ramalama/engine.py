@@ -478,9 +478,13 @@ def is_healthy(args, timeout: int = 3, model_name: Optional[str] = None):
     """Check if the runtime server is healthy by delegating to the runtime plugin."""
     from ramalama.plugins.loader import get_runtime
 
+    bind_host = getattr(args, "host", "127.0.0.1").strip("[]")
+    # use IPv4 loopback when binding to a wildcard address
+    ip_address = "127.0.0.1" if bind_host in ("0.0.0.0", "::") else bind_host
+
     conn = None
     try:
-        conn = HTTPConnection("127.0.0.1", args.port, timeout=timeout)
+        conn = HTTPConnection(ip_address, args.port, timeout=timeout)
         if getattr(args, "debug", False):
             conn.set_debuglevel(1)
         return get_runtime(ActiveConfig().runtime).service_ready_check(conn, args, model_name)
