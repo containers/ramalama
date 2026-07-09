@@ -11,6 +11,9 @@ ramalama\-list - list all downloaded AI Models
 ## DESCRIPTION
 List all the AI Models in local storage.
 
+To list models currently loaded by a running inference server (for example after
+**ramalama serve**), use **ramalama-models(1)** instead.
+
 When a downloaded model URI matches an entry in **shortnames.conf**, the table includes a **SHORTNAME** column with the corresponding alias (for example **gemma3:12b** for **hf://ggml-org/gemma-3-12b-it-GGUF**). Models with no configured alias leave **SHORTNAME** empty. See **ramalama-info(1)** for the configured shortname mappings.
 
 ## OPTIONS
@@ -66,7 +69,7 @@ $ ramalama list --json
 ```
 
 ## SEE ALSO
-**[ramalama(1)](ramalama.1.md)**
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-models(1)](ramalama-models.1.md)**
 
 ## HISTORY
 Aug 2024, Originally compiled by Dan Walsh <dwalsh@redhat.com>
