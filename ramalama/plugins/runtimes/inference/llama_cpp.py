@@ -23,6 +23,7 @@ from ramalama.cli import (
     OverrideDefaultAction,
     _get_source_model,
     _rag_args,
+    add_engine_args_argument,
     add_network_argument,
     default_image,
     default_rag_image,
@@ -241,8 +242,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 args.tools_image = ensure_image(
                     args.engine, args.tools_image, should_pull=should_pull, quiet=getattr(args, "quiet", False)
                 )
-            engine.add_args(args.tools_image)
-            engine.add_args(*self._cmd_convert(args))
+            engine.add_container_image(args.tools_image, self._cmd_convert(args))
             if args.dryrun:
                 engine.dryrun()
             else:
@@ -268,7 +268,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         engine.add_args(args.image)
         args = copy.copy(args)
         args.subcommand = "quantize"
-        engine.add_args(*self._cmd_quantize(args))
+        engine.add_container_image(args.image, self._cmd_quantize(args))
         if args.dryrun:
             engine.dryrun()
         else:
@@ -743,6 +743,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             choices=["always", "missing", "never", "newer"],
             help="pull image policy",
         )
+        add_engine_args_argument(convert_parser)
         convert_parser.add_argument(
             "--type",
             default=config.convert_type,
@@ -814,7 +815,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
             if args.container:
                 model.setup_container(args)
                 model.setup_mounts(args)
-                model.engine.add([args.image] + cmd)
+                model.engine.add_container_image(args.image, cmd)
                 model.engine.dryrun()
             else:
                 dry_run(cmd)
@@ -823,7 +824,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         if args.container:
             model.setup_container(args)
             model.setup_mounts(args)
-            model.engine.add([args.image] + cmd)
+            model.engine.add_container_image(args.image, cmd)
             result = model.engine.run_process()
         else:
             result = run_cmd(cmd, encoding="utf-8")

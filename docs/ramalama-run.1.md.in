@@ -28,6 +28,8 @@ the execution. URL support means if a model is on a web site or even on your loc
 
 @@option device
 
+@@option engine-args
+
 @@option env
 
 @@option help
@@ -98,7 +100,7 @@ to an interactive chat session after processing the initial prompt.
 
 ## INTERACTIVE COMMANDS
 
-When running in interactive chat mode, including after an initial prompt with `--interactive`, the following commands are available.
+When running in interactive chat mode (without arguments), the following commands are available.
 All commands are case-insensitive (e.g., `/CLEAR`, `/Clear`, and `/clear` all work).
 
 #### **/help**, **help**, **?**
