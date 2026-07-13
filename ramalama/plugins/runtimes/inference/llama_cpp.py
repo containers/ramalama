@@ -265,7 +265,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             args.image = ensure_image(
                 args.engine, args.image, should_pull=should_pull, quiet=getattr(args, "quiet", False)
             )
-        engine.add_args(args.image)
         args = copy.copy(args)
         args.subcommand = "quantize"
         engine.add_container_image(args.image, self._cmd_quantize(args))
