@@ -127,6 +127,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Check HF token
+        id: hf
+        run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v8.3.2
         with: ${{ matrix.variant.uv-options }}
@@ -161,6 +165,7 @@ jobs:
            sudo apt-get upgrade -y podman crun
 
       - name: Start HF mirror
+        if: steps.hf.outputs.has_token != 'true'
         run: |
           podman run -d --name hfmirror -p 5000:5000 quay.io/ramalama/hfmirror:latest
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1; do sleep 2; done'
@@ -168,7 +173,7 @@ jobs:
       - name: run e2e-tests
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_ENDPOINT: http://127.0.0.1:5000
+          HF_ENDPOINT: ${{ secrets.HF_TOKEN == '' && 'http://127.0.0.1:5000' || '' }}
         run: |
            make e2e-tests
 
@@ -196,6 +201,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+
+      - name: Check HF token
+        id: hf
+        run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v8.3.2
@@ -229,6 +238,7 @@ jobs:
            sudo apt-get upgrade -y podman crun
 
       - name: Start HF mirror
+        if: steps.hf.outputs.has_token != 'true'
         run: |
           podman run -d --name hfmirror -p 5000:5000 quay.io/ramalama/hfmirror:latest
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1; do sleep 2; done'
@@ -236,7 +246,7 @@ jobs:
       - name: run e2e-tests-nocontainer
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_ENDPOINT: http://127.0.0.1:5000
+          HF_ENDPOINT: ${{ secrets.HF_TOKEN == '' && 'http://127.0.0.1:5000' || '' }}
         run: |
            make e2e-tests-nocontainer
 
@@ -264,6 +274,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+
+      - name: Check HF token
+        id: hf
+        run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v8.3.2
@@ -316,6 +330,7 @@ jobs:
            df -h
 
       - name: Start HF mirror
+        if: steps.hf.outputs.has_token != 'true'
         run: |
           docker run -d --name hfmirror -p 5000:5000 quay.io/ramalama/hfmirror:latest
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1; do sleep 2; done'
@@ -323,7 +338,7 @@ jobs:
       - name: run e2e-tests-docker
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_ENDPOINT: http://127.0.0.1:5000
+          HF_ENDPOINT: ${{ secrets.HF_TOKEN == '' && 'http://127.0.0.1:5000' || '' }}
         run: |
            docker info
            make e2e-tests-docker
@@ -353,6 +368,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Check HF token
+        id: hf
+        run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v8.3.2
         with: ${{ matrix.variant.uv-options }}
@@ -369,32 +388,35 @@ jobs:
         run: ./.github/scripts/install-ollama.sh
 
       - uses: actions/cache@v4
+        if: steps.hf.outputs.has_token != 'true'
         id: hfmirror-cache
         with:
           path: /tmp/hfmirror/models
           key: hfmirror-models-v1
 
       - name: Install crane
-        if: steps.hfmirror-cache.outputs.cache-hit != 'true'
+        if: steps.hf.outputs.has_token != 'true' && steps.hfmirror-cache.outputs.cache-hit != 'true'
         uses: imjasonh/setup-crane@v0.4
 
       - name: Extract models from container image
-        if: steps.hfmirror-cache.outputs.cache-hit != 'true'
+        if: steps.hf.outputs.has_token != 'true' && steps.hfmirror-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p /tmp/hfmirror
           crane export quay.io/ramalama/hfmirror:latest - | tar -xf - -C /tmp/hfmirror --strip-components=1 data/models
 
       - name: Start HF mirror
+        if: steps.hf.outputs.has_token != 'true'
         run: |
           uv pip install flask
           HFMIRROR_MODELS_DIR=/tmp/hfmirror/models HFMIRROR_INDEX="" python3 container-images/hfmirror/server.py &
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1 && break || sleep 2; done
+          curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1 || { echo "HF mirror failed to start"; exit 1; }
 
       - name: run e2e-tests-nocontainer
         shell: bash
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_ENDPOINT: http://127.0.0.1:5000
+          HF_ENDPOINT: ${{ secrets.HF_TOKEN == '' && 'http://127.0.0.1:5000' || '' }}
         run: |
           make e2e-tests-nocontainer
 
@@ -423,6 +445,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      - name: Check HF token
+        id: hf
+        shell: bash
+        run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Enable long path support
         shell: pwsh
@@ -502,6 +529,7 @@ jobs:
           openssl version
 
       - name: Start HF mirror
+        if: steps.hf.outputs.has_token != 'true'
         shell: pwsh
         run: |
           podman run -d --name hfmirror -p 5000:5000 quay.io/ramalama/hfmirror:latest
@@ -529,7 +557,7 @@ jobs:
         env:
           RAMALAMA_CONTAINER_ENGINE: podman
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_ENDPOINT: http://127.0.0.1:5000
+          HF_ENDPOINT: ${{ secrets.HF_TOKEN == '' && 'http://127.0.0.1:5000' || '' }}
         run: |
           Write-Host "Running E2E tests..."
           # Add uv tools to PATH
