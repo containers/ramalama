@@ -9,14 +9,11 @@ from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import genname, run_cmd
-from ramalama.config import DEFAULT_PI_IMAGE as CONFIG_DEFAULT_PI_IMAGE
 from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, stop_container
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
-
-DEFAULT_PI_IMAGE = CONFIG_DEFAULT_PI_IMAGE
 
 
 def default_pi_image() -> str:
@@ -62,7 +59,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     parser.add_argument("MODEL", completer=model_comp)
     parser.add_argument(
         "--goose-image",
-        default="ghcr.io/aaif-goose/goose:1.33.1",
+        default="ghcr.io/aaif-goose/goose:1.43.0",
         completer=img_comp,
         help="Goose container image",
     )
@@ -76,7 +73,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     parser.add_argument("MODEL", completer=model_comp)
     parser.add_argument(
         "--opencode-image",
-        default="ghcr.io/anomalyco/opencode:1.14.48",
+        default="ghcr.io/anomalyco/opencode:1.17.20",
         completer=img_comp,
         help="OpenCode container image",
     )
