@@ -80,6 +80,14 @@ Otherwise only the agent container starts using the given url for the openai com
 
 @@option selinux
 
+@@option spec-draft-n-max
+
+@@option spec-draft-n-min
+
+@@option spec-draft-p-min
+
+@@option spec-type
+
 @@option temp
 
 @@option thinking

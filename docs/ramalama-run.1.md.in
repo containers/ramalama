@@ -80,6 +80,14 @@ Prefix for the user prompt (default: 🦭 > )
 
 @@option selinux
 
+@@option spec-draft-n-max
+
+@@option spec-draft-n-min
+
+@@option spec-draft-p-min
+
+@@option spec-type
+
 @@option summarize-after
 
 @@option temp
