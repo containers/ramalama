@@ -440,6 +440,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 help="enable/disable thinking mode in reasoning models",
                 action=CoerceToBool,
             )
+            # TODO: vllm also supports draft/speculative models; refactor to common args
             parser.add_argument("--model-draft", help="Draft model", completer=local_models)
         self._add_threads_arg(parser)
         if command == "serve":
