@@ -5,7 +5,8 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.cli import parse_args_from_cmd
-from ramalama.sandbox import DEFAULT_PI_IMAGE, Goose, OpenCode, Pi
+from ramalama.config import DEFAULT_PI_IMAGE
+from ramalama.sandbox import Goose, OpenCode, Pi
 
 TEST_MODEL = "qwen3:4b"
 
