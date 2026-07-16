@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from subprocess import STDOUT, CalledProcessError
 
@@ -7,7 +8,9 @@ import pytest
 from test.e2e.utils import RamalamaExecWorkspace
 
 GGUF_MODEL = "ollama://tinyllama"
-ST_MODEL = "https://huggingface.co/LiheYoung/depth-anything-small-hf/resolve/main/model.safetensors"
+_HF_ENDPOINT = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
+ST_MODEL = f"{_HF_ENDPOINT}/LiheYoung/depth-anything-small-hf/resolve/main/model.safetensors"
+_ST_SCHEME = _HF_ENDPOINT.split("://")[0]
 
 
 @pytest.fixture(scope="module")
@@ -49,7 +52,7 @@ def test_inspect_non_existent_model(shared_ctx):
         ),
         # Safetensors inspect (no --all)
         pytest.param(ST_MODEL, False, ["Name"], "model.safetensors", id="safetensors_inspect_name"),
-        pytest.param(ST_MODEL, False, ["Registry"], "https", id="safetensors_inspect_registry"),
+        pytest.param(ST_MODEL, False, ["Registry"], _ST_SCHEME, id="safetensors_inspect_registry"),
         pytest.param(ST_MODEL, False, ["Metadata"], "288", id="safetensors_inspect_metadata_count"),
         # GGUF inspect --all
         pytest.param(GGUF_MODEL, True, ["Name"], "tinyllama", id="gguf_inspect_all_name"),
@@ -68,7 +71,7 @@ def test_inspect_non_existent_model(shared_ctx):
         ),
         # Safetensors inspect --all
         pytest.param(ST_MODEL, True, ["Name"], "model.safetensors", id="safetensors_inspect_all_name"),
-        pytest.param(ST_MODEL, True, ["Registry"], "https", id="safetensors_inspect_all_registry"),
+        pytest.param(ST_MODEL, True, ["Registry"], _ST_SCHEME, id="safetensors_inspect_all_registry"),
         pytest.param(
             ST_MODEL, True, ["Header", "__metadata__", "format"], "pt", id="safetensors_inspect_all_header_format"
         ),
