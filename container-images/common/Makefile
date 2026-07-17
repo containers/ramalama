@@ -22,6 +22,7 @@ $(tools-requirements-files): requirements-tools-%.txt: requirements-tools.in
 	--upgrade \
 	--generate-hashes \
 	--emit-index-annotation \
+	--no-sources-package torch \
 	-o $@ $<
 
 requirements-rag.txt: requirements-rag.in
