@@ -46,6 +46,10 @@ def make_ns(
     webui="on",
     thinking=None,
     model_draft=None,
+    spec_type=None,
+    spec_draft_n_max=None,
+    spec_draft_n_min=None,
+    spec_draft_p_min=None,
     runtime_args=None,
     engine_args=None,
     gguf=None,
@@ -70,6 +74,10 @@ def make_ns(
         webui=webui,
         thinking=thinking,
         model_draft=model_draft,
+        spec_type=spec_type,
+        spec_draft_n_max=spec_draft_n_max,
+        spec_draft_n_min=spec_draft_n_min,
+        spec_draft_p_min=spec_draft_p_min,
         runtime_args=runtime_args or [],
         engine_args=engine_args or [],
         gguf=gguf,
@@ -142,6 +150,10 @@ class TestLlamaCppConfig:
         assert config.backend == "auto"
         assert config.cache_reuse is None
         assert config.ngl is None
+        assert config.spec_type is None
+        assert config.spec_draft_n_max is None
+        assert config.spec_draft_n_min is None
+        assert config.spec_draft_p_min is None
         assert config.temp == 0.8
         assert config.thinking is None
         assert config.threads > 0
@@ -154,6 +166,15 @@ class TestLlamaCppConfig:
         assert config.temp == 0.5
         assert config.threads == 8
         assert config.thinking is False
+
+    def test_coerces_spec_string_values(self):
+        config = LlamaCppConfig(
+            spec_type="draft-mtp", spec_draft_n_max="5", spec_draft_n_min="1", spec_draft_p_min="0.9"
+        )
+        assert config.spec_type == "draft-mtp"
+        assert config.spec_draft_n_max == 5
+        assert config.spec_draft_n_min == 1
+        assert config.spec_draft_p_min == 0.9
 
 
 class TestSyncArgsToRuntimeConfig:
@@ -381,6 +402,54 @@ class TestLlamaCppPlugin:
         cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "-ncmoe" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_spec_type(self, mock_colorize):
+        ns = make_ns(spec_type="draft-mtp")
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--spec-type" in cmd
+        assert cmd[cmd.index("--spec-type") + 1] == "draft-mtp"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_spec_type_default_omitted(self, mock_colorize):
+        ns = make_ns()
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--spec-type" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_spec_draft_n_max(self, mock_colorize):
+        ns = make_ns(spec_draft_n_max=5)
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--spec-draft-n-max" in cmd
+        assert cmd[cmd.index("--spec-draft-n-max") + 1] == "5"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_spec_draft_n_min(self, mock_colorize):
+        ns = make_ns(spec_draft_n_min=0)
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--spec-draft-n-min" in cmd
+        assert cmd[cmd.index("--spec-draft-n-min") + 1] == "0"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_spec_draft_p_min(self, mock_colorize):
+        ns = make_ns(spec_draft_p_min=0.9)
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--spec-draft-p-min" in cmd
+        assert cmd[cmd.index("--spec-draft-p-min") + 1] == "0.9"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_spec_draft_defaults_omitted(self, mock_colorize):
+        ns = make_ns()
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--spec-draft-n-max" not in cmd
+        assert "--spec-draft-n-min" not in cmd
+        assert "--spec-draft-p-min" not in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_max_tokens(self, mock_colorize):
