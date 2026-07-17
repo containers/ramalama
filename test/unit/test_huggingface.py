@@ -11,6 +11,11 @@ def test_huggingface_endpoint_default() -> None:
         assert huggingface_endpoint() == "https://huggingface.co"
 
 
+def test_huggingface_endpoint_from_env_empty() -> None:
+    with patch.dict(os.environ, {"HF_ENDPOINT": ""}):
+        assert huggingface_endpoint() == "https://huggingface.co"
+
+
 def test_huggingface_endpoint_from_env() -> None:
     with patch.dict(os.environ, {"HF_ENDPOINT": "https://my-mirror.example.com"}):
         assert huggingface_endpoint() == "https://my-mirror.example.com"
