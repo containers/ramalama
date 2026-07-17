@@ -86,6 +86,10 @@ class LlamaCppConfig:
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE  # type: ignore[assignment]
     ngl: Optional[str] = None
     ncmoe: Optional[int] = None
+    spec_type: Optional[str] = None
+    spec_draft_n_max: Optional[int] = None
+    spec_draft_n_min: Optional[int] = None
+    spec_draft_p_min: Optional[float] = None
     temp: float = 0.8
     thinking: Optional[bool] = None
     threads: int = field(default_factory=_default_threads)
@@ -97,6 +101,14 @@ class LlamaCppConfig:
             self.ngl = str(self.ngl)
         if self.ncmoe is not None:
             self.ncmoe = int(self.ncmoe)
+        if self.spec_type is not None:
+            self.spec_type = str(self.spec_type)
+        if self.spec_draft_n_max is not None:
+            self.spec_draft_n_max = int(self.spec_draft_n_max)
+        if self.spec_draft_n_min is not None:
+            self.spec_draft_n_min = int(self.spec_draft_n_min)
+        if self.spec_draft_p_min is not None:
+            self.spec_draft_p_min = float(self.spec_draft_p_min)
         self.temp = float(self.temp)
         self.threads = int(self.threads)
         if self.thinking is not None:
@@ -441,6 +453,37 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 action=CoerceToBool,
             )
             parser.add_argument("--model-draft", help="Draft model", completer=local_models)
+            parser.add_argument(
+                "--spec-type",
+                dest="spec_type",
+                default=None,
+                help="speculative decoding type(s), comma-separated (e.g. draft-mtp, draft-simple, ngram-simple)",
+                completer=suppressCompleter,
+            )
+            parser.add_argument(
+                "--spec-draft-n-max",
+                dest="spec_draft_n_max",
+                type=int,
+                default=None,
+                help="max number of tokens to draft for speculative decoding (default: 3)",
+                completer=suppressCompleter,
+            )
+            parser.add_argument(
+                "--spec-draft-n-min",
+                dest="spec_draft_n_min",
+                type=int,
+                default=None,
+                help="min number of draft tokens for speculative decoding (default: 0)",
+                completer=suppressCompleter,
+            )
+            parser.add_argument(
+                "--spec-draft-p-min",
+                dest="spec_draft_p_min",
+                type=float,
+                default=None,
+                help="min speculative decoding probability (default: 0.0)",
+                completer=suppressCompleter,
+            )
         self._add_threads_arg(parser)
         if command == "serve":
             parser.add_argument(
