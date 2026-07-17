@@ -6,10 +6,9 @@ install_pkgs() {
     # in container-images/common/Makefile
     local default_python="python3.14"
 
-    if [ "$backend" = "cu128" ]; then
-        default_python="python3.12"
+    if [[ "$backend" = cu* ]]; then
         pkgs+=("libcudnn9-devel-cuda-12" "libcusparselt0" "cuda-cupti-12-*")
-    elif [ "$backend" = "rocm6.3" ]; then
+    elif [[ "$backend" = rocm* ]]; then
         pkgs+=("uv" "rocm-core" "hipblas" "rocblas" "rocm-hip")
     elif [ "$backend" = "xpu" ]; then
         pkgs+=("uv" "oneapi-level-zero" "intel-level-zero")
@@ -24,7 +23,7 @@ install_pkgs() {
     dnf -y --nodocs --setopt=install_weak_deps=false install "${pkgs[@]}"
     dnf -y clean all
 
-    if [ "$backend" = "cu128" ]; then
+    if [[ "$backend" = cu* ]]; then
         curl -LsSf https://astral.sh/uv/install.sh | sh
         # shellcheck disable=SC1091
         source /root/.local/bin/env
