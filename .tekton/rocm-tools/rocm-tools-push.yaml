@@ -30,7 +30,7 @@ spec:
     value: container-images/common/Containerfile.tools
   - name: build-args
     value:
-    - TORCH_BACKEND=rocm6.3
+    - TORCH_BACKEND=rocm7.1
   - name: skip-sbom
     value: "true"
   pipelineRef:

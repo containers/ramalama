@@ -284,19 +284,19 @@ distro==1.9.0 \
     --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
     # via openai
     # from https://pypi.org/simple
-doclang==0.7.2 \
-    --hash=sha256:89c17a168ef9443c2f814284bae3ea3dbf2f1910e79d4fd6cbdde04aa7c06d40 \
-    --hash=sha256:fa4414931122c6b9d18a8b1fd6cec3d0dd22dad4efec495ab4461240a8cdf7ed
+doclang==0.7.3 \
+    --hash=sha256:9440c4ca9f7e061a7b8d33bdf15b1029be69a4c13cd8952dd6ce541884e4c685 \
+    --hash=sha256:ca50615357e46ebf9597bb9065b9112367103ec24bd539f8ae12649224cf50b0
     # via docling-core
     # from https://pypi.org/simple
-docling-core==2.87.0 \
-    --hash=sha256:b6518f9ef3c7fb5e19746d3df7a99cda46f20c791ea101c35fc3029a195680c7 \
-    --hash=sha256:d79e74689bbcd8ec22c72b15e15b230dcfe8900963f2c95322f631fc9ea116a4
+docling-core==2.87.1 \
+    --hash=sha256:1cd1748470523322b6314b72c79e8d1c638489fa903b8a1901cae023b14a4f84 \
+    --hash=sha256:a2c19e63519e49f993d93103481934b772db701c80c683900476f898dfac841a
     # via -r requirements-rag.in
     # from https://pypi.org/simple
-fastapi==0.139.0 \
-    --hash=sha256:99ab7b2d92223c76d6cf10757ab3f89d45b38267fc20b2a136cf02f6beac3145 \
-    --hash=sha256:cf15e1e9e667ddb0ad63811e60bd11390d1aac838ca4a7a23f421807b2308189
+fastapi==0.139.2 \
+    --hash=sha256:333145a6891e9b5b3cfceb69baf817e8240cde4d4588ae5a10bf56ffacb6255e \
+    --hash=sha256:b9ad015a835173d59865e2f5d8296fbc2b317bf56a2ba1a5bfbdd03de2fd4b1c
     # via -r requirements-rag.in
     # from https://pypi.org/simple
 frozenlist==1.8.0 \
@@ -1012,9 +1012,9 @@ numpy==2.5.1 \
     #   pandas
     #   qdrant-client
     # from https://pypi.org/simple
-openai==2.45.0 \
-    --hash=sha256:10d34ca9c5643bce775852fddbfc172505cb1d4de1ccd101696c3ecff358765d \
-    --hash=sha256:5df105f5f8c9b711fcb9d06d2d3888cebc82506db216484c14a4e53cdf651777
+openai==2.46.0 \
+    --hash=sha256:0421e0735ac41451cad894af4cddf0435bfbf8cbc538ac0e15b3c062f2ddc06a \
+    --hash=sha256:672381db55efb3a1e2610f29304c130cccdd0b319bace4d492b2443cb64c1e7c
     # via -r requirements-rag.in
     # from https://pypi.org/simple
 pandas==3.0.3 \
@@ -1445,29 +1445,29 @@ pygments==2.20.0 \
     --hash=sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176
     # via rich
     # from https://pypi.org/simple
-pypdfium2==5.11.0 \
-    --hash=sha256:0733749ac253c615953a5e75d4322b9f1de8c0d90137ec8dbcef403f3e57b5d9 \
-    --hash=sha256:115bc68ab2e85c9ee46f97a4c1794f1d7205c8b763fc5c16d9893eaa54608627 \
-    --hash=sha256:1fbff7c3e3141f24f3a25cedddbb6c6d17baa95f83c7b7ea40d6866956df3a43 \
-    --hash=sha256:2560db37ce77a6caf651dc129bc44ee610a5fbb0050ec70f5a643f76bf241173 \
-    --hash=sha256:25be9d70f5776c68fa28b92ec42a7be91de5d6c4085ed5c6c89e1bfa373ae918 \
-    --hash=sha256:324054f36acf6bea42a9d2534eb407da2e312dba746d955c9fd7e324bc160898 \
-    --hash=sha256:34086bc1fcb964bb8104889d941ba9c8a35a75866250bb81d2f2bb2791bb42af \
-    --hash=sha256:4396d0848b79134fcdf141a4e3dfe6719efe1162309a02876b440025cfd80720 \
-    --hash=sha256:44f96d8459b4ba9d1330ab44a8dde836b361cb00027830eaab710080888cf44a \
-    --hash=sha256:479b081423b2c16de44ddb6e25826d665298e1ee7cf09d802b656716dd930201 \
-    --hash=sha256:53d167456433d565398a5c9f1efad23dfa6dfadc1a201ec687594fec645d843e \
-    --hash=sha256:73fe55dd258f02332bc0a34128ddc2994fd610e664d1f2f7d78dd9e2570f15ee \
-    --hash=sha256:81356f0503356d6f21629fcd47bbfffcfe26487f47a7989a56c02bd4e39b4c55 \
-    --hash=sha256:897788d71b740752e29875856c369fdb52283f609aecf2355f0473db05dfc1b6 \
-    --hash=sha256:8edec20239f77d4dea2eeee5d29ebd83e77e1e2900691b77387fead76f81bc4a \
-    --hash=sha256:953f5bcb6a65067381f0a38c50ffaed864fac6f20b0fa2c14ffb15a52bda8943 \
-    --hash=sha256:b63f6f1e67d05d2bc36f55c35ede5cd18ded8886a2fcf68f320d188ee7934348 \
-    --hash=sha256:ba8a78329c10f01c80b1f6e9aa33cac13665c198d056a007827b703958bd986d \
-    --hash=sha256:badb4f4df98e25fb1b58301911c98fa18da60de98b0223a6ffa91717be068b96 \
-    --hash=sha256:d3b698e7b51bdf2d633cc834395677319e1d66757896b30c632dfac7d7236c81 \
-    --hash=sha256:e7a60197c5d18b0ec77a695e4a1082f89f323c13063cecf4446f1297ed632a36 \
-    --hash=sha256:faeda49c171be254b5028b7d17e54306c585374210d3e7ea4962a36774d5b76a
+pypdfium2==5.12.1 \
+    --hash=sha256:05bab9b1ba2de7fc299ae2af25cb9c8a0543bc8bb893e879fe8c9ba8310e9ce4 \
+    --hash=sha256:05bfa20a08a96584253bbe38b60e13f81a037eac31c5579e607ec1480ad25dbf \
+    --hash=sha256:07eeebb2784f4cd38d386b924235df43217a397442796673296bb6efbdaad1d0 \
+    --hash=sha256:236dbdc88aa54f14b27937ccb2ebe3dcf08c10dbb8652f432ea982dc9af39732 \
+    --hash=sha256:4648f0905441bcb141687ca2263bbf38a1aa056b943eef06019f91cff3e1da4a \
+    --hash=sha256:5c3e6cbe43581af79526184643920ab03a9401a0c79f2226bea9d4d1e3d34008 \
+    --hash=sha256:5f257bb40fa44ce9ba18d2c919777dbd3f16bf22548b1d68fd56c7c92f1de530 \
+    --hash=sha256:66a9ed40d70a5d728cd42148fecb9d7a0917c6161d6bb67c844093a4ed1df089 \
+    --hash=sha256:6eabf028ad8e7bc7811c9acf3a72718c180569b624b844d2c6cc974609784275 \
+    --hash=sha256:715ae16b34ea1d64884d58800155179ba700e9ea65a2f583b020666acd2bfb12 \
+    --hash=sha256:7857cfa6642ec5a09db12ff8f5cf6b6494585b5e3a605399fddc4fb862837b63 \
+    --hash=sha256:847378a5ab41332998b2621b21bab2e96dc8c3eff36a08bce26695b964163983 \
+    --hash=sha256:9609be73a6701a68f29dffe0335f7a2e4b3ba581542ed65d35d49f761a4600ca \
+    --hash=sha256:974082344172da76a5c3c0782eaedfe6069dbe88db77d8c671ef36b61e9b14e2 \
+    --hash=sha256:9c8856ce7dd77a7827476c7d75afe1197d6cd505f5cb4167b6aacf661f3f8ea5 \
+    --hash=sha256:9f059f7bdbdf4352eb83691071096940d769d6ae5930b8734237fdb1bd78fbc2 \
+    --hash=sha256:afc0b7e0c975a429abc75875209ce17b66d749f6ac5cbe8ba72470e83901e304 \
+    --hash=sha256:bdff622181fab64f32328591c9c8287cdc745c9a1f2afc26ca3feba39e3e6645 \
+    --hash=sha256:d0e0648fb2e28f50efcd1ec0a5a18ced9f4d66b2c227fae9b603f0a883b2d13f \
+    --hash=sha256:d4ee061e566a6422b660cdddaaa799a2d1cbf2f016921bcaf24d61426d01d942 \
+    --hash=sha256:e10cbf41b21233ec5e20adfc170cf60edd77abead86a97dc708fff55a8a886c7 \
+    --hash=sha256:e5358d2ce4ebc5c899aab1df9ca5d215357244e9168aa443225d3c1e649c7eac
     # via -r requirements-rag.in
     # from https://pypi.org/simple
 python-dateutil==2.9.0.post0 \
@@ -1906,9 +1906,9 @@ tiktoken==0.13.0 \
     --hash=sha256:fc1c44cd37b43fc46bae593129164f4f281e82ea116b57a85aa81bda57eafc94
     # via -r requirements-rag.in
     # from https://pypi.org/simple
-tqdm==4.68.4 \
-    --hash=sha256:19829c9673638f2a0b8617da4cdcb927e831cd88bcfcb6e78d42a4d1af131520 \
-    --hash=sha256:5168118b2368f48c561afda8020fd79195b1bdb0bdf8086b88442c267a315dc2
+tqdm==4.69.0 \
+    --hash=sha256:700c5e85dcd5f009dd6222588a29180a193a748247a5d855b4d67db93d79a53b \
+    --hash=sha256:9979978912be667a6ef21fd5d8abf54e324e63d82f7f43c360792ebc2bc4e622
     # via
     #   openai
     #   semchunk
