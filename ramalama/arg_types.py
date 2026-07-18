@@ -82,6 +82,7 @@ class ChatSubArgsType(Protocol):
     url: str
     color: COLOR_OPTIONS
     list: bool
+    attachments: Optional[List[PathStr]]
     model: Optional[str]
     rag: Optional[str]
     api_key: Optional[str]
