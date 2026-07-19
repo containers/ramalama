@@ -8,7 +8,7 @@ import pytest
 from test.e2e.utils import RamalamaExecWorkspace
 
 GGUF_MODEL = "ollama://tinyllama"
-_HF_ENDPOINT = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
+_HF_ENDPOINT = os.environ.get("HF_ENDPOINT", "").rstrip("/") or "https://huggingface.co"
 ST_MODEL = f"{_HF_ENDPOINT}/LiheYoung/depth-anything-small-hf/resolve/main/model.safetensors"
 _ST_SCHEME = _HF_ENDPOINT.split("://")[0]
 
