@@ -396,7 +396,7 @@ jobs:
 
       - name: Install crane
         if: steps.hf.outputs.has_token != 'true' && steps.hfmirror-cache.outputs.cache-hit != 'true'
-        uses: imjasonh/setup-crane@v0.4
+        uses: imjasonh/setup-crane@v0.7
 
       - name: Extract models from container image
         if: steps.hf.outputs.has_token != 'true' && steps.hfmirror-cache.outputs.cache-hit != 'true'
