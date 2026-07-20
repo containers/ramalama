@@ -6,7 +6,7 @@ import pytest
 
 from ramalama.cli import parse_args_from_cmd
 from ramalama.config import DEFAULT_PI_IMAGE
-from ramalama.sandbox import Goose, OpenCode, Pi, _pi_provider_id
+from ramalama.sandbox import Agent, Goose, OpenCode, Pi, _pi_provider_id, _run_sandbox_router
 
 TEST_MODEL = "qwen3:4b"
 
@@ -95,6 +95,15 @@ def test_sandbox_multiple_models(agent):
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL, TEST_MODEL])
     assert isinstance(args.MODEL, list)
     assert len(args.MODEL) == 2
+
+
+@pytest.mark.parametrize("models", [[], [TEST_MODEL, TEST_MODEL]])
+def test_sandbox_external_url_requires_one_model(models):
+    """An external endpoint still requires exactly one model selection."""
+    _, args = parse_args_from_cmd(["sandbox", "goose", *models, "--url", "http://model.example"])
+    args.container = True
+    with pytest.raises(ValueError, match="with --url requires exactly one model"):
+        args.func(args)
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
@@ -319,6 +328,7 @@ def test_pi_provider_id():
     """Pi provider id should be the pi-llama-server extension's registered name."""
     assert _pi_provider_id() == "llama-server"
 
+
 def test_pi_default_image():
     """Pi subcommand should provide a default pi image"""
     _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
@@ -416,12 +426,11 @@ def test_pi_args():
 
 
 def test_goose_router_mode():
-    """Goose should omit GOOSE_MODEL in router mode (empty model_name)"""
+    """Goose should use the model selected by the router."""
     args = _make_args()
-    goose = Goose(args, "")
+    goose = Goose(args, "model-a")
     cmd = goose.engine.exec_args
-    for arg in cmd:
-        assert not arg.startswith("GOOSE_MODEL="), "GOOSE_MODEL should not be set in router mode"
+    assert "GOOSE_MODEL=model-a" in cmd
 
 
 def test_opencode_router_mode():
@@ -444,10 +453,10 @@ def test_opencode_router_mode():
     assert "model-b" in models
 
 
-def test_opencode_router_mode_no_models():
-    """OpenCode should omit model-specific config when no models discovered"""
+def test_opencode_router_mode_dryrun_model():
+    """OpenCode should configure the placeholder model used for router dry runs."""
     args = _make_opencode_args()
-    opencode = OpenCode(args, "")
+    opencode = OpenCode(args, "dummy")
     cmd = opencode.engine.exec_args
     config_arg = None
     for arg in cmd:
@@ -457,17 +466,47 @@ def test_opencode_router_mode_no_models():
     assert config_arg is not None
     config_json = config_arg.split("=", 1)[1]
     config = json.loads(config_json)
-    assert "model" not in config
-    assert "models" not in config["provider"]["ramalama"]
+    assert config["model"] == "ramalama/dummy"
+    assert config["provider"]["ramalama"]["models"] == {"dummy": {"name": "dummy"}}
 
 
 def test_pi_router_mode():
-    """Pi should omit --model in router mode (empty model_name)"""
+    """Pi should use the model selected by the router."""
     args = _make_pi_args()
-    pi = Pi(args, "")
+    pi = Pi(args, "model-a")
     cmd = pi.engine.exec_args
-    assert "--model" not in cmd
+    assert cmd[cmd.index("--model") + 1] == "model-a"
     assert "--provider" in cmd
+
+
+def test_router_dryrun_uses_nonempty_model(monkeypatch):
+    """Router dry runs should build agents with a representative model name."""
+    selected: dict[str, str] = {}
+
+    class DryRunAgent:
+        def __init__(self, args, model_name):
+            selected["model_name"] = model_name
+            self.engine = SimpleNamespace(dryrun=lambda: None)
+
+    runtime = SimpleNamespace(serve_router_nonblocking=lambda args: None)
+    monkeypatch.setattr("ramalama.sandbox.get_runtime", lambda runtime_name: runtime)
+
+    _run_sandbox_router(SimpleNamespace(dryrun=True), DryRunAgent)  # type: ignore[arg-type]
+
+    assert selected["model_name"] == "dummy"
+
+
+def test_router_requires_discovered_model_ids(monkeypatch):
+    """Router startup should fail if the server exposes no usable model IDs."""
+    runtime = SimpleNamespace(serve_router_nonblocking=lambda args: None)
+    monkeypatch.setattr("ramalama.sandbox.get_runtime", lambda runtime_name: runtime)
+    monkeypatch.setattr("ramalama.sandbox.wait_for_healthy", lambda args, check: None)
+    monkeypatch.setattr("ramalama.sandbox._query_router_models", lambda port: [])
+    monkeypatch.setattr("ramalama.sandbox.stop_container", lambda *args, **kwargs: None)
+    args = SimpleNamespace(dryrun=False, port=8080, name="router")
+
+    with pytest.raises(AssertionError, match="router model discovery returned no model IDs"):
+        _run_sandbox_router(args, Agent)  # type: ignore[arg-type]
 
 
 def test_sandbox_prompt_option():

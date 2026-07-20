@@ -205,8 +205,7 @@ class Goose(Agent):
         self.engine.add_env_option("GOOSE_PROVIDER=openai")
         self.engine.add_env_option(f"OPENAI_HOST={args.url}")
         self.engine.add_env_option(f"OPENAI_API_KEY={args.api_key}")
-        if self.model_name:
-            self.engine.add_env_option(f"GOOSE_MODEL={self.model_name}")
+        self.engine.add_env_option(f"GOOSE_MODEL={self.model_name}")
         self.engine.add_env_option("GOOSE_TELEMETRY_ENABLED=false")
         self.engine.add_env_option("GOOSE_CLI_SHOW_THINKING=true")
 
@@ -249,7 +248,7 @@ class OpenCode(Agent):
         router_model_ids = getattr(args, "router_model_ids", None)
         if router_model_ids:
             provider_config["models"] = {mid: {"name": mid} for mid in router_model_ids}
-        elif self.model_name:
+        else:
             provider_config["models"] = {
                 self.model_name: {
                     "name": self.model_name,
@@ -261,8 +260,7 @@ class OpenCode(Agent):
                 "ramalama": provider_config,
             },
         }
-        if self.model_name:
-            config["model"] = f"ramalama/{self.model_name}"
+        config["model"] = f"ramalama/{self.model_name}"
         self.engine.add_env_option(f"OPENCODE_CONFIG_CONTENT={json.dumps(config)}")
 
 
@@ -285,9 +283,7 @@ class Pi(Agent):
         self.add_provider_discovery_env(args)
         self.engine.add_workdir(args)
         self.engine.add_args(args.pi_image)
-        pi_args = ["--provider", provider_id]
-        if self.model_name:
-            pi_args += ["--model", self.model_name]
+        pi_args = ["--provider", provider_id, "--model", self.model_name]
         if args.ARGS:
             pi_args += ["-p", args.ARGS]
         self.engine.add(pi_args)
@@ -321,8 +317,10 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
     models: list[str] = list(args.MODEL)  # type: ignore[arg-type]
 
     if not sb_args.start_model_server:
+        if len(models) != 1:
+            raise ValueError("ramalama sandbox with --url requires exactly one model")
         sb_args.name = sb_args.name or genname()
-        model_name = models[0] if len(models) == 1 else ""
+        model_name = models[0]
         if sb_args.dryrun:
             agent = agent_cls(sb_args, model_name)
             agent.engine.dryrun()
@@ -396,7 +394,7 @@ def _run_sandbox_router(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> 
     serve_router(cast(argparse.Namespace, args))
 
     if args.dryrun:
-        agent = agent_cls(args, "")
+        agent = agent_cls(args, "dummy")
         agent.engine.dryrun()
         return
 
@@ -407,7 +405,8 @@ def _run_sandbox_router(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> 
             raise ValueError("Router mode requires a resolved serving port")
         model_ids = _query_router_models(args.port)
         args.router_model_ids = model_ids  # type: ignore[attr-defined]
-        first_model = model_ids[0] if model_ids else ""
+        assert model_ids, "router model discovery returned no model IDs"
+        first_model = model_ids[0]
 
         agent = agent_cls(args, first_model)
         agent.run()
