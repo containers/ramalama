@@ -387,7 +387,7 @@ jobs:
         shell: bash
         run: ./.github/scripts/install-ollama.sh
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         if: steps.hf.outputs.has_token != 'true'
         id: hfmirror-cache
         with:
