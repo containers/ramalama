@@ -97,12 +97,12 @@ def test_sandbox_multiple_models(agent):
     assert len(args.MODEL) == 2
 
 
-@pytest.mark.parametrize("models", [[], [TEST_MODEL, TEST_MODEL]])
+@pytest.mark.parametrize("models", [[TEST_MODEL, TEST_MODEL]])
 def test_sandbox_external_url_requires_one_model(models):
-    """An external endpoint still requires exactly one model selection."""
+    """An external endpoint still requires one or no model selection."""
     _, args = parse_args_from_cmd(["sandbox", "goose", *models, "--url", "http://model.example"])
     args.container = True
-    with pytest.raises(ValueError, match="with --url requires exactly one model"):
+    with pytest.raises(ValueError, match="with --url requires one or no model"):
         args.func(args)
 
 

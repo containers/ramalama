@@ -310,8 +310,9 @@ def test_sandbox_using_url(caplog, agent):
                     agent,
                     "--url",
                     f"http://host.containers.internal:{container_port}",
-                    model,
+                    "--prompt",
                     "Hello",
+                    model,
                 ],
                 stderr=subprocess.STDOUT,
             )
@@ -344,10 +345,67 @@ def test_sandbox_with_embedded_model_server(caplog, agent):
                 "ramalama",
                 "sandbox",
                 agent,
-                TEST_MODEL,
+                "--prompt",
                 "Hello",
+                TEST_MODEL,
             ],
             stderr=subprocess.STDOUT,
         )
 
         assert "Hi" in result or "Hello" in result or "help" in result or "today" in result or "assistant" in result
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_docker
+@skip_if_no_container
+@skip_if_ppc64le
+@skip_if_s390x
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_url_infer_model(caplog, agent):
+    """Sandbox should work with --url even without model argument."""
+    caplog.set_level(logging.CRITICAL, logger="requests")
+    caplog.set_level(logging.CRITICAL, logger="urllib3")
+
+    with RamalamaExecWorkspace() as serve_ctx:
+        serve_ctx.check_call(["ramalama", "pull", TEST_MODEL])
+
+        container_name = f"api{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
+        container_port = random.randint(64000, 65000)
+
+        serve_ctx.check_output(
+            [
+                "ramalama",
+                "serve",
+                "-d",
+                "--name",
+                container_name,
+                "--port",
+                str(container_port),
+                TEST_MODEL,
+            ],
+            stderr=subprocess.STDOUT,
+        )
+
+        # Discover the model name from the API (used by test_sandbox_using_url)
+        models = requests.get(f"http://localhost:{container_port}/models", timeout=60).json()
+        assert len(models["models"]) == 1
+
+        try:
+            with RamalamaExecWorkspace() as sandbox_ctx:
+                result = sandbox_ctx.check_output(
+                    [
+                        "ramalama",
+                        "sandbox",
+                        agent,
+                        "--port",
+                        str(container_port),
+                        "--prompt",
+                        "Hello",
+                    ],
+                    stderr=subprocess.STDOUT,
+                )
+
+            assert "Hi" in result or "Hello" in result or "help" in result or "today" in result or "assistant" in result
+        finally:
+            serve_ctx.check_call(["ramalama", "stop", container_name])

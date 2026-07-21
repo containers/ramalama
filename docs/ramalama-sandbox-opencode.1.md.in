@@ -11,7 +11,10 @@ Run OpenCode in a container, connected to a local model server also running
 in a container. OpenCode uses the model for reasoning and tool calling.
 
 When a single model is specified, the server loads that model directly.
-When zero or multiple models are specified, the server starts in router mode
+When no model is given the command gets the list of models from the
+model-server via the **--url** (default: http://localhost:{port})
+and takes the first model.
+When multiple models are specified, the server starts in router mode
 using llama.cpp's --models-dir, dynamically loading and unloading models.
 With no models, all GGUF models in the store are served.
 
