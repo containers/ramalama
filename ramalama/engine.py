@@ -18,6 +18,7 @@ from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import ActiveConfig
+from ramalama.host_utils import format_bind_host_for_connection, format_bind_host_publish_prefix
 from ramalama.logger import logger
 from ramalama.path_utils import normalize_host_path_for_container
 
@@ -213,13 +214,7 @@ class Engine(BaseEngine):
 
         # Convert port to string for processing
         port_str = str(port)
-        host = getattr(self.args, "host", "::").strip("[]")
-        if host == "::":
-            host = ""
-        elif ":" in host:
-            host = f"[{host}]:"
-        else:
-            host = f"{host}:"
+        host = format_bind_host_publish_prefix(getattr(self.args, "host", "::"))
         if ":" in port_str:
             self.add_args("-p", f"{host}{port_str}")
         else:
@@ -493,13 +488,11 @@ def is_healthy(args, timeout: int = 3, model_name: Optional[str] = None):
     """Check if the runtime server is healthy by delegating to the runtime plugin."""
     from ramalama.plugins.loader import get_runtime
 
-    bind_host = getattr(args, "host", "127.0.0.1").strip("[]")
-    # use IPv4 loopback when binding to a wildcard address
-    ip_address = "127.0.0.1" if bind_host in ("0.0.0.0", "::") else bind_host
+    bind_host = format_bind_host_for_connection(getattr(args, "host", "127.0.0.1"))
 
     conn = None
     try:
-        conn = HTTPConnection(ip_address, args.port, timeout=timeout)
+        conn = HTTPConnection(bind_host, args.port, timeout=timeout)
         if getattr(args, "debug", False):
             conn.set_debuglevel(1)
         return get_runtime(ActiveConfig().runtime).service_ready_check(conn, args, model_name)
