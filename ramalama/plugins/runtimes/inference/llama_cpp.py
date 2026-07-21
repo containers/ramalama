@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import shutil
+import subprocess
 import sys
 import tempfile
 from collections.abc import Mapping
@@ -86,6 +87,10 @@ class LlamaCppConfig:
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE  # type: ignore[assignment]
     ngl: Optional[str] = None
     ncmoe: Optional[int] = None
+    spec_type: Optional[str] = None
+    spec_draft_n_max: Optional[int] = None
+    spec_draft_n_min: Optional[int] = None
+    spec_draft_p_min: Optional[float] = None
     temp: float = 0.8
     thinking: Optional[bool] = None
     threads: int = field(default_factory=_default_threads)
@@ -97,6 +102,14 @@ class LlamaCppConfig:
             self.ngl = str(self.ngl)
         if self.ncmoe is not None:
             self.ncmoe = int(self.ncmoe)
+        if self.spec_type is not None:
+            self.spec_type = str(self.spec_type)
+        if self.spec_draft_n_max is not None:
+            self.spec_draft_n_max = int(self.spec_draft_n_max)
+        if self.spec_draft_n_min is not None:
+            self.spec_draft_n_min = int(self.spec_draft_n_min)
+        if self.spec_draft_p_min is not None:
+            self.spec_draft_p_min = float(self.spec_draft_p_min)
         self.temp = float(self.temp)
         self.threads = int(self.threads)
         if self.thinking is not None:
@@ -265,7 +278,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             args.image = ensure_image(
                 args.engine, args.image, should_pull=should_pull, quiet=getattr(args, "quiet", False)
             )
-        engine.add_args(args.image)
         args = copy.copy(args)
         args.subcommand = "quantize"
         engine.add_container_image(args.image, self._cmd_quantize(args))
@@ -301,7 +313,6 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         except ValueError:
             logger.debug(f"{self.name} {container_name} /models does not include a model list in the response")
             return False
-
         if not model_name:
             if hasattr(args, 'MODEL') and isinstance(args.MODEL, str):
                 model_name = New(args.MODEL, args).model_alias
@@ -441,7 +452,39 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 help="enable/disable thinking mode in reasoning models",
                 action=CoerceToBool,
             )
+            # TODO: vllm also supports draft/speculative models; refactor to common args
             parser.add_argument("--model-draft", help="Draft model", completer=local_models)
+            parser.add_argument(
+                "--spec-type",
+                dest="spec_type",
+                default=None,
+                help="speculative decoding type(s), comma-separated (e.g. draft-mtp, draft-simple, ngram-simple)",
+                completer=suppressCompleter,
+            )
+            parser.add_argument(
+                "--spec-draft-n-max",
+                dest="spec_draft_n_max",
+                type=int,
+                default=None,
+                help="max number of tokens to draft for speculative decoding (default: 3)",
+                completer=suppressCompleter,
+            )
+            parser.add_argument(
+                "--spec-draft-n-min",
+                dest="spec_draft_n_min",
+                type=int,
+                default=None,
+                help="min number of draft tokens for speculative decoding (default: 0)",
+                completer=suppressCompleter,
+            )
+            parser.add_argument(
+                "--spec-draft-p-min",
+                dest="spec_draft_p_min",
+                type=float,
+                default=None,
+                help="min speculative decoding probability (default: 0.0)",
+                completer=suppressCompleter,
+            )
         self._add_threads_arg(parser)
         if command == "serve":
             parser.add_argument(
@@ -496,13 +539,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         super()._serve_handler(args)
 
-    def _serve_router(self, args: argparse.Namespace) -> None:
-        """Serve multiple models using llama.cpp router mode (container-only)."""
+    def _build_router_engine(self, args: argparse.Namespace) -> Engine:
+        """Resolve models and build an Engine with bind mounts for router mode."""
         if not args.container:
             sys.exit("Error: multi-model router mode requires a container runtime.")
 
         set_accel_env_vars()
-        args.port = compute_serving_port(args)
         args.router_mode = True
 
         if args.MODEL:
@@ -520,27 +562,45 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if not models:
             sys.exit("Error: no GGUF models found in the model store. Pull a model first with: ramalama pull <model>")
 
-        if args.container and not args.dryrun:
+        if not args.dryrun and not getattr(args, "image", None):
             config = ActiveConfig()
             should_pull = config.pull in ["always", "missing", "newer"]
             args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
 
-        cmd = assemble_command(args)
+        cmd = self.handle_subcommand("serve", args)
         engine = Engine(args)
         name = getattr(args, "name", None) or genname()
+        args.name = name
         engine.add(["--label", "ai.ramalama", "--name", name, "--env=HOME=/tmp", "--init"])
 
         for host_path, container_name in models:
             mount_path = f"/mnt/models/{container_name}"
             container_host_path = get_container_mount_path(host_path)
-            engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro"])
+            engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro{engine.relabel()}"])
 
         engine.add([args.image] + cmd)
+        return engine
+
+    def _serve_router(self, args: argparse.Namespace) -> None:
+        """Serve multiple models using llama.cpp router mode (container-only)."""
+        args.port = compute_serving_port(args)
+        engine = self._build_router_engine(args)
 
         if args.dryrun:
             engine.dryrun()
             return
         engine.exec()
+
+    def serve_router_nonblocking(self, args: argparse.Namespace) -> None:
+        """Start the router-mode server non-blocking (for sandbox use)."""
+        args.detach = True
+        engine = self._build_router_engine(args)
+
+        if args.dryrun:
+            engine.dryrun()
+            return
+
+        subprocess.Popen(engine.exec_args)
 
     @staticmethod
     def _migrate_store_ref_files(store: Any) -> None:

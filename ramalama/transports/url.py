@@ -69,7 +69,15 @@ class URL(Transport):
                 normalize_host_path_for_container(str(Path(self.model).parent)).removeprefix("/"),
             )
 
+        # Strip port from host:port so ':' isn't mistaken for a tag separator
+        saved_model = self.model
+        if self.type in ("http", "https"):
+            host_and_rest = self.model.split("/", 1)
+            host_and_rest[0] = host_and_rest[0].split(":")[0]
+            self.model = "/".join(host_and_rest)
+
         model_name, model_tag, model_organization = super().extract_model_identifiers()
+        self.model = saved_model
 
         parts = model_organization.split("/")
         if len(parts) > 2 and parts[-2] == "blob":

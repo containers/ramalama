@@ -60,7 +60,7 @@ dev = [
     "argcomplete~=3.0",
     "bcrypt",
     "codespell~=2.0",
-    "huggingface_hub~=1.22.0;python_version>=\"3.10\"",
+    "huggingface_hub~=1.24.0;python_version>=\"3.10\"",
     "hypothesis>=6.135.26",
     "pytest~=9.0;python_version>=\"3.10\"",
     "pytest~=8.0;python_version<\"3.10\"",
@@ -190,6 +190,7 @@ package = "wheel"
 extras = ["dev", "cov"]
 pass_env = [
   "GITHUB_ACTIONS",
+  "HF_ENDPOINT",
   "HF_TOKEN",
   "RAMALAMA_*",
 ]

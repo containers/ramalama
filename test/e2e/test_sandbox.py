@@ -1,9 +1,20 @@
+import logging
+import random
 import re
+import string
 import subprocess
 
 import pytest
+import requests
 
-from test.conftest import skip_if_no_container, skip_if_not_windows, skip_if_ppc64le, skip_if_s390x, skip_if_windows
+from test.conftest import (
+    skip_if_docker,
+    skip_if_no_container,
+    skip_if_not_windows,
+    skip_if_ppc64le,
+    skip_if_s390x,
+    skip_if_windows,
+)
 from test.e2e.utils import RamalamaExecWorkspace, check_output
 
 TEST_MODEL = "qwen3.5:4b"
@@ -38,7 +49,7 @@ def sandbox_ctx():
     [
         ["goose", r"run -i -\s*$"],
         ["opencode", r"run --thinking=true\s*$"],
-        ["pi", r"--provider llama-server=http://localhost:\d+\s+--model\s+\S+"],
+        ["pi", r"--provider llama-server\s+--model\s+\S+"],
     ],
 )
 def test_sandbox_dryrun_default(agent, cmd):
@@ -83,6 +94,24 @@ def test_sandbox_dryrun_custom_workdir(agent):
     result = check_output(_dryrun_cmd(agent) + ["-w", "/tmp"])
     assert "/tmp:/work:rw" in result
     assert "--workdir=/work" in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_dryrun_url(agent):
+    """--url should overwrite the openai endpoint url."""
+    result = check_output(_dryrun_cmd(agent) + ["--url", "http://model.server.local:8321/"])
+    assert "http://model.server.local:8321" in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_dryrun_port(agent):
+    """--port should overwrite the default port for the localhost endpoint."""
+    result = check_output(_dryrun_cmd(agent) + ["--port", "8321"])
+    assert "http://localhost:8321" in result
 
 
 # --- Goose-specific dryrun tests ---
@@ -157,7 +186,7 @@ def test_sandbox_dryrun_pi_env_vars():
     """Dryrun output should include Pi environment and provider configuration."""
     result = check_output(_dryrun_cmd("pi"))
     assert re.search(r"LLAMA_SERVER_URL=http://localhost:\d+", result)
-    assert re.search(r"--provider llama-server=http://localhost:\d+", result)
+    assert re.search(r"--provider llama-server", result)
 
 
 @pytest.mark.e2e
@@ -179,7 +208,7 @@ def test_sandbox_dryrun_pi_custom_image():
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_run(sandbox_ctx, agent):
     """Agent should run successfully."""
-    result = sandbox_ctx.check_output(["ramalama", "sandbox", agent, "--thinking=off", TEST_MODEL, "hi"])
+    result = sandbox_ctx.check_output(["ramalama", "sandbox", agent, "--thinking=off", "--prompt", "hi", TEST_MODEL])
     assert result
 
 
@@ -195,13 +224,19 @@ def test_sandbox_run_cmdline(sandbox_ctx, tmp_path, container_engine, agent):
     # local user's directory under docker
     if container_engine == "docker":
         tmp_path.chmod(0o777)
-    # fmt: off
     result = sandbox_ctx.check_output(
         [
-            "ramalama", "sandbox", agent, "-w", tmp_path, "--seed=1", "--temp=0", TEST_MODEL,
-            "Please", "create", "a", "pyproject.toml", "for", "a", "project", "called",
-            "ramalama", "and", "write", "it", "to", "the", "current", "directory.",
-            "Ensure", "it", "contains", "a", "project", "section.",
+            "ramalama",
+            "sandbox",
+            agent,
+            "-w",
+            tmp_path,
+            "--seed=1",
+            "--temp=0",
+            "--prompt",
+            "Please create a pyproject.toml for a project called ramalama "
+            "and write it to the current directory. Ensure it contains a project section.",
+            TEST_MODEL,
         ]
     )
     pyproject = tmp_path / "pyproject.toml"
@@ -226,3 +261,93 @@ def test_sandbox_run_stdin(sandbox_ctx, tmp_path, agent):
         ["ramalama", "sandbox", agent, "--thinking=off", "--seed=1", "--temp=0", TEST_MODEL], stdin=fpath.open()
     )
     assert "42" in result
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_docker
+@skip_if_no_container
+@skip_if_ppc64le
+@skip_if_s390x
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_using_url(caplog, agent):
+    # Configure logging for requests
+    caplog.set_level(logging.CRITICAL, logger="requests")
+    caplog.set_level(logging.CRITICAL, logger="urllib3")
+
+    with RamalamaExecWorkspace() as ctx:
+        # Pull model
+        ctx.check_call(["ramalama", "pull", TEST_MODEL])
+
+        # Serve an API
+        container_name = f"api{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
+        container_port = random.randint(64000, 65000)
+
+        ctx.check_output(
+            [
+                "ramalama",
+                "serve",
+                "-d",
+                "--name",
+                container_name,
+                "--port",
+                str(container_port),
+                TEST_MODEL,
+            ],
+            stderr=subprocess.STDOUT,
+        )
+
+        try:
+            # Inspect the models API
+            models = requests.get(f"http://localhost:{container_port}/models", timeout=60).json()
+            assert len(models["models"]) == 1
+            model = models["models"][0]["name"]
+
+            result = ctx.check_output(
+                [
+                    "ramalama",
+                    "sandbox",
+                    agent,
+                    "--url",
+                    f"http://host.containers.internal:{container_port}",
+                    model,
+                    "Hello",
+                ],
+                stderr=subprocess.STDOUT,
+            )
+
+            assert "Hi" in result or "Hello" in result or "help" in result or "today" in result or "assistant" in result
+
+        finally:
+            # Stop container
+            ctx.check_call(["ramalama", "stop", container_name])
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_docker
+@skip_if_no_container
+@skip_if_ppc64le
+@skip_if_s390x
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_with_embedded_model_server(caplog, agent):
+    # Configure logging for requests
+    caplog.set_level(logging.CRITICAL, logger="requests")
+    caplog.set_level(logging.CRITICAL, logger="urllib3")
+
+    with RamalamaExecWorkspace() as ctx:
+        # Pull model
+        ctx.check_call(["ramalama", "pull", TEST_MODEL])
+
+        result = ctx.check_output(
+            [
+                "ramalama",
+                "sandbox",
+                agent,
+                TEST_MODEL,
+                "Hello",
+            ],
+            stderr=subprocess.STDOUT,
+        )
+
+        assert "Hi" in result or "Hello" in result or "help" in result or "today" in result or "assistant" in result

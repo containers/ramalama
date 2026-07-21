@@ -5,7 +5,8 @@ from unittest.mock import patch
 import pytest
 
 from ramalama.cli import parse_args_from_cmd
-from ramalama.sandbox import DEFAULT_PI_IMAGE, Goose, OpenCode, Pi, _pi_provider_id
+from ramalama.config import DEFAULT_PI_IMAGE
+from ramalama.sandbox import Agent, Goose, OpenCode, Pi, _pi_provider_id, _run_sandbox_router
 
 TEST_MODEL = "qwen3:4b"
 
@@ -17,8 +18,9 @@ def _make_args(engine="podman"):
         dryrun=False,
         quiet=True,
         goose_image="ghcr.io/aaif-goose/goose:latest",
+        api_key="ramalama",
         name="ramalama_model_abc",
-        port="8080",
+        url="http://localhost:8080",
         thinking=False,
         workdir=None,
         subcommand="sandbox",
@@ -33,8 +35,9 @@ def _make_opencode_args(engine="podman"):
         dryrun=False,
         quiet=True,
         opencode_image="ghcr.io/anomalyco/opencode:latest",
+        api_key="secret",
         name="ramalama_model_abc",
-        port="8080",
+        url="http://localhost:8080",
         thinking=False,
         workdir=None,
         subcommand="sandbox",
@@ -49,8 +52,9 @@ def _make_pi_args(engine="podman"):
         dryrun=False,
         quiet=True,
         pi_image=DEFAULT_PI_IMAGE,
+        api_key="secret",
         name="ramalama_model_abc",
-        port="8080",
+        url="http://localhost:8080",
         thinking=False,
         workdir=None,
         subcommand="sandbox",
@@ -74,7 +78,32 @@ def _agent_args(agent):
 def test_sandbox_model_positional(agent):
     """Sandbox cli should accept a model as a positional argument"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
-    assert args.MODEL == "hf://bartowski/Qwen_Qwen3-4B-GGUF"
+    assert isinstance(args.MODEL, list)
+    assert len(args.MODEL) == 1
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_no_model(agent):
+    """Sandbox cli should accept no model (router mode)"""
+    _, args = parse_args_from_cmd(["sandbox", agent])
+    assert args.MODEL == []
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_multiple_models(agent):
+    """Sandbox cli should accept multiple models (router mode)"""
+    _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL, TEST_MODEL])
+    assert isinstance(args.MODEL, list)
+    assert len(args.MODEL) == 2
+
+
+@pytest.mark.parametrize("models", [[], [TEST_MODEL, TEST_MODEL]])
+def test_sandbox_external_url_requires_one_model(models):
+    """An external endpoint still requires exactly one model selection."""
+    _, args = parse_args_from_cmd(["sandbox", "goose", *models, "--url", "http://model.example"])
+    args.container = True
+    with pytest.raises(ValueError, match="with --url requires exactly one model"):
+        args.func(args)
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
@@ -224,9 +253,9 @@ def test_goose_no_tty(monkeypatch):
 def test_goose_args():
     """Goose should run "run -t" when args are passed on the command-line"""
     args = _make_args()
-    args.ARGS = ["hello", "ramalama"]
+    args.ARGS = "hello ramalama"
     goose = Goose(args, "test-model")
-    assert goose.engine.exec_args[-3:] == ["run", "-t", " ".join(args.ARGS)]
+    assert goose.engine.exec_args[-3:] == ["run", "-t", "hello ramalama"]
 
 
 # --- OpenCode-specific tests ---
@@ -263,7 +292,7 @@ def test_opencode_env_vars():
     assert config["model"] == "ramalama/Qwen3-4B-Q4_K_M"
     assert config["provider"]["ramalama"]["npm"] == "@ai-sdk/openai-compatible"
     assert config["provider"]["ramalama"]["options"]["baseURL"] == "http://localhost:8080/v1"
-    assert config["provider"]["ramalama"]["options"]["apiKey"] == "ramalama"
+    assert config["provider"]["ramalama"]["options"]["apiKey"] == "secret"
     assert "Qwen3-4B-Q4_K_M" in config["provider"]["ramalama"]["models"]
 
 
@@ -287,23 +316,17 @@ def test_opencode_no_tty(monkeypatch):
 def test_opencode_args():
     """OpenCode should run "run <message>" when args are passed on the command-line"""
     args = _make_opencode_args()
-    args.ARGS = ["hello", "ramalama"]
+    args.ARGS = "hello ramalama"
     opencode = OpenCode(args, "test-model")
-    assert opencode.engine.exec_args[-4:] == ["run", "--thinking=true", "hello", "ramalama"]
+    assert opencode.engine.exec_args[-3:] == ["run", "--thinking=true", "hello ramalama"]
 
 
 # --- Pi-specific tests ---
 
 
 def test_pi_provider_id():
-    """Pi provider id should be derived from the local llama.cpp server port."""
-    assert _pi_provider_id("8080") == "llama-server=http://localhost:8080"
-
-
-def test_pi_provider_id_requires_port():
-    """Pi provider id should reject a missing port."""
-    with pytest.raises(ValueError, match="requires a resolved serving port"):
-        _pi_provider_id(None)
+    """Pi provider id should be the pi-llama-server extension's registered name."""
+    assert _pi_provider_id() == "llama-server"
 
 
 def test_pi_default_image():
@@ -332,15 +355,15 @@ def test_pi_custom_image():
 
 
 def test_pi_env_vars():
-    """Pi should set LLAMA_SERVER_URL for pi-llama-cpp extension"""
+    """Pi should set LLAMA_SERVER_URL for pi-llama-server extension"""
     args = _make_pi_args()
     pi = Pi(args, "Qwen3-4B-Q4_K_M")
     cmd = pi.engine.exec_args
     assert "run" in cmd
     assert "--rm" in cmd
-    assert f"LLAMA_SERVER_URL=http://localhost:{args.port}" in cmd
+    assert f"LLAMA_SERVER_URL={args.url}" in cmd
     assert "--provider" in cmd
-    assert f"llama-server=http://localhost:{args.port}" in cmd
+    assert "llama-server" in cmd
     assert "--model" in cmd
     assert "Qwen3-4B-Q4_K_M" in cmd
 
@@ -352,12 +375,12 @@ def test_pi_entrypoint(monkeypatch):
     pi = Pi(args, "test-model")
     cmd = pi.engine.exec_args
     assert "--entrypoint" not in cmd
-    assert "pi install npm:pi-llama-cpp" not in cmd
+    assert "pi install npm:pi-llama-server" not in cmd
     assert "pi install npm:pi-web-access" not in cmd
     assert cmd[-5:] == [
         args.pi_image,
         "--provider",
-        f"llama-server=http://localhost:{args.port}",
+        "llama-server",
         "--model",
         "test-model",
     ]
@@ -371,7 +394,7 @@ def test_pi_with_tty(monkeypatch):
     assert pi.engine.exec_args[-5:] == [
         args.pi_image,
         "--provider",
-        f"llama-server=http://localhost:{args.port}",
+        "llama-server",
         "--model",
         "test-model",
     ]
@@ -385,7 +408,7 @@ def test_pi_no_tty(monkeypatch):
     assert pi.engine.exec_args[-5:] == [
         args.pi_image,
         "--provider",
-        f"llama-server=http://localhost:{args.port}",
+        "llama-server",
         "--model",
         "test-model",
     ]
@@ -394,6 +417,105 @@ def test_pi_no_tty(monkeypatch):
 def test_pi_args():
     """Pi should pass args as prompt when args are passed on the command-line"""
     args = _make_pi_args()
-    args.ARGS = ["hello", "ramalama"]
+    args.ARGS = "hello ramalama"
     pi = Pi(args, "test-model")
     assert pi.engine.exec_args[-2:] == ["-p", "hello ramalama"]
+
+
+# --- Router-mode agent tests ---
+
+
+def test_goose_router_mode():
+    """Goose should use the model selected by the router."""
+    args = _make_args()
+    goose = Goose(args, "model-a")
+    cmd = goose.engine.exec_args
+    assert "GOOSE_MODEL=model-a" in cmd
+
+
+def test_opencode_router_mode():
+    """OpenCode should populate models from router_model_ids when available"""
+    args = _make_opencode_args()
+    args.router_model_ids = ["model-a", "model-b"]
+    opencode = OpenCode(args, "model-a")
+    cmd = opencode.engine.exec_args
+    config_arg = None
+    for arg in cmd:
+        if arg.startswith("OPENCODE_CONFIG_CONTENT="):
+            config_arg = arg
+            break
+    assert config_arg is not None
+    config_json = config_arg.split("=", 1)[1]
+    config = json.loads(config_json)
+    assert config["model"] == "ramalama/model-a"
+    models = config["provider"]["ramalama"]["models"]
+    assert "model-a" in models
+    assert "model-b" in models
+
+
+def test_opencode_router_mode_dryrun_model():
+    """OpenCode should configure the placeholder model used for router dry runs."""
+    args = _make_opencode_args()
+    opencode = OpenCode(args, "dummy")
+    cmd = opencode.engine.exec_args
+    config_arg = None
+    for arg in cmd:
+        if arg.startswith("OPENCODE_CONFIG_CONTENT="):
+            config_arg = arg
+            break
+    assert config_arg is not None
+    config_json = config_arg.split("=", 1)[1]
+    config = json.loads(config_json)
+    assert config["model"] == "ramalama/dummy"
+    assert config["provider"]["ramalama"]["models"] == {"dummy": {"name": "dummy"}}
+
+
+def test_pi_router_mode():
+    """Pi should use the model selected by the router."""
+    args = _make_pi_args()
+    pi = Pi(args, "model-a")
+    cmd = pi.engine.exec_args
+    assert cmd[cmd.index("--model") + 1] == "model-a"
+    assert "--provider" in cmd
+
+
+def test_router_dryrun_uses_nonempty_model(monkeypatch):
+    """Router dry runs should build agents with a representative model name."""
+    selected: dict[str, str] = {}
+
+    class DryRunAgent:
+        def __init__(self, args, model_name):
+            selected["model_name"] = model_name
+            self.engine = SimpleNamespace(dryrun=lambda: None)
+
+    runtime = SimpleNamespace(serve_router_nonblocking=lambda args: None)
+    monkeypatch.setattr("ramalama.sandbox.get_runtime", lambda runtime_name: runtime)
+
+    _run_sandbox_router(SimpleNamespace(dryrun=True), DryRunAgent)  # type: ignore[arg-type]
+
+    assert selected["model_name"] == "dummy"
+
+
+def test_router_requires_discovered_model_ids(monkeypatch):
+    """Router startup should fail if the server exposes no usable model IDs."""
+    runtime = SimpleNamespace(serve_router_nonblocking=lambda args: None)
+    monkeypatch.setattr("ramalama.sandbox.get_runtime", lambda runtime_name: runtime)
+    monkeypatch.setattr("ramalama.sandbox.wait_for_healthy", lambda args, check: None)
+    monkeypatch.setattr("ramalama.sandbox._query_router_models", lambda port: [])
+    monkeypatch.setattr("ramalama.sandbox.stop_container", lambda *args, **kwargs: None)
+    args = SimpleNamespace(dryrun=False, port=8080, name="router")
+
+    with pytest.raises(AssertionError, match="router model discovery returned no model IDs"):
+        _run_sandbox_router(args, Agent)  # type: ignore[arg-type]
+
+
+def test_sandbox_prompt_option():
+    """Sandbox cli should accept --prompt for non-interactive instructions"""
+    _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL, "--prompt", "hello world"])
+    assert args.ARGS == "hello world"
+
+
+def test_sandbox_prompt_default_none():
+    """Sandbox cli should default ARGS to None when --prompt is not specified"""
+    _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
+    assert args.ARGS is None

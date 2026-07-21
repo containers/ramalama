@@ -29,7 +29,7 @@ sudo dnf install python3-huggingface-hub
 
 def huggingface_endpoint() -> str:
     """Return Hugging Face base URL from HF_ENDPOINT env var, defaulting to https://huggingface.co"""
-    return os.environ.get("HF_ENDPOINT", HuggingfaceRepository.REGISTRY_URL).rstrip("/")
+    return os.environ.get("HF_ENDPOINT", "").rstrip("/") or HuggingfaceRepository.REGISTRY_URL
 
 
 def huggingface_token() -> str | None:

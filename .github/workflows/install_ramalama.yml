@@ -22,6 +22,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
+      - name: Check HF token
+        id: hf
+        run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
       - name: Set Up Dependencies (Ubuntu)
         timeout-minutes: 20
         if: matrix.os == 'ubuntu-latest'
@@ -50,6 +54,7 @@ jobs:
           ramalama info
 
       - name: RamaLama pull
+        if: steps.hf.outputs.has_token == 'true'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
