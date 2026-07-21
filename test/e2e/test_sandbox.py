@@ -49,7 +49,7 @@ def sandbox_ctx():
     [
         ["goose", r"run -i -\s*$"],
         ["opencode", r"run --thinking=true\s*$"],
-        ["pi", r"--provider llama-server=http://localhost:\d+\s+--model\s+\S+"],
+        ["pi", r"--provider llama-server\s+--model\s+\S+"],
     ],
 )
 def test_sandbox_dryrun_default(agent, cmd):
@@ -186,7 +186,7 @@ def test_sandbox_dryrun_pi_env_vars():
     """Dryrun output should include Pi environment and provider configuration."""
     result = check_output(_dryrun_cmd("pi"))
     assert re.search(r"LLAMA_SERVER_URL=http://localhost:\d+", result)
-    assert re.search(r"--provider llama-server=http://localhost:\d+", result)
+    assert re.search(r"--provider llama-server", result)
 
 
 @pytest.mark.e2e
@@ -208,7 +208,7 @@ def test_sandbox_dryrun_pi_custom_image():
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_run(sandbox_ctx, agent):
     """Agent should run successfully."""
-    result = sandbox_ctx.check_output(["ramalama", "sandbox", agent, "--thinking=off", TEST_MODEL, "hi"])
+    result = sandbox_ctx.check_output(["ramalama", "sandbox", agent, "--thinking=off", "--prompt", "hi", TEST_MODEL])
     assert result
 
 
@@ -224,13 +224,19 @@ def test_sandbox_run_cmdline(sandbox_ctx, tmp_path, container_engine, agent):
     # local user's directory under docker
     if container_engine == "docker":
         tmp_path.chmod(0o777)
-    # fmt: off
     result = sandbox_ctx.check_output(
         [
-            "ramalama", "sandbox", agent, "-w", tmp_path, "--seed=1", "--temp=0", TEST_MODEL,
-            "Please", "create", "a", "pyproject.toml", "for", "a", "project", "called",
-            "ramalama", "and", "write", "it", "to", "the", "current", "directory.",
-            "Ensure", "it", "contains", "a", "project", "section.",
+            "ramalama",
+            "sandbox",
+            agent,
+            "-w",
+            tmp_path,
+            "--seed=1",
+            "--temp=0",
+            "--prompt",
+            "Please create a pyproject.toml for a project called ramalama "
+            "and write it to the current directory. Ensure it contains a project section.",
+            TEST_MODEL,
         ]
     )
     pyproject = tmp_path / "pyproject.toml"
