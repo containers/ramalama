@@ -871,6 +871,16 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         set_accel_env_vars()
         output_format = getattr(args, "format", "table")
 
+        # Re-derive the image from the (now backend-synced) config, like run/serve do. The
+        # eager --image default is computed before --backend is applied, so without this the
+        # bench container always uses the auto-detected backend image and ignores --backend.
+        if args.container and not args.dryrun:
+            config = ActiveConfig()
+            should_pull = config.pull in ["always", "missing", "newer"]
+            args.image = ensure_image(
+                config.engine, accel_image(config), should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
+
         if args.dryrun:
             if args.container:
                 model.setup_container(args)
