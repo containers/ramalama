@@ -63,8 +63,9 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
     # A chunk measured <=400 tokens can therefore arrive as 500-750 real tokens
     # and exceed llama-server's default 512 physical batch, failing the whole
     # `ramalama rag` run with "input (N tokens) is too large to process".
-    # Size the batch to the embedding context so any chunk that fits the
-    # context also fits one batch.
+    # Keep the embedding batch and context in lock-step: llama.cpp requires
+    # batch <= ctx, so when no explicit embed ctx is given we drive ctx from
+    # the batch size instead of leaving it at the (possibly smaller) default.
     embed_batch_size = embed_ctx_size or 2048
     embed_serve_args = _build_serve_args(
         args,
@@ -77,7 +78,7 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
             "--ubatch-size",
             str(embed_batch_size),
         ],
-        ctx_size=embed_ctx_size,
+        ctx_size=embed_batch_size,
         cache_reuse=0,
     )
 
