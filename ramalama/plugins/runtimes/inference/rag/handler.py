@@ -56,12 +56,29 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
     docling_serve_args = _build_serve_args(
         args, docling_model, docling_port, runtime_args=["--special"], ctx_size=vlm_ctx_size
     )
+    # Embeddings must fit the entire input in a single physical batch (-ub).
+    # The chunker (doc2rag) sizes chunks with tiktoken/cl100k_base, but the
+    # embedding model counts the same text with its own tokenizer, which runs
+    # substantially higher on URL-, code- and YAML-dense content (up to ~1.9x).
+    # A chunk measured <=400 tokens can therefore arrive as 500-750 real tokens
+    # and exceed llama-server's default 512 physical batch, failing the whole
+    # `ramalama rag` run with "input (N tokens) is too large to process".
+    # Keep the embedding batch and context in lock-step: llama.cpp requires
+    # batch <= ctx, so when no explicit embed ctx is given we drive ctx from
+    # the batch size instead of leaving it at the (possibly smaller) default.
+    embed_batch_size = embed_ctx_size or 2048
     embed_serve_args = _build_serve_args(
         args,
         embedding_model,
         embed_port,
-        runtime_args=["--embedding"],
-        ctx_size=embed_ctx_size,
+        runtime_args=[
+            "--embedding",
+            "--batch-size",
+            str(embed_batch_size),
+            "--ubatch-size",
+            str(embed_batch_size),
+        ],
+        ctx_size=embed_batch_size,
         cache_reuse=0,
     )
 
