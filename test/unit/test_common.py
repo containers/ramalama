@@ -20,9 +20,11 @@ from ramalama.common import (
     accel_image,
     check_intel,
     check_nvidia,
+    engine_cmd,
     ensure_image,
     find_in_cdi,
     get_accel,
+    in_toolbox,
     load_cdi_config,
     populate_volume_from_image,
     rm_until_substring,
@@ -711,3 +713,42 @@ class TestPopulateVolumeFromImage:
 
             result = populate_volume_from_image(mock_model, Mock(engine="docker"), "test.gguf")
             assert result == expected_volume
+
+
+class TestInToolbox:
+    def test_in_toolbox_true(self):
+        in_toolbox.cache_clear()
+        with patch("os.path.exists", side_effect=lambda x: x == "/run/.toolboxenv"):
+            assert in_toolbox() is True
+        in_toolbox.cache_clear()
+
+    def test_in_toolbox_false(self):
+        in_toolbox.cache_clear()
+        with patch("os.path.exists", return_value=False):
+            assert in_toolbox() is False
+        in_toolbox.cache_clear()
+
+
+class TestEngineCmd:
+    def test_engine_cmd_normal(self):
+        in_toolbox.cache_clear()
+        with patch("ramalama.common.in_toolbox", return_value=False):
+            assert engine_cmd("podman") == ["podman"]
+            assert engine_cmd("docker") == ["docker"]
+
+    def test_engine_cmd_in_toolbox_with_flatpak_spawn(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("ramalama.common.available", side_effect=lambda x: x == "flatpak-spawn"),
+        ):
+            assert engine_cmd("podman") == ["flatpak-spawn", "--host", "podman"]
+            assert engine_cmd("docker") == ["flatpak-spawn", "--host", "docker"]
+
+    def test_engine_cmd_in_toolbox_without_flatpak_spawn(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("ramalama.common.available", return_value=False),
+        ):
+            assert engine_cmd("podman") == ["podman"]

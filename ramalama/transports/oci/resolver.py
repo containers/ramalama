@@ -4,7 +4,7 @@ import os
 from collections.abc import Callable
 from typing import Literal, Optional
 
-from ramalama.common import run_cmd
+from ramalama.common import engine_cmd, run_cmd
 from ramalama.model_store.store import ModelStore
 from ramalama.oci_tools import OciRef
 from ramalama.transports.oci import spec as oci_spec
@@ -42,7 +42,7 @@ def manifest_kind(oci_ref: OciRef) -> ReferenceKind:
 def engine_artifact_exists(engine: str, oci_ref: OciRef, runner: Optional[Callable] = None) -> bool:
     runner = runner or run_cmd
     try:
-        runner([engine, "artifact", "inspect", _format_oci_reference(oci_ref)], ignore_stderr=True)
+        runner([*engine_cmd(engine), "artifact", "inspect", _format_oci_reference(oci_ref)], ignore_stderr=True)
         return True
     except Exception:
         return False
@@ -51,7 +51,7 @@ def engine_artifact_exists(engine: str, oci_ref: OciRef, runner: Optional[Callab
 def engine_image_exists(engine: str, oci_ref: OciRef, runner: Optional[Callable] = None) -> bool:
     runner = runner or run_cmd
     try:
-        runner([engine, "image", "inspect", _format_oci_reference(oci_ref)], ignore_stderr=True)
+        runner([*engine_cmd(engine), "image", "inspect", _format_oci_reference(oci_ref)], ignore_stderr=True)
         return True
     except Exception:
         return False

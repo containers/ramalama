@@ -15,7 +15,7 @@ from typing import Any, Optional
 # Live reference for checking global vars
 import ramalama.common
 from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import check_nvidia, exec_cmd, get_accel_env_vars, perror, run_cmd
+from ramalama.common import check_nvidia, engine_cmd, exec_cmd, get_accel_env_vars, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import ActiveConfig
 from ramalama.logger import logger
@@ -30,7 +30,7 @@ class BaseEngine(ABC):
         self.use_docker: bool = base == "docker"
         self.use_podman: bool = base == "podman"
         self.args = args
-        self.exec_args: list[str] = [self.args.engine]
+        self.exec_args: list[str] = engine_cmd(self.args.engine)
         self._engine_extras_added = False
         self.base_args()
         self.add_labels()
@@ -60,7 +60,7 @@ class BaseEngine(ABC):
             try:
                 if not self.args.quiet:
                     perror(f"Checking for newer image {self.args.image}")
-                run_cmd([str(self.args.engine), "pull", "-q", self.args.image], ignore_all=True)
+                run_cmd([*engine_cmd(str(self.args.engine)), "pull", "-q", self.args.image], ignore_all=True)
             except Exception:  # Ignore errors, the run command will handle it.
                 pass
         else:
@@ -312,7 +312,7 @@ def images(args):
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "images"]
+    conman_args = [*engine_cmd(conman), "images"]
     if getattr(args, "noheading", False):
         conman_args += ["--noheading"]
 
@@ -339,7 +339,7 @@ def image_inspect(args, name: str, format: Optional[str] = None):
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "image", "inspect"]
+    conman_args = [*engine_cmd(conman), "image", "inspect"]
     if format:
         conman_args += ["--format", format]
 
@@ -355,7 +355,7 @@ def containers(args):
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "ps", "-a", "--filter", "label=ai.ramalama"]
+    conman_args = [*engine_cmd(conman), "ps", "-a", "--filter", "label=ai.ramalama"]
     if getattr(args, "noheading", False):
         if conman == "docker" and not args.format:
             # implement --noheading by using --format
@@ -384,7 +384,7 @@ def info(args) -> list[Any] | str | dict[str, Any]:
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "info", "--format", "json"]
+    conman_args = [*engine_cmd(conman), "info", "--format", "json"]
     try:
         output = run_cmd(conman_args).stdout.decode("utf-8").strip()
         if output == "":
@@ -401,7 +401,7 @@ def inspect(args, name: str, format: Optional[str] = None, ignore_stderr: bool =
     if conman == "" or conman is None:
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "inspect"]
+    conman_args = [*engine_cmd(conman), "inspect"]
     if format:
         conman_args += ["--format", format]
 
@@ -416,7 +416,7 @@ def logs(args, name: str, ignore_stderr: bool = False):
     if not conman:
         raise ValueError("no container manager (Podman, Docker) found")
 
-    conman_args = [conman, "logs", name]
+    conman_args = [*engine_cmd(conman), "logs", name]
     return run_cmd(conman_args, ignore_stderr=ignore_stderr).stdout.decode("utf-8").strip()
 
 
@@ -440,9 +440,9 @@ def stop_container(args, name: str, remove: bool = False):
             pass
 
     if pod != "":
-        conman_args = [conman, "pod", "rm", "-t=0", "--ignore", "--force", pod]
+        conman_args = [*engine_cmd(conman), "pod", "rm", "-t=0", "--ignore", "--force", pod]
     else:
-        conman_args = [conman, "stop", "-t=0"]
+        conman_args = [*engine_cmd(conman), "stop", "-t=0"]
         if args.ignore:
             if conman == "podman":
                 conman_args += ["--ignore", str(args.ignore)]
@@ -460,7 +460,7 @@ def stop_container(args, name: str, remove: bool = False):
 
     # Remove the container if requested and not a pod (pods are already removed above)
     if remove and pod == "":
-        conman_args = [conman, "rm"]
+        conman_args = [*engine_cmd(conman), "rm"]
         if args.ignore:
             if conman == "podman":
                 conman_args += ["--ignore"]

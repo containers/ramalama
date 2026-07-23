@@ -5,7 +5,7 @@ import posixpath
 from abc import ABC, abstractmethod
 from typing import Generic, Literal, Optional, TypeVar
 
-from ramalama.common import MNT_DIR, run_cmd
+from ramalama.common import MNT_DIR, engine_cmd, run_cmd
 from ramalama.model_store.store import ModelStore
 from ramalama.oci_tools import OciRef
 from ramalama.path_utils import get_container_mount_path
@@ -78,11 +78,11 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
     def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> None:
         if cmd_args is None:
             cmd_args = []
-        run_cmd([self.engine, "pull", *cmd_args, str(ref)])
+        run_cmd([*engine_cmd(self.engine), "pull", *cmd_args, str(ref)])
 
     def exists(self, ref: OciRef) -> bool:
         try:
-            run_cmd([self.engine, "image", "inspect", str(ref)], ignore_stderr=True)
+            run_cmd([*engine_cmd(self.engine), "image", "inspect", str(ref)], ignore_stderr=True)
             return True
         except Exception:
             return False
@@ -92,12 +92,12 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
             cmd_args = []
 
         try:
-            run_cmd([self.engine, "manifest", "rm", str(ref)], ignore_stderr=True)
+            run_cmd([*engine_cmd(self.engine), "manifest", "rm", str(ref)], ignore_stderr=True)
             return True
         except Exception:
             pass
         try:
-            run_cmd([self.engine, "image", "rm", *cmd_args, str(ref)], ignore_stderr=True)
+            run_cmd([*engine_cmd(self.engine), "image", "rm", *cmd_args, str(ref)], ignore_stderr=True)
             return True
         except Exception:
             return False
@@ -106,7 +106,7 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
         return ["model.file"]
 
     def inspect(self, ref: OciRef) -> str:
-        result = run_cmd([self.engine, "image", "inspect", str(ref)], ignore_stderr=True)
+        result = run_cmd([*engine_cmd(self.engine), "image", "inspect", str(ref)], ignore_stderr=True)
         return result.stdout.decode("utf-8").strip()
 
 
@@ -180,11 +180,11 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
     def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> None:
         if cmd_args is None:
             cmd_args = []
-        run_cmd([self.engine, "artifact", "pull", *cmd_args, str(ref)])
+        run_cmd([*engine_cmd(self.engine), "artifact", "pull", *cmd_args, str(ref)])
 
     def exists(self, ref: OciRef) -> bool:
         try:
-            run_cmd([self.engine, "artifact", "inspect", str(ref)], ignore_stderr=True)
+            run_cmd([*engine_cmd(self.engine), "artifact", "inspect", str(ref)], ignore_stderr=True)
             return True
         except Exception:
             return False
@@ -197,14 +197,14 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
             cmd_args = []
 
         try:
-            run_cmd([self.engine, "artifact", "rm", *cmd_args, str(ref)], ignore_stderr=True)
+            run_cmd([*engine_cmd(self.engine), "artifact", "rm", *cmd_args, str(ref)], ignore_stderr=True)
             return True
         except Exception:
             return False
 
     def filenames(self, ref: OciRef) -> list[str]:
         result = run_cmd(
-            [self.engine, "artifact", "inspect", "--format", "{{json .Manifest}}", str(ref)],
+            [*engine_cmd(self.engine), "artifact", "inspect", "--format", "{{json .Manifest}}", str(ref)],
             ignore_stderr=True,
         )
 
@@ -240,7 +240,7 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
         return posixpath.join(mount_dir, filenames[0])
 
     def inspect(self, ref: OciRef) -> str:
-        result = run_cmd([self.engine, "artifact", "inspect", str(ref)], ignore_stderr=True)
+        result = run_cmd([*engine_cmd(self.engine), "artifact", "inspect", str(ref)], ignore_stderr=True)
         return result.stdout.decode("utf-8").strip()
 
 
