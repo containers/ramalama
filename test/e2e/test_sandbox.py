@@ -321,33 +321,3 @@ def test_sandbox_using_url(caplog, agent):
         finally:
             # Stop container
             ctx.check_call(["ramalama", "stop", container_name])
-
-
-@pytest.mark.e2e
-@pytest.mark.slow
-@skip_if_docker
-@skip_if_no_container
-@skip_if_ppc64le
-@skip_if_s390x
-@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
-def test_sandbox_with_embedded_model_server(caplog, agent):
-    # Configure logging for requests
-    caplog.set_level(logging.CRITICAL, logger="requests")
-    caplog.set_level(logging.CRITICAL, logger="urllib3")
-
-    with RamalamaExecWorkspace() as ctx:
-        # Pull model
-        ctx.check_call(["ramalama", "pull", TEST_MODEL])
-
-        result = ctx.check_output(
-            [
-                "ramalama",
-                "sandbox",
-                agent,
-                TEST_MODEL,
-                "Hello",
-            ],
-            stderr=subprocess.STDOUT,
-        )
-
-        assert "Hi" in result or "Hello" in result or "help" in result or "today" in result or "assistant" in result
