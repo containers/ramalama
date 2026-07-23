@@ -596,6 +596,82 @@ jobs:
             *.log
           retention-days: 7
 
+  e2e-tests-toolbox:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.repository_owner != 'containers'
+    needs:
+      - lint
+      - unit-test
+    name: E2E Tests (f44 toolbox)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Start systemd user session
+        run: |
+          sudo loginctl enable-linger $(whoami)
+          sleep 2
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+
+      - name: install requirements
+        shell: bash
+        run: |
+           df -h
+           sudo mkdir -m a=rwx -p /mnt/runner
+           sudo mkdir -m o=rwx -p /home/runner/.local
+           sudo chown runner:runner /mnt/runner /home/runner/.local
+           sudo mount --bind /mnt/runner /home/runner/.local
+           sudo apt-get update
+           sudo apt-get install podman flatpak podman-toolbox bash codespell
+
+      - name: Upgrade to podman 5
+        run: |
+           set -e
+           sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
+           sudo apt-get update
+           sudo apt-get purge firefox
+           sudo apt-get upgrade -y podman crun
+
+      - name: Check HF token
+        id: hf
+        run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Create toolbox
+        run: |
+          toolbox create --assumeyes --distro fedora --release 44 ramalama-test
+
+      - name: Install dependencies in toolbox
+        run: |
+          toolbox run -c ramalama-test sudo dnf install -y \
+            python3 python3-pip python3-devel gcc make git-core openssl rust cargo zstd
+          toolbox run -c ramalama-test bash -c "cd $GITHUB_WORKSPACE && pip install uv && export PATH=\$HOME/.local/bin:\$PATH && uv tool install tox --with tox-uv && uv venv && uv pip install '.[dev]'"
+          toolbox run -c ramalama-test bash -c "cd $GITHUB_WORKSPACE && ./.github/scripts/install-ollama.sh"
+
+      - name: Start HF mirror
+        if: steps.hf.outputs.has_token != 'true'
+        run: |
+          podman run -d --name hfmirror --network=container:ramalama-test quay.io/ramalama/hfmirror:latest
+          toolbox run -c ramalama-test bash -c 'timeout 120 bash -c "until curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1; do sleep 2; done"'
+
+      - name: Verify toolbox environment
+        run: |
+          toolbox run -c ramalama-test bash -c 'test -f /run/.toolboxenv && echo "Toolbox detected" || { echo "NOT in toolbox"; exit 1; }'
+          toolbox run -c ramalama-test bash -c 'which flatpak-spawn && echo "flatpak-spawn available" || { echo "flatpak-spawn NOT available"; exit 1; }'
+          toolbox run -c ramalama-test flatpak-spawn --host podman version
+
+      - name: Run e2e tests in toolbox
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_ENDPOINT: ${{ secrets.HF_TOKEN == '' && 'http://127.0.0.1:5000' || '' }}
+        run: |
+          SHARED_TMP="$HOME/.cache/ramalama/tmp"
+          mkdir -p "$SHARED_TMP"
+          toolbox run -c ramalama-test bash -c "export PATH=\$HOME/.local/bin:\$PATH && cd $GITHUB_WORKSPACE && TMPDIR=$SHARED_TMP HF_TOKEN=$HF_TOKEN HF_ENDPOINT=$HF_ENDPOINT make e2e-tests"
+
 # FIXME: ci script should be able to run on MAC.
 #      - name: Run ci
 #        shell: bash
