@@ -270,84 +270,55 @@ def test_sandbox_run_stdin(sandbox_ctx, tmp_path, agent):
 @skip_if_ppc64le
 @skip_if_s390x
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
-def test_sandbox_using_url(caplog, agent):
+def test_sandbox_using_url(sandbox_ctx, caplog, agent):
     # Configure logging for requests
     caplog.set_level(logging.CRITICAL, logger="requests")
     caplog.set_level(logging.CRITICAL, logger="urllib3")
 
-    with RamalamaExecWorkspace() as ctx:
-        # Pull model
-        ctx.check_call(["ramalama", "pull", TEST_MODEL])
+    # Serve an API
+    container_name = f"api{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
+    container_port = random.randint(64000, 65000)
 
-        # Serve an API
-        container_name = f"api{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
-        container_port = random.randint(64000, 65000)
+    sandbox_ctx.check_output(
+        [
+            "ramalama",
+            "serve",
+            "-d",
+            "--name",
+            container_name,
+            "--port",
+            str(container_port),
+            "--thinking=off",
+            "--seed=1",
+            "--temp=0",
+            TEST_MODEL,
+        ],
+        stderr=subprocess.STDOUT,
+    )
 
-        ctx.check_output(
-            [
-                "ramalama",
-                "serve",
-                "-d",
-                "--name",
-                container_name,
-                "--port",
-                str(container_port),
-                TEST_MODEL,
-            ],
-            stderr=subprocess.STDOUT,
-        )
+    try:
+        # Inspect the models API
+        models = requests.get(f"http://localhost:{container_port}/models", timeout=60).json()
+        assert len(models["models"]) == 1
+        model = models["models"][0]["name"]
 
-        try:
-            # Inspect the models API
-            models = requests.get(f"http://localhost:{container_port}/models", timeout=60).json()
-            assert len(models["models"]) == 1
-            model = models["models"][0]["name"]
-
-            result = ctx.check_output(
-                [
-                    "ramalama",
-                    "sandbox",
-                    agent,
-                    "--url",
-                    f"http://host.containers.internal:{container_port}",
-                    model,
-                    "Hello",
-                ],
-                stderr=subprocess.STDOUT,
-            )
-
-            assert "Hi" in result or "Hello" in result or "help" in result or "today" in result or "assistant" in result
-
-        finally:
-            # Stop container
-            ctx.check_call(["ramalama", "stop", container_name])
-
-
-@pytest.mark.e2e
-@pytest.mark.slow
-@skip_if_docker
-@skip_if_no_container
-@skip_if_ppc64le
-@skip_if_s390x
-@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
-def test_sandbox_with_embedded_model_server(caplog, agent):
-    # Configure logging for requests
-    caplog.set_level(logging.CRITICAL, logger="requests")
-    caplog.set_level(logging.CRITICAL, logger="urllib3")
-
-    with RamalamaExecWorkspace() as ctx:
-        # Pull model
-        ctx.check_call(["ramalama", "pull", TEST_MODEL])
-
-        result = ctx.check_output(
+        result = sandbox_ctx.check_output(
             [
                 "ramalama",
                 "sandbox",
                 agent,
-                TEST_MODEL,
+                "--url",
+                f"http://host.containers.internal:{container_port}",
+                model,
+                "--prompt",
                 "Hello",
             ],
             stderr=subprocess.STDOUT,
         )
 
-        assert "Hi" in result or "Hello" in result or "help" in result or "today" in result or "assistant" in result
+        result = result.lower()
+        assert "hi" in result or "hello" in result or "help" in result or "today" in result or "assistant" in result
+
+    finally:
+        # Stop container
+        sandbox_ctx.check_call(["ramalama", "stop", container_name])

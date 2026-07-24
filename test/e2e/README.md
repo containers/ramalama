@@ -66,6 +66,7 @@ To use a mark, you apply it as a decorator to a test function.
 import pytest
 from test.conftest import skip_if_no_container
 
+
 @pytest.mark.e2e
 @skip_if_no_container
 def test_something_in_a_container():
@@ -80,6 +81,7 @@ You can apply multiple skip decorators to a single test. The test will be skippe
 An example from `test/e2e/test_run.py`:
 ```python
 from test.conftest import skip_if_no_container, skip_if_docker, skip_if_gh_actions_darwin
+
 
 @pytest.mark.e2e
 @skip_if_no_container
@@ -107,10 +109,7 @@ The `pytest_addoption` function in `test/conftest.py` defines custom command-lin
 
 ```python
 # From test/conftest.py
-skip_if_no_container = pytest.mark.skipif(
-    "not config.option.container",
-    reason="no container mode is enabled"
-)
+skip_if_no_container = pytest.mark.skipif("not config.option.container", reason="no container mode is enabled")
 ```
 
 This decorator will skip a test if the `--no-container` flag is used, which sets `config.option.container` to `False`.
@@ -123,10 +122,8 @@ You can use Python's `platform` module to check the OS and skip tests accordingl
 # From test/conftest.py
 import platform
 
-skip_if_darwin = pytest.mark.skipif(
-    platform.system() == "Darwin",
-    reason="Darwin operating system"
-)
+
+skip_if_darwin = pytest.mark.skipif(platform.system() == "Darwin", reason="Darwin operating system")
 ```
 
 **3. Skipping based on the presence of an external tool:**
@@ -137,10 +134,8 @@ You can use `shutil.which()` to check if a command-line tool is available in the
 # From test/conftest.py
 import shutil
 
-skip_if_no_llama_bench = pytest.mark.skipif(
-    shutil.which("llama-bench") is None,
-    reason="llama-bench not installed"
-)
+
+skip_if_no_llama_bench = pytest.mark.skipif(shutil.which("llama-bench") is None, reason="llama-bench not installed")
 ```
 
 By defining these in `test/conftest.py`, they can be reused across multiple test files. They must be imported to be used, as shown in the examples (e.g., `from test.conftest import skip_if_no_container`), which improves clarity and maintainability.
@@ -157,6 +152,7 @@ You provide the decorator with a string of comma-separated parameter names, and 
 import pytest
 import re
 from test.e2e.utils import check_output
+
 
 @pytest.mark.e2e
 @pytest.mark.parametrize(
@@ -205,6 +201,7 @@ This is the simplest use case, providing a clean, temporary directory.
 ```python
 # From test/e2e/test_run.py
 from test.e2e.utils import RamalamaExecWorkspace
+
 
 @pytest.mark.e2e
 def test_params():
@@ -263,15 +260,23 @@ Here is how it's used in `test/e2e/test_serve.py` to test `quadlet` generation w
 def test_quadlet_and_kube_generation_with_container_registry(container_registry, is_container, test_model):
     with RamalamaExecWorkspace() as ctx:
         # Use container_registry.username, .password, .url to interact with the registry
-        ctx.check_call(["ramalama", "login", "--username", container_registry.username, "--password", container_registry.password, container_registry.url])
+        ctx.check_call(
+            [
+                "ramalama",
+                "login",
+                "--username",
+                container_registry.username,
+                "--password",
+                container_registry.password,
+                container_registry.url,
+            ]
+        )
 
         test_image_url = f"{container_registry.url}/{test_model}"
         ctx.check_call(["ramalama", "push", test_model, test_image_url])
 
         # Now, test functionality using the model from the local registry
-        result = ctx.check_output(
-            ["ramalama", "serve", "--generate", "quadlet", test_image_url]
-        )
+        result = ctx.check_output(["ramalama", "serve", "--generate", "quadlet", test_image_url])
         # Assertions...
 ```
 
@@ -293,6 +298,7 @@ From `test/e2e/test_serve.py`:
 import pytest
 from test.e2e.utils import RamalamaExecWorkspace
 
+
 @pytest.fixture(scope="module")
 def shared_ctx(test_model):
     # This setup runs only once for all tests in this file
@@ -305,6 +311,7 @@ def shared_ctx(test_model):
         ctx.check_call(["ramalama", "-q", "pull", test_model])
         yield ctx
 
+
 # Now, multiple tests can use the pre-configured context
 @pytest.mark.e2e
 def test_serve_and_stop(shared_ctx, test_model):
@@ -313,6 +320,7 @@ def test_serve_and_stop(shared_ctx, test_model):
     ctx.check_call(["ramalama", "serve", "--name", "my-container", "--detach", test_model])
     # ...
     ctx.check_call(["ramalama", "stop", "my-container"])
+
 
 @pytest.mark.e2e
 def test_serve_multiple_models(shared_ctx, test_model):
