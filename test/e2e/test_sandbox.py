@@ -74,7 +74,7 @@ def test_sandbox_dryrun_default_windows():
 def test_sandbox_dryrun_network(agent):
     """Dryrun output should include container networking."""
     result = check_output(_dryrun_cmd(agent))
-    assert re.search(r"--network=container:", result)
+    assert re.search(r"--network container:", result)
 
 
 @pytest.mark.e2e
