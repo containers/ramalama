@@ -124,6 +124,15 @@ dnf_install() {
 
 dnf_install_runtime_deps() {
   local runtime_pkgs=()
+  # llama.cpp shells out to the ffmpeg/ffprobe binaries to decode audio and
+  # video inputs for multimodal models, so without them mtmd bails out with
+  # "mtmd_helper_video_init_from_buf: ffprobe failed on buffer (is ffprobe in
+  # PATH?)". ffmpeg-free is the build that ships in the stock Fedora repos;
+  # RHEL/UBI based images would need EPEL enabled at runtime, so they are left
+  # untouched here.
+  if [ "${ID}" = "fedora" ]; then
+    runtime_pkgs+=(ffmpeg-free)
+  fi
   if [ "$containerfile" = "ramalama" ]; then
     # install python3 in the ramalama container to support a non-standard use-case
     runtime_pkgs+=(python3 python3-pip)
