@@ -8,7 +8,6 @@ import pytest
 import requests
 
 from test.conftest import (
-    skip_if_docker,
     skip_if_no_container,
     skip_if_not_windows,
     skip_if_ppc64le,
@@ -265,7 +264,6 @@ def test_sandbox_run_stdin(sandbox_ctx, tmp_path, agent):
 
 @pytest.mark.e2e
 @pytest.mark.slow
-@skip_if_docker
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
@@ -310,7 +308,7 @@ def test_sandbox_using_url(sandbox_ctx, caplog, agent):
                 "sandbox",
                 agent,
                 "--url",
-                f"http://host.containers.internal:{container_port}",
+                f"http://localhost:{container_port}",
                 model,
                 "--prompt",
                 "Hello",
@@ -328,7 +326,6 @@ def test_sandbox_using_url(sandbox_ctx, caplog, agent):
 
 @pytest.mark.e2e
 @pytest.mark.slow
-@skip_if_docker
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
