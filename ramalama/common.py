@@ -440,8 +440,17 @@ def check_nvidia() -> Optional[Literal["cuda"]]:
     configured_has_all = "all" in configured
     if unconfigured and not configured_has_all:
         perror(f"No CDI configuration found for {','.join(unconfigured)}")
-        perror("You can use the \"nvidia-ctk cdi generate\" command from the ")
-        perror("nvidia-container-toolkit to generate a CDI configuration.")
+        # nvidia-ctk ships with the nvidia-container-toolkit, so its absence
+        # means the toolkit itself is not installed. Pointing the user at
+        # "nvidia-ctk cdi generate" in that case is a dead end; tell them to
+        # install the toolkit (recent versions generate the CDI config on install).
+        if shutil.which("nvidia-ctk") is None:
+            perror("The nvidia-container-toolkit does not appear to be installed. Install ")
+            perror("it to enable GPU support; recent versions generate the CDI ")
+            perror("configuration automatically.")
+        else:
+            perror("You can use the \"nvidia-ctk cdi generate\" command from the ")
+            perror("nvidia-container-toolkit to generate a CDI configuration.")
         perror("See ramalama-cuda(7).")
         return None
     elif configured:
