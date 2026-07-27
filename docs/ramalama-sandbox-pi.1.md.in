@@ -15,7 +15,7 @@ When no model and the url is given the command gets the list of models from the
 model server and takes the first model or fails without a model.
 When multiple models are specified, the server starts in router mode
 using llama.cpp's --models-dir, dynamically loading and unloading models.
-When no models and no url the default http://localhost:{port} is used to
+When no models and no url the default `http://localhost:{port}` is used to
 get the first model. If there is no server or no model then it falls back to
 start a model server in router mode where all GGUF models in the store are served.
 
