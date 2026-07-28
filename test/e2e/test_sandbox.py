@@ -288,6 +288,8 @@ def test_sandbox_using_url(sandbox_ctx, caplog, agent):
             container_name,
             "--port",
             str(container_port),
+            "--ctx-size",
+            str(8192),
             "--thinking=off",
             "--seed=1",
             "--temp=0",
@@ -310,6 +312,83 @@ def test_sandbox_using_url(sandbox_ctx, caplog, agent):
                 "--url",
                 f"http://host.containers.internal:{container_port}",
                 model,
+                "--prompt",
+                "Hello",
+            ],
+            stderr=subprocess.STDOUT,
+        )
+
+        result = result.lower()
+        assert "hi" in result or "hello" in result or "help" in result or "today" in result or "assistant" in result
+
+    finally:
+        # Stop container
+        sandbox_ctx.check_call(["ramalama", "stop", container_name])
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_docker
+@skip_if_no_container
+@skip_if_ppc64le
+@skip_if_s390x
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_using_url_infer_model(sandbox_ctx, caplog, agent):
+    # Configure logging for requests
+    caplog.set_level(logging.CRITICAL, logger="requests")
+    caplog.set_level(logging.CRITICAL, logger="urllib3")
+
+    # Serve an API
+    container_name = f"api{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
+    container_port = random.randint(64000, 65000)
+
+    sandbox_ctx.check_output(
+        [
+            "ramalama",
+            "serve",
+            "-d",
+            "--name",
+            container_name,
+            "--port",
+            str(container_port),
+            "--ctx-size",
+            str(8192),
+            "--thinking=off",
+            "--seed=1",
+            "--temp=0",
+            TEST_MODEL,
+        ],
+        stderr=subprocess.STDOUT,
+    )
+
+    try:
+        # Inspect the models API
+        models = requests.get(f"http://localhost:{container_port}/models", timeout=60).json()
+        assert len(models["models"]) == 1
+
+        result = sandbox_ctx.check_output(
+            [
+                "ramalama",
+                "sandbox",
+                agent,
+                "--url",
+                f"http://localhost:{container_port}",
+                "--prompt",
+                "Hello",
+            ],
+            stderr=subprocess.STDOUT,
+        )
+
+        result = result.lower()
+        assert "hi" in result or "hello" in result or "help" in result or "today" in result or "assistant" in result
+
+        result = sandbox_ctx.check_output(
+            [
+                "ramalama",
+                "sandbox",
+                agent,
+                "--port",
+                str(container_port),
                 "--prompt",
                 "Hello",
             ],

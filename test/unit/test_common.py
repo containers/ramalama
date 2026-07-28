@@ -264,6 +264,29 @@ class TestCheckNvidia:
         mock_run_cmd.return_value.stdout = "0,GPU-08b3c2e8-cb7b-ea3f-7711-a042c580b3e8"
         assert check_nvidia() == "cuda"
 
+    @patch("ramalama.common.perror")
+    @patch("ramalama.common.shutil.which", return_value=None)
+    @patch("ramalama.common.find_in_cdi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_no_cdi_toolkit_missing(self, mock_run_cmd, mock_find_in_cdi, _mock_which, mock_perror):
+        mock_find_in_cdi.return_value = ([], ["all"])
+        mock_run_cmd.return_value.stdout = "0,GPU-08b3c2e8-cb7b-ea3f-7711-a042c580b3e8"
+        assert check_nvidia() is None
+        printed = " ".join(str(c.args[0]) for c in mock_perror.call_args_list)
+        assert "nvidia-container-toolkit does not appear to be installed" in printed
+        assert "nvidia-ctk cdi generate" not in printed
+
+    @patch("ramalama.common.perror")
+    @patch("ramalama.common.shutil.which", return_value="/usr/bin/nvidia-ctk")
+    @patch("ramalama.common.find_in_cdi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_no_cdi_toolkit_present(self, mock_run_cmd, mock_find_in_cdi, _mock_which, mock_perror):
+        mock_find_in_cdi.return_value = ([], ["all"])
+        mock_run_cmd.return_value.stdout = "0,GPU-08b3c2e8-cb7b-ea3f-7711-a042c580b3e8"
+        assert check_nvidia() is None
+        printed = " ".join(str(c.args[0]) for c in mock_perror.call_args_list)
+        assert "nvidia-ctk cdi generate" in printed
+
     @patch("ramalama.common.run_cmd")
     def test_check_nvidia_smi_failure(self, mock_run_cmd):
         mock_run_cmd.side_effect = subprocess.CalledProcessError(1, "nvidia-smi")

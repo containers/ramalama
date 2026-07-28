@@ -4,15 +4,17 @@ import argparse
 import copy
 import json
 import platform
+import sys
 from collections.abc import Callable
 from functools import partial
 from http.client import HTTPConnection
 from typing import Optional, cast
 
 from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import genname, run_cmd
+from ramalama.common import genname, perror, run_cmd
 from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, is_healthy, stop_container, wait_for_healthy
+from ramalama.model_server import ModelServerError, list_server_models
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
@@ -26,7 +28,7 @@ def _pi_provider_id() -> str:
     return "llama-server"
 
 
-def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
+def _add_common_sandbox_args(parser: argparse.ArgumentParser, model_comp: Callable) -> None:
     """Add --workdir and --prompt arguments shared by all sandbox subcommands."""
     parser.add_argument(
         "-w",
@@ -46,6 +48,13 @@ def _add_common_sandbox_args(parser: argparse.ArgumentParser) -> None:
         "--prompt",
         dest="ARGS",
         help="instructions for the sandbox to process non-interactively",
+    )
+    parser.add_argument(
+        "MODEL",
+        default=[],
+        nargs="*",
+        completer=model_comp,
+        help="AI model to use. Omit to infer the first model from the model server.",
     )
 
 
@@ -73,14 +82,13 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
         # Consider adding this to the plugin interface for commands which need to run an
         # inference server
         runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
-    parser.add_argument("MODEL", nargs="*", default=[], completer=model_comp)
     parser.add_argument(
         "--goose-image",
         default="ghcr.io/aaif-goose/goose:1.43.0",
         completer=img_comp,
         help="Goose container image",
     )
-    _add_common_sandbox_args(parser)
+    _add_common_sandbox_args(parser, model_comp)
     _add_router_args(parser)
     parser.set_defaults(func=run_sandbox_goose)
     yield parser
@@ -88,14 +96,13 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     parser = subparsers.add_parser("opencode", help="run OpenCode in a sandbox, backed by a local AI Model")
     if getattr(runtime, "_add_inference_args", None):
         runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
-    parser.add_argument("MODEL", nargs="*", default=[], completer=model_comp)
     parser.add_argument(
         "--opencode-image",
         default="ghcr.io/anomalyco/opencode:1.17.20",
         completer=img_comp,
         help="OpenCode container image",
     )
-    _add_common_sandbox_args(parser)
+    _add_common_sandbox_args(parser, model_comp)
     _add_router_args(parser)
     parser.set_defaults(func=run_sandbox_opencode)
     yield parser
@@ -103,14 +110,13 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     parser = subparsers.add_parser("pi", help="run Pi in a sandbox, backed by a local AI Model")
     if getattr(runtime, "_add_inference_args", None):
         runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
-    parser.add_argument("MODEL", nargs="*", default=[], completer=model_comp)
     parser.add_argument(
         "--pi-image",
         default=default_pi_image(),
         completer=img_comp,
         help="Pi container image",
     )
-    _add_common_sandbox_args(parser)
+    _add_common_sandbox_args(parser, model_comp)
     _add_router_args(parser)
     parser.set_defaults(func=run_sandbox_pi)
     yield parser
@@ -313,12 +319,35 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
         raise ValueError("ramalama sandbox requires a container engine")
 
     sb_args = copy.copy(args)
-    sb_args.start_model_server = args.url is None
-    models: list[str] = list(args.MODEL)  # type: ignore[arg-type]
+    sb_args.start_model_server = sb_args.url is None
+    if not sb_args.MODEL:
+        url = sb_args.url or f"http://localhost:{sb_args.port}"
+        try:
+            model_list = list_server_models(url, getattr(sb_args, "api_key", None))
+        except ModelServerError as e:
+            if not sb_args.start_model_server:
+                perror(f"{e}")
+                sys.exit(2)
+            # basically fall through to router-mode without models
+            model_list = []
+        if len(model_list) > 0:
+            sb_args.start_model_server = False
+            sb_args.MODEL = [model_list[0]]  # type: ignore[assignment]
+            print(f"Using first model from server ({url}): {model_list[0]}")
+            sb_args.url = url
+        elif not sb_args.start_model_server:
+            raise ValueError(f"No model found at {url}")
+
+    sb_args.start_model_server = sb_args.url is None
+    # ensure agent container can access model-server on localhost
+    if sb_args.url and (sb_args.url.startswith("http://localhost") or sb_args.url.startswith("https://localhost")):
+        middle = 'docker' if args.engine == 'docker' else 'containers'
+        sb_args.url = sb_args.url.replace("localhost", f"host.{middle}.internal")
+    models: list[str] = list(sb_args.MODEL)  # type: ignore[arg-type]
 
     if not sb_args.start_model_server:
-        if len(models) != 1:
-            raise ValueError("ramalama sandbox with --url requires exactly one model")
+        if len(models) > 1:
+            raise ValueError("ramalama sandbox with --url requires one or no model")
         sb_args.name = sb_args.name or genname()
         model_name = models[0]
         if sb_args.dryrun:
