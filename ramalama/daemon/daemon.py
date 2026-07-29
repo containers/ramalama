@@ -14,6 +14,7 @@ from ramalama.config import ActiveConfig
 from ramalama.daemon.handler.ramalama import RamalamaHandler
 from ramalama.daemon.logging import configure_logger, logger
 from ramalama.daemon.service.model_runner import ModelRunner
+from ramalama.host_utils import format_bind_host_literal
 from ramalama.log_levels import LogLevel
 
 
@@ -140,7 +141,7 @@ def parse_args():
 
 def run(host: str = "::", port: int = 8080, model_store_path: str = "/models"):
     configure_logger(ActiveConfig().log_level or LogLevel.DEBUG)
-    host_str = f"[{host}]" if ":" in host else host
+    host_str = format_bind_host_literal(host)
     logger.debug(f"Starting Ramalama daemon on {host_str}:{port}...")
     try:
         server = RamalamaServer(host, port, model_store_path, timedelta(seconds=10))

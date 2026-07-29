@@ -37,6 +37,7 @@ from ramalama.config import (
 )
 from ramalama.config_types import COLOR_OPTIONS
 from ramalama.endian import EndianMismatchError
+from ramalama.host_utils import format_bind_host_for_url
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
@@ -599,18 +600,10 @@ def list_parser(subparsers):
     parser.set_defaults(func=list_cli)
 
 
-def _format_model_server_host(host: str) -> str:
-    host = host.strip("[]")
-    if host in ("0.0.0.0", "::"):
-        return "127.0.0.1"
-    if ":" in host:
-        return f"[{host}]"
-    return host
-
-
 def _default_model_server_url() -> str:
+    """Return the default model server URL from active configuration."""
     config = ActiveConfig()
-    return f"http://{_format_model_server_host(config.host)}:{config.port}"
+    return f"http://{format_bind_host_for_url(config.host)}:{config.port}"
 
 
 def models_parser(subparsers):
