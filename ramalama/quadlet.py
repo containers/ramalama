@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 
 from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel, get_accel_env_vars
 from ramalama.file import UnitFile
+from ramalama.host_utils import format_bind_host_literal
 
 
 class Quadlet:
@@ -186,10 +187,8 @@ class Quadlet:
 
     def _gen_port(self, quadlet_file: UnitFile):
         if getattr(self.args, "port", "") != "":
-            host = getattr(self.args, "host", None) or "::"
-            host = host.strip("[]")
-            host_str = f"[{host}]" if ":" in host else host
-            quadlet_file.add("Container", "PublishPort", f"{host_str}:{self.args.port}:{self.args.port}")
+            host = format_bind_host_literal(getattr(self.args, "host", None) or "::")
+            quadlet_file.add("Container", "PublishPort", f"{host}:{self.args.port}:{self.args.port}")
 
     def _gen_rag_volume(self, quadlet_file: UnitFile):
         files: list[UnitFile] = []
