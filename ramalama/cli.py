@@ -37,6 +37,7 @@ from ramalama.config import (
 )
 from ramalama.config_types import COLOR_OPTIONS
 from ramalama.endian import EndianMismatchError
+from ramalama.host_utils import format_bind_host_for_url
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
@@ -415,6 +416,9 @@ def post_parse_setup(args):
     if hasattr(args, "runtime_args"):
         args.runtime_args = shlex.split(args.runtime_args)
 
+    if hasattr(args, "engine_args"):
+        args.engine_args = _normalize_engine_args(args.engine_args)
+
     if hasattr(args, 'pull'):
         args.pull = normalize_pull_arg(args.pull, getattr(args, 'engine', None))
 
@@ -596,18 +600,10 @@ def list_parser(subparsers):
     parser.set_defaults(func=list_cli)
 
 
-def _format_model_server_host(host: str) -> str:
-    host = host.strip("[]")
-    if host in ("0.0.0.0", "::"):
-        return "127.0.0.1"
-    if ":" in host:
-        return f"[{host}]"
-    return host
-
-
 def _default_model_server_url() -> str:
+    """Return the default model server URL from active configuration."""
     config = ActiveConfig()
-    return f"http://{_format_model_server_host(config.host)}:{config.port}"
+    return f"http://{format_bind_host_for_url(config.host)}:{config.port}"
 
 
 def models_parser(subparsers):
@@ -902,6 +898,34 @@ def push_cli(args):
             raise e
 
 
+def _normalize_engine_args(engine_args: Any) -> list[str]:
+    """Flatten repeated ``--engine-args`` values into a single token list."""
+    if engine_args is None:
+        return []
+    if isinstance(engine_args, str):
+        return shlex.split(engine_args) if engine_args.strip() else []
+    flat: list[str] = []
+    for item in engine_args:
+        if isinstance(item, str) and item.strip():
+            flat.extend(shlex.split(item))
+    return flat
+
+
+def add_engine_args_argument(parser: argparse.ArgumentParser) -> None:
+    """Register ``--engine-args`` on a subcommand that runs containers."""
+    parser.add_argument(
+        "--engine-args",
+        dest="engine_args",
+        action="append",
+        default=None,
+        type=str,
+        help="""additional arguments for the container engine (podman or docker), as a shell-quoted string.
+May be specified multiple times; values are combined in order. Same shell-quoting rules as --runtime-args.
+Flags are inserted before the container image, after RamaLama-generated options and bind mounts.""",
+        completer=suppressCompleter,
+    )
+
+
 def runtime_options(parser, command):
     config = ActiveConfig()
     parser.add_argument("--authfile", help="path of the authentication file")
@@ -923,6 +947,7 @@ def runtime_options(parser, command):
         type=str,
         help="device to leak in to the running container (or 'none' to pass no device)",
     )
+    add_engine_args_argument(parser)
     parser.add_argument(
         "--env",
         dest="env",

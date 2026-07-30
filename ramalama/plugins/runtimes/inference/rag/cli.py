@@ -1,6 +1,13 @@
 """CLI registration for the ``ramalama rag`` subcommand."""
 
-from ramalama.cli import OverrideDefaultAction, default_image, default_rag_image, local_images, suppressCompleter
+from ramalama.cli import (
+    OverrideDefaultAction,
+    add_engine_args_argument,
+    default_image,
+    default_rag_image,
+    local_images,
+    suppressCompleter,
+)
 from ramalama.config import ActiveConfig
 from ramalama.plugins.runtimes.inference.llama_cpp import AddPathOrUrl
 from ramalama.plugins.runtimes.inference.rag.handler import DEFAULT_CAPTION_MODEL
@@ -55,6 +62,7 @@ def register_rag_subcommand(plugin, subparsers):
         help="context size for the embedding server (default: 0, auto-detected by llama.cpp)",
         completer=suppressCompleter,
     )
+    add_engine_args_argument(parser)
     parser.add_argument(
         "--chunk-size",
         dest="chunk_size",

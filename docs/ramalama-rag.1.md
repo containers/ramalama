@@ -62,8 +62,21 @@ Granite Docling GGUF model used for document conversion
 Context size for the embedding server (default: 0, auto-detected by
 llama.cpp based on the embedding model).
 
+
+[//]: # (BEGIN included file options/engine-args.md)
+#### **--engine-args**="*args*"
+Add *args* to the **podman** or **docker** invocation (before the container image), after RamaLama-generated options and model bind mounts.
+The option may be specified multiple times; each value is shell-split and all tokens are passed to the engine in order.
+Use for extra **--mount** flags (for example multimodal projector files) or other engine-specific options. Shell-quoting rules match **--runtime-args**.
+
+[//]: # (END   included file options/engine-args.md)
+
+
+[//]: # (BEGIN included file options/help.md)
 #### **--help**, **-h**
-Print usage message
+Show this help message and exit
+
+[//]: # (END   included file options/help.md)
 
 #### **--image**=*IMAGE*
 OCI container image to use for the llama.cpp inference servers.

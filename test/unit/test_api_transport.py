@@ -126,3 +126,38 @@ def test_run_cli_api_transport_does_not_call_pull(monkeypatch):
 
     transport.pull.assert_not_called()
     transport.run.assert_called_once()
+
+
+@pytest.mark.parametrize("handler", ["_run_handler", "_serve_handler"])
+def test_handler_pulls_draft_model(monkeypatch, handler):
+    from ramalama.plugins.loader import get_runtime
+    from ramalama.plugins.runtimes.inference import common as common_module
+
+    draft = mock.MagicMock()
+    primary = mock.MagicMock()
+    primary.draft_model = draft
+
+    monkeypatch.setattr(common_module, "New", lambda model, args: primary)
+    monkeypatch.setattr(common_module, "compute_serving_port", lambda args: "8080")
+
+    plugin = get_runtime("llama.cpp")
+    monkeypatch.setattr(plugin, "_do_run", lambda args, model: None)
+    monkeypatch.setattr(plugin, "_do_serve", lambda args, model: None)
+
+    model_value = ["hf://org/model"] if handler == "_serve_handler" else "hf://org/model"
+    args = SimpleNamespace(
+        MODEL=model_value,
+        container=False,
+        detach=False,
+        dryrun=True,
+        pull="missing",
+        engine="podman",
+        api="none",
+        generate=None,
+        rag=None,
+    )
+
+    getattr(plugin, handler)(args)
+
+    primary.ensure_model_exists.assert_called_once()
+    draft.ensure_model_exists.assert_called_once()

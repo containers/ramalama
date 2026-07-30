@@ -129,6 +129,22 @@ class LlamaCppCommands:
                 if ngl is not None:
                     cmd += ["-ngld", ngl_str]
 
+            spec_type = getattr(args, 'spec_type', None)
+            if spec_type:
+                cmd += ["--spec-type", str(spec_type)]
+
+            spec_draft_n_max = getattr(args, 'spec_draft_n_max', None)
+            if spec_draft_n_max is not None:
+                cmd += ["--spec-draft-n-max", str(spec_draft_n_max)]
+
+            spec_draft_n_min = getattr(args, 'spec_draft_n_min', None)
+            if spec_draft_n_min is not None:
+                cmd += ["--spec-draft-n-min", str(spec_draft_n_min)]
+
+            spec_draft_p_min = getattr(args, 'spec_draft_p_min', None)
+            if spec_draft_p_min is not None:
+                cmd += ["--spec-draft-p-min", str(spec_draft_p_min)]
+
         threads = getattr(args, 'threads', None)
         if threads is not None:
             cmd += ["--threads", str(threads)]

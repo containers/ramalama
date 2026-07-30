@@ -1,10 +1,10 @@
-CUDA_BACKEND = cu128
-ROCM_BACKEND = rocm6.3
+CUDA_BACKEND = cu129
+ROCM_BACKEND = rocm7.1
 INTEL_BACKEND = xpu
 
 # Keep the versions below in sync with the python versions installed in build_tools.sh
 PYTHON_VERSION = 3.14
-CUDA_PYTHON_VERSION = 3.12
+CUDA_PYTHON_VERSION = 3.14
 
 tools-backends = cpu $(CUDA_BACKEND) $(ROCM_BACKEND) $(INTEL_BACKEND) cpu-aarch64 $(CUDA_BACKEND)-aarch64
 tools-requirements-files = $(foreach backend,$(tools-backends),requirements-tools-$(backend).txt)
@@ -22,6 +22,7 @@ $(tools-requirements-files): requirements-tools-%.txt: requirements-tools.in
 	--upgrade \
 	--generate-hashes \
 	--emit-index-annotation \
+	--no-sources-package torch \
 	-o $@ $<
 
 requirements-rag.txt: requirements-rag.in

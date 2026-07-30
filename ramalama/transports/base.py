@@ -401,9 +401,7 @@ class Transport(TransportBase):
 
         self.setup_container(args)
         self.setup_mounts(args)
-
-        # Make sure Image precedes cmd_args
-        self.engine.add([args.image] + cmd_args)
+        self.engine.add_container_image(args.image, cmd_args)
 
         if args.dryrun:
             self.engine.dryrun()
@@ -481,8 +479,7 @@ class Transport(TransportBase):
             # For container mode, set up the container and start it with subprocess
             self.setup_container(args)
             self.setup_mounts(args)
-            # Make sure Image precedes cmd_args
-            self.engine.add([args.image] + cmd)
+            self.engine.add_container_image(args.image, cmd)
 
             if args.dryrun:
                 self.engine.dryrun()

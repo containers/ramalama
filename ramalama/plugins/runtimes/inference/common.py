@@ -216,6 +216,10 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             except Exception as exc:
                 raise e from exc
 
+        draft_model = getattr(model, "draft_model", None)
+        if draft_model is not None:
+            draft_model.ensure_model_exists(args)
+
         self._do_run(args, model)
 
     def _serve_handler(self, args: argparse.Namespace) -> None:
@@ -253,6 +257,10 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
 
         if isinstance(model, APITransport):
             raise ValueError("ramalama serve is not supported for hosted API transports.")
+
+        draft_model = getattr(model, "draft_model", None)
+        if draft_model is not None:
+            draft_model.ensure_model_exists(args)
 
         self._do_serve(args, model)
 

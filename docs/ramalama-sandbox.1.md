@@ -8,7 +8,7 @@ ramalama\-sandbox - run an AI agent in a sandbox, backed by a local AI Model
 
 ## DESCRIPTION
 Run an AI agent in a container, connected to a local model server also running
-in a container. The agent uses the model for reasoning and tool calling.
+in a container or using a llm-endpoint url. The agent uses the model for reasoning and tool calling.
 
 The *agent* argument selects which AI agent to run. Currently supported agents:
 

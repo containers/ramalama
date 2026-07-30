@@ -12,7 +12,7 @@ metadata:
       event == "pull_request" && target_branch == "main" && body.action != "ready_for_review" &&
       (
         "container-images/common/Containerfile.tools".pathChanged() ||
-        "container-images/common/requirements-tools-rocm6.3.txt".pathChanged() ||
+        "container-images/common/requirements-tools-rocm*.txt".pathChanged() ||
         "container-images/scripts/build_tools.sh".pathChanged() ||
         ".tekton/pipelines/pull-request-pipeline.yaml".pathChanged() ||
         ".tekton/rocm-tools/rocm-tools-pull-request.yaml".pathChanged()
@@ -40,7 +40,7 @@ spec:
     value: container-images/common/Containerfile.tools
   - name: build-args
     value:
-    - TORCH_BACKEND=rocm6.3
+    - TORCH_BACKEND=rocm7.1
   pipelineRef:
     name: pull-request-pipeline
   timeouts:

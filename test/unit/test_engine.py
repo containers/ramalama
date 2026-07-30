@@ -92,6 +92,19 @@ class TestEngine(unittest.TestCase):
         self.assertIn("-p", engine.exec_args)
         self.assertIn("8080:8080", engine.exec_args)
 
+    def test_add_container_image_applies_engine_args_after_mounts(self):
+        args = Namespace(**vars(self.base_args), engine_args=["--label=custom=1"])
+        engine = ramalama.engine.Engine(args)
+        engine.add_volume("/host/model", "/model")
+        engine.add_container_image("my-image:latest", ["llama-server"])
+        mount_index = engine.exec_args.index("-v")
+        extras_index = engine.exec_args.index("--label=custom=1")
+        image_index = engine.exec_args.index("my-image:latest")
+        cmd_index = engine.exec_args.index("llama-server")
+        self.assertLess(mount_index, extras_index)
+        self.assertLess(extras_index, image_index)
+        self.assertLess(image_index, cmd_index)
+
     @patch('ramalama.engine.run_cmd')
     def test_images(self, mock_run_cmd):
         mock_run_cmd.return_value.stdout = b"image1\nimage2\n"
@@ -130,6 +143,8 @@ class TestEngine(unittest.TestCase):
         ("127.0.0.1", "8080:8081", "127.0.0.1:8080:8081"),
         # Port range with IPv6 host
         ("::1", "8080:8081", "[::1]:8080:8081"),
+        # Explicit None host omits host prefix like IPv6 wildcard
+        (None, "8080", "8080:8080"),
     ],
     ids=[
         "default-ipv6-wildcard",
@@ -139,6 +154,7 @@ class TestEngine(unittest.TestCase):
         "port-range-default",
         "port-range-ipv4",
         "port-range-ipv6",
+        "none-host",
     ],
 )
 def test_add_port_with_host(host, port, expected_port_arg):
@@ -173,6 +189,7 @@ def test_is_healthy_conn(mock_conn):
         pytest.param("[::]", "127.0.0.1", id="ipv6-wildcard-bracketed"),
         pytest.param("192.168.1.100", "192.168.1.100", id="ipv4-host"),
         pytest.param("::1", "::1", id="ipv6-loopback"),
+        pytest.param(None, "127.0.0.1", id="none-host"),
     ],
 )
 @patch("ramalama.engine.HTTPConnection")

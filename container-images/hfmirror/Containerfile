@@ -1,0 +1,35 @@
+# HF Mirror — local Hugging Face API mirror for CI.
+# Requires an HF token to download models at build time.
+#
+# Build:
+#   podman build --secret id=hf_token,src=$HOME/.cache/huggingface/token \
+#     -t quay.io/ramalama/hfmirror:latest container-images/hfmirror
+#
+# Run:
+#   podman run -d -p 5000:5000 quay.io/ramalama/hfmirror:latest
+#
+# Point ramalama at it:
+#   export HF_ENDPOINT=http://127.0.0.1:5000
+
+FROM registry.access.redhat.com/hi/python:latest-builder AS models
+
+USER root
+RUN pip install --no-cache-dir huggingface_hub
+
+COPY populate.py /tmp/populate.py
+RUN --mount=type=secret,id=hf_token \
+    HF_TOKEN=$(cat /run/secrets/hf_token) \
+    python3 /tmp/populate.py --models-dir /tmp/models
+
+FROM registry.access.redhat.com/hi/python:latest
+
+RUN pip install --no-cache-dir flask
+
+COPY server.py /app/server.py
+COPY --from=models /tmp/models/ /data/models/
+ENV HFMIRROR_MODELS_DIR=/data/models
+RUN python3 /app/server.py --build-index /data/index.json
+
+EXPOSE 5000
+
+CMD ["python3", "/app/server.py"]

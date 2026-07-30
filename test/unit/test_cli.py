@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from ramalama.cli import ParsedGenerateInput, parse_generate_option, post_parse_setup
+from ramalama.cli import ParsedGenerateInput, _normalize_engine_args, parse_generate_option, post_parse_setup
 from ramalama.transports.base import NoGGUFModelFileFound, SafetensorModelNotSupported
 
 
@@ -176,6 +176,29 @@ def test_pull_verify(monkeypatch, option, value):
     parser, args = init_cli()
     assert hasattr(args, "verify")
     assert args.verify == value
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        (None, []),
+        ("", []),
+        ("--label=a=1", ["--label=a=1"]),
+        (["--label=a=1", "--label=b=2"], ["--label=a=1", "--label=b=2"]),
+        (
+            ["--env FOO=bar", "--mount type=bind,src=/tmp,dst=/mnt"],
+            ["--env", "FOO=bar", "--mount", "type=bind,src=/tmp,dst=/mnt"],
+        ),
+    ],
+)
+def test_normalize_engine_args(raw, expected):
+    assert _normalize_engine_args(raw) == expected
+
+
+def test_post_parse_setup_engine_args_repeated():
+    ns = Namespace(engine_args=["--label=a=1", "--label=b=2"], debug=False)
+    post_parse_setup(ns)
+    assert ns.engine_args == ["--label=a=1", "--label=b=2"]
 
 
 @pytest.mark.parametrize(
