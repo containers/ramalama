@@ -497,8 +497,10 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     @staticmethod
     def _set_openvino_env(args: argparse.Namespace) -> None:
-        """Set OpenVINO env vars when Intel GPU is detected (llama.cpp-specific)."""
+        """Set OpenVINO env vars when Intel GPU is detected and openvino backend is selected (llama.cpp-specific)."""
         if not os.environ.get("INTEL_VISIBLE_DEVICES"):
+            return
+        if getattr(args, "backend", None) != "openvino":
             return
 
         openvino_env = [
