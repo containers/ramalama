@@ -92,6 +92,24 @@ class TestEngine(unittest.TestCase):
         self.assertIn("-p", engine.exec_args)
         self.assertIn("8080:8080", engine.exec_args)
 
+    def test_podman_no_host_internal(self):
+        args = Namespace(**vars(self.base_args))
+        engine = ramalama.engine.Engine(args)
+        self.assertNotIn("--add-host", engine.exec_args)
+
+    def test_docker_network_no_host_internal(self):
+        args = Namespace(**vars(self.base_args))
+        args.engine = "docker"
+        args.network = "net"
+        engine = ramalama.engine.Engine(args)
+        self.assertNotIn("--add-host", engine.exec_args)
+
+    def test_docker_host_internal(self):
+        args = Namespace(**vars(self.base_args))
+        args.engine = "docker"
+        engine = ramalama.engine.Engine(args)
+        self.assertIn("--add-host host.docker.internal=host-gateway", " ".join(engine.exec_args))
+
     def test_add_container_image_applies_engine_args_after_mounts(self):
         args = Namespace(**vars(self.base_args), engine_args=["--label=custom=1"])
         engine = ramalama.engine.Engine(args)
