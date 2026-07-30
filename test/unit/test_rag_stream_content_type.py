@@ -96,6 +96,10 @@ def _load_rag_framework():
     return module
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 10),
+    reason="rag_framework uses PEP 604 unions in class bodies; it only runs in the RAG container image (Python 3.11+)",
+)
 def test_stream_completion_uses_sse_media_type():
     """Regression test for #2837: streaming chat completions must advertise
     ``text/event-stream`` so strict OpenAI clients (e.g. Open WebUI) accept
