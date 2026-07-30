@@ -73,6 +73,8 @@ class BaseEngine(ABC):
         network = getattr(self.args, "network", None)
         if network is not None:
             self.exec_args += ["--network", network]
+        elif self.use_docker:
+            self.add_args("--add-host", "host.docker.internal=host-gateway")
 
     def add_oci_runtime(self):
         oci_runtime = getattr(self.args, "oci_runtime", None)

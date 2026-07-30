@@ -146,7 +146,9 @@ class SandboxEngine(Engine):
 
     def add_network(self) -> None:
         if getattr(self.args, "start_model_server", True):
-            self.add_args(f"--network=container:{self.args.name}")  # type: ignore[attr-defined]
+            if not getattr(self.args, "network", None):
+                self.args.network = f"container:{self.args.name}"  # type: ignore[attr-defined]
+        super().add_network()
 
     def add_workdir(self, args: SandboxEngineArgsType):
         if args.workdir:

@@ -173,7 +173,7 @@ def test_agent_network(agent):
     """Agent should setup container networking"""
     args, cls = _agent_args(agent)
     obj = cls(args, "test-model")
-    assert "--network=container:ramalama_model_abc" in obj.engine.exec_args
+    assert "--network container:ramalama_model_abc" in " ".join(obj.engine.exec_args)
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
