@@ -223,6 +223,29 @@ def test_basic_dry_run():
             [], r".*--reasoning", None, None, False,
             id="check --reasoning not passed by default",
         ),
+        pytest.param(
+            [], "GGML_OPENVINO", None, None, False,
+            id="check OpenVINO env vars not set by default", marks=skip_if_no_container,
+        ),
+        pytest.param(
+            [], "GGML_OPENVINO", None, {"INTEL_VISIBLE_DEVICES": "1"}, False,
+            id="check OpenVINO env vars not set by default for Intel devices", marks=skip_if_no_container,
+        ),
+        pytest.param(
+            [], "GGML_OPENVINO", '[ramalama.runtimes.llama_cpp]\nbackend="openvino"\n',
+            {"INTEL_VISIBLE_DEVICES": "1"}, True,
+            id="check OpenVINO env vars are set for openvino config option", marks=skip_if_no_container,
+        ),
+        pytest.param(
+            ["--backend", "openvino"], "GGML_OPENVINO", None,
+            {"INTEL_VISIBLE_DEVICES": "1"}, True,
+            id="check OpenVINO env vars are set for openvino backend option", marks=skip_if_no_container,
+        ),
+        pytest.param(
+            ["--backend", "openvino"], "GGML_OPENVINO_DEVICE=zpu", None,
+            {"INTEL_VISIBLE_DEVICES": "1", "GGML_OPENVINO_DEVICE": "zpu"}, True,
+            id="check OpenVINO env vars can be overridden", marks=skip_if_no_container,
+        ),
     ],
 )
 # fmt: on

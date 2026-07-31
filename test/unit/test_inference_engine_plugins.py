@@ -697,6 +697,36 @@ class TestLlamaCppPlugin:
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
         assert image == "custom/cuda:v1.0"
 
+    @patch.dict("os.environ", clear=True, INTEL_VISIBLE_DEVICES="1")
+    def test_intel_no_openvino(self):
+        ns = make_ns()
+        self.plugin.handle_subcommand("serve", ns)
+        assert not any("OPENVINO" in item for item in getattr(ns, "env", []))
+
+    @patch.dict("os.environ", clear=True, INTEL_VISIBLE_DEVICES="1")
+    def test_openvino_backend_env_default(self):
+        ns = make_ns()
+        ns.backend = "openvino"
+        self.plugin.handle_subcommand("serve", ns)
+        assert hasattr(ns, "env")
+        assert "GGML_OPENVINO_DEVICE=GPU" in ns.env
+        assert "GGML_OPENVINO_STATEFUL_EXECUTION=1" in ns.env
+
+    @patch.dict(
+        "os.environ",
+        clear=True,
+        INTEL_VISIBLE_DEVICES="1",
+        GGML_OPENVINO_DEVICE="fluxcapacitor",
+        GGML_OPENVINO_STATEFUL_EXECUTION="yesplease",
+    )
+    def test_openvino_backend_env_override(self):
+        ns = make_ns()
+        ns.backend = "openvino"
+        self.plugin.handle_subcommand("serve", ns)
+        assert hasattr(ns, "env")
+        assert "GGML_OPENVINO_DEVICE=fluxcapacitor" in ns.env
+        assert "GGML_OPENVINO_STATEFUL_EXECUTION=yesplease" in ns.env
+
 
 class TestVllmPlugin:
     def setup_method(self):
