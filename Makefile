@@ -141,6 +141,14 @@ codespell:
 
 .PHONY: man-check
 man-check: docs-manpages-md
+	@if ! git diff --quiet -- docs/ || \
+	    [ -n "$$(git ls-files --others --exclude-standard docs/)" ]; then \
+		echo "ERROR: generated man-page markdown is out of date."; \
+		echo "Run 'make docs-manpages-md' and commit the results."; \
+		git diff --name-only -- docs/; \
+		git ls-files --others --exclude-standard docs/; \
+		exit 1; \
+	fi
 ifeq ($(OS),Linux)
 	hack/man-page-checker
 	hack/xref-helpmsgs-manpages
