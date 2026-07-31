@@ -53,7 +53,11 @@ from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.model_store.reffile import RefJSONFile, migrate_reffile_to_refjsonfile
 from ramalama.path_utils import file_uri_to_path, get_container_mount_path
 from ramalama.plugins.loader import assemble_command
-from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin, enumerate_store_gguf_models
+from ramalama.plugins.runtimes.inference.common import (
+    ContainerizedInferenceRuntimePlugin,
+    enumerate_store_gguf_models,
+    resolve_accel_container_image,
+)
 from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
     LlamaCppCommands,
     _default_threads,
@@ -564,10 +568,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if not models:
             sys.exit("Error: no GGUF models found in the model store. Pull a model first with: ramalama pull <model>")
 
-        if not args.dryrun and not getattr(args, "image", None):
-            config = ActiveConfig()
-            should_pull = config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
+        resolve_accel_container_image(args)
 
         cmd = self.handle_subcommand("serve", args)
         engine = Engine(args)
@@ -884,13 +885,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
             return
 
         if args.container:
-            # Re-derive the image from the (now backend-synced) config, like run/serve.
-            # The eager --image default is computed before --backend is applied.
-            config = ActiveConfig()
-            should_pull = config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(
-                config.engine, accel_image(config), should_pull=should_pull, quiet=getattr(args, "quiet", False)
-            )
+            resolve_accel_container_image(args)
             model.setup_container(args)
             model.setup_mounts(args)
             model.engine.add_container_image(args.image, cmd)
