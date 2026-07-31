@@ -13,16 +13,30 @@
 
 import filecmp
 import glob
+import importlib.util
 import os
 import sys
 
 ENCODING = 'utf-8-sig'  # tolerate UTF-8 BOM in templates
 
 
+def _load_version() -> str:
+    spec = importlib.util.spec_from_file_location(
+        'ramalama.version',
+        os.path.join(os.path.dirname(__file__), '..', 'ramalama', 'version.py'),
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.__version__
+
+
 class Preprocessor:
     def __init__(self) -> None:
         self.infile = ''
         self.used_by: dict[str, list[str]] = {}
+        self._version = _load_version()
+        parts = self._version.split('.')
+        self._minor_version = '.'.join(parts[:2])
 
     def process(self, infile: str) -> None:
         self.infile = infile
@@ -51,6 +65,7 @@ class Preprocessor:
                     if path:
                         self._insert_file(fh_out, path)
                 else:
+                    line = self._substitute(line)
                     fh_out.write(line)
 
         os.chmod(outfile_tmp, 0o644)
@@ -99,11 +114,17 @@ class Preprocessor:
                     if subpath:
                         self._insert_file(fh_out, subpath)
                     continue
-                sub = self._ramalama_subcommand()
-                opt_line = opt_line.replace('<<subcommand>>', sub)
-                opt_line = opt_line.replace('<<fullsubcommand>>', sub)
+                opt_line = self._substitute(opt_line)
                 fh_out.write(opt_line)
         fh_out.write('\n[//]: # (END   included file ' + path + ')\n')
+
+    def _substitute(self, line: str) -> str:
+        sub = self._ramalama_subcommand()
+        line = line.replace('<<subcommand>>', sub)
+        line = line.replace('<<fullsubcommand>>', sub)
+        line = line.replace('<<version>>', self._version)
+        line = line.replace('<<minor-version>>', self._minor_version)
+        return line
 
     def _ramalama_subcommand(self) -> str:
         """e.g. ramalama-foo-bar.1.md.in -> 'foo bar' (program name not included)."""
