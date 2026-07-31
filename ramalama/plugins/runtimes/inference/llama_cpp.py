@@ -884,6 +884,13 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
             return
 
         if args.container:
+            # Re-derive the image from the (now backend-synced) config, like run/serve.
+            # The eager --image default is computed before --backend is applied.
+            config = ActiveConfig()
+            should_pull = config.pull in ["always", "missing", "newer"]
+            args.image = ensure_image(
+                config.engine, accel_image(config), should_pull=should_pull, quiet=getattr(args, "quiet", False)
+            )
             model.setup_container(args)
             model.setup_mounts(args)
             model.engine.add_container_image(args.image, cmd)
