@@ -58,7 +58,7 @@ docs: install-tools manpages-md $(DOCS_MAN_TARGETS)
 
 # Run the preprocessor once (avoids parallel make rerunning it per .md and races
 # when rewriting docs/options cross-reference headers).
-$(MANPAGES_STAMP): $(MANPAGES_MD_IN) $(wildcard options/*.md) $(ROOTDIR)/hack/markdown-preprocess
+$(MANPAGES_STAMP): $(MANPAGES_MD_IN) $(wildcard options/*.md) $(ROOTDIR)/hack/markdown-preprocess $(ROOTDIR)/ramalama/version.py
 	$(ROOTDIR)/hack/markdown-preprocess
 	@touch $@
 
