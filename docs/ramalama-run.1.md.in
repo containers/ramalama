@@ -16,6 +16,8 @@ the execution. URL support means if a model is on a web site or even on your loc
 
 @@option api
 
+@@option attach
+
 @@option authfile
 
 @@option backend
