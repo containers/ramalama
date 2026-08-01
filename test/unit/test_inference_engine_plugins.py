@@ -31,6 +31,7 @@ from ramalama.plugins.runtimes.inference.vllm import VllmPlugin
 
 def make_ns(
     container=True,
+    file=None,
     ngl=None,
     ncmoe=None,
     threads=4,
@@ -59,6 +60,7 @@ def make_ns(
 ) -> argparse.Namespace:
     ns = argparse.Namespace(
         container=container,
+        file=file,
         ngl=ngl,
         ncmoe=ncmoe,
         threads=threads,
@@ -516,7 +518,16 @@ class TestLlamaCppPlugin:
         mock_model = make_transport_model()
         mock_new.return_value = mock_model
 
-        ns = make_ns(ngl=20, threads=8, MODEL="ollama://mymodel")
+        ns = make_ns(
+            ngl=20,
+            ncmoe=10,
+            temp=0.6,
+            threads=8,
+            ctx_size=65536,
+            max_tokens=1024,
+            file="wiki.text",
+            MODEL="ollama://mymodel",
+        )
         cmd = self.plugin.handle_subcommand("perplexity", ns)
 
         expected_entry = "--perplexity" if container_image_is_ggml else "llama-perplexity"
@@ -524,6 +535,16 @@ class TestLlamaCppPlugin:
         assert "--model" in cmd
         assert "-ngl" in cmd
         assert cmd[cmd.index("-ngl") + 1] == "20"
+        assert "-ncmoe" in cmd
+        assert cmd[cmd.index("-ncmoe") + 1] == "10"
+        assert "--temp" in cmd
+        assert cmd[cmd.index("--temp") + 1] == "0.6"
+        assert "--ctx-size" in cmd
+        assert cmd[cmd.index("--ctx-size") + 1] == "65536"
+        assert "-n" in cmd
+        assert cmd[cmd.index("-n") + 1] == "1024"
+        assert "-f" in cmd
+        assert cmd[cmd.index("-f") + 1] == "/data/samples.txt"
         assert "--threads" in cmd
         assert cmd[cmd.index("--threads") + 1] == "8"
 

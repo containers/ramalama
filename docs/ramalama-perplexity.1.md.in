@@ -14,8 +14,6 @@ ramalama\-perplexity - calculate the perplexity value of an AI Model
 
 @@option backend
 
-@@option cache-reuse
-
 @@option ctx-size
 
 @@option device
@@ -23,6 +21,9 @@ ramalama\-perplexity - calculate the perplexity value of an AI Model
 @@option engine-args
 
 @@option env
+
+#### **--file**
+File containing the sample prompt - see also [get-wikitext-2.sh](https://github.com/ggml-org/llama.cpp/blob/master/scripts/get-wikitext-2.sh)
 
 @@option help
 
