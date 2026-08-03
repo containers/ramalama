@@ -428,17 +428,17 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             completer=suppressCompleter,
         )
         self._add_backend_arg(parser)
-        parser.add_argument(
-            "--cache-reuse",
-            dest="cache_reuse",
-            type=int,
-            default=None,
-            help="min chunk size to attempt reusing from the cache via KV shifting",
-            completer=suppressCompleter,
-        )
         self._add_ngl_arg(parser)
         self._add_ncmoe_arg(parser)
         if command in ["run", "serve"]:
+            parser.add_argument(
+                "--cache-reuse",
+                dest="cache_reuse",
+                type=int,
+                default=None,
+                help="min chunk size to attempt reusing from the cache via KV shifting",
+                completer=suppressCompleter,
+            )
             parser.add_argument(
                 "--logfile",
                 dest="logfile",
@@ -762,6 +762,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         perplexity_parser = subparsers.add_parser("perplexity", help="calculate perplexity for specified AI Model")
         runtime_options(perplexity_parser, "perplexity")
         self._add_inference_args(perplexity_parser, "perplexity")
+        perplexity_parser.add_argument("--file", type=str, default=None, help="file containing the sample prompt")
         perplexity_parser.add_argument("MODEL", completer=local_models)
         perplexity_parser.set_defaults(func=self._perplexity_handler)
 
@@ -926,6 +927,10 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
             raise NotImplementedError("perplexity is not supported for hosted API transports.")
 
         set_accel_env_vars()
+        if args.file is not None and args.container:
+            args.engine_args.append(
+                f"--mount=type=bind,src={get_container_mount_path(args.file)},destination=/data/samples.txt,ro"
+            )
         model.execute_command(assemble_command(args), args)
 
     def _benchmarks_list_handler(self, args: argparse.Namespace) -> None:

@@ -87,14 +87,6 @@ ramalama perplexity --backend rocm granite
 [//]: # (END   included file options/backend.md)
 
 
-[//]: # (BEGIN included file options/cache-reuse.md)
-#### **--cache-reuse**=*BYTES*
-Minimum chunk size (in bytes) to attempt reusing from the cache via KV shifting.
-When omitted, llama-server uses its built-in default.
-
-[//]: # (END   included file options/cache-reuse.md)
-
-
 [//]: # (BEGIN included file options/ctx-size.md)
 #### **--ctx-size**, **-c**
 size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 0, 0 = loaded from model)
@@ -139,6 +131,9 @@ for a value and sets the variable only if it is set on the host.
 
 
 [//]: # (END   included file options/env.md)
+
+#### **--file**
+File containing the sample prompt - see also [get-wikitext-2.sh](https://github.com/ggml-org/llama.cpp/blob/master/scripts/get-wikitext-2.sh)
 
 
 [//]: # (BEGIN included file options/help.md)
