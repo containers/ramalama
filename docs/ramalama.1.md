@@ -145,7 +145,7 @@ Show the program version and exit.
 | [ramalama-chat(1)](ramalama-chat.1.md)            |OpenAI chat with the specified REST API URL|
 | [ramalama-containers(1)](ramalama-containers.1.md)|list all RamaLama containers|
 | [ramalama-convert(1)](ramalama-convert.1.md)      |convert AI Models from local storage to OCI Image|
-| [ramalama-daemon(1)](ramalama-daemon.1.md)        |run a RamaLama REST server|
+| [ramalama-daemon(1)](ramalama-daemon.1.md)        |manage the RamaLama REST daemon|
 | [ramalama-info(1)](ramalama-info.1.md)            |display RamaLama configuration information|
 | [ramalama-inspect(1)](ramalama-inspect.1.md)      |inspect the specified AI Model|
 | [ramalama-list(1)](ramalama-list.1.md)            |list all downloaded AI Models|
