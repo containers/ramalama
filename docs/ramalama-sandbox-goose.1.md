@@ -457,11 +457,20 @@ Enable or disable the web UI for the served model (enabled by default). When set
 [//]: # (END   included file options/webui.md)
 
 
+[//]: # (BEGIN included file options/with-openshell.md)
+#### **--with-openshell**
+Flag to run the sandbox isolated by OpenShell.
+Uses the default policy, which just enables networking to the inference endpoint.
+
+[//]: # (END   included file options/with-openshell.md)
+
+
 [//]: # (BEGIN included file options/workdir.md)
 #### **--workdir**, **-w**
 Local directory to mount into the sandbox container at /work
 
 [//]: # (END   included file options/workdir.md)
+
 
 ## EXAMPLES
 
@@ -483,6 +492,11 @@ ramalama sandbox goose --thinking=off qwen3:4b
 Start an interactive session with access to a local directory:
 ```
 ramalama sandbox goose -w ./src qwen3:4b
+```
+
+Start an interactive session with access to a local directory and isolate the agent via OpenShell:
+```
+ramalama sandbox goose --with-openshell -w ./src qwen3:4b
 ```
 
 Request the agent to perform actions non-interactively:
