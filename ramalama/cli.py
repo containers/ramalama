@@ -37,7 +37,7 @@ from ramalama.config import (
 )
 from ramalama.config_types import COLOR_OPTIONS
 from ramalama.endian import EndianMismatchError
-from ramalama.host_utils import format_bind_host_for_url
+from ramalama.host_utils import format_bind_host_for_url, format_bind_host_publish_prefix
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
@@ -1209,6 +1209,9 @@ def daemon_start_cli(args):
     if is_daemon_in_container:
         # If run inside a container, map the model store to the container internal directory
         daemon_model_store_dir = "/ramalama/models"
+        # Honor --host for the published host binding; the inner daemon listens on all
+        # interfaces inside the container.
+        publish = f"{format_bind_host_publish_prefix(args.host)}{args.port}:8080"
 
         daemon_cmd += [
             args.engine,
@@ -1217,7 +1220,7 @@ def daemon_start_cli(args):
             args.pull,
             "-d",
             "-p",
-            f"{args.port}:8080",
+            publish,
             "-v",
             f"{args.store}:{daemon_model_store_dir}",
             args.image,
