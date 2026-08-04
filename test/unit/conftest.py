@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import pytest
 
@@ -25,6 +26,23 @@ def restores_user_environment_at_end_of_tests():
             os.environ[k] = initial_env[k]
         else:
             os.environ.pop(k)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_from_toolbox():
+    """Prevent the real host toolbox environment from affecting unit tests.
+
+    Tests that specifically verify toolbox behavior mock in_toolbox themselves.
+    """
+    from ramalama.common import in_toolbox
+
+    in_toolbox.cache_clear()
+    with (
+        patch("ramalama.common.in_toolbox", return_value=False),
+        patch("ramalama.config.in_toolbox", return_value=False),
+    ):
+        yield
+    in_toolbox.cache_clear()
 
 
 @pytest.fixture

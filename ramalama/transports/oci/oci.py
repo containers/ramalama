@@ -9,7 +9,7 @@ from textwrap import dedent
 from typing import Optional, Union
 
 import ramalama.annotations as oci_annotations
-from ramalama.common import MNT_DIR, exec_cmd, perror, run_cmd, set_accel_env_vars
+from ramalama.common import MNT_DIR, engine_cmd, exec_cmd, perror, run_cmd, set_accel_env_vars
 from ramalama.engine import BuildEngine, dry_run
 from ramalama.oci_tools import OciRef, engine_supports_manifest_attributes
 from ramalama.transports.base import Transport
@@ -49,7 +49,7 @@ class OCI(Transport):
         return self.strategy.kind == 'artifact'
 
     def login(self, args):
-        conman_args = [self.conman, "login"]
+        conman_args = [*engine_cmd(self.conman), "login"]
         if str(args.tlsverify).lower() == "false":
             conman_args.extend([f"--tls-verify={args.tlsverify}"])
         if args.authfile:
@@ -65,7 +65,7 @@ class OCI(Transport):
         return exec_cmd(conman_args)
 
     def logout(self, args):
-        conman_args = [self.conman, "logout"]
+        conman_args = [*engine_cmd(self.conman), "logout"]
         conman_args.append(self.model)
         return exec_cmd(conman_args)
 
@@ -165,7 +165,7 @@ class OCI(Transport):
     def tag(self, imageid, target, args):
         # Tag imageid with target
         cmd_args = [
-            self.conman,
+            *engine_cmd(self.conman),
             "tag",
             imageid,
             target,
@@ -177,7 +177,7 @@ class OCI(Transport):
 
     def _rm_artifact(self, ignore) -> None:
         rm_cmd = [
-            self.conman,
+            *engine_cmd(self.conman),
             "artifact",
             "rm",
         ]
@@ -194,7 +194,7 @@ class OCI(Transport):
         filepath = oci_spec.normalize_layer_filepath(file_name)
         metadata = oci_spec.FileMetadata.from_path(path, name=file_name).to_json()
         cmd = [
-            self.conman,
+            *engine_cmd(self.conman),
             "artifact",
             "add",
             "--annotation",
@@ -228,7 +228,7 @@ class OCI(Transport):
     def _create_manifest_without_attributes(self, target, imageid, args):
         # Create manifest list for target with imageid
         cmd_args = [
-            self.conman,
+            *engine_cmd(self.conman),
             "manifest",
             "create",
             target,
@@ -246,7 +246,7 @@ class OCI(Transport):
 
         # Annotate manifest list
         cmd_args = [
-            self.conman,
+            *engine_cmd(self.conman),
             "manifest",
             "annotate",
             "--annotation",
@@ -270,8 +270,8 @@ class OCI(Transport):
             f"{self.model_store.model_name} ({self.model_store.model_type}) ..."
         )
         for rm_cmd in [
-            [self.conman, "manifest", "rm", self.model],
-            [self.conman, "rmi", self.model],
+            [*engine_cmd(self.conman), "manifest", "rm", self.model],
+            [*engine_cmd(self.conman), "rmi", self.model],
         ]:
             try:
                 if args.dryrun:
@@ -301,11 +301,12 @@ class OCI(Transport):
     def push(self, source_model, args):
         target = self.model
         source = source_model.model
-        conman_args = [self.conman, "push"]
+        prefix = engine_cmd(self.conman)
+        conman_args = [*prefix, "push"]
         type = "image"
         if args.type == "artifact":
             type = args.type
-            conman_args.insert(1, "artifact")
+            conman_args.insert(len(prefix), "artifact")
 
         perror(f"Pushing {type} {self.model} ...")
         if args.authfile:
@@ -321,7 +322,7 @@ class OCI(Transport):
             try:
                 if args.type != "artifact":
                     perror(f"Pushing artifact {self.model} ...")
-                    conman_args.insert(1, "artifact")
+                    conman_args.insert(len(prefix), "artifact")
                     run_cmd(conman_args)
             except subprocess.CalledProcessError:
                 perror(f"Failed to push OCI {target} : {e}")

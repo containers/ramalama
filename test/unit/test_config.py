@@ -188,10 +188,36 @@ def test_load_env_config_invalid_log_level_raises(invalid_level):
 
 
 class TestGetDefaultEngine:
-    def test_get_default_engine_with_toolboxenv(self):
-        with patch("os.getenv", return_value=None):
-            with patch("os.path.exists", side_effect=lambda x: x == "/run/.toolboxenv"):
-                assert get_default_engine() is None
+    def test_get_default_engine_toolbox_with_flatpak_spawn_and_host_podman(self):
+        with (
+            patch("ramalama.config.in_toolbox", return_value=True),
+            patch("ramalama.config.available", side_effect=lambda x: x == "flatpak-spawn"),
+            patch("ramalama.config._host_engine_available", side_effect=lambda x: x == "podman"),
+        ):
+            assert get_default_engine() == "podman"
+
+    def test_get_default_engine_toolbox_with_flatpak_spawn_and_host_docker(self):
+        with (
+            patch("ramalama.config.in_toolbox", return_value=True),
+            patch("ramalama.config.available", side_effect=lambda x: x == "flatpak-spawn"),
+            patch("ramalama.config._host_engine_available", side_effect=lambda x: x == "docker"),
+        ):
+            assert get_default_engine() == "docker"
+
+    def test_get_default_engine_toolbox_with_flatpak_spawn_no_host_engine(self):
+        with (
+            patch("ramalama.config.in_toolbox", return_value=True),
+            patch("ramalama.config.available", side_effect=lambda x: x == "flatpak-spawn"),
+            patch("ramalama.config._host_engine_available", return_value=False),
+        ):
+            assert get_default_engine() is None
+
+    def test_get_default_engine_toolbox_without_flatpak_spawn(self):
+        with (
+            patch("ramalama.config.in_toolbox", return_value=True),
+            patch("ramalama.config.available", return_value=False),
+        ):
+            assert get_default_engine() is None
 
     @pytest.mark.parametrize(
         "platform,expected",
