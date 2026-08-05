@@ -15,6 +15,16 @@ from ramalama.common import genname, perror, run_cmd
 from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, is_healthy, stop_container, wait_for_healthy
 from ramalama.model_server import ModelServerError, list_server_models
+from ramalama.openshell import (
+    AgentProcess,
+    FileSystemPolicy,
+    LandLock,
+    OpenShellPolicyConfig,
+    add_capabilities,
+    add_openshell_args,
+    create_temp_openshell_inference_config,
+    create_temp_openshell_policy_config,
+)
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
@@ -88,6 +98,10 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
         completer=img_comp,
         help="Goose container image",
     )
+    parser.add_argument(
+        "--with-openshell", help="Isolates the goose agent using an OpenShell policy.", action="store_true"
+    )
+
     _add_common_sandbox_args(parser, model_comp)
     _add_router_args(parser)
     parser.set_defaults(func=run_sandbox_goose)
@@ -130,6 +144,7 @@ class SandboxEngineArgsType(BaseEngineArgsType):
     start_model_server: bool
     name: str
     model: str
+    with_openshell: bool
 
 
 class SandboxEngine(Engine):
@@ -195,13 +210,23 @@ class Goose(Agent):
 
     def __init__(self, args: GooseArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
-        if self.engine.use_podman:
-            if platform.system() != "Windows":
-                self.engine.add_args("--uidmap=+1000:0")
-        self.engine.add_name(f"goose-{args.name}")  # type: ignore[attr-defined]
+
+        self.agent_name = f"goose-{args.name}"
+
+        if args.with_openshell:
+            self.configure_engine_with_openshell(args)
+        else:
+            self.configure_engine(args)
+
+    def configure_engine(self, args: GooseArgsType) -> None:
+        if self.engine.use_podman and platform.system() != "Windows":
+            self.engine.add_args("--uidmap=+1000:0")
+
+        self.engine.add_name(self.agent_name)
         self.add_env_options(args)
         self.engine.add_workdir(args)
         self.engine.add_args(args.goose_image)
+
         if args.ARGS:
             self.engine.add_args("run", "-t", args.ARGS)
         elif self.engine.use_tty():
@@ -209,9 +234,55 @@ class Goose(Agent):
         else:
             self.engine.add_args("run", "-i", "-")
 
+    def configure_engine_with_openshell(self, args: GooseArgsType) -> None:
+        self.engine.add_name(self.agent_name)
+        self.add_env_options(args)
+        self.engine.add_workdir(args)
+
+        if not args.url:
+            raise ValueError("Missing url to model inference provider")
+        if not args.api_key:
+            raise ValueError("Missing api key for model inference provider")
+
+        inference_yaml = create_temp_openshell_inference_config(args.url, self.model_name, args.api_key)
+        policy_yaml = create_temp_openshell_policy_config(Goose.default_openshell_policy(args.workdir is not None))
+        add_capabilities(self.engine)
+        add_openshell_args(
+            self.engine, policy_yaml, inference_yaml, "quay.io/ramalama/goose-openshell:latest", "/usr/local/bin/goose"
+        )
+
+        if args.ARGS:
+            self.engine.add_args("run", "-t", args.ARGS)
+        elif self.engine.use_tty():
+            self.engine.add_args("session")
+        else:
+            self.engine.add_args("run", "-i", "-")
+
+    @staticmethod
+    def default_openshell_policy(use_workdir: bool) -> OpenShellPolicyConfig:
+        ro_dirs = ["/usr", "/lib", "/lib64", "/bin", "/sbin", "/proc", "/etc", "/dev/urandom", "/var/log"]
+
+        rw_dirs = ["/sandbox", "/tmp", "/dev/null", "/dev/shm", "/home/goose"]
+        if use_workdir:
+            rw_dirs.append("/work")
+
+        return OpenShellPolicyConfig(
+            version=1,
+            filesystem_policy=FileSystemPolicy(
+                include_workdir=True,
+                read_only=ro_dirs,
+                read_write=rw_dirs,
+            ),
+            landlock=LandLock(compatibility="best_effort"),
+            process=AgentProcess(run_as_user="goose", run_as_group="goose"),
+            network_policies={},
+        )
+
     def add_env_options(self, args: GooseArgsType) -> None:
+        host = args.url if not args.with_openshell else "https://inference.local:443"
+
         self.engine.add_env_option("GOOSE_PROVIDER=openai")
-        self.engine.add_env_option(f"OPENAI_HOST={args.url}")
+        self.engine.add_env_option(f"OPENAI_HOST={host}")
         self.engine.add_env_option(f"OPENAI_API_KEY={args.api_key}")
         self.engine.add_env_option(f"GOOSE_MODEL={self.model_name}")
         self.engine.add_env_option("GOOSE_TELEMETRY_ENABLED=false")
@@ -233,10 +304,12 @@ class OpenCode(Agent):
 
     def __init__(self, args: OpenCodeArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
-        self.engine.add_name(f"opencode-{args.name}")  # type: ignore[attr-defined]
+
+        self.engine.add_name(f"opencode-{args.name}")
         self.add_env_options(args)
         self.engine.add_workdir(args)
         self.engine.add_args(args.opencode_image)
+
         if args.ARGS or not self.engine.use_tty():
             # Use the "run" command to process args from the command-line or stdin non-interatively
             self.engine.add_args("run", "--thinking=true")
@@ -286,12 +359,14 @@ class Pi(Agent):
 
     def __init__(self, args: PiArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
+
         provider_id = _pi_provider_id()
-        self.engine.add_name(f"pi-{args.name}")  # type: ignore[attr-defined]
+        self.engine.add_name(f"pi-{args.name}")
         self.add_provider_discovery_env(args)
         self.engine.add_workdir(args)
         self.engine.add_args(args.pi_image)
         pi_args = ["--provider", provider_id, "--model", self.model_name]
+
         if args.ARGS:
             pi_args += ["-p", args.ARGS]
         self.engine.add(pi_args)
