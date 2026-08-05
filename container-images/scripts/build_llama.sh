@@ -123,7 +123,17 @@ dnf_install() {
 }
 
 dnf_install_runtime_deps() {
-  local runtime_pkgs=()
+  local ffmpeg_pkg="ffmpeg-free"
+  if [ "${ID}" = "openEuler" ]; then
+    ffmpeg_pkg="ffmpeg"
+  fi
+  local runtime_pkgs=("$ffmpeg_pkg")
+  if is_rhel_based; then
+    dnf_install_epel
+    add_stream_repo "BaseOS"
+    add_stream_repo "AppStream"
+    add_stream_repo "CRB"
+  fi
   if [ "$containerfile" = "ramalama" ]; then
     # install python3 in the ramalama container to support a non-standard use-case
     runtime_pkgs+=(python3 python3-pip)
@@ -169,6 +179,7 @@ dnf_install_runtime_deps() {
   if [ ${#runtime_pkgs[@]} -gt 0 ]; then
     dnf install -y --setopt=install_weak_deps=false "${runtime_pkgs[@]}"
   fi
+  is_rhel_based && rm_non_ubi_repos
   dnf -y clean all
 }
 
