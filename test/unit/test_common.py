@@ -173,17 +173,44 @@ image = "{config_override}"
 
 @patch("ramalama.common.run_cmd")
 @patch("ramalama.common.handle_provider")
-def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
-    mock_run_cmd.return_value.stdout = b'[{"Name": "myvm"}]'
+def test_apple_vm_returns_result_podman_v5(mock_handle_provider, mock_run_cmd):
+    mock_result_ver = Mock()
+    mock_result_ver.stdout = 'podman version 5.8.0'
+    mock_result_ls = Mock()
+    mock_result_ls.stdout = '[{"Name": "myvm"}]'
+    mock_run_cmd.side_effect = [mock_result_ver, mock_result_ls]
     mock_handle_provider.return_value = True
+
     config = object()
     from ramalama.common import apple_vm
 
     result = apple_vm("podman", config)
 
     assert result is True
-    mock_run_cmd.assert_called_once_with(
+    mock_run_cmd.assert_called_with(
         ["podman", "machine", "list", "--format", "json", "--all-providers"], ignore_stderr=True, encoding="utf-8"
+    )
+    mock_handle_provider.assert_called_once_with({"Name": "myvm"}, config)
+
+
+@patch("ramalama.common.run_cmd")
+@patch("ramalama.common.handle_provider")
+def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
+    mock_result_ver = Mock()
+    mock_result_ver.stdout = 'podman version 6.0.2'
+    mock_result_ls = Mock()
+    mock_result_ls.stdout = '[{"Name": "myvm"}]'
+    mock_run_cmd.side_effect = [mock_result_ver, mock_result_ls]
+    mock_handle_provider.return_value = True
+
+    config = object()
+    from ramalama.common import apple_vm
+
+    result = apple_vm("podman", config)
+
+    assert result is True
+    mock_run_cmd.assert_called_with(
+        ["podman", "machine", "list", "--format", "json"], ignore_stderr=True, encoding="utf-8"
     )
     mock_handle_provider.assert_called_once_with({"Name": "myvm"}, config)
 
@@ -195,7 +222,6 @@ def test_apple_vm_returns_false_when_podman_not_installed(mock_run_cmd):
     result = apple_vm("podman", None)
 
     assert result is False
-    mock_run_cmd.assert_called_once()
 
 
 class TestEnsureImage:

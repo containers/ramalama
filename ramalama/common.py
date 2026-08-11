@@ -96,7 +96,16 @@ def handle_provider(machine, config: Optional[Config] = None) -> Optional[bool]:
 
 
 def apple_vm(engine: SUPPORTED_ENGINES, config: Optional[Config] = None) -> bool:
-    podman_machine_list = [engine, "machine", "list", "--format", "json", "--all-providers"]
+    podman_machine_list = [engine, "machine", "list", "--format", "json"]
+    try:
+        version = run_cmd([engine, "--version"], ignore_stderr=True, encoding="utf-8").stdout.strip().split()
+        if len(version) > 1:
+            version = version[-1]
+        major = int(version.split('.')[0])
+        if major < 6:
+            podman_machine_list.append("--all-providers")
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError, AttributeError) as e:
+        logger.warning(f"Failed to parse podman version: {e}")
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True, encoding="utf-8").stdout.strip()
         machines = json.loads(machines_json)
