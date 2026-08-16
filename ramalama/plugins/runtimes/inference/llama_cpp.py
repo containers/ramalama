@@ -57,6 +57,7 @@ from ramalama.path_utils import file_uri_to_path, get_container_mount_path
 from ramalama.plugins.loader import assemble_command
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin, enumerate_store_gguf_models
 from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
+    MODELS_PRESET_PATH,
     LlamaCppCommands,
     _default_threads,
 )
@@ -562,6 +563,13 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         self._add_threads_arg(parser)
         if command == "serve":
             parser.add_argument(
+                "--models-preset",
+                dest="models_preset",
+                type=str,
+                help="presets file for router mode",
+                completer=suppressCompleter,
+            )
+            parser.add_argument(
                 "--webui",
                 dest="webui",
                 choices=["on", "off"],
@@ -697,7 +705,13 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             container_host_path = get_container_mount_path(host_path)
             engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro{engine.relabel()}"])
 
-        engine.add([args.image] + cmd)
+        presets = getattr(args, "models_preset", None)
+        if presets:
+            args.engine_args.append(
+                f"--mount=type=bind,src={get_container_mount_path(presets)},destination={MODELS_PRESET_PATH},ro{engine.relabel()}"
+            )
+
+        engine.add_container_image(args.image, cmd)
         return engine
 
     def _serve_router(self, args: argparse.Namespace) -> None:
