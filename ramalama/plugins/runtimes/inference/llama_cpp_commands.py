@@ -170,7 +170,14 @@ class LlamaCppCommands:
 
         return cmd
 
-    _cmd_serve = _cmd_run
+    def _cmd_serve(self, args: argparse.Namespace) -> list[str]:
+        cmd = self._cmd_run(args)
+
+        presets_file = getattr(args, 'presets_file', None)
+        if presets_file:
+            cmd += ["--presets", "/etc/presets.ini"]
+
+        return cmd
 
     def _cmd_perplexity(self, args: argparse.Namespace) -> list[str]:
         cmd = ["llama-perplexity"] if not self._container_image_is_ggml(args) else ["--perplexity"]  # type: ignore[attr-defined]

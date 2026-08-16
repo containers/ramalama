@@ -317,6 +317,13 @@ The default can be overridden in the `ramalama.conf` file.
 [//]: # (END   included file options/port.md)
 
 
+[//]: # (BEGIN included file options/presets-file.md)
+#### **--presets-file**=*path*
+Presets ini-file for router mode.
+
+[//]: # (END   included file options/presets-file.md)
+
+
 [//]: # (BEGIN included file options/privileged.md)
 #### **--privileged**
 By default, RamaLama containers are unprivileged (=false) and cannot, for
