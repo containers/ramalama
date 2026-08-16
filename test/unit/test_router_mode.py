@@ -123,6 +123,23 @@ class TestServeRouter:
         with pytest.raises(SystemExit):
             self.plugin._serve_router(args)
 
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.enumerate_store_gguf_models", return_value=[("a", "model")])
+    @patch.object(LlamaCppPlugin, "_migrate_store_ref_files")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_engine_args_get_applied(self, mock_colorize, mock_migrate, mock_enum):
+        args = argparse.Namespace(
+            container=True,
+            store="/fake/store",
+            MODEL=[],
+            engine_args=["--volume", "./presets.ini:/config/presets.ini"],
+            dryrun=True,
+            engine='podman',
+            image="quay.io/ramalama/rocm",
+        )
+        engine = self.plugin._build_router_engine(args)
+
+        assert "--volume" in engine.exec_args
+
 
 # ---------------------------------------------------------------------------
 # service_ready_check router mode
