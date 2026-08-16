@@ -224,7 +224,7 @@ class Goose(Agent):
         self.engine.add_name(f"goose-{args.name}")  # type: ignore[attr-defined]
         self.add_env_options(args)
         self.engine.add_workdir(args)
-        self.engine.add_args(args.goose_image)
+        self.engine.add_container_image(args.goose_image)
         if args.ARGS:
             self.engine.add_args("run", "-t", args.ARGS)
         elif self.engine.use_tty():
@@ -259,7 +259,7 @@ class OpenCode(Agent):
         self.engine.add_name(f"opencode-{args.name}")  # type: ignore[attr-defined]
         self.add_env_options(args)
         self.engine.add_workdir(args)
-        self.engine.add_args(args.opencode_image)
+        self.engine.add_container_image(args.opencode_image)
         if args.ARGS or not self.engine.use_tty():
             # Use the "run" command to process args from the command-line or stdin non-interatively
             self.engine.add_args("run", "--thinking=true")
@@ -313,11 +313,10 @@ class Pi(Agent):
         self.engine.add_name(f"pi-{args.name}")  # type: ignore[attr-defined]
         self.add_provider_discovery_env(args)
         self.engine.add_workdir(args)
-        self.engine.add_args(args.pi_image)
         pi_args = ["--provider", provider_id, "--model", self.model_name]
         if args.ARGS:
             pi_args += ["-p", args.ARGS]
-        self.engine.add(pi_args)
+        self.engine.add_container_image(args.pi_image, pi_args)
 
     def add_provider_discovery_env(self, args: PiArgsType) -> None:
         # pi-llama-server discovers and registers providers from LLAMA_SERVER_URL;
