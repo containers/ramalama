@@ -580,7 +580,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             container_host_path = get_container_mount_path(host_path)
             engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro{engine.relabel()}"])
 
-        engine.add([args.image] + cmd)
+        engine.add_container_image(args.image, cmd)
         return engine
 
     def _serve_router(self, args: argparse.Namespace) -> None:
