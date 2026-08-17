@@ -11,43 +11,40 @@ from typing import Optional
 class Shortnames:
     """Shortnames utility class"""
 
-    shortnames: dict[str, str] = {}
-    config_sources: dict[str, str] = {}
-
-    def __init__(self):
-        self.shortnames = {}
-        self.config_sources = {}
+    def __init__(self, filename: str = "shortnames.conf", section: str = "shortnames"):
+        self.filename = filename
+        self.section = section
+        self.shortnames: dict[str, str] = {}
+        self.config_sources: dict[str, str] = {}
         data_path = sysconfig.get_path("data")
         file_paths = [
-            "./shortnames/shortnames.conf",  # for development
-            "./shortnames.conf",  # for development
-            f"{data_path}/share/ramalama/shortnames.conf",
+            f"./shortnames/{filename}",  # for development
+            f"./{filename}",  # for development
+            f"{data_path}/share/ramalama/{filename}",
         ]
 
         if os.name == 'nt':
-            # Windows-specific paths using APPDATA and LOCALAPPDATA
             appdata = os.getenv("APPDATA", os.path.expanduser("~/AppData/Roaming"))
             localappdata = os.getenv("LOCALAPPDATA", os.path.expanduser("~/AppData/Local"))
             file_paths.extend(
                 [
-                    os.path.join(localappdata, "ramalama", "shortnames.conf"),
-                    os.path.join(appdata, "ramalama", "shortnames.conf"),
+                    os.path.join(localappdata, "ramalama", filename),
+                    os.path.join(appdata, "ramalama", filename),
                 ]
             )
         else:
-            # Unix-specific paths using XDG conventions
             file_paths.extend(
                 [
                     os.path.expanduser(
-                        os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama/shortnames.conf")
+                        os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama", filename)
                     ),
                     os.path.expanduser(
-                        os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama/shortnames.conf")
+                        os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama", filename)
                     ),
-                    os.path.expanduser("~/.local/pipx/venvs/ramalama/share/ramalama/shortnames.conf"),
-                    "/etc/ramalama/shortnames.conf",
-                    "/usr/share/ramalama/shortnames.conf",
-                    "/usr/local/share/ramalama/shortnames.conf",
+                    os.path.expanduser(f"~/.local/pipx/venvs/ramalama/share/ramalama/{filename}"),
+                    f"/etc/ramalama/{filename}",
+                    f"/usr/share/ramalama/{filename}",
+                    f"/usr/local/share/ramalama/{filename}",
                 ]
             )
 
@@ -55,10 +52,10 @@ class Shortnames:
         for file_path in file_paths:
             config = configparser.ConfigParser(delimiters="=")
             config.read(file_path)
-            if "shortnames" in config:
+            if self.section in config:
                 real_path = os.path.realpath(file_path)
                 self.paths.append(real_path)
-                for key, value in config["shortnames"].items():
+                for key, value in config[self.section].items():
                     name = self._strip_quotes(key)
                     target = self._strip_quotes(value)
                     self.shortnames[name] = target

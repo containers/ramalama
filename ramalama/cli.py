@@ -90,6 +90,19 @@ def get_shortnames():
     return Shortnames()
 
 
+@lru_cache(maxsize=1)
+def get_skill_shortnames():
+    return Shortnames(filename="shortnames-skills.conf", section="shortnames.skills")
+
+@lru_cache(maxsize=1)
+def get_agent_shortnames():
+    return Shortnames(filename="shortnames-agents.conf", section="shortnames.agents")
+
+@lru_cache(maxsize=1)
+def get_plugin_shortnames():
+    return Shortnames(filename="shortnames-plugins.conf", section="shortnames.plugins")
+
+
 class ParsedGenerateInput:
     def __init__(self, gen_type: str, output_dir: str):
         self.gen_type = gen_type
