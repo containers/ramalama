@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:44
+FROM quay.io/fedora/fedora:46
 
 COPY . /src/ramalama
 WORKDIR /src/ramalama
