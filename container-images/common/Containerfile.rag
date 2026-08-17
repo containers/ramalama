@@ -1,4 +1,4 @@
-ARG PARENT=quay.io/fedora/fedora:44
+ARG PARENT=quay.io/fedora/fedora:46
 FROM $PARENT
 
 ENV VIRTUAL_ENV="/opt/venv" \

@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:44
+FROM quay.io/fedora/fedora:46
 
 COPY --chmod=755 container-images/stable-diffusion/entrypoint.sh /usr/bin/entrypoint.sh
 COPY container-images/scripts/build_stable_diffusion.sh /src/

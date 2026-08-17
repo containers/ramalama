@@ -15,7 +15,7 @@
 ARG OPENVINO_VERSION_MAJOR=2026.0
 ARG OPENVINO_VERSION_FULL=2026.0.0.20965.c6d6a13a886
 
-FROM quay.io/fedora/fedora:44 AS builder
+FROM quay.io/fedora/fedora:46 AS builder
 
 ARG OPENVINO_VERSION_MAJOR
 ARG OPENVINO_VERSION_FULL
@@ -37,7 +37,7 @@ COPY container-images/scripts/build_llama.sh \
 WORKDIR /src/
 RUN ./build_llama.sh openvino
 
-FROM quay.io/fedora/fedora:44
+FROM quay.io/fedora/fedora:46
 
 # Copy OpenVINO runtime libraries and bundled TBB from builder
 COPY --from=builder /opt/intel/openvino/runtime/lib/intel64/ /usr/lib64/
