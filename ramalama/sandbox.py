@@ -17,7 +17,12 @@ from ramalama.engine import Engine, is_healthy, stop_container, wait_for_healthy
 from ramalama.model_server import ModelServerError, list_server_models
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
-from ramalama.transports.transport_factory import New
+from ramalama.transports.transport_factory import New, TransportFactory
+from ramalama.shortnames import Shortnames
+import tarfile
+import tempfile
+import shutil
+import os
 
 
 def default_pi_image() -> str:
@@ -55,6 +60,18 @@ def _add_common_sandbox_args(parser: argparse.ArgumentParser, model_comp: Callab
         nargs="*",
         completer=model_comp,
         help="AI model to use. Omit to infer the first model from the model server.",
+    )
+    parser.add_argument(
+        "--skill",
+        dest="skills",
+        action="append",
+        help="skill OCI artifact full name or shortname (can be repeated)",
+    )
+    parser.add_argument(
+        "--skill-mount",
+        dest="skill_mount",
+        default="/root/.agents",
+        help="path inside the container to extract/mount skills (default: /root/.agents)",
     )
 
 
@@ -180,9 +197,97 @@ class Agent:
     def __init__(self, args: SandboxEngineArgsType, model_name: str):
         self.engine = SandboxEngine(args)
         self.model_name = model_name
+        self._skill_tempdir = None
+        self._prepare_skills(args)
 
     def run(self) -> None:
-        run_cmd(self.engine.exec_args, stdout=None, stdin=None)
+        try:
+            run_cmd(self.engine.exec_args, stdout=None, stdin=None)
+        finally:
+            # cleanup any extracted skill tempdir
+            if getattr(self, "_skill_tempdir", None):
+                try:
+                    import shutil
+
+                    shutil.rmtree(self._skill_tempdir, ignore_errors=True)
+                except Exception:
+                    pass
+
+    def _prepare_skills(self, args: SandboxEngineArgsType) -> None:
+        skills = getattr(args, 'skills', None)
+        if not skills:
+            return
+
+        store = ActiveConfig().store
+        artifacts_dir = os.path.join(store, 'artifacts', 'skills')
+        tmpdir = tempfile.mkdtemp(prefix='ramalama_skills_')
+        extracted_any = False
+        shortnames = Shortnames()
+
+        for skill in skills:
+                resolved = shortnames.resolve_skill(skill)
+                # Try to treat resolved name as an OCI artifact reference and mount it directly
+                oci_mounted = False
+                try:
+                    # Construct an OCI transport for this reference
+                    oci_transport = TransportFactory(resolved, args, transport="oci").create_oci()
+                    # If artifact not present locally, attempt pull
+                    try:
+                        if not oci_transport.exists():
+                            oci_transport.pull(args)
+                    except Exception:
+                        # ignore pull failures here, fallback to local artifact
+                        pass
+
+                    mount_path = getattr(args, 'skill_mount', '/root/.agents')
+                    try:
+                        mount_arg = oci_transport.mount_cmd(dest=mount_path)
+                        if mount_arg:
+                            # add mount argument directly to engine so it appears before the image
+                            self.engine.add_args(mount_arg)
+                            oci_mounted = True
+                    except Exception as e:
+                        perror(f"Failed to mount OCI skill {resolved}: {e}")
+                except Exception:
+                    # Not an OCI reference or failed to construct transport - fall back to local artifact
+                    oci_mounted = False
+
+                if oci_mounted:
+                    continue
+
+                # Fallback: If user passed a local path to a tarball, use it directly
+                if os.path.isfile(skill) and skill.endswith('.tar.gz'):
+                    tarpath = skill
+                else:
+                    # translate tag to filename used by `skill build`
+                    fname = resolved.replace('/', '_') + '.tar.gz'
+                    tarpath = os.path.join(artifacts_dir, fname)
+
+                if not os.path.isfile(tarpath):
+                    perror(f"Skill artifact not found: {skill} -> {tarpath}")
+                    continue
+
+                try:
+                    with tarfile.open(tarpath, 'r:gz') as tar:
+                        # extract each skill into its own directory
+                        skill_dir = os.path.join(tmpdir, os.path.splitext(os.path.basename(tarpath))[0])
+                        os.makedirs(skill_dir, exist_ok=True)
+                        tar.extractall(path=skill_dir)
+                        extracted_any = True
+                except Exception as e:
+                    perror(f"Failed to extract {tarpath}: {e}")
+
+        if extracted_any:
+            # mount extracted skills into configured path inside container
+            mount_path = getattr(args, 'skill_mount', '/root/.agents')
+            self._skill_tempdir = tmpdir
+            try:
+                self.engine.add_volume(tmpdir, mount_path, opts='rw')
+            except Exception:
+                # best effort
+                pass
+        else:
+            shutil.rmtree(tmpdir)
 
 
 class Goose(Agent):

@@ -9,6 +9,7 @@ import shlex
 import subprocess
 import sys
 import urllib.error
+import tarfile
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Optional, get_args
@@ -363,6 +364,9 @@ def configure_subcommands(parser):
     login_parser(subparsers)
     logout_parser(subparsers)
     models_parser(subparsers)
+    skill_parser(subparsers)
+    agent_parser(subparsers)
+    plugin_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
     rm_parser(subparsers)
@@ -752,6 +756,357 @@ def info_cli(args: DefaultArgsType) -> None:
         info["Engine"]["Info"] = engine.info(args)
 
     print(json.dumps(info, sort_keys=True, indent=4))
+
+
+def _ensure_artifacts_dir(kind: str) -> str:
+    path = os.path.join(ActiveConfig().store, "artifacts", kind)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _package_dir_to_tarball(src_dir: str, out_path: str) -> None:
+    with tarfile.open(out_path, "w:gz") as tar:
+        # Add the contents of the directory, preserving names
+        for root, dirs, files in os.walk(src_dir):
+            for f in files:
+                full = os.path.join(root, f)
+                arcname = os.path.relpath(full, start=src_dir)
+                tar.add(full, arcname=arcname)
+
+
+def _list_artifacts(kind: str) -> list[str]:
+    d = os.path.join(ActiveConfig().store, "artifacts", kind)
+    if not os.path.isdir(d):
+        return []
+    return sorted([f for f in os.listdir(d) if f.endswith('.tar.gz')])
+
+
+def _artifact_info(kind: str) -> list[dict]:
+    d = os.path.join(ActiveConfig().store, "artifacts", kind)
+    if not os.path.isdir(d):
+        return []
+    out = []
+    for fname in sorted([f for f in os.listdir(d) if f.endswith('.tar.gz')]):
+        full = os.path.join(d, fname)
+        try:
+            st = os.stat(full)
+            size = st.st_size
+            modified = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
+        except OSError:
+            size = 0
+            modified = ""
+
+        tag = fname[:-7].replace("_", "/")
+        out.append({"tag": tag, "file": full, "size": size, "modified": modified})
+    return out
+
+
+def skill_parser(subparsers):
+    parser = subparsers.add_parser("skill", help="manage OCI skill artifacts")
+    sp = parser.add_subparsers(dest="skill_subcommand")
+
+    build = sp.add_parser("build", help="package and tag a skill directory")
+    build.add_argument("-d", "--dir", dest="dir", required=True, help="directory containing the skill files")
+    build.add_argument("-t", "--tag", dest="tag", required=True, help="artifact tag (e.g. quay.io/ramalama/wiki-kb)")
+    build.set_defaults(func=skill_build_cli)
+
+    ls = sp.add_parser("ls", help="list local skill artifacts")
+    ls.add_argument("--json", dest="json", action="store_true", help="print json")
+    ls.add_argument("--path", dest="path", action="store_true", help="print full file paths instead of tags")
+    ls.set_defaults(func=skill_ls_cli)
+    push = sp.add_parser("push", help="push a local skill artifact to an OCI registry")
+    push.add_argument("--authfile", help="path of the authentication file")
+    push.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    push.add_argument("SOURCE", help="local artifact tag or path")
+    push.add_argument("TARGET", nargs=1, help="remote OCI target (registry/repo:tag)")
+    push.set_defaults(func=skill_push_cli)
+
+    pull = sp.add_parser("pull", help="pull a skill artifact from an OCI registry into local store")
+    pull.add_argument("--authfile", help="path of the authentication file")
+    pull.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    pull.add_argument("SOURCE", help="remote OCI source (registry/repo:tag)")
+    pull.add_argument("TARGET", nargs="?", help="optional local tag to store as")
+    pull.set_defaults(func=skill_pull_cli)
+
+
+def skill_build_cli(args):
+    src = os.path.abspath(args.dir)
+    if not os.path.isdir(src):
+        perror(f"Directory does not exist: {src}")
+        return 1
+
+    outdir = _ensure_artifacts_dir("skills")
+    fname = args.tag.replace("/", "_") + ".tar.gz"
+    outpath = os.path.join(outdir, fname)
+    _package_dir_to_tarball(src, outpath)
+    print(outpath)
+
+
+def _resolve_local_artifact(kind: str, name: str) -> str | None:
+    if os.path.isfile(name):
+        return os.path.abspath(name)
+    shortnames_by_kind = {
+        "skills": get_skill_shortnames,
+        "agents": get_agent_shortnames,
+        "plugins": get_plugin_shortnames,
+    }
+    resolved = shortnames_by_kind[kind]().resolve(name)
+    fname = resolved.replace("/", "_") + ".tar.gz"
+    path = os.path.join(ActiveConfig().store, "artifacts", kind, fname)
+    return path if os.path.isfile(path) else None
+
+
+def _engine_bin(args):
+    return args.engine or ActiveConfig().engine or "docker"
+
+
+def skill_push_cli(args):
+    src = args.SOURCE
+    tarpath = _resolve_local_artifact("skills", src) or (src if os.path.isfile(src) else None)
+    if not tarpath:
+        perror(f"Local skill artifact not found: {src}")
+        return 1
+    if not getattr(args, "TARGET", None):
+        perror("TARGET is required for push")
+        return 1
+    target = args.TARGET[0]
+
+    # Use OCI transport to add artifact layers/manifest
+    try:
+        target_model = TransportFactory(target, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI target transport: {e}")
+        return 1
+
+    basename = os.path.basename(tarpath)
+    name = os.path.splitext(basename)[0]
+    try:
+        # create new artifact with the tarball as a layer
+        target_model._add_artifact(True, name, tarpath, basename)
+    except Exception as e:
+        perror(f"Failed to push artifact: {e}")
+        return 1
+
+
+def skill_pull_cli(args):
+    source = args.SOURCE
+    target = args.TARGET or None
+
+    # construct OCI transport for source and call pull()
+    try:
+        src_model = TransportFactory(source, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI transport for {source}: {e}")
+        return 1
+
+    try:
+        src_model.pull(args)
+    except Exception as e:
+        perror(f"Failed to pull artifact {source}: {e}")
+        return 1
+
+
+def agent_push_cli(args):
+    src = args.SOURCE
+    tarpath = _resolve_local_artifact("agents", src) or (src if os.path.isfile(src) else None)
+    if not tarpath:
+        perror(f"Local agent artifact not found: {src}")
+        return 1
+    if not getattr(args, "TARGET", None):
+        perror("TARGET is required for push")
+        return 1
+    target = args.TARGET[0]
+
+    try:
+        target_model = TransportFactory(target, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI target transport: {e}")
+        return 1
+
+    basename = os.path.basename(tarpath)
+    name = os.path.splitext(basename)[0]
+    try:
+        target_model._add_artifact(True, name, tarpath, basename)
+    except Exception as e:
+        perror(f"Failed to push agent artifact: {e}")
+        return 1
+
+
+def agent_pull_cli(args):
+    source = args.SOURCE
+    try:
+        src_model = TransportFactory(source, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI transport for {source}: {e}")
+        return 1
+
+    try:
+        src_model.pull(args)
+    except Exception as e:
+        perror(f"Failed to pull agent artifact {source}: {e}")
+        return 1
+
+
+def plugin_push_cli(args):
+    src = args.SOURCE
+    tarpath = _resolve_local_artifact("plugins", src) or (src if os.path.isfile(src) else None)
+    if not tarpath:
+        perror(f"Local plugin artifact not found: {src}")
+        return 1
+    if not getattr(args, "TARGET", None):
+        perror("TARGET is required for push")
+        return 1
+    target = args.TARGET[0]
+
+    try:
+        target_model = TransportFactory(target, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI target transport: {e}")
+        return 1
+
+    basename = os.path.basename(tarpath)
+    name = os.path.splitext(basename)[0]
+    try:
+        target_model._add_artifact(True, name, tarpath, basename)
+    except Exception as e:
+        perror(f"Failed to push plugin artifact: {e}")
+        return 1
+
+
+def plugin_pull_cli(args):
+    source = args.SOURCE
+    try:
+        src_model = TransportFactory(source, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI transport for {source}: {e}")
+        return 1
+
+    try:
+        src_model.pull(args)
+    except Exception as e:
+        perror(f"Failed to pull plugin artifact {source}: {e}")
+        return 1
+
+
+def skill_ls_cli(args):
+    info = _artifact_info("skills")
+    if getattr(args, "json", False):
+        print(json.dumps(info))
+        return
+    if getattr(args, "path", False):
+        for e in info:
+            print(e["file"])
+        return
+    for e in info:
+        print(f"{e['tag']}	{e['size']} bytes	{e['modified']}")
+
+
+def agent_parser(subparsers):
+    parser = subparsers.add_parser("agent", help="manage OCI agent artifacts")
+    sp = parser.add_subparsers(dest="agent_subcommand")
+
+    build = sp.add_parser("build", help="package and tag an agent directory")
+    build.add_argument("-d", "--dir", dest="dir", required=True, help="directory containing the agent files")
+    build.add_argument("-t", "--tag", dest="tag", required=True, help="artifact tag")
+    build.set_defaults(func=agent_build_cli)
+
+    ls = sp.add_parser("ls", help="list local agent artifacts")
+    ls.add_argument("--json", dest="json", action="store_true", help="print json")
+    ls.add_argument("--path", dest="path", action="store_true", help="print full file paths instead of tags")
+    ls.set_defaults(func=agent_ls_cli)
+    push = sp.add_parser("push", help="push a local agent artifact to an OCI registry")
+    push.add_argument("--authfile", help="path of the authentication file")
+    push.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    push.add_argument("SOURCE", help="local artifact tag or path")
+    push.add_argument("TARGET", nargs=1, help="remote OCI target (registry/repo:tag)")
+    push.set_defaults(func=agent_push_cli)
+
+    pull = sp.add_parser("pull", help="pull an agent artifact from an OCI registry into local store")
+    pull.add_argument("--authfile", help="path of the authentication file")
+    pull.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    pull.add_argument("SOURCE", help="remote OCI source (registry/repo:tag)")
+    pull.add_argument("TARGET", nargs="?", help="optional local tag to store as")
+    pull.set_defaults(func=agent_pull_cli)
+
+
+def agent_build_cli(args):
+    src = os.path.abspath(args.dir)
+    if not os.path.isdir(src):
+        perror(f"Directory does not exist: {src}")
+        return 1
+
+    outdir = _ensure_artifacts_dir("agents")
+    fname = args.tag.replace("/", "_") + ".tar.gz"
+    outpath = os.path.join(outdir, fname)
+    _package_dir_to_tarball(src, outpath)
+    print(outpath)
+
+
+def agent_ls_cli(args):
+    info = _artifact_info("agents")
+    if getattr(args, "json", False):
+        print(json.dumps(info))
+        return
+    if getattr(args, "path", False):
+        for e in info:
+            print(e["file"])
+        return
+    for e in info:
+        print(f"{e['tag']}	{e['size']} bytes	{e['modified']}")
+
+
+def plugin_parser(subparsers):
+    parser = subparsers.add_parser("plugin", help="manage OCI plugin artifacts")
+    sp = parser.add_subparsers(dest="plugin_subcommand")
+
+    build = sp.add_parser("build", help="package and tag a plugin directory")
+    build.add_argument("-d", "--dir", dest="dir", required=True, help="directory containing the plugin files")
+    build.add_argument("-t", "--tag", dest="tag", required=True, help="artifact tag")
+    build.set_defaults(func=plugin_build_cli)
+
+    ls = sp.add_parser("ls", help="list local plugin artifacts")
+    ls.add_argument("--json", dest="json", action="store_true", help="print json")
+    ls.add_argument("--path", dest="path", action="store_true", help="print full file paths instead of tags")
+    ls.set_defaults(func=plugin_ls_cli)
+    push = sp.add_parser("push", help="push a local plugin artifact to an OCI registry")
+    push.add_argument("--authfile", help="path of the authentication file")
+    push.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    push.add_argument("SOURCE", help="local artifact tag or path")
+    push.add_argument("TARGET", nargs=1, help="remote OCI target (registry/repo:tag)")
+    push.set_defaults(func=plugin_push_cli)
+
+    pull = sp.add_parser("pull", help="pull a plugin artifact from an OCI registry into local store")
+    pull.add_argument("--authfile", help="path of the authentication file")
+    pull.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    pull.add_argument("SOURCE", help="remote OCI source (registry/repo:tag)")
+    pull.add_argument("TARGET", nargs="?", help="optional local tag to store as")
+    pull.set_defaults(func=plugin_pull_cli)
+
+
+def plugin_build_cli(args):
+    src = os.path.abspath(args.dir)
+    if not os.path.isdir(src):
+        perror(f"Directory does not exist: {src}")
+        return 1
+
+    outdir = _ensure_artifacts_dir("plugins")
+    fname = args.tag.replace("/", "_") + ".tar.gz"
+    outpath = os.path.join(outdir, fname)
+    _package_dir_to_tarball(src, outpath)
+    print(outpath)
+
+
+def plugin_ls_cli(args):
+    info = _artifact_info("plugins")
+    if getattr(args, "json", False):
+        print(json.dumps(info))
+        return
+    if getattr(args, "path", False):
+        for e in info:
+            print(e["file"])
+        return
+    for e in info:
+        print(f"{e['tag']}	{e['size']} bytes	{e['modified']}")
 
 
 def list_cli(args):
