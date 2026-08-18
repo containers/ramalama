@@ -64,7 +64,7 @@ class Shortnames:
         self._targets: dict[str, list[str]] = {}
         for name, target in self.shortnames.items():
             self._targets.setdefault(target, []).append(name)
-
+        
     def _strip_quotes(self, s) -> str:
         return s.strip("'\"")
 
