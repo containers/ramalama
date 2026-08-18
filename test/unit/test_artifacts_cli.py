@@ -34,92 +34,91 @@ def make_skill_tarball(
     return tarpath
 
 
-def test_skill_ls_plain_and_path_and_json(tmp_path, monkeypatch, capsys):
-    store = str(tmp_path / "store")
+def test_skill_ls_plain_and_path_and_json(monkeypatch, capsys):
+    from ramalama.cli import skill_ls_cli
 
-    ac = ActiveConfig()
-    ac.store = store
+    ls_output = (
+        '{"name":"oci://quay.io/ramalama/wiki-kb:latest",'
+        '"created":"2026-01-01 00:00:00 +0000",'
+        '"size":"1KB",'
+        '"ID":"sha256:abc"},'
+    )
+    inspect_output = json.dumps({"Manifest": {"artifactType": "application/vnd.cncf.skill.manifest.v1+json"}})
 
-    tag = "quay.io/ramalama/wiki-kb"
-    tarpath = make_skill_tarball(store, tag)
+
+    def fake_run_cmd(args, *a, **kw):
+        class R:
+            def __init__(self, out):
+                self.stdout = out.encode("utf-8")
+
+        if args[:3] == ["docker", "artifact", "ls"] or args[1:3] == ["artifact", "ls"]:
+            return R(ls_output)
+        if args[2:3] == ["inspect"] or (len(args) > 2 and args[1] == "artifact" and args[2] == "inspect"):
+            return R(inspect_output)
+        raise AssertionError(f"Unexpected command: {args}")
+
+    monkeypatch.setattr("ramalama.cli.run_cmd", fake_run_cmd)
 
     # plain output
-    args = SimpleNamespace(json=False, path=False)
-
+    args = SimpleNamespace(json=False, path=False, engine="podman")
     skill_ls_cli(args)
-
     captured = capsys.readouterr()
-
-    assert tag in captured.out
+    assert "quay.io/ramalama/wiki-kb:latest" in captured.out
 
     # path output
-    args = SimpleNamespace(json=False, path=True)
-
+    args = SimpleNamespace(json=False, path=True, engine="podman")
     skill_ls_cli(args)
-
     captured = capsys.readouterr()
-
-    assert tarpath in captured.out
+    assert "oci://quay.io/ramalama/wiki-kb:latest" in captured.out
 
     # json output
-    args = SimpleNamespace(json=True, path=False)
-
+    args = SimpleNamespace(json=True, path=False, engine="podman")
     skill_ls_cli(args)
-
     captured = capsys.readouterr()
-
     data = json.loads(captured.out)
-
     assert isinstance(data, list)
-    assert any(d["file"] == tarpath for d in data)
+    assert any("wiki-kb" in d["tag"] for d in data)
 
 
-def test_agent_and_plugin_ls(tmp_path, monkeypatch, capsys):
-    store = str(tmp_path / "store")
-
-    ac = ActiveConfig()
-    ac.store = store
-
-    agent_tag = "quay.io/ramalama/sample-agent"
-    plugin_tag = "quay.io/ramalama/sample-plugin"
-
-    agent_tar = make_skill_tarball(
-        store,
-        agent_tag,
-        content_name="a.txt",
-        content=b"agent",
-        kind="agents",
-    )
-
-    plugin_tar = make_skill_tarball(
-        store,
-        plugin_tag,
-        content_name="p.txt",
-        content=b"plugin",
-        kind="plugins",
-    )
-
+def test_agent_and_plugin_ls(monkeypatch, capsys):
     from ramalama.cli import agent_ls_cli, plugin_ls_cli
 
+def make_fake_run_cmd(name):
+    ls_output = (
+        f'{{"name":"oci://quay.io/ramalama/{name}:latest",'
+        '"created":"2026-01-01 00:00:00 +0000",'
+        '"size":"1KB",'
+        '"ID":"sha256:abc"},'
+    )
+    inspect_output = json.dumps({"Manifest": {"artifactType": "application/vnd.cncf.skill.manifest.v1+json"}})
+
+    def fake_run_cmd(args, *a, **kw):
+        class R:
+            def __init__(self, out):
+                self.stdout = out.encode("utf-8")
+
+        if len(args) > 2 and args[1] == "artifact" and args[2] == "ls":
+            return R(ls_output)
+        if len(args) > 2 and args[1] == "artifact" and args[2] == "inspect":
+            return R(inspect_output)
+        raise AssertionError(f"Unexpected command: {args}")
+
+    return fake_run_cmd
+
     # agent ls json
-    args = SimpleNamespace(json=True, path=False)
-
+    monkeypatch.setattr("ramalama.cli.run_cmd", make_fake_run_cmd("sample-agent"))
+    args = SimpleNamespace(json=True, path=False, engine="podman")
     agent_ls_cli(args)
-
     captured = capsys.readouterr()
-
     data = json.loads(captured.out)
-
-    assert any(d["file"] == agent_tar for d in data)
+    assert any("sample-agent" in d["tag"] for d in data)
 
     # plugin ls path
-    args = SimpleNamespace(json=False, path=True)
-
+    monkeypatch.setattr("ramalama.cli.run_cmd", make_fake_run_cmd("sample-plugin"))
+    args = SimpleNamespace(json=False, path=True, engine="podman")
     plugin_ls_cli(args)
-
     captured = capsys.readouterr()
-
-    assert plugin_tar in captured.out
+    assert "sample-plugin" in captured.out
 
 
 def test_skill_push_pull_invokes_engine(tmp_path, monkeypatch):

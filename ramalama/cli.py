@@ -9,7 +9,6 @@ import shlex
 import subprocess
 import sys
 import urllib.error
-import tarfile
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Optional, get_args
@@ -28,7 +27,7 @@ except Exception:
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import accel_image, exec_cmd, get_accel, perror
+from ramalama.common import accel_image, exec_cmd, get_accel, perror, run_cmd
 from ramalama.config import (
     SUPPORTED_ENGINES,
     ActiveConfig,
@@ -47,6 +46,7 @@ from ramalama.plugins.loader import get_all_runtimes, get_runtime
 from ramalama.prompt_utils import default_prefix
 from ramalama.rag import rag_image
 from ramalama.shortnames import Shortnames
+from ramalama.skills.artifact import build_skill_artifact, push_skill_artifact
 from ramalama.stack import stack_image
 from ramalama.transports.base import (
     MODEL_TYPES,
@@ -56,6 +56,7 @@ from ramalama.transports.base import (
     compute_serving_port,
     trim_model_name,
 )
+from ramalama.transports.oci import spec as oci_spec
 from ramalama.transports.transport_factory import New, TransportFactory
 from ramalama.version import print_version, version
 
@@ -95,9 +96,11 @@ def get_shortnames():
 def get_skill_shortnames():
     return Shortnames(filename="shortnames-skills.conf", section="shortnames.skills")
 
+
 @lru_cache(maxsize=1)
 def get_agent_shortnames():
     return Shortnames(filename="shortnames-agents.conf", section="shortnames.agents")
+
 
 @lru_cache(maxsize=1)
 def get_plugin_shortnames():
@@ -758,47 +761,100 @@ def info_cli(args: DefaultArgsType) -> None:
     print(json.dumps(info, sort_keys=True, indent=4))
 
 
-def _ensure_artifacts_dir(kind: str) -> str:
-    path = os.path.join(ActiveConfig().store, "artifacts", kind)
-    os.makedirs(path, exist_ok=True)
-    return path
+def _engine_bin(args):
+    return args.engine or ActiveConfig().engine or "docker"
 
 
-def _package_dir_to_tarball(src_dir: str, out_path: str) -> None:
-    with tarfile.open(out_path, "w:gz") as tar:
-        # Add the contents of the directory, preserving names
-        for root, dirs, files in os.walk(src_dir):
-            for f in files:
-                full = os.path.join(root, f)
-                arcname = os.path.relpath(full, start=src_dir)
-                tar.add(full, arcname=arcname)
-
-
-def _list_artifacts(kind: str) -> list[str]:
-    d = os.path.join(ActiveConfig().store, "artifacts", kind)
-    if not os.path.isdir(d):
+def _list_kind_artifacts(engine: str, artifact_type: str) -> list[dict]:
+    """List locally-stored OCI artifacts of a given CNAI artifact type via the engine."""
+    if not engine or engine == "docker":
         return []
-    return sorted([f for f in os.listdir(d) if f.endswith('.tar.gz')])
 
-
-def _artifact_info(kind: str) -> list[dict]:
-    d = os.path.join(ActiveConfig().store, "artifacts", kind)
-    if not os.path.isdir(d):
+    conman_args = [
+        engine,
+        "artifact",
+        "ls",
+        "--format",
+        (
+            '{"name":"oci://{{ .Repository }}:{{ .Tag }}",'
+            '"created":"{{ .CreatedAt }}",'
+            '"size":"{{ .Size }}",'
+            '"ID":"{{ .Digest }}"},'
+        ),
+    ]
+    try:
+        output = run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+    except subprocess.CalledProcessError:
         return []
-    out = []
-    for fname in sorted([f for f in os.listdir(d) if f.endswith('.tar.gz')]):
-        full = os.path.join(d, fname)
+    if not output:
+        return []
+
+    try:
+        artifacts = json.loads(f"[{output[:-1]}]")
+    except json.JSONDecodeError:
+        return []
+
+    results = []
+    for artifact in artifacts:
         try:
-            st = os.stat(full)
-            size = st.st_size
-            modified = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
-        except OSError:
-            size = 0
-            modified = ""
+            inspect_out = (
+                run_cmd([engine, "artifact", "inspect", artifact["ID"]], ignore_stderr=True)
+                .stdout.decode("utf-8")
+                .strip()
+            )
+            inspect = json.loads(inspect_out)
+        except Exception:
+            continue
 
-        tag = fname[:-7].replace("_", "/")
-        out.append({"tag": tag, "file": full, "size": size, "modified": modified})
-    return out
+        if inspect.get("Manifest", {}).get("artifactType") != artifact_type:
+            continue
+
+        results.append(
+            {
+                "tag": artifact["name"].removeprefix("oci://"),
+                "file": artifact["name"],
+                "size": artifact.get("size", ""),
+                "modified": artifact.get("created", ""),
+            }
+        )
+    return results
+
+
+def _print_artifact_listing(args, info: list[dict]) -> None:
+    if getattr(args, "json", False):
+        print(json.dumps(info))
+        return
+    if getattr(args, "path", False):
+        for e in info:
+            print(e["file"])
+        return
+    for e in info:
+        print(f"{e['tag']}\t{e['size']} bytes\t{e['modified']}")
+
+
+def _resolve_local_artifact(kind: str, name: str) -> str | None:
+    """Resolve a skill/agent/plugin SOURCE argument to a local path, if it is one.
+
+    NOTE: this only resolves literal file paths and shortname lookups against a
+    legacy on-disk tarball location. Since `build_skill_artifact` now stores
+    artifacts via `podman artifact add` (engine-managed storage) rather than
+    writing tarballs to disk, shortname-based lookup here will not find
+    artifacts created by `skill build`. This is a known limitation: push
+    currently relies on the artifact already existing under TARGET's tag in
+    engine storage, and this function's return value is used only as an
+    existence check, not as the actual pushed payload.
+    """
+    if os.path.isfile(name):
+        return os.path.abspath(name)
+    shortnames_by_kind = {
+        "skills": get_skill_shortnames,
+        "agents": get_agent_shortnames,
+        "plugins": get_plugin_shortnames,
+    }
+    resolved = shortnames_by_kind[kind]().resolve(name)
+    fname = resolved.replace("/", "_") + ".tar.gz"
+    path = os.path.join(ActiveConfig().store, "artifacts", kind, fname)
+    return path if os.path.isfile(path) else None
 
 
 def skill_parser(subparsers):
@@ -834,65 +890,23 @@ def skill_build_cli(args):
     if not os.path.isdir(src):
         perror(f"Directory does not exist: {src}")
         return 1
-
-    outdir = _ensure_artifacts_dir("skills")
-    fname = args.tag.replace("/", "_") + ".tar.gz"
-    outpath = os.path.join(outdir, fname)
-    _package_dir_to_tarball(src, outpath)
-    print(outpath)
-
-
-def _resolve_local_artifact(kind: str, name: str) -> str | None:
-    if os.path.isfile(name):
-        return os.path.abspath(name)
-    shortnames_by_kind = {
-        "skills": get_skill_shortnames,
-        "agents": get_agent_shortnames,
-        "plugins": get_plugin_shortnames,
-    }
-    resolved = shortnames_by_kind[kind]().resolve(name)
-    fname = resolved.replace("/", "_") + ".tar.gz"
-    path = os.path.join(ActiveConfig().store, "artifacts", kind, fname)
-    return path if os.path.isfile(path) else None
-
-
-def _engine_bin(args):
-    return args.engine or ActiveConfig().engine or "docker"
+    build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    print(args.tag)
 
 
 def skill_push_cli(args):
-    src = args.SOURCE
-    tarpath = _resolve_local_artifact("skills", src) or (src if os.path.isfile(src) else None)
-    if not tarpath:
-        perror(f"Local skill artifact not found: {src}")
+    if not _resolve_local_artifact("skills", args.SOURCE) and not os.path.isfile(args.SOURCE):
+        perror(f"Local skill artifact not found: {args.SOURCE}")
         return 1
     if not getattr(args, "TARGET", None):
         perror("TARGET is required for push")
         return 1
-    target = args.TARGET[0]
-
-    # Use OCI transport to add artifact layers/manifest
-    try:
-        target_model = TransportFactory(target, args, transport="oci").create_oci()
-    except Exception as e:
-        perror(f"Failed to construct OCI target transport: {e}")
-        return 1
-
-    basename = os.path.basename(tarpath)
-    name = os.path.splitext(basename)[0]
-    try:
-        # create new artifact with the tarball as a layer
-        target_model._add_artifact(True, name, tarpath, basename)
-    except Exception as e:
-        perror(f"Failed to push artifact: {e}")
-        return 1
+    push_skill_artifact(_engine_bin(args), args.TARGET[0], args)
 
 
 def skill_pull_cli(args):
     source = args.SOURCE
-    target = args.TARGET or None
 
-    # construct OCI transport for source and call pull()
     try:
         src_model = TransportFactory(source, args, transport="oci").create_oci()
     except Exception as e:
@@ -906,99 +920,9 @@ def skill_pull_cli(args):
         return 1
 
 
-def agent_push_cli(args):
-    src = args.SOURCE
-    tarpath = _resolve_local_artifact("agents", src) or (src if os.path.isfile(src) else None)
-    if not tarpath:
-        perror(f"Local agent artifact not found: {src}")
-        return 1
-    if not getattr(args, "TARGET", None):
-        perror("TARGET is required for push")
-        return 1
-    target = args.TARGET[0]
-
-    try:
-        target_model = TransportFactory(target, args, transport="oci").create_oci()
-    except Exception as e:
-        perror(f"Failed to construct OCI target transport: {e}")
-        return 1
-
-    basename = os.path.basename(tarpath)
-    name = os.path.splitext(basename)[0]
-    try:
-        target_model._add_artifact(True, name, tarpath, basename)
-    except Exception as e:
-        perror(f"Failed to push agent artifact: {e}")
-        return 1
-
-
-def agent_pull_cli(args):
-    source = args.SOURCE
-    try:
-        src_model = TransportFactory(source, args, transport="oci").create_oci()
-    except Exception as e:
-        perror(f"Failed to construct OCI transport for {source}: {e}")
-        return 1
-
-    try:
-        src_model.pull(args)
-    except Exception as e:
-        perror(f"Failed to pull agent artifact {source}: {e}")
-        return 1
-
-
-def plugin_push_cli(args):
-    src = args.SOURCE
-    tarpath = _resolve_local_artifact("plugins", src) or (src if os.path.isfile(src) else None)
-    if not tarpath:
-        perror(f"Local plugin artifact not found: {src}")
-        return 1
-    if not getattr(args, "TARGET", None):
-        perror("TARGET is required for push")
-        return 1
-    target = args.TARGET[0]
-
-    try:
-        target_model = TransportFactory(target, args, transport="oci").create_oci()
-    except Exception as e:
-        perror(f"Failed to construct OCI target transport: {e}")
-        return 1
-
-    basename = os.path.basename(tarpath)
-    name = os.path.splitext(basename)[0]
-    try:
-        target_model._add_artifact(True, name, tarpath, basename)
-    except Exception as e:
-        perror(f"Failed to push plugin artifact: {e}")
-        return 1
-
-
-def plugin_pull_cli(args):
-    source = args.SOURCE
-    try:
-        src_model = TransportFactory(source, args, transport="oci").create_oci()
-    except Exception as e:
-        perror(f"Failed to construct OCI transport for {source}: {e}")
-        return 1
-
-    try:
-        src_model.pull(args)
-    except Exception as e:
-        perror(f"Failed to pull plugin artifact {source}: {e}")
-        return 1
-
-
 def skill_ls_cli(args):
-    info = _artifact_info("skills")
-    if getattr(args, "json", False):
-        print(json.dumps(info))
-        return
-    if getattr(args, "path", False):
-        for e in info:
-            print(e["file"])
-        return
-    for e in info:
-        print(f"{e['tag']}	{e['size']} bytes	{e['modified']}")
+    info = _list_kind_artifacts(_engine_bin(args), oci_spec.CNAI_SKILL_ARTIFACT_TYPE)
+    _print_artifact_listing(args, info)
 
 
 def agent_parser(subparsers):
@@ -1034,25 +958,38 @@ def agent_build_cli(args):
     if not os.path.isdir(src):
         perror(f"Directory does not exist: {src}")
         return 1
+    build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    print(args.tag)
 
-    outdir = _ensure_artifacts_dir("agents")
-    fname = args.tag.replace("/", "_") + ".tar.gz"
-    outpath = os.path.join(outdir, fname)
-    _package_dir_to_tarball(src, outpath)
-    print(outpath)
+
+def agent_push_cli(args):
+    if not _resolve_local_artifact("agents", args.SOURCE) and not os.path.isfile(args.SOURCE):
+        perror(f"Local agent artifact not found: {args.SOURCE}")
+        return 1
+    if not getattr(args, "TARGET", None):
+        perror("TARGET is required for push")
+        return 1
+    push_skill_artifact(_engine_bin(args), args.TARGET[0], args)
+
+
+def agent_pull_cli(args):
+    source = args.SOURCE
+    try:
+        src_model = TransportFactory(source, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI transport for {source}: {e}")
+        return 1
+
+    try:
+        src_model.pull(args)
+    except Exception as e:
+        perror(f"Failed to pull agent artifact {source}: {e}")
+        return 1
 
 
 def agent_ls_cli(args):
-    info = _artifact_info("agents")
-    if getattr(args, "json", False):
-        print(json.dumps(info))
-        return
-    if getattr(args, "path", False):
-        for e in info:
-            print(e["file"])
-        return
-    for e in info:
-        print(f"{e['tag']}	{e['size']} bytes	{e['modified']}")
+    info = _list_kind_artifacts(_engine_bin(args), oci_spec.CNAI_SKILL_ARTIFACT_TYPE)
+    _print_artifact_listing(args, info)
 
 
 def plugin_parser(subparsers):
@@ -1088,25 +1025,38 @@ def plugin_build_cli(args):
     if not os.path.isdir(src):
         perror(f"Directory does not exist: {src}")
         return 1
+    build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    print(args.tag)
 
-    outdir = _ensure_artifacts_dir("plugins")
-    fname = args.tag.replace("/", "_") + ".tar.gz"
-    outpath = os.path.join(outdir, fname)
-    _package_dir_to_tarball(src, outpath)
-    print(outpath)
+
+def plugin_push_cli(args):
+    if not _resolve_local_artifact("plugins", args.SOURCE) and not os.path.isfile(args.SOURCE):
+        perror(f"Local plugin artifact not found: {args.SOURCE}")
+        return 1
+    if not getattr(args, "TARGET", None):
+        perror("TARGET is required for push")
+        return 1
+    push_skill_artifact(_engine_bin(args), args.TARGET[0], args)
+
+
+def plugin_pull_cli(args):
+    source = args.SOURCE
+    try:
+        src_model = TransportFactory(source, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI transport for {source}: {e}")
+        return 1
+
+    try:
+        src_model.pull(args)
+    except Exception as e:
+        perror(f"Failed to pull plugin artifact {source}: {e}")
+        return 1
 
 
 def plugin_ls_cli(args):
-    info = _artifact_info("plugins")
-    if getattr(args, "json", False):
-        print(json.dumps(info))
-        return
-    if getattr(args, "path", False):
-        for e in info:
-            print(e["file"])
-        return
-    for e in info:
-        print(f"{e['tag']}	{e['size']} bytes	{e['modified']}")
+    info = _list_kind_artifacts(_engine_bin(args), oci_spec.CNAI_SKILL_ARTIFACT_TYPE)
+    _print_artifact_listing(args, info)
 
 
 def list_cli(args):
