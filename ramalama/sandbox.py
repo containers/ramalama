@@ -3,8 +3,13 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import os
 import platform
+import posixpath
+import shutil
 import sys
+import tarfile
+import tempfile
 from collections.abc import Callable
 from functools import partial
 from http.client import HTTPConnection
@@ -16,13 +21,9 @@ from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, is_healthy, stop_container, wait_for_healthy
 from ramalama.model_server import ModelServerError, list_server_models
 from ramalama.plugins.loader import get_runtime
+from ramalama.shortnames import Shortnames
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New, TransportFactory
-from ramalama.shortnames import Shortnames
-import tarfile
-import tempfile
-import shutil
-import os
 
 
 def default_pi_image() -> str:
@@ -61,6 +62,10 @@ def _add_common_sandbox_args(parser: argparse.ArgumentParser, model_comp: Callab
         completer=model_comp,
         help="AI model to use. Omit to infer the first model from the model server.",
     )
+    # NOTE: --agent / --plugin mounting into the sandbox is not yet implemented here;
+    # only --skill is wired up. Agent/plugin artifacts can still be built, pushed,
+    # pulled, and listed via `ramalama agent`/`ramalama plugin`, but are not yet
+    # mountable into a running sandbox container. Tracked as a follow-up.
     parser.add_argument(
         "--skill",
         dest="skills",
@@ -198,7 +203,10 @@ class Agent:
         self.engine = SandboxEngine(args)
         self.model_name = model_name
         self._skill_tempdir = None
-        self._prepare_skills(args)
+        # Skip skill resolution/pull/extraction entirely during --dryrun: dryrun must
+        # not have real side effects (network pulls, temp file extraction on disk).
+        if not getattr(args, "dryrun", False):
+            self._prepare_skills(args)
 
     def run(self) -> None:
         try:
@@ -206,12 +214,7 @@ class Agent:
         finally:
             # cleanup any extracted skill tempdir
             if getattr(self, "_skill_tempdir", None):
-                try:
-                    import shutil
-
-                    shutil.rmtree(self._skill_tempdir, ignore_errors=True)
-                except Exception:
-                    pass
+                shutil.rmtree(self._skill_tempdir, ignore_errors=True)
 
     def _prepare_skills(self, args: SandboxEngineArgsType) -> None:
         skills = getattr(args, 'skills', None)
@@ -222,64 +225,70 @@ class Agent:
         artifacts_dir = os.path.join(store, 'artifacts', 'skills')
         tmpdir = tempfile.mkdtemp(prefix='ramalama_skills_')
         extracted_any = False
-        shortnames = Shortnames()
+        skill_shortnames = Shortnames(filename="shortnames-skills.conf", section="shortnames.skills")
+        mount_path = getattr(args, 'skill_mount', '/root/.agents')
 
         for skill in skills:
-                resolved = shortnames.resolve_skill(skill)
-                # Try to treat resolved name as an OCI artifact reference and mount it directly
-                oci_mounted = False
-                try:
-                    # Construct an OCI transport for this reference
-                    oci_transport = TransportFactory(resolved, args, transport="oci").create_oci()
-                    # If artifact not present locally, attempt pull
-                    try:
-                        if not oci_transport.exists():
-                            oci_transport.pull(args)
-                    except Exception:
-                        # ignore pull failures here, fallback to local artifact
-                        pass
+            resolved = skill_shortnames.resolve(skill)
+            # Give each skill its own subpath under the mount root so multiple
+            # --skill flags don't collide on the same container destination.
+            skill_slug = os.path.basename(resolved.rstrip('/')).replace(':', '_').replace('/', '_')
+            skill_dest = posixpath.join(mount_path, skill_slug)
 
-                    mount_path = getattr(args, 'skill_mount', '/root/.agents')
-                    try:
-                        mount_arg = oci_transport.mount_cmd(dest=mount_path)
-                        if mount_arg:
-                            # add mount argument directly to engine so it appears before the image
-                            self.engine.add_args(mount_arg)
-                            oci_mounted = True
-                    except Exception as e:
-                        perror(f"Failed to mount OCI skill {resolved}: {e}")
+            # Try to treat resolved name as an OCI artifact reference and mount it directly
+            oci_mounted = False
+            try:
+                # Construct an OCI transport for this reference
+                oci_transport = TransportFactory(resolved, args, transport="oci").create_oci()
+                # If artifact not present locally, attempt pull
+                try:
+                    if not oci_transport.exists():
+                        oci_transport.pull(args)
                 except Exception:
-                    # Not an OCI reference or failed to construct transport - fall back to local artifact
-                    oci_mounted = False
-
-                if oci_mounted:
-                    continue
-
-                # Fallback: If user passed a local path to a tarball, use it directly
-                if os.path.isfile(skill) and skill.endswith('.tar.gz'):
-                    tarpath = skill
-                else:
-                    # translate tag to filename used by `skill build`
-                    fname = resolved.replace('/', '_') + '.tar.gz'
-                    tarpath = os.path.join(artifacts_dir, fname)
-
-                if not os.path.isfile(tarpath):
-                    perror(f"Skill artifact not found: {skill} -> {tarpath}")
-                    continue
+                    # ignore pull failures here, fallback to local artifact
+                    pass
 
                 try:
-                    with tarfile.open(tarpath, 'r:gz') as tar:
-                        # extract each skill into its own directory
-                        skill_dir = os.path.join(tmpdir, os.path.splitext(os.path.basename(tarpath))[0])
-                        os.makedirs(skill_dir, exist_ok=True)
-                        tar.extractall(path=skill_dir)
-                        extracted_any = True
+                    mount_arg = oci_transport.mount_cmd(dest=skill_dest)
+                    if mount_arg:
+                        # add mount argument directly to engine so it appears before the image
+                        self.engine.add_args(mount_arg)
+                        oci_mounted = True
                 except Exception as e:
-                    perror(f"Failed to extract {tarpath}: {e}")
+                    perror(f"Failed to mount OCI skill {resolved}: {e}")
+            except Exception:
+                # Not an OCI reference or failed to construct transport - fall back to local artifact
+                oci_mounted = False
+
+            if oci_mounted:
+                continue
+
+            # Fallback: If user passed a local path to a tarball, use it directly
+            if os.path.isfile(skill) and skill.endswith('.tar.gz'):
+                tarpath = skill
+            else:
+                # translate tag to filename used by `skill build`
+                fname = resolved.replace('/', '_') + '.tar.gz'
+                tarpath = os.path.join(artifacts_dir, fname)
+
+            if not os.path.isfile(tarpath):
+                perror(f"Skill artifact not found: {skill} -> {tarpath}")
+                continue
+
+            try:
+                with tarfile.open(tarpath, 'r:gz') as tar:
+                    # extract each skill into its own directory, named to match
+                    # the same slug used for the mount destination above
+                    skill_dir = os.path.join(tmpdir, skill_slug)
+                    os.makedirs(skill_dir, exist_ok=True)
+                    tar.extractall(path=skill_dir)
+                    extracted_any = True
+            except Exception as e:
+                perror(f"Failed to extract {tarpath}: {e}")
 
         if extracted_any:
-            # mount extracted skills into configured path inside container
-            mount_path = getattr(args, 'skill_mount', '/root/.agents')
+            # mount the tempdir (containing one subdirectory per extracted skill)
+            # into the configured path inside the container
             self._skill_tempdir = tmpdir
             try:
                 self.engine.add_volume(tmpdir, mount_path, opts='rw')
@@ -287,7 +296,7 @@ class Agent:
                 # best effort
                 pass
         else:
-            shutil.rmtree(tmpdir)
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 class Goose(Agent):
