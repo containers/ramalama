@@ -204,6 +204,15 @@ Configuration block for the OpenAI hosted provider.
 
 `ramalama.provider.openai.api_key` overrides `RAMALAMA_API_KEY` when set.
 
+`[[ramalama.provider.orcarouter]]`
+
+**orcarouter:**
+Configuration block for the [OrcaRouter](https://www.orcarouter.ai) hosted provider.
+
+**api_key**=""
+
+`ramalama.provider.orcarouter.api_key` overrides `RAMALAMA_API_KEY` when set.
+
 ## RAMALAMA.BENCHMARKS TABLE
 The `ramalama.benchmarks` table contains benchmark settings.
 

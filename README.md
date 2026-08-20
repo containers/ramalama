@@ -260,6 +260,8 @@ RamaLama supports multiple AI model registries types called transports.
 | RamaLama Labs Container Registry | [`ramalama.com`](https://registry.ramalama.com) |
 | OCI Container Registries | [`opencontainers.org`](https://opencontainers.org)   |
 |                          |Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io), [`Pulp`](https://pulpproject.org), and [`Artifactory`](https://jfrog.com/artifactory/)|
+| Hosted API Providers (OpenAI) | [`api.openai.com`](https://api.openai.com)   |
+| Hosted API Providers (OrcaRouter) | [OrcaRouter](https://www.orcarouter.ai) — `https://api.orcarouter.ai/v1` |
 
 ### Default Transport
 

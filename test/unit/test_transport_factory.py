@@ -39,6 +39,7 @@ hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GG
     [
         (Input("", "", ""), None, KeyError),
         (Input("openai://gpt-4o-mini", "", ""), APITransport, None),
+        (Input("orcarouter://auto", "", ""), APITransport, None),
         (Input("huggingface://granite-code", "", ""), Huggingface, None),
         (Input("hf://granite-code", "", ""), Huggingface, None),
         (Input("hf.co/granite-code", "", ""), Huggingface, None),
