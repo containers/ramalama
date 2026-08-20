@@ -25,6 +25,14 @@ from ramalama.shortnames import Shortnames
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New, TransportFactory
 
+# Artifact kinds that can be mounted into a sandbox container, and the
+# per-kind shortnames config file/section each one resolves against.
+ARTIFACT_KINDS: dict[str, dict[str, str]] = {
+    "skills": {"dest": "skills", "filename": "shortnames-skills.conf", "section": "shortnames.skills"},
+    "agents": {"dest": "agents", "filename": "shortnames-agents.conf", "section": "shortnames.agents"},
+    "plugins": {"dest": "plugins", "filename": "shortnames-plugins.conf", "section": "shortnames.plugins"},
+}
+
 
 def default_pi_image() -> str:
     return ActiveConfig().default_pi_image
@@ -62,10 +70,6 @@ def _add_common_sandbox_args(parser: argparse.ArgumentParser, model_comp: Callab
         completer=model_comp,
         help="AI model to use. Omit to infer the first model from the model server.",
     )
-    # NOTE: --agent / --plugin mounting into the sandbox is not yet implemented here;
-    # only --skill is wired up. Agent/plugin artifacts can still be built, pushed,
-    # pulled, and listed via `ramalama agent`/`ramalama plugin`, but are not yet
-    # mountable into a running sandbox container. Tracked as a follow-up.
     parser.add_argument(
         "--skill",
         dest="skills",
@@ -73,10 +77,26 @@ def _add_common_sandbox_args(parser: argparse.ArgumentParser, model_comp: Callab
         help="skill OCI artifact full name or shortname (can be repeated)",
     )
     parser.add_argument(
+        "--agent",
+        dest="agents",
+        action="append",
+        help="agent OCI artifact full name or shortname (can be repeated)",
+    )
+    parser.add_argument(
+        "--plugin",
+        dest="plugins",
+        action="append",
+        help="plugin OCI artifact full name or shortname (can be repeated)",
+    )
+    parser.add_argument(
         "--skill-mount",
         dest="skill_mount",
         default="/root/.agents",
-        help="path inside the container to extract/mount skills (default: /root/.agents)",
+        help=(
+            "base path inside the container to extract/mount skills, agents, and plugins "
+            "(default: /root/.agents; each kind gets its own subdirectory, e.g. "
+            "/root/.agents/skills/<name>)"
+        ),
     )
 
 
@@ -202,38 +222,45 @@ class Agent:
     def __init__(self, args: SandboxEngineArgsType, model_name: str):
         self.engine = SandboxEngine(args)
         self.model_name = model_name
-        self._skill_tempdir = None
-        # Skip skill resolution/pull/extraction entirely during --dryrun: dryrun must
+        self._artifact_tempdirs: list[str] = []
+        # Skip artifact resolution/pull/extraction entirely during --dryrun: dryrun must
         # not have real side effects (network pulls, temp file extraction on disk).
         if not getattr(args, "dryrun", False):
-            self._prepare_skills(args)
+            for kind_key, kind_info in ARTIFACT_KINDS.items():
+                self._prepare_artifacts(args, kind_key, kind_info)
 
     def run(self) -> None:
         try:
             run_cmd(self.engine.exec_args, stdout=None, stdin=None)
         finally:
-            # cleanup any extracted skill tempdir
-            if getattr(self, "_skill_tempdir", None):
-                shutil.rmtree(self._skill_tempdir, ignore_errors=True)
+            # cleanup any extracted artifact tempdirs
+            for tmpdir in getattr(self, "_artifact_tempdirs", []):
+                shutil.rmtree(tmpdir, ignore_errors=True)
 
-    def _prepare_skills(self, args: SandboxEngineArgsType) -> None:
-        skills = getattr(args, 'skills', None)
-        if not skills:
+    def _prepare_artifacts(self, args: SandboxEngineArgsType, kind_key: str, kind_info: dict[str, str]) -> None:
+        """Resolve, pull/mount-or-extract, and wire in artifacts of one kind
+        (skills, agents, or plugins) requested via --skill/--agent/--plugin."""
+        names = getattr(args, kind_key, None)
+        if not names:
             return
 
         store = ActiveConfig().store
-        artifacts_dir = os.path.join(store, 'artifacts', 'skills')
-        tmpdir = tempfile.mkdtemp(prefix='ramalama_skills_')
+        artifacts_dir = os.path.join(store, 'artifacts', kind_info["dest"])
+        tmpdir = tempfile.mkdtemp(prefix=f'ramalama_{kind_key}_')
         extracted_any = False
-        skill_shortnames = Shortnames(filename="shortnames-skills.conf", section="shortnames.skills")
-        mount_path = getattr(args, 'skill_mount', '/root/.agents')
+        kind_shortnames = Shortnames(filename=kind_info["filename"], section=kind_info["section"])
+        mount_root = getattr(args, 'skill_mount', '/root/.agents')
+        # Each kind gets its own subdirectory under the mount root, e.g.
+        # /root/.agents/skills/<name>, /root/.agents/agents/<name>, ...
+        kind_mount_root = posixpath.join(mount_root, kind_info["dest"])
 
-        for skill in skills:
-            resolved = skill_shortnames.resolve(skill)
-            # Give each skill its own subpath under the mount root so multiple
-            # --skill flags don't collide on the same container destination.
-            skill_slug = os.path.basename(resolved.rstrip('/')).replace(':', '_').replace('/', '_')
-            skill_dest = posixpath.join(mount_path, skill_slug)
+        for name in names:
+            resolved = kind_shortnames.resolve(name)
+            # Give each artifact its own subpath so multiple --skill/--agent/--plugin
+            # flags (including across different kinds) don't collide on the same
+            # container destination.
+            slug = os.path.basename(resolved.rstrip('/')).replace(':', '_').replace('/', '_')
+            dest = posixpath.join(kind_mount_root, slug)
 
             # Try to treat resolved name as an OCI artifact reference and mount it directly
             oci_mounted = False
@@ -249,13 +276,13 @@ class Agent:
                     pass
 
                 try:
-                    mount_arg = oci_transport.mount_cmd(dest=skill_dest)
+                    mount_arg = oci_transport.mount_cmd(dest=dest)
                     if mount_arg:
                         # add mount argument directly to engine so it appears before the image
                         self.engine.add_args(mount_arg)
                         oci_mounted = True
                 except Exception as e:
-                    perror(f"Failed to mount OCI skill {resolved}: {e}")
+                    perror(f"Failed to mount OCI {kind_key[:-1]} {resolved}: {e}")
             except Exception:
                 # Not an OCI reference or failed to construct transport - fall back to local artifact
                 oci_mounted = False
@@ -264,34 +291,34 @@ class Agent:
                 continue
 
             # Fallback: If user passed a local path to a tarball, use it directly
-            if os.path.isfile(skill) and skill.endswith('.tar.gz'):
-                tarpath = skill
+            if os.path.isfile(name) and name.endswith('.tar.gz'):
+                tarpath = name
             else:
-                # translate tag to filename used by `skill build`
+                # translate tag to filename used by `<kind> build`
                 fname = resolved.replace('/', '_') + '.tar.gz'
                 tarpath = os.path.join(artifacts_dir, fname)
 
             if not os.path.isfile(tarpath):
-                perror(f"Skill artifact not found: {skill} -> {tarpath}")
+                perror(f"{kind_key[:-1].capitalize()} artifact not found: {name} -> {tarpath}")
                 continue
 
             try:
                 with tarfile.open(tarpath, 'r:gz') as tar:
-                    # extract each skill into its own directory, named to match
-                    # the same slug used for the mount destination above
-                    skill_dir = os.path.join(tmpdir, skill_slug)
-                    os.makedirs(skill_dir, exist_ok=True)
-                    tar.extractall(path=skill_dir)
+                    # extract into a directory matching the same slug used for the
+                    # mount destination above, under this kind's own subdirectory
+                    extract_dir = os.path.join(tmpdir, kind_info["dest"], slug)
+                    os.makedirs(extract_dir, exist_ok=True)
+                    tar.extractall(path=extract_dir)
                     extracted_any = True
             except Exception as e:
                 perror(f"Failed to extract {tarpath}: {e}")
 
         if extracted_any:
-            # mount the tempdir (containing one subdirectory per extracted skill)
-            # into the configured path inside the container
-            self._skill_tempdir = tmpdir
+            # mount the tempdir's kind-subdirectory (containing one directory per
+            # extracted artifact of this kind) into the configured path inside the container
+            self._artifact_tempdirs.append(tmpdir)
             try:
-                self.engine.add_volume(tmpdir, mount_path, opts='rw')
+                self.engine.add_volume(os.path.join(tmpdir, kind_info["dest"]), kind_mount_root, opts='rw')
             except Exception:
                 # best effort
                 pass
