@@ -12,8 +12,8 @@
 # The upstream llama.cpp OpenVINO Dockerfile installs OpenVINO the same way:
 # download tarball, extract to /opt/intel/openvino, source setupvars.sh.
 
-ARG OPENVINO_VERSION_MAJOR=2026.0
-ARG OPENVINO_VERSION_FULL=2026.0.0.20965.c6d6a13a886
+ARG OPENVINO_VERSION_MAJOR=2026.2.1
+ARG OPENVINO_VERSION_FULL=2026.2.1.21919.ede283a88e3
 
 FROM quay.io/fedora/fedora:44 AS builder
 
