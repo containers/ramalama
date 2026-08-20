@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEFAULT_LLAMA_CPP_COMMIT="91c631b21d6e5d09e9c6659efdf6baeef5a44ddb" # b9986
+DEFAULT_LLAMA_CPP_COMMIT="1511ce3bc3f087376c8526b4ad07100bfabb277f" # b10485/v0.1.2
 MESA_VULKAN_VERSION=25.3.6-102.fc44
 
 dnf_install_remoting() {
