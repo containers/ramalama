@@ -27,7 +27,7 @@ except Exception:
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import accel_image, exec_cmd, get_accel, perror
+from ramalama.common import accel_image, engine_cmd, exec_cmd, get_accel, in_toolbox, perror
 from ramalama.config import (
     SUPPORTED_ENGINES,
     ActiveConfig,
@@ -729,6 +729,7 @@ def info_cli(args: DefaultArgsType) -> None:
             "Sources": list(set(shortnames.config_sources.values())),
         },
         "Store": args.store,
+        "Toolbox": in_toolbox(),
         "ToolsImage": default_tools_image(),
         "UseContainer": args.container,
         "Version": version(),
@@ -1211,7 +1212,7 @@ def daemon_start_cli(args):
         daemon_model_store_dir = "/ramalama/models"
 
         daemon_cmd += [
-            args.engine,
+            *engine_cmd(args.engine),
             "run",
             "--pull",
             args.pull,
