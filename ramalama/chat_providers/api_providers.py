@@ -5,10 +5,12 @@ from typing import Optional
 
 from ramalama.chat_providers.base import ChatProvider
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
+from ramalama.chat_providers.orcarouter import OrcaRouterChatProvider
 from ramalama.config import ActiveConfig
 
 PROVIDER_API_KEY_RESOLVERS: dict[str, Callable[[], Optional[str]]] = {
     "openai": lambda: ActiveConfig().provider.openai.api_key,
+    "orcarouter": lambda: ActiveConfig().provider.orcarouter.api_key,
 }
 
 
@@ -24,7 +26,8 @@ def get_provider_api_key(scheme: str) -> Optional[str]:
 DEFAULT_PROVIDERS = {
     "openai": lambda: OpenAIResponsesChatProvider(
         base_url="https://api.openai.com/v1", api_key=get_provider_api_key("openai")
-    )
+    ),
+    "orcarouter": lambda: OrcaRouterChatProvider(api_key=get_provider_api_key("orcarouter")),
 }
 
 

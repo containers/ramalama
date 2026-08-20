@@ -130,8 +130,14 @@ class OpenaiProviderConfig:
 
 
 @dataclass
+class OrcaRouterProviderConfig:
+    api_key: Optional[str] = None
+
+
+@dataclass
 class ProviderConfig:
     openai: OpenaiProviderConfig = field(default_factory=OpenaiProviderConfig)
+    orcarouter: OrcaRouterProviderConfig = field(default_factory=OrcaRouterProviderConfig)
 
 
 @dataclass
