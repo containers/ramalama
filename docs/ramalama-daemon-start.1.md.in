@@ -1,0 +1,61 @@
+% ramalama-daemon-start 1
+
+## NAME
+ramalama\-daemon\-start - prepare and start a RamaLama REST daemon
+
+## SYNOPSIS
+**ramalama daemon start** [*options*]
+
+## DESCRIPTION
+Prepares and starts a new RamaLama daemon. When containers are enabled (the
+default), **start** launches the daemon inside a container with the model store
+mounted and publishes the host port. With **--nocontainer**, **start** runs the
+daemon directly on the host by invoking **ramalama daemon run**.
+
+## OPTIONS
+
+@@option help
+
+@@option host
+
+When **daemon start** runs the daemon in a container, this value is used as the host
+IP for the published port mapping (`-p [host:]port:8080`). Wildcard addresses
+(`::`, `0.0.0.0`) publish on all host interfaces. The daemon process inside the
+container listens on all interfaces.
+
+With **--nocontainer**, this value is the address the daemon binds on the host.
+
+@@option image
+
+@@option port
+
+When **daemon start** runs in a container, this is the published host port mapped
+to port 8080 in the container.
+
+@@option pull
+
+## EXAMPLES
+
+Start the daemon in a container (default), publishing port 8080:
+
+```shell
+ramalama daemon start --port 8080
+```
+
+Start the daemon on the host without a container:
+
+```shell
+ramalama --nocontainer daemon start --host 127.0.0.1 --port 8080
+```
+
+Publish only on localhost when running in a container:
+
+```shell
+ramalama daemon start --host 127.0.0.1 --port 8080
+```
+
+## SEE ALSO
+**[ramalama(1)](ramalama.1.md)**, **[ramalama-daemon(1)](ramalama-daemon.1.md)**, **[ramalama-daemon-run(1)](ramalama-daemon-run.1.md)**, **[ramalama-serve(1)](ramalama-serve.1.md)**
+
+## HISTORY
+Aug 2026, Split from ramalama-daemon(1)
