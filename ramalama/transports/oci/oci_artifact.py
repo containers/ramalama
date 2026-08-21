@@ -234,9 +234,9 @@ def download_oci_artifact(*, reference: str, model_store: ModelStore, model_tag:
         return False
 
     artifact_type = manifest.get("artifactType") or manifest.get("config", {}).get("mediaType", "")
-    if not oci_spec.is_cncf_artifact_manifest(manifest):
-        logger.debug(f"Manifest artifact type '{artifact_type}' not in supported set {OCI_ARTIFACT_MEDIA_TYPES}")
-        return False
+    if not (oci_spec.is_cncf_artifact_manifest(manifest) or oci_spec.is_cncf_skill_artifact_manifest(manifest)):
+       logger.debug(f"Manifest artifact type '{artifact_type}' not recognized")
+       return False
 
     try:
         snapshot_files = list(_build_snapshot_files(client, manifest))
