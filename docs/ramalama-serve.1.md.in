@@ -110,6 +110,8 @@ appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
 
 @@option port
 
+@@option presets-file
+
 @@option privileged
 
 @@option pull

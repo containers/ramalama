@@ -488,6 +488,13 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         self._add_threads_arg(parser)
         if command == "serve":
             parser.add_argument(
+                "--presets-file",
+                dest="presets_file",
+                type=str,
+                help="presets file for router mode",
+                completer=suppressCompleter,
+            )
+            parser.add_argument(
                 "--webui",
                 dest="webui",
                 choices=["on", "off"],
@@ -580,7 +587,13 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             container_host_path = get_container_mount_path(host_path)
             engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro{engine.relabel()}"])
 
-        engine.add([args.image] + cmd)
+        presets = getattr(args, "presets_file", None)
+        if presets:
+            args.engine_args.append(
+                f"--mount=type=bind,src={get_container_mount_path(presets)},destination=/etc/presets.ini,ro"
+            )
+
+        engine.add_container_image(args.image, cmd)
         return engine
 
     def _serve_router(self, args: argparse.Namespace) -> None:
