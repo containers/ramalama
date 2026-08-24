@@ -52,6 +52,11 @@ ALLOWED_LAYER_MEDIA_TYPES = {
 
 _MEDIATYPE_UNTESTED_VALUES = {"true", "false"}
 
+CNAI_SKILL_ARTIFACT_TYPE = "application/vnd.cncf.skill.manifest.v1+json"
+
+CNAI_SKILL_CONFIG_MEDIA_TYPE = "application/vnd.cncf.skill.config.v1+json"
+
+SKILL_LAYER_MEDIA_TYPE = "application/vnd.cncf.skill.bundle.v1.tar+gzip"
 
 def _require(condition: bool, message: str) -> None:
     if not condition:
@@ -155,7 +160,6 @@ class FileMetadata:
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), separators=(",", ":"))
 
-
 def is_cncf_artifact_manifest(manifest: dict[str, Any]) -> bool:
     artifact_type = manifest.get("artifactType")
     config_media = (manifest.get("config") or {}).get("mediaType", "")
@@ -164,6 +168,13 @@ def is_cncf_artifact_manifest(manifest: dict[str, Any]) -> bool:
     layers = manifest.get("layers") or manifest.get("blobs") or []
     return any(layer.get("mediaType") in ALLOWED_LAYER_MEDIA_TYPES for layer in layers)
 
+def is_cncf_skill_artifact_manifest(manifest: dict[str, Any]) -> bool:
+    artifact_type = manifest.get("artifactType")
+    config_media = (manifest.get("config") or {}).get("mediaType", "")
+    if artifact_type == CNAI_SKILL_ARTIFACT_TYPE or config_media == CNAI_SKILL_CONFIG_MEDIA_TYPE:
+        return True
+    layers = manifest.get("layers") or manifest.get("blobs") or []
+    return any(layer.get("mediaType") == SKILL_LAYER_MEDIA_TYPE for layer in layers)
 
 @dataclass
 class Descriptor:

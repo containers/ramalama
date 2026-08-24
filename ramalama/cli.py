@@ -27,7 +27,7 @@ except Exception:
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import accel_image, exec_cmd, get_accel, perror
+from ramalama.common import accel_image, exec_cmd, get_accel, perror, run_cmd
 from ramalama.config import (
     SUPPORTED_ENGINES,
     ActiveConfig,
@@ -46,6 +46,7 @@ from ramalama.plugins.loader import get_all_runtimes, get_runtime
 from ramalama.prompt_utils import default_prefix
 from ramalama.rag import rag_image
 from ramalama.shortnames import Shortnames
+from ramalama.skills.artifact import build_skill_artifact, push_skill_artifact
 from ramalama.stack import stack_image
 from ramalama.transports.base import (
     MODEL_TYPES,
@@ -55,6 +56,7 @@ from ramalama.transports.base import (
     compute_serving_port,
     trim_model_name,
 )
+from ramalama.transports.oci import spec as oci_spec
 from ramalama.transports.transport_factory import New, TransportFactory
 from ramalama.version import print_version, version
 
@@ -88,6 +90,21 @@ def default_tools_image() -> str:
 @lru_cache(maxsize=1)
 def get_shortnames():
     return Shortnames()
+
+
+@lru_cache(maxsize=1)
+def get_skill_shortnames():
+    return Shortnames(filename="shortnames-skills.conf", section="shortnames.skills")
+
+
+@lru_cache(maxsize=1)
+def get_agent_shortnames():
+    return Shortnames(filename="shortnames-agents.conf", section="shortnames.agents")
+
+
+@lru_cache(maxsize=1)
+def get_plugin_shortnames():
+    return Shortnames(filename="shortnames-plugins.conf", section="shortnames.plugins")
 
 
 class ParsedGenerateInput:
@@ -350,6 +367,9 @@ def configure_subcommands(parser):
     login_parser(subparsers)
     logout_parser(subparsers)
     models_parser(subparsers)
+    skill_parser(subparsers)
+    agent_parser(subparsers)
+    plugin_parser(subparsers)
     pull_parser(subparsers)
     push_parser(subparsers)
     rm_parser(subparsers)
@@ -739,6 +759,304 @@ def info_cli(args: DefaultArgsType) -> None:
         info["Engine"]["Info"] = engine.info(args)
 
     print(json.dumps(info, sort_keys=True, indent=4))
+
+
+def _engine_bin(args):
+    return args.engine or ActiveConfig().engine or "docker"
+
+
+def _list_kind_artifacts(engine: str, artifact_type: str) -> list[dict]:
+    """List locally-stored OCI artifacts of a given CNAI artifact type via the engine."""
+    if not engine or engine == "docker":
+        return []
+
+    conman_args = [
+        engine,
+        "artifact",
+        "ls",
+        "--format",
+        (
+            '{"name":"oci://{{ .Repository }}:{{ .Tag }}",'
+            '"created":"{{ .CreatedAt }}",'
+            '"size":"{{ .Size }}",'
+            '"ID":"{{ .Digest }}"},'
+        ),
+    ]
+    try:
+        output = run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+    except subprocess.CalledProcessError:
+        return []
+    if not output:
+        return []
+
+    try:
+        artifacts = json.loads(f"[{output[:-1]}]")
+    except json.JSONDecodeError:
+        return []
+
+    results = []
+    for artifact in artifacts:
+        try:
+            inspect_out = (
+                run_cmd([engine, "artifact", "inspect", artifact["ID"]], ignore_stderr=True)
+                .stdout.decode("utf-8")
+                .strip()
+            )
+            inspect = json.loads(inspect_out)
+        except Exception:
+            continue
+
+        if inspect.get("Manifest", {}).get("artifactType") != artifact_type:
+            continue
+
+        results.append(
+            {
+                "tag": artifact["name"].removeprefix("oci://"),
+                "file": artifact["name"],
+                "size": artifact.get("size", ""),
+                "modified": artifact.get("created", ""),
+            }
+        )
+    return results
+
+
+def _print_artifact_listing(args, info: list[dict]) -> None:
+    if getattr(args, "json", False):
+        print(json.dumps(info))
+        return
+    if getattr(args, "path", False):
+        for e in info:
+            print(e["file"])
+        return
+    for e in info:
+        print(f"{e['tag']}\t{e['size']} bytes\t{e['modified']}")
+
+
+def _resolve_local_artifact(kind: str, name: str) -> str | None:
+    """Resolve a skill/agent/plugin SOURCE argument to a local path, if it is one.
+
+    NOTE: this only resolves literal file paths and shortname lookups against a
+    legacy on-disk tarball location. Since `build_skill_artifact` now stores
+    artifacts via `podman artifact add` (engine-managed storage) rather than
+    writing tarballs to disk, shortname-based lookup here will not find
+    artifacts created by `skill build`. This is a known limitation: push
+    currently relies on the artifact already existing under TARGET's tag in
+    engine storage, and this function's return value is used only as an
+    existence check, not as the actual pushed payload.
+    """
+    if os.path.isfile(name):
+        return os.path.abspath(name)
+    shortnames_by_kind = {
+        "skills": get_skill_shortnames,
+        "agents": get_agent_shortnames,
+        "plugins": get_plugin_shortnames,
+    }
+    resolved = shortnames_by_kind[kind]().resolve(name)
+    fname = resolved.replace("/", "_") + ".tar.gz"
+    path = os.path.join(ActiveConfig().store, "artifacts", kind, fname)
+    return path if os.path.isfile(path) else None
+
+
+def skill_parser(subparsers):
+    parser = subparsers.add_parser("skill", help="manage OCI skill artifacts")
+    sp = parser.add_subparsers(dest="skill_subcommand")
+
+    build = sp.add_parser("build", help="package and tag a skill directory")
+    build.add_argument("-d", "--dir", dest="dir", required=True, help="directory containing the skill files")
+    build.add_argument("-t", "--tag", dest="tag", required=True, help="artifact tag (e.g. quay.io/ramalama/wiki-kb)")
+    build.set_defaults(func=skill_build_cli)
+
+    ls = sp.add_parser("ls", help="list local skill artifacts")
+    ls.add_argument("--json", dest="json", action="store_true", help="print json")
+    ls.add_argument("--path", dest="path", action="store_true", help="print full file paths instead of tags")
+    ls.set_defaults(func=skill_ls_cli)
+    push = sp.add_parser("push", help="push a local skill artifact to an OCI registry")
+    push.add_argument("--authfile", help="path of the authentication file")
+    push.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    push.add_argument("SOURCE", help="local artifact tag or path")
+    push.add_argument("TARGET", nargs=1, help="remote OCI target (registry/repo:tag)")
+    push.set_defaults(func=skill_push_cli)
+
+    pull = sp.add_parser("pull", help="pull a skill artifact from an OCI registry into local store")
+    pull.add_argument("--authfile", help="path of the authentication file")
+    pull.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    pull.add_argument("SOURCE", help="remote OCI source (registry/repo:tag)")
+    pull.add_argument("TARGET", nargs="?", help="optional local tag to store as")
+    pull.set_defaults(func=skill_pull_cli)
+
+
+def skill_build_cli(args):
+    src = os.path.abspath(args.dir)
+    if not os.path.isdir(src):
+        perror(f"Directory does not exist: {src}")
+        return 1
+    build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    print(args.tag)
+
+
+def skill_push_cli(args):
+    if not _resolve_local_artifact("skills", args.SOURCE) and not os.path.isfile(args.SOURCE):
+        perror(f"Local skill artifact not found: {args.SOURCE}")
+        return 1
+    if not getattr(args, "TARGET", None):
+        perror("TARGET is required for push")
+        return 1
+    push_skill_artifact(_engine_bin(args), args.TARGET[0], args)
+
+
+def skill_pull_cli(args):
+    source = args.SOURCE
+
+    try:
+        src_model = TransportFactory(source, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI transport for {source}: {e}")
+        return 1
+
+    try:
+        src_model.pull(args)
+    except Exception as e:
+        perror(f"Failed to pull artifact {source}: {e}")
+        return 1
+
+
+def skill_ls_cli(args):
+    info = _list_kind_artifacts(_engine_bin(args), oci_spec.CNAI_SKILL_ARTIFACT_TYPE)
+    _print_artifact_listing(args, info)
+
+
+def agent_parser(subparsers):
+    parser = subparsers.add_parser("agent", help="manage OCI agent artifacts")
+    sp = parser.add_subparsers(dest="agent_subcommand")
+
+    build = sp.add_parser("build", help="package and tag an agent directory")
+    build.add_argument("-d", "--dir", dest="dir", required=True, help="directory containing the agent files")
+    build.add_argument("-t", "--tag", dest="tag", required=True, help="artifact tag")
+    build.set_defaults(func=agent_build_cli)
+
+    ls = sp.add_parser("ls", help="list local agent artifacts")
+    ls.add_argument("--json", dest="json", action="store_true", help="print json")
+    ls.add_argument("--path", dest="path", action="store_true", help="print full file paths instead of tags")
+    ls.set_defaults(func=agent_ls_cli)
+    push = sp.add_parser("push", help="push a local agent artifact to an OCI registry")
+    push.add_argument("--authfile", help="path of the authentication file")
+    push.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    push.add_argument("SOURCE", help="local artifact tag or path")
+    push.add_argument("TARGET", nargs=1, help="remote OCI target (registry/repo:tag)")
+    push.set_defaults(func=agent_push_cli)
+
+    pull = sp.add_parser("pull", help="pull an agent artifact from an OCI registry into local store")
+    pull.add_argument("--authfile", help="path of the authentication file")
+    pull.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    pull.add_argument("SOURCE", help="remote OCI source (registry/repo:tag)")
+    pull.add_argument("TARGET", nargs="?", help="optional local tag to store as")
+    pull.set_defaults(func=agent_pull_cli)
+
+
+def agent_build_cli(args):
+    src = os.path.abspath(args.dir)
+    if not os.path.isdir(src):
+        perror(f"Directory does not exist: {src}")
+        return 1
+    build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    print(args.tag)
+
+
+def agent_push_cli(args):
+    if not _resolve_local_artifact("agents", args.SOURCE) and not os.path.isfile(args.SOURCE):
+        perror(f"Local agent artifact not found: {args.SOURCE}")
+        return 1
+    if not getattr(args, "TARGET", None):
+        perror("TARGET is required for push")
+        return 1
+    push_skill_artifact(_engine_bin(args), args.TARGET[0], args)
+
+
+def agent_pull_cli(args):
+    source = args.SOURCE
+    try:
+        src_model = TransportFactory(source, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI transport for {source}: {e}")
+        return 1
+
+    try:
+        src_model.pull(args)
+    except Exception as e:
+        perror(f"Failed to pull agent artifact {source}: {e}")
+        return 1
+
+
+def agent_ls_cli(args):
+    info = _list_kind_artifacts(_engine_bin(args), oci_spec.CNAI_SKILL_ARTIFACT_TYPE)
+    _print_artifact_listing(args, info)
+
+
+def plugin_parser(subparsers):
+    parser = subparsers.add_parser("plugin", help="manage OCI plugin artifacts")
+    sp = parser.add_subparsers(dest="plugin_subcommand")
+
+    build = sp.add_parser("build", help="package and tag a plugin directory")
+    build.add_argument("-d", "--dir", dest="dir", required=True, help="directory containing the plugin files")
+    build.add_argument("-t", "--tag", dest="tag", required=True, help="artifact tag")
+    build.set_defaults(func=plugin_build_cli)
+
+    ls = sp.add_parser("ls", help="list local plugin artifacts")
+    ls.add_argument("--json", dest="json", action="store_true", help="print json")
+    ls.add_argument("--path", dest="path", action="store_true", help="print full file paths instead of tags")
+    ls.set_defaults(func=plugin_ls_cli)
+    push = sp.add_parser("push", help="push a local plugin artifact to an OCI registry")
+    push.add_argument("--authfile", help="path of the authentication file")
+    push.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    push.add_argument("SOURCE", help="local artifact tag or path")
+    push.add_argument("TARGET", nargs=1, help="remote OCI target (registry/repo:tag)")
+    push.set_defaults(func=plugin_push_cli)
+
+    pull = sp.add_parser("pull", help="pull a plugin artifact from an OCI registry into local store")
+    pull.add_argument("--authfile", help="path of the authentication file")
+    pull.add_argument("--tls-verify", dest="tlsverify", default=True, help="verify TLS")
+    pull.add_argument("SOURCE", help="remote OCI source (registry/repo:tag)")
+    pull.add_argument("TARGET", nargs="?", help="optional local tag to store as")
+    pull.set_defaults(func=plugin_pull_cli)
+
+
+def plugin_build_cli(args):
+    src = os.path.abspath(args.dir)
+    if not os.path.isdir(src):
+        perror(f"Directory does not exist: {src}")
+        return 1
+    build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    print(args.tag)
+
+
+def plugin_push_cli(args):
+    if not _resolve_local_artifact("plugins", args.SOURCE) and not os.path.isfile(args.SOURCE):
+        perror(f"Local plugin artifact not found: {args.SOURCE}")
+        return 1
+    if not getattr(args, "TARGET", None):
+        perror("TARGET is required for push")
+        return 1
+    push_skill_artifact(_engine_bin(args), args.TARGET[0], args)
+
+
+def plugin_pull_cli(args):
+    source = args.SOURCE
+    try:
+        src_model = TransportFactory(source, args, transport="oci").create_oci()
+    except Exception as e:
+        perror(f"Failed to construct OCI transport for {source}: {e}")
+        return 1
+
+    try:
+        src_model.pull(args)
+    except Exception as e:
+        perror(f"Failed to pull plugin artifact {source}: {e}")
+        return 1
+
+
+def plugin_ls_cli(args):
+    info = _list_kind_artifacts(_engine_bin(args), oci_spec.CNAI_SKILL_ARTIFACT_TYPE)
+    _print_artifact_listing(args, info)
 
 
 def list_cli(args):
