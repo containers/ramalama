@@ -41,7 +41,7 @@ Reproducers make finding and fixing issues much easier for maintainers.
 The easier it is for us to reproduce a bug, the faster it'll be fixed!
 
 Please don't include any private/sensitive information in your issue!
-Security issues should NOT be reported via Github and should instead be reported via the process described [here](https://github.com/containers/common/blob/main/SECURITY.md).
+Direct all security questions and vulnerability reports to the [security advisory page](https://github.com/containers/ramalama/security/advisories/new).
 
 ## Working On Issues
 

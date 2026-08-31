@@ -30,6 +30,9 @@ jobs:
         timeout-minutes: 20
         if: matrix.os == 'ubuntu-latest'
         run: |
+          # The Azure apt mirror on GitHub runners intermittently hangs; use
+          # the canonical Ubuntu archive instead.
+          sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
           sudo apt-get install -y lshw curl
 
       - name: Set Up Dependencies (macOS)

@@ -87,14 +87,6 @@ ramalama perplexity --backend rocm granite
 [//]: # (END   included file options/backend.md)
 
 
-[//]: # (BEGIN included file options/cache-reuse.md)
-#### **--cache-reuse**=*BYTES*
-Minimum chunk size (in bytes) to attempt reusing from the cache via KV shifting.
-When omitted, llama-server uses its built-in default.
-
-[//]: # (END   included file options/cache-reuse.md)
-
-
 [//]: # (BEGIN included file options/ctx-size.md)
 #### **--ctx-size**, **-c**
 size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 0, 0 = loaded from model)
@@ -140,6 +132,9 @@ for a value and sets the variable only if it is set on the host.
 
 [//]: # (END   included file options/env.md)
 
+#### **--file**
+File containing the sample prompt - see also [get-wikitext-2.sh](https://github.com/ggml-org/llama.cpp/blob/master/scripts/get-wikitext-2.sh)
+
 
 [//]: # (BEGIN included file options/help.md)
 #### **--help**, **-h**
@@ -154,7 +149,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers and the selected `--backend`.
 For example: `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.23.0 of RamaLama pulls an image with a `:0.23` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.24.0 of RamaLama pulls an image with a `:0.24` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells

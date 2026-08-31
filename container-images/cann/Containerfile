@@ -10,6 +10,7 @@ WORKDIR /src/
 RUN ./build_llama.sh cann
 
 FROM quay.io/ascend/${ASCEND_VERSION}
+RUN dnf install -y --setopt=install_weak_deps=false ffmpeg && dnf -y clean all
 RUN --mount=type=bind,from=builder,source=/tmp/install,target=/tmp/install,relabel=private \
     cp -a /tmp/install/bin/ /usr/ && \
     cp -a /tmp/install/lib64/*.so* /usr/lib64/

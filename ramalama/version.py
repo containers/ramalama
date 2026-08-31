@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Version of RamaLamaPy."""
 
-__version__ = "0.23.0"
+__version__ = "0.24.0"
 
 
 def version():

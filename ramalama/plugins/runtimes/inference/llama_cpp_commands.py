@@ -203,6 +203,29 @@ class LlamaCppCommands:
         if threads is not None:
             cmd += ["--threads", str(threads)]
 
+        ctx_size = getattr(args, 'ctx_size', None)
+        if ctx_size and ctx_size > 0:
+            cmd += ["--ctx-size", str(ctx_size)]
+
+        temp = getattr(args, 'temp', None)
+        if temp is not None:
+            cmd += ["--temp", str(temp)]
+
+        max_tokens = getattr(args, 'max_tokens', None)
+        if max_tokens and max_tokens > 0:
+            cmd += ["-n", str(max_tokens)]
+
+        file = getattr(args, 'file', None)
+        if file is not None:
+            if is_container:
+                cmd += ["-f", '/data/samples.txt']
+            else:
+                cmd += ["-f", str(file)]
+
+        runtime_args = getattr(args, 'runtime_args', None)
+        if runtime_args:
+            cmd.extend(runtime_args)
+
         return cmd
 
     def _cmd_bench(self, args: argparse.Namespace) -> list[str]:
