@@ -264,3 +264,35 @@ def test_post_parse_setup_model_input(
     assert input_args.UNRESOLVED_MODEL == expected_unresolved
     assert input_args.MODEL == expected_resolved
     assert input_args.model == input_args.MODEL
+
+
+@pytest.mark.parametrize(
+    "host, expected_publish",
+    [
+        ("127.0.0.1", "127.0.0.1:9090:8080"),
+        ("::1", "[::1]:9090:8080"),
+        ("::", "9090:8080"),
+        ("0.0.0.0", "0.0.0.0:9090:8080"),
+    ],
+)
+@mock.patch("ramalama.cli.exec_cmd")
+@mock.patch("ramalama.cli.ActiveConfig")
+def test_daemon_start_container_publishes_host(mock_config, mock_exec, host, expected_publish):
+    mock_config.return_value.host = "::"
+    args = Namespace(
+        container=True,
+        engine="podman",
+        store="/tmp/models",
+        pull="newer",
+        port="9090",
+        image="quay.io/ramalama/ramalama:latest",
+        host=host,
+    )
+
+    from ramalama.cli import daemon_start_cli
+
+    daemon_start_cli(args)
+
+    cmd = mock_exec.call_args.args[0]
+    assert cmd[cmd.index("-p") + 1] == expected_publish
+    assert cmd[cmd.index("--host") + 1] == "::"

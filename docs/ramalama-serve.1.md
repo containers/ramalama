@@ -214,7 +214,9 @@ Show this help message and exit
 
 [//]: # (BEGIN included file options/host.md)
 #### **--host**="::"
-IP address for llama.cpp to listen on. Defaults to "::" (dual-stack) on systems with IPv6 support, "0.0.0.0" on IPv4-only systems.
+IP address for service to listen on. Defaults to the value from
+`ramalama.conf` (typically "::" on dual-stack systems, "0.0.0.0" on IPv4-only
+systems).
 
 [//]: # (END   included file options/host.md)
 
