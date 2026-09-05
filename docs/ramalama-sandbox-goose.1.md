@@ -210,6 +210,16 @@ ramalama sandbox goose --image ghcr.io/ggml-org/llama.cpp:full-vulkan MODEL
 [//]: # (END   included file options/image.md)
 
 
+[//]: # (BEGIN included file options/internal-network.md)
+#### **--internal-network**
+Use a private network without internet access for the sandbox container.
+Only available when --url is not specified (i.e. when rama starts its own model server).
+If --network is given, the named network must not already exist, otherwise the command
+fails.
+
+[//]: # (END   included file options/internal-network.md)
+
+
 [//]: # (BEGIN included file options/keep-groups.md)
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)

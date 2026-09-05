@@ -1,4 +1,5 @@
 import json
+import subprocess
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -6,7 +7,7 @@ import pytest
 
 from ramalama.cli import parse_args_from_cmd
 from ramalama.config import DEFAULT_PI_IMAGE
-from ramalama.sandbox import Agent, Goose, OpenCode, Pi, _pi_provider_id, _run_sandbox_router
+from ramalama.sandbox import Agent, Goose, OpenCode, Pi, _pi_provider_id, _run_sandbox_router, run_sandbox
 
 TEST_MODEL = "qwen3:4b"
 
@@ -519,3 +520,110 @@ def test_sandbox_prompt_default_none():
     """Sandbox cli should default ARGS to None when --prompt is not specified"""
     _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
     assert args.ARGS is None
+
+
+# --- --internal-network tests ---
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_internal_network_flag(agent):
+    """--internal-network should be parsed and default to False."""
+    _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
+    assert args.internal_network is False
+
+    _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL, "--internal-network"])
+    assert args.internal_network is True
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_internal_network_conflicts_with_url(agent):
+    """--internal-network cannot be combined with --url."""
+    _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL, "--internal-network", "--url", "http://model.example"])
+    args.container = True
+    with pytest.raises(ValueError, match="--internal-network cannot be used with --url"):
+        args.func(args)
+
+
+def _internal_network_args(**overrides):
+    """Create args for run_sandbox() with --internal-network set."""
+    args = dict(
+        engine="podman",
+        container=True,
+        url=None,
+        MODEL=[TEST_MODEL],
+        name="ramalama_model_abc",
+        network=None,
+        port=None,
+        dryrun=False,
+        internal_network=True,
+        api_key="ramalama",
+    )
+    args.update(overrides)
+    return SimpleNamespace(**args)
+
+
+def test_sandbox_internal_network_uses_container_name_url(monkeypatch):
+    """With --internal-network the agent reaches the model server by container name."""
+    calls: list = []
+
+    def fake_run_cmd(cmd, *args, **kwargs):
+        calls.append(cmd)
+
+    served = {}
+
+    def fake_single_model(args, agent_cls):
+        served["args"] = args
+
+    monkeypatch.setattr("ramalama.sandbox.run_cmd", fake_run_cmd)
+    monkeypatch.setattr("ramalama.sandbox.compute_serving_port", lambda args: 9000)
+    monkeypatch.setattr("ramalama.sandbox._run_sandbox_single_model", fake_single_model)
+
+    run_sandbox(_internal_network_args(), Goose)
+
+    assert calls[0] == ["podman", "network", "create", "--internal", "ramalama_model_abc"]
+    assert calls[-1] == ["podman", "network", "rm", "ramalama_model_abc"]
+    assert served["args"].url == "http://ramalama_model_abc:9000"
+    assert served["args"].network == "ramalama_model_abc"
+
+
+def test_sandbox_internal_network_respects_given_network_name(monkeypatch):
+    """A user-supplied --network name is used for the internal network."""
+    calls: list = []
+    monkeypatch.setattr("ramalama.sandbox.run_cmd", lambda cmd, *a, **k: calls.append(cmd))
+    monkeypatch.setattr("ramalama.sandbox.compute_serving_port", lambda args: 9000)
+    monkeypatch.setattr("ramalama.sandbox._run_sandbox_single_model", lambda args, cls: None)
+
+    run_sandbox(_internal_network_args(network="my-private-net"), Goose)
+
+    assert calls[0] == ["podman", "network", "create", "--internal", "my-private-net"]
+    assert calls[-1] == ["podman", "network", "rm", "my-private-net"]
+
+
+def test_sandbox_internal_network_fails_if_network_exists(monkeypatch):
+    """Network creation failure (e.g. name already taken) should raise ValueError."""
+
+    def fake_run_cmd(cmd, *args, **kwargs):
+        raise subprocess.CalledProcessError(returncode=125, cmd=cmd)
+
+    monkeypatch.setattr("ramalama.sandbox.run_cmd", fake_run_cmd)
+    monkeypatch.setattr("ramalama.sandbox.compute_serving_port", lambda args: 9000)
+    monkeypatch.setattr("ramalama.sandbox._run_sandbox_single_model", lambda args, cls: None)
+
+    with pytest.raises(ValueError, match="creating network 'ramalama_model_abc' failed"):
+        run_sandbox(_internal_network_args(), Goose)
+
+
+def test_sandbox_without_internal_network_uses_localhost(monkeypatch):
+    """Without --internal-network the agent uses localhost (shared network namespace)."""
+    served = {}
+
+    def fake_single_model(args, agent_cls):
+        served["args"] = args
+
+    monkeypatch.setattr("ramalama.sandbox.run_cmd", lambda cmd, *a, **k: None)
+    monkeypatch.setattr("ramalama.sandbox.compute_serving_port", lambda args: 9000)
+    monkeypatch.setattr("ramalama.sandbox._run_sandbox_single_model", fake_single_model)
+
+    run_sandbox(_internal_network_args(internal_network=False), Goose)
+
+    assert served["args"].url == "http://localhost:9000"

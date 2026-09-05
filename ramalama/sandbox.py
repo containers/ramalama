@@ -4,6 +4,7 @@ import argparse
 import copy
 import json
 import platform
+import subprocess
 import sys
 from collections.abc import Callable
 from functools import partial
@@ -43,6 +44,11 @@ def _add_common_sandbox_args(parser: argparse.ArgumentParser, model_comp: Callab
         "--api-key",
         default="ramalama",
         help="OpenAI-compatible API key.",
+    )
+    parser.add_argument(
+        "--internal-network",
+        action="store_true",
+        help="use a private network without internet access (requires --url to be omitted)",
     )
     parser.add_argument(
         "--prompt",
@@ -127,6 +133,7 @@ class SandboxEngineArgsType(BaseEngineArgsType):
     workdir: Optional[str]
     url: Optional[str]
     api_key: Optional[str]
+    internal_network: bool
     start_model_server: bool
     name: str
     model: str
@@ -320,6 +327,9 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
     if not args.container:  # type: ignore[attr-defined]
         raise ValueError("ramalama sandbox requires a container engine")
 
+    if getattr(args, "internal_network", False) and args.url:
+        raise ValueError("--internal-network cannot be used with --url")
+
     sb_args = copy.copy(args)
     sb_args.start_model_server = sb_args.url is None
     if not sb_args.MODEL:
@@ -363,12 +373,34 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
         return
 
     sb_args.port = compute_serving_port(sb_args)
-    sb_args.url = f"http://localhost:{sb_args.port}"
-    if len(models) == 1:
-        sb_args.MODEL = models[0]
-        _run_sandbox_single_model(sb_args, agent_cls)
+    created_network = None
+    if getattr(sb_args, "internal_network", False):
+        # The agent container sits on a private network not bound to the host, so
+        # host.containers.internal / host.docker.internal cannot reach the model
+        # server. The engine's built-in DNS resolves the model server container
+        # by name on the shared network instead.
+        sb_args.name = sb_args.name or genname()
+        sb_args.url = f"http://{sb_args.name}:{sb_args.port}"
+        if not sb_args.network:
+            sb_args.network = sb_args.name or genname()
+        if not sb_args.dryrun:
+            try:
+                run_cmd([str(sb_args.engine), "network", "create", "--internal", sb_args.network])
+            except subprocess.CalledProcessError:
+                raise ValueError(f"creating network '{sb_args.network}' failed")
+            created_network = sb_args.network
     else:
-        _run_sandbox_router(sb_args, agent_cls)
+        sb_args.url = f"http://localhost:{sb_args.port}"
+
+    try:
+        if len(models) == 1:
+            sb_args.MODEL = models[0]
+            _run_sandbox_single_model(sb_args, agent_cls)
+        else:
+            _run_sandbox_router(sb_args, agent_cls)
+    finally:
+        if created_network:
+            run_cmd([str(sb_args.engine), "network", "rm", created_network], ignore_all=True)
 
 
 def _run_sandbox_single_model(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
