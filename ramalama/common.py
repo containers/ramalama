@@ -340,8 +340,8 @@ def verify_checksum(filename: str) -> bool:
     return sha256_hash.hexdigest() == expected_checksum
 
 
-def genname():
-    return "ramalama-" + "".join(random.choices(string.ascii_letters + string.digits, k=10))
+def genname(prefix="ramalama-"):
+    return prefix + "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
 
 @lru_cache
