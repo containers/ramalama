@@ -261,7 +261,7 @@ def test_pull_using_ollama_cache(ollama_server, ollama_model, model, env_vars, e
 @pytest.mark.distro_integration
 @skip_if_no_container
 @pytest.mark.xfail("config.option.container_engine == 'docker'", reason="docker login does not support --tls-verify")
-def test_pull_with_registry(container_registry, container_engine):
+def test_pull_with_registry(container_registry, container_engine, container_engine_cmd):
     with RamalamaExecWorkspace() as ctx:
         ramalama_cli = ["ramalama", "--store", str(ctx.storage_path)]
         authfile = str(ctx.workspace_path / "authfile.json")
@@ -289,7 +289,7 @@ def test_pull_with_registry(container_registry, container_engine):
         assert fake_model_registry_url in [x["name"] for x in model_list]
 
         # Clean fake image
-        ctx.check_call([container_engine, "rmi", fake_model_registry_url.replace("oci://", "")])
+        ctx.check_call([*container_engine_cmd, "rmi", fake_model_registry_url.replace("oci://", "")])
 
         # Clean dangling images
-        ctx.check_call([container_engine, "image", "prune", "-f"])
+        ctx.check_call([*container_engine_cmd, "image", "prune", "-f"])

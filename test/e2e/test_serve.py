@@ -15,6 +15,7 @@ from subprocess import STDOUT, CalledProcessError
 import pytest
 import yaml
 
+from ramalama.common import engine_cmd
 from test.conftest import (
     skip_if_container,
     skip_if_darwin,
@@ -57,9 +58,10 @@ def shared_ctx(test_model):
 def test_basic_dry_run():
     ramalama_info = json.loads(check_output(["ramalama", "info"]))
     conman = ramalama_info["Engine"]["Name"]
+    engine_prefix = " ".join(engine_cmd(conman))
 
     result = check_output(RAMALAMA_DRY_RUN + [DRY_RUN_TEST_MODEL])
-    assert result.startswith(f"{conman} run --rm")
+    assert result.startswith(f"{engine_prefix} run --rm")
     assert not re.search(r".*-t -i", result), "run without terminal"
 
 

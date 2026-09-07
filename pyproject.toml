@@ -189,10 +189,12 @@ ignore = ["W002"]
 package = "wheel"
 extras = ["dev", "cov"]
 pass_env = [
+  "DBUS_SESSION_BUS_ADDRESS",
   "GITHUB_ACTIONS",
   "HF_ENDPOINT",
   "HF_TOKEN",
   "RAMALAMA_*",
+  "TMPDIR",
 ]
 set_env = { COLUMNS = "120" }
 commands = [
