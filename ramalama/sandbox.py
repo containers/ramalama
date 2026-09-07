@@ -9,15 +9,38 @@ from collections.abc import Callable
 from functools import partial
 from http.client import HTTPConnection
 from typing import Optional, cast
+from urllib.parse import urlparse
 
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import genname, perror, run_cmd
 from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, is_healthy, stop_container, wait_for_healthy
+from ramalama.host_utils import is_loopback_bind_host
 from ramalama.model_server import ModelServerError, list_server_models
 from ramalama.plugins.loader import get_runtime
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
+
+
+def _wire_loopback_url(sb_args) -> None:
+    """Make a loopback --url reachable from the agent container.
+
+    On native Linux, share the host network namespace so the agent reaches the
+    server directly as localhost. On VM-backed engines (podman machine / Docker
+    Desktop on macOS and Windows) `--network host` shares the VM's namespace,
+    not the host's, so a host-side loopback server is unreachable that way;
+    instead rewrite the URL's loopback host to host.containers.internal (podman)
+    / host.docker.internal (docker), which the proxy (gvproxy) forwards to the
+    host's loopback. Neither exposes the server to the network.
+    """
+    if platform.system() not in ("Darwin", "Windows"):
+        sb_args.network = "host"
+        return
+
+    host = "host.containers.internal" if sb_args.engine == "podman" else "host.docker.internal"
+    parsed = urlparse(sb_args.url)
+    netloc = f"{host}:{parsed.port}" if parsed.port else host
+    sb_args.url = parsed._replace(netloc=netloc).geturl()
 
 
 def default_pi_image() -> str:
@@ -341,10 +364,12 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
             raise ValueError(f"No model found at {url}")
 
     sb_args.start_model_server = sb_args.url is None
-    # ensure agent container can access model-server on localhost
-    if sb_args.url and (sb_args.url.startswith("http://localhost") or sb_args.url.startswith("https://localhost")):
-        middle = 'docker' if args.engine == 'docker' else 'containers'
-        sb_args.url = sb_args.url.replace("localhost", f"host.{middle}.internal")
+    # A loopback --url points at a server on the host's loopback (e.g. a
+    # `ramalama serve` container publishing to 127.0.0.1, or any local
+    # OpenAI-compatible process) that must be reached from the agent container.
+    # Remote URLs use the default network and are reached directly.
+    if sb_args.url and is_loopback_bind_host(urlparse(sb_args.url).hostname) and not getattr(sb_args, "network", None):
+        _wire_loopback_url(sb_args)
     models: list[str] = list(sb_args.MODEL)  # type: ignore[arg-type]
 
     if not sb_args.start_model_server:
