@@ -126,6 +126,15 @@ def test_basic_dry_run():
             id="check -p is modified when run within container", marks=skip_if_no_container
         ),
         pytest.param(
+            # VM-backed engines (podman machine / Docker Desktop on macOS and
+            # Windows) publish a loopback bind bare inside the VM; native Linux
+            # keeps the 127.0.0.1 prefix.
+            ["--port", "1234"],
+            r".*-p 1234:1234" if platform.system() in ("Darwin", "Windows") else r".*-p 127.0.0.1:1234:1234",
+            None, None, True,
+            id="check -p publishes on loopback by default in container", marks=skip_if_no_container
+        ),
+        pytest.param(
             [], r".*--temp 0.8", None, None, True,
             id="check --temp default value", marks=skip_if_no_container
         ),
@@ -178,7 +187,7 @@ def test_basic_dry_run():
             ["--selinux", "False"], r".*--security-opt=label=disable", None, None, True,
             id="check --selinux=False disables container separation", marks=skip_if_no_container),
         pytest.param(
-            [], r".*--host (::|0\.0\.0\.0)", None, None, True,
+            [], r".*--host 127.0.0.1", None, None, True,
             id="check default --host value", marks=skip_if_container
         ),
         pytest.param(
@@ -440,7 +449,7 @@ def test_quadlet_generation(shared_ctx, test_model):
     )
     with container_file.open("r") as f:
         content = f.read()
-        assert re.search(r".*PublishPort=(\[::\]|0\.0\.0\.0):1234:1234", content)
+        assert re.search(r".*PublishPort=127\.0\.0\.1:1234:1234", content)
         assert re.search(r".*llama-server --host (::|0\.0\.0\.0) --port 1234 --model .*", content)
         assert re.search(f".*Mount=type=bind,.*{test_model_full_name}", content)
         assert re.search(r".*Environment=HIP_VISIBLE_DEVICES=99", content)
@@ -538,7 +547,7 @@ def test_quadlet_and_kube_generation_with_container_registry(container_registry,
         quadlet_file = Path(ctx.workspace_dir) / "{}.container".format(container_name)
         with quadlet_file.open("r") as f:
             content = f.read()
-            assert re.search(f".*PublishPort=(\\[::\\]|0\\.0\\.0\\.0):{container_port}:{container_port}", content)
+            assert re.search(f".*PublishPort=127\\.0\\.0\\.1:{container_port}:{container_port}", content)
             assert re.search(f".*ContainerName={container_name}", content)
             host_re = r"(::|0\.0\.0\.0)"
             assert re.search(f".*Exec=.*llama-server --host {host_re} --port {container_port} --model .*", content)
@@ -689,7 +698,7 @@ def test_serve_generation(test_model, generate, env_vars):
                 elif "compose" in generate:
                     assert re.search(r".*command: .*serve.*", content)
                     assert re.search(r".*ports:", content)
-                    assert re.search(r".*- \"1234:1234\"", content)
+                    assert re.search(r".*- \"127\.0\.0\.1:1234:1234\"", content)
                 else:
                     raise Exception("Invalid generate option")
 

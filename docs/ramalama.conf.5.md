@@ -92,10 +92,12 @@ Override via `RAMALAMA_CONTAINER_ENGINE`.
 **env**=[]: Environment variables added to the container runtime environment.
 Example: "LLAMA_ARG_THREADS=10".
 
-**host**="::" | "0.0.0.0"
+**host**="127.0.0.1"
 
-IP address for llama.cpp to listen on.
-Defaults to "::" (dual-stack) on systems with IPv6 support, "0.0.0.0" (IPv4-only) otherwise.
+IP address for the model server to listen on.
+Defaults to "127.0.0.1", so the served model is only reachable from the local
+machine. Set to a wildcard address such as "0.0.0.0" (IPv4) or "::" (dual-stack)
+to expose it on the network.
 
 **image**="quay.io/ramalama/ramalama:latest"
 

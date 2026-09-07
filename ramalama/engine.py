@@ -18,7 +18,10 @@ from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import check_nvidia, engine_cmd, exec_cmd, get_accel_env_vars, host_path, perror, run_cmd
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import ActiveConfig
-from ramalama.host_utils import format_bind_host_for_connection, format_bind_host_publish_prefix
+from ramalama.host_utils import (
+    format_bind_host_for_connection,
+    format_vm_aware_publish_prefix,
+)
 from ramalama.logger import logger
 from ramalama.path_utils import normalize_host_path_for_container
 
@@ -216,11 +219,14 @@ class Engine(BaseEngine):
 
         # Convert port to string for processing
         port_str = str(port)
-        host = format_bind_host_publish_prefix(getattr(self.args, "host", "::"))
+        host = self._publish_host_prefix(getattr(self.args, "host", "::"))
         if ":" in port_str:
             self.add_args("-p", f"{host}{port_str}")
         else:
             self.add_args("-p", f"{host}{port_str}:{port_str}")
+
+    def _publish_host_prefix(self, host: Optional[str]) -> str:
+        return format_vm_aware_publish_prefix(host)
 
     def add_privileged_options(self) -> None:
         if getattr(self.args, "privileged", False):

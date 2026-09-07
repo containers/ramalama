@@ -58,7 +58,28 @@ DEFAULT_CONFIG_DIRS = _get_default_config_dirs()
 
 
 def get_default_host() -> str:
-    """Return :: on dual-stack/IPv6 systems, 0.0.0.0 on IPv4-only."""
+    """Return the default bind host.
+
+    Defaults to the IPv4 loopback address so a served model is only reachable
+    from the local machine. Binding to all interfaces (and thus exposing the
+    model to the network) is opt-in via ``--host 0.0.0.0`` / ``--host ::``.
+    """
+    return "127.0.0.1"
+
+
+def get_wildcard_host() -> str:
+    """Return a wildcard bind host reachable from other containers.
+
+    Internal helper servers (RAG embedding/docling/caption, sandbox model
+    server) are reached from a sibling container via ``host.containers.internal``
+    / ``host.docker.internal``, which a loopback-bound port cannot serve. They
+    bind the wildcard address so the sibling can connect. This is a stopgap
+    until those helpers move onto a private container network.
+
+    Probe for IPv6 support at runtime: return ``::`` on dual-stack/IPv6 systems
+    (binds both IPv4 and IPv6) and ``0.0.0.0`` on IPv4-only systems, since ``::``
+    cannot be bound when the kernel lacks IPv6.
+    """
     import socket
 
     try:

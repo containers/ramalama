@@ -1,3 +1,7 @@
+# NOTE: on VM-backed engines (podman machine / Docker Desktop on macOS
+# and Windows), the loopback PublishPort below is bound inside the VM and
+# is not reachable from the host. Set --host 0.0.0.0 (or edit PublishPort)
+# if you need to reach it there.
 [Unit]
 Description=RamaLama tinyllama AI Model Service
 After=local-fs.target

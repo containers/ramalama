@@ -262,6 +262,28 @@ def test_compose_no_port_arg(monkeypatch):
     assert 'ports:\n      - "8080:8080"' in result
 
 
+@pytest.mark.parametrize(
+    "host, expected_ports",
+    [
+        ("127.0.0.1", 'ports:\n      - "127.0.0.1:9090:9090"'),
+        ("::", 'ports:\n      - "9090:9090"'),
+        ("::1", 'ports:\n      - "[::1]:9090:9090"'),
+    ],
+)
+def test_compose_ports_bind_host(monkeypatch, host, expected_ports):
+    """The published port is prefixed with the bind host (loopback by default)."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    args = Args(port="9090")
+    args.host = host
+    compose = Compose("test", ("/a", "/b"), None, None, args, [], None)
+    result = compose.generate().content
+
+    assert expected_ports in result
+
+
 def test_compose_no_env_vars(monkeypatch):
     """Test Compose generation when no environment variables are set."""
     monkeypatch.setattr("os.path.exists", lambda path: False)

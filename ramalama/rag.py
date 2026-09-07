@@ -197,7 +197,7 @@ class RagTransport(OCI):
 
     def serve(self, args: RagArgsType, cmd: list[str]):
         args.model_args.name = self.imodel.get_container_name(args.model_args)
-        process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd)
+        process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd, expose_to_containers=True)
         if not args.dryrun:
             if process and process.wait() != 0:
                 raise subprocess.CalledProcessError(
@@ -213,7 +213,7 @@ class RagTransport(OCI):
 
     def run(self, args: RagArgsType, cmd: list[str]):
         args.model_args.name = self.imodel.get_container_name(args.model_args)
-        process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd)
+        process = self.imodel.serve_nonblocking(args.model_args, self.model_cmd, expose_to_containers=True)
         rag_process = self.serve_nonblocking(args, cmd)
 
         if args.dryrun:
