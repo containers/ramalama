@@ -11,12 +11,39 @@ mailing list, or IRC.  Please do **not** create a public issue.
 
 1. Go to [our security advisory page](https://github.com/containers/ramalama/security/advisories/new) to privately report the vulnerability.
 2. Provide detailed information about the vulnerability, including:
-   - Description of the issue
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if available)
+   - **Title**: A concise, descriptive summary of the issue.
+   - **Reporter Details**: Your name/handle and affiliation.
+   - **Technical Description**: Detailed information regarding the vulnerability.
+   - **Affected Versions**: The specific version(s) or range(s) of software tested.
+   - **Reproduction Steps**: A minimal, functional example to reproduce the issue.
+   - **Impact Assessment**: Potential exploit scenarios and perceived severity. (optional)
+   - **Suggested Fix**: Any proposed patches or mitigations (optional).
+   - **Disclosure Status**: Whether this has been shared with other parties or published and your plan for future sharing (e.g., at a conference).
 
 Your report will be reviewed by the maintainers, and we will work with you to understand and address the issue promptly.
+
+### Response Timeline
+
+We aim to provide an initial acknowledgement of your report within 48 hours.
+
+Our goal is to assess the report, coordinate fix and disclosure as quickly as possible. All confirmed security vulnerabilities and incidents will be addressed according to severity level and impact on the project.
+
+Any vulnerability information shared with core maintainers stays within a Containers project and will not be disseminated to other projects unless it is necessary to get the issue fixed.
+
+As the security issue moves from triage, to an identified fix, to release planning, the core maintainers will keep the reporter updated.
+
+### Security Policy
+
+- [Security Policy](docs/security/SECURITY_POLICY.md)
+- [Vulnerability Policy](docs/security/VULNERABILITY_POLICY.md)
+
+### Supported Versions
+
+We regularly perform patch releases for the supported latest version, which contains fixes for relevant security vulnerabilities and important bugs. Ramalama does not create or maintain historical release branches or backport security fixes to prior versions.
+
+### Contact Information
+
+Direct all security questions and vulnerability reports to the [security advisory page](https://github.com/containers/ramalama/security/advisories/new)
 
 ### What to Expect
 
@@ -25,3 +52,10 @@ Your report will be reviewed by the maintainers, and we will work with you to un
 - **Credit**: We will credit you for the discovery when we publish the fix (unless you prefer to remain anonymous)
 
 Thank you for helping keep RamaLama and its users secure!
+
+## EU Cyber Resilience Act — Open Source Steward Statement
+
+This project is stewarded by **Red Hat, Inc.**, an open source software steward as defined in Article 3(14) of the [EU Cyber Resilience Act (Regulation 2024/2847)](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/eng).
+Contact: [cra-steward@redhat.com](mailto:cra-steward@redhat.com)
+
+Refer to [Red Hat's security practices and vulnerability management policy](https://access.redhat.com/security/) for detailed information.

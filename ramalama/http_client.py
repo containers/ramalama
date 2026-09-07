@@ -22,6 +22,10 @@ HTTP_NOT_FOUND = 404
 HTTP_RANGE_NOT_SATISFIABLE = 416  # "Range Not Satisfiable" error (file already downloaded)
 
 
+class TruncatedDownloadError(IOError):
+    """Response body ended before the declared Content-Length was reached."""
+
+
 class HttpClient:
     def __init__(self):
         pass
@@ -33,7 +37,10 @@ class HttpClient:
 
         self.file_size = self.set_resume_point(output_file_partial)
         self.urlopen(url, headers)
-        self.total_to_download = int(self.response.getheader('content-length', 0))
+        self.verify_resume_point(output_file_partial)
+        content_length = self.response.getheader('content-length')
+        self.has_content_length = content_length is not None
+        self.total_to_download = int(content_length or 0)
         if response_bytes is not None:
             response_bytes.append(self.response.read())
         else:
@@ -51,6 +58,8 @@ class HttpClient:
             finally:
                 del out  # Ensure file is closed before rename
 
+            self.verify_download_size(output_file_partial)
+
         if output_file:
             if output_file_partial is None:
                 raise RuntimeError(
@@ -67,6 +76,43 @@ class HttpClient:
 
         if self.response.status not in (200, 206):
             raise IOError(f"Request failed: {self.response.status}")
+
+    def resume_offset(self) -> Optional[int]:
+        # "Content-Range: bytes 100-999/1000" -> 100
+        content_range = self.response.getheader('content-range') or ""
+        unit, _, span = content_range.partition(" ")
+        if unit.lower() != "bytes":
+            return None
+
+        try:
+            return int(span.split("-", 1)[0])
+        except ValueError:
+            return None
+
+    def verify_resume_point(self, output_file_partial: Optional[str]) -> None:
+        # A server is free to ignore the Range header. Appending a body that does not start
+        # where the .partial ends would silently produce a wrong file, so drop what we have.
+        # A 206 has to prove where it starts even when nothing has been downloaded yet:
+        # asking from byte 0 is still a range request, and a slice from anywhere else is
+        # just as wrong at the start of a download as it is halfway through one.
+        if self.response.status == 206:
+            if self.resume_offset() == self.file_size:
+                return
+        elif not self.file_size:
+            # A 200 carries the whole file from byte 0, which is what we asked for.
+            return
+
+        logger.debug(f"Server did not honour the range request, restarting download of {output_file_partial}")
+        if output_file_partial and os.path.exists(output_file_partial):
+            os.remove(output_file_partial)
+
+        self.file_size = 0
+
+        if self.response.status != 200:
+            # Only a 200 carries the whole file from byte 0. A 206 that starts at some other
+            # offset holds a slice we can neither append nor write from zero, so discard it
+            # and let the retry loop open a fresh request.
+            raise IOError(f"Server answered the range request with an unusable {self.response.status} response")
 
     def perform_download(self, file, show_progress):
         self.total_to_download += self.file_size
@@ -95,6 +141,19 @@ class HttpClient:
             if show_progress:
                 # Output a newline after the progress bar
                 perror("")
+
+    def verify_download_size(self, output_file_partial: Optional[str]) -> None:
+        # CPython's HTTPResponse.read(amt) returns b"" rather than raising when a
+        # Content-Length body is cut short, so a dropped connection is indistinguishable
+        # from a clean EOF. Check what actually landed on disk before promoting it.
+        if not self.has_content_length or not output_file_partial:
+            return
+
+        downloaded = os.path.getsize(output_file_partial)
+        if downloaded < self.total_to_download:
+            raise TruncatedDownloadError(
+                f"Incomplete download: got {downloaded} of {self.total_to_download} bytes from the server"
+            )
 
     def human_readable_time(self, seconds):
         hrs = int(seconds) // 3600

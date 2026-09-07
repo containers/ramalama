@@ -213,8 +213,11 @@ Show this help message and exit
 
 
 [//]: # (BEGIN included file options/host.md)
-#### **--host**="::"
-IP address for llama.cpp to listen on. Defaults to "::" (dual-stack) on systems with IPv6 support, "0.0.0.0" on IPv4-only systems.
+#### **--host**="127.0.0.1"
+IP address for the model server to listen on. Defaults to "127.0.0.1", so the
+served model is only reachable from the local machine. To expose it on the
+network, set this to a wildcard address such as "0.0.0.0" (IPv4) or "::"
+(dual-stack).
 
 [//]: # (END   included file options/host.md)
 
@@ -225,7 +228,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers and the selected `--backend`.
 For example: `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.23.0 of RamaLama pulls an image with a `:0.23` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.24.0 of RamaLama pulls an image with a `:0.24` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells

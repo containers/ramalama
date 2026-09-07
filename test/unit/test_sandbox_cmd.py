@@ -6,7 +6,7 @@ import pytest
 
 from ramalama.cli import parse_args_from_cmd
 from ramalama.config import DEFAULT_PI_IMAGE
-from ramalama.sandbox import Agent, Goose, OpenCode, Pi, _pi_provider_id, _run_sandbox_router
+from ramalama.sandbox import Agent, Goose, OpenCode, Pi, _pi_provider_id, _run_sandbox_router, _wire_loopback_url
 
 TEST_MODEL = "qwen3:4b"
 
@@ -519,3 +519,28 @@ def test_sandbox_prompt_default_none():
     """Sandbox cli should default ARGS to None when --prompt is not specified"""
     _, args = parse_args_from_cmd(["sandbox", "pi", TEST_MODEL])
     assert args.ARGS is None
+
+
+def test_wire_loopback_url_linux_uses_host_network():
+    """On native Linux a loopback --url shares the host netns; URL is unchanged."""
+    args = SimpleNamespace(engine="podman", url="http://localhost:8321", network=None)
+    with patch("ramalama.sandbox.platform.system", return_value="Linux"):
+        _wire_loopback_url(args)
+    assert args.network == "host"
+    assert args.url == "http://localhost:8321"
+
+
+@pytest.mark.parametrize(
+    "system, engine, expected_host",
+    [
+        ("Darwin", "podman", "host.containers.internal"),
+        ("Windows", "docker", "host.docker.internal"),
+    ],
+)
+def test_wire_loopback_url_vm_engine_rewrites_host(system, engine, expected_host):
+    """On VM-backed engines the loopback host is rewritten; network stays default."""
+    args = SimpleNamespace(engine=engine, url="http://127.0.0.1:8321/v1", network=None)
+    with patch("ramalama.sandbox.platform.system", return_value=system):
+        _wire_loopback_url(args)
+    assert args.network is None
+    assert args.url == f"http://{expected_host}:8321/v1"

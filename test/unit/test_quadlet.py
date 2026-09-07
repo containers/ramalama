@@ -137,6 +137,20 @@ DATA_PATH = Path(__file__).parent / "data" / "test_quadlet"
                 model_src_blob="sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816",
                 model_dest_name="tinyllama",
                 image="testimage",
+                # `localhost` must normalize to the 127.0.0.1 literal (podman
+                # PublishPort needs an IP, not a hostname), matching the compose
+                # generator; output is identical to the host="127.0.0.1" case.
+                args=Args(port="2020", host="localhost"),
+                accel_type="intel",
+            ),
+            DATA_PATH / "localhost",
+        ),
+        (
+            Input(
+                model_name="tinyllama",
+                model_src_blob="sha256-2af3b81862c6be03c769683af18efdadb2c33f60ff32ab6f83e42c043d6c7816",
+                model_dest_name="tinyllama",
+                image="testimage",
                 args=Args(port="2020", host="::1"),
                 accel_type="intel",
             ),
