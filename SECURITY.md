@@ -28,6 +28,19 @@ We aim to provide an initial acknowledgement of your report within 48 hours.
 
 Our goal is to assess the report, coordinate fix and disclosure as quickly as possible. All confirmed security vulnerabilities and incidents will be addressed according to severity level and impact on the project.
 
+Any vulnerability information shared with core maintainers stays within a Containers project and will not be disseminated to other projects unless it is necessary to get the issue fixed.
+
+As the security issue moves from triage, to an identified fix, to release planning, the core maintainers will keep the reporter updated.
+
+### Security Policy
+
+- [Security Policy](docs/security/SECURITY_POLICY.md)
+- [Vulnerability Policy](docs/security/VULNERABILITY_POLICY.md)
+
+### Supported Versions
+
+We regularly perform patch releases for the supported latest version, which contains fixes for relevant security vulnerabilities and important bugs. Ramalama does not create or maintain historical release branches or backport security fixes to prior versions.
+
 ### Contact Information
 
 Direct all security questions and vulnerability reports to the [security advisory page](https://github.com/containers/ramalama/security/advisories/new)
