@@ -133,12 +133,12 @@ class OllamaServer:
             try:
                 requests.get(self.url, timeout=0.5)
                 break
-            except requests.exceptions.ConnectionError:
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
                 time.sleep(0.5)
         else:
             pytest.fail("Ollama server did not start in time")
 
-        assert requests.get(self.url).text == "Ollama is running"
+        assert requests.get(self.url, timeout=self.timeout).text == "Ollama is running"
 
     def _stop_process(self):
         if self.proc:
