@@ -489,6 +489,33 @@ def check_metal(args: ContainerArgType) -> bool:
 
 
 @lru_cache(maxsize=1)
+def in_wsl() -> bool:
+    """True when the interpreter itself is running inside a WSL distro.
+
+    False on native Windows, where ramalama drives a podman machine instead.
+    """
+    try:
+        with open("/proc/sys/kernel/osrelease") as f:
+            return "microsoft" in f.read().lower()
+    except OSError:
+        return False
+
+
+def is_windows_or_wsl() -> bool:
+    """True where containers reach GPUs through WSL rather than native devices.
+
+    Covers both a native Windows interpreter, which runs containers in the
+    WSL2-backed podman machine, and ramalama running inside a WSL distro
+    itself, which platform.system() reports as "Linux".
+
+    WSL exposes GPUs through /dev/dxg, so Vulkan there means mesa's dzn driver
+    translating to D3D12 (no cooperative matrix support, no compute tuning) or
+    a silent llvmpipe fallback.
+    """
+    return platform.system() == "Windows" or in_wsl()
+
+
+@lru_cache(maxsize=1)
 def has_nvidia_vulkan_icd() -> bool:
     """True when NVIDIA's Vulkan ICD manifest is installed on the host.
 
