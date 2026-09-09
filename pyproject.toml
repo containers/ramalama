@@ -60,7 +60,7 @@ dev = [
     "argcomplete~=3.0",
     "bcrypt",
     "codespell~=2.0",
-    "huggingface_hub~=1.27.0;python_version>=\"3.10\"",
+    "huggingface_hub~=1.30.0;python_version>=\"3.10\"",
     "hypothesis>=6.135.26",
     "pytest~=9.0;python_version>=\"3.10\"",
     "pytest~=8.0;python_version<\"3.10\"",
@@ -189,10 +189,12 @@ ignore = ["W002"]
 package = "wheel"
 extras = ["dev", "cov"]
 pass_env = [
+  "DBUS_SESSION_BUS_ADDRESS",
   "GITHUB_ACTIONS",
   "HF_ENDPOINT",
   "HF_TOKEN",
   "RAMALAMA_*",
+  "TMPDIR",
 ]
 set_env = { COLUMNS = "120" }
 commands = [

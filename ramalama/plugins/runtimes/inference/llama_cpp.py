@@ -697,7 +697,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         embed_transport.ensure_model_exists(embed_serve_args)
 
         embed_cmd = assemble_command(embed_serve_args)
-        embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)
+        embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd, expose_to_containers=True)
 
         if not args.dryrun:
             _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
