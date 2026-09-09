@@ -144,6 +144,49 @@ class TestEngine(unittest.TestCase):
             ramalama.engine.dry_run(["podman", "run", "--rm", "test-image"])
             mock_stdout.write.assert_called()
 
+    @patch('ramalama.engine.run_cmd')
+    def test_create_network(self, mock_run_cmd):
+        args = Namespace(engine="podman", dryrun=False)
+        name = ramalama.engine.create_network(args)
+        self.assertTrue(name.startswith("ramalama-net-"))
+        mock_run_cmd.assert_called_once_with(["podman", "network", "create", name])
+
+    @patch('ramalama.engine.run_cmd')
+    def test_create_network_dryrun_skips_create(self, mock_run_cmd):
+        args = Namespace(engine="podman", dryrun=True)
+        name = ramalama.engine.create_network(args)
+        self.assertTrue(name.startswith("ramalama-net-"))
+        mock_run_cmd.assert_not_called()
+
+    def test_create_network_no_engine(self):
+        args = Namespace(engine=None, dryrun=False)
+        with self.assertRaises(ValueError):
+            ramalama.engine.create_network(args)
+
+    @patch('ramalama.engine.run_cmd')
+    def test_remove_network_podman_forces(self, mock_run_cmd):
+        args = Namespace(engine="podman")
+        ramalama.engine.remove_network(args, "ramalama-net-abc")
+        mock_run_cmd.assert_called_once_with(["podman", "network", "rm", "-f", "ramalama-net-abc"], ignore_all=True)
+
+    @patch('ramalama.engine.run_cmd')
+    def test_remove_network_docker_no_force(self, mock_run_cmd):
+        args = Namespace(engine="docker")
+        ramalama.engine.remove_network(args, "ramalama-net-abc")
+        mock_run_cmd.assert_called_once_with(["docker", "network", "rm", "ramalama-net-abc"], ignore_all=True)
+
+    @patch('ramalama.engine.run_cmd')
+    def test_remove_network_empty_name_noop(self, mock_run_cmd):
+        args = Namespace(engine="podman")
+        ramalama.engine.remove_network(args, "")
+        mock_run_cmd.assert_not_called()
+
+    @patch('ramalama.engine.run_cmd')
+    def test_remove_network_dryrun_skips_remove(self, mock_run_cmd):
+        args = Namespace(engine="podman", dryrun=True)
+        ramalama.engine.remove_network(args, "ramalama-net-abc")
+        mock_run_cmd.assert_not_called()
+
 
 @pytest.mark.parametrize(
     "host, port, expected_port_arg",

@@ -103,6 +103,24 @@ def register_rag_subcommand(plugin, subparsers):
         help=f"number of CPU threads to use (default: {rt_config.threads})",
         completer=suppressCompleter,
     )
+    parser.add_argument(
+        "--network",
+        "--net",
+        dest="network",
+        type=str,
+        default=None,
+        help="join the pipeline containers to an existing container network "
+        "instead of creating a temporary private one; a user-supplied network "
+        "is left in place on exit",
+        completer=suppressCompleter,
+    )
+    parser.add_argument(
+        "--skip-cleanup",
+        dest="skip_cleanup",
+        action="store_true",
+        help="leave the llama.cpp servers and their network running after the "
+        "command for debugging (inspect with `podman logs`)",
+    )
     parser.set_defaults(func=lambda args: _rag_dispatch(plugin, args))
 
 
