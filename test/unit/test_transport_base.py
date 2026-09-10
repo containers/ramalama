@@ -263,6 +263,20 @@ class TestMLXRuntime:
 
     @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
     @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
+    def test_mlx_post_process_args_intel_mac_error(self, mock_machine, mock_system):
+        """Test that MLX post_process_args fails on Intel Macs"""
+        from ramalama.plugins.runtimes.inference.mlx import MlxPlugin
+
+        mock_system.return_value = "Darwin"
+        mock_machine.return_value = "x86_64"
+
+        args = Namespace(runtime="mlx", container=False, privileged=False)
+
+        with pytest.raises(ValueError, match="MLX runtime is only supported on macOS with Apple Silicon"):
+            MlxPlugin().post_process_args(args)
+
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.system')
+    @patch('ramalama.plugins.runtimes.inference.mlx.platform.machine')
     def test_mlx_validation_success(self, mock_machine, mock_system):
         """Test that MLX runtime passes validation on macOS with --nocontainer"""
         mock_system.return_value = "Darwin"
