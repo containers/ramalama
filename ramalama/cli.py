@@ -36,7 +36,7 @@ from ramalama.config import (
     get_wildcard_host,
     load_file_config,
 )
-from ramalama.config_types import COLOR_OPTIONS
+from ramalama.config_types import COLOR_OPTIONS, PathStr
 from ramalama.endian import EndianMismatchError
 from ramalama.host_utils import format_bind_host_for_url, format_vm_aware_publish_prefix
 from ramalama.log_levels import LogLevel
@@ -1078,6 +1078,13 @@ def chat_parser(subparsers):
         type=float,
         default=temp_default,
         help="temperature of the response from the AI model",
+    )
+    parser.add_argument(
+        "--attach",
+        type=PathStr,
+        action='append',
+        dest='attachments',
+        help="add an attachment to the initial request, can be specified multiple times to add multiple files",
     )
     parser.add_argument(
         "ARGS", nargs="*", help="overrides the default prompt, and the output is returned without entering the chatbot"

@@ -51,10 +51,7 @@ except ImportError:
 
 parser = get_parser()
 
-special_cases = {
-    "api_key": "api-key",
-    "max_tokens": "max-tokens",
-}
+special_cases = {"api_key": "api-key", "max_tokens": "max-tokens", "attachments": "attach"}
 
 
 def args_to_cli_args(args_obj, subcommand: Optional[str], special_cases: Optional[dict] = None) -> list:
@@ -85,7 +82,15 @@ def args_to_cli_args(args_obj, subcommand: Optional[str], special_cases: Optiona
 
         # TODO: Handle list as positional arguments. This is hacky, maybe introspect the parser for nargs?
         if isinstance(value, list):
-            cli_args.extend(value)
+            if flag == '--attach':
+                # TODO: Do not treat --attach as a special case;
+                #       parser args with action append should have this logic
+                #       parser args with action NARGS should extend the value
+                for arg in value:
+                    cli_args.append(flag)
+                    cli_args.append(arg)
+            else:
+                cli_args.extend(value)
             continue
 
         # Otherwise, add as --flag value
@@ -117,6 +122,13 @@ def test_default_endpoint(chatargs):
 @given(
     st.builds(
         ChatSubArgs,
+        attachments=st.one_of(
+            st.none(),
+            st.lists(
+                st.text(alphabet=string.ascii_letters, min_size=1),
+                max_size=10,
+            ),
+        ),
         prefix=st.sampled_from(['> ', '🦙 > ', '🦭 > ', '🐋 > ']),
         url=st.sampled_from(['https://test.com', 'test.com']),
         temp=st.one_of(
