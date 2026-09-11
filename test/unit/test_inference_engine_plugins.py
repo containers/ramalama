@@ -839,7 +839,7 @@ class TestVllmPlugin:
 
         with patch.dict("os.environ", {}, clear=True):
             image = self.plugin.get_container_image(config, "")
-        assert image == "docker.io/vllm/vllm-openai:latest"
+        assert image == "docker.io/vllm/vllm-openai-cpu:latest"
 
     def test_get_container_image_with_tag_not_modified(self):
         config = MagicMock()
