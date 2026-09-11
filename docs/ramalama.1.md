@@ -31,11 +31,11 @@ RamaLama CLI defaults can be modified via `ramalama.conf` files. Default setting
 
 On Fedora Silverblue and other immutable variants the system is read-only. You can run RamaLama in either of these ways:
 
-- **Toolbox**: Create a Toolbox container and install RamaLama inside it (e.g. `pip install ramalama` or `dnf install ramalama`). Use the same Podman or Docker from the host so RamaLama can start model containers; ensure the toolbox has access to the host's container engine (e.g., by bind-mounting the socket or by configuring the toolbox to use the host's `podman` command).
+- **Toolbox** (recommended): Create a Toolbox container and install RamaLama inside it (e.g. `pip install ramalama` or `dnf install ramalama`). When `flatpak-spawn` is available (included in Fedora Toolbox by default), RamaLama automatically detects the toolbox environment and uses `flatpak-spawn --host` to run container engine commands (Podman/Docker) on the host. GPU/accelerator detection tooling (such as `nvidia-smi`, `nvidia-ctk`, `npu-smi` and `mthreads-gmi`) is also run on the host, and host CDI configuration (e.g. `/etc/cdi`) is read via the toolbox's `/run/host` mount, so GPU acceleration is detected and used transparently even when the driver tooling is only installed on the host. No manual socket bind-mounting or engine configuration is needed. The `Toolbox` field in `ramalama info` output indicates whether toolbox mode is active.
 
-- **Host Installation or Toolbox with Host Access**: Install RamaLama on the host via `rpm-ostree install ramalama` if the package is available for your image, or run RamaLama from a toolbox with the model store on a writable location such as your home directory.
+- **Host Installation**: Install RamaLama on the host via `rpm-ostree install ramalama` if the package is available for your image.
 
-The model store defaults to `~/.local/share/ramalama`, which is writable on Silverblue.
+The model store defaults to `~/.local/share/ramalama`, which is writable on Silverblue. Temporary files are stored under `~/.cache/ramalama/tmp` in toolbox environments (instead of `/var/tmp`) to ensure they are accessible to container engine commands running on the host.
 
 ## SECURITY
 
@@ -192,7 +192,7 @@ although the recommended way is to use the `ramalama.conf` file.
 | RAMALAMA_IN_CONTAINER     | run RamaLama in the default container     |
 | RAMALAMA_STORE            | location to store AI Models               |
 | RAMALAMA_TRANSPORT        | default AI Model transport (huggingface, OCI, ollama) |
-| TMPDIR                    | host temporary directory; used when **tempdir** is not configured in ramalama.conf(5); defaults to `/var/tmp`|
+| TMPDIR                    | host temporary directory; used when **tempdir** is not configured in ramalama.conf(5); defaults to `/var/tmp` (or `~/.cache/ramalama/tmp` in a toolbox)|
 
 ## SEE ALSO
 **[podman(1)](https://github.com/containers/podman/blob/main/docs/source/markdown/podman.1.md)**, **docker(1)**, **[ramalama.conf(5)](ramalama.conf.5.md)**, **[ramalama-cuda(7)](ramalama-cuda.7.md)**, **[ramalama-macos(7)](ramalama-macos.7.md)**
