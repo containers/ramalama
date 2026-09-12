@@ -61,6 +61,8 @@ Otherwise only the agent container starts using the given url for the openai com
 
 @@option models-max
 
+@@option models-preset
+
 @@option name
 
 @@option ncmoe
@@ -74,8 +76,6 @@ Otherwise only the agent container starts using the given url for the openai com
 @@option opencode-image
 
 @@option port
-
-@@option models-preset
 
 @@option privileged
 
