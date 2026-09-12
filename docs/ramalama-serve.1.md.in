@@ -98,6 +98,8 @@ appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
 
 @@option models-max
 
+@@option models-preset
+
 @@option name
 
 @@option ncmoe

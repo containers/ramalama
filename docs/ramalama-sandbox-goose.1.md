@@ -263,6 +263,13 @@ Only used when invoked in router mode (zero or multiple models).
 [//]: # (END   included file options/models-max.md)
 
 
+[//]: # (BEGIN included file options/models-preset.md)
+#### **--models-preset**=*path*
+Presets ini-file for router mode.
+
+[//]: # (END   included file options/models-preset.md)
+
+
 [//]: # (BEGIN included file options/name.md)
 #### **--name**, **-n**
 Name of the container to run the Model in.
