@@ -26,6 +26,13 @@ from ramalama.logger import logger
 from ramalama.path_utils import normalize_host_path_for_container
 
 
+def relabel_suffix(args: BaseEngineArgsType) -> str:
+    """Return the Podman SELinux relabel suffix (',z') when SELinux is enabled."""
+    if getattr(args, "selinux", False) and os.path.basename(args.engine) == "podman":
+        return ",z"
+    return ""
+
+
 class BaseEngine(ABC):
     """General-purpose engine for running podman or docker commands"""
 
@@ -174,9 +181,7 @@ class BaseEngine(ABC):
         exec_cmd(self.exec_args, stdout2null, stderr2null)
 
     def relabel(self):
-        if getattr(self.args, "selinux", False) and self.use_podman:
-            return ",z"
-        return ""
+        return relabel_suffix(self.args)
 
 
 class Engine(BaseEngine):

@@ -46,7 +46,7 @@ from ramalama.common import (
     version_tagged_image,
 )
 from ramalama.config import ActiveConfig, DefaultConfig, coerce_to_bool
-from ramalama.engine import Engine, dry_run, image_inspect
+from ramalama.engine import Engine, dry_run, image_inspect, relabel_suffix
 from ramalama.logger import logger
 from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
 from ramalama.model_store.global_store import GlobalModelStore
@@ -942,7 +942,7 @@ Model "raw" contains the model and a link file model.file to it stored at /.""",
         set_accel_env_vars()
         if args.file is not None and args.container:
             args.engine_args.append(
-                f"--mount=type=bind,src={get_container_mount_path(args.file)},destination=/data/samples.txt,ro"
+                f"--mount=type=bind,src={get_container_mount_path(args.file)},destination=/data/samples.txt,ro{relabel_suffix(args)}"
             )
         model.execute_command(assemble_command(args), args)
 
