@@ -10,8 +10,9 @@ import time
 from http.client import HTTPConnection, HTTPException
 from typing import Optional
 
-from ramalama.common import ensure_image, perror, set_accel_env_vars
+from ramalama.common import ensure_image, genname, perror, set_accel_env_vars
 from ramalama.config import ActiveConfig
+from ramalama.engine import create_network, remove_network
 from ramalama.plugins.interface import RuntimePlugin
 from ramalama.plugins.loader import assemble_command
 from ramalama.transports.api import APITransport
@@ -50,63 +51,71 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
         caption_port = compute_serving_port(args, quiet=True, exclude=allocated_ports)
         allocated_ports.append(caption_port)
 
-    # Build serve args for the VLM and embedding servers
-    vlm_ctx_size = getattr(args, "ctx_size", 8192)
-    embed_ctx_size = getattr(args, "embed_ctx_size", None)
-    docling_serve_args = _build_serve_args(
-        args, docling_model, docling_port, runtime_args=["--special"], ctx_size=vlm_ctx_size
-    )
-    embed_serve_args = _build_serve_args(
-        args,
-        embedding_model,
-        embed_port,
-        runtime_args=["--embedding"],
-        ctx_size=embed_ctx_size,
-        cache_reuse=0,
-    )
-
-    caption_serve_args = None
-    if caption_model and caption_port:
-        caption_serve_args = _build_serve_args(args, caption_model, caption_port, ctx_size=vlm_ctx_size, cache_reuse=0)
-
-    # Pull models
-    docling_transport = New(docling_model, docling_serve_args)
-    docling_transport.ensure_model_exists(docling_serve_args)
-    embed_transport = New(embedding_model, embed_serve_args)
-    embed_transport.ensure_model_exists(embed_serve_args)
-
-    caption_transport = None
-    if caption_model and caption_serve_args:
-        caption_transport = New(caption_model, caption_serve_args)
-        if isinstance(caption_transport, APITransport):
-            raise ValueError(f"caption model {caption_model} resolved to an API transport, which cannot serve locally")
-        caption_transport.ensure_model_exists(caption_serve_args)
-
-    # Start llama.cpp servers
-    docling_cmd = assemble_command(docling_serve_args)
-    embed_cmd = assemble_command(embed_serve_args)
+    # Put the llama.cpp servers and the doc2rag container on a shared network so
+    # doc2rag can reach them by container name without publishing to the host.
+    # Honor a user-supplied network (and leave it in place); otherwise create a
+    # private one for this run and remove it when done.
+    network_created = False
+    if not getattr(args, "network", None):
+        args.network = create_network(args)
+        network_created = True
 
     docling_proc = None
     embed_proc = None
     caption_proc = None
-    all_serve_args = [docling_serve_args, embed_serve_args]
+    all_serve_args = []
     try:
+        # Build serve args for the VLM and embedding servers
+        vlm_ctx_size = getattr(args, "ctx_size", 8192)
+        embed_ctx_size = getattr(args, "embed_ctx_size", None)
+        docling_serve_args = _build_serve_args(
+            args, docling_model, docling_port, runtime_args=["--special"], ctx_size=vlm_ctx_size
+        )
+        embed_serve_args = _build_serve_args(
+            args,
+            embedding_model,
+            embed_port,
+            runtime_args=["--embedding"],
+            ctx_size=embed_ctx_size,
+            cache_reuse=0,
+        )
+        all_serve_args = [docling_serve_args, embed_serve_args]
+
+        caption_serve_args = None
+        if caption_model and caption_port:
+            caption_serve_args = _build_serve_args(
+                args, caption_model, caption_port, ctx_size=vlm_ctx_size, cache_reuse=0
+            )
+            all_serve_args.append(caption_serve_args)
+
+        # Pull models
+        docling_transport = New(docling_model, docling_serve_args)
+        docling_transport.ensure_model_exists(docling_serve_args)
+        embed_transport = New(embedding_model, embed_serve_args)
+        embed_transport.ensure_model_exists(embed_serve_args)
+
+        caption_transport = None
+        if caption_model and caption_serve_args:
+            caption_transport = New(caption_model, caption_serve_args)
+            if isinstance(caption_transport, APITransport):
+                raise ValueError(
+                    f"caption model {caption_model} resolved to an API transport, which cannot serve locally"
+                )
+            caption_transport.ensure_model_exists(caption_serve_args)
+
+        # Start llama.cpp servers
+        docling_cmd = assemble_command(docling_serve_args)
+        embed_cmd = assemble_command(embed_serve_args)
+
         perror("Starting VLM server...")
-        docling_proc = docling_transport.serve_nonblocking(  # type: ignore[union-attr]
-            docling_serve_args, docling_cmd, expose_to_containers=True
-        )
+        docling_proc = docling_transport.serve_nonblocking(docling_serve_args, docling_cmd)  # type: ignore[union-attr]
         perror("Starting embedding server...")
-        embed_proc = embed_transport.serve_nonblocking(  # type: ignore[union-attr]
-            embed_serve_args, embed_cmd, expose_to_containers=True
-        )
+        embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)  # type: ignore[union-attr]
 
         if caption_transport and caption_serve_args:
             caption_cmd = assemble_command(caption_serve_args)
             perror("Starting image captioning server...")
-            caption_proc = caption_transport.serve_nonblocking(  # type: ignore[union-attr]
-                caption_serve_args, caption_cmd, expose_to_containers=True
-            )
-            all_serve_args.append(caption_serve_args)
+            caption_proc = caption_transport.serve_nonblocking(caption_serve_args, caption_cmd)  # type: ignore[union-attr]
 
         if not args.dryrun:
             _wait_for_server(plugin, docling_serve_args, docling_transport.model_alias)
@@ -117,15 +126,14 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
                 _wait_for_server(plugin, caption_serve_args, caption_transport.model_alias)
                 perror("Caption server is ready.")
 
-        # Determine the host URL the RAG container will use to reach llama.cpp
-        if args.engine == "podman":
-            llm_host = "host.containers.internal"
-        else:
-            llm_host = f"host.{args.engine}.internal"
-
-        api_url = f"http://{llm_host}:{docling_port}"
-        embed_url = f"http://{llm_host}:{embed_port}"
-        caption_url = f"http://{llm_host}:{caption_port}" if caption_port else None
+        # The doc2rag container reaches each llama.cpp server by its container
+        # name over the shared private network (serve_nonblocking assigned the
+        # names above).
+        api_url = f"http://{docling_serve_args.name}:{docling_port}"
+        embed_url = f"http://{embed_serve_args.name}:{embed_port}"
+        caption_url = None
+        if caption_serve_args and caption_port:
+            caption_url = f"http://{caption_serve_args.name}:{caption_port}"
 
         # Run doc2rag in the RAG container
         rag = Rag(args.DESTINATION)
@@ -151,7 +159,15 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
 
         rag.generate(args, assemble_command(args))
     finally:
-        _cleanup_servers(args, all_serve_args, [docling_proc, embed_proc, caption_proc])
+        if getattr(args, "skip_cleanup", False):
+            _report_skipped_cleanup(args, all_serve_args, network_created)
+        else:
+            _cleanup_servers(args, all_serve_args, [docling_proc, embed_proc, caption_proc])
+            # Remove the private network after its containers are gone (docker refuses
+            # to remove a network that still has containers attached). Only remove a
+            # network we created; a user-supplied one is left in place.
+            if network_created:
+                remove_network(args, args.network)
 
 
 def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=None, cache_reuse=None):
@@ -173,7 +189,7 @@ def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=None, 
         noout=True,
         image=args.image,
         pull=getattr(args, "pull", config.pull),
-        network=None,
+        network=getattr(args, "network", None),
         oci_runtime=None,
         selinux=False,
         nocapdrop=False,
@@ -184,7 +200,7 @@ def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=None, 
         detach=True,
         name=None,
         dri="on",
-        host="localhost",
+        host="127.0.0.1",
         port=str(port),
         ctx_size=ctx_size,
         cache_reuse=cache_reuse,
@@ -206,6 +222,29 @@ def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=None, 
     )
 
 
+def _setup_rag_network(args: argparse.Namespace) -> bool:
+    """Put the RAG proxy and its helper servers on a shared private network.
+
+    ``args`` is the RAG proxy namespace; ``args.model_args`` is the backing model
+    server (the embedding server args are derived from it and inherit the network).
+    The containers reach each other by name over the network, so nothing is
+    published to the host. Honor a user-supplied ``--network`` and leave it in
+    place; otherwise create a private network for this run. Returns True when a
+    network was created (and the caller must remove it when done).
+    """
+    network_created = False
+    if not getattr(args, "network", None):
+        args.network = create_network(args)
+        network_created = True
+    args.model_args.network = args.network
+    # Reach the model server by its container name over the private network rather
+    # than a host-published port; assign the name now so both the container and the
+    # proxy's --model-host agree on it.
+    args.model_args.name = getattr(args.model_args, "name", None) or genname()
+    args.model_host = args.model_args.name
+    return network_created
+
+
 def _wait_for_server(plugin: RuntimePlugin, args: argparse.Namespace, model_alias: str, timeout: int = 180):
     """Block until a llama.cpp /health endpoint returns 200."""
     end = time.monotonic() + timeout
@@ -224,20 +263,46 @@ def _wait_for_server(plugin: RuntimePlugin, args: argparse.Namespace, model_alia
     raise TimeoutError(f"Server {args.name} did not become ready on port {args.port} within {timeout}s")
 
 
+def _report_skipped_cleanup(args, all_serve_args, network_created):
+    """Report the servers and network left running when --skip-cleanup is set."""
+    names = [name for name in (getattr(sa, "name", None) for sa in all_serve_args) if name]
+    engine = args.engine
+    # Only a network we created is ours to report/clean up.
+    network = getattr(args, "network", None) if network_created else None
+    perror("--skip-cleanup: leaving the following running for debugging:")
+    for name in names:
+        perror(f"  container {name} (inspect with `{engine} logs {name}`)")
+    if network:
+        perror(f"  network {network}")
+    cleanup = " ".join([engine, "rm", "-f", *names]) if names else ""
+    if network:
+        # `podman network rm -f` disconnects lingering containers; docker has no
+        # such flag, so mirror engine.remove_network and omit it there.
+        net_rm = f"{engine} network rm{' -f' if engine == 'podman' else ''} {network}"
+        cleanup = f"{cleanup}; {net_rm}" if cleanup else net_rm
+    if cleanup:
+        perror(f"clean up with: {cleanup}")
+
+
 def _cleanup_servers(args, all_serve_args, all_procs):
     """Stop llama.cpp server containers and terminate any lingering processes."""
     from ramalama.engine import stop_container
 
-    for serve_args in all_serve_args:
-        name = getattr(serve_args, "name", None)
-        if name:
-            try:
-                stop_args = argparse.Namespace(engine=args.engine, ignore=True)
-                stop_container(stop_args, name)
-            except Exception as e:
-                from ramalama.logger import logger
+    # On a dry run nothing was actually started, so there are no containers to
+    # stop; skip the engine calls (create_network/remove_network guard this too).
+    if not getattr(args, "dryrun", False):
+        for serve_args in all_serve_args:
+            name = getattr(serve_args, "name", None)
+            if name:
+                try:
+                    stop_args = argparse.Namespace(engine=args.engine, ignore=True)
+                    # Remove (not just stop) so the private network can be torn down;
+                    # docker network rm refuses while containers are still attached.
+                    stop_container(stop_args, name, remove=True)
+                except Exception as e:
+                    from ramalama.logger import logger
 
-                logger.debug(f"Failed to stop container {name}: {e}")
+                    logger.debug(f"Failed to stop container {name}: {e}")
     for proc in all_procs:
         if proc is not None and proc.poll() is None:
             proc.terminate()

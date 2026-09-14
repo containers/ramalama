@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from http.client import HTTPConnection
@@ -655,13 +655,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         args = _rag_args(args)
         model = RagTransport(model, assemble_command(args.model_args), args)
         model.ensure_model_exists(args)
-        embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
-        try:
-            model.run(args, assemble_command(args))
-        finally:
-            from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers
-
-            _cleanup_servers(args, [embed_serve_args], [embed_proc])
+        self._serve_rag_pipeline(args, lambda: model.run(args, assemble_command(args)))
 
     def _serve_rag(self, args: argparse.Namespace, model: Any) -> None:
         if not args.container:
@@ -669,13 +663,28 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         args = _rag_args(args)
         model = RagTransport(model, assemble_command(args.model_args), args)
         model.ensure_model_exists(args)
-        embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
-        try:
-            model.serve(args, assemble_command(args))
-        finally:
-            from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers
+        self._serve_rag_pipeline(args, lambda: model.serve(args, assemble_command(args)))
 
-            _cleanup_servers(args, [embed_serve_args], [embed_proc])
+    def _serve_rag_pipeline(self, args: argparse.Namespace, dispatch: Callable[[], None]) -> None:
+        """Start the RAG helper servers on a private network, then run ``dispatch``.
+
+        The model server, embedding server, and RAG proxy all join a shared
+        private network so they reach each other by container name without
+        publishing the helper servers to the host.
+        """
+        from ramalama.engine import remove_network
+        from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers, _setup_rag_network
+
+        network_created = _setup_rag_network(args)
+        try:
+            embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
+            try:
+                dispatch()
+            finally:
+                _cleanup_servers(args, [embed_serve_args], [embed_proc])
+        finally:
+            if network_created:
+                remove_network(args, args.network)
 
     def _start_rag_embedding_server(self, args):
         """Start a llama.cpp embedding server for RAG inference and set embed_url on args."""
@@ -697,17 +706,14 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         embed_transport.ensure_model_exists(embed_serve_args)
 
         embed_cmd = assemble_command(embed_serve_args)
-        embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd, expose_to_containers=True)
+        embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)
 
         if not args.dryrun:
             _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
 
-        if args.model_args.engine == "podman":
-            embed_host = "host.containers.internal"
-        else:
-            embed_host = f"host.{args.model_args.engine}.internal"
-
-        args.embed_url = f"http://{embed_host}:{embed_port}"
+        # Reach the embedding server by its container name over the shared private
+        # network (serve_nonblocking assigned the name above).
+        args.embed_url = f"http://{embed_serve_args.name}:{embed_port}"
         return embed_serve_args, embed_proc
 
     def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":

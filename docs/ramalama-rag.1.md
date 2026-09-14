@@ -25,8 +25,11 @@ The pipeline:
 5. Embeddings are stored in a Qdrant on-disk collection.
 6. The Qdrant database is packaged into a `FROM scratch` OCI image.
 
-Two containers work together: a llama.cpp container serves the AI models,
+Multiple containers work together: llama.cpp containers serve the AI models,
 and a lightweight RAG container runs the document processing pipeline.
+RamaLama places them on a private container network and they reach each other
+by container name; the model server ports are not exposed on the host network.
+The network is created when the command starts and removed when it finishes.
 
 NOTE: this command requires a container engine (podman or docker).
 
@@ -82,6 +85,14 @@ Show this help message and exit
 OCI container image to use for the llama.cpp inference servers.
 Defaults to the accelerator-appropriate ramalama image.
 
+#### **--network**, **--net**=*network*
+Join the pipeline containers to an existing container network instead of
+creating a temporary private one.  Use this to reuse a pre-existing network;
+the containers still reach each other by name, so the network must provide
+name-based DNS (any user-defined podman/docker network does).  A network
+supplied this way is left in place when the command finishes; only the
+temporary network RamaLama creates by default is removed.
+
 #### **--ngl**=*value*
 Number of layers to store in VRAM: a number, `auto`, or `all`.
 When omitted, llama-server defaults to `auto`.
@@ -89,6 +100,12 @@ When omitted, llama-server defaults to `auto`.
 #### **--rag-image**=*IMAGE*
 OCI container image for the RAG processing container.
 Defaults to the accelerator-appropriate ramalama-rag image.
+
+#### **--skip-cleanup**
+Leave the llama.cpp servers and their private network running after the command
+finishes instead of tearing them down.  Useful for debugging a failed run:
+inspect the servers with `podman logs <container>` and remove them manually
+afterwards (the command prints the exact cleanup command).
 
 #### **--threads**, **-t**=*integer*
 Number of CPU threads to use for llama.cpp inference.
