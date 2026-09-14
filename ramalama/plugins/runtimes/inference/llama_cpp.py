@@ -680,12 +680,18 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _start_rag_embedding_server(self, args):
         """Start a llama.cpp embedding server for RAG inference and set embed_url on args."""
         from ramalama.plugins.runtimes.inference.rag.handler import EMBEDDING_MODEL, _build_serve_args, _wait_for_server
+        from ramalama.rag import RAG_ROLE_EMBEDDING, rag_stack_container_name
 
         embedding_model = EMBEDDING_MODEL
         set_accel_env_vars()
 
         embed_port = compute_serving_port(args, quiet=True, exclude=[args.port, args.model_args.port])
-        embed_serve_args = _build_serve_args(args.model_args, embedding_model, embed_port, runtime_args=["--embedding"])
+        embed_name = rag_stack_container_name(
+            args.name, RAG_ROLE_EMBEDDING, generated=getattr(args, "rag_stack_generated", False)
+        )
+        embed_serve_args = _build_serve_args(
+            args.model_args, embedding_model, embed_port, runtime_args=["--embedding"], name=embed_name
+        )
         # Internal models should always be pullable regardless of the user's --pull flag
         embed_serve_args.pull = ActiveConfig().pull
 

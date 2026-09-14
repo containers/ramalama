@@ -4,7 +4,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ramalama.rag import RagSource, RagTransport
+from ramalama.rag import (
+    RAG_ROLE_CAPTIONING,
+    RAG_ROLE_DOCLING,
+    RAG_ROLE_EMBEDDING,
+    RAG_ROLE_MODEL,
+    RagSource,
+    RagTransport,
+    rag_stack_base_name,
+    rag_stack_container_name,
+)
 
 
 def _build_rag_transport(path: str, store: str, engine: str = "podman") -> RagTransport:
@@ -87,3 +96,39 @@ class TestRagTransportLocalhostPrefix:
         RagTransport(imodel=MagicMock(), cmd=[], args=args)
 
         assert args.rag == "localhost/myrag:latest"
+
+
+class TestRagStackNames:
+    def test_explicit_base_name_is_preserved(self) -> None:
+        base, generated = rag_stack_base_name("ragtest")
+        assert base == "ragtest"
+        assert generated is False
+
+    def test_generated_base_name_uses_ramalama_prefix(self) -> None:
+        name, generated = rag_stack_base_name(None)
+        assert generated is True
+        assert name.startswith("ramalama-")
+        assert len(name) > len("ramalama-")
+
+    def test_role_suffixes(self) -> None:
+        assert rag_stack_container_name("ragtest", RAG_ROLE_DOCLING) == "ragtest-docling"
+        assert rag_stack_container_name("ragtest", RAG_ROLE_EMBEDDING) == "ragtest-embedding"
+        assert rag_stack_container_name("ragtest", RAG_ROLE_CAPTIONING) == "ragtest-captioning"
+        assert rag_stack_container_name("ragtest", RAG_ROLE_MODEL) == "ragtest-model"
+
+    def test_generated_base_puts_role_after_ramalama(self) -> None:
+        base, generated = rag_stack_base_name(None)
+        unique = base.removeprefix("ramalama-")
+        assert rag_stack_container_name(base, RAG_ROLE_DOCLING, generated=generated) == f"ramalama-docling-{unique}"
+        assert rag_stack_container_name(base, RAG_ROLE_EMBEDDING, generated=generated) == f"ramalama-embedding-{unique}"
+        caption = rag_stack_container_name(base, RAG_ROLE_CAPTIONING, generated=generated)
+        assert caption == f"ramalama-captioning-{unique}"
+        assert rag_stack_container_name(base, RAG_ROLE_MODEL, generated=generated) == f"ramalama-model-{unique}"
+
+    def test_explicit_ramalama_prefix_with_ten_alnum_keeps_user_form(self) -> None:
+        name = "ramalama-abcdefghij"
+        base, generated = rag_stack_base_name(name)
+        assert base == name
+        assert generated is False
+        assert rag_stack_container_name(base, RAG_ROLE_EMBEDDING, generated=generated) == f"{name}-embedding"
+        assert rag_stack_container_name(base, RAG_ROLE_MODEL, generated=generated) == f"{name}-model"

@@ -58,6 +58,18 @@ WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
             Path("README.md"), [], True, ".*--chunk-size 400",
             id="check default chunk-size"
         ),
+        pytest.param(
+            Path("README.md"), ["--name", "ragtest"], True, r".*--name ragtest-docling",
+            id="check --name docling helper"
+        ),
+        pytest.param(
+            Path("README.md"), ["--name", "ragtest"], True, r".*--name ragtest-embedding",
+            id="check --name embedding helper"
+        ),
+        pytest.param(
+            Path("README.md"), ["--name", "ragtest"], True, r".*--name ragtest(?:\s|$)",
+            id="check --name processing container"
+        ),
     ],
 )
 # fmt: on
@@ -176,6 +188,26 @@ def test_rag_dry_run_pull_policy(container_engine):
 
 @pytest.mark.e2e
 @skip_if_no_container
+def test_rag_dry_run_shared_generated_names():
+    with RamalamaExecWorkspace() as ctx:
+        file_path = Path(ctx.workspace_dir) / "README.md"
+        file_path.touch()
+        result = ctx.check_output(RAG_DRY_RUN + [str(file_path), RAG_MODEL])
+        names = re.findall(r"--name (\S+)", result)
+        uniques = set()
+        for name in names:
+            match = re.search(r"([A-Za-z0-9]{10})$", name)
+            assert match, f"unexpected generated name {name}"
+            uniques.add(match.group(1))
+        assert len(uniques) == 1, f"RAG stack should share one generated id, got {names}"
+        unique = uniques.pop()
+        assert f"--name ramalama-docling-{unique}" in result
+        assert f"--name ramalama-embedding-{unique}" in result
+        assert re.search(fr"--name ramalama-{re.escape(unique)}(?:\s|$)", result)
+
+
+@pytest.mark.e2e
+@skip_if_no_container
 def test_rag_error_when_image_has_invalid_format():
     with RamalamaExecWorkspace() as ctx:
         with pytest.raises(CalledProcessError) as exc_info:
@@ -232,6 +264,18 @@ def test_rag_error_when_file_is_missing():
             ".*quay.io/ramalama/rag-image:latest.*",
             id="check --rag-image overrides --rag"
         ),
+        pytest.param(
+            OLLAMA_MODEL, ["--name", "ragtest", "--rag", RAG_MODEL], True, r".*--name ragtest-model",
+            id="check --name model helper"
+        ),
+        pytest.param(
+            OLLAMA_MODEL, ["--name", "ragtest", "--rag", RAG_MODEL], True, r".*--name ragtest-embedding",
+            id="check --name embedding helper"
+        ),
+        pytest.param(
+            OLLAMA_MODEL, ["--name", "ragtest", "--rag", RAG_MODEL], True, r".*--name ragtest .*rag_framework",
+            id="check --name rag proxy"
+        ),
     ],
 )
 # fmt: on
@@ -239,6 +283,24 @@ def test_run_dry_run(model, params, expected, expected_regex):
     with RamalamaExecWorkspace() as ctx:
         result = ctx.check_output(RUN_DRY_RUN + params + [OLLAMA_MODEL])
         assert bool(re.search(expected_regex.format(workspace_dir=ctx.workspace_dir), result)) is expected
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_run_dry_run_shared_generated_names():
+    with RamalamaExecWorkspace() as ctx:
+        result = ctx.check_output(RUN_DRY_RUN + ["--rag", RAG_MODEL, OLLAMA_MODEL])
+        names = re.findall(r"--name (\S+)", result)
+        uniques = set()
+        for name in names:
+            match = re.search(r"([A-Za-z0-9]{10})$", name)
+            assert match, f"unexpected generated name {name}"
+            uniques.add(match.group(1))
+        assert len(uniques) == 1, f"RAG run stack should share one generated id, got {names}"
+        unique = uniques.pop()
+        assert f"--name ramalama-embedding-{unique}" in result
+        assert f"--name ramalama-model-{unique}" in result
+        assert re.search(fr"--name ramalama-{re.escape(unique)}(?:\s|$)", result)
 
 
 @pytest.mark.e2e

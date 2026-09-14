@@ -5,11 +5,11 @@ import subprocess
 import tempfile
 from functools import partial
 from textwrap import dedent
-from typing import Literal
+from typing import Literal, Optional
 
 from ramalama.arg_types import RagArgsType
 from ramalama.chat import ChatOperationalArgs
-from ramalama.common import ensure_image, perror, set_accel_env_vars
+from ramalama.common import ensure_image, genname, perror, set_accel_env_vars
 from ramalama.compat import StrEnum
 from ramalama.config import ActiveConfig, Config
 from ramalama.engine import BuildEngine, Engine, is_healthy, stop_container, wait_for_healthy
@@ -18,6 +18,38 @@ from ramalama.transports.base import Transport
 from ramalama.transports.oci.oci import OCI
 
 INPUT_DIR = "/docs"
+
+RAG_ROLE_DOCLING = "docling"
+RAG_ROLE_EMBEDDING = "embedding"
+RAG_ROLE_CAPTIONING = "captioning"
+RAG_ROLE_MODEL = "model"
+
+
+def rag_stack_base_name(name: Optional[str] = None) -> tuple[str, bool]:
+    """Return ``(base, generated)`` for a RAG container stack.
+
+    When the user did not pass ``--name``, generate one name so every
+    container in the stack is identifiable as part of the same run.
+    ``generated`` is True only in that case, never inferred from the
+    base string, so a user ``--name`` that looks like ``genname()``
+    output still uses the explicit ``{name}-{role}`` form.
+    """
+    if name:
+        return name, False
+    return genname(), True
+
+
+def rag_stack_container_name(base: str, role: str, generated: bool = False) -> str:
+    """Return a role-qualified name for a container in a RAG stack.
+
+    User ``--name ragtest`` yields ``ragtest-{role}``. A generated
+    ``ramalama-XXXXXXXXXX`` base yields ``ramalama-{role}-XXXXXXXXXX`` so
+    helpers stay readable as ``ramalama-embedding`` / ``ramalama-model``.
+    """
+    if generated:
+        unique = base.removeprefix("ramalama-")
+        return f"ramalama-{role}-{unique}"
+    return f"{base}-{role}"
 
 
 class VectorDBEngine(Engine):
@@ -79,6 +111,9 @@ class Rag:
         if not args.engine or args.engine == "":
             raise KeyError("rag command requires a container. Can not be run without a container engine.")
         engine = VectorDBEngine(args)
+        name = getattr(args, "name", None)
+        if name:
+            engine.add_name(name)
 
         for path in args.PATHS:
             engine.add_input(path)
