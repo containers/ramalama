@@ -86,6 +86,14 @@ Defaults to the accelerator-appropriate ramalama image.
 Number of layers to store in VRAM: a number, `auto`, or `all`.
 When omitted, llama-server defaults to `auto`.
 
+#### **--name**, **-n**=*name*
+Name used for the RAG processing container. Helper containers in the same
+stack are named `{name}-docling`, `{name}-embedding`, and `{name}-captioning`
+(when image captioning is enabled). When omitted, RamaLama generates one
+random id and names the processing container `ramalama-{id}` and helpers
+`ramalama-docling-{id}`, `ramalama-embedding-{id}`, and
+`ramalama-captioning-{id}` so the stack can be identified together.
+
 #### **--rag-image**=*IMAGE*
 OCI container image for the RAG processing container.
 Defaults to the accelerator-appropriate ramalama-rag image.
@@ -117,6 +125,12 @@ $ ramalama rag ./report.pdf quay.io/myuser/report-rag
 ```
 $ ramalama rag --ngl all ./docs/ my-rag-image
 ```
+
+### Name the RAG container stack
+```
+$ ramalama rag --name ragtest ./docs/ myrag:latest
+```
+Helper containers are named `ragtest-docling` and `ragtest-embedding`.
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**, **[ramalama-serve(1)](ramalama-serve.1.md)**

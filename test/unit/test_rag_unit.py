@@ -4,7 +4,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ramalama.rag import RagSource, RagTransport
+from ramalama.rag import (
+    RAG_ROLE_CAPTIONING,
+    RAG_ROLE_DOCLING,
+    RAG_ROLE_EMBEDDING,
+    RAG_ROLE_MODEL,
+    RagSource,
+    RagTransport,
+    rag_stack_base_name,
+    rag_stack_container_name,
+)
 
 
 def _build_rag_transport(path: str, store: str, engine: str = "podman") -> RagTransport:
@@ -87,3 +96,27 @@ class TestRagTransportLocalhostPrefix:
         RagTransport(imodel=MagicMock(), cmd=[], args=args)
 
         assert args.rag == "localhost/myrag:latest"
+
+
+class TestRagStackNames:
+    def test_explicit_base_name_is_preserved(self) -> None:
+        assert rag_stack_base_name("ragtest") == "ragtest"
+
+    def test_generated_base_name_uses_ramalama_prefix(self) -> None:
+        name = rag_stack_base_name(None)
+        assert name.startswith("ramalama-")
+        assert len(name) > len("ramalama-")
+
+    def test_role_suffixes(self) -> None:
+        assert rag_stack_container_name("ragtest", RAG_ROLE_DOCLING) == "ragtest-docling"
+        assert rag_stack_container_name("ragtest", RAG_ROLE_EMBEDDING) == "ragtest-embedding"
+        assert rag_stack_container_name("ragtest", RAG_ROLE_CAPTIONING) == "ragtest-captioning"
+        assert rag_stack_container_name("ragtest", RAG_ROLE_MODEL) == "ragtest-model"
+
+    def test_generated_base_puts_role_after_ramalama(self) -> None:
+        base = rag_stack_base_name(None)
+        unique = base.removeprefix("ramalama-")
+        assert rag_stack_container_name(base, RAG_ROLE_DOCLING) == f"ramalama-docling-{unique}"
+        assert rag_stack_container_name(base, RAG_ROLE_EMBEDDING) == f"ramalama-embedding-{unique}"
+        assert rag_stack_container_name(base, RAG_ROLE_CAPTIONING) == f"ramalama-captioning-{unique}"
+        assert rag_stack_container_name(base, RAG_ROLE_MODEL) == f"ramalama-model-{unique}"
