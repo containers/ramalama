@@ -36,7 +36,7 @@ jobs:
           echo "version=$min" >> "$GITHUB_OUTPUT"
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: ${{ steps.min-python.outputs.version }}
 
@@ -96,7 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: Run unit tests
@@ -135,7 +135,7 @@ jobs:
         run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
@@ -213,7 +213,7 @@ jobs:
         run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
@@ -289,7 +289,7 @@ jobs:
         run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
@@ -385,7 +385,7 @@ jobs:
         run: echo "has_token=${{ secrets.HF_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: install requirements
@@ -469,7 +469,7 @@ jobs:
            New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with: ${{ matrix.variant.uv-options }}
 
       - name: Update WSL2
