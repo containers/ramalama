@@ -1,4 +1,5 @@
 import logging
+import platform
 import random
 import re
 import string
@@ -102,6 +103,33 @@ def test_sandbox_dryrun_url(agent):
     """--url should overwrite the openai endpoint url."""
     result = check_output(_dryrun_cmd(agent) + ["--url", "http://model.server.local:8321/"])
     assert "http://model.server.local:8321" in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_dryrun_localhost_url_is_reachable(agent, container_engine):
+    """A localhost --url must be made reachable from the agent container.
+
+    On native Linux this shares the host network namespace and keeps the
+    localhost URL. On VM-backed engines (podman machine / Docker Desktop on
+    macOS and Windows) --network host would share the VM's namespace rather than
+    the host's, so the loopback host is rewritten to the engine's host-gateway
+    alias instead.
+    """
+    result = check_output(_dryrun_cmd(agent) + ["--url", "http://localhost:8321"])
+    if platform.system() in ("Darwin", "Windows"):
+        gateway = "host.containers.internal" if container_engine == "podman" else "host.docker.internal"
+        assert f"http://{gateway}:8321" in result
+        assert not re.search(r"--network host\b", result)
+        assert "http://localhost:8321" not in result
+    else:
+        # Share the host network namespace so the agent reaches a loopback-only server.
+        assert re.search(r"--network host\b", result)
+        # The URL is used as-is; no host.containers.internal / host.docker.internal rewrite.
+        assert "http://localhost:8321" in result
+        assert "host.containers.internal" not in result
+        assert "host.docker.internal" not in result
 
 
 @pytest.mark.e2e

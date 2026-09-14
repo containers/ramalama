@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 
 from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, get_accel, get_accel_env_vars
 from ramalama.file import UnitFile
-from ramalama.host_utils import format_bind_host_literal
+from ramalama.host_utils import format_bind_host_publish_prefix, is_loopback_bind_host
 
 
 class Quadlet:
@@ -187,8 +187,22 @@ class Quadlet:
 
     def _gen_port(self, quadlet_file: UnitFile):
         if getattr(self.args, "port", "") != "":
-            host = format_bind_host_literal(getattr(self.args, "host", None) or "::")
-            quadlet_file.add("Container", "PublishPort", f"{host}:{self.args.port}:{self.args.port}")
+            host_arg = getattr(self.args, "host", None) or "::"
+            if is_loopback_bind_host(host_arg):
+                # On VM-backed engines a loopback publish is bound inside the VM
+                # and is not reachable from the host; flag it for the reader.
+                quadlet_file.add(
+                    "comment",
+                    "# NOTE: on VM-backed engines (podman machine / Docker Desktop on macOS\n"
+                    "# and Windows), the loopback PublishPort below is bound inside the VM and\n"
+                    "# is not reachable from the host. Set --host 0.0.0.0 (or edit PublishPort)\n"
+                    "# if you need to reach it there.",
+                )
+            # Use the publish-prefix form so `localhost` maps to 127.0.0.1 and the
+            # IPv6 wildcard drops the host, matching the compose generator; podman
+            # PublishPort requires an IP literal, not a hostname.
+            host = format_bind_host_publish_prefix(host_arg)
+            quadlet_file.add("Container", "PublishPort", f"{host}{self.args.port}:{self.args.port}")
 
     def _gen_rag_volume(self, quadlet_file: UnitFile):
         files: list[UnitFile] = []

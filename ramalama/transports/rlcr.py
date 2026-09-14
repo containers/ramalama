@@ -4,7 +4,7 @@ import os
 import subprocess
 from typing import Optional
 
-from ramalama.common import MNT_DIR, run_cmd
+from ramalama.common import MNT_DIR, engine_cmd, run_cmd
 from ramalama.transports.oci.oci import OCI
 
 
@@ -13,7 +13,7 @@ def find_model_file_in_image(conman: str, model: str) -> Optional[str]:
     # First try to get from label
     try:
         cmd = [
-            conman,
+            *engine_cmd(conman),
             "image",
             "inspect",
             "--format={{index .Config.Labels \"com.ramalama.model.file.location\"}}",
@@ -29,7 +29,7 @@ def find_model_file_in_image(conman: str, model: str) -> Optional[str]:
 
     # Fallback: try to find .gguf files in /models directory
     try:
-        cmd = [conman, "run", "--rm", model, "ls", "/models"]
+        cmd = [*engine_cmd(conman), "run", "--rm", model, "ls", "/models"]
         result = run_cmd(cmd)
         files = result.stdout.decode('utf-8').strip().split('\n')
 

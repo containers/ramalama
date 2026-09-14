@@ -5,7 +5,7 @@ import os
 
 import ramalama.kube as kube
 import ramalama.quadlet as quadlet
-from ramalama.common import exec_cmd, genname, get_accel_env_vars
+from ramalama.common import engine_cmd, exec_cmd, genname, get_accel_env_vars
 from ramalama.compat import NamedTemporaryFile
 from ramalama.compose import Compose
 from ramalama.config import ActiveConfig, Config
@@ -176,7 +176,7 @@ class Stack:
             yaml_file.close()
 
             exec_args = [
-                self.args.engine,
+                *engine_cmd(self.args.engine),
                 "kube",
                 "play",
                 "--replace",
@@ -201,7 +201,7 @@ class Stack:
             yaml_file.close()
 
             exec_args = [
-                self.args.engine,
+                *engine_cmd(self.args.engine),
                 "kube",
                 "down",
             ]

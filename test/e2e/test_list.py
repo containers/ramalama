@@ -1,5 +1,6 @@
 import json
 import re
+import subprocess
 from datetime import datetime
 
 import pytest
@@ -57,6 +58,12 @@ def test_json_output(shared_ctx):
         assert re.search(r"[\w:/]+", image_data["name"])
         assert image_data["size"] > 0
         assert datetime.fromisoformat(image_data["modified"])
+
+
+@pytest.mark.e2e
+def test_json_warning(shared_ctx):
+    result = shared_ctx.check_output(["ramalama", "list", "--json"], stderr=subprocess.STDOUT)
+    assert 'WARNING' not in result
 
 
 @pytest.mark.e2e

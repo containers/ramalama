@@ -279,7 +279,7 @@ def test_run_dry_run_pull_policy(container_engine):
 @skip_if_no_container
 @skip_if_ppc64le
 @skip_if_s390x
-def test_rag(container_engine):
+def test_rag(container_engine_cmd):
     with RamalamaExecWorkspace() as ctx:
         (Path(ctx.workspace_dir) / "README.md").touch()
         ctx.check_call(
@@ -292,29 +292,29 @@ def test_rag(container_engine):
                 RAG_MODEL,
             ]
         )
-        ctx.check_call([container_engine, "rmi", RAG_MODEL])
+        ctx.check_call([*container_engine_cmd, "rmi", RAG_MODEL])
 
 
 @pytest.mark.e2e
 @pytest.mark.slow
 @skip_if_no_container
 @skip_if_not_windows
-def test_rag_with_unc_path(container_engine):
+def test_rag_with_unc_path(container_engine_cmd):
     with RamalamaExecWorkspace() as ctx:
         file_path = Path(WSL_TMP_DIR) / "README.md"
         file_path.touch()
         ctx.check_call(["ramalama", "rag", str(file_path), RAG_MODEL])
-        ctx.check_call([container_engine, "rmi", RAG_MODEL])
+        ctx.check_call([*container_engine_cmd, "rmi", RAG_MODEL])
 
 
 @pytest.mark.e2e
 @pytest.mark.slow
 @skip_if_no_container
 @skip_if_not_windows
-def test_rag_with_unc_uri(container_engine):
+def test_rag_with_unc_uri(container_engine_cmd):
     with RamalamaExecWorkspace() as ctx:
         file_path = Path(WSL_TMP_DIR) / "README.md"
         file_path.touch()
         file_uri = file_path.as_uri()
         ctx.check_call(["ramalama", "rag", file_uri, RAG_MODEL])
-        ctx.check_call([container_engine, "rmi", RAG_MODEL])
+        ctx.check_call([*container_engine_cmd, "rmi", RAG_MODEL])

@@ -7,6 +7,7 @@ from subprocess import DEVNULL, PIPE, STDOUT, CalledProcessError
 
 import pytest
 
+from ramalama.common import engine_cmd
 from test.conftest import (
     skip_if_container,
     skip_if_darwin,
@@ -47,17 +48,18 @@ def shared_ctx_with_models(test_model):
 def test_basic_dry_run():
     ramalama_info = json.loads(check_output(["ramalama", "info"]))
     conman = ramalama_info["Engine"]["Name"]
+    engine_prefix = " ".join(engine_cmd(conman))
 
     result = check_output(["ramalama", "-q", "--dryrun", "run", TEST_MODEL], stdin=PIPE)
-    assert not result.startswith(f"{conman} run --rm")
+    assert not result.startswith(f"{engine_prefix} run --rm")
     assert not re.search(r".*-t -i", result), "run without terminal"
 
     result = check_output(["ramalama", "-q", "--dryrun", "run", TEST_MODEL, "what's up doc?"], stdin=PIPE)
-    assert result.startswith(f"{conman} run")
+    assert result.startswith(f"{engine_prefix} run")
     assert not re.search(r".*-t -i", result), "run without terminal"
 
     result = check_output(f'echo "Test" | ramalama -q --dryrun run {TEST_MODEL}', shell=True, stdin=PIPE)
-    assert result.startswith(f"{conman} run")
+    assert result.startswith(f"{engine_prefix} run")
     assert not re.search(r".*-t -i", result), "run without terminal"
 
 

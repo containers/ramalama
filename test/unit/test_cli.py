@@ -4,7 +4,13 @@ from unittest import mock
 
 import pytest
 
-from ramalama.cli import ParsedGenerateInput, _normalize_engine_args, parse_generate_option, post_parse_setup
+from ramalama.cli import (
+    ParsedGenerateInput,
+    _normalize_engine_args,
+    daemon_start_cli,
+    parse_generate_option,
+    post_parse_setup,
+)
 from ramalama.transports.base import NoGGUFModelFileFound, SafetensorModelNotSupported
 
 
@@ -264,3 +270,69 @@ def test_post_parse_setup_model_input(
     assert input_args.UNRESOLVED_MODEL == expected_unresolved
     assert input_args.MODEL == expected_resolved
     assert input_args.model == input_args.MODEL
+
+
+def _daemon_start_args(**overrides) -> Namespace:
+    args = Namespace(
+        container=True,
+        engine="podman",
+        store="/tmp/store",
+        port="1234",
+        host="127.0.0.1",
+        pull="missing",
+        image="testimage",
+    )
+    for key, value in overrides.items():
+        setattr(args, key, value)
+    return args
+
+
+def _capture_daemon_cmd(args) -> list:
+    with mock.patch("ramalama.cli.exec_cmd") as exec_cmd:
+        daemon_start_cli(args)
+    assert exec_cmd.call_count == 1
+    return exec_cmd.call_args.args[0]
+
+
+@pytest.mark.parametrize(
+    "host,expected_publish",
+    [
+        # loopback default must restrict the host-side publish to loopback
+        ("127.0.0.1", "127.0.0.1:1234:8080"),
+        # localhost normalizes to the IPv4 literal podman -p requires
+        ("localhost", "127.0.0.1:1234:8080"),
+        ("::1", "[::1]:1234:8080"),
+        # wildcard opt-in publishes on all interfaces (no host prefix)
+        ("::", "1234:8080"),
+        ("0.0.0.0", "0.0.0.0:1234:8080"),
+    ],
+)
+def test_daemon_start_container_publish_respects_host(monkeypatch, host, expected_publish):
+    # Pin a native engine so the host-side publish prefix is platform-independent;
+    # the VM-backed loopback-drop behavior is covered separately below.
+    monkeypatch.setattr("ramalama.host_utils.platform.system", lambda: "Linux")
+    cmd = _capture_daemon_cmd(_daemon_start_args(host=host))
+    # -p <publish> pair
+    assert "-p" in cmd
+    assert cmd[cmd.index("-p") + 1] == expected_publish
+    # The daemon inside the container still binds the wildcard so the published
+    # port can reach it, regardless of the host-side bind.
+    from ramalama.config import get_wildcard_host
+
+    assert cmd[cmd.index("--host") + 1] == get_wildcard_host()
+
+
+def test_daemon_start_nocontainer_honors_host():
+    cmd = _capture_daemon_cmd(_daemon_start_args(container=False, host="127.0.0.1"))
+    # No container run wrapper, no port publish; daemon binds the requested host.
+    assert "-p" not in cmd
+    assert cmd[cmd.index("--host") + 1] == "127.0.0.1"
+
+
+def test_daemon_start_container_publish_vm_backed_drops_loopback(monkeypatch):
+    # On VM-backed engines (macOS/Windows) a loopback publish is bound inside the
+    # VM and unreachable from the host, so the daemon path must drop the prefix
+    # just like serve does, publishing on all interfaces inside the VM.
+    monkeypatch.setattr("ramalama.host_utils.platform.system", lambda: "Darwin")
+    cmd = _capture_daemon_cmd(_daemon_start_args(host="127.0.0.1"))
+    assert cmd[cmd.index("-p") + 1] == "1234:8080"

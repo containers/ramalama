@@ -157,8 +157,11 @@ Show this help message and exit
 
 
 [//]: # (BEGIN included file options/host.md)
-#### **--host**="::"
-IP address for llama.cpp to listen on. Defaults to "::" (dual-stack) on systems with IPv6 support, "0.0.0.0" on IPv4-only systems.
+#### **--host**="127.0.0.1"
+IP address for the model server to listen on. Defaults to "127.0.0.1", so the
+served model is only reachable from the local machine. To expose it on the
+network, set this to a wildcard address such as "0.0.0.0" (IPv4) or "::"
+(dual-stack).
 
 [//]: # (END   included file options/host.md)
 
@@ -445,7 +448,16 @@ Require HTTPS and verify certificates when contacting OCI registries
 
 [//]: # (BEGIN included file options/url.md)
 #### **--url**=URL
-The host to send requests to (default: http://localhost:8080)
+The host to send requests to (default: http://localhost:8080).
+
+When the URL points at localhost (the host's loopback, e.g. a `ramalama serve`
+container or any local OpenAI-compatible process), the agent container is wired to
+reach that loopback server without requiring it to be exposed on a
+container-reachable interface. On native Linux the agent shares the host network
+namespace and reaches the server directly as localhost. On VM-backed engines
+(podman machine / Docker Desktop on macOS and Windows) the localhost host is
+rewritten to `host.containers.internal` / `host.docker.internal`, which the VM's
+proxy forwards to the host's loopback.
 
 [//]: # (END   included file options/url.md)
 

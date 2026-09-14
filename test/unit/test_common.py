@@ -20,9 +20,14 @@ from ramalama.common import (
     accel_image,
     check_intel,
     check_nvidia,
+    engine_cmd,
     ensure_image,
     find_in_cdi,
     get_accel,
+    host_available,
+    host_cmd,
+    host_path,
+    in_toolbox,
     load_cdi_config,
     populate_volume_from_image,
     rm_until_substring,
@@ -173,17 +178,44 @@ image = "{config_override}"
 
 @patch("ramalama.common.run_cmd")
 @patch("ramalama.common.handle_provider")
-def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
-    mock_run_cmd.return_value.stdout = b'[{"Name": "myvm"}]'
+def test_apple_vm_returns_result_podman_v5(mock_handle_provider, mock_run_cmd):
+    mock_result_ver = Mock()
+    mock_result_ver.stdout = 'podman version 5.8.0'
+    mock_result_ls = Mock()
+    mock_result_ls.stdout = '[{"Name": "myvm"}]'
+    mock_run_cmd.side_effect = [mock_result_ver, mock_result_ls]
     mock_handle_provider.return_value = True
+
     config = object()
     from ramalama.common import apple_vm
 
     result = apple_vm("podman", config)
 
     assert result is True
-    mock_run_cmd.assert_called_once_with(
+    mock_run_cmd.assert_called_with(
         ["podman", "machine", "list", "--format", "json", "--all-providers"], ignore_stderr=True, encoding="utf-8"
+    )
+    mock_handle_provider.assert_called_once_with({"Name": "myvm"}, config)
+
+
+@patch("ramalama.common.run_cmd")
+@patch("ramalama.common.handle_provider")
+def test_apple_vm_returns_result(mock_handle_provider, mock_run_cmd):
+    mock_result_ver = Mock()
+    mock_result_ver.stdout = 'podman version 6.0.2'
+    mock_result_ls = Mock()
+    mock_result_ls.stdout = '[{"Name": "myvm"}]'
+    mock_run_cmd.side_effect = [mock_result_ver, mock_result_ls]
+    mock_handle_provider.return_value = True
+
+    config = object()
+    from ramalama.common import apple_vm
+
+    result = apple_vm("podman", config)
+
+    assert result is True
+    mock_run_cmd.assert_called_with(
+        ["podman", "machine", "list", "--format", "json"], ignore_stderr=True, encoding="utf-8"
     )
     mock_handle_provider.assert_called_once_with({"Name": "myvm"}, config)
 
@@ -195,7 +227,6 @@ def test_apple_vm_returns_false_when_podman_not_installed(mock_run_cmd):
     result = apple_vm("podman", None)
 
     assert result is False
-    mock_run_cmd.assert_called_once()
 
 
 class TestEnsureImage:
@@ -711,3 +742,119 @@ class TestPopulateVolumeFromImage:
 
             result = populate_volume_from_image(mock_model, Mock(engine="docker"), "test.gguf")
             assert result == expected_volume
+
+
+class TestInToolbox:
+    def test_in_toolbox_true(self):
+        in_toolbox.cache_clear()
+        with patch("os.path.exists", side_effect=lambda x: x == "/run/.toolboxenv"):
+            assert in_toolbox() is True
+        in_toolbox.cache_clear()
+
+    def test_in_toolbox_false(self):
+        in_toolbox.cache_clear()
+        with patch("os.path.exists", return_value=False):
+            assert in_toolbox() is False
+        in_toolbox.cache_clear()
+
+
+class TestEngineCmd:
+    def test_engine_cmd_normal(self):
+        in_toolbox.cache_clear()
+        with patch("ramalama.common.in_toolbox", return_value=False):
+            assert engine_cmd("podman") == ["podman"]
+            assert engine_cmd("docker") == ["docker"]
+
+    def test_engine_cmd_in_toolbox_with_flatpak_spawn(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("ramalama.common.available", side_effect=lambda x: x == "flatpak-spawn"),
+        ):
+            assert engine_cmd("podman") == ["flatpak-spawn", "--host", "podman"]
+            assert engine_cmd("docker") == ["flatpak-spawn", "--host", "docker"]
+
+    def test_engine_cmd_in_toolbox_without_flatpak_spawn(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("ramalama.common.available", return_value=False),
+        ):
+            assert engine_cmd("podman") == ["podman"]
+
+
+class TestHostCmd:
+    def test_host_cmd_normal(self):
+        in_toolbox.cache_clear()
+        with patch("ramalama.common.in_toolbox", return_value=False):
+            assert host_cmd(["nvidia-smi"]) == ["nvidia-smi"]
+            assert host_cmd(["nvidia-smi", "-L"]) == ["nvidia-smi", "-L"]
+
+    def test_host_cmd_in_toolbox_with_flatpak_spawn(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("ramalama.common.available", side_effect=lambda x: x == "flatpak-spawn"),
+        ):
+            assert host_cmd(["nvidia-smi", "-L"]) == ["flatpak-spawn", "--host", "nvidia-smi", "-L"]
+
+    def test_host_cmd_in_toolbox_without_flatpak_spawn(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("ramalama.common.available", return_value=False),
+        ):
+            assert host_cmd(["nvidia-smi"]) == ["nvidia-smi"]
+
+
+class TestHostAvailable:
+    def test_host_available_normal(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=False),
+            patch("ramalama.common.available", side_effect=lambda x: x == "nvidia-ctk"),
+        ):
+            assert host_available("nvidia-ctk") is True
+            assert host_available("missing") is False
+
+    def test_host_available_in_toolbox(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("ramalama.common.available", side_effect=lambda x: x == "flatpak-spawn"),
+            patch("ramalama.common.run_cmd") as mock_run,
+        ):
+            assert host_available("nvidia-ctk") is True
+            mock_run.assert_called_once_with(["flatpak-spawn", "--host", "which", "nvidia-ctk"], ignore_all=True)
+
+    def test_host_available_in_toolbox_missing(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("ramalama.common.available", side_effect=lambda x: x == "flatpak-spawn"),
+            patch("ramalama.common.run_cmd", side_effect=subprocess.CalledProcessError(1, "which")),
+        ):
+            assert host_available("nvidia-ctk") is False
+
+
+class TestHostPath:
+    def test_host_path_normal(self):
+        in_toolbox.cache_clear()
+        with patch("ramalama.common.in_toolbox", return_value=False):
+            assert host_path("/etc/cdi") == "/etc/cdi"
+
+    def test_host_path_in_toolbox(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("os.path.isdir", side_effect=lambda x: x == "/run/host"),
+        ):
+            assert host_path("/etc/cdi") == "/run/host/etc/cdi"
+
+    def test_host_path_in_toolbox_no_run_host(self):
+        in_toolbox.cache_clear()
+        with (
+            patch("ramalama.common.in_toolbox", return_value=True),
+            patch("os.path.isdir", return_value=False),
+        ):
+            assert host_path("/etc/cdi") == "/etc/cdi"

@@ -52,6 +52,13 @@ def container_engine(request):
     return ramalama_container_engine
 
 
+@pytest.fixture()
+def container_engine_cmd(request):
+    from ramalama.common import engine_cmd
+
+    return engine_cmd(ramalama_container_engine)
+
+
 @pytest.fixture(scope="session")
 def test_model():
     # Use different models for little-endian (e.g. x86_64, aarch64) and

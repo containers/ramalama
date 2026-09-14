@@ -92,14 +92,20 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
     all_serve_args = [docling_serve_args, embed_serve_args]
     try:
         perror("Starting VLM server...")
-        docling_proc = docling_transport.serve_nonblocking(docling_serve_args, docling_cmd)  # type: ignore[union-attr]
+        docling_proc = docling_transport.serve_nonblocking(  # type: ignore[union-attr]
+            docling_serve_args, docling_cmd, expose_to_containers=True
+        )
         perror("Starting embedding server...")
-        embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)  # type: ignore[union-attr]
+        embed_proc = embed_transport.serve_nonblocking(  # type: ignore[union-attr]
+            embed_serve_args, embed_cmd, expose_to_containers=True
+        )
 
         if caption_transport and caption_serve_args:
             caption_cmd = assemble_command(caption_serve_args)
             perror("Starting image captioning server...")
-            caption_proc = caption_transport.serve_nonblocking(caption_serve_args, caption_cmd)  # type: ignore[union-attr]
+            caption_proc = caption_transport.serve_nonblocking(  # type: ignore[union-attr]
+                caption_serve_args, caption_cmd, expose_to_containers=True
+            )
             all_serve_args.append(caption_serve_args)
 
         if not args.dryrun:

@@ -27,17 +27,18 @@ except Exception:
 from ramalama import engine
 from ramalama.arg_types import DefaultArgsType
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import accel_image, exec_cmd, get_accel, perror
+from ramalama.common import accel_image, engine_cmd, exec_cmd, get_accel, in_toolbox, perror
 from ramalama.config import (
     SUPPORTED_ENGINES,
     ActiveConfig,
     coerce_to_bool,
     ensure_tmpdir,
+    get_wildcard_host,
     load_file_config,
 )
 from ramalama.config_types import COLOR_OPTIONS
 from ramalama.endian import EndianMismatchError
-from ramalama.host_utils import format_bind_host_for_url
+from ramalama.host_utils import format_bind_host_for_url, format_vm_aware_publish_prefix
 from ramalama.log_levels import LogLevel
 from ramalama.logger import configure_logger, logger
 from ramalama.model_inspect.error import ParseError
@@ -729,6 +730,7 @@ def info_cli(args: DefaultArgsType) -> None:
             "Sources": list(set(shortnames.config_sources.values())),
         },
         "Store": args.store,
+        "Toolbox": in_toolbox(),
         "ToolsImage": default_tools_image(),
         "UseContainer": args.container,
         "Version": version(),
@@ -1210,14 +1212,20 @@ def daemon_start_cli(args):
         # If run inside a container, map the model store to the container internal directory
         daemon_model_store_dir = "/ramalama/models"
 
+        # Honor the requested bind host (loopback by default) on the host-side
+        # port publish; the daemon inside the container binds the wildcard below
+        # so the published port can still reach it. On VM-backed engines a
+        # loopback publish is bound inside the VM and unreachable from the host,
+        # so format_vm_aware_publish_prefix drops the prefix there (matching serve).
+        publish_prefix = format_vm_aware_publish_prefix(args.host)
         daemon_cmd += [
-            args.engine,
+            *engine_cmd(args.engine),
             "run",
             "--pull",
             args.pull,
             "-d",
             "-p",
-            f"{args.port}:8080",
+            f"{publish_prefix}{args.port}:8080",
             "-v",
             f"{args.store}:{daemon_model_store_dir}",
             args.image,
@@ -1231,8 +1239,12 @@ def daemon_start_cli(args):
         "run",
         "--port",
         "8080" if is_daemon_in_container else args.port,
+        # Inside the container the daemon must bind all interfaces so the
+        # published port can reach it; the container port publish above controls
+        # host-side exposure. Outside a container, honor the requested host
+        # (loopback by default).
         "--host",
-        ActiveConfig().host if is_daemon_in_container else args.host,
+        get_wildcard_host() if is_daemon_in_container else args.host,
     ]
     exec_cmd(daemon_cmd)
 

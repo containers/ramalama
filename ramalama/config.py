@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Literal, Mapping, Optional
 
 from ramalama.cli_arg_normalization import normalize_pull_arg
-from ramalama.common import apple_vm, available, version_tagged_image
+from ramalama.common import apple_vm, available, host_available, in_toolbox, version_tagged_image
 from ramalama.config_types import SUPPORTED_ENGINES, SUPPORTED_RUNTIMES
 from ramalama.layered_config import LayeredMixin
 from ramalama.log_levels import LogLevel, coerce_log_level
@@ -58,7 +58,28 @@ DEFAULT_CONFIG_DIRS = _get_default_config_dirs()
 
 
 def get_default_host() -> str:
-    """Return :: on dual-stack/IPv6 systems, 0.0.0.0 on IPv4-only."""
+    """Return the default bind host.
+
+    Defaults to the IPv4 loopback address so a served model is only reachable
+    from the local machine. Binding to all interfaces (and thus exposing the
+    model to the network) is opt-in via ``--host 0.0.0.0`` / ``--host ::``.
+    """
+    return "127.0.0.1"
+
+
+def get_wildcard_host() -> str:
+    """Return a wildcard bind host reachable from other containers.
+
+    Internal helper servers (RAG embedding/docling/caption, sandbox model
+    server) are reached from a sibling container via ``host.containers.internal``
+    / ``host.docker.internal``, which a loopback-bound port cannot serve. They
+    bind the wildcard address so the sibling can connect. This is a stopgap
+    until those helpers move onto a private container network.
+
+    Probe for IPv6 support at runtime: return ``::`` on dual-stack/IPv6 systems
+    (binds both IPv4 and IPv6) and ``0.0.0.0`` on IPv4-only systems, since ``::``
+    cannot be bound when the kernel lacks IPv6.
+    """
     import socket
 
     try:
@@ -70,7 +91,12 @@ def get_default_host() -> str:
 
 def get_default_engine() -> Optional[SUPPORTED_ENGINES]:
     """Determine the container manager to use based on environment and platform."""
-    if os.path.exists("/run/.toolboxenv"):
+    if in_toolbox():
+        if available("flatpak-spawn"):
+            if host_available("podman"):
+                return "podman"
+            if host_available("docker"):
+                return "docker"
         return None
 
     if available("podman"):
@@ -308,12 +334,26 @@ def load_env_config(env: Optional[Mapping[str, str]] = None) -> dict[str, Any]:
     return config
 
 
+def _default_tmpdir() -> str:
+    """Return the default temp directory.
+
+    In a toolbox, /var/tmp is not shared with the host, so container engine
+    commands dispatched via flatpak-spawn --host cannot access files there.
+    Use a directory under $HOME which is always shared.
+    """
+    if in_toolbox():
+        tmpdir = os.path.join(os.path.expanduser("~"), ".cache", "ramalama", "tmp")
+        os.makedirs(tmpdir, exist_ok=True)
+        return tmpdir
+    return DEFAULT_TMPDIR
+
+
 def ensure_tmpdir(config: Optional[Config] = None) -> None:
     """Set ``TMPDIR`` for tempfile-backed operations.
 
     When ``tempdir`` is set in ``ramalama.conf``, it overrides the host ``TMPDIR``.
     Otherwise the host value is kept. On non-Windows systems, if neither is set,
-    ``/var/tmp`` is used.
+    ``/var/tmp`` is used (or ``~/.cache/ramalama/tmp`` in a toolbox).
     """
     if sys.platform == "win32":
         return
@@ -324,7 +364,7 @@ def ensure_tmpdir(config: Optional[Config] = None) -> None:
             tempfile.tempdir = None
             return
     if not os.environ.get("TMPDIR", "").strip():
-        os.environ["TMPDIR"] = DEFAULT_TMPDIR
+        os.environ["TMPDIR"] = _default_tmpdir()
         tempfile.tempdir = None
 
 

@@ -175,7 +175,8 @@ class TestEngine(unittest.TestCase):
         "none-host",
     ],
 )
-def test_add_port_with_host(host, port, expected_port_arg):
+@patch("ramalama.engine.platform.system", return_value="Linux")
+def test_add_port_with_host(mock_system, host, port, expected_port_arg):
     base_args = Namespace(
         engine="podman",
         debug=False,
@@ -188,6 +189,39 @@ def test_add_port_with_host(host, port, expected_port_arg):
         port=port,
     )
     engine = ramalama.engine.Engine(base_args)
+    p_index = engine.exec_args.index("-p")
+    assert engine.exec_args[p_index + 1] == expected_port_arg
+
+
+@pytest.mark.parametrize("system", ["Darwin", "Windows"])
+@pytest.mark.parametrize(
+    "host, port, expected_port_arg",
+    [
+        # On VM-backed engines a loopback host must publish on all interfaces
+        # inside the VM so the host proxy (e.g. gvproxy) can reach it.
+        ("127.0.0.1", "8080", "8080:8080"),
+        ("::1", "8080", "8080:8080"),
+        ("localhost", "8080", "8080:8080"),
+        # Non-loopback hosts keep their explicit prefix.
+        ("::", "8080", "8080:8080"),
+        ("192.168.1.100", "8080", "192.168.1.100:8080:8080"),
+    ],
+    ids=["ipv4-loopback", "ipv6-loopback", "localhost", "ipv6-wildcard", "explicit-ip"],
+)
+def test_add_port_with_host_on_vm_engine(system, host, port, expected_port_arg):
+    base_args = Namespace(
+        engine="podman",
+        debug=False,
+        dryrun=False,
+        pull="never",
+        image="test-image:latest",
+        quiet=True,
+        selinux=False,
+        host=host,
+        port=port,
+    )
+    with patch("ramalama.engine.platform.system", return_value=system):
+        engine = ramalama.engine.Engine(base_args)
     p_index = engine.exec_args.index("-p")
     assert engine.exec_args[p_index + 1] == expected_port_arg
 

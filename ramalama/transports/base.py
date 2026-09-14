@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 from ramalama import chat
 from ramalama.common import ContainerEntryPoint
 from ramalama.compose import Compose
-from ramalama.config import ActiveConfig
+from ramalama.config import ActiveConfig, get_wildcard_host
 from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.model_inspect.base_info import ModelInfoBase
@@ -466,11 +466,17 @@ class Transport(TransportBase):
                     [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
                 )
 
-    def serve_nonblocking(self, args, cmd: list[str]) -> Optional[subprocess.Popen]:
+    def serve_nonblocking(self, args, cmd: list[str], expose_to_containers: bool = False) -> Optional[subprocess.Popen]:
         if args.container:
             args.name = self.get_container_name(args)
 
-        args.host = ActiveConfig().host
+        # Helper servers that a sibling container reaches via
+        # host.containers.internal must bind the wildcard; everything else
+        # honors the configured host (loopback by default).
+        if expose_to_containers:
+            args.host = get_wildcard_host()
+        else:
+            args.host = getattr(args, "host", None) or ActiveConfig().host
         args.detach = True
 
         set_accel_env_vars()
