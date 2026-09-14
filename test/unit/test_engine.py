@@ -2,7 +2,7 @@ import unittest
 from argparse import Namespace
 from http.client import HTTPException
 from json import JSONDecodeError
-from subprocess import TimeoutExpired
+from subprocess import CalledProcessError, TimeoutExpired
 from unittest.mock import Mock, patch
 
 import pytest
@@ -422,6 +422,101 @@ def test_wait_for_healthy_success():
 
     args = Namespace(name="thecontainer", debug=False)
     ramalama.engine.wait_for_healthy(args, healthy_func, timeout=1)
+
+
+@patch("ramalama.engine.run_cmd")
+def test_start_container_podman(mock_run_cmd):
+    args = Namespace(engine="podman", ignore=False)
+    ramalama.engine.start_container(args, "mymodel")
+    mock_run_cmd.assert_called_once_with(["podman", "start", "mymodel"], ignore_stderr=False)
+
+
+@patch("ramalama.engine.run_cmd")
+def test_start_container_docker(mock_run_cmd):
+    args = Namespace(engine="docker", ignore=False)
+    ramalama.engine.start_container(args, "mymodel")
+    mock_run_cmd.assert_called_once_with(["docker", "start", "mymodel"], ignore_stderr=False)
+
+
+def test_start_container_requires_name():
+    args = Namespace(engine="podman", ignore=False)
+    with pytest.raises(ValueError, match="must specify a container name"):
+        ramalama.engine.start_container(args, "")
+
+
+def test_start_container_requires_engine():
+    args = Namespace(engine=None, ignore=False)
+    with pytest.raises(ValueError, match="no container manager"):
+        ramalama.engine.start_container(args, "mymodel")
+
+
+@patch("ramalama.engine.run_cmd", side_effect=CalledProcessError(1, "start"))
+def test_start_container_ignore_missing(mock_run_cmd):
+    args = Namespace(engine="podman", ignore=True)
+    ramalama.engine.start_container(args, "missing")  # must not raise
+
+
+@patch("ramalama.engine.run_cmd", side_effect=CalledProcessError(1, "start"))
+def test_start_container_missing_raises(mock_run_cmd):
+    args = Namespace(engine="podman", ignore=False)
+    with pytest.raises(CalledProcessError):
+        ramalama.engine.start_container(args, "missing")
+
+
+def test_stop_cli_accepts_multiple_names():
+    from ramalama.cli import get_parser
+
+    args = get_parser().parse_args(["stop", "a", "b"])
+    assert args.NAME == ["a", "b"]
+
+
+def test_start_cli_accepts_multiple_names():
+    from ramalama.cli import get_parser
+
+    args = get_parser().parse_args(["start", "a", "b"])
+    assert args.NAME == ["a", "b"]
+
+
+@patch("ramalama.engine.stop_container")
+def test_stop_cli_stops_each_name(mock_stop):
+    from ramalama import cli as ramalama_cli
+
+    args = Namespace(all=False, ignore=False, NAME=["a", "b"])
+    ramalama_cli.stop_container(args)
+    assert mock_stop.call_count == 2
+
+
+def test_stop_cli_requires_name():
+    from ramalama import cli as ramalama_cli
+
+    args = Namespace(all=False, ignore=False, NAME=[])
+    with pytest.raises(ValueError, match="must specify a container name"):
+        ramalama_cli.stop_container(args)
+
+
+def test_stop_cli_all_with_names_rejected():
+    from ramalama import cli as ramalama_cli
+
+    args = Namespace(all=True, ignore=False, NAME=["a"])
+    with pytest.raises(ValueError, match="not allowed"):
+        ramalama_cli.stop_container(args)
+
+
+@patch("ramalama.engine.start_container")
+def test_start_cli_starts_each_name(mock_start):
+    from ramalama import cli as ramalama_cli
+
+    args = Namespace(ignore=False, NAME=["a", "b"])
+    ramalama_cli.start_container(args)
+    assert mock_start.call_count == 2
+
+
+def test_start_cli_requires_name():
+    from ramalama import cli as ramalama_cli
+
+    args = Namespace(ignore=False, NAME=[])
+    with pytest.raises(ValueError, match="must specify a container name"):
+        ramalama_cli.start_container(args)
 
 
 if __name__ == '__main__':
