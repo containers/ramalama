@@ -1094,8 +1094,13 @@ def _rag_args(args):
         rag_args.model_host = "host.containers.internal"
     else:
         rag_args.model_host = f"host.{args.engine}.internal"
-    # If --name was specified, use it for the RAG proxy
-    args.name = None
+    # If --name was specified, use it for the RAG proxy and suffix helper
+    # containers. Otherwise generate one base name for the whole stack.
+    from ramalama.rag import RAG_ROLE_MODEL, rag_stack_base_name, rag_stack_container_name
+
+    base_name = rag_stack_base_name(getattr(args, "name", None))
+    rag_args.name = base_name
+    args.name = rag_stack_container_name(base_name, RAG_ROLE_MODEL)
     # If --port was specified, use it for the RAG proxy, and
     # select a random port for the model
     args.port = None

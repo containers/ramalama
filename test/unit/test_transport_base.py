@@ -230,6 +230,39 @@ def test_rag_args_clears_port_override():
     assert rag_args.port == "8080"
     # model_port on the rag_args should match the model's assigned port
     assert rag_args.model_port == random_port
+    # --name is kept on the RAG proxy; the model container gets a -model suffix
+    assert rag_args.name == "myname"
+    assert args.name == "myname-model"
+
+
+def test_rag_args_generates_shared_stack_name():
+    """When --name is omitted, generate one base and suffix the model container."""
+    from ramalama.cli import _rag_args
+
+    args = Namespace(
+        port="8080",
+        rag="localhost/rag-data:latest",
+        rag_image="localhost/rag-image:latest",
+        engine="podman",
+        name=None,
+        debug=False,
+        api="",
+    )
+
+    random_port = "12345"
+    mock_compute_ports = Mock(return_value=[int(random_port)])
+    mock_socket_inst = MagicMock()
+    mock_socket_inst.bind = MagicMock(side_effect=[None])
+
+    with (
+        patch('ramalama.transports.base.compute_ports', mock_compute_ports),
+        patch('socket.socket', return_value=mock_socket_inst),
+    ):
+        rag_args = _rag_args(args)
+
+    assert rag_args.name.startswith("ramalama-")
+    unique = rag_args.name.removeprefix("ramalama-")
+    assert args.name == f"ramalama-model-{unique}"
 
 
 class TestMLXRuntime:
