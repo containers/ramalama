@@ -1090,10 +1090,9 @@ def _rag_args(args):
     rag_args = copy.copy(args)
     rag_args.MODEL = args.rag
     rag_args.image = args.rag_image
-    if args.engine == "podman":
-        rag_args.model_host = "host.containers.internal"
-    else:
-        rag_args.model_host = f"host.{args.engine}.internal"
+    # model_host is set later by _setup_rag_network to the model server's container
+    # name once the shared private network is created.
+    rag_args.model_host = None
     # If --name was specified, use it for the RAG proxy
     args.name = None
     # If --port was specified, use it for the RAG proxy, and

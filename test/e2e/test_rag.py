@@ -35,6 +35,34 @@ WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
             id="check --network is not set by default"
         ),
         pytest.param(
+            HTTP_FILE, [], True, r".*--network ramalama-net-\w+",
+            id="check pipeline containers join a private network"
+        ),
+        pytest.param(
+            HTTP_FILE, [], True, r".*--api-url http://ramalama-\w+:\d+",
+            id="check doc2rag reaches the VLM server by container name"
+        ),
+        pytest.param(
+            HTTP_FILE, [], True, r".*--embed-url http://ramalama-\w+:\d+",
+            id="check doc2rag reaches the embedding server by container name"
+        ),
+        pytest.param(
+            HTTP_FILE, [], False, r".*host\.containers\.internal",
+            id="check host.containers.internal is no longer used"
+        ),
+        pytest.param(
+            HTTP_FILE, ["--skip-cleanup"], True, f".*doc2rag .*/output {HTTP_FILE}",
+            id="check --skip-cleanup is accepted"
+        ),
+        pytest.param(
+            HTTP_FILE, ["--network", "mynet"], True, r".*--network mynet",
+            id="check user-supplied --network is used"
+        ),
+        pytest.param(
+            HTTP_FILE, ["--network", "mynet"], False, r".*--network ramalama-net-\w+",
+            id="check no private network is created when --network is given"
+        ),
+        pytest.param(
             HTTP_FILE, [], True, f".*doc2rag .*/output {HTTP_FILE}",
             id="check with http file"
         ),
@@ -214,6 +242,26 @@ def test_rag_error_when_file_is_missing():
         pytest.param(
             OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*rag_framework serve --port \d+",
             id="check rag_framework"
+        ),
+        pytest.param(
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*--network ramalama-net-\w+",
+            id="check pipeline containers join a private network"
+        ),
+        pytest.param(
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*--model-host ramalama-\w+",
+            id="check rag proxy reaches the model server by container name"
+        ),
+        pytest.param(
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], True, r".*--embed-url http://ramalama-\w+:\d+",
+            id="check rag proxy reaches the embedding server by container name"
+        ),
+        pytest.param(
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], False, r".*host\.containers\.internal",
+            id="check host.containers.internal is no longer used"
+        ),
+        pytest.param(
+            OLLAMA_MODEL, ["--rag", RAG_MODEL], False, r".*-p 0\.0\.0\.0:",
+            id="check helper servers are not published on all interfaces"
         ),
         pytest.param(
             OLLAMA_MODEL, ["--rag", RAG_MODEL], True,
