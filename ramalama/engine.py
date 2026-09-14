@@ -443,7 +443,11 @@ def stop_container(args, name: str, remove: bool = False):
             pass
 
     if pod != "":
-        conman_args = [*engine_cmd(conman), "pod", "rm", "-t=0", "--ignore", "--force", pod]
+        if remove:
+            conman_args = [*engine_cmd(conman), "pod", "rm", "-t=0", "--ignore", "--force", pod]
+        else:
+            # stop (don't remove) so the pod survives a stop/start round trip
+            conman_args = [*engine_cmd(conman), "pod", "stop", "-t=0", "--ignore", pod]
     else:
         conman_args = [*engine_cmd(conman), "stop", "-t=0"]
         if args.ignore:
@@ -488,6 +492,10 @@ def create_network(args) -> str:
     run the network is not created, but a name is still returned so the
     generated command reflects it.
     """
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
+        raise ValueError("no container manager (Podman, Docker) found")
+
     name = genname("ramalama-net-")
     if not getattr(args, "dryrun", False):
         run_cmd([*engine_cmd(conman), "network", "create", name])
@@ -519,7 +527,7 @@ def remove_network(args, name: str) -> None:
         logger.debug(f"Failed to remove network {name}: {e}")
 
 
-def start_container(args, name: str):
+def start_container(args, name: str) -> None:
     if not name:
         raise ValueError("must specify a container name")
     conman = str(args.engine) if args.engine is not None else None

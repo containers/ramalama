@@ -463,6 +463,24 @@ def test_start_container_missing_raises(mock_run_cmd):
         ramalama.engine.start_container(args, "missing")
 
 
+@patch("ramalama.engine.run_cmd")
+@patch("ramalama.engine.inspect", return_value="test-pod")
+def test_stop_container_pod_stop_without_remove(mock_inspect, mock_run_cmd):
+    args = Namespace(engine="podman", ignore=False)
+    ramalama.engine.stop_container(args, "mymodel")
+    mock_run_cmd.assert_called_once_with(["podman", "pod", "stop", "-t=0", "--ignore", "test-pod"], ignore_stderr=False)
+
+
+@patch("ramalama.engine.run_cmd")
+@patch("ramalama.engine.inspect", return_value="test-pod")
+def test_stop_container_pod_rm_with_remove(mock_inspect, mock_run_cmd):
+    args = Namespace(engine="podman", ignore=False)
+    ramalama.engine.stop_container(args, "mymodel", remove=True)
+    mock_run_cmd.assert_called_once_with(
+        ["podman", "pod", "rm", "-t=0", "--ignore", "--force", "test-pod"], ignore_stderr=False
+    )
+
+
 def test_stop_cli_accepts_multiple_names():
     from ramalama.cli import get_parser
 

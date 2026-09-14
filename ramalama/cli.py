@@ -1149,7 +1149,7 @@ def stop_container(args):
         engine.stop_container(args, name)
 
 
-def start_parser(subparsers):
+def start_parser(subparsers) -> None:
     parser = subparsers.add_parser("start", help="start named container that is running AI Model")
     parser.add_argument(
         "--ignore", action="store_true", help="ignore errors when specified RamaLama container is missing"
@@ -1158,7 +1158,7 @@ def start_parser(subparsers):
     parser.set_defaults(func=start_container)
 
 
-def start_container(args):
+def start_container(args) -> None:
     from ramalama import engine
 
     if len(args.NAME) == 0:
