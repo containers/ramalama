@@ -34,22 +34,22 @@ the execution. URL support means if a model is on a web site or even on your loc
 ## OPTIONS
 
 
-[//]: # (BEGIN included file options/api.md)
+[//]: # (BEGIN included file options\api.md)
 #### **--api**=**llama-stack** | none**
 Unified API layer for Inference, RAG, Agents, Tools, Safety, Evals, and Telemetry.(default: none)
 The default can be overridden in the `ramalama.conf` file.
 
-[//]: # (END   included file options/api.md)
+[//]: # (END   included file options\api.md)
 
 
-[//]: # (BEGIN included file options/authfile.md)
+[//]: # (BEGIN included file options\authfile.md)
 #### **--authfile**=*path*
 Path to the authentication file for OCI registries.
 
-[//]: # (END   included file options/authfile.md)
+[//]: # (END   included file options\authfile.md)
 
 
-[//]: # (BEGIN included file options/backend.md)
+[//]: # (BEGIN included file options\backend.md)
 #### **--backend**=*auto* | vulkan | rocm | cuda | sycl | openvino | cann | musa
 
 GPU backend to use for inference (default: auto).
@@ -96,33 +96,33 @@ ramalama run --backend vulkan granite
 ramalama run --backend rocm granite
 ```
 
-[//]: # (END   included file options/backend.md)
+[//]: # (END   included file options\backend.md)
 
 
-[//]: # (BEGIN included file options/cache-reuse.md)
+[//]: # (BEGIN included file options\cache-reuse.md)
 #### **--cache-reuse**=*BYTES*
 Minimum chunk size (in bytes) to attempt reusing from the cache via KV shifting.
 When omitted, llama-server uses its built-in default.
 
-[//]: # (END   included file options/cache-reuse.md)
+[//]: # (END   included file options\cache-reuse.md)
 
 
-[//]: # (BEGIN included file options/color.md)
+[//]: # (BEGIN included file options\color.md)
 #### **--color**
 Indicate whether to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)
 
-[//]: # (END   included file options/color.md)
+[//]: # (END   included file options\color.md)
 
 
-[//]: # (BEGIN included file options/ctx-size.md)
+[//]: # (BEGIN included file options\ctx-size.md)
 #### **--ctx-size**, **-c**
 size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 0, 0 = loaded from model)
 
-[//]: # (END   included file options/ctx-size.md)
+[//]: # (END   included file options\ctx-size.md)
 
 
-[//]: # (BEGIN included file options/device.md)
+[//]: # (BEGIN included file options\device.md)
 #### **--device**
 Add a host device to the container. Optional permissions parameter can
 be used to specify device permissions by combining r for read, w for
@@ -135,19 +135,19 @@ The device specification is passed directly to the underlying container engine. 
 Pass '--device=none' to explicitly add no device to the container, e.g., for
 running a CPU-only performance comparison.
 
-[//]: # (END   included file options/device.md)
+[//]: # (END   included file options\device.md)
 
 
-[//]: # (BEGIN included file options/engine-args.md)
+[//]: # (BEGIN included file options\engine-args.md)
 #### **--engine-args**="*args*"
 Add *args* to the **podman** or **docker** invocation (before the container image), after RamaLama-generated options and model bind mounts.
 The option may be specified multiple times; each value is shell-split and all tokens are passed to the engine in order.
 Use for extra **--mount** flags (for example multimodal projector files) or other engine-specific options. Shell-quoting rules match **--runtime-args**.
 
-[//]: # (END   included file options/engine-args.md)
+[//]: # (END   included file options\engine-args.md)
 
 
-[//]: # (BEGIN included file options/env.md)
+[//]: # (BEGIN included file options\env.md)
 #### **--env**=
 
 Set environment variables inside the container.
@@ -158,17 +158,17 @@ specified without a value, the container engine checks the host environment
 for a value and sets the variable only if it is set on the host.
 
 
-[//]: # (END   included file options/env.md)
+[//]: # (END   included file options\env.md)
 
 
-[//]: # (BEGIN included file options/help.md)
+[//]: # (BEGIN included file options\help.md)
 #### **--help**, **-h**
 Show this help message and exit
 
-[//]: # (END   included file options/help.md)
+[//]: # (END   included file options\help.md)
 
 
-[//]: # (BEGIN included file options/image.md)
+[//]: # (BEGIN included file options\image.md)
 #### **--image**=IMAGE
 OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers and the selected `--backend`.
@@ -205,41 +205,41 @@ RamaLama automatically detects the image type and adjusts the container CLI acco
 ramalama run --image ghcr.io/ggml-org/llama.cpp:full-vulkan MODEL
 ```
 
-[//]: # (END   included file options/image.md)
+[//]: # (END   included file options\image.md)
 
 
-[//]: # (BEGIN included file options/interactive.md)
+[//]: # (BEGIN included file options\interactive.md)
 #### **--interactive**, **-i**
 Continue to interactive chat mode after processing stdin or prompt arguments.
 By default, when arguments or piped input are provided, the command exits after
 displaying the response. This flag allows you to continue chatting interactively.
 
-[//]: # (END   included file options/interactive.md)
+[//]: # (END   included file options\interactive.md)
 
 
-[//]: # (BEGIN included file options/keep-groups.md)
+[//]: # (BEGIN included file options\keep-groups.md)
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)
 If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
 
-[//]: # (END   included file options/keep-groups.md)
+[//]: # (END   included file options\keep-groups.md)
 
 
-[//]: # (BEGIN included file options/keepalive.md)
+[//]: # (BEGIN included file options\keepalive.md)
 #### **--keepalive**
 duration to keep a model loaded (e.g. 5m)
 
-[//]: # (END   included file options/keepalive.md)
+[//]: # (END   included file options\keepalive.md)
 
 
-[//]: # (BEGIN included file options/logfile.md)
+[//]: # (BEGIN included file options\logfile.md)
 #### **--logfile**=*path*
 Log output to a file
 
-[//]: # (END   included file options/logfile.md)
+[//]: # (END   included file options\logfile.md)
 
 
-[//]: # (BEGIN included file options/max-tokens.md)
+[//]: # (BEGIN included file options\max-tokens.md)
 #### **--max-tokens**=*integer*
 Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
 This parameter is mapped to the appropriate runtime-specific parameter:
@@ -247,19 +247,19 @@ This parameter is mapped to the appropriate runtime-specific parameter:
 - MLX: `--max-tokens` parameter
 - vLLM: `--max-model-len` parameter (mapped via `ctx_size`)
 
-[//]: # (END   included file options/max-tokens.md)
+[//]: # (END   included file options\max-tokens.md)
 
 
-[//]: # (BEGIN included file options/mcp.md)
+[//]: # (BEGIN included file options\mcp.md)
 #### **--mcp**=SERVER_URL
 MCP (Model Context Protocol) servers to use for enhanced tool-calling capabilities.
 This option can be specified multiple times to connect to multiple MCP servers.
 Each server provides tools that can be automatically invoked during chat conversations.
 
-[//]: # (END   included file options/mcp.md)
+[//]: # (END   included file options\mcp.md)
 
 
-[//]: # (BEGIN included file options/model-draft.md)
+[//]: # (BEGIN included file options\model-draft.md)
 #### **--model-draft**
 
 A draft model is a smaller, faster model that helps accelerate the decoding
@@ -272,39 +272,39 @@ times the larger model needs to be invoked.
 Use --runtime-args to pass the other draft model related parameters.
 Make sure the sampling parameters like top_k on the web UI are set correctly.
 
-[//]: # (END   included file options/model-draft.md)
+[//]: # (END   included file options\model-draft.md)
 
 
-[//]: # (BEGIN included file options/name.md)
+[//]: # (BEGIN included file options\name.md)
 #### **--name**, **-n**
 Name of the container to run the Model in.
 
-[//]: # (END   included file options/name.md)
+[//]: # (END   included file options\name.md)
 
 
-[//]: # (BEGIN included file options/ncmoe.md)
+[//]: # (BEGIN included file options\ncmoe.md)
 #### **--ncmoe**
 Keep the Mixture of Experts (MoE) weights of the first N layers in the CPU.
 
-[//]: # (END   included file options/ncmoe.md)
+[//]: # (END   included file options\ncmoe.md)
 
 
-[//]: # (BEGIN included file options/network.md)
+[//]: # (BEGIN included file options\network.md)
 #### **--network**=*none*
 set the network mode for the container
 
-[//]: # (END   included file options/network.md)
+[//]: # (END   included file options\network.md)
 
 
-[//]: # (BEGIN included file options/ngl.md)
+[//]: # (BEGIN included file options\ngl.md)
 #### **--ngl**
 Number of layers to store in VRAM: a number, `auto`, or `all`.
 When omitted, llama-server defaults to `auto`.
 
-[//]: # (END   included file options/ngl.md)
+[//]: # (END   included file options\ngl.md)
 
 
-[//]: # (BEGIN included file options/oci-runtime.md)
+[//]: # (BEGIN included file options\oci-runtime.md)
 #### **--oci-runtime**
 
 Override the default OCI runtime used to launch the container. Container
@@ -314,7 +314,7 @@ use. Using this option RamaLama will override these defaults.
 On Nvidia based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
 
-[//]: # (END   included file options/oci-runtime.md)
+[//]: # (END   included file options\oci-runtime.md)
 
 #### **--port**, **-p**=*port*
 Port for AI Model server to listen on (default: 8080)
@@ -325,7 +325,7 @@ The default can be overridden in the `ramalama.conf` file.
 Prefix for the user prompt (default: 🦭 > )
 
 
-[//]: # (BEGIN included file options/privileged.md)
+[//]: # (BEGIN included file options\privileged.md)
 #### **--privileged**
 By default, RamaLama containers are unprivileged (=false) and cannot, for
 example, modify parts of the operating system. This is because by de‐
@@ -344,10 +344,10 @@ confinement.
 Containers running in a user namespace (e.g., rootless containers) can‐
 not have more privileges than the user that launched them.
 
-[//]: # (END   included file options/privileged.md)
+[//]: # (END   included file options\privileged.md)
 
 
-[//]: # (BEGIN included file options/pull.md)
+[//]: # (BEGIN included file options\pull.md)
 #### **--pull**=*policy*
 Pull image policy. The default is **missing**.
 
@@ -356,10 +356,10 @@ Pull image policy. The default is **missing**.
 - **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
 - **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
-[//]: # (END   included file options/pull.md)
+[//]: # (END   included file options\pull.md)
 
 
-[//]: # (BEGIN included file options/rag-pair.md)
+[//]: # (BEGIN included file options\rag-pair.md)
 #### **--rag**=
 Specify path to Retrieval-Augmented Generation (RAG) database or an OCI Image containing a RAG database
 
@@ -369,72 +369,72 @@ Note: RAG support requires AI Models be run within containers, --nocontainer not
 The image to use to process the RAG database specified by the `--rag` option. The image must contain the `/usr/bin/rag_framework` executable, which
 will create a proxy which embellishes client requests with RAG data before passing them on to the LLM, and returns the responses.
 
-[//]: # (END   included file options/rag-pair.md)
+[//]: # (END   included file options\rag-pair.md)
 
 
-[//]: # (BEGIN included file options/runtime-args.md)
+[//]: # (BEGIN included file options\runtime-args.md)
 #### **--runtime-args**="*args*"
 Add *args* to the runtime (llama.cpp or vllm) invocation.
 
-[//]: # (END   included file options/runtime-args.md)
+[//]: # (END   included file options\runtime-args.md)
 
 
-[//]: # (BEGIN included file options/seed.md)
+[//]: # (BEGIN included file options\seed.md)
 #### **--seed**=
 Specify a seed rather than using a random seed for model interaction.
 
-[//]: # (END   included file options/seed.md)
+[//]: # (END   included file options\seed.md)
 
 
-[//]: # (BEGIN included file options/selinux.md)
+[//]: # (BEGIN included file options\selinux.md)
 #### **--selinux**=*true*
 Enable SELinux container separation (default: `true`)
 
-[//]: # (END   included file options/selinux.md)
+[//]: # (END   included file options\selinux.md)
 
 
-[//]: # (BEGIN included file options/spec-draft-n-max.md)
+[//]: # (BEGIN included file options\spec-draft-n-max.md)
 #### **--spec-draft-n-max**=*N*
 Maximum number of tokens to draft per speculative decoding step (default: 3).
 
-[//]: # (END   included file options/spec-draft-n-max.md)
+[//]: # (END   included file options\spec-draft-n-max.md)
 
 
-[//]: # (BEGIN included file options/spec-draft-n-min.md)
+[//]: # (BEGIN included file options\spec-draft-n-min.md)
 #### **--spec-draft-n-min**=*N*
 Minimum number of draft tokens to use for speculative decoding (default: 0).
 
-[//]: # (END   included file options/spec-draft-n-min.md)
+[//]: # (END   included file options\spec-draft-n-min.md)
 
 
-[//]: # (BEGIN included file options/spec-draft-p-min.md)
+[//]: # (BEGIN included file options\spec-draft-p-min.md)
 #### **--spec-draft-p-min**=*P*
 Minimum speculative decoding probability, greedy threshold (default: 0.0).
 
-[//]: # (END   included file options/spec-draft-p-min.md)
+[//]: # (END   included file options\spec-draft-p-min.md)
 
 
-[//]: # (BEGIN included file options/spec-type.md)
+[//]: # (BEGIN included file options\spec-type.md)
 #### **--spec-type**=*TYPES*
 Comma-separated list of speculative decoding types to enable.
 Available types: draft-simple, draft-eagle3, draft-mtp, ngram-simple,
 ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache.
 When omitted, speculative decoding is disabled.
 
-[//]: # (END   included file options/spec-type.md)
+[//]: # (END   included file options\spec-type.md)
 
 
-[//]: # (BEGIN included file options/summarize-after.md)
+[//]: # (BEGIN included file options\summarize-after.md)
 #### **--summarize-after**=*N*
 Automatically summarize conversation history after N messages to prevent context growth.
 When enabled, ramalama will periodically condense older messages into a summary,
 keeping only recent messages and the summary. This prevents the context from growing
 indefinitely during long chat sessions. Set to 0 to disable (default: 4).
 
-[//]: # (END   included file options/summarize-after.md)
+[//]: # (END   included file options\summarize-after.md)
 
 
-[//]: # (BEGIN included file options/temp.md)
+[//]: # (BEGIN included file options\temp.md)
 #### **--temp**="0.8"
 Temperature of the response from the AI Model.
 llama.cpp explains this as:
@@ -445,31 +445,31 @@ llama.cpp explains this as:
 
     Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories.
 
-[//]: # (END   included file options/temp.md)
+[//]: # (END   included file options\temp.md)
 
 
-[//]: # (BEGIN included file options/thinking.md)
+[//]: # (BEGIN included file options\thinking.md)
 #### **--thinking**=*BOOL*
 Enable or disable thinking mode in reasoning models.
 Maps to `--reasoning on` or `--reasoning off` in llama-server.
 When omitted, llama-server defaults to `auto`.
 
-[//]: # (END   included file options/thinking.md)
+[//]: # (END   included file options\thinking.md)
 
 
-[//]: # (BEGIN included file options/threads.md)
+[//]: # (BEGIN included file options\threads.md)
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.
 The default is to use half the cores when more than 4 cores are available; otherwise, the default is 4 threads.
 
-[//]: # (END   included file options/threads.md)
+[//]: # (END   included file options\threads.md)
 
 
-[//]: # (BEGIN included file options/tls-verify.md)
+[//]: # (BEGIN included file options\tls-verify.md)
 #### **--tls-verify**=*true*
 Require HTTPS and verify certificates when contacting OCI registries
 
-[//]: # (END   included file options/tls-verify.md)
+[//]: # (END   included file options\tls-verify.md)
 
 ## DESCRIPTION
 Run specified AI Model as a chat bot. RamaLama pulls specified AI Model from

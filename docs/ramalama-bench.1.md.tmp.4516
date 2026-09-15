@@ -1,10 +1,10 @@
-% ramalama-perplexity 1
+% ramalama-bench 1
 
 ## NAME
-ramalama\-perplexity - calculate the perplexity value of an AI Model
+ramalama\-bench - benchmark specified AI Model
 
 ## SYNOPSIS
-**ramalama perplexity** [*options*] *model* [arg ...]
+**ramalama bench** [*options*] *model* [arg ...]
 
 
 [//]: # (BEGIN included file options/model-transports.md)
@@ -75,23 +75,16 @@ RAMALAMA_BACKEND environment variable.
 Examples:
 ```
 # Use auto-detection (default)
-ramalama perplexity granite
+ramalama bench granite
 
 # Force Vulkan backend
-ramalama perplexity --backend vulkan granite
+ramalama bench --backend vulkan granite
 
 # Force ROCm backend on AMD GPU
-ramalama perplexity --backend rocm granite
+ramalama bench --backend rocm granite
 ```
 
 [//]: # (END   included file options\backend.md)
-
-
-[//]: # (BEGIN included file options\ctx-size.md)
-#### **--ctx-size**, **-c**
-size of the prompt context. This option is also available as **--max-model-len**. Applies to llama.cpp and vllm regardless of alias (default: 0, 0 = loaded from model)
-
-[//]: # (END   included file options\ctx-size.md)
 
 
 [//]: # (BEGIN included file options\device.md)
@@ -132,8 +125,12 @@ for a value and sets the variable only if it is set on the host.
 
 [//]: # (END   included file options\env.md)
 
-#### **--file**
-File containing the sample prompt - see also [get-wikitext-2.sh](https://github.com/ggml-org/llama.cpp/blob/master/scripts/get-wikitext-2.sh)
+
+[//]: # (BEGIN included file options\format.md)
+#### **--format**
+Set the output format of the benchmark results. Options include json and table (default: table).
+
+[//]: # (END   included file options\format.md)
 
 
 [//]: # (BEGIN included file options\help.md)
@@ -149,7 +146,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers and the selected `--backend`.
 For example: `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.24.0 of RamaLama pulls an image with a `:0.24` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.23.0 of RamaLama pulls an image with a `:0.23` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -177,7 +174,7 @@ Upstream llama.cpp "full" images from `ghcr.io/ggml-org/llama.cpp` are also supp
 RamaLama automatically detects the image type and adjusts the container CLI accordingly.
 
 ```
-ramalama perplexity --image ghcr.io/ggml-org/llama.cpp:full-vulkan MODEL
+ramalama bench --image ghcr.io/ggml-org/llama.cpp:full-vulkan MODEL
 ```
 
 [//]: # (END   included file options\image.md)
@@ -189,17 +186,6 @@ pass --group-add keep-groups to podman (default: False)
 If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
 
 [//]: # (END   included file options\keep-groups.md)
-
-
-[//]: # (BEGIN included file options\max-tokens.md)
-#### **--max-tokens**=*integer*
-Maximum number of tokens to generate. Set to 0 for unlimited output (default: 0).
-This parameter is mapped to the appropriate runtime-specific parameter:
-- llama.cpp: `-n` parameter
-- MLX: `--max-tokens` parameter
-- vLLM: `--max-model-len` parameter (mapped via `ctx_size`)
-
-[//]: # (END   included file options\max-tokens.md)
 
 
 [//]: # (BEGIN included file options\name.md)
@@ -299,20 +285,6 @@ Enable SELinux container separation (default: `true`)
 [//]: # (END   included file options\selinux.md)
 
 
-[//]: # (BEGIN included file options\temp.md)
-#### **--temp**="0.8"
-Temperature of the response from the AI Model.
-llama.cpp explains this as:
-
-    The lower the number is, the more deterministic the response.
-
-    The higher the number is the more creative the response is, but more likely to hallucinate when set too high.
-
-    Usage: Lower numbers are good for virtual assistants where we need deterministic responses. Higher numbers are good for roleplay or creative tasks like editing stories.
-
-[//]: # (END   included file options\temp.md)
-
-
 [//]: # (BEGIN included file options\threads.md)
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.
@@ -328,12 +300,12 @@ Require HTTPS and verify certificates when contacting OCI registries
 [//]: # (END   included file options\tls-verify.md)
 
 ## DESCRIPTION
-Calculate the perplexity of an AI Model. Perplexity measures how well the model can predict the next token with lower values being better.
+Benchmark specified AI Model.
 
 ## EXAMPLES
 
 ```
-ramalama perplexity granite3-moe
+ramalama bench granite3-moe
 ```
 
 ## SEE ALSO
