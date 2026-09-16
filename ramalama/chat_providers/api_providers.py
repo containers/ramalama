@@ -4,11 +4,13 @@ from collections.abc import Callable
 from typing import Optional
 
 from ramalama.chat_providers.base import ChatProvider
+from ramalama.chat_providers.litellm import LiteLLMChatProvider
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
 from ramalama.config import ActiveConfig
 
 PROVIDER_API_KEY_RESOLVERS: dict[str, Callable[[], Optional[str]]] = {
     "openai": lambda: ActiveConfig().provider.openai.api_key,
+    "litellm": lambda: ActiveConfig().provider.litellm.api_key,
 }
 
 
@@ -24,7 +26,11 @@ def get_provider_api_key(scheme: str) -> Optional[str]:
 DEFAULT_PROVIDERS = {
     "openai": lambda: OpenAIResponsesChatProvider(
         base_url="https://api.openai.com/v1", api_key=get_provider_api_key("openai")
-    )
+    ),
+    "litellm": lambda: LiteLLMChatProvider(
+        base_url=ActiveConfig().provider.litellm.base_url or "http://localhost:4000",
+        api_key=get_provider_api_key("litellm"),
+    ),
 }
 
 
