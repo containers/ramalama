@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pytest
 
@@ -67,7 +68,9 @@ def test_model_factory_create(input: list[SnapshotFile], expect_error: bool):
         validate_snapshot_files(input)
 
 
-def test_try_convert_existing_chat_template_converts_flat_jinja(tmp_path, monkeypatch):
+def test_try_convert_existing_chat_template_converts_flat_jinja(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     base_path = tmp_path
     global_store = GlobalModelStore(str(base_path))
     model_store = ModelStore(global_store, model_name="sample", model_type="file", model_organization="org")
@@ -118,7 +121,7 @@ def test_try_convert_existing_chat_template_converts_flat_jinja(tmp_path, monkey
     assert converted_file.content == wrap_template_with_messages_loop(original_template).encode("utf-8")
 
 
-def test_local_snapshot_file_binary_download_and_digest(tmp_path):
+def test_local_snapshot_file_binary_download_and_digest(tmp_path: Path) -> None:
     # Use a payload that includes a null byte to ensure we are truly treating this as binary data
     content = b"binary-\x00-test-content"
     expected_digest = generate_sha256_binary(content)
@@ -140,3 +143,79 @@ def test_local_snapshot_file_binary_download_and_digest(tmp_path):
 
     # Assert: digest matches generate_sha256_binary(content)
     assert snapshot_file.hash == expected_digest
+
+
+def test_remove_snapshot_refcounts_blobs_by_hash(tmp_path: Path) -> None:
+    global_store = GlobalModelStore(str(tmp_path))
+    model_store = ModelStore(global_store, model_name="sample", model_type="file", model_organization="org")
+    model_store.ensure_directory_setup()
+
+    shared_hash = "shared-blob"
+    RefJSONFile(
+        hash="snap-a",
+        path=model_store.get_ref_file_path("a"),
+        files=[StoreFile(shared_hash, "model-a.gguf", StoreFileType.GGUF_MODEL)],
+    ).write_to_file()
+    RefJSONFile(
+        hash="snap-b",
+        path=model_store.get_ref_file_path("b"),
+        files=[StoreFile(shared_hash, "renamed-model.gguf", StoreFileType.GGUF_MODEL)],
+    ).write_to_file()
+
+    shared_blob_path = model_store.get_blob_file_path(shared_hash)
+    with open(shared_blob_path, "w") as blob_file:
+        blob_file.write("shared")
+
+    assert model_store.remove_snapshot("a") is True
+    assert os.path.exists(shared_blob_path)
+
+
+def test_remove_snapshot_does_not_refcount_different_hashes_with_same_name(tmp_path: Path) -> None:
+    global_store = GlobalModelStore(str(tmp_path))
+    model_store = ModelStore(global_store, model_name="sample", model_type="file", model_organization="org")
+    model_store.ensure_directory_setup()
+
+    RefJSONFile(
+        hash="snap-a",
+        path=model_store.get_ref_file_path("a"),
+        files=[StoreFile("blob-a", "model.gguf", StoreFileType.GGUF_MODEL)],
+    ).write_to_file()
+    RefJSONFile(
+        hash="snap-b",
+        path=model_store.get_ref_file_path("b"),
+        files=[StoreFile("blob-b", "model.gguf", StoreFileType.GGUF_MODEL)],
+    ).write_to_file()
+
+    blob_a_path = model_store.get_blob_file_path("blob-a")
+    blob_b_path = model_store.get_blob_file_path("blob-b")
+    with open(blob_a_path, "w") as blob_file:
+        blob_file.write("a")
+    with open(blob_b_path, "w") as blob_file:
+        blob_file.write("b")
+
+    assert model_store.remove_snapshot("a") is True
+    assert not os.path.exists(blob_a_path)
+    assert os.path.exists(blob_b_path)
+
+
+def test_remove_snapshot_counts_duplicate_blob_hash_once_per_ref_file(tmp_path: Path) -> None:
+    global_store = GlobalModelStore(str(tmp_path))
+    model_store = ModelStore(global_store, model_name="sample", model_type="file", model_organization="org")
+    model_store.ensure_directory_setup()
+
+    duplicate_hash = "duplicate-blob"
+    RefJSONFile(
+        hash="snap-a",
+        path=model_store.get_ref_file_path("a"),
+        files=[
+            StoreFile(duplicate_hash, "model.gguf", StoreFileType.GGUF_MODEL),
+            StoreFile(duplicate_hash, "renamed-model.gguf", StoreFileType.GGUF_MODEL),
+        ],
+    ).write_to_file()
+
+    duplicate_blob_path = model_store.get_blob_file_path(duplicate_hash)
+    with open(duplicate_blob_path, "w") as blob_file:
+        blob_file.write("duplicate")
+
+    assert model_store.remove_snapshot("a") is True
+    assert not os.path.exists(duplicate_blob_path)
