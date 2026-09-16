@@ -21,6 +21,34 @@ other_file = SnapshotFile(name="other", hash="", header={}, type=SnapshotFileTyp
 
 
 @pytest.mark.parametrize(
+    "snapshot_files",
+    [
+        [gguf_model_file, safetensor_model_file],
+        [gguf_model_file, gguf_model_file, safetensor_model_file],
+        [gguf_model_file, safetensor_model_file, safetensor_model_file],
+    ],
+)
+def test_validate_snapshot_files_rejects_mixed_gguf_and_safetensors(snapshot_files: list[SnapshotFile]):
+    with pytest.raises(ValueError, match="Snapshot must contain only \\.gguf or \\.safetensors model files"):
+        validate_snapshot_files(snapshot_files)
+
+
+@pytest.mark.parametrize(
+    "snapshot_files",
+    [
+        [gguf_model_file],
+        [gguf_model_file, gguf_model_file],
+        [safetensor_model_file],
+        [safetensor_model_file, safetensor_model_file],
+        [chat_template, other_file, gguf_model_file],
+        [chat_template, other_file, safetensor_model_file],
+    ],
+)
+def test_validate_snapshot_files_allows_single_model_format(snapshot_files: list[SnapshotFile]):
+    validate_snapshot_files(snapshot_files)
+
+
+@pytest.mark.parametrize(
     "input,expect_error",
     [
         ([], False),
