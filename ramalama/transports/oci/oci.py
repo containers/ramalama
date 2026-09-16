@@ -339,7 +339,8 @@ class OCI(Transport):
         if args.authfile:
             conman_args.extend([f"--authfile={args.authfile}"])
 
-        self.strategy.pull(self.ref, cmd_args=conman_args)
+        target = getattr(args, "TARGET", None)
+        self.strategy.pull(self.ref, cmd_args=conman_args, target=target)
 
     def remove(self, args) -> bool:
         cmd_args = []

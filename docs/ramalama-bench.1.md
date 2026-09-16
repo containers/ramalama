@@ -30,14 +30,14 @@ URL support means if a model is on a web site or even on your local system, you 
 ## OPTIONS
 
 
-[//]: # (BEGIN included file options\authfile.md)
+[//]: # (BEGIN included file options/authfile.md)
 #### **--authfile**=*path*
 Path to the authentication file for OCI registries.
 
-[//]: # (END   included file options\authfile.md)
+[//]: # (END   included file options/authfile.md)
 
 
-[//]: # (BEGIN included file options\backend.md)
+[//]: # (BEGIN included file options/backend.md)
 #### **--backend**=*auto* | vulkan | rocm | cuda | sycl | openvino | cann | musa
 
 GPU backend to use for inference (default: auto).
@@ -84,10 +84,10 @@ ramalama bench --backend vulkan granite
 ramalama bench --backend rocm granite
 ```
 
-[//]: # (END   included file options\backend.md)
+[//]: # (END   included file options/backend.md)
 
 
-[//]: # (BEGIN included file options\device.md)
+[//]: # (BEGIN included file options/device.md)
 #### **--device**
 Add a host device to the container. Optional permissions parameter can
 be used to specify device permissions by combining r for read, w for
@@ -100,19 +100,19 @@ The device specification is passed directly to the underlying container engine. 
 Pass '--device=none' to explicitly add no device to the container, e.g., for
 running a CPU-only performance comparison.
 
-[//]: # (END   included file options\device.md)
+[//]: # (END   included file options/device.md)
 
 
-[//]: # (BEGIN included file options\engine-args.md)
+[//]: # (BEGIN included file options/engine-args.md)
 #### **--engine-args**="*args*"
 Add *args* to the **podman** or **docker** invocation (before the container image), after RamaLama-generated options and model bind mounts.
 The option may be specified multiple times; each value is shell-split and all tokens are passed to the engine in order.
 Use for extra **--mount** flags (for example multimodal projector files) or other engine-specific options. Shell-quoting rules match **--runtime-args**.
 
-[//]: # (END   included file options\engine-args.md)
+[//]: # (END   included file options/engine-args.md)
 
 
-[//]: # (BEGIN included file options\env.md)
+[//]: # (BEGIN included file options/env.md)
 #### **--env**=
 
 Set environment variables inside the container.
@@ -123,24 +123,24 @@ specified without a value, the container engine checks the host environment
 for a value and sets the variable only if it is set on the host.
 
 
-[//]: # (END   included file options\env.md)
+[//]: # (END   included file options/env.md)
 
 
-[//]: # (BEGIN included file options\format.md)
+[//]: # (BEGIN included file options/format.md)
 #### **--format**
 Set the output format of the benchmark results. Options include json and table (default: table).
 
-[//]: # (END   included file options\format.md)
+[//]: # (END   included file options/format.md)
 
 
-[//]: # (BEGIN included file options\help.md)
+[//]: # (BEGIN included file options/help.md)
 #### **--help**, **-h**
 Show this help message and exit
 
-[//]: # (END   included file options\help.md)
+[//]: # (END   included file options/help.md)
 
 
-[//]: # (BEGIN included file options\image.md)
+[//]: # (BEGIN included file options/image.md)
 #### **--image**=IMAGE
 OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers and the selected `--backend`.
@@ -177,47 +177,47 @@ RamaLama automatically detects the image type and adjusts the container CLI acco
 ramalama bench --image ghcr.io/ggml-org/llama.cpp:full-vulkan MODEL
 ```
 
-[//]: # (END   included file options\image.md)
+[//]: # (END   included file options/image.md)
 
 
-[//]: # (BEGIN included file options\keep-groups.md)
+[//]: # (BEGIN included file options/keep-groups.md)
 #### **--keep-groups**
 pass --group-add keep-groups to podman (default: False)
 If GPU device on host system is accessible to user via group access, this option leaks the groups into the container.
 
-[//]: # (END   included file options\keep-groups.md)
+[//]: # (END   included file options/keep-groups.md)
 
 
-[//]: # (BEGIN included file options\name.md)
+[//]: # (BEGIN included file options/name.md)
 #### **--name**, **-n**
 Name of the container to run the Model in.
 
-[//]: # (END   included file options\name.md)
+[//]: # (END   included file options/name.md)
 
 
-[//]: # (BEGIN included file options\ncmoe.md)
+[//]: # (BEGIN included file options/ncmoe.md)
 #### **--ncmoe**
 Keep the Mixture of Experts (MoE) weights of the first N layers in the CPU.
 
-[//]: # (END   included file options\ncmoe.md)
+[//]: # (END   included file options/ncmoe.md)
 
 
-[//]: # (BEGIN included file options\network.md)
+[//]: # (BEGIN included file options/network.md)
 #### **--network**=*none*
 set the network mode for the container
 
-[//]: # (END   included file options\network.md)
+[//]: # (END   included file options/network.md)
 
 
-[//]: # (BEGIN included file options\ngl.md)
+[//]: # (BEGIN included file options/ngl.md)
 #### **--ngl**
 Number of layers to store in VRAM: a number, `auto`, or `all`.
 When omitted, llama-server defaults to `auto`.
 
-[//]: # (END   included file options\ngl.md)
+[//]: # (END   included file options/ngl.md)
 
 
-[//]: # (BEGIN included file options\oci-runtime.md)
+[//]: # (BEGIN included file options/oci-runtime.md)
 #### **--oci-runtime**
 
 Override the default OCI runtime used to launch the container. Container
@@ -227,10 +227,10 @@ use. Using this option RamaLama will override these defaults.
 On Nvidia based GPU systems, RamaLama defaults to using the
 `nvidia-container-runtime`. Use this option to override this selection.
 
-[//]: # (END   included file options\oci-runtime.md)
+[//]: # (END   included file options/oci-runtime.md)
 
 
-[//]: # (BEGIN included file options\privileged.md)
+[//]: # (BEGIN included file options/privileged.md)
 #### **--privileged**
 By default, RamaLama containers are unprivileged (=false) and cannot, for
 example, modify parts of the operating system. This is because by de‐
@@ -249,10 +249,10 @@ confinement.
 Containers running in a user namespace (e.g., rootless containers) can‐
 not have more privileges than the user that launched them.
 
-[//]: # (END   included file options\privileged.md)
+[//]: # (END   included file options/privileged.md)
 
 
-[//]: # (BEGIN included file options\pull.md)
+[//]: # (BEGIN included file options/pull.md)
 #### **--pull**=*policy*
 Pull image policy. The default is **missing**.
 
@@ -261,43 +261,43 @@ Pull image policy. The default is **missing**.
 - **never**: Never pull the image but use the one from the local containers storage. Throw an error when no image is found.
 - **newer**: Pull if the image on the registry is newer than the one in the local containers storage. An image is considered to be newer when the digests are different. Comparing the time stamps is prone to errors. Pull errors are suppressed if a local image was found.
 
-[//]: # (END   included file options\pull.md)
+[//]: # (END   included file options/pull.md)
 
 
-[//]: # (BEGIN included file options\runtime-args.md)
+[//]: # (BEGIN included file options/runtime-args.md)
 #### **--runtime-args**="*args*"
 Add *args* to the runtime (llama.cpp or vllm) invocation.
 
-[//]: # (END   included file options\runtime-args.md)
+[//]: # (END   included file options/runtime-args.md)
 
 
-[//]: # (BEGIN included file options\seed.md)
+[//]: # (BEGIN included file options/seed.md)
 #### **--seed**=
 Specify a seed rather than using a random seed for model interaction.
 
-[//]: # (END   included file options\seed.md)
+[//]: # (END   included file options/seed.md)
 
 
-[//]: # (BEGIN included file options\selinux.md)
+[//]: # (BEGIN included file options/selinux.md)
 #### **--selinux**=*true*
 Enable SELinux container separation (default: `true`)
 
-[//]: # (END   included file options\selinux.md)
+[//]: # (END   included file options/selinux.md)
 
 
-[//]: # (BEGIN included file options\threads.md)
+[//]: # (BEGIN included file options/threads.md)
 #### **--threads**, **-t**
 Maximum number of cpu threads to use.
 The default is to use half the cores when more than 4 cores are available; otherwise, the default is 4 threads.
 
-[//]: # (END   included file options\threads.md)
+[//]: # (END   included file options/threads.md)
 
 
-[//]: # (BEGIN included file options\tls-verify.md)
+[//]: # (BEGIN included file options/tls-verify.md)
 #### **--tls-verify**=*true*
 Require HTTPS and verify certificates when contacting OCI registries
 
-[//]: # (END   included file options\tls-verify.md)
+[//]: # (END   included file options/tls-verify.md)
 
 ## DESCRIPTION
 Benchmark specified AI Model.
