@@ -752,6 +752,36 @@ class TestLlamaCppPlugin:
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
         assert image == "custom/cuda:v1.0"
 
+    def test_get_container_image_vulkan_follows_default_image(self):
+        # AMD resolves to the vulkan backend, which runs in the default image,
+        # so RAMALAMA_DEFAULT_IMAGE has to be honoured here too.
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
+        config.images.get.return_value = None
+        config.default_image = "my-registry.example/ramalama:snapshot"
+        image = self.plugin.get_container_image(config, "HIP_VISIBLE_DEVICES")
+        assert image == "my-registry.example/ramalama:snapshot"
+
+    def test_get_container_image_user_override_for_detected_gpu(self):
+        # The override is keyed by the detected GPU, while auto resolves to the
+        # vulkan backend; the image the user pinned for their hardware wins.
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
+        config.images.get.side_effect = lambda key, default=None: {
+            "HIP_VISIBLE_DEVICES": "custom/rocm:v1.0",
+        }.get(key, default)
+        image = self.plugin.get_container_image(config, "HIP_VISIBLE_DEVICES")
+        assert image == "custom/rocm:v1.0"
+
+    def test_get_container_image_user_override_for_resolved_backend(self):
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
+        config.images.get.side_effect = lambda key, default=None: {
+            "GGML_VK_VISIBLE_DEVICES": "custom/vulkan:v1.0",
+        }.get(key, default)
+        image = self.plugin.get_container_image(config, "HIP_VISIBLE_DEVICES")
+        assert image == "custom/vulkan:v1.0"
+
     @patch.dict("os.environ", clear=True, INTEL_VISIBLE_DEVICES="1")
     def test_intel_no_openvino(self):
         ns = make_ns()
