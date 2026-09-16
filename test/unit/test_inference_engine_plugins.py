@@ -701,6 +701,40 @@ class TestLlamaCppPlugin:
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
         assert image == version_tagged_image("quay.io/ramalama/cuda")
 
+    @pytest.mark.parametrize("has_icd,warned", [(True, False), (False, True)])
+    def test_get_container_image_vulkan_on_nvidia_warns_without_icd(self, has_icd, warned, monkeypatch):
+        monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.has_nvidia_vulkan_icd", lambda: has_icd)
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "vulkan"}}
+        config.images.get.return_value = None
+        config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
+        with patch("ramalama.plugins.runtimes.inference.llama_cpp.logger.warning") as mock_warning:
+            self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
+        assert mock_warning.called == warned
+        if warned:
+            assert "Vulkan ICD" in mock_warning.call_args.args[0]
+
+    def test_get_container_image_cuda_backend_does_not_warn(self, monkeypatch):
+        # Asking for cuda gets the cuda image, where the ICD is irrelevant.
+        monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.has_nvidia_vulkan_icd", lambda: False)
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "cuda"}}
+        config.images.get.return_value = None
+        with patch("ramalama.plugins.runtimes.inference.llama_cpp.logger.warning") as mock_warning:
+            self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
+        mock_warning.assert_not_called()
+
+    def test_get_container_image_vulkan_on_amd_does_not_warn(self, monkeypatch):
+        # The ICD probe is NVIDIA-specific, so it must not fire for other vendors.
+        monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.has_nvidia_vulkan_icd", lambda: False)
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
+        config.images.get.return_value = None
+        config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
+        with patch("ramalama.plugins.runtimes.inference.llama_cpp.logger.warning") as mock_warning:
+            self.plugin.get_container_image(config, "HIP_VISIBLE_DEVICES")
+        mock_warning.assert_not_called()
+
     def test_get_container_image_no_gpu(self):
         config = MagicMock()
         config.runtimes = {"llama_cpp": {"backend": "auto"}}

@@ -26,6 +26,7 @@ from ramalama.common import (
     ensure_image,
     find_in_cdi,
     get_accel,
+    has_nvidia_vulkan_icd,
     host_available,
     host_cmd,
     host_path,
@@ -949,3 +950,17 @@ class TestHostPath:
             patch("os.path.isdir", return_value=False),
         ):
             assert host_path("/etc/cdi") == "/etc/cdi"
+
+
+class TestHasNvidiaVulkanIcd:
+    @pytest.mark.parametrize("icd_dir", ["/usr/share/vulkan/icd.d", "/etc/vulkan/icd.d"])
+    def test_icd_installed(self, icd_dir):
+        with patch(
+            "ramalama.common.glob.glob",
+            side_effect=lambda p: [f"{icd_dir}/nvidia_icd.json"] if p.startswith(icd_dir) else [],
+        ):
+            assert has_nvidia_vulkan_icd()
+
+    def test_only_other_vendors(self):
+        with patch("ramalama.common.glob.glob", return_value=[]):
+            assert not has_nvidia_vulkan_icd()

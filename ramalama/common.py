@@ -489,6 +489,20 @@ def check_metal(args: ContainerArgType) -> bool:
 
 
 @lru_cache(maxsize=1)
+def has_nvidia_vulkan_icd() -> bool:
+    """True when NVIDIA's Vulkan ICD manifest is installed on the host.
+
+    The container toolkit injects the ICD from the host driver installation, so
+    when it is missing here the vulkan backend finds only mesa's llvmpipe inside
+    the container and runs on the CPU instead of failing.
+    """
+    return any(
+        glob.glob(os.path.join(host_path(icd_dir), "*nvidia*.json"))
+        for icd_dir in ("/usr/share/vulkan/icd.d", "/etc/vulkan/icd.d")
+    )
+
+
+@lru_cache(maxsize=1)
 def check_nvidia() -> Optional[Literal["cuda"]]:
     try:
         command = host_cmd(['nvidia-smi', '--query-gpu=index,uuid', '--format=csv,noheader'])

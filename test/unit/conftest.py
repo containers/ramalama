@@ -45,6 +45,20 @@ def _isolate_from_toolbox():
     in_toolbox.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def _clear_vulkan_icd_cache():
+    """The ICD probe and the warning it drives are cached for the process, so
+    clear them around every test rather than carrying the host's answer."""
+    from ramalama.common import has_nvidia_vulkan_icd
+    from ramalama.plugins.runtimes.inference.llama_cpp import warn_without_nvidia_vulkan_icd
+
+    for cached in (has_nvidia_vulkan_icd, warn_without_nvidia_vulkan_icd):
+        cached.cache_clear()
+    yield
+    for cached in (has_nvidia_vulkan_icd, warn_without_nvidia_vulkan_icd):
+        cached.cache_clear()
+
+
 @pytest.fixture
 def force_oci_image(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(OCIStrategyFactory, "resolve", lambda self, model: self.strategies("image"))
