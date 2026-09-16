@@ -144,7 +144,7 @@ def get_gpu_backend_preferences(gpu_type: str) -> list[str]:
 
     preferences = {
         "HIP_VISIBLE_DEVICES": ["vulkan", "rocm"],  # AMD: Vulkan preferred
-        "CUDA_VISIBLE_DEVICES": ["cuda"],  # NVIDIA: CUDA only
+        "CUDA_VISIBLE_DEVICES": ["cuda", "vulkan"],  # NVIDIA: CUDA preferred
         "INTEL_VISIBLE_DEVICES": ["vulkan", "sycl", "openvino"],  # Intel: Vulkan preferred
         "ASAHI_VISIBLE_DEVICES": ["vulkan"],  # Asahi: Vulkan only
         "ASCEND_VISIBLE_DEVICES": ["cann"],  # Ascend: CANN only

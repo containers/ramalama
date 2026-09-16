@@ -1229,7 +1229,7 @@ class TestConfigureSubcommandsFiltering:
         # Force backend even with different GPU (warns but allows)
         ("rocm", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
         ("cuda", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
-        ("vulkan", "CUDA_VISIBLE_DEVICES", DEFAULT_IMAGE),  # Vulkan on NVIDIA (not in preferences, warns)
+        ("vulkan", "CUDA_VISIBLE_DEVICES", DEFAULT_IMAGE),  # Explicit Vulkan on NVIDIA
     ],
 )
 def test_backend_selection(backend: str, gpu_env: str, expected_result: str, monkeypatch):
@@ -1266,9 +1266,11 @@ backend = "{backend}"
         ("auto", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),  # AMD -> ROCm on Windows
         ("auto", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),  # NVIDIA -> CUDA
         ("auto", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),  # Intel -> sycl
-        # Explicit backends still work
+        # Explicit backends still work, vulkan included
         ("vulkan", "HIP_VISIBLE_DEVICES", DEFAULT_IMAGE),
         ("rocm", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
+        ("vulkan", "CUDA_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        ("cuda", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
         ("vulkan", "INTEL_VISIBLE_DEVICES", DEFAULT_IMAGE),
         ("sycl", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),
         ("openvino", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/openvino")),
@@ -1386,7 +1388,7 @@ backend = "cuda"
     "gpu_env,expected_backends",
     [
         ("HIP_VISIBLE_DEVICES", ["auto", "vulkan", "rocm"]),  # AMD
-        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda"]),  # NVIDIA
+        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda", "vulkan"]),  # NVIDIA (CUDA preferred)
         ("INTEL_VISIBLE_DEVICES", ["auto", "vulkan", "sycl", "openvino"]),  # Intel (Vulkan preferred)
         ("ASAHI_VISIBLE_DEVICES", ["auto", "vulkan"]),  # Asahi
         ("ASCEND_VISIBLE_DEVICES", ["auto", "cann"]),  # Ascend
@@ -1410,7 +1412,7 @@ def test_get_available_backends(gpu_env: Optional[str], expected_backends: list[
     "gpu_env,expected_backends",
     [
         ("HIP_VISIBLE_DEVICES", ["auto", "rocm", "vulkan"]),  # AMD: ROCm preferred on Windows
-        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda"]),  # NVIDIA: same on all platforms
+        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda", "vulkan"]),  # NVIDIA: same on all platforms
         ("INTEL_VISIBLE_DEVICES", ["auto", "sycl", "vulkan", "openvino"]),  # Intel: sycl preferred on Windows
         (None, ["auto", "vulkan"]),  # No GPU: same on all platforms
     ],
@@ -1453,7 +1455,7 @@ class TestBackendHelpers:
 
     def test_gpu_backend_preferences_nvidia(self):
         prefs = get_gpu_backend_preferences("CUDA_VISIBLE_DEVICES")
-        assert prefs == ["cuda"]
+        assert prefs == ["cuda", "vulkan"]
 
     def test_gpu_backend_preferences_amd(self):
         prefs = get_gpu_backend_preferences("HIP_VISIBLE_DEVICES")

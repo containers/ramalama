@@ -190,6 +190,7 @@ image = "{config_override}"
         ("CUDA_VISIBLE_DEVICES", "cuda", version_tagged_image("quay.io/ramalama/cuda")),
         # A backend the user asked for wins over the detected GPU, even though
         # --image defaults to the image that GPU resolves to.
+        ("CUDA_VISIBLE_DEVICES", "vulkan", DEFAULT_IMAGE),
         ("HIP_VISIBLE_DEVICES", "auto", DEFAULT_IMAGE),
         ("HIP_VISIBLE_DEVICES", "vulkan", DEFAULT_IMAGE),
         ("HIP_VISIBLE_DEVICES", "rocm", version_tagged_image("quay.io/ramalama/rocm")),
