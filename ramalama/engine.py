@@ -15,7 +15,17 @@ from typing import Any, Optional
 # Live reference for checking global vars
 import ramalama.common
 from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import check_nvidia, engine_cmd, exec_cmd, genname, get_accel_env_vars, host_path, perror, run_cmd
+from ramalama.common import (
+    check_nvidia,
+    container_cuda_visible_devices,
+    engine_cmd,
+    exec_cmd,
+    genname,
+    get_accel_env_vars,
+    host_path,
+    perror,
+    run_cmd,
+)
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import ActiveConfig
 from ramalama.host_utils import (
@@ -118,11 +128,23 @@ class BaseEngine(ABC):
         for k, v in get_accel_env_vars().items():
             # Special case for Cuda
             if k == "CUDA_VISIBLE_DEVICES":
+                # Pass in only the GPUs the user selected rather than all of
+                # them plus CUDA_VISIBLE_DEVICES to filter with: the Vulkan
+                # backend never reads that variable, it indexes Vulkan's own
+                # device enumeration, so a narrowed selection is only honoured
+                # if the container cannot see the other GPUs in the first place.
+                selected = ramalama.common.nvidia_selected_devices
                 if self.use_docker:
-                    self.exec_args += ["--gpus", "all"]
+                    # docker's csv parser needs the quotes to keep a
+                    # comma-separated device list in one field.
+                    self.exec_args += ["--gpus", f'"device={",".join(selected)}"' if selected else "all"]
+                elif selected:
+                    for name in selected:
+                        self.exec_args += ["--device", f"nvidia.com/gpu={name}"]
                 else:
                     # newer Podman versions support --gpus=all, but < 5.0 do not
                     self.exec_args += ["--device", "nvidia.com/gpu=all"]
+                v = container_cuda_visible_devices(v)
             elif k == "MUSA_VISIBLE_DEVICES":
                 self.exec_args += ["--env", "MTHREADS_VISIBLE_DEVICES=all"]
             elif k == "INTEL_VISIBLE_DEVICES":

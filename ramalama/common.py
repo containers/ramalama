@@ -57,6 +57,22 @@ def sanitize_filename(filename: str) -> str:
 
 podman_machine_accel = False
 
+# CDI device names of the NVIDIA GPUs the user narrowed CUDA_VISIBLE_DEVICES
+# down to, set by check_nvidia(). Empty when every detected GPU is in play.
+nvidia_selected_devices: list[str] = []
+
+
+def container_cuda_visible_devices(value: str) -> str:
+    """CUDA_VISIBLE_DEVICES as it should read inside the container.
+
+    Where the selection is narrowed, only those GPUs are passed in and the
+    container numbers them from zero, so the host's indices no longer describe
+    them. Returns the value unchanged when every GPU is in play.
+    """
+    if not nvidia_selected_devices:
+        return value
+    return ",".join(str(i) for i in range(len(nvidia_selected_devices)))
+
 
 def confirm_no_gpu(name, provider) -> bool:
     while True:
@@ -438,9 +454,13 @@ def find_in_cdi(devices: list[str]) -> tuple[list[str], list[str]]:
     for device in devices:
         if device in cdi_device_names:
             configured.append(device)
-        # A device can be specified by a prefix of the uuid
-        elif device.startswith("GPU") and any(name.startswith(device) for name in cdi_device_names):
-            configured.append(device)
+        # A device can be specified by a prefix of the uuid. Record the full
+        # name it resolves to: it reaches "--device nvidia.com/gpu=<name>",
+        # which matches the CDI configuration exactly and not by prefix.
+        elif device.startswith("GPU") and (
+            full_name := next((name for name in cdi_device_names if name.startswith(device)), None)
+        ):
+            configured.append(full_name)
         else:
             perror(f"Device {device} does not have a CDI configuration")
             unconfigured.append(device)
@@ -514,6 +534,16 @@ def check_nvidia() -> Optional[Literal["cuda"]]:
             configured.remove("all")
             if not configured:
                 configured = indices
+
+        # Record a narrowed selection so the engine can pass just those GPUs
+        # into the container. Not every backend filters on CUDA_VISIBLE_DEVICES
+        # (llama.cpp's Vulkan backend indexes Vulkan's own device enumeration),
+        # so the selection has to happen at the device level to be honoured.
+        # These names came back from find_in_cdi(), so they are known to the CDI
+        # configuration; the fallback above to every index has not been checked
+        # and stays on the "all" device.
+        global nvidia_selected_devices
+        nvidia_selected_devices = configured if set(configured) != set(indices) else []
 
         os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(configured)
         return "cuda"

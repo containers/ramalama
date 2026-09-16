@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
 
+import ramalama.common
 from ramalama.cli import (
     default_image,
     default_rag_image,
@@ -20,6 +21,7 @@ from ramalama.common import (
     accel_image,
     check_intel,
     check_nvidia,
+    container_cuda_visible_devices,
     engine_cmd,
     ensure_image,
     find_in_cdi,
@@ -287,6 +289,14 @@ class TestEnsureImage:
 class TestCheckNvidia:
     def setup_method(self):
         check_nvidia.cache_clear()
+        self.cuda_visible_devices = os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+        ramalama.common.nvidia_selected_devices = []
+
+    def teardown_method(self):
+        os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+        if self.cuda_visible_devices is not None:
+            os.environ["CUDA_VISIBLE_DEVICES"] = self.cuda_visible_devices
+        ramalama.common.nvidia_selected_devices = []
 
     @patch("ramalama.common.find_in_cdi")
     @patch("ramalama.common.run_cmd")
@@ -317,6 +327,51 @@ class TestCheckNvidia:
         assert check_nvidia() is None
         printed = " ".join(str(c.args[0]) for c in mock_perror.call_args_list)
         assert "nvidia-ctk cdi generate" in printed
+
+    @patch("ramalama.common.find_in_cdi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_all_gpus_are_not_a_selection(self, mock_run_cmd, mock_find_in_cdi):
+        mock_find_in_cdi.return_value = (["all"], [])
+        mock_run_cmd.return_value.stdout = "0,GPU-1111\n1,GPU-2222"
+        assert check_nvidia() == "cuda"
+        assert os.environ["CUDA_VISIBLE_DEVICES"] == "0,1"
+        assert ramalama.common.nvidia_selected_devices == []
+
+    @patch("ramalama.common.find_in_cdi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_records_narrowed_selection(self, mock_run_cmd, mock_find_in_cdi):
+        os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+        mock_find_in_cdi.return_value = (["1", "all"], [])
+        mock_run_cmd.return_value.stdout = "0,GPU-1111\n1,GPU-2222"
+        assert check_nvidia() == "cuda"
+        assert os.environ["CUDA_VISIBLE_DEVICES"] == "1"
+        assert ramalama.common.nvidia_selected_devices == ["1"]
+
+    @patch("ramalama.common.find_in_cdi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_selection_needs_a_cdi_device(self, mock_run_cmd, mock_find_in_cdi):
+        # Only the "all" device is configured, so the narrowing cannot be
+        # expressed as a device and every GPU stays visible, as before.
+        os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+        mock_find_in_cdi.return_value = (["all"], ["1"])
+        mock_run_cmd.return_value.stdout = "0,GPU-1111\n1,GPU-2222"
+        assert check_nvidia() == "cuda"
+        assert os.environ["CUDA_VISIBLE_DEVICES"] == "0,1"
+        assert ramalama.common.nvidia_selected_devices == []
+
+    @pytest.mark.parametrize(
+        "selected,value,expected",
+        [
+            # Every GPU is in play, so the host's numbering still describes them.
+            ([], "0,1", "0,1"),
+            (["1"], "1", "0"),
+            (["1", "2"], "1,2", "0,1"),
+            (["GPU-2222"], "GPU-2222", "0"),
+        ],
+    )
+    def test_container_cuda_visible_devices(self, selected, value, expected):
+        with patch.object(ramalama.common, "nvidia_selected_devices", selected):
+            assert container_cuda_visible_devices(value) == expected
 
     @patch("ramalama.common.run_cmd")
     def test_check_nvidia_smi_failure(self, mock_run_cmd):
@@ -610,6 +665,9 @@ def test_load_cdi_config_merges_multiple_files():
         (["all"], ["all"], []),
         (["0", "all"], ["0", "all"], []),
         ([CDI_GPU_UUID, "all"], [CDI_GPU_UUID, "all"], []),
+        # An abbreviated uuid resolves to the full CDI device name, which is
+        # what "--device nvidia.com/gpu=<name>" needs.
+        ([CDI_GPU_UUID[:12], "all"], [CDI_GPU_UUID, "all"], []),
         (["1", "all"], ["all"], ["1"]),
         (["dummy", "all"], ["all"], ["dummy"]),
     ],
