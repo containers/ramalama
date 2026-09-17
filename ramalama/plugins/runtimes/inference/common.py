@@ -34,6 +34,28 @@ from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New, TransportFactory
 
 
+def resolve_accel_container_image(args: argparse.Namespace, *, should_pull: bool | None = None) -> None:
+    """Re-derive args.image from ActiveConfig after CLI --backend sync.
+
+    The eager --image argparse default is computed before runtime args are synced
+    into ActiveConfig. Call this before launching a container so --backend is honored.
+
+    No-op when not using a container or when dry-running.
+    """
+    if not getattr(args, "container", False) or getattr(args, "dryrun", False):
+        return
+
+    config = ActiveConfig()
+    if should_pull is None:
+        should_pull = config.pull in ["always", "missing", "newer"]
+    args.image = ensure_image(
+        config.engine,
+        accel_image(config),
+        should_pull=should_pull,
+        quiet=getattr(args, "quiet", False),
+    )
+
+
 class BaseInferenceRuntime(InferenceRuntimePlugin):
     """Concrete base: registers run/serve subcommands and provides their handlers.
 
@@ -157,12 +179,7 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             model.run(args, [])
             return
 
-        if args.container and not args.dryrun:
-            config = ActiveConfig()
-            should_pull = config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(
-                config.engine, accel_image(config), should_pull=should_pull, quiet=getattr(args, "quiet", False)
-            )
+        resolve_accel_container_image(args)
 
         cmd = assemble_command(args)
         if len(cmd) > 0 and isinstance(cmd[0], ContainerEntryPoint):
@@ -174,13 +191,8 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
     def _do_serve(self, args: argparse.Namespace, model: "Any") -> None:
         """Execute serve after the model is resolved. Override to inject pre-serve logic."""
         set_accel_env_vars()
-        if args.container and not args.dryrun:
-            config = ActiveConfig()
-            generate = getattr(args, "generate", None)
-            should_pull = False if generate else config.pull in ["always", "missing", "newer"]
-            args.image = ensure_image(
-                config.engine, accel_image(config), should_pull=should_pull, quiet=getattr(args, "quiet", False)
-            )
+        generate = getattr(args, "generate", None)
+        resolve_accel_container_image(args, should_pull=False if generate else None)
 
         cmd = assemble_command(args)
         if getattr(args, "generate", None):
