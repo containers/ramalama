@@ -11,10 +11,6 @@ services:
       - "8080:8080"
     environment:
       - CUDA_VISIBLE_DEVICES=0
-    devices:
-      - "/dev/accel:/dev/accel"
-      - "/dev/dri:/dev/dri"
-      - "/dev/kfd:/dev/kfd"
     deploy:
       resources:
         reservations:

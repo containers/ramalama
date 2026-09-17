@@ -26,6 +26,7 @@ from ramalama.common import (
     ensure_image,
     find_in_cdi,
     get_accel,
+    get_gpu_devices,
     has_nvidia_vulkan_icd,
     host_available,
     host_cmd,
@@ -1009,3 +1010,31 @@ class TestIsWindowsOrWsl:
             patch("builtins.open", mock_open(read_data="7.1.13-100.fc43.x86_64\n")),
         ):
             assert not is_windows_or_wsl()
+
+
+class TestGetGpuDevices:
+    devices = {"/dev/accel": "accel", "/dev/dri": "dri", "/dev/kfd": "kfd"}
+
+    def _get_gpu_devices(self, accel_env_vars, environ=None):
+        with (
+            patch("os.path.exists", lambda path: path in self.devices),
+            patch.dict("os.environ", environ or {}, clear=True),
+        ):
+            return get_gpu_devices(accel_env_vars)
+
+    def test_host_devices(self):
+        assert self._get_gpu_devices({"HIP_VISIBLE_DEVICES": "0"}) == {
+            "accel": "/dev/accel",
+            "dri": "/dev/dri",
+            "kfd": "/dev/kfd",
+        }
+
+    def test_nvidia_gets_none(self):
+        # The container toolkit passes the NVIDIA GPUs in itself. Anything the
+        # host's GPU devices would add on top is a GPU that was not asked for,
+        # an iGPU say, and the vulkan backend would offload onto it.
+        assert self._get_gpu_devices({"CUDA_VISIBLE_DEVICES": "0"}) == {}
+
+    def test_defaults_to_the_environment(self):
+        assert self._get_gpu_devices(None, {"CUDA_VISIBLE_DEVICES": "0"}) == {}
+        assert self._get_gpu_devices(None, {"HIP_VISIBLE_DEVICES": "0"}) != {}

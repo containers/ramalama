@@ -21,6 +21,7 @@ from ramalama.common import (
     exec_cmd,
     genname,
     get_accel_env_vars,
+    get_gpu_devices,
     host_path,
     is_windows_or_wsl,
     perror,
@@ -120,12 +121,14 @@ class BaseEngine(ABC):
         if ramalama.common.podman_machine_accel:
             self.exec_args += ["--device", "/dev/dri"]
 
-        for path in ["/dev/dri", "/dev/kfd", "/dev/accel", "/dev/davinci*", "/dev/devmm_svm", "/dev/hisi_hdc"]:
+        env_vars = get_accel_env_vars()
+        gpu_devices = list(get_gpu_devices(env_vars).values())
+        for path in [*gpu_devices, "/dev/davinci*", "/dev/devmm_svm", "/dev/hisi_hdc"]:
             for dev in glob.glob(path):
                 self.exec_args += ["--device", dev]
 
         wsl_devices_added = False
-        for k, v in get_accel_env_vars().items():
+        for k, v in env_vars.items():
             # Special case for Cuda
             if k == "CUDA_VISIBLE_DEVICES":
                 # Pass in only the GPUs the user selected rather than all of
