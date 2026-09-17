@@ -29,6 +29,8 @@ Otherwise only the agent container starts using the given url for the openai com
 
 ## OPTIONS
 
+@@option agent
+
 @@option api-key
 
 @@option authfile
@@ -71,9 +73,12 @@ Otherwise only the agent container starts using the given url for the openai com
 
 @@option oci-runtime
 
-@@option opencode-image
+@@option plugin
 
 @@option port
+
+@@option opencode-image
+
 
 @@option privileged
 
@@ -87,7 +92,12 @@ Otherwise only the agent container starts using the given url for the openai com
 
 @@option selinux
 
+@@option skill
+
+@@option skill-mount
+
 @@option spec-draft-n-max
+
 
 @@option spec-draft-n-min
 
