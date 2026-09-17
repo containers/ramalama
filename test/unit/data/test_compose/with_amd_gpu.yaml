@@ -2,24 +2,17 @@
 #
 # Created with ramalama-0.1.0-test
 services:
-  gemma-cuda:
-    container_name: ramalama-gemma-cuda
-    image: test-image/cuda:latest
+  gemma-rocm:
+    container_name: ramalama-gemma-rocm
+    image: test-image/rocm:latest
     volumes:
       - "/models/gemma.gguf:/mnt/models/gemma.gguf:ro"
     ports:
       - "8080:8080"
     environment:
-      - CUDA_VISIBLE_DEVICES=0
+      - HIP_VISIBLE_DEVICES=0
     devices:
       - "/dev/accel:/dev/accel"
       - "/dev/dri:/dev/dri"
       - "/dev/kfd:/dev/kfd"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     restart: unless-stopped
