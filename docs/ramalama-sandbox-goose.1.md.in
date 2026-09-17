@@ -53,6 +53,8 @@ Otherwise only the agent container starts using the given url for the openai com
 
 @@option image
 
+@@option internal-network
+
 @@option keep-groups
 
 @@option logfile
