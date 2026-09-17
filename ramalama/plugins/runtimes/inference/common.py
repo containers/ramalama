@@ -285,7 +285,7 @@ def enumerate_store_gguf_models(
             ref_file = ref_json_cls.from_path(ref_file_path)
 
             tag, _ = os.path.splitext(ref_file_name)
-            model_rel = root.replace(store.path, "").lstrip(os.sep)
+            model_rel = root.replace(store.path, "").lstrip(os.sep).replace(".gguf", "")
             parts = model_rel.split(os.sep)
             readable = "-".join(parts + [tag])
 
