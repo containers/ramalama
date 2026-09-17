@@ -34,6 +34,7 @@ from ramalama.common import (
     populate_volume_from_image,
     rm_until_substring,
     verify_checksum,
+    version_tagged_image,
 )
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import DEFAULT_IMAGE, load_config
@@ -139,6 +140,9 @@ DEFAULT_IMAGES = {
         ("HIP_VISIBLE_DEVICES", f"{_BASE_IMAGE}:latest", None, None, f"{_BASE_IMAGE}:latest"),
         ("HIP_VISIBLE_DEVICES", None, f"{_BASE_IMAGE}:latest", None, f"{_BASE_IMAGE}:latest"),
         ("HIP_VISIBLE_DEVICES", None, None, f"{_BASE_IMAGE}:latest", f"{_BASE_IMAGE}:latest"),
+        # An --image that happens to match the default is still the user asking
+        # for it, and wins over the image the detected GPU would select.
+        ("CUDA_VISIBLE_DEVICES", None, None, DEFAULT_IMAGE, DEFAULT_IMAGE),
     ],
 )
 def test_accel_image(
@@ -176,6 +180,34 @@ image = "{config_override}"
                 default_tools_image.cache_clear()
                 parse_args_from_cmd(cmdline)
                 assert accel_image(config) == expected_result
+
+
+@pytest.mark.parametrize(
+    "accel_env,backend,expected_result",
+    [
+        # Left on auto, the detected GPU picks the image.
+        ("CUDA_VISIBLE_DEVICES", "auto", version_tagged_image("quay.io/ramalama/cuda")),
+        ("CUDA_VISIBLE_DEVICES", "cuda", version_tagged_image("quay.io/ramalama/cuda")),
+        # A backend the user asked for wins over the detected GPU, even though
+        # --image defaults to the image that GPU resolves to.
+        ("HIP_VISIBLE_DEVICES", "auto", DEFAULT_IMAGE),
+        ("HIP_VISIBLE_DEVICES", "vulkan", DEFAULT_IMAGE),
+        ("HIP_VISIBLE_DEVICES", "rocm", version_tagged_image("quay.io/ramalama/rocm")),
+    ],
+)
+def test_accel_image_follows_backend(accel_env: str, backend: str, expected_result: str, monkeypatch):
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    env = {"RAMALAMA_CONFIG": "/dev/null", accel_env: "1"}
+    with patch.dict("os.environ", env, clear=True):
+        config = load_config()
+        with patch("ramalama.cli.ActiveConfig", return_value=config):
+            default_image.cache_clear()
+            default_rag_image.cache_clear()
+            default_tools_image.cache_clear()
+            _, args = parse_args_from_cmd(["run", "--backend", backend, "granite"])
+            assert accel_image(config) == expected_result
+            assert args.image == expected_result
 
 
 @patch("ramalama.common.run_cmd")

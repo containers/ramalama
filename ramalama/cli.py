@@ -125,6 +125,15 @@ def parse_port_option(option: str) -> str:
 
 
 class OverrideDefaultAction(argparse.Action):
+    # Options whose default is computed while the parser is built, before the
+    # rest of the command line has been seen. Recorded so such a default can be
+    # told apart from a value the user passed.
+    dests: set[str] = set()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        OverrideDefaultAction.dests.add(self.dest)
+
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
         setattr(namespace, self.dest + '_override', True)
@@ -221,11 +230,29 @@ def parse_args_from_cmd(cmd: list[str]) -> tuple[argparse.ArgumentParser, argpar
     post_parse_setup(args)
 
     for arg in args.__dict__.keys() & config._fields:
+        if arg in OverrideDefaultAction.dests:
+            # These options record whether they were passed, so go by that rather
+            # than by the value. A computed default is not the user's choice and
+            # does not belong in the config: --image defaults to the image the
+            # detected GPU resolves to, worked out before --backend was parsed,
+            # and storing it marks the image as chosen rather than derived. A
+            # value the user did pass belongs there even where it matches the
+            # default, which is how "--image $RAMALAMA_DEFAULT_IMAGE" asks for
+            # that image instead of the one the GPU would select.
+            if getattr(args, f"{arg}_override", False):
+                setattr(config, arg, getattr(args, arg))
+            continue
         if getattr(args, arg) != getattr(config, arg):
             setattr(config, arg, getattr(args, arg))
 
     runtime_plugin = get_runtime(config.runtime)
     runtime_plugin.sync_args_to_runtime_config(args, config)
+
+    # The runtime config now carries --backend, so the image the command will
+    # run can be resolved for real.
+    if hasattr(args, "image") and not getattr(args, "image_override", False):
+        args.image = accel_image(config)
+
     return parser, args
 
 
