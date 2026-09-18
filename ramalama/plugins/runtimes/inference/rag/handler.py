@@ -67,7 +67,7 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
     try:
         # Build serve args for the VLM and embedding servers
         vlm_ctx_size = getattr(args, "ctx_size", 8192)
-        embed_ctx_size = getattr(args, "embed_ctx_size", None)
+        embed_batch_size = getattr(args, "embed_ctx_size", 0) or 2048
         docling_serve_args = _build_serve_args(
             args, docling_model, docling_port, runtime_args=["--special"], ctx_size=vlm_ctx_size
         )
@@ -75,8 +75,14 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
             args,
             embedding_model,
             embed_port,
-            runtime_args=["--embedding"],
-            ctx_size=embed_ctx_size,
+            runtime_args=[
+                "--embedding",
+                "--batch-size",
+                str(embed_batch_size),
+                "--ubatch-size",
+                str(embed_batch_size),
+            ],
+            ctx_size=embed_batch_size,
             cache_reuse=0,
         )
         all_serve_args = [docling_serve_args, embed_serve_args]
