@@ -422,7 +422,7 @@ class ModelStore:
         ]
         refs = [ref for tag in model_tags if (ref := self.get_ref_file(tag))]
 
-        blob_refcounts = Counter(file.name for ref in refs for file in ref.files)
+        blob_refcounts = Counter(file_hash for ref in refs for file_hash in {file.hash for file in ref.files})
 
         snap_refcount = sum(ref.hash == snapshot_hash for ref in refs)
 
@@ -438,7 +438,7 @@ class ModelStore:
 
         # Remove all blobs first
         for file in ref_file.files:
-            blob_refcount = blob_refcounts.get(file.name, 0)
+            blob_refcount = blob_refcounts.get(file.hash, 0)
             if blob_refcount <= 1:
                 blob_absolute_path = Path(self.get_blob_file_path(file.hash))
                 self._remove_blob_path(blob_absolute_path)
