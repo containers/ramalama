@@ -260,6 +260,16 @@ Only used when invoked in router mode (zero or multiple models).
 [//]: # (END   included file options/models-max.md)
 
 
+[//]: # (BEGIN included file options/mtmd.md)
+#### **--mtmd**=*BOOL*
+Enable or disable multimodal support.
+If enabled and a multimodal projector file is detected, `--mmproj` is
+added to the llama-server command-line.
+When omitted, multimodal support is automatically detected.
+
+[//]: # (END   included file options/mtmd.md)
+
+
 [//]: # (BEGIN included file options/name.md)
 #### **--name**, **-n**
 Name of the container to run the Model in.
