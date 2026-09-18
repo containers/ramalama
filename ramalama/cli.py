@@ -382,6 +382,7 @@ def configure_subcommands(parser):
     push_parser(subparsers)
     rm_parser(subparsers)
     sandbox_parser(subparsers)
+    start_parser(subparsers)
     stop_parser(subparsers)
     version_parser(subparsers)
     daemon_parser(subparsers)
@@ -1153,23 +1154,44 @@ def stop_parser(subparsers):
     parser.add_argument(
         "--ignore", action="store_true", help="ignore errors when specified RamaLama container is missing"
     )
-    parser.add_argument("NAME", nargs="?", completer=local_containers)
+    parser.add_argument("NAME", nargs="*", completer=local_containers)
     parser.set_defaults(func=stop_container)
 
 
 def stop_container(args):
     from ramalama import engine
 
-    if not args.all:
-        engine.stop_container(args, args.NAME)
+    if args.all:
+        if args.NAME:
+            raise ValueError(f"specifying --all and container names, {args.NAME}, not allowed")
+        args.ignore = True
+        args.format = "{{ .Names }}"
+        for i in engine.containers(args):
+            engine.stop_container(args, i)
         return
 
-    if args.NAME:
-        raise ValueError(f"specifying --all and container name, {args.NAME}, not allowed")
-    args.ignore = True
-    args.format = "{{ .Names }}"
-    for i in engine.containers(args):
-        engine.stop_container(args, i)
+    if len(args.NAME) == 0:
+        raise ValueError("must specify a container name")
+    for name in args.NAME:
+        engine.stop_container(args, name)
+
+
+def start_parser(subparsers) -> None:
+    parser = subparsers.add_parser("start", help="start named container that is running AI Model")
+    parser.add_argument(
+        "--ignore", action="store_true", help="ignore errors when specified RamaLama container is missing"
+    )
+    parser.add_argument("NAME", nargs="*", completer=local_containers)
+    parser.set_defaults(func=start_container)
+
+
+def start_container(args) -> None:
+    from ramalama import engine
+
+    if len(args.NAME) == 0:
+        raise ValueError("must specify a container name")
+    for name in args.NAME:
+        engine.start_container(args, name)
 
 
 def daemon_parser(subparsers) -> None:

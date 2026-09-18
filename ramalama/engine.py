@@ -465,7 +465,11 @@ def stop_container(args, name: str, remove: bool = False):
             pass
 
     if pod != "":
-        conman_args = [*engine_cmd(conman), "pod", "rm", "-t=0", "--ignore", "--force", pod]
+        if remove:
+            conman_args = [*engine_cmd(conman), "pod", "rm", "-t=0", "--ignore", "--force", pod]
+        else:
+            # stop (don't remove) so the pod survives a stop/start round trip
+            conman_args = [*engine_cmd(conman), "pod", "stop", "-t=0", "--ignore", pod]
     else:
         conman_args = [*engine_cmd(conman), "stop", "-t=0"]
         if args.ignore:
@@ -543,6 +547,22 @@ def remove_network(args, name: str) -> None:
         run_cmd(conman_args, ignore_all=True)
     except Exception as e:  # Cleanup is best effort.
         logger.debug(f"Failed to remove network {name}: {e}")
+
+
+def start_container(args, name: str) -> None:
+    if not name:
+        raise ValueError("must specify a container name")
+    conman = str(args.engine) if args.engine is not None else None
+    if conman == "" or conman is None:
+        raise ValueError("no container manager (Podman, Docker) found")
+
+    conman_args = [*engine_cmd(conman), "start", name]
+    try:
+        run_cmd(conman_args, ignore_stderr=args.ignore)
+    except subprocess.CalledProcessError:
+        if args.ignore:
+            return
+        raise
 
 
 def add_labels(args, add_label: Callable[[str], None]):
