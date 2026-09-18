@@ -51,6 +51,7 @@ def make_ns(
     spec_draft_n_max=None,
     spec_draft_n_min=None,
     spec_draft_p_min=None,
+    mtmd=None,
     runtime_args=None,
     engine_args=None,
     gguf=None,
@@ -80,6 +81,7 @@ def make_ns(
         spec_draft_n_max=spec_draft_n_max,
         spec_draft_n_min=spec_draft_n_min,
         spec_draft_p_min=spec_draft_p_min,
+        mtmd=mtmd,
         runtime_args=runtime_args or [],
         engine_args=engine_args or [],
         gguf=gguf,
@@ -159,6 +161,7 @@ class TestLlamaCppConfig:
         assert config.temp == 0.8
         assert config.thinking is None
         assert config.threads > 0
+        assert config.mtmd is None
 
     def test_coerces_string_values(self):
         config = LlamaCppConfig(ngl="4", ncmoe="128", cache_reuse="512", temp="0.5", threads="8", thinking="false")
@@ -337,6 +340,50 @@ class TestLlamaCppPlugin:
         cmd = self.plugin.handle_subcommand("serve", ns)
 
         assert "--reasoning" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_mtmd_disabled(self, mock_colorize, mock_new):
+        mock_model = make_transport_model(mmproj_path="/mnt/models/mmproj.file")
+        mock_new.return_value = mock_model
+
+        ns = make_ns(MODEL="ollama://mymodel", mtmd=False)
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--mmproj" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_mtmd_enabled(self, mock_colorize, mock_new):
+        mock_model = make_transport_model(mmproj_path="/mnt/models/mmproj.file")
+        mock_new.return_value = mock_model
+
+        ns = make_ns(MODEL="ollama://mymodel", mtmd=True)
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--mmproj" in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_mtmd_enabled_without_mmproj(self, mock_colorize, mock_new):
+        mock_model = make_transport_model(mmproj_path=None)
+        mock_new.return_value = mock_model
+
+        ns = make_ns(MODEL="ollama://mymodel", mtmd=True)
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--mmproj" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_mtmd_default(self, mock_colorize, mock_new):
+        mock_model = make_transport_model(mmproj_path="/mnt/models/mmproj.file")
+        mock_new.return_value = mock_model
+
+        ns = make_ns(MODEL="ollama://mymodel", mtmd=None)
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert "--mmproj" in cmd
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_ctx_size(self, mock_colorize):
