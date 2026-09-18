@@ -85,7 +85,7 @@ class Kube:
     def _gen_devices(self) -> Tuple[str, str]:
         mounts = ""
         volumes = ""
-        for name, path in get_gpu_devices().items():
+        for name, path in get_gpu_devices(get_accel_env_vars()).items():
             mounts += f"""
         - mountPath: {path}
           name: {name}"""
@@ -219,7 +219,7 @@ class Kube:
           limits:
              'nvidia.com/gpu=all': 1"""
 
-        devices = get_gpu_devices()
+        devices = get_gpu_devices(get_accel_env_vars())
         if devices:
             limits = "".join(f"\n             'podman.io/device={path}': 1" for path in devices.values())
             return f"""

@@ -98,7 +98,7 @@ class Compose:
         return f'\n      - "{self.src_mmproj_path}:{self.dest_mmproj_path}:ro"'
 
     def _gen_devices(self) -> str:
-        devices = get_gpu_devices()
+        devices = get_gpu_devices(get_accel_env_vars())
 
         if not devices:
             return ""

@@ -26,11 +26,14 @@ from ramalama.common import (
     ensure_image,
     find_in_cdi,
     get_accel,
+    get_gpu_devices,
     has_nvidia_vulkan_icd,
     host_available,
     host_cmd,
     host_path,
     in_toolbox,
+    in_wsl,
+    is_windows_or_wsl,
     load_cdi_config,
     populate_volume_from_image,
     rm_until_substring,
@@ -964,3 +967,74 @@ class TestHasNvidiaVulkanIcd:
     def test_only_other_vendors(self):
         with patch("ramalama.common.glob.glob", return_value=[]):
             assert not has_nvidia_vulkan_icd()
+
+
+class TestIsWindowsOrWsl:
+    """is_windows_or_wsl() must catch both native Windows and ramalama running inside a WSL2 distro."""
+
+    @pytest.mark.parametrize(
+        "osrelease,expected",
+        [
+            ("5.15.167.4-microsoft-standard-WSL2\n", True),
+            ("6.6.87.2-microsoft-standard-WSL2+\n", True),
+            ("7.1.13-100.fc43.x86_64\n", False),
+        ],
+    )
+    def test_in_wsl_reads_osrelease(self, osrelease, expected):
+        with patch("builtins.open", mock_open(read_data=osrelease)):
+            assert in_wsl() == expected
+
+    def test_in_wsl_missing_osrelease(self):
+        with patch("builtins.open", side_effect=OSError("no /proc")):
+            assert not in_wsl()
+
+    def test_native_windows(self):
+        # No /proc to read on a native Windows interpreter.
+        with (
+            patch("ramalama.common.platform.system", return_value="Windows"),
+            patch("builtins.open", side_effect=OSError("no /proc")),
+        ):
+            assert is_windows_or_wsl()
+
+    def test_inside_wsl_distro(self):
+        # platform.system() reports "Linux" from inside the distro.
+        with (
+            patch("ramalama.common.platform.system", return_value="Linux"),
+            patch("builtins.open", mock_open(read_data="5.15.167.4-microsoft-standard-WSL2\n")),
+        ):
+            assert is_windows_or_wsl()
+
+    def test_native_linux(self):
+        with (
+            patch("ramalama.common.platform.system", return_value="Linux"),
+            patch("builtins.open", mock_open(read_data="7.1.13-100.fc43.x86_64\n")),
+        ):
+            assert not is_windows_or_wsl()
+
+
+class TestGetGpuDevices:
+    devices = {"/dev/accel": "accel", "/dev/dri": "dri", "/dev/kfd": "kfd"}
+
+    def _get_gpu_devices(self, accel_env_vars, environ=None):
+        with (
+            patch("os.path.exists", lambda path: path in self.devices),
+            patch.dict("os.environ", environ or {}, clear=True),
+        ):
+            return get_gpu_devices(accel_env_vars)
+
+    def test_host_devices(self):
+        assert self._get_gpu_devices({"HIP_VISIBLE_DEVICES": "0"}) == {
+            "accel": "/dev/accel",
+            "dri": "/dev/dri",
+            "kfd": "/dev/kfd",
+        }
+
+    def test_nvidia_gets_none(self):
+        # The container toolkit passes the NVIDIA GPUs in itself. Anything the
+        # host's GPU devices would add on top is a GPU that was not asked for,
+        # an iGPU say, and the vulkan backend would offload onto it.
+        assert self._get_gpu_devices({"CUDA_VISIBLE_DEVICES": "0"}) == {}
+
+    def test_defaults_to_the_environment(self):
+        assert self._get_gpu_devices(None, {"CUDA_VISIBLE_DEVICES": "0"}) == {}
+        assert self._get_gpu_devices(None, {"HIP_VISIBLE_DEVICES": "0"}) != {}

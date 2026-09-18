@@ -11,7 +11,7 @@ import shutil
 import string
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -489,6 +489,33 @@ def check_metal(args: ContainerArgType) -> bool:
 
 
 @lru_cache(maxsize=1)
+def in_wsl() -> bool:
+    """True when the interpreter itself is running inside a WSL distro.
+
+    False on native Windows, where ramalama drives a podman machine instead.
+    """
+    try:
+        with open("/proc/sys/kernel/osrelease") as f:
+            return "microsoft" in f.read().lower()
+    except OSError:
+        return False
+
+
+def is_windows_or_wsl() -> bool:
+    """True where containers reach GPUs through WSL rather than native devices.
+
+    Covers both a native Windows interpreter, which runs containers in the
+    WSL2-backed podman machine, and ramalama running inside a WSL distro
+    itself, which platform.system() reports as "Linux".
+
+    WSL exposes GPUs through /dev/dxg, so Vulkan there means mesa's dzn driver
+    translating to D3D12 (no cooperative matrix support, no compute tuning) or
+    a silent llvmpipe fallback.
+    """
+    return platform.system() == "Windows" or in_wsl()
+
+
+@lru_cache(maxsize=1)
 def has_nvidia_vulkan_icd() -> bool:
     """True when NVIDIA's Vulkan ICD manifest is installed on the host.
 
@@ -722,7 +749,19 @@ GPUEnvVar: TypeAlias = Literal[
 ]
 
 
-def get_gpu_devices():
+def get_gpu_devices(accel_env_vars: Optional[Collection[str]] = None) -> dict[str, str]:
+    """The host GPU devices to hand to the container, given the accelerator in play.
+
+    An NVIDIA GPU does not come in this way: the container toolkit injects the
+    device nodes of the GPUs that were asked for, DRM nodes included. Mapping
+    the host's GPU devices in as well can then only add ones that are not the
+    accelerator in play - an iGPU on a hybrid host, or a GPU left out of a
+    narrowed selection - and llama.cpp's Vulkan backend offloads onto every
+    device it can enumerate. "--device" remains for anyone who wants them.
+    """
+    if "CUDA_VISIBLE_DEVICES" in (get_gpu_type_env_vars() if accel_env_vars is None else accel_env_vars):
+        return {}
+
     devices = {}
     for dev in ["dri", "kfd", "accel"]:
         path = "/dev/" + dev
