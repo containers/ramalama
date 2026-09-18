@@ -27,6 +27,37 @@ class TestEngine(unittest.TestCase):
         self.assertEqual(engine.use_podman, True)
         self.assertEqual(engine.use_docker, False)
 
+    def _cuda_device_args(self, engine_name, visible_devices, selected=()):
+        args = Namespace(**{**vars(self.base_args), "engine": engine_name})
+        engine = ramalama.engine.Engine(args)
+        engine.exec_args = []
+        with (
+            patch("ramalama.engine.get_accel_env_vars", return_value={"CUDA_VISIBLE_DEVICES": visible_devices}),
+            patch("glob.glob", return_value=[]),
+            patch.object(ramalama.common, "podman_machine_accel", False),
+            patch.object(ramalama.common, "nvidia_selected_devices", list(selected)),
+        ):
+            engine.add_device_options()
+        return engine.exec_args
+
+    def test_cuda_device_options_podman(self):
+        exec_args = self._cuda_device_args("podman", "0,1")
+        self.assertEqual(exec_args, ["--device", "nvidia.com/gpu=all", "-e", "CUDA_VISIBLE_DEVICES=0,1"])
+
+    def test_cuda_device_options_docker(self):
+        exec_args = self._cuda_device_args("docker", "0,1")
+        self.assertEqual(exec_args, ["--gpus", "all", "-e", "CUDA_VISIBLE_DEVICES=0,1"])
+
+    def test_cuda_device_options_podman_selection(self):
+        # Only the selected GPU is passed in, so it is device 0 in the container
+        # and every backend sees just that one, Vulkan included.
+        exec_args = self._cuda_device_args("podman", "1", selected=["1"])
+        self.assertEqual(exec_args, ["--device", "nvidia.com/gpu=1", "-e", "CUDA_VISIBLE_DEVICES=0"])
+
+    def test_cuda_device_options_docker_selection(self):
+        exec_args = self._cuda_device_args("docker", "1,2", selected=["1", "2"])
+        self.assertEqual(exec_args, ["--gpus", '"device=1,2"', "-e", "CUDA_VISIBLE_DEVICES=0,1"])
+
     def test_add_container_labels(self):
         args = Namespace(**vars(self.base_args), MODEL="test-model", port="8080", subcommand="run")
         engine = ramalama.engine.Engine(args)

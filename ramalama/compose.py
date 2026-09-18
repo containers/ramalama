@@ -5,7 +5,9 @@ import os
 import shlex
 from typing import Optional
 
-from ramalama.common import RAG_DIR, get_accel_env_vars, get_gpu_devices
+# Live reference for checking global vars
+import ramalama.common
+from ramalama.common import RAG_DIR, container_cuda_visible_devices, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.host_utils import format_bind_host_publish_prefix
 from ramalama.version import version
@@ -122,6 +124,10 @@ class Compose:
 
     def _gen_environment(self) -> str:
         env_vars = get_accel_env_vars()
+        if "CUDA_VISIBLE_DEVICES" in env_vars:
+            # device_ids below reserves just the selected GPUs, so the container
+            # renumbers them, exactly as it does for "ramalama run".
+            env_vars["CUDA_VISIBLE_DEVICES"] = container_cuda_visible_devices(env_vars["CUDA_VISIBLE_DEVICES"])
         # Allow user to override with --env
         if getattr(self.args, "env", None):
             for e in self.args.env:
@@ -137,17 +143,29 @@ class Compose:
         return env_spec
 
     def _gen_gpu_deployment(self) -> str:
-        gpu_keywords = ["cuda", "rocm", "gpu"]
-        if not any(keyword in self.image.lower() for keyword in gpu_keywords):
+        # The "nvidia" device driver only covers NVIDIA GPUs, so key the
+        # reservation off the detected hardware. The image name does not
+        # identify it: NVIDIA can be served by the vulkan-capable ramalama
+        # image as well as by the cuda one.
+        if "CUDA_VISIBLE_DEVICES" not in get_accel_env_vars():
             return ""
 
-        return """\
+        # Reserve only the GPUs the user selected. CUDA_VISIBLE_DEVICES alone
+        # cannot narrow it: the Vulkan backend never reads that variable, so the
+        # other GPUs have to be kept out of the container entirely.
+        if selected := ramalama.common.nvidia_selected_devices:
+            device_ids = ", ".join(f'"{name}"' for name in selected)
+            reservation = f"device_ids: [{device_ids}]"
+        else:
+            reservation = "count: all"
+
+        return f"""\
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              {reservation}
               capabilities: [gpu]"""
 
     def _gen_command(self) -> str:

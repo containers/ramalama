@@ -2,9 +2,9 @@
 #
 # Created with ramalama-0.1.0-test
 services:
-  gemma-cuda:
-    container_name: ramalama-gemma-cuda
-    image: test-image/cuda:latest
+  gemma-vulkan:
+    container_name: ramalama-gemma-vulkan
+    image: test-image/ramalama:latest
     volumes:
       - "/models/gemma.gguf:/mnt/models/gemma.gguf:ro"
     ports:

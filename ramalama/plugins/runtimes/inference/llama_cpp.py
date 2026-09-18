@@ -12,6 +12,7 @@ import tempfile
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from http.client import HTTPConnection
 from typing import Any, Literal, Optional, get_args
 from urllib.parse import urlparse
@@ -40,6 +41,7 @@ from ramalama.common import (
     ensure_image,
     genname,
     get_gpu_type_env_vars,
+    has_nvidia_vulkan_icd,
     run_cmd,
     set_accel_env_vars,
     set_gpu_type_env_vars,
@@ -144,7 +146,7 @@ def get_gpu_backend_preferences(gpu_type: str) -> list[str]:
 
     preferences = {
         "HIP_VISIBLE_DEVICES": ["vulkan", "rocm"],  # AMD: Vulkan preferred
-        "CUDA_VISIBLE_DEVICES": ["cuda"],  # NVIDIA: CUDA only
+        "CUDA_VISIBLE_DEVICES": ["cuda", "vulkan"],  # NVIDIA: CUDA preferred
         "INTEL_VISIBLE_DEVICES": ["vulkan", "sycl", "openvino"],  # Intel: Vulkan preferred
         "ASAHI_VISIBLE_DEVICES": ["vulkan"],  # Asahi: Vulkan only
         "ASCEND_VISIBLE_DEVICES": ["cann"],  # Ascend: CANN only
@@ -157,6 +159,22 @@ def get_gpu_backend_preferences(gpu_type: str) -> list[str]:
         preferences["INTEL_VISIBLE_DEVICES"] = ["sycl", "vulkan", "openvino"]
 
     return preferences.get(gpu_type, [])
+
+
+@lru_cache(maxsize=1)
+def warn_without_nvidia_vulkan_icd() -> None:
+    """Warn once when vulkan is picked for an NVIDIA GPU the host cannot drive.
+
+    Vulkan is only usable on NVIDIA because the container toolkit injects the
+    vendor ICD. Without it llama.cpp silently serves from the CPU, which is far
+    slower but never fails, so say so up front."""
+    if has_nvidia_vulkan_icd():
+        return
+    logger.warning(
+        "No NVIDIA Vulkan ICD found in /usr/share/vulkan/icd.d or /etc/vulkan/icd.d. "
+        "Inference may fall back to the CPU. Install the nvidia-container-toolkit, which "
+        "provides the ICD for the container, or select the cuda backend with --backend cuda."
+    )
 
 
 def backend_to_gpu_env(backend: str) -> str:
@@ -352,6 +370,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                         f"Backend '{backend}' may not be compatible with detected {gpu_name} GPU. "
                         f"Recommended backends for {gpu_name}: {', '.join(preferences)}"
                     )
+
+        if gpu_type == "GGML_VK_VISIBLE_DEVICES" and detected_gpu_type == "CUDA_VISIBLE_DEVICES":
+            warn_without_nvidia_vulkan_icd()
 
         override = config.images.get(gpu_type) if gpu_type else None
         return override if override else _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
