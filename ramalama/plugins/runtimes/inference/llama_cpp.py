@@ -87,6 +87,7 @@ class LlamaCppConfig:
     backend: Literal["auto", "vulkan", "rocm", "cuda", "sycl", "openvino", "cann", "musa"] = "auto"
     cache_reuse: Optional[int] = None
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE  # type: ignore[assignment]
+    mtmd: Optional[bool] = None
     ngl: Optional[str] = None
     ncmoe: Optional[int] = None
     spec_type: Optional[str] = None
@@ -116,6 +117,8 @@ class LlamaCppConfig:
         self.threads = int(self.threads)
         if self.thinking is not None:
             self.thinking = coerce_to_bool(self.thinking)
+        if self.mtmd is not None:
+            self.mtmd = coerce_to_bool(self.mtmd)
 
 
 def _positive_int(value: str) -> int:
@@ -505,6 +508,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 default=None,
                 help="min speculative decoding probability (default: 0.0)",
                 completer=suppressCompleter,
+            )
+            parser.add_argument(
+                "--mtmd",
+                default=None,
+                help="enable/disable multimodal mode (default: on)",
+                action=CoerceToBool,
             )
         self._add_threads_arg(parser)
         if command == "serve":
