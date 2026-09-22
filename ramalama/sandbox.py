@@ -200,6 +200,10 @@ class Agent:
     Run an agent in a container.
     """
 
+    # Whether the agent presents --api-key to the model server. Only then is it
+    # safe to make a server we start require one; see run_sandbox.
+    presents_api_key: bool = True
+
     def __init__(self, args: SandboxEngineArgsType, model_name: str):
         self.engine = SandboxEngine(args)
         self.model_name = model_name
@@ -307,6 +311,16 @@ class Pi(Agent):
     will choose its interactive or print behavior based on whether stdin is attached to a tty.
     """
 
+    # The pinned pi-llama-server extension discovers models with an
+    # unauthenticated GET /models and registers the provider with a hardcoded
+    # "not-needed" key, so it cannot reach a keyed server: discovery gets a 401,
+    # the extension registers nothing, and --provider llama-server then fails as
+    # unknown. https://github.com/am17an/pi-llama-server/pull/3 teaches it to
+    # read LLAMA_SERVER_API_KEY; flip this to True once that release is pinned by
+    # PI_LLAMA_SERVER_VERSION in container-images/pi-agent/Containerfile, which
+    # also turns on the env var below.
+    presents_api_key = False
+
     def __init__(self, args: PiArgsType, model_name: str) -> None:
         super().__init__(args, model_name)
         provider_id = _pi_provider_id()
@@ -323,6 +337,12 @@ class Pi(Agent):
         # pi-llama-server discovers and registers providers from LLAMA_SERVER_URL;
         # --provider then selects the matching provider id for the active session.
         self.engine.add_env_option(f"LLAMA_SERVER_URL={args.url}")
+        if self.presents_api_key:
+            # The variable the extension reads for the bearer token it sends on
+            # discovery and on inference, mirroring OPENAI_API_KEY for the other
+            # agents. Gated on the flag run_sandbox also consults before keying a
+            # server it starts, so the two sides never disagree.
+            self.engine.add_env_option(f"LLAMA_SERVER_API_KEY={args.api_key}")
 
 
 def run_sandbox_goose(args: GooseArgsType):
@@ -389,6 +409,12 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
 
     sb_args.port = compute_serving_port(sb_args)
     sb_args.url = f"http://localhost:{sb_args.port}"
+    # The agent is already configured to present --api-key, so make the server we
+    # are about to start actually require it. Agents that cannot present one get
+    # an unauthenticated server, as they did before --api-key existed; keying it
+    # would only lock them out.
+    if agent_cls.presents_api_key:
+        sb_args.server_api_key = sb_args.api_key  # type: ignore[attr-defined]
     if len(models) == 1:
         sb_args.MODEL = models[0]
         _run_sandbox_single_model(sb_args, agent_cls)
@@ -421,12 +447,13 @@ def _run_sandbox_single_model(args: SandboxEngineArgsType, agent_cls: type[Agent
         stop_container(args, args.name, remove=True)  # type: ignore[attr-defined]
 
 
-def _query_router_models(port: int | str) -> list[str]:
+def _query_router_models(port: int | str, api_key: Optional[str] = None) -> list[str]:
     """Query the llama.cpp router server for available model IDs."""
     conn = None
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
         conn = HTTPConnection("127.0.0.1", int(port), timeout=5)
-        conn.request("GET", "/v1/models")
+        conn.request("GET", "/v1/models", headers=headers)
         resp = conn.getresponse()
         if resp.status != 200:
             return []
@@ -459,7 +486,7 @@ def _run_sandbox_router(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> 
 
         if args.port is None:
             raise ValueError("Router mode requires a resolved serving port")
-        model_ids = _query_router_models(args.port)
+        model_ids = _query_router_models(args.port, getattr(args, "server_api_key", None))
         args.router_model_ids = model_ids  # type: ignore[attr-defined]
         assert model_ids, "router model discovery returned no model IDs"
         first_model = model_ids[0]

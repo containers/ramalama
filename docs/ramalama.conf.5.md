@@ -270,6 +270,10 @@ Options: `Q2_K`, `Q3_K_S`, `Q3_K_M`, `Q3_K_L`, `Q4_0`, `Q4_K_S`, `Q4_K_M`, `Q5_0
 
 **ncmoe**=0: Keep the Mixture of Experts (MoE) weights of the first N layers in the CPU.  
 
+**server_api_key**="": Require clients to present this API key on requests to the AI Model server.
+Empty (the default) means no authentication. Equivalent to passing `--api-key` to `ramalama run` or
+`ramalama serve`. Generate a random key with `openssl rand -hex 32`.
+
 **temp**="0.8": Response sampling temperature.
 - Lower values: more deterministic output
 - Higher values: more creative output (higher hallucination risk)
