@@ -46,6 +46,17 @@ def _isolate_from_toolbox():
 
 
 @pytest.fixture(autouse=True)
+def _clear_wsl_cache():
+    """in_wsl() caches its /proc read, so tests patching it must not leak into
+    each other or inherit whatever the host answered first."""
+    from ramalama.common import in_wsl
+
+    in_wsl.cache_clear()
+    yield
+    in_wsl.cache_clear()
+
+
+@pytest.fixture(autouse=True)
 def _clear_vulkan_icd_cache():
     """The ICD probe and the warning it drives are cached for the process, so
     clear them around every test rather than carrying the host's answer."""

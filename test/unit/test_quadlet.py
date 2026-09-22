@@ -325,3 +325,25 @@ def test_quadlet_generate(input: Input, expected_files_path: Path, monkeypatch):
             del expected_files[file.filename]
 
     assert expected_files == dict()
+
+
+def test_quadlet_nvidia_selection(monkeypatch):
+    """A narrowed CUDA_VISIBLE_DEVICES reserves just those GPUs, as it does for
+    "ramalama run": the Vulkan backend cannot be filtered any other way."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+    monkeypatch.setattr("ramalama.quadlet.get_accel_env_vars", lambda: {"CUDA_VISIBLE_DEVICES": "1,2"})
+    monkeypatch.setattr("ramalama.common.nvidia_selected_devices", ["1", "2"])
+
+    files = Quadlet("tinyllama", ("/blob", "model"), None, None, Args(), [], False, None, None).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert "AddDevice=nvidia.com/gpu=1" in content
+    assert "AddDevice=nvidia.com/gpu=2" in content
+    assert "AddDevice=nvidia.com/gpu=all" not in content
+    # The container sees the two GPUs as 0 and 1, so the host's indices would
+    # name a device that is not there.
+    assert "Environment=CUDA_VISIBLE_DEVICES=0,1" in content

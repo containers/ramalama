@@ -58,6 +58,80 @@ class TestEngine(unittest.TestCase):
         exec_args = self._cuda_device_args("docker", "1,2", selected=["1", "2"])
         self.assertEqual(exec_args, ["--gpus", '"device=1,2"', "-e", "CUDA_VISIBLE_DEVICES=0,1"])
 
+    def _host_gpu_device_args(self, accel_env_vars):
+        engine = ramalama.engine.Engine(self.base_args)
+        engine.exec_args = []
+        host_devices = ["/dev/accel", "/dev/dri", "/dev/kfd"]
+        with (
+            patch("ramalama.engine.get_accel_env_vars", return_value=dict(accel_env_vars)),
+            # A GPU that WSL would expose as /dev/dxg is a native one here.
+            patch("ramalama.engine.is_windows_or_wsl", return_value=False),
+            patch("os.path.exists", lambda path: path in host_devices),
+            patch("glob.glob", lambda path: [path] if path in host_devices else []),
+            patch.object(ramalama.common, "podman_machine_accel", False),
+            patch.object(ramalama.common, "nvidia_selected_devices", []),
+        ):
+            engine.add_device_options()
+        return engine.exec_args
+
+    def test_host_gpu_devices(self):
+        exec_args = self._host_gpu_device_args({"HIP_VISIBLE_DEVICES": "0"})
+        self.assertEqual(
+            exec_args,
+            [
+                "--device",
+                "/dev/accel",
+                "--device",
+                "/dev/dri",
+                "--device",
+                "/dev/kfd",
+                "-e",
+                "HIP_VISIBLE_DEVICES=0",
+            ],
+        )
+
+    def test_host_gpu_devices_left_out_for_nvidia(self):
+        # The container toolkit passes the NVIDIA GPUs in itself, so /dev/dri
+        # could only add a GPU that was not asked for - an iGPU on a hybrid
+        # host - and the Vulkan backend would offload onto it.
+        exec_args = self._host_gpu_device_args({"CUDA_VISIBLE_DEVICES": "0"})
+        self.assertEqual(exec_args, ["--device", "nvidia.com/gpu=all", "-e", "CUDA_VISIBLE_DEVICES=0"])
+
+    def _wsl_device_args(self, accel_env_var, windows_or_wsl):
+        engine = ramalama.engine.Engine(self.base_args)
+        engine.exec_args = []
+        with (
+            patch("ramalama.engine.get_accel_env_vars", return_value={accel_env_var: "0"}),
+            patch("ramalama.engine.is_windows_or_wsl", return_value=windows_or_wsl),
+            patch("glob.glob", return_value=[]),
+            patch.object(ramalama.common, "podman_machine_accel", False),
+        ):
+            engine.add_device_options()
+        return engine.exec_args
+
+    def test_intel_device_options_native(self):
+        exec_args = self._wsl_device_args("INTEL_VISIBLE_DEVICES", False)
+        self.assertEqual(exec_args, ["-e", "INTEL_VISIBLE_DEVICES=0"])
+
+    def test_wsl_device_options(self):
+        # WSL exposes the AMD GPU the same way as the Intel one. Also covers
+        # ramalama running inside a WSL distro, where platform.system() reports
+        # "Linux" but the GPU is still /dev/dxg.
+        for accel_env_var in ("HIP_VISIBLE_DEVICES", "INTEL_VISIBLE_DEVICES"):
+            with self.subTest(accel_env_var=accel_env_var):
+                exec_args = self._wsl_device_args(accel_env_var, True)
+                self.assertEqual(
+                    exec_args,
+                    [
+                        "--device",
+                        "/dev/dxg",
+                        "--mount",
+                        "type=bind,src=/usr/lib/wsl,dst=/usr/lib/wsl",
+                        "-e",
+                        f"{accel_env_var}=0",
+                    ],
+                )
+
     def test_add_container_labels(self):
         args = Namespace(**vars(self.base_args), MODEL="test-model", port="8080", subcommand="run")
         engine = ramalama.engine.Engine(args)
@@ -249,7 +323,7 @@ class TestEngine(unittest.TestCase):
         "none-host",
     ],
 )
-@patch("ramalama.engine.platform.system", return_value="Linux")
+@patch("ramalama.host_utils.platform.system", return_value="Linux")
 def test_add_port_with_host(mock_system, host, port, expected_port_arg):
     base_args = Namespace(
         engine="podman",
@@ -294,7 +368,7 @@ def test_add_port_with_host_on_vm_engine(system, host, port, expected_port_arg):
         host=host,
         port=port,
     )
-    with patch("ramalama.engine.platform.system", return_value=system):
+    with patch("ramalama.host_utils.platform.system", return_value=system):
         engine = ramalama.engine.Engine(base_args)
     p_index = engine.exec_args.index("-p")
     assert engine.exec_args[p_index + 1] == expected_port_arg

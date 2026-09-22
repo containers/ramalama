@@ -4,7 +4,6 @@ import argparse
 import copy
 import json
 import os
-import platform
 import shutil
 import subprocess
 import sys
@@ -42,6 +41,7 @@ from ramalama.common import (
     genname,
     get_gpu_type_env_vars,
     has_nvidia_vulkan_icd,
+    is_windows_or_wsl,
     run_cmd,
     set_accel_env_vars,
     set_gpu_type_env_vars,
@@ -141,9 +141,7 @@ class AddPathOrUrl(argparse.Action):
 
 def get_gpu_backend_preferences(gpu_type: str) -> list[str]:
     """Returns preferred backends for a given GPU type in order of preference.
-    On Windows, vulkan is not supported on WSL2, so vendor backends are preferred."""
-    is_windows = platform.system() == "Windows"
-
+    Vulkan is a poor default on WSL2, so vendor backends are preferred there."""
     preferences = {
         "HIP_VISIBLE_DEVICES": ["vulkan", "rocm"],  # AMD: Vulkan preferred
         "CUDA_VISIBLE_DEVICES": ["cuda", "vulkan"],  # NVIDIA: CUDA preferred
@@ -154,7 +152,7 @@ def get_gpu_backend_preferences(gpu_type: str) -> list[str]:
         "GGML_VK_VISIBLE_DEVICES": ["vulkan"],  # Vulkan: Vulkan only
     }
 
-    if is_windows:
+    if is_windows_or_wsl():
         preferences["HIP_VISIBLE_DEVICES"] = ["rocm", "vulkan"]
         preferences["INTEL_VISIBLE_DEVICES"] = ["sycl", "vulkan", "openvino"]
 
@@ -206,11 +204,13 @@ def get_available_backends() -> list[str]:
     return ["auto", "vulkan"]
 
 
+# GGML_VK_VISIBLE_DEVICES, the vulkan backend, is deliberately absent: it runs
+# in the default image, and hardcoding the published tag here would ignore
+# default_image / RAMALAMA_DEFAULT_IMAGE whenever a GPU is detected.
 _LLAMA_CPP_IMAGES: dict[str, str] = {
     "ASAHI_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/asahi"),
     "ASCEND_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/cann"),
     "CUDA_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/cuda"),
-    "GGML_VK_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/ramalama"),
     "HIP_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/rocm"),
     "INTEL_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/intel-gpu"),
     "OPENVINO_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/openvino"),
@@ -374,8 +374,15 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if gpu_type == "GGML_VK_VISIBLE_DEVICES" and detected_gpu_type == "CUDA_VISIBLE_DEVICES":
             warn_without_nvidia_vulkan_icd()
 
-        override = config.images.get(gpu_type) if gpu_type else None
-        return override if override else _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
+        # In auto mode an image configured for the detected GPU is the user
+        # pinning an image for their hardware, so it takes precedence over one
+        # configured for the backend that was resolved from that hardware.
+        override_keys = [detected_gpu_type, gpu_type] if backend == "auto" else [gpu_type]
+        for key in override_keys:
+            if key and (override := config.images.get(key)):
+                return override
+
+        return _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
 
     def _container_image_is_ggml(self, args: argparse.Namespace) -> bool:
         if not args.container or args.dryrun:
