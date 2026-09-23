@@ -393,3 +393,32 @@ class TestConfiguredKeyIsNotPrintedByHelp:
     def test_configured_key_is_still_the_default(self, command, monkeypatch):
         parser, _ = self._parser(monkeypatch)
         assert parser.parse_args([command, "granite"]).server_api_key == "sekret"
+
+
+class TestRagHandlerServeArgs:
+    """The helper servers ramalama rag starts publish ports, so they need the key."""
+
+    def _build(self, **kw):
+        from ramalama.plugins.runtimes.inference.rag.handler import _build_serve_args
+
+        base = dict(
+            container=True,
+            engine="podman",
+            store="/store",
+            dryrun=True,
+            debug=False,
+            image="img",
+            server_api_key=None,
+        )
+        base.update(kw)
+        return _build_serve_args(argparse.Namespace(**base), "hf://model", 8080)
+
+    def test_key_is_propagated(self):
+        assert self._build(server_api_key="secret").server_api_key == "secret"
+
+    def test_no_key_by_default(self):
+        assert self._build().server_api_key is None
+
+    def test_env_is_left_to_assemble_command(self):
+        """handle_subcommand injects the name; _build_serve_args must not double it."""
+        assert self._build(server_api_key="secret").env == []

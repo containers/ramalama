@@ -103,6 +103,8 @@ public so that health checks keep working. Whether the model listing
 (`/models`, `/v1/models`) is public depends on the llama.cpp version in the
 image; do not rely on it being either way.
 
+
+[//]: # (BEGIN included file options/api-key-sources.md)
 Generate a random key on the shell with:
 
 ```
@@ -121,6 +123,8 @@ or through the matching environment variable, which overrides the file:
 ```
 export RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY="$KEY"
 ```
+
+[//]: # (END   included file options/api-key-sources.md)
 
 Caveats:
 

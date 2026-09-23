@@ -24,6 +24,8 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from ramalama_api_auth import bearer_header
+
 logger = logging.getLogger("doc2rag")
 
 # ---------------------------------------------------------------------------
@@ -36,6 +38,16 @@ SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS | PDF_EXTENSIONS | TEXT_EXTENSIONS
 
 COLLECTION_NAME = "rag"
 EMBEDDING_BATCH_SIZE = 1
+
+# Shared secret for the llama.cpp servers this container talks to, injected by
+# "ramalama rag --api-key". We only ever present it: nothing here listens on a
+# port. Empty means the servers are unauthenticated, which is the default.
+API_KEY = os.environ.get("RAMALAMA_API_KEY", "")
+
+
+def request_headers():
+    """JSON request headers, carrying the API key when one is configured."""
+    return {"Content-Type": "application/json", **bearer_header(API_KEY)}
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +83,7 @@ class GraniteDoclingConverter:
         req = Request(
             self.completions_url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=request_headers(),
         )
         try:
             with urlopen(req, timeout=300) as resp:
@@ -220,7 +232,7 @@ class ImageCaptioner:
         req = Request(
             self.completions_url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=request_headers(),
         )
         try:
             with urlopen(req, timeout=300) as resp:
@@ -307,7 +319,7 @@ class LlamaCppEmbedder:
         req = Request(
             self.embeddings_url,
             data=payload,
-            headers={"Content-Type": "application/json"},
+            headers=request_headers(),
         )
         try:
             with urlopen(req, timeout=300) as resp:

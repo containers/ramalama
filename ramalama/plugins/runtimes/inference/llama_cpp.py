@@ -84,8 +84,9 @@ DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"  # type: igno
 # llama-server reads its API key from this variable when --api-key is not given.
 LLAMA_API_KEY_ENV = "LLAMA_API_KEY"
 
-# The RAG proxy reads the same key from this variable: it guards its own port
-# with it and presents it to the llama-server containers behind it.
+# ramalama's own RAG container scripts read the same key from this variable:
+# rag_framework guards its port with it and presents it to the llama-servers
+# behind it, doc2rag only presents it.
 RAG_API_KEY_ENV = "RAMALAMA_API_KEY"
 
 
@@ -483,7 +484,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             completer=suppressCompleter,
         )
 
-    def _add_api_key_arg(self, parser: "argparse.ArgumentParser") -> None:
+    def _add_api_key_arg(self, parser: "argparse.ArgumentParser", help_text: Optional[str] = None) -> None:
         """Register --api-key.
 
         Deliberately not in _add_inference_args: ramalama sandbox borrows that to
@@ -495,7 +496,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             "--api-key",
             dest="server_api_key",
             metavar="KEY",
-            help="require this API key on requests to the AI Model server (default: no authentication)",
+            help=help_text or "require this API key on requests to the AI Model server (default: no authentication)",
             completer=suppressCompleter,
         )
         # Apply the configured default out of band: ArgumentParserWithDefaults
@@ -820,14 +821,15 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     @staticmethod
     def _set_rag_api_key_env(args: argparse.Namespace) -> None:
-        """Hand the server API key to the RAG proxy through RAMALAMA_API_KEY.
+        """Hand the server API key to a RAG container through RAMALAMA_API_KEY.
 
-        ``args`` here is the proxy's own namespace; the model server behind it
-        already picked the key up from LLAMA_API_KEY, and the proxy inherits that
-        name too because its namespace is a shallow copy of the model server's.
-        Carrying it is harmless, the proxy reads RAMALAMA_API_KEY. As with the
-        model server the name is passed bare, so the engine inherits the value
-        from our environment instead of putting it on its command line.
+        ``args`` is the RAG container's own namespace, either the serve proxy's
+        or doc2rag's; the llama.cpp servers it talks to pick the key up from
+        LLAMA_API_KEY instead. The serve proxy also inherits that name, because
+        its namespace is a shallow copy of the model server's, which is harmless
+        since it reads RAMALAMA_API_KEY. As with the model server the name is
+        passed bare, so the engine inherits the value from our environment
+        instead of putting it on its command line.
         """
         key = getattr(args, "server_api_key", None)
         if not key:

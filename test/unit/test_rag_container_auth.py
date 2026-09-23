@@ -100,6 +100,7 @@ class TestScriptsUseTheSharedModule:
         "script,expected",
         [
             ("rag_framework", ("bearer_header", "is_authorized")),
+            ("doc2rag", ("bearer_header",)),
         ],
     )
     def test_imports_what_it_needs(self, script, expected):

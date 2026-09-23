@@ -27,24 +27,7 @@ public so that health checks keep working. Whether the model listing
 (`/models`, `/v1/models`) is public depends on the llama.cpp version in the
 image; do not rely on it being either way.
 
-Generate a random key on the shell with:
-
-```
-KEY=$(openssl rand -hex 32)
-```
-
-The default can be set per-runtime in `ramalama.conf`:
-
-```
-[ramalama.runtimes.llama_cpp]
-server_api_key = "..."
-```
-
-or through the matching environment variable, which overrides the file:
-
-```
-export RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY="$KEY"
-```
+@@include options/api-key-sources.md
 
 Caveats:
 
