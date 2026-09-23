@@ -990,13 +990,44 @@ def test_serve_api_key_env_passthrough():
 
 
 @pytest.mark.e2e
-def test_serve_api_key_rejects_rag():
+@skip_if_no_container
+def test_serve_api_key_rag_keys_every_published_port():
+    """--rag publishes three ports: the proxy plus two llama-servers. All are keyed."""
     with RamalamaExecWorkspace() as ctx:
-        with pytest.raises(CalledProcessError) as exc:
-            ctx.check_output(
-                RAMALAMA_DRY_RUN + ["--api-key", "sekret", "--rag", "quay.io/ramalama/rag", "tiny"], stderr=STDOUT
-            )
-        assert "--api-key is not supported with --rag" in exc.value.output.decode()
+        result = ctx.check_output(
+            RAMALAMA_DRY_RUN + ["--api-key", "sekret", "--rag", "quay.io/ramalama/rag", "tiny"]
+        )
+        containers = [line for line in result.splitlines() if " run " in line]
+        assert len(containers) == 3
+        for line in containers:
+            published = re.search(r"-p \S+", line)
+            assert published, line
+            # rag_framework reads RAMALAMA_API_KEY, llama-server reads LLAMA_API_KEY
+            key_env = "RAMALAMA_API_KEY" if "rag_framework" in line else "LLAMA_API_KEY"
+            assert len(re.findall(rf"--env {key_env}(?=\s|$)", line)) == 1, line
+        assert "sekret" not in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_serve_api_key_rag_with_generate_keeps_the_key_off_the_command_line():
+    """--generate is ignored on the RAG path, so no container may take the plaintext form."""
+    with RamalamaExecWorkspace() as ctx:
+        result = ctx.check_output(
+            RAMALAMA_DRY_RUN
+            + ["--api-key", "sekret", "--generate", "quadlet", "--rag", "quay.io/ramalama/rag", "tiny"]
+        )
+        assert "sekret" not in result
+        assert len([line for line in result.splitlines() if " run " in line]) == 3
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_serve_rag_without_api_key_is_unchanged():
+    """The default RAG pipeline stays unauthenticated."""
+    with RamalamaExecWorkspace() as ctx:
+        result = ctx.check_output(RAMALAMA_DRY_RUN + ["--rag", "quay.io/ramalama/rag", "tiny"])
+        assert "API_KEY" not in result
 
 
 @pytest.mark.e2e

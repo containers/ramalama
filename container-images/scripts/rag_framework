@@ -9,6 +9,7 @@ Usage:
 """
 
 import logging
+import os
 import sys
 import textwrap
 import time
@@ -21,13 +22,31 @@ import aiohttp
 import openai
 import qdrant_client
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from ramalama_api_auth import bearer_header, is_authorized
 
 logger = logging.getLogger("rag_framework")
 
 COLLECTION_NAME = "rag"
+
+# Shared secret for this endpoint, injected by "ramalama serve --api-key". The
+# same key guards our own port and is presented to the llama.cpp servers behind
+# us, which ramalama starts with the matching LLAMA_API_KEY. Empty means the
+# whole pipeline is unauthenticated, which is the default.
+API_KEY = os.environ.get("RAMALAMA_API_KEY", "")
+
+
+def auth_headers():
+    """Authorization header for the llama.cpp servers, empty when no key is set."""
+    return bearer_header(API_KEY)
+
+
+def require_api_key(request: Request):
+    """Reject requests that do not carry the configured key."""
+    if not is_authorized(API_KEY, request.headers.get("authorization", ""), request.headers.get("x-api-key", "")):
+        raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +127,10 @@ class LlamaCppEmbedder:
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.post(
-                    self.embeddings_url, json=payload, timeout=aiohttp.ClientTimeout(total=30)
+                    self.embeddings_url,
+                    json=payload,
+                    headers=auth_headers(),
+                    timeout=aiohttp.ClientTimeout(total=30),
                 ) as resp:
                     resp.raise_for_status()
                     result = await resp.json()
@@ -125,7 +147,9 @@ class RagService:
         self.qclient = qdrant_client.AsyncQdrantClient(path=vector_path)
         self.embedder = LlamaCppEmbedder(api_url=embed_url)
         self.llm = openai.AsyncOpenAI(
-            api_key="ramalama",
+            # llama.cpp ignores the header when it is running without a key, so the
+            # placeholder keeps the unauthenticated path working unchanged.
+            api_key=API_KEY or "ramalama",
             base_url=f"http://{model_host}:{model_port}",
             http_client=openai.DefaultAioHttpClient(),
         )
@@ -351,7 +375,7 @@ async def _request(host, port, path, timeout=10):
         f"http://{host}:{port}",
         timeout=aiohttp.ClientTimeout(total=timeout),
     ) as session:
-        async with session.get(path) as resp:
+        async with session.get(path, headers=auth_headers()) as resp:
             data = await resp.json()
             return resp, data
 
@@ -398,7 +422,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="RAG-Enhanced OpenAI Compatible API", lifespan=lifespan)
 
 
-@app.post("/v1/chat/completions", response_model=None)
+@app.post("/v1/chat/completions", response_model=None, dependencies=[Depends(require_api_key)])
 async def create_chat_completion(request: ChatCompletionRequest):
     try:
         return await _get_service().create_chat_completion(request)
@@ -406,7 +430,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/models")
+@app.get("/models", dependencies=[Depends(require_api_key)])
 async def llama_models():
     args = _get_args()
     try:
@@ -422,7 +446,7 @@ async def llama_models():
         raise HTTPException(status_code=503, detail=f"LLM service unavailable: {e}")
 
 
-@app.get("/v1/models")
+@app.get("/v1/models", dependencies=[Depends(require_api_key)])
 async def list_models():
     try:
         service = _get_service()

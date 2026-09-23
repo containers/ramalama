@@ -84,11 +84,25 @@ DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"  # type: igno
 # llama-server reads its API key from this variable when --api-key is not given.
 LLAMA_API_KEY_ENV = "LLAMA_API_KEY"
 
+# The RAG proxy reads the same key from this variable: it guards its own port
+# with it and presents it to the llama-server containers behind it.
+RAG_API_KEY_ENV = "RAMALAMA_API_KEY"
+
 
 def api_key_headers(args: Any) -> dict[str, str]:
     """Authorization header for a keyed llama-server, empty when no key is set."""
     key = getattr(args, "server_api_key", None) or getattr(args, "api_key", None)
     return {"Authorization": f"Bearer {key}"} if key else {}
+
+
+def _prepend_key_env(args: argparse.Namespace, entry: str) -> None:
+    """Prepend an env entry to ``args.env``.
+
+    Rebinds rather than mutating in place: _rag_args shallow-copies the model
+    server's namespace to build the RAG proxy's, so the two share one list and
+    appending to it would give each container the other's entries.
+    """
+    args.env = [entry, *(getattr(args, "env", None) or [])]
 
 
 @dataclass
@@ -587,12 +601,10 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         super().post_process_args(args)
         if not getattr(args, "server_api_key", None):
             return
-        # Both of these put a helper in front of llama-server that has no way to
-        # present a key, so the port the user reaches would be unauthenticated.
-        if getattr(args, "rag", None):
-            raise ValueError(
-                "--api-key is not supported with --rag: the RAG server is the exposed port and cannot require a key."
-            )
+        # llama-stack fronts llama-server on the only published port, and neither
+        # requires a key of its clients nor presents one upstream, so the port the
+        # user reaches would be unauthenticated. --rag is supported: every port it
+        # publishes is keyed, see _set_rag_api_key_env.
         if getattr(args, "api", None) == "llama-stack":
             raise ValueError("--api-key is not supported with --api llama-stack: llama-stack cannot present a key.")
 
@@ -615,11 +627,11 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if getattr(args, "generate", None):
             # Generated quadlet/kube/compose files are read without ramalama in the
             # picture, so they need the literal value. It lands there in plaintext.
-            args.env = [f"{LLAMA_API_KEY_ENV}={key}", *getattr(args, "env", [])]
+            _prepend_key_env(args, f"{LLAMA_API_KEY_ENV}={key}")
         elif getattr(args, "container", False):
             # Bare name: podman/docker inherit the value from our own environment,
             # keeping it off the engine command line.
-            args.env = [LLAMA_API_KEY_ENV, *getattr(args, "env", [])]
+            _prepend_key_env(args, LLAMA_API_KEY_ENV)
 
     def handle_subcommand(self, command: str, args: argparse.Namespace) -> list[str]:
         set_accel_env_vars()
@@ -628,15 +640,16 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         return super().handle_subcommand(command, args)
 
     def _do_run(self, args: argparse.Namespace, model: Any) -> None:
+        # run chats against the server it just started, so the client has to present
+        # the key the server now demands. chat.add_api_key() reads args.api_key. Set
+        # it before the RAG branch, whose namespace is copied from this one.
+        if getattr(args, "server_api_key", None):
+            args.api_key = args.server_api_key
         if getattr(args, "rag", None):
             if isinstance(model, APITransport):
                 raise ValueError("ramalama run --rag is not supported for hosted API transports.")
             self._run_rag(args, model)
             return
-        # run chats against the server it just started, so the client has to present
-        # the key the server now demands. chat.add_api_key() reads args.api_key.
-        if getattr(args, "server_api_key", None):
-            args.api_key = args.server_api_key
         super()._do_run(args, model)
 
     def _do_serve(self, args: argparse.Namespace, model: Any) -> None:
@@ -786,12 +799,14 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         """Start the RAG helper servers on a private network, then run ``dispatch``.
 
         The model server, embedding server, and RAG proxy all join a shared
-        private network so they reach each other by container name without
-        publishing the helper servers to the host.
+        private network so they reach each other by container name. Each of the
+        three also publishes a port of its own, so a key has to cover all of
+        them, not just the proxy the user talks to.
         """
         from ramalama.engine import remove_network
         from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers, _setup_rag_network
 
+        self._set_rag_api_key_env(args)
         network_created = _setup_rag_network(args)
         try:
             embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
@@ -802,6 +817,24 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         finally:
             if network_created:
                 remove_network(args, args.network)
+
+    @staticmethod
+    def _set_rag_api_key_env(args: argparse.Namespace) -> None:
+        """Hand the server API key to the RAG proxy through RAMALAMA_API_KEY.
+
+        ``args`` here is the proxy's own namespace; the model server behind it
+        already picked the key up from LLAMA_API_KEY, and the proxy inherits that
+        name too because its namespace is a shallow copy of the model server's.
+        Carrying it is harmless, the proxy reads RAMALAMA_API_KEY. As with the
+        model server the name is passed bare, so the engine inherits the value
+        from our environment instead of putting it on its command line.
+        """
+        key = getattr(args, "server_api_key", None)
+        if not key:
+            return
+
+        os.environ[RAG_API_KEY_ENV] = key
+        _prepend_key_env(args, RAG_API_KEY_ENV)
 
     def _start_rag_embedding_server(self, args):
         """Start a llama.cpp embedding server for RAG inference and set embed_url on args."""
