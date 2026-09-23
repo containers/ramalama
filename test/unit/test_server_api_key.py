@@ -168,6 +168,25 @@ class TestArgRegistration:
         args = self._parse(command, ["granite"])
         assert not args.server_api_key
 
+    @pytest.mark.parametrize("command", ["run", "serve"])
+    def test_api_does_not_abbreviate_to_api_key_without_containers(self, command, monkeypatch, capsys):
+        """--api is only registered in container mode; it must not become --api-key."""
+        from ramalama.config import ActiveConfig
+
+        monkeypatch.setattr(ActiveConfig(), "container", False, raising=False)
+        with pytest.raises(SystemExit):
+            self._parse(command, ["--api", "llama-stack", "granite"])
+        assert "unrecognized arguments: --api" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("command", ["run", "serve"])
+    def test_api_still_works_with_containers(self, command, monkeypatch):
+        from ramalama.config import ActiveConfig
+
+        monkeypatch.setattr(ActiveConfig(), "container", True, raising=False)
+        args = self._parse(command, ["--api", "llama-stack", "--api-key", "secret", "granite"])
+        assert args.api == "llama-stack"
+        assert args.server_api_key == "secret"
+
     def test_sandbox_keeps_its_own_client_key(self):
         """sandbox borrows _add_inference_args, so the server flag must not be there."""
         from ramalama.cli import ArgumentParserWithDefaults

@@ -1009,6 +1009,16 @@ def test_serve_api_key_rejects_llama_stack():
 
 
 @pytest.mark.e2e
+@skip_if_container
+def test_serve_api_is_not_an_abbreviation_of_api_key():
+    """--api is container-only, so it must not prefix-match onto --api-key."""
+    with RamalamaExecWorkspace() as ctx:
+        with pytest.raises(CalledProcessError) as exc:
+            ctx.check_output(RAMALAMA_DRY_RUN + ["--api", "llama-stack", "tiny"], stderr=STDOUT)
+        assert "unrecognized arguments: --api" in exc.value.output.decode()
+
+
+@pytest.mark.e2e
 @pytest.mark.slow
 @skip_if_no_container
 def test_serve_api_key_enforced(shared_ctx, test_model):
