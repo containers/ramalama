@@ -71,6 +71,67 @@ The default can be overridden in the `ramalama.conf` file.
 [//]: # (END   included file options/api.md)
 
 
+[//]: # (BEGIN included file options/server-api-key.md)
+#### **--api-key**=*key*
+Require clients to present this API key on requests to the AI Model server.
+Only supported by the llama.cpp runtime. The default is no authentication.
+
+The key is handed to the server through the `LLAMA_API_KEY` environment
+variable rather than on its command line, so it appears in neither the
+`llama-server` nor the container engine arguments. Passing it as `--api-key`
+does put it in ramalama's own arguments, where it is visible in the host
+process table for as long as the command runs.
+
+There are three ways to supply it, with different exposure:
+
+| How | Where the key ends up |
+| --- | --- |
+| `--api-key <key>` | ramalama's own argv, so visible in `ps` output and in shell history |
+| `ramalama.conf` | a file on disk; protect it with file permissions |
+| `RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY` | ramalama's environment, readable through `/proc/<pid>/environ` by the same user and by root, but absent from `ps` output and from disk |
+
+Clients may present it as either an `Authorization: Bearer <key>` or an
+`X-Api-Key: <key>` header; requests without a valid key get a `401`. The
+`/health` and `/v1/health` endpoints and the web UI assets stay
+public so that health checks keep working. Whether the model listing
+(`/models`, `/v1/models`) is public depends on the llama.cpp version in the
+image; do not rely on it being either way.
+
+Generate a random key on the shell with:
+
+```
+KEY=$(openssl rand -hex 32)
+```
+
+The default can be set per-runtime in `ramalama.conf`:
+
+```
+[ramalama.runtimes.llama_cpp]
+server_api_key = "..."
+```
+
+or through the matching environment variable, which overrides the file:
+
+```
+export RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY="$KEY"
+```
+
+Caveats:
+
+* With `--generate`, the key is written into the generated Quadlet, Kubernetes
+  or Compose file in plaintext, because those files are read without ramalama
+  in the picture. Treat the generated file as a secret.
+* When the server runs in a container, the key is readable via
+  `podman inspect` / `docker inspect` on the container.
+* With `--webui on`, the web UI itself still loads, because its assets are
+  public, but its API calls are rejected unless the UI is configured with the
+  key.
+* Not supported together with `--rag` or `--api llama-stack`: in both cases the
+  port the user reaches is served by a helper that cannot present the key.
+
+[//]: # (END   included file options/server-api-key.md)
+
+
 [//]: # (BEGIN included file options/authfile.md)
 #### **--authfile**=*path*
 Path to the authentication file for OCI registries.
@@ -533,6 +594,23 @@ $ podman ps
 CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS         PORTS                   NAMES
 09b0e0d26ed2  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  32 seconds ago  Up 32 seconds  0.0.0.0:8080->8080/tcp  ramalama_sTLNkijNNP
 3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8081->8081/tcp  ramalama_YMPQvJxN97
+```
+
+### Require an API key on the served endpoint
+Generate a random key and hand the same value to the server and to clients.
+```
+$ KEY=$(openssl rand -hex 32)
+
+$ ramalama serve -d --api-key "$KEY" granite
+09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
+
+$ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/props
+401
+
+$ curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $KEY" http://localhost:8080/props
+200
+
+$ ramalama chat --api-key "$KEY"
 ```
 
 ### Generate quadlet service off of HuggingFace granite Model

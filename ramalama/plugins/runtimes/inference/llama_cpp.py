@@ -81,6 +81,15 @@ GGUF_QUANTIZATION_MODES = Literal[
 ]
 DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"  # type: ignore[assignment]
 
+# llama-server reads its API key from this variable when --api-key is not given.
+LLAMA_API_KEY_ENV = "LLAMA_API_KEY"
+
+
+def api_key_headers(args: Any) -> dict[str, str]:
+    """Authorization header for a keyed llama-server, empty when no key is set."""
+    key = getattr(args, "server_api_key", None) or getattr(args, "api_key", None)
+    return {"Authorization": f"Bearer {key}"} if key else {}
+
 
 @dataclass
 class LlamaCppConfig:
@@ -89,6 +98,7 @@ class LlamaCppConfig:
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE  # type: ignore[assignment]
     ngl: Optional[str] = None
     ncmoe: Optional[int] = None
+    server_api_key: Optional[str] = None
     spec_type: Optional[str] = None
     spec_draft_n_max: Optional[int] = None
     spec_draft_n_min: Optional[int] = None
@@ -104,6 +114,8 @@ class LlamaCppConfig:
             self.ngl = str(self.ngl)
         if self.ncmoe is not None:
             self.ncmoe = int(self.ncmoe)
+        if self.server_api_key is not None:
+            self.server_api_key = str(self.server_api_key)
         if self.spec_type is not None:
             self.spec_type = str(self.spec_type)
         if self.spec_draft_n_max is not None:
@@ -314,7 +326,21 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             logger.debug(f"{self.name} {container_name} /health {health_resp.status}: {health_resp.reason}")
             return False
 
-        conn.request("GET", "/models")
+        # /health is always public, but current llama.cpp gates /models behind the
+        # API key, so a keyed server needs the header here or readiness never
+        # succeeds. Older builds leave /models public; the header is harmless there.
+        headers = api_key_headers(args)
+        debuglevel = conn.debuglevel
+        if headers:
+            # http.client's raw debug output prints request headers to stdout
+            # verbatim, and is_healthy turns it on for --debug, so this would echo
+            # the key on every readiness poll. Mute it for the send; the response
+            # trace carries no key.
+            conn.set_debuglevel(0)
+        try:
+            conn.request("GET", "/models", headers=headers)
+        finally:
+            conn.set_debuglevel(debuglevel)
         models_resp = conn.getresponse()
         if models_resp.status != 200:
             logger.debug(f"{self.name} {container_name} /models status code {models_resp.status}: {models_resp.reason}")
@@ -443,6 +469,26 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             completer=suppressCompleter,
         )
 
+    def _add_api_key_arg(self, parser: "argparse.ArgumentParser") -> None:
+        """Register --api-key.
+
+        Deliberately not in _add_inference_args: ramalama sandbox borrows that to
+        build its own parsers and already owns a --api-key of its own, which it
+        maps onto server_api_key at run time.
+        """
+        rt_config = self.get_runtime_config(ActiveConfig())
+        parser.add_argument(
+            "--api-key",
+            dest="server_api_key",
+            metavar="KEY",
+            help="require this API key on requests to the AI Model server (default: no authentication)",
+            completer=suppressCompleter,
+        )
+        # Apply the configured default out of band: ArgumentParserWithDefaults
+        # renders any default it is handed into the help text, and a key set in
+        # ramalama.conf must not be printed by --help.
+        parser.set_defaults(server_api_key=rt_config.server_api_key)
+
     def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         """Add llama.cpp-specific inference args to an already-created parser."""
         super()._add_inference_args(parser, command)
@@ -537,9 +583,48 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         ]
         args.env = openvino_env + getattr(args, "env", [])
 
+    def post_process_args(self, args: argparse.Namespace) -> None:
+        super().post_process_args(args)
+        if not getattr(args, "server_api_key", None):
+            return
+        # Both of these put a helper in front of llama-server that has no way to
+        # present a key, so the port the user reaches would be unauthenticated.
+        if getattr(args, "rag", None):
+            raise ValueError(
+                "--api-key is not supported with --rag: the RAG server is the exposed port and cannot require a key."
+            )
+        if getattr(args, "api", None) == "llama-stack":
+            raise ValueError("--api-key is not supported with --api llama-stack: llama-stack cannot present a key.")
+
+    @staticmethod
+    def _set_server_api_key_env(args: argparse.Namespace) -> None:
+        """Hand the server API key to llama-server through LLAMA_API_KEY.
+
+        The key travels in the environment rather than in argv, so it appears in
+        neither llama-server's nor the container engine's command line. A key
+        given as --api-key is still in ramalama's own argv; one read from
+        ramalama.conf is in no process table at all. llama.cpp applies env values
+        before parsing the command line, so this is equivalent to passing
+        --api-key.
+        """
+        key = getattr(args, "server_api_key", None)
+        if not key:
+            return
+
+        os.environ[LLAMA_API_KEY_ENV] = key
+        if getattr(args, "generate", None):
+            # Generated quadlet/kube/compose files are read without ramalama in the
+            # picture, so they need the literal value. It lands there in plaintext.
+            args.env = [f"{LLAMA_API_KEY_ENV}={key}", *getattr(args, "env", [])]
+        elif getattr(args, "container", False):
+            # Bare name: podman/docker inherit the value from our own environment,
+            # keeping it off the engine command line.
+            args.env = [LLAMA_API_KEY_ENV, *getattr(args, "env", [])]
+
     def handle_subcommand(self, command: str, args: argparse.Namespace) -> list[str]:
         set_accel_env_vars()
         self._set_openvino_env(args)
+        self._set_server_api_key_env(args)
         return super().handle_subcommand(command, args)
 
     def _do_run(self, args: argparse.Namespace, model: Any) -> None:
@@ -548,6 +633,10 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 raise ValueError("ramalama run --rag is not supported for hosted API transports.")
             self._run_rag(args, model)
             return
+        # run chats against the server it just started, so the client has to present
+        # the key the server now demands. chat.add_api_key() reads args.api_key.
+        if getattr(args, "server_api_key", None):
+            args.api_key = args.server_api_key
         super()._do_run(args, model)
 
     def _do_serve(self, args: argparse.Namespace, model: Any) -> None:
@@ -747,6 +836,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_run_subcommand(subparsers)
         self._add_rag_args(parser)
+        self._add_api_key_arg(parser)
         return parser
 
     def _add_model_argument(self, parser: "argparse.ArgumentParser") -> None:
@@ -755,6 +845,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_serve_subcommand(subparsers)
         self._add_rag_args(parser)
+        self._add_api_key_arg(parser)
         parser.add_argument(
             "--models-max",
             dest="models_max",

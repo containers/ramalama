@@ -974,3 +974,90 @@ def test_serve_with_rag():
             ]
         )
         assert re.search(r".*quay.io/ramalama/ramalama-rag:1.0", result_c)
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_serve_api_key_env_passthrough():
+    """The key reaches the container by name only, never on the engine command line."""
+    with RamalamaExecWorkspace() as ctx:
+        result = ctx.check_output(RAMALAMA_DRY_RUN + ["--api-key", "sekret", "tiny"])
+        assert re.search(r"--env LLAMA_API_KEY(\s|$)", result)
+        assert "sekret" not in result
+
+        without = ctx.check_output(RAMALAMA_DRY_RUN + ["tiny"])
+        assert "LLAMA_API_KEY" not in without
+
+
+@pytest.mark.e2e
+def test_serve_api_key_rejects_rag():
+    with RamalamaExecWorkspace() as ctx:
+        with pytest.raises(CalledProcessError) as exc:
+            ctx.check_output(
+                RAMALAMA_DRY_RUN + ["--api-key", "sekret", "--rag", "quay.io/ramalama/rag", "tiny"], stderr=STDOUT
+            )
+        assert "--api-key is not supported with --rag" in exc.value.output.decode()
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_serve_api_key_rejects_llama_stack():
+    with RamalamaExecWorkspace() as ctx:
+        with pytest.raises(CalledProcessError) as exc:
+            ctx.check_output(RAMALAMA_DRY_RUN + ["--api-key", "sekret", "--api", "llama-stack", "tiny"], stderr=STDOUT)
+        assert "--api-key is not supported with --api llama-stack" in exc.value.output.decode()
+
+
+@pytest.mark.e2e
+@skip_if_container
+def test_serve_api_is_not_an_abbreviation_of_api_key():
+    """--api is container-only, so it must not prefix-match onto --api-key."""
+    with RamalamaExecWorkspace() as ctx:
+        with pytest.raises(CalledProcessError) as exc:
+            ctx.check_output(RAMALAMA_DRY_RUN + ["--api", "llama-stack", "tiny"], stderr=STDOUT)
+        assert "unrecognized arguments: --api" in exc.value.output.decode()
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_no_container
+def test_serve_api_key_enforced(shared_ctx, test_model):
+    """A keyed server 401s unauthenticated requests and serves authenticated ones."""
+    import urllib.error
+    import urllib.request
+
+    ctx = shared_ctx
+    key = "e2e-" + "".join(random.choices(string.ascii_letters + string.digits, k=32))
+    name = f"serve_api_key_{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
+    port = random.randint(64000, 65000)
+
+    ctx.check_call(["ramalama", "serve", "--name", name, "--port", str(port), "--api-key", key, "-d", test_model])
+    try:
+        # wait_for_healthy already ran inside serve, but -d returns before the
+        # model finishes loading on slower machines.
+        time.sleep(10)
+        # /props rather than /v1/models: older llama.cpp builds leave the model
+        # listing public, but /props is gated in every version that has --api-key.
+        url = f"http://127.0.0.1:{port}/props"
+
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            urllib.request.urlopen(url, timeout=30)
+        assert exc.value.code == 401
+
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            urllib.request.urlopen(
+                urllib.request.Request(url, headers={"Authorization": "Bearer wrong-key"}), timeout=30
+            )
+        assert exc.value.code == 401
+
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            assert resp.status == 200
+
+        # /health stays public so readiness polling keeps working
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=30) as resp:
+            assert resp.status == 200
+
+        assert ctx.check_output(["ramalama", "chat", "--ls", "--api-key", key, "--url", f"http://127.0.0.1:{port}/v1"])
+    finally:
+        ctx.check_call(["ramalama", "stop", name])
