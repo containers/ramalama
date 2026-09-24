@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 from ramalama.arg_types import StoreArgType
 from ramalama.chat_providers.api_providers import get_chat_provider
-from ramalama.common import rm_until_substring
+from ramalama.common import rm_until_substring, warn_deprecated
 from ramalama.config import ActiveConfig
 from ramalama.path_utils import file_uri_to_path
 from ramalama.transports.api import APITransport
@@ -174,7 +174,12 @@ class TransportFactory:
 
     def create_api_transport(self) -> APITransport:
         scheme = self.model.split("://", 1)[0]
-        return APITransport(self.pruned_model, provider=get_chat_provider(scheme))
+        provider = get_chat_provider(scheme)
+        warn_deprecated(
+            f"The {scheme}:// hosted API transport",
+            f"Use 'ramalama chat --url {provider.base_url} --api-key <key> --model {self.pruned_model}' instead.",
+        )
+        return APITransport(self.pruned_model, provider=provider)
 
 
 def New(name, args, transport: Optional[str] = None) -> CLASS_MODEL_TYPES:
