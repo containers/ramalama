@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 from ramalama.arg_types import BaseEngineArgsType
 from ramalama.common import genname, perror, run_cmd
 from ramalama.config import ActiveConfig
-from ramalama.engine import Engine, is_healthy, stop_container, wait_for_healthy
+from ramalama.engine import Engine, create_network, is_healthy, remove_network, stop_container, wait_for_healthy
 from ramalama.host_utils import is_loopback_bind_host
 from ramalama.model_server import ModelServerError, list_server_models
 from ramalama.plugins.loader import get_runtime
@@ -343,6 +343,9 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
     if not args.container:  # type: ignore[attr-defined]
         raise ValueError("ramalama sandbox requires a container engine")
 
+    if args.network == "internal" and args.url:
+        raise ValueError("--network=internal cannot be used with --url")
+
     sb_args = copy.copy(args)
     sb_args.start_model_server = sb_args.url is None
     if not sb_args.MODEL:
@@ -356,6 +359,12 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
             # basically fall through to router-mode without models
             model_list = []
         if len(model_list) > 0:
+            if sb_args.network == "internal":
+                raise ValueError(
+                    "--network=internal requires ramalama to start its own model server, "
+                    f"but a model server was already discovered at {url}. "
+                    "Stop the server or use another port."
+                )
             sb_args.start_model_server = False
             sb_args.MODEL = [model_list[0]]  # type: ignore[assignment]
             print(f"Using first model from server ({url}): {model_list[0]}")
@@ -388,12 +397,29 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
         return
 
     sb_args.port = compute_serving_port(sb_args)
-    sb_args.url = f"http://localhost:{sb_args.port}"
-    if len(models) == 1:
-        sb_args.MODEL = models[0]
-        _run_sandbox_single_model(sb_args, agent_cls)
+    created_network = False
+    if sb_args.network == "internal":
+        # The agent container sits on a private network not bound to the host, so
+        # host.containers.internal / host.docker.internal cannot reach the model
+        # server. The engine's built-in DNS resolves the model server container
+        # by name on the shared network instead. The "internal" value is a
+        # sentinel, so the network is named after the model server container.
+        sb_args.name = sb_args.name or genname()
+        sb_args.url = f"http://{sb_args.name}:{sb_args.port}"
+        sb_args.network = create_network(sb_args)
+        created_network = True
     else:
-        _run_sandbox_router(sb_args, agent_cls)
+        sb_args.url = f"http://localhost:{sb_args.port}"
+
+    try:
+        if len(models) == 1:
+            sb_args.MODEL = models[0]
+            _run_sandbox_single_model(sb_args, agent_cls)
+        else:
+            _run_sandbox_router(sb_args, agent_cls)
+    finally:
+        if created_network:
+            remove_network(sb_args, sb_args.network)  # type: ignore[arg-type]
 
 
 def _run_sandbox_single_model(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
