@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from test_inference_engine_plugins import make_ns
 
-from ramalama.cli import configure_subcommands
+from ramalama.cli import ParsedGenerateInput, configure_subcommands
 from ramalama.plugins.runtimes.inference.common import enumerate_store_gguf_models
-from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin
+from ramalama.plugins.runtimes.inference.llama_cpp import ROUTER_NAME, LlamaCppPlugin
 
 # ---------------------------------------------------------------------------
 # enumerate_store_gguf_models
@@ -122,6 +122,89 @@ class TestServeRouter:
         args = argparse.Namespace(container=True, store="/fake/store", port="8080", MODEL=[])
         with pytest.raises(SystemExit):
             self.plugin._serve_router(args)
+
+
+# ---------------------------------------------------------------------------
+# --generate in router mode
+# ---------------------------------------------------------------------------
+
+
+class TestRouterModeGenerate:
+    def setup_method(self):
+        self.plugin = LlamaCppPlugin()
+
+    @staticmethod
+    def _make_args(tmp_path, gen_type, name="router"):
+        blobs = []
+        for model_name in ("first", "second"):
+            blob = tmp_path / f"sha256-{model_name}"
+            blob.write_bytes(b"GGUF")
+            blobs.append((str(blob), f"{model_name}.gguf"))
+
+        args = make_ns(container=True, MODEL=[], generate=ParsedGenerateInput(gen_type, str(tmp_path)))
+        args.store = str(tmp_path / "store")
+        args.name = name
+        args.image = "quay.io/ramalama/ramalama:latest"
+        args.env = []
+        args.add_to_unit = None
+        args.privileged = False
+        args.nocapdrop = False
+        args.rag = None
+        args.models_max = 4
+        return args, blobs
+
+    def _generate(self, tmp_path, gen_type, name="router"):
+        args, blobs = self._make_args(tmp_path, gen_type, name)
+        with (
+            patch("ramalama.plugins.runtimes.inference.llama_cpp.compute_serving_port", return_value="8080"),
+            patch("ramalama.plugins.runtimes.inference.llama_cpp.set_accel_env_vars"),
+            patch.object(LlamaCppPlugin, "_migrate_store_ref_files"),
+            patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=False),
+            patch("ramalama.plugins.runtimes.inference.llama_cpp.enumerate_store_gguf_models", return_value=blobs),
+            patch.object(LlamaCppPlugin, "_build_router_engine") as mock_engine,
+        ):
+            self.plugin._serve_router(args)
+
+        # The whole point of --generate is that the server is never started.
+        mock_engine.assert_not_called()
+        return blobs
+
+    def test_quadlet_mounts_every_model(self, tmp_path):
+        blobs = self._generate(tmp_path, "quadlet")
+
+        content = (tmp_path / "router.container").read_text()
+        assert "--models-dir /mnt/models" in content
+        for host_path, container_name in blobs:
+            assert f"Mount=type=bind,src={host_path},target=/mnt/models/{container_name},ro,Z" in content
+
+    def test_kube_mounts_every_model(self, tmp_path):
+        blobs = self._generate(tmp_path, "kube")
+
+        content = (tmp_path / "router.yaml").read_text()
+        for i, (host_path, container_name) in enumerate(blobs):
+            assert (
+                f"mountPath: /mnt/models/{container_name}\n          name: model-{i}\n          readOnly: true"
+                in content
+            )
+            assert f"path: {host_path}\n        name: model-{i}" in content
+
+    def test_quadlet_kube_writes_both_files(self, tmp_path):
+        self._generate(tmp_path, "quadlet/kube")
+
+        assert (tmp_path / "router.yaml").exists()
+        assert "Yaml=router.yaml" in (tmp_path / "router.kube").read_text()
+
+    def test_compose_mounts_every_model(self, tmp_path):
+        blobs = self._generate(tmp_path, "compose")
+
+        content = (tmp_path / "docker-compose.yaml").read_text()
+        for host_path, container_name in blobs:
+            assert f'- "{host_path}:/mnt/models/{container_name}:ro"' in content
+
+    def test_defaults_name_when_unnamed(self, tmp_path):
+        self._generate(tmp_path, "quadlet", name=None)
+
+        assert (tmp_path / f"{ROUTER_NAME}.container").exists()
 
 
 # ---------------------------------------------------------------------------
