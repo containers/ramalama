@@ -59,10 +59,13 @@ def make_ns(
     spec_draft_n_min=None,
     spec_draft_p_min=None,
     runtime_args=None,
+    engine='podman',
     engine_args=None,
     gguf=None,
     dryrun=False,
     generate=None,
+    store="/fake/store",
+    image='quay.io/ramalama/ramalama',
     MODEL=None,
 ) -> argparse.Namespace:
     ns = argparse.Namespace(
@@ -88,10 +91,13 @@ def make_ns(
         spec_draft_n_min=spec_draft_n_min,
         spec_draft_p_min=spec_draft_p_min,
         runtime_args=runtime_args or [],
+        engine=engine,
         engine_args=engine_args or [],
         gguf=gguf,
         dryrun=dryrun,
         generate=generate,
+        store=store,
+        image=image,
     )
     if MODEL is not None:
         ns.MODEL = MODEL
