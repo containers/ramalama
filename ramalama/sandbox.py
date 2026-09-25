@@ -153,6 +153,7 @@ class SandboxEngineArgsType(BaseEngineArgsType):
     start_model_server: bool
     name: str
     model: str
+    UNRESOLVED_MODEL: list[str]
 
 
 class SandboxEngine(Engine):
@@ -337,6 +338,23 @@ def run_sandbox_pi(args: PiArgsType):
     run_sandbox(args, Pi)
 
 
+def _resolve_router_model_id(model_name: str, args) -> str:
+    """Resolve a RamaLama model reference to its router model ID."""
+    try:
+        model = New(model_name, args)
+    except (KeyError, ValueError):
+        return model_name
+
+    return "-".join(
+        [
+            model.model_type,
+            model.model_organization,
+            model.model_name,
+            model.model_tag,
+        ]
+    )
+
+
 def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
     """Orchestrate model server and sandbox containers."""
 
@@ -344,6 +362,8 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
         raise ValueError("ramalama sandbox requires a container engine")
 
     sb_args = copy.copy(args)
+    model_was_specified = bool(sb_args.MODEL)
+    model_was_shortname = model_was_specified and sb_args.MODEL != sb_args.UNRESOLVED_MODEL
     sb_args.start_model_server = sb_args.url is None
     if not sb_args.MODEL:
         url = sb_args.url or f"http://localhost:{sb_args.port}"
@@ -364,6 +384,7 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
             raise ValueError(f"No model found at {url}")
 
     sb_args.start_model_server = sb_args.url is None
+    server_url = sb_args.url
     # A loopback --url points at a server on the host's loopback (e.g. a
     # `ramalama serve` container publishing to 127.0.0.1, or any local
     # OpenAI-compatible process) that must be reached from the agent container.
@@ -377,6 +398,30 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
             raise ValueError("ramalama sandbox with --url requires one or no model")
         sb_args.name = sb_args.name or genname()
         model_name = models[0]
+
+        if model_was_shortname and sb_args.dryrun:
+            model_name = _resolve_router_model_id(model_name, sb_args)
+        elif model_was_shortname:
+            assert server_url is not None
+            try:
+                parsed_server_url = urlparse(server_url)
+                if (
+                    getattr(sb_args, "api_key", None)
+                    and parsed_server_url.scheme == "http"
+                    and not is_loopback_bind_host(parsed_server_url.hostname)
+                ):
+                    raise ValueError("API-key discovery requires HTTPS for non-loopback servers")
+                server_models = list_server_models(
+                    server_url,
+                    getattr(sb_args, "api_key", None),
+                )
+                if model_name not in server_models:
+                    router_model_id = _resolve_router_model_id(model_name, sb_args)
+                    if router_model_id in server_models:
+                        model_name = router_model_id
+            except ModelServerError:
+                pass
+
         if sb_args.dryrun:
             agent = agent_cls(sb_args, model_name)
             agent.engine.dryrun()

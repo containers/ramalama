@@ -6,7 +6,16 @@ import pytest
 
 from ramalama.cli import parse_args_from_cmd
 from ramalama.config import DEFAULT_PI_IMAGE
-from ramalama.sandbox import Agent, Goose, OpenCode, Pi, _pi_provider_id, _run_sandbox_router, _wire_loopback_url
+from ramalama.sandbox import (
+    Agent,
+    Goose,
+    OpenCode,
+    Pi,
+    _pi_provider_id,
+    _run_sandbox_router,
+    _wire_loopback_url,
+    run_sandbox,
+)
 
 TEST_MODEL = "qwen3:4b"
 
@@ -104,6 +113,155 @@ def test_sandbox_external_url_requires_one_or_no_model(agent):
     args.container = True
     with pytest.raises(ValueError, match="with --url requires one or no model"):
         args.func(args)
+
+
+def test_sandbox_external_url_resolves_router_model_id(monkeypatch):
+    """An explicit RamaLama model should resolve to its router model ID in dryrun."""
+    _, args = parse_args_from_cmd(
+        [
+            "sandbox",
+            "pi",
+            "granite",
+            "--url",
+            "http://model.example",
+        ]
+    )
+    args.container = True
+    args.dryrun = True
+
+    expected_model = "huggingface-ibm-granite-granite-3.3-8b-instruct-GGUF-latest"
+    selected = {}
+
+    def fail_list_server_models(url, api_key=None):
+        pytest.fail("dryrun should not query the model server")
+
+    class DryRunAgent:
+        def __init__(self, args, model_name):
+            selected["model_name"] = model_name
+            self.engine = SimpleNamespace(dryrun=lambda: None)
+
+    monkeypatch.setattr("ramalama.sandbox.list_server_models", fail_list_server_models)
+
+    run_sandbox(args, DryRunAgent)
+
+    assert selected["model_name"] == expected_model
+
+
+def test_sandbox_external_url_resolves_router_model_id_from_server(monkeypatch):
+    """An explicit shortname should use the router model ID advertised by the server."""
+    _, args = parse_args_from_cmd(
+        [
+            "sandbox",
+            "pi",
+            "granite",
+            "--url",
+            "https://model.example",
+        ]
+    )
+    args.container = True
+
+    expected_model = "huggingface-ibm-granite-granite-3.3-8b-instruct-GGUF-latest"
+    selected = {}
+
+    def fake_list_server_models(url, api_key=None):
+        assert url == "https://model.example"
+        return [expected_model]
+
+    class Agent:
+        def __init__(self, args, model_name):
+            selected["model_name"] = model_name
+
+        def run(self):
+            pass
+
+    monkeypatch.setattr("ramalama.sandbox.list_server_models", fake_list_server_models)
+
+    run_sandbox(args, Agent)
+
+    assert selected["model_name"] == expected_model
+
+
+def test_sandbox_external_url_requires_https_for_remote_api_key():
+    """Remote model discovery with an API key should require HTTPS."""
+    _, args = parse_args_from_cmd(
+        [
+            "sandbox",
+            "pi",
+            "granite",
+            "--url",
+            "http://model.example",
+        ]
+    )
+    args.container = True
+
+    with pytest.raises(
+        ValueError,
+        match="API-key discovery requires HTTPS for non-loopback servers",
+    ):
+        run_sandbox(args, Pi)
+
+
+def test_sandbox_external_url_keeps_discovered_model_id(monkeypatch):
+    """A model discovered from the server should be passed through unchanged."""
+    _, args = parse_args_from_cmd(
+        [
+            "sandbox",
+            "pi",
+            "--url",
+            "http://model.example",
+        ]
+    )
+    args.container = True
+    args.dryrun = True
+
+    server_model = "some-external-model"
+    selected = {}
+
+    def fake_list_server_models(url, api_key=None):
+        return [server_model]
+
+    class DryRunAgent:
+        def __init__(self, args, model_name):
+            selected["model_name"] = model_name
+            self.engine = SimpleNamespace(dryrun=lambda: None)
+
+    monkeypatch.setattr("ramalama.sandbox.list_server_models", fake_list_server_models)
+
+    run_sandbox(args, DryRunAgent)
+
+    assert selected["model_name"] == server_model
+
+
+def test_sandbox_external_url_keeps_explicit_model_reference(monkeypatch):
+    """An explicit full model reference should remain unchanged in dryrun."""
+    _, args = parse_args_from_cmd(
+        [
+            "sandbox",
+            "pi",
+            "hf://ibm-granite/granite-3.3-8b-instruct-GGUF",
+            "--url",
+            "http://model.example",
+        ]
+    )
+    args.container = True
+    args.dryrun = True
+
+    expected_model = "hf://ibm-granite/granite-3.3-8b-instruct-GGUF"
+    selected = {}
+
+    def fail_list_server_models(url, api_key=None):
+        pytest.fail("dryrun should not query the model server")
+
+    class DryRunAgent:
+        def __init__(self, args, model_name):
+            selected["model_name"] = model_name
+            self.engine = SimpleNamespace(dryrun=lambda: None)
+
+    monkeypatch.setattr("ramalama.sandbox.list_server_models", fail_list_server_models)
+
+    run_sandbox(args, DryRunAgent)
+
+    assert selected["model_name"] == expected_model
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
