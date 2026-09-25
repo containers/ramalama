@@ -160,6 +160,7 @@ Show the program version and exit.
 | [ramalama-run(1)](ramalama-run.1.md)              |run specified AI Model as a chatbot|
 | [ramalama-sandbox(1)](ramalama-sandbox.1.md)      |run an AI agent in a sandbox, backed by a local AI Model|
 | [ramalama-serve(1)](ramalama-serve.1.md)          |serve REST API on specified AI Model|
+| [ramalama-start(1)](ramalama-start.1.md)          |start named container that is running AI Model|
 | [ramalama-stop(1)](ramalama-stop.1.md)            |stop named container that is running AI Model|
 | [ramalama-version(1)](ramalama-version.1.md)      |display version of RamaLama|
 
