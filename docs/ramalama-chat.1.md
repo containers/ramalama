@@ -22,6 +22,10 @@ continue to an interactive chat session after processing the initial prompt.
 OpenAI-compatible API key.
 Can also be set via the RAMALAMA_API_KEY environment variable.
 
+#### **--attach**=**file-path**
+Attaches the given file to the initial request.
+Can be specified multiple times to attach multiple files.
+
 #### **--color**
 Indicate whether or not to use color in the chat.
 Possible values are "never", "always" and "auto". (default: auto)

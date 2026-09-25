@@ -24,6 +24,7 @@ from ramalama.common import (
     set_accel_env_vars,
 )
 from ramalama.config import ActiveConfig
+from ramalama.config_types import PathStr
 from ramalama.logger import logger
 from ramalama.model_store.reffile import StoreFileType
 from ramalama.plugins.interface import InferenceRuntimePlugin
@@ -108,6 +109,14 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
                 default=config.host,
                 help="IP address to listen",
                 completer=suppressCompleter,
+            )
+        elif command == "run":
+            parser.add_argument(
+                "--attach",
+                type=PathStr,
+                action='append',
+                dest='attachments',
+                help="add an attachment to the initial request, can be specified multiple times to add multiple files",
             )
 
     def register_subcommands(self, subparsers: "argparse._SubParsersAction") -> None:

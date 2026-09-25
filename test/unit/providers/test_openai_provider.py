@@ -1,10 +1,9 @@
+import base64
 import json
-
-import pytest
 
 from ramalama.chat_providers.base import ChatRequestOptions
 from ramalama.chat_providers.openai import OpenAICompletionsChatProvider, OpenAIResponsesChatProvider
-from ramalama.chat_utils import AssistantMessage, ImageURLPart, ToolCall, ToolMessage, UserMessage
+from ramalama.chat_utils import AssistantMessage, ImageBytesPart, ImageURLPart, ToolCall, ToolMessage, UserMessage
 
 
 def build_payload(content):
@@ -59,11 +58,25 @@ class TestOpenAICompletionsProvider:
         assert len(events) == 1
         assert events[0].text == "Hi there"
 
-    def test_rejects_attachments(self):
-        message = UserMessage(attachments=[ImageURLPart(url="http://img")])
+    def test_serializes_attachments(self):
+        message = UserMessage(
+            text="Analyze this image:",
+            role="user",
+            attachments=[ImageURLPart(url="http://img"), ImageBytesPart(data=b'1234', mime_type='image/png')],
+        )
 
-        with pytest.raises(ValueError):
-            self.provider.build_payload([message], make_options())
+        payload = self.provider.build_payload([message], make_options())
+        messages = payload["messages"][0]["content"]
+        assert len(messages) == 3
+        assert messages[0]["type"] == "text"
+        assert messages[0]["text"] == "Analyze this image:"
+        assert messages[1]["type"] == "image_url"
+        assert messages[1]["image_url"] == {"url": "http://img"}
+        assert messages[2]["type"] == "image_bytes"
+        assert messages[2]["image_bytes"] == {
+            "data": base64.b64encode(b'1234').decode("ascii"),
+            "mime_type": "image/png",
+        }
 
     def test_serializes_tool_calls_and_responses(self):
         tool_call = ToolCall(id="call-1", name="lookup", arguments={"query": "weather"})
