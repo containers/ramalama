@@ -181,6 +181,40 @@ def test_sandbox_external_url_resolves_router_model_id_from_server(monkeypatch):
     assert selected["model_name"] == expected_model
 
 
+def test_sandbox_external_url_uses_original_shortname_from_server(monkeypatch):
+    """An explicit shortname advertised by the server should be used unchanged."""
+    _, args = parse_args_from_cmd(
+        [
+            "sandbox",
+            "pi",
+            "granite",
+            "--url",
+            "https://model.example",
+        ]
+    )
+    args.container = True
+
+    expected_model = "granite"
+    selected = {}
+
+    def fake_list_server_models(url, api_key=None):
+        assert url == "https://model.example"
+        return [expected_model]
+
+    class Agent:
+        def __init__(self, args, model_name):
+            selected["model_name"] = model_name
+
+        def run(self):
+            pass
+
+    monkeypatch.setattr("ramalama.sandbox.list_server_models", fake_list_server_models)
+
+    run_sandbox(args, Agent)
+
+    assert selected["model_name"] == expected_model
+
+
 def test_sandbox_external_url_requires_https_for_remote_api_key():
     """Remote model discovery with an API key should require HTTPS."""
     _, args = parse_args_from_cmd(

@@ -416,9 +416,13 @@ def run_sandbox(args: SandboxEngineArgsType, agent_cls: type[Agent]) -> None:
                     getattr(sb_args, "api_key", None),
                 )
                 if model_name not in server_models:
-                    router_model_id = _resolve_router_model_id(model_name, sb_args)
-                    if router_model_id in server_models:
-                        model_name = router_model_id
+                    original_model_name = sb_args.UNRESOLVED_MODEL[0]
+                    if original_model_name in server_models:
+                        model_name = original_model_name
+                    else:
+                        router_model_id = _resolve_router_model_id(model_name, sb_args)
+                        if router_model_id in server_models:
+                            model_name = router_model_id
             except ModelServerError:
                 pass
 
