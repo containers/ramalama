@@ -107,7 +107,10 @@ Otherwise only the agent container starts using the given url for the openai com
 
 @@option webui
 
+@@option with-openshell
+
 @@option workdir
+
 
 ## EXAMPLES
 
@@ -129,6 +132,11 @@ ramalama sandbox goose --thinking=off qwen3:4b
 Start an interactive session with access to a local directory:
 ```
 ramalama sandbox goose -w ./src qwen3:4b
+```
+
+Start an interactive session with access to a local directory and isolate the agent via OpenShell:
+```
+ramalama sandbox goose --with-openshell -w ./src qwen3:4b
 ```
 
 Request the agent to perform actions non-interactively:

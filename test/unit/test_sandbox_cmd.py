@@ -23,6 +23,7 @@ def _make_args(engine="podman"):
         url="http://localhost:8080",
         thinking=False,
         workdir=None,
+        with_openshell=False,
         subcommand="sandbox",
         ARGS=[],
     )
