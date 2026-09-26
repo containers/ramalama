@@ -102,7 +102,7 @@ class Preprocessor:
             raise SystemExit(
                 f'markdown-preprocess: missing include {path!r} (referenced while processing {self.infile})'
             )
-        fh_out.write('\n[//]: # (BEGIN included file ' + path + ')\n')
+        fh_out.write('\n[//]: # (BEGIN included file ' + path.replace('\\', '/') + ')\n')        
         with open(path, encoding=ENCODING) as fh_included:
             for raw_line in fh_included:
                 opt_line = raw_line.replace('\r\n', '\n').replace('\r', '\n')
@@ -116,8 +116,7 @@ class Preprocessor:
                     continue
                 opt_line = self._substitute(opt_line)
                 fh_out.write(opt_line)
-        fh_out.write('\n[//]: # (END   included file ' + path + ')\n')
-
+        fh_out.write('\n[//]: # (END   included file ' + path.replace('\\', '/') + ')\n')
     def _substitute(self, line: str) -> str:
         sub = self._ramalama_subcommand()
         line = line.replace('<<subcommand>>', sub)

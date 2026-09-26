@@ -30,6 +30,13 @@ Otherwise only the agent container starts using the given url for the openai com
 ## OPTIONS
 
 
+[//]: # (BEGIN included file options/agent.md)
+#### **--agent**=*name*
+Agent OCI artifact full name or shortname to mount into the sandbox container.
+May be specified multiple times.
+[//]: # (END   included file options/agent.md)
+
+
 [//]: # (BEGIN included file options/api-key.md)
 #### **--api-key**
 OpenAI-compatible API key.
@@ -308,6 +315,13 @@ On Nvidia based GPU systems, RamaLama defaults to using the
 [//]: # (END   included file options/oci-runtime.md)
 
 
+[//]: # (BEGIN included file options/plugin.md)
+#### **--plugin**=*name*
+Plugin OCI artifact full name or shortname to mount into the sandbox container.
+May be specified multiple times.
+[//]: # (END   included file options/plugin.md)
+
+
 [//]: # (BEGIN included file options/port.md)
 #### **--port**, **-p**
 port for AI Model server to listen on. It must be available. If not specified,
@@ -380,18 +394,26 @@ Enable SELinux container separation (default: `true`)
 [//]: # (END   included file options/selinux.md)
 
 
+[//]: # (BEGIN included file options/skill.md)
+#### **--skill**=*name*
+Skill OCI artifact full name or shortname to mount into the sandbox container.
+May be specified multiple times.
+[//]: # (END   included file options/skill.md)
+
+
+[//]: # (BEGIN included file options/skill-mount.md)
+#### **--skill-mount**=*path*
+Base path inside the container to extract or mount skills, agents, and
+plugins. Each kind gets its own subdirectory under this path, e.g.
+*path*/skills/*name*. Defaults to `/root/.agents`.
+[//]: # (END   included file options/skill-mount.md)
+
+
 [//]: # (BEGIN included file options/spec-draft-n-max.md)
 #### **--spec-draft-n-max**=*N*
 Maximum number of tokens to draft per speculative decoding step (default: 3).
 
 [//]: # (END   included file options/spec-draft-n-max.md)
-
-
-[//]: # (BEGIN included file options/spec-draft-n-min.md)
-#### **--spec-draft-n-min**=*N*
-Minimum number of draft tokens to use for speculative decoding (default: 0).
-
-[//]: # (END   included file options/spec-draft-n-min.md)
 
 
 [//]: # (BEGIN included file options/spec-draft-p-min.md)
