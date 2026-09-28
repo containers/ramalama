@@ -17,7 +17,7 @@ jobs:
       github.ref == 'refs/heads/main' ||
       github.repository_owner != 'containers'
     name: Lint Code
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -125,7 +125,7 @@ jobs:
               python-version: '3.9'
               activate-environment: true
     name: E2E Tests${{ matrix.variant.title }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -203,7 +203,7 @@ jobs:
               python-version: '3.9'
               activate-environment: true
     name: E2E Tests (--no-container)${{ matrix.variant.title }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -279,7 +279,7 @@ jobs:
               python-version: '3.9'
               activate-environment: true
     name: E2E Tests (docker)${{ matrix.variant.title }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -617,7 +617,7 @@ jobs:
       - lint
       - unit-test
     name: E2E Tests (f44 toolbox)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
