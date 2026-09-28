@@ -140,6 +140,17 @@ def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
+_DEPRECATION_WARNED: set[str] = set()
+
+
+def warn_deprecated(feature: str, detail: str) -> None:
+    """Emit a deprecation warning to stderr, once per feature per process."""
+    if feature in _DEPRECATION_WARNED:
+        return
+    _DEPRECATION_WARNED.add(feature)
+    perror(f"Warning: {feature} is deprecated and will be removed in a future RamaLama release. {detail}")
+
+
 def available(cmd: str) -> bool:
     return shutil.which(cmd) is not None
 

@@ -8,8 +8,17 @@ from ramalama.common import perror
 from ramalama.transports.base import TransportBase
 
 
+# DEPRECATED: the hosted API transport is scheduled for removal in a future release.
+# Removing it also means dropping ramalama/chat_providers/api_providers.py, the
+# [ramalama.provider] config namespace, the isinstance(model, APITransport) guards in the
+# runtime plugins, and the TransportBase/Transport split in ramalama/transports/base.py,
+# for which APITransport is the only non-Transport subclass.
 class APITransport(TransportBase):
-    """Transport that proxies chat requests to a hosted API provider."""
+    """Transport that proxies chat requests to a hosted API provider.
+
+    Deprecated: use `ramalama chat --url <endpoint> --api-key <key> --model <model>`
+    instead, which reaches the same endpoints without a model-store transport.
+    """
 
     type: str = "api"
 
@@ -83,7 +92,7 @@ class APITransport(TransportBase):
         if not self.provider.api_key:
             raise ValueError(
                 f'Missing API key for provider "{self.provider.provider}". '
-                "Set RAMALAMA_API_KEY or ramalama.provider.openai.api_key."
+                'Set RAMALAMA_API_KEY or api_key in ramalama.conf.'
             )
         try:
             models = self.provider.list_models()

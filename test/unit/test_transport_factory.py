@@ -3,6 +3,7 @@ from typing import Union
 
 import pytest
 
+import ramalama.common
 import ramalama.transports.transport_factory as transport_factory_module
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
 from ramalama.transports.api import APITransport
@@ -32,6 +33,14 @@ class ARGS:
 
 
 hf_granite_blob = "https://huggingface.co/ibm-granite/granite-3b-code-base-2k-GGUF/blob"
+
+
+@pytest.fixture(autouse=True)
+def reset_deprecation_warnings():
+    """warn_deprecated only fires once per process, so tests must start from a clean slate."""
+    ramalama.common._DEPRECATION_WARNED.clear()
+    yield
+    ramalama.common._DEPRECATION_WARNED.clear()
 
 
 @pytest.mark.parametrize(
@@ -205,3 +214,27 @@ def test_transport_factory_passes_scheme_to_get_chat_provider(monkeypatch):
     assert captured["scheme"] == "openai"
     assert isinstance(transport, APITransport)
     assert transport.provider is provider
+
+
+def test_api_transport_warns_deprecated(capsys):
+    TransportFactory("openai://gpt-4o-mini", ARGS()).create()
+
+    err = capsys.readouterr().err
+    assert "openai:// hosted API transport is deprecated" in err
+    assert "ramalama chat --url https://api.openai.com/v1" in err
+
+
+def test_api_transport_deprecation_warns_once(capsys):
+    args = ARGS()
+    TransportFactory("openai://gpt-4o-mini", args).create()
+    assert "is deprecated" in capsys.readouterr().err
+
+    TransportFactory("openai://gpt-4o-mini", args).create()
+
+    assert capsys.readouterr().err == ""
+
+
+def test_local_transport_does_not_warn_deprecated(capsys):
+    TransportFactory("huggingface://granite-code", ARGS()).create()
+
+    assert "deprecated" not in capsys.readouterr().err

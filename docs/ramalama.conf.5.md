@@ -195,16 +195,20 @@ Override via `RAMALAMA_TRANSPORT`.
 ## RAMALAMA.PROVIDER TABLE
 The `ramalama.provider` table configures hosted API providers.
 
+Deprecated: the entire `ramalama.provider.<name>` namespace will be removed in a future
+release, together with the hosted API transports it configures. Use
+`ramalama chat --url <endpoint> --api-key <key> --model <model>` instead.
+
 `[[ramalama.provider]]`
 
 **openai:**
-Configuration block for the OpenAI hosted provider.
+Configuration block for the OpenAI hosted provider. Deprecated, see above.
 
 `[[ramalama.provider.openai]]`
 
 **api_key**=""
 
-`ramalama.provider.openai.api_key` overrides `RAMALAMA_API_KEY` when set.
+`ramalama.provider.openai.api_key` overrides `RAMALAMA_API_KEY` when set. Deprecated.
 
 ## RAMALAMA.BENCHMARKS TABLE
 The `ramalama.benchmarks` table contains benchmark settings.
