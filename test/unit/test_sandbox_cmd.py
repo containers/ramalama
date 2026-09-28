@@ -116,6 +116,15 @@ def test_sandbox_requires_container_engine(agent):
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_has_no_tls_options(agent):
+    """The sandbox borrows the serve options, but the agent reaches the model
+    server over plain HTTP and cannot be told to trust a certificate."""
+    parser, _ = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["sandbox", agent, TEST_MODEL, "--tls-cert-file", "tls.crt"])
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_subcommand(agent):
     """CLI should handle sandbox subcommand"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])

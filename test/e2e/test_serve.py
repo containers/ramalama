@@ -5,12 +5,13 @@ import os
 import platform
 import random
 import re
+import shutil
 import string
 import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from subprocess import STDOUT, CalledProcessError
+from subprocess import DEVNULL, STDOUT, CalledProcessError
 
 import pytest
 import yaml
@@ -1059,5 +1060,101 @@ def test_serve_api_key_enforced(shared_ctx, test_model):
             assert resp.status == 200
 
         assert ctx.check_output(["ramalama", "chat", "--ls", "--api-key", key, "--url", f"http://127.0.0.1:{port}/v1"])
+    finally:
+        ctx.check_call(["ramalama", "stop", name])
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_no_container
+def test_serve_tls(shared_ctx, test_model):
+    """A TLS server answers HTTPS with the certificate it was given, and does
+    not answer plain HTTP on the same port."""
+    import http.client
+    import ssl
+
+    if shutil.which("openssl") is None:
+        pytest.skip("openssl is needed to generate a certificate")
+
+    ctx = shared_ctx
+    cert = ctx.workspace_path / "tls.crt"
+    key = ctx.workspace_path / "tls.key"
+    ctx.check_call(
+        [
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-nodes",
+            "-days",
+            "1",
+            "-subj",
+            "/CN=localhost",
+            "-addext",
+            "subjectAltName=DNS:localhost,IP:127.0.0.1",
+            "-keyout",
+            str(key),
+            "-out",
+            str(cert),
+        ],
+        stdout=DEVNULL,
+        stderr=DEVNULL,
+    )
+
+    name = f"serve_tls_{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
+    port = random.randint(64000, 65000)
+
+    # serve -d only returns once its own readiness probe has spoken HTTPS to
+    # the server, so reaching this point already exercises the probe.
+    ctx.check_call(
+        [
+            "ramalama",
+            "serve",
+            "--name",
+            name,
+            "--port",
+            str(port),
+            "--tls-cert-file",
+            str(cert),
+            "--tls-key-file",
+            str(key),
+            "-d",
+            test_model,
+        ]
+    )
+    try:
+        time.sleep(10)
+
+        # The certificate is verified, hostname included, against itself: it
+        # is self-signed and issued for localhost.
+        context = ssl.create_default_context(cafile=str(cert))
+        conn = http.client.HTTPSConnection("localhost", port, timeout=30, context=context)
+        try:
+            conn.request("GET", "/health")
+            assert conn.getresponse().status == 200
+        finally:
+            conn.close()
+
+        # The documented way to point a client at a self-signed certificate.
+        assert ctx.check_output(
+            ["ramalama", "chat", "--ls", "--url", f"https://localhost:{port}/v1"],
+            env={"SSL_CERT_FILE": str(cert)},
+        )
+
+        # A plain HTTP request is not answered: the server expects a handshake.
+        plain = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+        try:
+            # llama-server drops the connection on the failed handshake, which
+            # surfaces as RemoteDisconnected. Another server, or a slower one,
+            # could answer with a TLS alert or nothing at all, so accept any
+            # HTTP or socket level failure, only not a clean response.
+            with pytest.raises((http.client.HTTPException, OSError)) as exc:
+                plain.request("GET", "/health")
+                plain.getresponse()
+            # ...but not the failure of nothing listening on the port at all.
+            assert not isinstance(exc.value, ConnectionRefusedError)
+        finally:
+            plain.close()
     finally:
         ctx.check_call(["ramalama", "stop", name])

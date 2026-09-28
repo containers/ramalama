@@ -347,3 +347,42 @@ def test_quadlet_nvidia_selection(monkeypatch):
     # The container sees the two GPUs as 0 and 1, so the host's indices would
     # name a device that is not there.
     assert "Environment=CUDA_VISIBLE_DEVICES=0,1" in content
+
+
+def test_quadlet_tls_mounts(monkeypatch):
+    """The certificate and key are mounted read-only, and left alone on the
+    host: the unit disables SELinux labelling, so relabelling them would only
+    break the other services that read them."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr(Quadlet, "_gen_env", lambda self, quadlet_file: None)
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+
+    args = Args()
+    args.tls_cert_file = "/host/certs/tls.crt"
+    args.tls_key_file = "/host/certs/tls.key"
+
+    files = Quadlet("tinyllama", ("/blob", "model"), None, None, args, [], False, None, None).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert "Mount=type=bind,src=/host/certs/tls.crt,target=/mnt/tls/tls.crt,ro" in content
+    assert "Mount=type=bind,src=/host/certs/tls.key,target=/mnt/tls/tls.key,ro" in content
+    assert "Mount=type=bind,src=/host/certs/tls.crt,target=/mnt/tls/tls.crt,ro,Z" not in content
+    assert "Mount=type=bind,src=/host/certs/tls.key,target=/mnt/tls/tls.key,ro,Z" not in content
+    assert "SecurityLabelDisable=true" in content
+
+
+def test_quadlet_no_tls_mounts_without_tls(monkeypatch):
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr(Quadlet, "_gen_env", lambda self, quadlet_file: None)
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+
+    files = Quadlet("tinyllama", ("/blob", "model"), None, None, Args(), [], False, None, None).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert "/mnt/tls" not in content

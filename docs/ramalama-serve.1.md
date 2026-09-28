@@ -571,6 +571,37 @@ The default is to use half the cores when more than 4 cores are available; other
 [//]: # (END   included file options/threads.md)
 
 
+[//]: # (BEGIN included file options/tls-cert-file.md)
+#### **--tls-cert-file**=*path*
+Serve the REST API over HTTPS instead of HTTP, using the PEM-encoded
+certificate at *path*. Requires **--tls-key-file**.
+
+The certificate is handed to the inference server, which terminates TLS
+itself. In container mode it is bind mounted read-only into the container at
+`/mnt/tls/tls.crt`, and the generated quadlet, Kubernetes YAML and Compose
+configurations mount it the same way.
+
+If *path* contains an intermediate chain as well as the leaf certificate,
+concatenate them in the file, leaf first.
+
+Not supported together with **--api llama-stack** or **--rag**, and not
+supported by the mlx runtime, whose server has no TLS support.
+
+[//]: # (END   included file options/tls-cert-file.md)
+
+
+[//]: # (BEGIN included file options/tls-key-file.md)
+#### **--tls-key-file**=*path*
+PEM-encoded private key matching **--tls-cert-file**, only valid together with
+it. In container mode the key is bind mounted read-only into the container at
+`/mnt/tls/tls.key`.
+
+The key must not be passphrase protected: the inference server runs
+non-interactively and cannot prompt for one.
+
+[//]: # (END   included file options/tls-key-file.md)
+
+
 [//]: # (BEGIN included file options/tls-verify.md)
 #### **--tls-verify**=*true*
 Require HTTPS and verify certificates when contacting OCI registries
@@ -583,6 +614,39 @@ Require HTTPS and verify certificates when contacting OCI registries
 Enable or disable the web UI for the served model (enabled by default). When set to "on" (the default), the web interface is properly initialized. When set to "off", the `--no-webui` option is passed to the llama-server command to disable the web interface.
 
 [//]: # (END   included file options/webui.md)
+
+## TLS
+
+By default the REST API is served over plain HTTP on the loopback interface.
+Pass **--tls-cert-file** and **--tls-key-file** to serve HTTPS instead. TLS is
+terminated by the inference server itself: llama.cpp's `llama-server` and the
+vLLM OpenAI API server both support it, the MLX LM server does not.
+
+Generate a self-signed certificate for a host serving on `localhost`:
+
+```
+$ openssl req -x509 -newkey rsa:4096 -nodes -days 365 \
+    -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
+    -keyout tls.key -out tls.crt
+$ ramalama serve --tls-cert-file tls.crt --tls-key-file tls.key granite
+```
+
+The certificate must be valid for the name clients connect to, which is not
+necessarily the **--host** the server binds to. A self-signed certificate is
+not in any trust store, so clients have to be pointed at it:
+
+```
+$ curl --cacert tls.crt https://localhost:8080/v1/models
+$ SSL_CERT_FILE=$PWD/tls.crt ramalama chat --url https://localhost:8080/v1
+```
+
+The certificate and key are bind mounted read-only into the container from
+their paths on the host. Under **--selinux** they are relabeled for container
+access, as every other RamaLama bind mount is, so copy them out of shared
+system directories such as `/etc/pki` first rather than letting the relabel
+affect the other services that read them. The generated quadlet and
+Kubernetes YAML run the container with SELinux labeling disabled, so they
+mount the files without relabeling them.
 
 ## EXAMPLES
 

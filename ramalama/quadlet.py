@@ -16,6 +16,7 @@ from ramalama.common import (
 )
 from ramalama.file import UnitFile
 from ramalama.host_utils import format_bind_host_publish_prefix, is_loopback_bind_host
+from ramalama.tls import tls_mounts
 
 
 class Quadlet:
@@ -112,6 +113,7 @@ class Quadlet:
                 quadlet_file.add(section, key, value)
         self._gen_chat_template_volume(quadlet_file)
         self._gen_mmproj_volume(quadlet_file)
+        self._gen_tls_volumes(quadlet_file)
         self._gen_env(quadlet_file)
         self._gen_name(quadlet_file)
         self._gen_port(quadlet_file)
@@ -142,6 +144,14 @@ class Quadlet:
                 "Mount",
                 f"type=bind,src={self.src_mmproj_path},target={self.dest_mmproj_path},ro,Z",
             )
+
+    def _gen_tls_volumes(self, quadlet_file: UnitFile):
+        for src_path, dest_path in tls_mounts(self.args):
+            # No ,Z here: the unit disables SELinux labelling for the
+            # container, so relabelling would not help it read the files, it
+            # would only chcon the user's certificate and key out from under
+            # whatever else on the host reads them.
+            quadlet_file.add("Container", "Mount", f"type=bind,src={src_path},target={dest_path},ro")
 
     def _gen_env(self, quadlet_file: UnitFile):
         env_var_string = ""

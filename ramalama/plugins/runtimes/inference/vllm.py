@@ -9,6 +9,7 @@ from ramalama.common import ContainerEntryPoint
 from ramalama.config import ActiveConfig
 from ramalama.logger import logger
 from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRuntimePlugin
+from ramalama.tls import add_tls_args, tls_paths
 from ramalama.transports.transport_factory import New
 
 _VLLM_DEFAULT_IMAGE = "docker.io/vllm/vllm-openai:latest"
@@ -61,6 +62,10 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         if seed is not None:
             cmd += ["--seed", str(seed)]
 
+        tls = tls_paths(args, is_container or should_generate)
+        if tls:
+            cmd += ["--ssl-certfile", tls.cert, "--ssl-keyfile", tls.key]
+
         runtime_args = getattr(args, 'runtime_args', None)
         if runtime_args:
             cmd.extend(runtime_args)
@@ -68,6 +73,12 @@ class VllmPlugin(ContainerizedInferenceRuntimePlugin):
         return cmd
 
     _cmd_serve = _cmd_run
+
+    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str, *, tls: bool = True) -> None:
+        super()._add_inference_args(parser, command, tls=tls)
+        if tls and command == "serve":
+            # the vllm OpenAI API server terminates TLS itself
+            add_tls_args(parser)
 
     def _add_max_model_len_arg(self, parser: "argparse.ArgumentParser") -> None:
         config = ActiveConfig()

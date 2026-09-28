@@ -299,6 +299,86 @@ class TestLlamaCppPlugin:
         assert "--host" in cmd
         assert cmd[cmd.index("--host") + 1] == "127.0.0.1"
 
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_without_tls(self, mock_colorize):
+        cmd = self.plugin.handle_subcommand("serve", make_ns(container=False))
+
+        assert "--ssl-cert-file" not in cmd
+        assert "--ssl-key-file" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_tls_in_container(self, mock_colorize, mock_new):
+        """In a container llama-server is given the bind mount paths, not the
+        host ones."""
+        mock_new.return_value = make_transport_model()
+
+        ns = make_ns(container=True, MODEL="ollama://mymodel")
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-cert-file") + 1] == "/mnt/tls/tls.crt"
+        assert cmd[cmd.index("--ssl-key-file") + 1] == "/mnt/tls/tls.key"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_tls_nocontainer(self, mock_colorize):
+        ns = make_ns(container=False)
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-cert-file") + 1] == "/host/certs/tls.crt"
+        assert cmd[cmd.index("--ssl-key-file") + 1] == "/host/certs/tls.key"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_tls_generate_uses_container_paths(self, mock_colorize, mock_new):
+        """A generated configuration runs the server in a container even when
+        the generating command did not."""
+        mock_new.return_value = make_transport_model()
+
+        ns = make_ns(container=False, generate="quadlet", MODEL="ollama://mymodel")
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-cert-file") + 1] == "/mnt/tls/tls.crt"
+
+    def test_post_process_args_validates_tls(self):
+        ns = make_ns()
+        ns.tls_cert_file = "/host/certs/tls.crt"
+
+        with pytest.raises(ValueError, match="must be specified together"):
+            self.plugin.post_process_args(ns)
+
+    def test_serve_rag_rejects_tls(self, tmp_path):
+        """The RAG proxy reaches the model server over plain HTTP, so only its
+        own listener could be wrapped in TLS. Rejected up front, before the
+        model is resolved and pulled."""
+        cert = tmp_path / "tls.crt"
+        cert.write_text("cert")
+        key = tmp_path / "tls.key"
+        key.write_text("key")
+
+        ns = make_ns(container=True)
+        ns.rag = "mydb"
+        ns.tls_cert_file = str(cert)
+        ns.tls_key_file = str(key)
+
+        with pytest.raises(ValueError, match="--rag does not support serving over TLS"):
+            self.plugin.post_process_args(ns)
+
+    def test_serve_llama_stack_rejects_tls(self):
+        ns = make_ns(container=True, MODEL=["ollama://mymodel"])
+        ns.api = "llama-stack"
+        ns.detach = False
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+
+        with pytest.raises(ValueError, match="llama-stack command does not support serving over TLS"):
+            self.plugin._serve_handler(ns)
+
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
     def test_serve_with_mmproj(self, mock_colorize, mock_new):
@@ -881,6 +961,33 @@ class TestVllmPlugin:
         assert "--tensor-parallel-size" in cmd
         assert "2" in cmd
 
+    def test_serve_without_tls(self):
+        cmd = self.plugin.handle_subcommand("serve", make_ns(container=False))
+
+        assert "--ssl-certfile" not in cmd
+        assert "--ssl-keyfile" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.vllm.New")
+    def test_serve_tls_in_container(self, mock_new):
+        mock_new.return_value = make_transport_model()
+
+        ns = make_ns(container=True, MODEL="ollama://mymodel")
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-certfile") + 1] == "/mnt/tls/tls.crt"
+        assert cmd[cmd.index("--ssl-keyfile") + 1] == "/mnt/tls/tls.key"
+
+    def test_serve_tls_nocontainer(self):
+        ns = make_ns(container=False)
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-certfile") + 1] == "/host/certs/tls.crt"
+        assert cmd[cmd.index("--ssl-keyfile") + 1] == "/host/certs/tls.key"
+
     def test_run_same_as_serve(self):
         ns = make_ns()
         assert self.plugin.handle_subcommand("serve", ns) == self.plugin.handle_subcommand("run", ns)
@@ -1228,6 +1335,37 @@ class TestConfigureSubcommandsFiltering:
             configure_subcommands(parser)
             opts = self._subparser_option_strings(parser, "serve")
             assert "--temp" in opts, f"--temp missing for runtime {runtime}"
+
+    def test_tls_options_per_runtime(self, monkeypatch):
+        """The mlx server has no TLS support, the other two serve HTTPS."""
+        from ramalama.cli import configure_subcommands
+        from ramalama.config import ActiveConfig
+
+        expected = {
+            "llama.cpp": ({"--tls-cert-file", "--tls-key-file"}, set()),
+            "vllm": ({"--tls-cert-file", "--tls-key-file"}, set()),
+            "mlx": (set(), {"--tls-cert-file", "--tls-key-file"}),
+        }
+        for runtime, (present, absent) in expected.items():
+            monkeypatch.setattr(ActiveConfig(), "runtime", runtime)
+            monkeypatch.setattr(ActiveConfig(), "container", True)
+            parser = self._make_parser()
+            configure_subcommands(parser)
+            opts = set(self._subparser_option_strings(parser, "serve"))
+            assert present <= opts, f"TLS options missing for runtime {runtime}"
+            assert not absent & opts, f"unsupported TLS options offered by runtime {runtime}"
+
+    def test_tls_options_not_offered_by_run(self, monkeypatch):
+        """Only the served REST API can be wrapped in TLS."""
+        from ramalama.cli import configure_subcommands
+        from ramalama.config import ActiveConfig
+
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
+        parser = self._make_parser()
+        configure_subcommands(parser)
+
+        assert "--tls-cert-file" not in self._subparser_option_strings(parser, "run")
 
     def test_vllm_serve_has_api(self, monkeypatch):
         from ramalama.cli import configure_subcommands
