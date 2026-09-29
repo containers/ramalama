@@ -181,6 +181,10 @@ def available_metadata(prefix, parsed_args, **kwargs):
 
 
 class ArgumentParserWithDefaults(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("allow_abbrev", False)
+        super().__init__(*args, **kwargs)
+
     def add_argument(self, *args, help=None, default=None, completer=None, **kwargs):
         if help is not None:
             kwargs['help'] = help
