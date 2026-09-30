@@ -45,6 +45,8 @@ Section, key and value are required and must be separated by colons.
 
 @@option api
 
+@@option server-api-key
+
 @@option authfile
 
 @@option backend

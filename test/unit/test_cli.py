@@ -8,6 +8,7 @@ from ramalama.cli import (
     ParsedGenerateInput,
     _normalize_engine_args,
     daemon_start_cli,
+    get_parser,
     parse_generate_option,
     post_parse_setup,
 )
@@ -336,3 +337,20 @@ def test_daemon_start_container_publish_vm_backed_drops_loopback(monkeypatch):
     monkeypatch.setattr("ramalama.host_utils.platform.system", lambda: "Darwin")
     cmd = _capture_daemon_cmd(_daemon_start_args(host="127.0.0.1"))
     assert cmd[cmd.index("-p") + 1] == "1234:8080"
+
+
+def test_parser_rejects_abbreviated_options():
+    # Abbreviations are off: a conditionally registered option that is absent must
+    # not be silently absorbed by a longer one that shares its prefix.
+    parser = get_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["serve", "--gen", "quadlet", "tiny"])
+
+
+def test_subparsers_inherit_allow_abbrev():
+    # add_subparsers defaults parser_class to type(self), so setting allow_abbrev
+    # on ArgumentParserWithDefaults is enough to cover every subcommand.
+    parser = get_parser()
+    subparsers = parser._subparsers._group_actions[0].choices  # type: ignore[union-attr]
+    assert not parser.allow_abbrev
+    assert subparsers and all(not sp.allow_abbrev for sp in subparsers.values())
