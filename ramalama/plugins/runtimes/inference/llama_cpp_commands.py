@@ -6,6 +6,8 @@ import os
 from ramalama.console import should_colorize
 from ramalama.transports.transport_factory import New
 
+MODELS_PRESET_PATH = '/etc/presets.ini'
+
 
 def _default_threads() -> int:
     """Compute the default number of CPU threads for llama.cpp inference."""
@@ -170,7 +172,16 @@ class LlamaCppCommands:
 
         return cmd
 
-    _cmd_serve = _cmd_run
+    def _cmd_serve(self, args: argparse.Namespace) -> list[str]:
+        cmd = self._cmd_run(args)
+
+        router_mode = getattr(args, 'router_mode', False)
+        if router_mode:
+            presets_file = getattr(args, 'models_preset', None)
+            if presets_file:
+                cmd += ["--models-preset", MODELS_PRESET_PATH]
+
+        return cmd
 
     def _cmd_perplexity(self, args: argparse.Namespace) -> list[str]:
         cmd = ["llama-perplexity"] if not self._container_image_is_ggml(args) else ["--perplexity"]  # type: ignore[attr-defined]
