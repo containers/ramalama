@@ -115,13 +115,23 @@ class TestServeRouter:
             self.plugin._serve_router(args)
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp.enumerate_store_gguf_models", return_value=[])
-    @patch.object(LlamaCppPlugin, "_migrate_store_ref_files")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp.set_accel_env_vars")
-    @patch("ramalama.plugins.runtimes.inference.llama_cpp.compute_serving_port", return_value="8080")
-    def test_no_models_exits(self, mock_port, mock_accel, mock_migrate, mock_enum):
-        args = argparse.Namespace(container=True, store="/fake/store", port="8080", MODEL=[])
+    @patch.object(LlamaCppPlugin, "_migrate_store_ref_files")
+    def test_no_models_exits(self, mock_port, mock_accel, mock_migrate):
+        args = make_ns(MODEL=[])
         with pytest.raises(SystemExit):
             self.plugin._serve_router(args)
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.enumerate_store_gguf_models", return_value=[("a", "model")])
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.set_accel_env_vars")
+    @patch.object(LlamaCppPlugin, "_migrate_store_ref_files")
+    def test_engine_args_get_applied(self, mock_colorize, mock_accel, mock_migrate):
+        args = make_ns(MODEL=[], engine_args=["--annotation", "some=thing"])
+        engine = self.plugin._build_router_engine(args)
+
+        index = engine.exec_args.index("--annotation")
+        assert engine.exec_args[index + 1] == "some=thing"
+        assert index < engine.exec_args.index(args.image)
 
 
 # ---------------------------------------------------------------------------
