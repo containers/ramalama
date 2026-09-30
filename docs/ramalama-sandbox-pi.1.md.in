@@ -76,12 +76,12 @@ Otherwise only the agent container starts using the given url for the openai com
 @@option ngl
 
 @@option oci-runtime
+@@option pi-image
 
 @@option plugin
 
-@@option port
 
-@@option pi-image
+@@option port
 
 
 @@option privileged

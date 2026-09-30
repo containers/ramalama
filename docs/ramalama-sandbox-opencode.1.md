@@ -304,12 +304,19 @@ On Nvidia based GPU systems, RamaLama defaults to using the
 
 [//]: # (END   included file options/oci-runtime.md)
 
+[//]: # (BEGIN included file options/opencode-image.md)
+#### **--opencode-image**=*IMAGE*
+OpenCode container image
+
+[//]: # (END   included file options/opencode-image.md)
+
 
 [//]: # (BEGIN included file options/plugin.md)
 #### **--plugin**=*name*
 Plugin OCI artifact full name or shortname to mount into the sandbox container.
 May be specified multiple times.
 [//]: # (END   included file options/plugin.md)
+
 
 
 [//]: # (BEGIN included file options/port.md)
@@ -320,13 +327,6 @@ a free port in the 8080-8180 range is selected, starting with 8080.
 The default can be overridden in the `ramalama.conf` file.
 
 [//]: # (END   included file options/port.md)
-
-
-[//]: # (BEGIN included file options/opencode-image.md)
-#### **--opencode-image**=*IMAGE*
-OpenCode container image
-
-[//]: # (END   included file options/opencode-image.md)
 
 
 

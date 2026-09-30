@@ -4,9 +4,8 @@ import tarfile
 import tempfile
 from types import SimpleNamespace
 
+from ramalama.cli import skill_ls_cli, skill_pull_cli, skill_push_cli
 from ramalama.config import ActiveConfig
-from ramalama.cli import skill_ls_cli
-from ramalama.cli import skill_push_cli, skill_pull_cli
 
 
 def make_skill_tarball(
@@ -35,7 +34,6 @@ def make_skill_tarball(
 
 
 def test_skill_ls_plain_and_path_and_json(monkeypatch, capsys):
-    from ramalama.cli import skill_ls_cli
 
     ls_output = (
         '{"name":"oci://quay.io/ramalama/wiki-kb:latest",'
@@ -44,7 +42,6 @@ def test_skill_ls_plain_and_path_and_json(monkeypatch, capsys):
         '"ID":"sha256:abc"},'
     )
     inspect_output = json.dumps({"Manifest": {"artifactType": "application/vnd.cncf.skill.manifest.v1+json"}})
-
 
     def fake_run_cmd(args, *a, **kw):
         class R:
@@ -83,27 +80,27 @@ def test_skill_ls_plain_and_path_and_json(monkeypatch, capsys):
 def test_agent_and_plugin_ls(monkeypatch, capsys):
     from ramalama.cli import agent_ls_cli, plugin_ls_cli
 
-def make_fake_run_cmd(name):
-    ls_output = (
-        f'{{"name":"oci://quay.io/ramalama/{name}:latest",'
-        '"created":"2026-01-01 00:00:00 +0000",'
-        '"size":"1KB",'
-        '"ID":"sha256:abc"},'
-    )
-    inspect_output = json.dumps({"Manifest": {"artifactType": "application/vnd.cncf.skill.manifest.v1+json"}})
+    def make_fake_run_cmd(name):
+        ls_output = (
+            f'{{"name":"oci://quay.io/ramalama/{name}:latest",'
+            '"created":"2026-01-01 00:00:00 +0000",'
+            '"size":"1KB",'
+            '"ID":"sha256:abc"},'
+        )
+        inspect_output = json.dumps({"Manifest": {"artifactType": "application/vnd.cncf.skill.manifest.v1+json"}})
 
-    def fake_run_cmd(args, *a, **kw):
-        class R:
-            def __init__(self, out):
-                self.stdout = out.encode("utf-8")
+        def fake_run_cmd(args, *a, **kw):
+            class R:
+                def __init__(self, out):
+                    self.stdout = out.encode("utf-8")
 
-        if len(args) > 2 and args[1] == "artifact" and args[2] == "ls":
-            return R(ls_output)
-        if len(args) > 2 and args[1] == "artifact" and args[2] == "inspect":
-            return R(inspect_output)
-        raise AssertionError(f"Unexpected command: {args}")
+            if len(args) > 2 and args[1] == "artifact" and args[2] == "ls":
+                return R(ls_output)
+            if len(args) > 2 and args[1] == "artifact" and args[2] == "inspect":
+                return R(inspect_output)
+            raise AssertionError(f"Unexpected command: {args}")
 
-    return fake_run_cmd
+        return fake_run_cmd
 
     # agent ls json
     monkeypatch.setattr("ramalama.cli.run_cmd", make_fake_run_cmd("sample-agent"))
@@ -153,14 +150,14 @@ def test_skill_push_pull_invokes_engine(tmp_path, monkeypatch):
     )
 
     monkeypatch.setattr(
-    "ramalama.skills.artifact.run_cmd",
-    fake_run_cmd,
-)
+        "ramalama.skills.artifact.run_cmd",
+        fake_run_cmd,
+    )
 
     monkeypatch.setattr(
-    "ramalama.transports.oci.resolver.run_cmd",
-    fake_run_cmd,
-)
+        "ramalama.transports.oci.resolver.run_cmd",
+        fake_run_cmd,
+    )
     # push
     args = SimpleNamespace(
         SOURCE=tag,
@@ -191,10 +188,7 @@ def test_skill_push_pull_invokes_engine(tmp_path, monkeypatch):
 
     assert calls, "Expected OCI engine commands to be invoked"
 
-    assert any(
-        "artifact" in c or "push" in c or "pull" in c
-        for c in calls
-    )
+    assert any("artifact" in c or "push" in c or "pull" in c for c in calls)
 
 
 def test_agent_plugin_push_pull_invokes_engine(tmp_path, monkeypatch):
@@ -244,20 +238,20 @@ def test_agent_plugin_push_pull_invokes_engine(tmp_path, monkeypatch):
     )
 
     monkeypatch.setattr(
-    "ramalama.skills.artifact.run_cmd",
-    fake_run_cmd,
-)
+        "ramalama.skills.artifact.run_cmd",
+        fake_run_cmd,
+    )
 
     monkeypatch.setattr(
-    "ramalama.transports.oci.resolver.run_cmd",
-    fake_run_cmd,
-)
+        "ramalama.transports.oci.resolver.run_cmd",
+        fake_run_cmd,
+    )
 
     from ramalama.cli import (
-        agent_push_cli,
         agent_pull_cli,
-        plugin_push_cli,
+        agent_push_cli,
         plugin_pull_cli,
+        plugin_push_cli,
     )
 
     # agent push
@@ -318,7 +312,4 @@ def test_agent_plugin_push_pull_invokes_engine(tmp_path, monkeypatch):
 
     assert calls, "Expected OCI engine commands to be invoked"
 
-    assert any(
-        "artifact" in c or "push" in c or "pull" in c
-        for c in calls
-    )
+    assert any("artifact" in c or "push" in c or "pull" in c for c in calls)

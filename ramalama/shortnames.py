@@ -35,9 +35,7 @@ class Shortnames:
         else:
             file_paths.extend(
                 [
-                    os.path.expanduser(
-                        os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama", filename)
-                    ),
+                    os.path.expanduser(os.path.join(os.getenv("XDG_CONFIG_HOME", "~/.config"), "ramalama", filename)),
                     os.path.expanduser(
                         os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "ramalama", filename)
                     ),
@@ -64,7 +62,7 @@ class Shortnames:
         self._targets: dict[str, list[str]] = {}
         for name, target in self.shortnames.items():
             self._targets.setdefault(target, []).append(name)
-        
+
     def _strip_quotes(self, s) -> str:
         return s.strip("'\"")
 

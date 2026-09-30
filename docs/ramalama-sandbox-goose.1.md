@@ -412,6 +412,12 @@ Maximum number of tokens to draft per speculative decoding step (default: 3).
 
 [//]: # (END   included file options/spec-draft-n-max.md)
 
+[//]: # (BEGIN included file options/spec-draft-n-min.md)
+#### **--spec-draft-n-min**=*N*
+Minimum number of draft tokens to use for speculative decoding (default: 0).
+
+[//]: # (END   included file options/spec-draft-n-min.md)
+
 
 [//]: # (BEGIN included file options/spec-draft-p-min.md)
 #### **--spec-draft-p-min**=*P*

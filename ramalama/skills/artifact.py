@@ -8,6 +8,7 @@ from ramalama.common import run_cmd
 from ramalama.oci_tools import OciRef
 from ramalama.transports.oci import spec as oci_spec
 
+
 def _tar_skill_dir(path: str) -> str:
     """Tar the skill directory into a temp .tar.gz file, return its path."""
     if not os.path.isdir(path):

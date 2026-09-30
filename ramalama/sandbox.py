@@ -16,7 +16,7 @@ from http.client import HTTPConnection
 from typing import Optional, cast
 from urllib.parse import urlparse
 
-from ramalama.arg_types import BaseEngineArgsType
+from ramalama.arg_types import BaseEngineArgsType, StoreArgType
 from ramalama.common import genname, perror, run_cmd
 from ramalama.config import ActiveConfig
 from ramalama.engine import Engine, is_healthy, stop_container, wait_for_healthy
@@ -195,6 +195,8 @@ class SandboxEngineArgsType(BaseEngineArgsType):
     start_model_server: bool
     name: str
     model: str
+    container: bool
+    store: str
 
 
 class SandboxEngine(Engine):
@@ -289,7 +291,7 @@ class Agent:
             oci_mounted = False
             try:
                 # Construct an OCI transport for this reference
-                oci_transport = TransportFactory(resolved, args, transport="oci").create_oci()
+                oci_transport = TransportFactory(resolved, cast(StoreArgType, args), transport="oci").create_oci()
                 # If artifact not present locally, attempt pull
                 try:
                     if not oci_transport.exists():
