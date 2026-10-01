@@ -107,7 +107,7 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
         docling_cmd = assemble_command(docling_serve_args)
         embed_cmd = assemble_command(embed_serve_args)
 
-        perror("Starting VLM server...")
+        perror("Starting OCR server...")
         docling_proc = docling_transport.serve_nonblocking(docling_serve_args, docling_cmd)  # type: ignore[union-attr]
         perror("Starting embedding server...")
         embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)  # type: ignore[union-attr]
@@ -119,7 +119,7 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
 
         if not args.dryrun:
             _wait_for_server(plugin, docling_serve_args, docling_transport.model_alias)
-            perror("VLM server is ready.")
+            perror("OCR server is ready.")
             _wait_for_server(plugin, embed_serve_args, embed_transport.model_alias)
             perror("Embedding server is ready.")
             if caption_transport and caption_serve_args:
