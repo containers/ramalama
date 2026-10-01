@@ -72,7 +72,8 @@ class LlamaCppCommands:
             model_path = model._get_entry_model_path(is_container, should_generate, dry_run)
             cmd += ["--model", model_path]
 
-            mmproj_path = model._get_mmproj_path(is_container, should_generate, dry_run)
+            mtmd = getattr(args, 'mtmd', None)
+            mmproj_path = model._get_mmproj_path(is_container, should_generate, dry_run) if mtmd is not False else None
             if mmproj_path:
                 cmd += ["--mmproj", str(mmproj_path)]
 
