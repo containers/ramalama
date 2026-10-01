@@ -45,6 +45,7 @@ from ramalama.common import (
 )
 from ramalama.logger import logger
 from ramalama.path_utils import get_container_mount_path
+from ramalama.tls import tls_mount_args
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
 
@@ -413,7 +414,16 @@ class Transport(TransportBase):
         self.engine.exec(stdout2null=args.noout)
         return True
 
+    def setup_tls_mounts(self, args):
+        for mount in tls_mount_args(self.engine, args):
+            self.engine.add([mount])
+
     def setup_mounts(self, args):
+        # The TLS files are mounted even on a dry run: the command printed
+        # there passes their container paths to the server, so it has to
+        # carry the mounts that put them there.
+        self.setup_tls_mounts(args)
+
         if args.dryrun:
             return
 

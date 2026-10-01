@@ -104,7 +104,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
     if getattr(runtime, "_add_inference_args", None):
         # Consider adding this to the plugin interface for commands which need to run an
         # inference server
-        runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
+        runtime._add_inference_args(parser, "serve", tls=False)  # type: ignore[attr-defined]
     parser.add_argument(
         "--goose-image",
         default="ghcr.io/aaif-goose/goose:1.51.0",
@@ -118,7 +118,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
 
     parser = subparsers.add_parser("opencode", help="run OpenCode in a sandbox, backed by a local AI Model")
     if getattr(runtime, "_add_inference_args", None):
-        runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
+        runtime._add_inference_args(parser, "serve", tls=False)  # type: ignore[attr-defined]
     parser.add_argument(
         "--opencode-image",
         default="ghcr.io/anomalyco/opencode:1.18.32",
@@ -132,7 +132,7 @@ def add_sandbox_subparsers(subparsers: argparse._SubParsersAction, img_comp: Cal
 
     parser = subparsers.add_parser("pi", help="run Pi in a sandbox, backed by a local AI Model")
     if getattr(runtime, "_add_inference_args", None):
-        runtime._add_inference_args(parser, "serve")  # type: ignore[attr-defined]
+        runtime._add_inference_args(parser, "serve", tls=False)  # type: ignore[attr-defined]
     parser.add_argument(
         "--pi-image",
         default=default_pi_image(),

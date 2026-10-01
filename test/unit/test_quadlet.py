@@ -347,3 +347,97 @@ def test_quadlet_nvidia_selection(monkeypatch):
     # The container sees the two GPUs as 0 and 1, so the host's indices would
     # name a device that is not there.
     assert "Environment=CUDA_VISIBLE_DEVICES=0,1" in content
+
+
+def test_quadlet_tls_mounts(monkeypatch):
+    """The certificate and key are mounted read-only, and left alone on the
+    host: the unit disables SELinux labelling, so relabelling them would only
+    break the other services that read them."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr(Quadlet, "_gen_env", lambda self, quadlet_file: None)
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+
+    args = Args()
+    args.tls_cert_file = "/host/certs/tls.crt"
+    args.tls_key_file = "/host/certs/tls.key"
+
+    files = Quadlet("tinyllama", ("/blob", "model"), None, None, args, [], False, None, None).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert "Mount=type=bind,src=/host/certs/tls.crt,target=/mnt/tls/tls.crt,ro" in content
+    assert "Mount=type=bind,src=/host/certs/tls.key,target=/mnt/tls/tls.key,ro" in content
+    assert "Mount=type=bind,src=/host/certs/tls.crt,target=/mnt/tls/tls.crt,ro,Z" not in content
+    assert "Mount=type=bind,src=/host/certs/tls.key,target=/mnt/tls/tls.key,ro,Z" not in content
+    assert "SecurityLabelDisable=true" in content
+
+
+def test_quadlet_tls_mounts_with_spaces_in_paths(monkeypatch):
+    """Quadlet splits Mount= into words, so a path holding a space has to be
+    quoted or the unit does not generate at all."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr(Quadlet, "_gen_env", lambda self, quadlet_file: None)
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+
+    args = Args()
+    args.tls_cert_file = "/host/my certs/tls.crt"
+    args.tls_key_file = "/host/my certs/tls.key"
+
+    files = Quadlet("tinyllama", ("/blob", "model"), None, None, args, [], False, None, None).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert 'Mount="type=bind,src=/host/my certs/tls.crt,target=/mnt/tls/tls.crt,ro"' in content
+    assert 'Mount="type=bind,src=/host/my certs/tls.key,target=/mnt/tls/tls.key,ro"' in content
+
+
+def test_quadlet_quotes_mounts_and_env_with_spaces(monkeypatch):
+    """Quadlet word splits every Mount= and Environment= value, not just the
+    TLS ones: an unquoted space fails the mount and splits the variable."""
+    model = "/my blobs/model.gguf"
+    chat_template = "/my blobs/chat template"
+    mmproj = "/my blobs/mmproj file"
+
+    existence = {model: True, chat_template: True, mmproj: True}
+    monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+    monkeypatch.setattr("ramalama.quadlet.get_accel_env_vars", lambda: {})
+
+    files = Quadlet(
+        "tinyllama",
+        (model, "/mnt/models/model.file"),
+        (chat_template, "/mnt/models/chat_template"),
+        (mmproj, "/mnt/models/model.mmproj"),
+        Args(env=["GREETING=hello world"]),
+        [],
+        False,
+        None,
+        None,
+    ).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert 'Mount="type=bind,src=/my blobs/model.gguf,target=/mnt/models/model.file,ro,Z"' in content
+    assert 'Mount="type=bind,src=/my blobs/chat template,target=/mnt/models/chat_template,ro,Z"' in content
+    assert 'Mount="type=bind,src=/my blobs/mmproj file,target=/mnt/models/model.mmproj,ro,Z"' in content
+    assert 'Environment="GREETING=hello world"' in content
+
+
+def test_quadlet_no_tls_mounts_without_tls(monkeypatch):
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr(Quadlet, "_gen_env", lambda self, quadlet_file: None)
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+
+    files = Quadlet("tinyllama", ("/blob", "model"), None, None, Args(), [], False, None, None).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert "/mnt/tls" not in content

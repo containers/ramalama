@@ -61,6 +61,7 @@ from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
     _default_threads,
 )
 from ramalama.rag import RagTransport
+from ramalama.tls import add_tls_args, tls_enabled, tls_mount_args
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New, TransportFactory
@@ -489,9 +490,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         # ramalama.conf must not be printed by --help.
         parser.set_defaults(server_api_key=rt_config.server_api_key)
 
-    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
+    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str, *, tls: bool = True) -> None:
         """Add llama.cpp-specific inference args to an already-created parser."""
-        super()._add_inference_args(parser, command)
+        super()._add_inference_args(parser, command, tls=tls)
         rt_config = self.get_runtime_config(ActiveConfig())
         parser.add_argument(
             "--temp",
@@ -561,6 +562,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             )
         self._add_threads_arg(parser)
         if command == "serve":
+            if tls:
+                # llama-server terminates TLS itself
+                add_tls_args(parser)
             parser.add_argument(
                 "--webui",
                 dest="webui",
@@ -585,6 +589,10 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     def post_process_args(self, args: argparse.Namespace) -> None:
         super().post_process_args(args)
+        if tls_enabled(args) and getattr(args, "rag", None):
+            # The RAG framework proxies the model server over plain HTTP, so
+            # only its own listener could be wrapped in TLS, not the model's.
+            raise ValueError("ramalama serve --rag does not support serving over TLS.")
         if not getattr(args, "server_api_key", None):
             return
         # Both of these put a helper in front of llama-server that has no way to
@@ -696,6 +704,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             mount_path = f"/mnt/models/{container_name}"
             container_host_path = get_container_mount_path(host_path)
             engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro{engine.relabel()}"])
+
+        for mount in tls_mount_args(engine, args):
+            engine.add([mount])
 
         engine.add([args.image] + cmd)
         return engine

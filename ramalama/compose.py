@@ -10,6 +10,7 @@ import ramalama.common
 from ramalama.common import RAG_DIR, container_cuda_visible_devices, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.host_utils import format_bind_host_publish_prefix
+from ramalama.tls import tls_mounts
 from ramalama.version import version
 
 
@@ -63,7 +64,13 @@ class Compose:
         if self.src_mmproj_path and os.path.exists(self.src_mmproj_path):
             volumes += self._gen_mmproj_volume()
 
+        # TLS Volumes
+        volumes += self._gen_tls_volumes()
+
         return volumes
+
+    def _gen_tls_volumes(self) -> str:
+        return "".join(f'\n      - "{src_path}:{dest_path}:ro"' for src_path, dest_path in tls_mounts(self.args))
 
     def _gen_model_volume(self, src_model_path: str, dest_model_path: str) -> str:
         return f'\n      - "{src_model_path}:{dest_model_path}:ro"'

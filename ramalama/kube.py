@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, check_nvidia, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.path_utils import normalize_host_path_for_container
+from ramalama.tls import tls_mounts
 from ramalama.version import version
 
 
@@ -77,9 +78,32 @@ class Kube:
             mounts += m
             volumes += v
 
+        m, v = self._gen_tls_volumes()
+        mounts += m
+        volumes += v
+
         m, v = self._gen_devices()
         mounts += m
         volumes += v
+        return mounts, volumes
+
+    def _gen_tls_volumes(self) -> Tuple[str, str]:
+        mounts = ""
+        volumes = ""
+        # tls_mounts() yields the certificate and then the key
+        for volume_name, (src_path, dest_path) in zip(("tls-cert", "tls-key"), tls_mounts(self.args)):
+            host_path = normalize_host_path_for_container(src_path)
+            if platform.system() == "Windows":
+                #  Workaround https://github.com/containers/podman/issues/16704
+                host_path = '/mnt' + host_path
+            mounts += f"""
+        - mountPath: {dest_path}
+          name: {volume_name}
+          readOnly: true"""
+            volumes += f"""
+      - hostPath:
+          path: {host_path}
+        name: {volume_name}"""
         return mounts, volumes
 
     def _gen_devices(self) -> Tuple[str, str]:
