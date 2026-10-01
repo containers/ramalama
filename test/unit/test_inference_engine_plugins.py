@@ -1,8 +1,9 @@
 """Unit tests for runtime plugins (llama.cpp, vllm, mlx)."""
 
 import argparse
+from subprocess import TimeoutExpired
 from typing import Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -21,6 +22,7 @@ from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRun
 from ramalama.plugins.runtimes.inference.llama_cpp import (
     LlamaCppConfig,
     LlamaCppPlugin,
+    _parse_list_devices,
     backend_to_gpu_env,
     get_available_backends,
     get_gpu_backend_preferences,
@@ -1536,3 +1538,135 @@ class TestBackendHelpers:
     def test_gpu_backend_preferences_unknown(self):
         prefs = get_gpu_backend_preferences("UNKNOWN_DEVICES")
         assert prefs == []
+
+
+class TestListDevices:
+    """Tests for llama.cpp device enumeration (parsing + container probe)."""
+
+    def test_parse_description_with_parentheses(self):
+        # llama.cpp descriptions can contain parentheses (e.g. the Apple GPU
+        # name), so only the trailing memory group must be split off.
+        output = (
+            "could not connect vdrm\n"
+            "Available devices:\n"
+            "  Vulkan0: Virtio-GPU Venus (Apple M4 Pro) (49152 MiB, 49152 MiB free)\n"
+        )
+        assert _parse_list_devices(output) == [
+            {
+                "name": "Vulkan0",
+                "description": "Virtio-GPU Venus (Apple M4 Pro)",
+                "memory_total_mib": 49152,
+                "memory_free_mib": 49152,
+            }
+        ]
+
+    def test_parse_multiple(self):
+        output = (
+            "Available devices:\n"
+            "  CUDA0: NVIDIA GeForce RTX 3090 (24576 MiB, 24000 MiB free)\n"
+            "  Vulkan0: AMD Radeon RX 7900 XTX (24560 MiB, 23000 MiB free)\n"
+        )
+        assert _parse_list_devices(output) == [
+            {
+                "name": "CUDA0",
+                "description": "NVIDIA GeForce RTX 3090",
+                "memory_total_mib": 24576,
+                "memory_free_mib": 24000,
+            },
+            {
+                "name": "Vulkan0",
+                "description": "AMD Radeon RX 7900 XTX",
+                "memory_total_mib": 24560,
+                "memory_free_mib": 23000,
+            },
+        ]
+
+    def test_parse_none(self):
+        assert _parse_list_devices("Available devices:\n  (none)\n") == []
+
+    def test_list_devices_no_engine(self):
+        assert LlamaCppPlugin().list_devices(argparse.Namespace(engine=None)) == []
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_list_devices_parses_probe_output(self, mock_engine, mock_accel, mock_run):
+        mock_engine.return_value.exec_args = ["podman", "run", "--rm", "img:latest", "llama-server", "--list-devices"]
+        mock_run.return_value = Mock(
+            returncode=0,
+            stdout="Available devices:\n  Vulkan0: GPU (1024 MiB, 512 MiB free)\n",
+            stderr="",
+        )
+        args = make_ns()
+        args.engine = "podman"
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=False):
+            result = LlamaCppPlugin().list_devices(args)
+
+        assert result == [{"name": "Vulkan0", "description": "GPU", "memory_total_mib": 1024, "memory_free_mib": 512}]
+        # The ramalama image exposes llama-server directly.
+        image, cmd = mock_engine.return_value.add_container_image.call_args.args
+        assert image == "img:latest"
+        assert cmd == ["llama-server", "--list-devices"]
+        # The probe must not pull a missing image during `info`.
+        assert mock_engine.call_args.args[0].pull == "never"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_list_devices_ggml_image_uses_server_entrypoint(self, mock_engine, mock_accel, mock_run):
+        mock_engine.return_value.exec_args = ["podman", "run", "--rm", "img:latest", "--server", "--list-devices"]
+        mock_run.return_value = Mock(returncode=0, stdout="Available devices:\n", stderr="")
+        args = make_ns()
+        args.engine = "podman"
+        # The upstream llama.cpp image uses a wrapper entrypoint invoked with --server.
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=True):
+            LlamaCppPlugin().list_devices(args)
+
+        _, cmd = mock_engine.return_value.add_container_image.call_args.args
+        assert cmd == ["--server", "--list-devices"]
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_list_devices_nonzero_returncode(self, mock_engine, mock_accel, mock_run):
+        mock_engine.return_value.exec_args = ["podman", "run"]
+        mock_run.return_value = Mock(returncode=125, stdout="", stderr="image not known")
+        args = make_ns()
+        args.engine = "podman"
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=False):
+            assert LlamaCppPlugin().list_devices(args) == []
+
+    @patch(
+        "ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run",
+        side_effect=TimeoutExpired(cmd="podman", timeout=60),
+    )
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_list_devices_timeout(self, mock_engine, mock_accel, mock_run):
+        mock_engine.return_value.exec_args = ["podman", "run"]
+        args = make_ns()
+        args.engine = "podman"
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=False):
+            assert LlamaCppPlugin().list_devices(args) == []
+
+        # A timed-out probe must force-remove the named container it launched,
+        # since killing the engine client does not stop the container.
+        probe_name = mock_engine.return_value.add_name.call_args.args[0]
+        cleanup_cmd = mock_run.call_args.args[0]
+        assert cleanup_cmd[-3:] == ["rm", "--force", probe_name]
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.ActiveConfig")
+    def test_list_devices_propagates_keep_groups(self, mock_cfg, mock_engine, mock_accel, mock_run):
+        mock_cfg.return_value.keep_groups = True
+        mock_engine.return_value.exec_args = ["podman", "run"]
+        mock_run.return_value = Mock(returncode=0, stdout="Available devices:\n", stderr="")
+        args = make_ns()
+        args.engine = "podman"
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=False):
+            LlamaCppPlugin().list_devices(args)
+
+        # `info` does not register --keep-groups, so the probe must pick it up from config.
+        assert mock_engine.call_args.args[0].podman_keep_groups is True

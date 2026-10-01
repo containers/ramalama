@@ -12,6 +12,9 @@ Display configuration information in a json format. Use **--shortnames** to list
 
 ## OPTIONS
 
+#### **--devices**
+Print the detected GPU/accelerator devices as JSON and exit. This is the `Devices` field (see below) on its own.
+
 #### **--help**, **-h**
 show this help message and exit
 
@@ -23,6 +26,8 @@ Print the available shortnames and exit. Each entry includes the source of the c
 The `Accelerator` field indicates the accelerator type for the machine.
 
 The `Config` field shows the list of paths to RamaLama configuration files used. 
+
+The `Devices` field lists the GPU/accelerator devices detected by llama.cpp (`llama-server --list-devices`) inside the container `Image`. Each entry reports the backend device `name` (e.g. `Vulkan0`, `CUDA0`), a human-readable `description`, and the total and free device memory in MiB (`memory_total_mib`, `memory_free_mib`). Detection uses the already-pulled container image and the host GPU passthrough; the field is only present when a container engine is in use, and is an empty list when no devices are found or the image has not been pulled.
 
 The `Engine` field indicates the OCI container engine used to launch the container in which to run the AI Model
 
@@ -138,6 +143,14 @@ Info with Podman engine
 $ ramalama info
 {
     "Accelerator": "cuda",
+    "Devices": [
+        {
+            "description": "NVIDIA GeForce RTX 3090",
+            "memory_free_mib": 24000,
+            "memory_total_mib": 24576,
+            "name": "CUDA0"
+        }
+    ],
     "Engine": {
         "Info": {
             "host": {
