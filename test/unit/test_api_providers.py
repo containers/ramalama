@@ -1,6 +1,7 @@
 import pytest
 
 from ramalama.chat_providers.api_providers import get_chat_provider
+from ramalama.chat_providers.litellm import LiteLLMChatProvider
 from ramalama.chat_providers.openai import OpenAIResponsesChatProvider
 
 
@@ -10,6 +11,13 @@ def test_get_chat_provider_returns_openai_provider():
     assert isinstance(provider, OpenAIResponsesChatProvider)
     assert provider.base_url == "https://api.openai.com/v1"
     assert provider.provider == "openai"
+
+
+def test_get_chat_provider_returns_litellm_provider():
+    provider = get_chat_provider("litellm")
+
+    assert isinstance(provider, LiteLLMChatProvider)
+    assert provider.provider == "litellm"
 
 
 def test_get_chat_provider_raises_for_unknown_scheme():
