@@ -366,7 +366,7 @@ def images(args):
         raise (e)
 
 
-def image_inspect(args, name: str, format: Optional[str] = None):
+def image_inspect(args, name: str, format: Optional[str] = None, timeout: Optional[float] = None):
     if not name:
         raise ValueError("must specify an image name")
     conman = str(args.engine) if args.engine is not None else None
@@ -379,7 +379,7 @@ def image_inspect(args, name: str, format: Optional[str] = None):
 
     conman_args += [name]
     try:
-        return run_cmd(conman_args, ignore_stderr=True).stdout.decode("utf-8").strip()
+        return run_cmd(conman_args, ignore_stderr=True, timeout=timeout).stdout.decode("utf-8").strip()
     except Exception:
         return ''
 
