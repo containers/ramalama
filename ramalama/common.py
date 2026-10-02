@@ -122,7 +122,10 @@ def apple_vm(engine: SUPPORTED_ENGINES, config: Optional[Config] = None) -> bool
         major = int(version.split('.')[0])
         if major < 6:
             podman_machine_list.append("--all-providers")
-    except (subprocess.CalledProcessError, FileNotFoundError, ValueError, AttributeError) as e:
+    except FileNotFoundError:
+        # podman is not installed, so there is no podman machine to look for.
+        return False
+    except (subprocess.CalledProcessError, ValueError, AttributeError) as e:
         logger.warning(f"Failed to parse podman version: {e}")
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True, encoding="utf-8").stdout.strip()
