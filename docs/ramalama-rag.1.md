@@ -25,6 +25,12 @@ The pipeline:
 5. Embeddings are stored in a Qdrant on-disk collection.
 6. The Qdrant database is packaged into a `FROM scratch` OCI image.
 
+If document processing produces no text chunks, the command stops before
+embedding with an error explaining that no text was extracted. Granite Docling
+uses OCR to extract text from images and PDFs. If image captioning is not
+already enabled, the error suggests `--caption-images` to generate image
+descriptions.
+
 Multiple containers work together: llama.cpp containers serve the AI models,
 and a lightweight RAG container runs the document processing pipeline.
 RamaLama places them on a private container network and they reach each other
@@ -54,11 +60,11 @@ are faster to embed but may lose context; larger chunks preserve more
 context but require more embedding capacity.
 
 #### **--ctx-size**, **-c**=*integer*
-Context size for the VLM server (default: 8192). Increase if processing
+Context size for the OCR server (default: 8192). Increase if processing
 complex PDF pages that produce many visual tokens.
 
 #### **--docling-model**=*model*
-Granite Docling GGUF model used for document conversion
+Granite Docling GGUF model used for OCR text extraction from images and PDFs
 (default: hf://ibm-granite/granite-docling-258M-GGUF).
 
 #### **--embed-ctx-size**=*integer*
