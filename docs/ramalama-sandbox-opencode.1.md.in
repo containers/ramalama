@@ -65,7 +65,7 @@ Otherwise only the agent container starts using the given url for the openai com
 
 @@option ncmoe
 
-@@option network
+@@option network-sandbox
 
 @@option ngl
 

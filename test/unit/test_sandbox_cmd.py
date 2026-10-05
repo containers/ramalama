@@ -6,7 +6,16 @@ import pytest
 
 from ramalama.cli import parse_args_from_cmd
 from ramalama.config import DEFAULT_PI_IMAGE
-from ramalama.sandbox import Agent, Goose, OpenCode, Pi, _pi_provider_id, _run_sandbox_router, _wire_loopback_url
+from ramalama.sandbox import (
+    Agent,
+    Goose,
+    OpenCode,
+    Pi,
+    _pi_provider_id,
+    _run_sandbox_router,
+    _wire_loopback_url,
+    run_sandbox,
+)
 
 TEST_MODEL = "qwen3:4b"
 
@@ -544,3 +553,79 @@ def test_wire_loopback_url_vm_engine_rewrites_host(system, engine, expected_host
         _wire_loopback_url(args)
     assert args.network is None
     assert args.url == f"http://{expected_host}:8321/v1"
+
+
+# --- --network=internal tests ---
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_internal_network_flag(agent):
+    """--network=internal should be parsed; --network defaults to None."""
+    _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
+    assert args.network is None
+
+    _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL, "--network=internal"])
+    assert args.network == "internal"
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_internal_network_conflicts_with_url(agent):
+    """--network=internal cannot be combined with --url."""
+    _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL, "--network=internal", "--url", "http://model.example"])
+    args.container = True
+    with pytest.raises(ValueError, match="--network=internal cannot be used with --url"):
+        args.func(args)
+
+
+def _internal_network_args(**overrides):
+    """Create args for run_sandbox() with --network=internal set."""
+    args = dict(
+        engine="podman",
+        container=True,
+        url=None,
+        MODEL=[TEST_MODEL],
+        name="ramalama_model_abc",
+        network="internal",
+        port=None,
+        dryrun=False,
+        api_key="ramalama",
+    )
+    args.update(overrides)
+    return SimpleNamespace(**args)
+
+
+def test_sandbox_without_internal_network_uses_localhost(monkeypatch):
+    """Without --network=internal the agent uses localhost (shared network namespace)."""
+    served = {}
+
+    def fake_single_model(args, agent_cls):
+        served["args"] = args
+
+    monkeypatch.setattr("ramalama.sandbox.run_cmd", lambda cmd, *a, **k: None)
+    monkeypatch.setattr("ramalama.sandbox.compute_serving_port", lambda args: 9000)
+    monkeypatch.setattr("ramalama.sandbox._run_sandbox_single_model", fake_single_model)
+
+    run_sandbox(_internal_network_args(network=None), Goose)
+
+    assert served["args"].url == "http://localhost:9000"
+
+
+def test_sandbox_internal_network_rejects_discovered_model(monkeypatch):
+    """--network=internal must be rejected when localhost discovery finds a model.
+
+    Without this check the code would skip model-server startup and return
+    before creating the internal network, silently ignoring --network=internal.
+    """
+    monkeypatch.setattr("ramalama.sandbox.list_server_models", lambda url, key: ["some-model"])
+    monkeypatch.setattr("ramalama.sandbox.run_cmd", lambda cmd, *a, **k: None)
+    monkeypatch.setattr("ramalama.sandbox.compute_serving_port", lambda args: 9000)
+
+    def _should_not_reach(args, cls):
+        raise AssertionError("should not reach model server")
+
+    monkeypatch.setattr("ramalama.sandbox._run_sandbox_single_model", _should_not_reach)
+
+    args = _internal_network_args(MODEL=[])  # no model specified -> triggers discovery
+
+    with pytest.raises(ValueError, match="--network=internal requires ramalama to start its own model server"):
+        run_sandbox(args, Goose)
