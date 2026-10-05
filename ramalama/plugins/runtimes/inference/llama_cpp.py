@@ -4,6 +4,7 @@ import argparse
 import copy
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -37,6 +38,7 @@ from ramalama.cli import (
 )
 from ramalama.common import (
     accel_image,
+    engine_cmd,
     ensure_image,
     genname,
     get_gpu_type_env_vars,
@@ -254,6 +256,46 @@ def parse_models_payload(payload: Any) -> list[str]:
     raise ValueError("Invalid model list payload")
 
 
+# Upper bound (seconds) on each container-engine call made while probing for
+# devices, so `ramalama info` can never hang on a stalled engine.
+_DEVICE_PROBE_TIMEOUT = 60
+
+# llama.cpp has no JSON output for its device listing, so we parse the lines
+# printed by common_print_available_devices():
+#   "  <name>: <description> (<total> MiB, <free> MiB free)"
+# The description itself can contain parentheses (e.g. "Virtio-GPU Venus
+# (Apple M4 Pro)"), so the memory group is anchored to the end of the line
+# rather than matching the first "(".
+_DEVICE_LINE_RE = re.compile(
+    r"^\s*(?P<name>[^:]+):\s*(?P<description>.*?)\s*"
+    r"\((?P<total>\d+)\s*MiB,\s*(?P<free>\d+)\s*MiB\s+free\)\s*$"
+)
+
+
+def _parse_list_devices(output: str) -> list[dict[str, Any]]:
+    """Parse the output of `llama-server --list-devices` into structured entries."""
+    devices: list[dict[str, Any]] = []
+    collecting = False
+    for line in output.splitlines():
+        if line.startswith("Available devices:"):
+            collecting = True
+            continue
+        if not collecting:
+            continue
+        match = _DEVICE_LINE_RE.match(line)
+        if not match:
+            continue
+        devices.append(
+            {
+                "name": match.group("name").strip(),
+                "description": match.group("description").strip(),
+                "memory_total_mib": int(match.group("total")),
+                "memory_free_mib": int(match.group("free")),
+            }
+        )
+    return devices
+
+
 class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     config_type = LlamaCppConfig
 
@@ -418,12 +460,90 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if image == default_image:
             return False
         try:
-            image_entrypoint = image_inspect(args, image, format="{{ .Config.Entrypoint }}")
+            # Bound the inspect: it runs before list_devices' own timed probe, so
+            # without this a stalled engine would hang `ramalama info` here.
+            image_entrypoint = image_inspect(
+                args, image, format="{{ .Config.Entrypoint }}", timeout=_DEVICE_PROBE_TIMEOUT
+            )
         except Exception as e:
             logger.debug(f"Error inspecting image {image}: {e}")
             return False  # Assume default image (non-ggml)
         # Upstream llama.cpp full image uses a wrapper script as the entrypoint
         return "tools.sh" in image_entrypoint
+
+    def list_devices(self, args: argparse.Namespace) -> list[dict[str, Any]]:
+        """Enumerate GPU/accelerator devices via llama.cpp's --list-devices.
+
+        Runs the device-listing command inside the llama.cpp container image and
+        parses the human-readable output into structured entries. The command
+        matches the active image's entrypoint: the ramalama image exposes
+        ``llama-server`` directly, while the upstream llama.cpp image uses a
+        wrapper entrypoint invoked with ``--server``. Any failure (no engine,
+        image not present, probe error or timeout) yields an empty list so
+        ``ramalama info`` never fails on account of the probe.
+        """
+        if not getattr(args, "engine", None):
+            return []
+
+        # Probe with a throwaway copy of args: force a containerized, no-pull,
+        # auto-removed run regardless of how `info` was invoked, and reuse the
+        # engine's GPU passthrough so the probe sees the same devices a real run
+        # would.
+        probe_args = copy.copy(args)
+        probe_args.container = True
+        probe_args.dryrun = False
+        probe_args.pull = "never"
+        probe_args.subcommand = "info"
+        probe_args.port = ""
+        probe_args.detach = False
+        # `info` does not register --keep-groups, so carry it from config; without
+        # it a configured keep-groups probe can see none of the group-gated devices.
+        probe_args.podman_keep_groups = getattr(args, "podman_keep_groups", None) or ActiveConfig().keep_groups
+
+        cmd = ["llama-server"] if not self._container_image_is_ggml(probe_args) else ["--server"]
+        cmd += ["--list-devices"]
+
+        # Give the probe a known name so a timeout can force-remove it: killing the
+        # engine client does not stop the container it launched.
+        probe_name = genname("ramalama-list-devices-")
+        engine = Engine(probe_args)
+        engine.add_name(probe_name)
+        engine.add_container_image(accel_image(ActiveConfig()), cmd)
+        conman_args = engine.exec_args
+        logger.debug("list_devices: %s", " ".join(conman_args))
+
+        try:
+            result = subprocess.run(
+                conman_args, capture_output=True, text=True, check=False, timeout=_DEVICE_PROBE_TIMEOUT
+            )
+        except subprocess.TimeoutExpired as e:
+            logger.debug("list_devices probe timed out: %s", e)
+            self._remove_probe_container(probe_args.engine, probe_name)
+            return []
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.debug("list_devices probe failed: %s", e)
+            return []
+
+        if result.returncode != 0:
+            logger.debug("list_devices probe returned %d: %s", result.returncode, result.stderr.strip())
+            return []
+
+        return _parse_list_devices(result.stdout)
+
+    @staticmethod
+    def _remove_probe_container(engine: str, name: str) -> None:
+        """Best-effort force-removal of a timed-out device-probe container.
+
+        ``subprocess.run``'s timeout kills the engine client (SIGKILL on POSIX),
+        which Podman does not proxy to the container, so ``--rm`` may never fire.
+        Remove the named container explicitly, itself bounded so cleanup cannot
+        hang either.
+        """
+        cleanup = [*engine_cmd(engine), "rm", "--force", name]
+        try:
+            subprocess.run(cleanup, capture_output=True, text=True, check=False, timeout=_DEVICE_PROBE_TIMEOUT)
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.debug("list_devices cleanup of %s failed: %s", name, e)
 
     # --- subcommand registration ---
 

@@ -59,6 +59,13 @@ class RuntimePlugin(ABC):
         """Handle the given subcommand. Override in concrete plugins."""
         raise NotImplementedError(f"{self.name} plugin does not implement handle_subcommand()")
 
+    def list_devices(self, args: argparse.Namespace) -> list[dict[str, Any]]:
+        """Enumerate GPU/accelerator devices visible to this runtime.
+
+        Returns an empty list for runtimes that cannot enumerate devices.
+        """
+        return []
+
     @property
     def service_ready_check_timeout(self) -> int:
         """Seconds to wait for the runtime server to become ready."""

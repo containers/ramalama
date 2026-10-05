@@ -227,6 +227,7 @@ def run_cmd(
     ignore_all: bool = False,
     encoding: Optional[str] = None,
     env: Optional[dict[str, str]] = None,
+    timeout: Optional[float] = None,
 ) -> subprocess.CompletedProcess[Any]:
     """
     Run the given command arguments.
@@ -238,6 +239,7 @@ def run_cmd(
     ignore_stderr: if True, ignore standard error
     ignore_all: if True, ignore both standard output and standard error
     encoding: encoding to apply to the result text
+    timeout: if set, raise subprocess.TimeoutExpired after this many seconds
     """
     logger.debug(f"run_cmd: {quoted(args)}")
     logger.debug(f"Working directory: {cwd}")
@@ -257,7 +259,7 @@ def run_cmd(
         env = os.environ | env
 
     result = subprocess.run(
-        args, check=True, cwd=cwd, stdout=sout, stderr=serr, stdin=stdin, encoding=encoding, env=env
+        args, check=True, cwd=cwd, stdout=sout, stderr=serr, stdin=stdin, encoding=encoding, env=env, timeout=timeout
     )
     logger.debug(f"Command finished with return code: {result.returncode}")
 
