@@ -268,6 +268,19 @@ def test_apple_vm_returns_false_when_podman_not_installed(mock_run_cmd):
     assert result is False
 
 
+@patch("ramalama.common.logger")
+@patch("ramalama.common.run_cmd", side_effect=FileNotFoundError(2, "No such file or directory", "podman"))
+def test_apple_vm_does_not_warn_when_podman_not_installed(mock_run_cmd, mock_logger):
+    from ramalama.common import apple_vm
+
+    result = apple_vm("podman", None)
+
+    assert result is False
+    # Only "podman --version" runs, "podman machine list" is skipped.
+    mock_run_cmd.assert_called_once()
+    mock_logger.warning.assert_not_called()
+
+
 class TestEnsureImage:
     """Tests for ensure_image()"""
 
