@@ -176,15 +176,27 @@ class RagService:
         # Fetch all needed chunks in one query
         from qdrant_client import models
 
-        all_indices = [idx for indices in by_doc.values() for idx in indices]
+        # chunk_index is only unique within a document, so it must always be
+        # paired with its doc_id. Matching on chunk_index alone also selects
+        # those indices in every other document, and the limit below then
+        # truncates the page before the wanted chunks are reached.
         neighbor_results = await self.qclient.scroll(
             collection_name=COLLECTION_NAME,
             scroll_filter=models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="chunk_index",
-                        match=models.MatchAny(any=all_indices),
+                should=[
+                    models.Filter(
+                        must=[
+                            models.FieldCondition(
+                                key="doc_id",
+                                match=models.MatchValue(value=doc_id),
+                            ),
+                            models.FieldCondition(
+                                key="chunk_index",
+                                match=models.MatchAny(any=sorted(indices)),
+                            ),
+                        ]
                     )
+                    for doc_id, indices in by_doc.items()
                 ]
             ),
             with_payload=True,
