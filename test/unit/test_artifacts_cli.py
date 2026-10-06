@@ -135,6 +135,7 @@ def test_skill_push_pull_invokes_engine(tmp_path, monkeypatch):
 
         class R:
             returncode = 0
+            stdout = "podman version 5.4.0"
 
         return R()
 
@@ -164,7 +165,7 @@ def test_skill_push_pull_invokes_engine(tmp_path, monkeypatch):
         TARGET=["quay.io/ramalama/wiki-kb:latest"],
         authfile=None,
         tlsverify=True,
-        engine="docker",
+        engine="podman",
         container=True,
         store=store,
         quiet=False,
@@ -178,7 +179,7 @@ def test_skill_push_pull_invokes_engine(tmp_path, monkeypatch):
         TARGET=None,
         authfile=None,
         tlsverify=True,
-        engine="docker",
+        engine="podman",
         container=True,
         store=store,
         quiet=False,
@@ -223,6 +224,7 @@ def test_agent_plugin_push_pull_invokes_engine(tmp_path, monkeypatch):
 
         class R:
             returncode = 0
+            stdout = "podman version 5.4.0"
 
         return R()
 
@@ -260,7 +262,7 @@ def test_agent_plugin_push_pull_invokes_engine(tmp_path, monkeypatch):
         TARGET=["quay.io/ramalama/sample-agent:latest"],
         authfile=None,
         tlsverify=True,
-        engine="docker",
+        engine="podman",
         container=True,
         store=store,
         quiet=False,
@@ -274,7 +276,7 @@ def test_agent_plugin_push_pull_invokes_engine(tmp_path, monkeypatch):
         TARGET=["quay.io/ramalama/sample-plugin:latest"],
         authfile=None,
         tlsverify=True,
-        engine="docker",
+        engine="podman",
         container=True,
         store=store,
         quiet=False,
@@ -288,7 +290,7 @@ def test_agent_plugin_push_pull_invokes_engine(tmp_path, monkeypatch):
         TARGET=None,
         authfile=None,
         tlsverify=True,
-        engine="docker",
+        engine="podman",
         container=True,
         store=store,
         quiet=False,
@@ -302,7 +304,7 @@ def test_agent_plugin_push_pull_invokes_engine(tmp_path, monkeypatch):
         TARGET=None,
         authfile=None,
         tlsverify=True,
-        engine="docker",
+        engine="podman",
         container=True,
         store=store,
         quiet=False,

@@ -1,12 +1,48 @@
 from __future__ import annotations
 
 import os
+import re
+import subprocess
 import tarfile
 import tempfile
 
 from ramalama.common import run_cmd
 from ramalama.oci_tools import OciRef
 from ramalama.transports.oci import spec as oci_spec
+
+MIN_PODMAN_ARTIFACT_VERSION = (5, 4)
+
+
+class ArtifactUnsupportedError(RuntimeError):
+    """Raised when the configured engine does not support OCI artifact commands."""
+
+
+def _check_artifact_support(engine: str) -> None:
+    """Verify the engine supports `artifact` subcommands before using them.
+
+    `podman artifact` requires Podman >= 5.4. Docker and older Podman have no
+    equivalent; fail early here with a clear message instead of a confusing
+    low-level error from inside `run_cmd` later.
+    """
+    if engine != "podman":
+        raise ArtifactUnsupportedError(
+            f"'{engine}' does not support OCI artifacts (skill/agent/plugin commands). Use podman >= 5.4 instead."
+        )
+    try:
+        version_out = run_cmd([engine, "--version"], ignore_stderr=True, encoding="utf-8").stdout.strip()
+        match = re.search(r"(\d+)\.(\d+)", version_out)
+        if not match:
+            raise ValueError(f"could not parse podman version from: {version_out!r}")
+        version = (int(match.group(1)), int(match.group(2)))
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError) as e:
+        raise ArtifactUnsupportedError(f"Could not determine podman version: {e}") from e
+
+    if version < MIN_PODMAN_ARTIFACT_VERSION:
+        raise ArtifactUnsupportedError(
+            f"podman {'.'.join(map(str, version))} does not support OCI artifacts "
+            f"(skill/agent/plugin commands). Upgrade to podman >= "
+            f"{'.'.join(map(str, MIN_PODMAN_ARTIFACT_VERSION))}."
+        )
 
 
 def _tar_skill_dir(path: str) -> str:
@@ -22,6 +58,7 @@ def _tar_skill_dir(path: str) -> str:
 
 def build_skill_artifact(engine: str, source_dir: str, tag: str, args) -> None:
     """Tar a skill directory and add it as a local OCI artifact."""
+    _check_artifact_support(engine)
     tar_path = _tar_skill_dir(source_dir)
     try:
         filename = os.path.basename(tar_path)
@@ -49,6 +86,7 @@ def build_skill_artifact(engine: str, source_dir: str, tag: str, args) -> None:
 
 def push_skill_artifact(engine: str, tag: str, args) -> None:
     """Push a locally-built skill artifact to a remote registry."""
+    _check_artifact_support(engine)
     ref = OciRef.from_ref_string(tag)
     cmd = [engine, "artifact", "push"]
     if getattr(args, "authfile", None):

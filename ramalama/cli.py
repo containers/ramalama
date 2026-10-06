@@ -47,7 +47,7 @@ from ramalama.plugins.loader import get_all_runtimes, get_runtime
 from ramalama.prompt_utils import default_prefix
 from ramalama.rag import rag_image
 from ramalama.shortnames import Shortnames
-from ramalama.skills.artifact import build_skill_artifact, push_skill_artifact
+from ramalama.skills.artifact import ArtifactUnsupportedError, build_skill_artifact, push_skill_artifact
 from ramalama.stack import stack_image
 from ramalama.transports.base import (
     MODEL_TYPES,
@@ -892,7 +892,11 @@ def skill_build_cli(args):
     if not os.path.isdir(src):
         perror(f"Directory does not exist: {src}")
         return 1
-    build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    try:
+        build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    except ArtifactUnsupportedError as e:
+        perror(str(e))
+        return 1
     print(args.tag)
 
 
@@ -960,7 +964,11 @@ def agent_build_cli(args):
     if not os.path.isdir(src):
         perror(f"Directory does not exist: {src}")
         return 1
-    build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    try:
+        build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    except ArtifactUnsupportedError as e:
+        perror(str(e))
+        return 1
     print(args.tag)
 
 
@@ -1027,7 +1035,11 @@ def plugin_build_cli(args):
     if not os.path.isdir(src):
         perror(f"Directory does not exist: {src}")
         return 1
-    build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    try:
+        build_skill_artifact(_engine_bin(args), src, args.tag, args)
+    except ArtifactUnsupportedError as e:
+        perror(str(e))
+        return 1
     print(args.tag)
 
 
