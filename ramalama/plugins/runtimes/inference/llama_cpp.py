@@ -971,21 +971,42 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         private network so they reach each other by container name. Each of the
         three also publishes a port of its own, so a key has to cover all of
         them, not just the proxy the user talks to.
+
+        ``dispatch`` blocks for as long as the proxy runs, except under
+        --detach, where it returns as soon as the proxy is backgrounded. A
+        backgrounded proxy is useless without the helpers it talks to and the
+        network it reaches them on, so those are reported rather than torn
+        down; the user stops them with the printed command.
         """
         from ramalama.engine import remove_network
-        from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers, _setup_rag_network
+        from ramalama.plugins.runtimes.inference.rag.handler import (
+            _cleanup_servers,
+            _report_skipped_cleanup,
+            _setup_rag_network,
+        )
 
         self._set_rag_api_key_env(args)
         network_created = _setup_rag_network(args)
+        # Name the proxy up front so the cleanup report can refer to it; the
+        # engine would otherwise generate a name it keeps to itself.
+        args.name = getattr(args, "name", None) or genname()
+        embed_serve_args = None
+        embed_proc = None
+        backgrounded = False
         try:
             embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
-            try:
-                dispatch()
-            finally:
-                _cleanup_servers(args, [embed_serve_args], [embed_proc])
+            dispatch()
+            # Only once dispatch has returned without raising is there anything
+            # running worth keeping; a failed start leaves nothing to detach to.
+            backgrounded = bool(getattr(args, "detach", False))
         finally:
-            if network_created:
-                remove_network(args, args.network)
+            if backgrounded:
+                _report_skipped_cleanup(args, [args, args.model_args, embed_serve_args], network_created, "--detach")
+            else:
+                if embed_serve_args is not None:
+                    _cleanup_servers(args, [embed_serve_args], [embed_proc])
+                if network_created:
+                    remove_network(args, args.network)
 
     @staticmethod
     def _set_rag_api_key_env(args: argparse.Namespace) -> None:
