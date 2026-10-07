@@ -839,9 +839,15 @@ def get_available_port_if_any(exclude: Optional[list[str]] = None) -> int:
 
 
 def compute_serving_port(args, quiet: bool = False, exclude: Optional[list[str]] = None) -> str:
-    # user probably specified a custom port, don't override the choice
-    if hasattr(args, 'port_override'):
-        target_port = args.port
+    excluded = set() if exclude is None else set(map(int, exclude))
+    override = getattr(args, "port", None) if hasattr(args, 'port_override') else None
+    # user probably specified a custom port, don't override the choice, unless the
+    # caller has already handed that port to another container. The RAG pipeline
+    # allocates ports for its helper servers from the namespace of the proxy the
+    # user asked for, so honouring the override there would hand a helper the very
+    # port the proxy publishes and neither could bind.
+    if override is not None and int(override) not in excluded:
+        target_port = override
     else:
         # otherwise compute a random serving port in the range
         target_port = get_available_port_if_any(exclude=exclude)

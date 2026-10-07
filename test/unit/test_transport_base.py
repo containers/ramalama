@@ -232,6 +232,37 @@ def test_rag_args_clears_port_override():
     assert rag_args.model_port == random_port
 
 
+def test_compute_serving_port_override_yields_to_exclude():
+    """An explicit --port must not be handed out twice.
+
+    The RAG pipeline allocates its helper servers' ports from the namespace of
+    the proxy the user asked for, which carries port_override. Returning the
+    override there put the embedding server on the very port the proxy
+    publishes, and the proxy could not then bind it.
+    """
+    args = Namespace(port="8080", port_override=True, debug=False, api="")
+
+    mock_compute_ports = Mock(return_value=[8082])
+    mock_socket_inst = MagicMock()
+
+    with (
+        patch('ramalama.transports.base.compute_ports', mock_compute_ports),
+        patch('socket.socket', return_value=mock_socket_inst),
+    ):
+        port = compute_serving_port(args, quiet=True, exclude=["8080", "8081"])
+
+    assert port == "8082"
+    mock_compute_ports.assert_called_once_with(exclude=["8080", "8081"])
+
+
+@pytest.mark.parametrize("exclude", [None, [], ["9000"]])
+def test_compute_serving_port_override_wins_when_not_excluded(exclude):
+    """A user-specified port is still honoured for the service they asked for."""
+    args = Namespace(port="8080", port_override=True, debug=False, api="")
+
+    assert compute_serving_port(args, quiet=True, exclude=exclude) == "8080"
+
+
 class TestMLXRuntime:
     """Test MLX runtime functionality"""
 
