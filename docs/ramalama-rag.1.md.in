@@ -44,49 +44,7 @@ positional arguments:
 
 ## OPTIONS
 
-
-[//]: # (BEGIN included file options/rag-api-key.md)
-#### **--api-key**=*key*
-Require this API key on the llama.cpp servers this command starts. The
-default is no authentication.
-
-Each of those servers publishes a port on the host for as long as the
-conversion runs, so without a key anyone on the host can use them. `doc2rag`
-presents the key on every request it makes to them; it listens on no port of
-its own, so nothing here requires a key of you.
-
-The key reaches the servers through the `LLAMA_API_KEY` environment variable
-rather than on their command line, so it appears in neither the `llama-server`
-nor the container engine arguments. Passing it as `--api-key` does put it in
-ramalama's own arguments, where it is visible in the host process table for as
-long as the command runs; supplying it through `ramalama.conf` or the
-environment keeps it out of `ps` output. However supplied, it is readable via
-`podman inspect` / `docker inspect` on the containers.
-
-
-[//]: # (BEGIN included file options/api-key-sources.md)
-Generate a random key on the shell with:
-
-```
-KEY=$(openssl rand -hex 32)
-```
-
-The default can be set per-runtime in `ramalama.conf`:
-
-```
-[ramalama.runtimes.llama_cpp]
-server_api_key = "..."
-```
-
-or through the matching environment variable, which overrides the file:
-
-```
-export RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY="$KEY"
-```
-
-[//]: # (END   included file options/api-key-sources.md)
-
-[//]: # (END   included file options/rag-api-key.md)
+@@option rag-api-key
 
 #### **--caption-images**=*MODEL*
 Enable image captioning via a VLM to describe charts, diagrams, and photos
@@ -111,21 +69,9 @@ Granite Docling GGUF model used for document conversion
 Context size for the embedding server (default: 0, auto-detected by
 llama.cpp based on the embedding model).
 
+@@option engine-args
 
-[//]: # (BEGIN included file options/engine-args.md)
-#### **--engine-args**="*args*"
-Add *args* to the **podman** or **docker** invocation (before the container image), after RamaLama-generated options and model bind mounts.
-The option may be specified multiple times; each value is shell-split and all tokens are passed to the engine in order.
-Use for extra **--mount** flags (for example multimodal projector files) or other engine-specific options. Shell-quoting rules match **--runtime-args**.
-
-[//]: # (END   included file options/engine-args.md)
-
-
-[//]: # (BEGIN included file options/help.md)
-#### **--help**, **-h**
-Show this help message and exit
-
-[//]: # (END   included file options/help.md)
+@@option help
 
 #### **--image**=*IMAGE*
 OCI container image to use for the llama.cpp inference servers.

@@ -1,6 +1,7 @@
 """Unit tests for the llama.cpp --api-key (server_api_key) support."""
 
 import argparse
+import copy
 import json
 import os
 from unittest.mock import MagicMock
@@ -9,6 +10,7 @@ import pytest
 
 from ramalama.plugins.runtimes.inference.llama_cpp import (
     LLAMA_API_KEY_ENV,
+    RAG_API_KEY_ENV,
     LlamaCppPlugin,
     api_key_headers,
 )
@@ -17,11 +19,12 @@ from ramalama.plugins.runtimes.inference.llama_cpp import (
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
     # setenv first so monkeypatch has a restore recorded. These tests let the
-    # plugin write LLAMA_API_KEY straight to os.environ, and delenv on a
-    # variable that was not set to begin with records nothing to undo, so the
-    # key would outlive the module and leak into the rest of the session.
-    monkeypatch.setenv(LLAMA_API_KEY_ENV, "")
-    monkeypatch.delenv(LLAMA_API_KEY_ENV)
+    # plugin write the keys straight to os.environ, and delenv on a variable
+    # that was not set to begin with records nothing to undo, so they would
+    # outlive the module and leak into the rest of the session.
+    for name in (LLAMA_API_KEY_ENV, RAG_API_KEY_ENV):
+        monkeypatch.setenv(name, "")
+        monkeypatch.delenv(name)
 
 
 class TestApiKeyHeaders:
@@ -79,9 +82,9 @@ class TestPostProcessArgsGuards:
         base.update(kw)
         return argparse.Namespace(**base)
 
-    def test_rag_is_rejected(self):
-        with pytest.raises(ValueError, match="--rag"):
-            self.plugin.post_process_args(self._ns(rag="quay.io/rag:latest"))
+    def test_rag_is_allowed(self):
+        """Every port --rag publishes is keyed, so there is nothing to guard against."""
+        self.plugin.post_process_args(self._ns(rag="quay.io/rag:latest"))
 
     def test_llama_stack_is_rejected(self):
         with pytest.raises(ValueError, match="llama-stack"):
@@ -92,6 +95,81 @@ class TestPostProcessArgsGuards:
 
     def test_plain_serve_is_allowed(self):
         self.plugin.post_process_args(self._ns())
+
+
+class TestSetRagApiKeyEnv:
+    def setup_method(self):
+        self.plugin = LlamaCppPlugin()
+
+    def test_no_key_leaves_env_untouched(self):
+        args = argparse.Namespace(server_api_key=None, container=True, env=["FOO=bar"])
+        self.plugin._set_rag_api_key_env(args)
+        assert RAG_API_KEY_ENV not in os.environ
+        assert args.env == ["FOO=bar"]
+
+    def test_proxy_gets_bare_name(self):
+        args = argparse.Namespace(server_api_key="secret", container=True, env=["FOO=bar"])
+        self.plugin._set_rag_api_key_env(args)
+        assert os.environ[RAG_API_KEY_ENV] == "secret"
+        assert args.env == [RAG_API_KEY_ENV, "FOO=bar"]
+
+
+class TestKeyEnvDoesNotLeakAcrossNamespaces:
+    """_rag_args shallow-copies the namespace, so the proxy and the model server share one env list."""
+
+    def setup_method(self):
+        self.plugin = LlamaCppPlugin()
+
+    def test_each_namespace_keeps_only_its_own_entry(self):
+        model_args = argparse.Namespace(server_api_key="secret", container=True, generate=None, env=["FOO=bar"])
+        proxy_args = copy.copy(model_args)
+
+        self.plugin._set_server_api_key_env(model_args)
+        self.plugin._set_rag_api_key_env(proxy_args)
+
+        assert model_args.env == [LLAMA_API_KEY_ENV, "FOO=bar"]
+        assert proxy_args.env == [RAG_API_KEY_ENV, "FOO=bar"]
+
+
+class TestRagGenerateKeepsTheKeyOffTheCommandLine:
+    """--generate is not honoured on the RAG path, so neither container may take the literal form."""
+
+    def setup_method(self):
+        self.plugin = LlamaCppPlugin()
+
+    def _rag_args(self, **kw):
+        from ramalama.cli import _rag_args
+
+        base = dict(
+            debug=False,
+            rag="quay.io/rag:latest",
+            rag_image="quay.io/ramalama/rag",
+            name=None,
+            port="8080",
+            generate="quadlet",
+            server_api_key="secret",
+            container=True,
+            env=[],
+        )
+        base.update(kw)
+        return _rag_args(argparse.Namespace(**base))
+
+    def test_model_server_gets_the_bare_name(self):
+        rag_args = self._rag_args()
+        self.plugin._set_server_api_key_env(rag_args.model_args)
+        self.plugin._set_rag_api_key_env(rag_args)
+        assert rag_args.model_args.env == [LLAMA_API_KEY_ENV]
+        assert "secret" not in " ".join(rag_args.model_args.env + rag_args.env)
+
+    def test_generate_is_downgraded_not_cleared(self):
+        """ "" still reads as "not None", which is what selects in-container model paths."""
+        rag_args = self._rag_args()
+        assert rag_args.generate == ""
+        assert rag_args.model_args.generate == ""
+
+    def test_an_unset_generate_is_left_alone(self):
+        rag_args = self._rag_args(generate=None)
+        assert rag_args.model_args.generate is None
 
 
 class TestServiceReadyCheckSendsHeader:
@@ -315,3 +393,32 @@ class TestConfiguredKeyIsNotPrintedByHelp:
     def test_configured_key_is_still_the_default(self, command, monkeypatch):
         parser, _ = self._parser(monkeypatch)
         assert parser.parse_args([command, "granite"]).server_api_key == "sekret"
+
+
+class TestRagHandlerServeArgs:
+    """The helper servers ramalama rag starts publish ports, so they need the key."""
+
+    def _build(self, **kw):
+        from ramalama.plugins.runtimes.inference.rag.handler import _build_serve_args
+
+        base = dict(
+            container=True,
+            engine="podman",
+            store="/store",
+            dryrun=True,
+            debug=False,
+            image="img",
+            server_api_key=None,
+        )
+        base.update(kw)
+        return _build_serve_args(argparse.Namespace(**base), "hf://model", 8080)
+
+    def test_key_is_propagated(self):
+        assert self._build(server_api_key="secret").server_api_key == "secret"
+
+    def test_no_key_by_default(self):
+        assert self._build().server_api_key is None
+
+    def test_env_is_left_to_assemble_command(self):
+        """handle_subcommand injects the name; _build_serve_args must not double it."""
+        assert self._build(server_api_key="secret").env == []

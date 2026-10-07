@@ -1142,7 +1142,16 @@ def _rag_args(args):
     rag_args.model_port = args.port = compute_serving_port(args, exclude=[rag_args.port])
     args.rag = None
     rag_args.model_args = args
+    # Neither container is written out: --generate is not honoured on the RAG
+    # path, the pipeline is always run. "" keeps the truthiness that decides
+    # whether to emit a file separate from the "is not None" test that resolves
+    # in-container model paths, which both containers still need. Downgrading
+    # the model server too matters for --api-key: the generate branch of
+    # _set_server_api_key_env would otherwise put the key on the engine command
+    # line in plaintext for a container that is run rather than generated.
     rag_args.generate = ""
+    if getattr(args, "generate", None):
+        args.generate = ""
     return rag_args
 
 

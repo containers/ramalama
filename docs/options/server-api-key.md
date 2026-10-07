@@ -27,24 +27,7 @@ public so that health checks keep working. Whether the model listing
 (`/models`, `/v1/models`) is public depends on the llama.cpp version in the
 image; do not rely on it being either way.
 
-Generate a random key on the shell with:
-
-```
-KEY=$(openssl rand -hex 32)
-```
-
-The default can be set per-runtime in `ramalama.conf`:
-
-```
-[ramalama.runtimes.llama_cpp]
-server_api_key = "..."
-```
-
-or through the matching environment variable, which overrides the file:
-
-```
-export RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY="$KEY"
-```
+@@include options/api-key-sources.md
 
 Caveats:
 
@@ -56,5 +39,14 @@ Caveats:
 * With `--webui on`, the web UI itself still loads, because its assets are
   public, but its API calls are rejected unless the UI is configured with the
   key.
-* Not supported together with `--rag` or `--api llama-stack`: in both cases the
-  port the user reaches is served by a helper that cannot present the key.
+* Not supported together with `--api llama-stack`: llama-stack serves the only
+  published port and can neither require a key of its clients nor present one
+  to the model server behind it.
+
+With `--rag`, the single key covers the whole pipeline. It guards all three
+published ports: the RAG proxy the user talks to, and the model and embedding
+`llama-server`s behind it. The proxy also presents the key upstream, so no leg
+of the pipeline is unauthenticated. Its `/health` endpoint stays public. The
+first caveat above does not apply, because `--rag` runs the pipeline rather
+than writing it out; `--generate` is not honoured alongside it, and the key
+stays out of the engine arguments.

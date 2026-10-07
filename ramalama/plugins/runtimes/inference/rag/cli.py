@@ -114,6 +114,10 @@ def register_rag_subcommand(plugin, subparsers):
         "is left in place on exit",
         completer=suppressCompleter,
     )
+    plugin._add_api_key_arg(
+        parser,
+        help_text="require this API key on the llama.cpp servers this command starts (default: no authentication)",
+    )
     parser.add_argument(
         "--skip-cleanup",
         dest="skip_cleanup",
