@@ -16,6 +16,25 @@ from ramalama.common import (
 )
 from ramalama.file import UnitFile
 from ramalama.host_utils import format_bind_host_publish_prefix, is_loopback_bind_host
+from ramalama.tls import tls_mounts
+
+
+def _quote_unit_value(value: str) -> str:
+    """Quote a value that Quadlet splits into words before parsing it.
+
+    Mount= and Environment= are word split first, so an unquoted space
+    ends the value early: a mount source holding one fails the unit
+    outright ("source cannot be empty") and an environment value holding
+    one turns the rest into a second variable. An unquoted quote or
+    backslash is worse, being swallowed rather than reported. The double
+    quoted form survives all three, with C escapes inside it, so a
+    backslash has to be doubled to stay one.
+    """
+    if not any(c in value for c in " \t\n'\"\\"):
+        return value
+
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 class Quadlet:
@@ -112,6 +131,7 @@ class Quadlet:
                 quadlet_file.add(section, key, value)
         self._gen_chat_template_volume(quadlet_file)
         self._gen_mmproj_volume(quadlet_file)
+        self._gen_tls_volumes(quadlet_file)
         self._gen_env(quadlet_file)
         self._gen_name(quadlet_file)
         self._gen_port(quadlet_file)
@@ -127,21 +147,30 @@ class Quadlet:
 
         return files
 
+    def _add_mount(self, quadlet_file: UnitFile, mount: str):
+        quadlet_file.add("Container", "Mount", _quote_unit_value(mount))
+
     def _gen_chat_template_volume(self, quadlet_file: UnitFile):
         if self.src_chat_template_path and os.path.exists(self.src_chat_template_path):
-            quadlet_file.add(
-                "Container",
-                "Mount",
+            self._add_mount(
+                quadlet_file,
                 f"type=bind,src={self.src_chat_template_path},target={self.dest_chat_template_path},ro,Z",
             )
 
     def _gen_mmproj_volume(self, quadlet_file: UnitFile):
         if self.src_mmproj_path and os.path.exists(self.src_mmproj_path):
-            quadlet_file.add(
-                "Container",
-                "Mount",
+            self._add_mount(
+                quadlet_file,
                 f"type=bind,src={self.src_mmproj_path},target={self.dest_mmproj_path},ro,Z",
             )
+
+    def _gen_tls_volumes(self, quadlet_file: UnitFile):
+        for src_path, dest_path in tls_mounts(self.args):
+            # No ,Z here: the unit disables SELinux labelling for the
+            # container, so relabelling would not help it read the files, it
+            # would only chcon the user's certificate and key out from under
+            # whatever else on the host reads them.
+            self._add_mount(quadlet_file, f"type=bind,src={src_path},target={dest_path},ro")
 
     def _gen_env(self, quadlet_file: UnitFile):
         env_var_string = ""
@@ -150,9 +179,9 @@ class Quadlet:
                 # AddDevice above passes in just the selected GPUs, so the
                 # container renumbers them, exactly as it does for "ramalama run".
                 v = container_cuda_visible_devices(v)
-            quadlet_file.add("Container", "Environment", f"{k}={v}")
+            quadlet_file.add("Container", "Environment", _quote_unit_value(f"{k}={v}"))
         for e in self.args.env:
-            quadlet_file.add("Container", "Environment", f"{e}")
+            quadlet_file.add("Container", "Environment", _quote_unit_value(f"{e}"))
         return env_var_string
 
     def _gen_image(self, name, image):
@@ -175,7 +204,7 @@ class Quadlet:
         if local_model_parts:
             # Generate Mount= entries for each model part
             for src_path, dest_path in local_model_parts:
-                quadlet_file.add("Container", "Mount", f"type=bind,src={src_path},target={dest_path},ro,Z")
+                self._add_mount(quadlet_file, f"type=bind,src={src_path},target={dest_path},ro,Z")
             return files
 
         # OCI model handling
@@ -190,15 +219,10 @@ class Quadlet:
         files.append(self._gen_image(self.name, self.ai_image))
 
         if self.artifact:
-            quadlet_file.add(
-                "Container",
-                "Mount",
-                f"type=artifact,source={self.ai_image},destination={MNT_DIR}",
-            )
+            self._add_mount(quadlet_file, f"type=artifact,source={self.ai_image},destination={MNT_DIR}")
         else:
-            quadlet_file.add(
-                "Container",
-                "Mount",
+            self._add_mount(
+                quadlet_file,
                 f"type=image,source={self.ai_image},destination={MNT_DIR},subpath=/models,readwrite=false",
             )
         return files
@@ -238,7 +262,7 @@ class Quadlet:
 
         files.append(self._gen_image(self.rag_name.replace(':', '-'), self.rag))
 
-        quadlet_file.add("Container", "Mount", f"type=image,source={self.rag},destination={RAG_DIR},readwrite=false")
+        self._add_mount(quadlet_file, f"type=image,source={self.rag},destination={RAG_DIR},readwrite=false")
         return files
 
 

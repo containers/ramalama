@@ -140,9 +140,46 @@ appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
 
 @@option threads
 
+@@option tls-cert-file
+
+@@option tls-key-file
+
 @@option tls-verify
 
 @@option webui
+
+## TLS
+
+By default the REST API is served over plain HTTP on the loopback interface.
+Pass **--tls-cert-file** and **--tls-key-file** to serve HTTPS instead. TLS is
+terminated by the inference server itself: llama.cpp's `llama-server` and the
+vLLM OpenAI API server both support it, the MLX LM server does not.
+
+Generate a self-signed certificate for a host serving on `localhost`:
+
+```
+$ openssl req -x509 -newkey rsa:4096 -nodes -days 365 \
+    -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
+    -keyout tls.key -out tls.crt
+$ ramalama serve --tls-cert-file tls.crt --tls-key-file tls.key granite
+```
+
+The certificate must be valid for the name clients connect to, which is not
+necessarily the **--host** the server binds to. A self-signed certificate is
+not in any trust store, so clients have to be pointed at it:
+
+```
+$ curl --cacert tls.crt https://localhost:8080/v1/models
+$ SSL_CERT_FILE=$PWD/tls.crt ramalama chat --url https://localhost:8080/v1
+```
+
+The certificate and key are bind mounted read-only into the container from
+their paths on the host. Under **--selinux** they are relabeled for container
+access, as every other RamaLama bind mount is, so copy them out of shared
+system directories such as `/etc/pki` first rather than letting the relabel
+affect the other services that read them. The generated quadlet and
+Kubernetes YAML run the container with SELinux labeling disabled, so they
+mount the files without relabeling them.
 
 ## EXAMPLES
 @@include options/serve-examples-body.md
