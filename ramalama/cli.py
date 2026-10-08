@@ -119,7 +119,7 @@ def parse_generate_option(option: str) -> ParsedGenerateInput:
 
 def parse_port_option(option: str) -> str:
     port = int(option)
-    if port <= 0 or port >= 65535:
+    if port < 1 or port > 65535:
         raise ValueError(f"Invalid port '{port}'")
     return option
 
