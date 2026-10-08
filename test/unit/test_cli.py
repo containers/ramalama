@@ -10,6 +10,7 @@ from ramalama.cli import (
     daemon_start_cli,
     get_parser,
     parse_generate_option,
+    parse_port_option,
     post_parse_setup,
 )
 from ramalama.transports.base import NoGGUFModelFileFound, SafetensorModelNotSupported
@@ -63,6 +64,37 @@ def test_parse_generate_input_eq(input: str, compare: str, expected: bool):
         input == compare
     else:
         input != compare
+
+
+@pytest.mark.parametrize(
+    "input,expected",
+    [
+        ("1", "1"),
+        ("80", "80"),
+        ("8080", "8080"),
+        ("65535", "65535"),
+    ],
+)
+def test_parse_port_option_valid(input: str, expected: str):
+    assert parse_port_option(input) == expected
+
+
+@pytest.mark.parametrize(
+    "input",
+    [
+        "0",
+        "-1",
+        "65536",
+    ],
+)
+def test_parse_port_option_invalid(input: str):
+    with pytest.raises(ValueError, match="Invalid port"):
+        parse_port_option(input)
+
+
+def test_parse_port_option_not_a_number():
+    with pytest.raises(ValueError):
+        parse_port_option("abc")
 
 
 @pytest.mark.parametrize(
