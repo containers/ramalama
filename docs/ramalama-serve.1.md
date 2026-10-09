@@ -273,6 +273,10 @@ Generate specified configuration format for running the AI Model as a service
 Optionally, an output directory for the generated files can be specified by
 appending the path to the type, e.g. `--generate kube:/etc/containers/systemd`.
 
+In router mode every served model is bind mounted into the generated
+configuration. Since there is no single model to name the output after,
+`ramalama-router` is used when **--name** is not specified.
+
 
 
 [//]: # (BEGIN included file options/help.md)

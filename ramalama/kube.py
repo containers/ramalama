@@ -21,12 +21,21 @@ class Kube:
         exec_args,
         draft_model_paths: Optional[Tuple[str, str]],
         artifact: bool,
+        model_parts: Optional[list[Tuple[str, str]]] = None,
     ):
         self.src_chat_template_path, self.dest_chat_template_path = (
             chat_template_paths if chat_template_paths is not None else ("", "")
         )
         self.src_mmproj_path, self.dest_mmproj_path = mmproj_paths if mmproj_paths is not None else ("", "")
-        self.model_paths = {'model': model_paths}
+        if model_parts is not None:
+            # Router mode serves several models out of one directory, so each one
+            # needs its own volume, mounted read-only as the router engine and
+            # the Compose generation do.
+            self.model_paths = {f'model-{i}': paths for i, paths in enumerate(model_parts)}
+            self.read_only_models = True
+        else:
+            self.model_paths = {'model': model_paths}
+            self.read_only_models = False
         if draft_model_paths is not None:
             self.model_paths['model-draft'] = draft_model_paths
         self.ai_image = model_name
@@ -49,7 +58,9 @@ class Kube:
         for volume_name, (src_model_path, dest_model_path) in self.model_paths.items():
             src_model_path = src_model_path.removeprefix("oci://")
             if os.path.exists(src_model_path):
-                m, v = self._gen_path_volume(volume_name, src_model_path, dest_model_path)
+                m, v = self._gen_path_volume(
+                    volume_name, src_model_path, dest_model_path, read_only=self.read_only_models
+                )
                 mounts += m
                 volumes += v
             else:
@@ -95,7 +106,7 @@ class Kube:
         name: {name}"""
         return mounts, volumes
 
-    def _gen_path_volume(self, volume_name, src_model_path, dest_model_path) -> Tuple[str, str]:
+    def _gen_path_volume(self, volume_name, src_model_path, dest_model_path, read_only=False) -> Tuple[str, str]:
         host_model_path = normalize_host_path_for_container(src_model_path)
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
@@ -103,6 +114,9 @@ class Kube:
         mount = f"""
         - mountPath: {dest_model_path}
           name: {volume_name}"""
+        if read_only:
+            mount += """
+          readOnly: true"""
         volume = f"""
       - hostPath:
           path: {host_model_path}

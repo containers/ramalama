@@ -36,6 +36,7 @@ from ramalama.cli import (
     suppressCompleter,
 )
 from ramalama.common import (
+    MNT_DIR,
     accel_image,
     ensure_image,
     genname,
@@ -47,8 +48,10 @@ from ramalama.common import (
     set_gpu_type_env_vars,
     version_tagged_image,
 )
+from ramalama.compose import Compose
 from ramalama.config import ActiveConfig, DefaultConfig, coerce_to_bool
 from ramalama.engine import Engine, dry_run, image_inspect
+from ramalama.kube import Kube
 from ramalama.logger import logger
 from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
 from ramalama.model_store.global_store import GlobalModelStore
@@ -60,6 +63,8 @@ from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
     LlamaCppCommands,
     _default_threads,
 )
+from ramalama.quadlet import Quadlet
+from ramalama.quadlet import kube as quadlet_kube_unit
 from ramalama.rag import RagTransport
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import compute_serving_port
@@ -84,11 +89,19 @@ DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"  # type: igno
 # llama-server reads its API key from this variable when --api-key is not given.
 LLAMA_API_KEY_ENV = "LLAMA_API_KEY"
 
+# Name used for generated router-mode configuration when --name is not given.
+ROUTER_NAME = "ramalama-router"
+
 
 def api_key_headers(args: Any) -> dict[str, str]:
     """Authorization header for a keyed llama-server, empty when no key is set."""
     key = getattr(args, "server_api_key", None) or getattr(args, "api_key", None)
     return {"Authorization": f"Bearer {key}"} if key else {}
+
+
+def router_mount_path(container_name: str) -> str:
+    """Path a router-mode model is mounted at inside the container."""
+    return f"{MNT_DIR}/{container_name}"
 
 
 @dataclass
@@ -658,8 +671,8 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         super()._serve_handler(args)
 
-    def _build_router_engine(self, args: argparse.Namespace) -> Engine:
-        """Resolve models and build an Engine with bind mounts for router mode."""
+    def _prepare_router(self, args: argparse.Namespace) -> tuple[list[tuple[str, str]], list[str]]:
+        """Resolve the models to serve and build the llama-server command for router mode."""
         if not args.container:
             sys.exit("Error: multi-model router mode requires a container runtime.")
 
@@ -683,26 +696,67 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         if not args.dryrun and not getattr(args, "image", None):
             config = ActiveConfig()
-            should_pull = config.pull in ["always", "missing", "newer"]
+            should_pull = False if getattr(args, "generate", None) else config.pull in ["always", "missing", "newer"]
             args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
 
-        cmd = self.handle_subcommand("serve", args)
+        return models, self.handle_subcommand("serve", args)
+
+    def _build_router_engine(self, args: argparse.Namespace) -> Engine:
+        """Resolve models and build an Engine with bind mounts for router mode."""
+        models, cmd = self._prepare_router(args)
+
         engine = Engine(args)
         name = getattr(args, "name", None) or genname()
         args.name = name
         engine.add(["--label", "ai.ramalama", "--name", name, "--env=HOME=/tmp", "--init"])
 
         for host_path, container_name in models:
-            mount_path = f"/mnt/models/{container_name}"
             container_host_path = get_container_mount_path(host_path)
-            engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro{engine.relabel()}"])
+            engine.add(
+                [
+                    f"--mount=type=bind,src={container_host_path},"
+                    f"destination={router_mount_path(container_name)},ro{engine.relabel()}"
+                ]
+            )
 
         engine.add([args.image] + cmd)
         return engine
 
+    @staticmethod
+    def _generate_router_config(args: argparse.Namespace, models: list[tuple[str, str]], cmd: list[str]) -> None:
+        """Write the quadlet/kube/compose files for a router-mode server."""
+        # Router mode has no single model to name the output after, so fall back
+        # to a fixed name when --name was not given.
+        name = getattr(args, "name", None) or ROUTER_NAME
+        args.name = name
+        # The models are plain bind mounts of store blobs, so they map onto the
+        # multi-part model support the generators already have.
+        model_parts = [(host_path, router_mount_path(container_name)) for host_path, container_name in models]
+        gen_type = args.generate.gen_type
+
+        files: list[Any] = []
+        if gen_type == "quadlet":
+            files = Quadlet(name, ("", ""), None, None, args, cmd, False, model_parts, None).generate()
+        elif gen_type in ("kube", "quadlet/kube"):
+            kube = Kube(name, ("", ""), None, None, args, cmd, None, False, model_parts=model_parts)
+            files = [kube.generate()]
+            if gen_type == "quadlet/kube":
+                files.append(quadlet_kube_unit(name, f"RamaLama {name} Kubernetes YAML - AI Model Service"))
+        elif gen_type == "compose":
+            files = [Compose(name, ("", ""), None, None, args, cmd, None, model_parts=model_parts).generate()]
+
+        for generated_file in files:
+            generated_file.write(args.generate.output_dir)
+
     def _serve_router(self, args: argparse.Namespace) -> None:
         """Serve multiple models using llama.cpp router mode (container-only)."""
         args.port = compute_serving_port(args)
+
+        if getattr(args, "generate", None):
+            models, cmd = self._prepare_router(args)
+            self._generate_router_config(args, models, cmd)
+            return
+
         engine = self._build_router_engine(args)
 
         if args.dryrun:

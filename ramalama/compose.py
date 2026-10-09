@@ -10,6 +10,7 @@ import ramalama.common
 from ramalama.common import RAG_DIR, container_cuda_visible_devices, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.host_utils import format_bind_host_publish_prefix
+from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.version import version
 
 
@@ -23,8 +24,12 @@ class Compose:
         args,
         exec_args,
         draft_model_paths: Optional[tuple[str, str]],
+        model_parts: Optional[list[tuple[str, str]]] = None,
     ):
         self.src_model_path, self.dest_model_path = model_paths
+        # Router mode serves several models out of one directory, so each one
+        # needs its own bind mount.
+        self.model_parts = model_parts
         self.src_draft_model_path, self.dest_draft_model_path = (
             draft_model_paths if draft_model_paths is not None else ("", "")
         )
@@ -47,7 +52,11 @@ class Compose:
         volumes = "    volumes:"
 
         # Model Volume
-        volumes += self._gen_model_volume(self.src_model_path, self.dest_model_path)
+        if self.model_parts is not None:
+            for src_model_path, dest_model_path in self.model_parts:
+                volumes += self._gen_model_volume(src_model_path, dest_model_path)
+        else:
+            volumes += self._gen_model_volume(self.src_model_path, self.dest_model_path)
         if self.src_draft_model_path and self.dest_draft_model_path:
             volumes += self._gen_model_volume(self.src_draft_model_path, self.dest_draft_model_path)
 
@@ -66,7 +75,8 @@ class Compose:
         return volumes
 
     def _gen_model_volume(self, src_model_path: str, dest_model_path: str) -> str:
-        return f'\n      - "{src_model_path}:{dest_model_path}:ro"'
+        host_model_path = normalize_host_path_for_container(src_model_path)
+        return f'\n      - "{host_model_path}:{dest_model_path}:ro"'
 
     def _gen_rag_volume(self) -> str:
         rag_source = self.args.rag
@@ -87,15 +97,17 @@ class Compose:
 
         elif os.path.exists(rag_source):
             # Standard host path mount
-            volume_str = f'\n      - "{rag_source}:{RAG_DIR}:ro"'
+            volume_str = f'\n      - "{normalize_host_path_for_container(rag_source)}:{RAG_DIR}:ro"'
 
         return volume_str
 
     def _gen_chat_template_volume(self) -> str:
-        return f'\n      - "{self.src_chat_template_path}:{self.dest_chat_template_path}:ro"'
+        host_path = normalize_host_path_for_container(self.src_chat_template_path)
+        return f'\n      - "{host_path}:{self.dest_chat_template_path}:ro"'
 
     def _gen_mmproj_volume(self) -> str:
-        return f'\n      - "{self.src_mmproj_path}:{self.dest_mmproj_path}:ro"'
+        host_path = normalize_host_path_for_container(self.src_mmproj_path)
+        return f'\n      - "{host_path}:{self.dest_mmproj_path}:ro"'
 
     def _gen_devices(self) -> str:
         devices = get_gpu_devices(get_accel_env_vars())
