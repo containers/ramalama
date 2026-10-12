@@ -451,7 +451,9 @@ def test_quadlet_generation(shared_ctx, test_model):
         content = f.read()
         assert re.search(r".*PublishPort=127\.0\.0\.1:1234:1234", content)
         assert re.search(r".*llama-server --host (::|0\.0\.0\.0) --port 1234 --model .*", content)
-        assert re.search(f".*Mount=type=bind,.*{test_model_full_name}", content)
+        # Mount= is quoted when the value holds a character Quadlet would
+        # otherwise split on, as the backslashes of a Windows path do.
+        assert re.search(f'.*Mount="?type=bind,.*{test_model_full_name}', content)
         assert re.search(r".*Environment=HIP_VISIBLE_DEVICES=99", content)
 
 
@@ -940,7 +942,9 @@ def test_router_mode_quadlet_generation(shared_ctx):
         content = f.read()
         assert re.search(r".*PublishPort=127\.0\.0\.1:1234:1234", content)
         assert re.search(r".*llama-server --host (::|0\.0\.0\.0) --port 1234 --models-dir /mnt/models", content)
-        assert re.search(r".*Mount=type=bind,.*,target=/mnt/models/.*\.gguf,ro", content)
+        # Mount= is quoted when the value holds a character Quadlet would
+        # otherwise split on, as the backslashes of a Windows path do.
+        assert re.search(r'.*Mount="?type=bind,.*,target=/mnt/models/.*\.gguf,ro', content)
 
 
 @pytest.mark.e2e
