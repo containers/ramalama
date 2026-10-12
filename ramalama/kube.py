@@ -1,13 +1,34 @@
 from __future__ import annotations
 
+import json
 import os
 import platform
+import re
 from typing import Optional, Tuple
 
 from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, check_nvidia, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.version import version
+
+# A path built only from these characters means the same thing to a YAML
+# parser written plain as it does quoted.
+_PLAIN_YAML_PATH = re.compile(r"\A[A-Za-z0-9/._+=@~-]+\Z")
+
+
+def _yaml_path(path: str) -> str:
+    """Serialize a host path as a YAML scalar.
+
+    A plain scalar ends at a " #" or a ": ", and is stripped of its
+    surrounding whitespace, so a path holding any of those reaches the
+    container truncated, or stops the document parsing at all. Emit such a
+    path double quoted instead; a JSON string is a valid YAML double quoted
+    scalar, and escapes the quote and the backslash that form needs escaped.
+    """
+    if _PLAIN_YAML_PATH.match(path):
+        return path
+
+    return json.dumps(path, ensure_ascii=False)
 
 
 class Kube:
@@ -102,7 +123,7 @@ class Kube:
           name: {name}"""
             volumes += f"""
       - hostPath:
-          path: {path}
+          path: {_yaml_path(path)}
         name: {name}"""
         return mounts, volumes
 
@@ -119,7 +140,7 @@ class Kube:
           readOnly: true"""
         volume = f"""
       - hostPath:
-          path: {host_model_path}
+          path: {_yaml_path(host_model_path)}
         name: {volume_name}"""
         return mount, volume
 
@@ -153,7 +174,7 @@ class Kube:
           name: chat-template"""
         volume = f"""
       - hostPath:
-          path: {host_chat_template_path}
+          path: {_yaml_path(host_chat_template_path)}
         name: chat-template"""
         return mount, volume
 
@@ -167,7 +188,7 @@ class Kube:
           name: mmproj"""
         volume = f"""
       - hostPath:
-          path: {host_mmproj_path}
+          path: {_yaml_path(host_mmproj_path)}
         name: mmproj"""
         return mount, volume
 

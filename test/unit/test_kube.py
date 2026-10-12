@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
+import yaml
 
 from ramalama.kube import Kube
 
@@ -343,3 +344,33 @@ def test_kube_no_devices(monkeypatch):
     assert "name: dri" not in content
     assert "name: kfd" not in content
     assert "name: accel" not in content
+
+
+def test_kube_host_paths_survive_yaml_quoting(monkeypatch):
+    """A host path holding a space or a "#" reaches the container whole."""
+    monkeypatch.setattr("os.path.exists", lambda path: True)
+    monkeypatch.setattr("ramalama.kube.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.kube.get_gpu_devices", lambda env_vars: {})
+    monkeypatch.setattr("ramalama.kube.version", lambda: "test-version")
+
+    model_path = "/home/my user/models/model #1.gguf"
+    chat_template_path = "/home/my user/models/chat template"
+
+    content = (
+        Kube(
+            "test-model",
+            (model_path, "/mnt/models/model.file"),
+            (chat_template_path, "/mnt/models/chat_template"),
+            None,
+            Args(),
+            ["llama-server"],
+            None,
+            False,
+        )
+        .generate()
+        .content
+    )
+
+    volumes = yaml.safe_load(content)["spec"]["template"]["spec"]["volumes"]
+    paths = {volume["name"]: volume["hostPath"]["path"] for volume in volumes}
+    assert paths == {"model": model_path, "chat-template": chat_template_path}
