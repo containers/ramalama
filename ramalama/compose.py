@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 # ramalama/generate/compose.py
+import json
 import os
 import shlex
 from typing import Optional
@@ -12,6 +13,24 @@ from ramalama.file import PlainFile
 from ramalama.host_utils import format_bind_host_publish_prefix
 from ramalama.path_utils import normalize_host_path_for_container
 from ramalama.version import version
+
+
+def _gen_mount(src_path: str, dest_path: str, options: str = "") -> str:
+    """Serialize a bind mount as an entry in the Compose volumes list.
+
+    The host path is converted for the container engine first, the way
+    "ramalama serve" converts the one it passes to "-v": the Linux side of
+    the mount cannot read a native Windows path.
+
+    The entry is then encoded rather than wrapped in quotes by hand. A
+    backslash is an escape inside a double quoted YAML scalar, so a path the
+    conversion leaves one in, such as a UNC path, stops the whole file
+    parsing; a double quote in a path ends the scalar early. A JSON string is
+    a valid YAML double quoted scalar and escapes both, and leaves a path
+    holding neither exactly as it was written.
+    """
+    entry = f"{normalize_host_path_for_container(src_path)}:{dest_path}{options}"
+    return f"\n      - {json.dumps(entry, ensure_ascii=False)}"
 
 
 class Compose:
@@ -75,8 +94,7 @@ class Compose:
         return volumes
 
     def _gen_model_volume(self, src_model_path: str, dest_model_path: str) -> str:
-        host_model_path = normalize_host_path_for_container(src_model_path)
-        return f'\n      - "{host_model_path}:{dest_model_path}:ro"'
+        return _gen_mount(src_model_path, dest_model_path, ":ro")
 
     def _gen_rag_volume(self) -> str:
         rag_source = self.args.rag
@@ -97,17 +115,15 @@ class Compose:
 
         elif os.path.exists(rag_source):
             # Standard host path mount
-            volume_str = f'\n      - "{normalize_host_path_for_container(rag_source)}:{RAG_DIR}:ro"'
+            volume_str = _gen_mount(rag_source, RAG_DIR, ":ro")
 
         return volume_str
 
     def _gen_chat_template_volume(self) -> str:
-        host_path = normalize_host_path_for_container(self.src_chat_template_path)
-        return f'\n      - "{host_path}:{self.dest_chat_template_path}:ro"'
+        return _gen_mount(self.src_chat_template_path, self.dest_chat_template_path, ":ro")
 
     def _gen_mmproj_volume(self) -> str:
-        host_path = normalize_host_path_for_container(self.src_mmproj_path)
-        return f'\n      - "{host_path}:{self.dest_mmproj_path}:ro"'
+        return _gen_mount(self.src_mmproj_path, self.dest_mmproj_path, ":ro")
 
     def _gen_devices(self) -> str:
         devices = get_gpu_devices(get_accel_env_vars())
