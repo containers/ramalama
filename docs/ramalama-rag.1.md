@@ -28,8 +28,10 @@ The pipeline:
 Multiple containers work together: llama.cpp containers serve the AI models,
 and a lightweight RAG container runs the document processing pipeline.
 RamaLama places them on a private container network and they reach each other
-by container name; the model server ports are not exposed on the host network.
-The network is created when the command starts and removed when it finishes.
+by container name.  Each model server also publishes its port on `127.0.0.1`
+while the command runs, so anyone on the host can reach it unless `--api-key`
+is given.  The network is created when the command starts and removed when it
+finishes.
 
 NOTE: this command requires a container engine (podman or docker).
 
@@ -41,6 +43,50 @@ positional arguments:
   *DESTINATION*   Name for the output container image, or local path.
 
 ## OPTIONS
+
+
+[//]: # (BEGIN included file options/rag-api-key.md)
+#### **--api-key**=*key*
+Require this API key on the llama.cpp servers this command starts. The
+default is no authentication.
+
+Each of those servers publishes a port on the host for as long as the
+conversion runs, so without a key anyone on the host can use them. `doc2rag`
+presents the key on every request it makes to them; it listens on no port of
+its own, so nothing here requires a key of you.
+
+The key reaches the servers through the `LLAMA_API_KEY` environment variable
+rather than on their command line, so it appears in neither the `llama-server`
+nor the container engine arguments. Passing it as `--api-key` does put it in
+ramalama's own arguments, where it is visible in the host process table for as
+long as the command runs; supplying it through `ramalama.conf` or the
+environment keeps it out of `ps` output. However supplied, it is readable via
+`podman inspect` / `docker inspect` on the containers.
+
+
+[//]: # (BEGIN included file options/api-key-sources.md)
+Generate a random key on the shell with:
+
+```
+KEY=$(openssl rand -hex 32)
+```
+
+The default can be set per-runtime in `ramalama.conf`:
+
+```
+[ramalama.runtimes.llama_cpp]
+server_api_key = "..."
+```
+
+or through the matching environment variable, which overrides the file:
+
+```
+export RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY="$KEY"
+```
+
+[//]: # (END   included file options/api-key-sources.md)
+
+[//]: # (END   included file options/rag-api-key.md)
 
 #### **--caption-images**=*MODEL*
 Enable image captioning via a VLM to describe charts, diagrams, and photos
@@ -133,6 +179,12 @@ $ ramalama rag ./report.pdf quay.io/myuser/report-rag
 ### Use a custom number of GPU layers
 ```
 $ ramalama rag --ngl all ./docs/ my-rag-image
+```
+
+### Key the servers the conversion starts
+```
+$ KEY=$(openssl rand -hex 32)
+$ RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY="$KEY" ramalama rag ./docs/ myrag:latest
 ```
 
 ## SEE ALSO

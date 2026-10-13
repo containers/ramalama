@@ -38,6 +38,11 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
         perror(f"Image captioning enabled ({caption_model})")
 
     set_accel_env_vars()
+    # doc2rag only presents the key upstream, it serves nothing itself; the
+    # llama.cpp servers pick it up from _build_serve_args.
+    from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin
+
+    LlamaCppPlugin._set_rag_api_key_env(args)
 
     # Allocate ports for all llama.cpp servers
     allocated_ports = []
@@ -52,7 +57,9 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
         allocated_ports.append(caption_port)
 
     # Put the llama.cpp servers and the doc2rag container on a shared network so
-    # doc2rag can reach them by container name without publishing to the host.
+    # doc2rag can reach them by container name. Each server still publishes its
+    # port on 127.0.0.1 for as long as the conversion runs, which is why
+    # --api-key has to cover them (see LlamaCppPlugin._set_rag_api_key_env).
     # Honor a user-supplied network (and leave it in place); otherwise create a
     # private one for this run and remove it when done.
     network_created = False
@@ -197,6 +204,9 @@ def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=None, 
         podman_keep_groups=False,
         privileged=False,
         env=[],
+        # These servers publish a port of their own, so they need the key too.
+        # assemble_command puts it in their environment for us.
+        server_api_key=getattr(args, "server_api_key", None),
         detach=True,
         name=None,
         dri="on",
@@ -227,10 +237,13 @@ def _setup_rag_network(args: argparse.Namespace) -> bool:
 
     ``args`` is the RAG proxy namespace; ``args.model_args`` is the backing model
     server (the embedding server args are derived from it and inherit the network).
-    The containers reach each other by name over the network, so nothing is
-    published to the host. Honor a user-supplied ``--network`` and leave it in
-    place; otherwise create a private network for this run. Returns True when a
-    network was created (and the caller must remove it when done).
+    The containers reach each other by name over the network; all three still
+    publish their own port on 127.0.0.1, which is why --api-key has to cover the
+    helper servers and not just the proxy (see
+    ``LlamaCppPlugin._set_rag_api_key_env``). Honor a user-supplied ``--network``
+    and leave it in place; otherwise create a private network for this run.
+    Returns True when a network was created (and the caller must remove it when
+    done).
     """
     network_created = False
     if not getattr(args, "network", None):
