@@ -4,7 +4,6 @@ import argparse
 import copy
 import json
 import os
-import platform
 import shutil
 import subprocess
 import sys
@@ -12,6 +11,7 @@ import tempfile
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from http.client import HTTPConnection
 from typing import Any, Literal, Optional, get_args
 from urllib.parse import urlparse
@@ -40,6 +40,8 @@ from ramalama.common import (
     ensure_image,
     genname,
     get_gpu_type_env_vars,
+    has_nvidia_vulkan_icd,
+    is_windows_or_wsl,
     run_cmd,
     set_accel_env_vars,
     set_gpu_type_env_vars,
@@ -79,6 +81,30 @@ GGUF_QUANTIZATION_MODES = Literal[
 ]
 DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"  # type: ignore[assignment]
 
+# llama-server reads its API key from this variable when --api-key is not given.
+LLAMA_API_KEY_ENV = "LLAMA_API_KEY"
+
+# ramalama's own RAG container scripts read the same key from this variable:
+# rag_framework guards its port with it and presents it to the llama-servers
+# behind it, doc2rag only presents it.
+RAG_API_KEY_ENV = "RAMALAMA_API_KEY"
+
+
+def api_key_headers(args: Any) -> dict[str, str]:
+    """Authorization header for a keyed llama-server, empty when no key is set."""
+    key = getattr(args, "server_api_key", None) or getattr(args, "api_key", None)
+    return {"Authorization": f"Bearer {key}"} if key else {}
+
+
+def _prepend_key_env(args: argparse.Namespace, entry: str) -> None:
+    """Prepend an env entry to ``args.env``.
+
+    Rebinds rather than mutating in place: _rag_args shallow-copies the model
+    server's namespace to build the RAG proxy's, so the two share one list and
+    appending to it would give each container the other's entries.
+    """
+    args.env = [entry, *(getattr(args, "env", None) or [])]
+
 
 @dataclass
 class LlamaCppConfig:
@@ -87,6 +113,7 @@ class LlamaCppConfig:
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE  # type: ignore[assignment]
     ngl: Optional[str] = None
     ncmoe: Optional[int] = None
+    server_api_key: Optional[str] = None
     spec_type: Optional[str] = None
     spec_draft_n_max: Optional[int] = None
     spec_draft_n_min: Optional[int] = None
@@ -102,6 +129,8 @@ class LlamaCppConfig:
             self.ngl = str(self.ngl)
         if self.ncmoe is not None:
             self.ncmoe = int(self.ncmoe)
+        if self.server_api_key is not None:
+            self.server_api_key = str(self.server_api_key)
         if self.spec_type is not None:
             self.spec_type = str(self.spec_type)
         if self.spec_draft_n_max is not None:
@@ -139,12 +168,10 @@ class AddPathOrUrl(argparse.Action):
 
 def get_gpu_backend_preferences(gpu_type: str) -> list[str]:
     """Returns preferred backends for a given GPU type in order of preference.
-    On Windows, vulkan is not supported on WSL2, so vendor backends are preferred."""
-    is_windows = platform.system() == "Windows"
-
+    Vulkan is a poor default on WSL2, so vendor backends are preferred there."""
     preferences = {
         "HIP_VISIBLE_DEVICES": ["vulkan", "rocm"],  # AMD: Vulkan preferred
-        "CUDA_VISIBLE_DEVICES": ["cuda"],  # NVIDIA: CUDA only
+        "CUDA_VISIBLE_DEVICES": ["cuda", "vulkan"],  # NVIDIA: CUDA preferred
         "INTEL_VISIBLE_DEVICES": ["vulkan", "sycl", "openvino"],  # Intel: Vulkan preferred
         "ASAHI_VISIBLE_DEVICES": ["vulkan"],  # Asahi: Vulkan only
         "ASCEND_VISIBLE_DEVICES": ["cann"],  # Ascend: CANN only
@@ -152,11 +179,27 @@ def get_gpu_backend_preferences(gpu_type: str) -> list[str]:
         "GGML_VK_VISIBLE_DEVICES": ["vulkan"],  # Vulkan: Vulkan only
     }
 
-    if is_windows:
+    if is_windows_or_wsl():
         preferences["HIP_VISIBLE_DEVICES"] = ["rocm", "vulkan"]
         preferences["INTEL_VISIBLE_DEVICES"] = ["sycl", "vulkan", "openvino"]
 
     return preferences.get(gpu_type, [])
+
+
+@lru_cache(maxsize=1)
+def warn_without_nvidia_vulkan_icd() -> None:
+    """Warn once when vulkan is picked for an NVIDIA GPU the host cannot drive.
+
+    Vulkan is only usable on NVIDIA because the container toolkit injects the
+    vendor ICD. Without it llama.cpp silently serves from the CPU, which is far
+    slower but never fails, so say so up front."""
+    if has_nvidia_vulkan_icd():
+        return
+    logger.warning(
+        "No NVIDIA Vulkan ICD found in /usr/share/vulkan/icd.d or /etc/vulkan/icd.d. "
+        "Inference may fall back to the CPU. Install the nvidia-container-toolkit, which "
+        "provides the ICD for the container, or select the cuda backend with --backend cuda."
+    )
 
 
 def backend_to_gpu_env(backend: str) -> str:
@@ -188,11 +231,13 @@ def get_available_backends() -> list[str]:
     return ["auto", "vulkan"]
 
 
+# GGML_VK_VISIBLE_DEVICES, the vulkan backend, is deliberately absent: it runs
+# in the default image, and hardcoding the published tag here would ignore
+# default_image / RAMALAMA_DEFAULT_IMAGE whenever a GPU is detected.
 _LLAMA_CPP_IMAGES: dict[str, str] = {
     "ASAHI_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/asahi"),
     "ASCEND_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/cann"),
     "CUDA_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/cuda"),
-    "GGML_VK_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/ramalama"),
     "HIP_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/rocm"),
     "INTEL_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/intel-gpu"),
     "OPENVINO_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/openvino"),
@@ -296,7 +341,21 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             logger.debug(f"{self.name} {container_name} /health {health_resp.status}: {health_resp.reason}")
             return False
 
-        conn.request("GET", "/models")
+        # /health is always public, but current llama.cpp gates /models behind the
+        # API key, so a keyed server needs the header here or readiness never
+        # succeeds. Older builds leave /models public; the header is harmless there.
+        headers = api_key_headers(args)
+        debuglevel = conn.debuglevel
+        if headers:
+            # http.client's raw debug output prints request headers to stdout
+            # verbatim, and is_healthy turns it on for --debug, so this would echo
+            # the key on every readiness poll. Mute it for the send; the response
+            # trace carries no key.
+            conn.set_debuglevel(0)
+        try:
+            conn.request("GET", "/models", headers=headers)
+        finally:
+            conn.set_debuglevel(debuglevel)
         models_resp = conn.getresponse()
         if models_resp.status != 200:
             logger.debug(f"{self.name} {container_name} /models status code {models_resp.status}: {models_resp.reason}")
@@ -353,8 +412,18 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                         f"Recommended backends for {gpu_name}: {', '.join(preferences)}"
                     )
 
-        override = config.images.get(gpu_type) if gpu_type else None
-        return override if override else _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
+        if gpu_type == "GGML_VK_VISIBLE_DEVICES" and detected_gpu_type == "CUDA_VISIBLE_DEVICES":
+            warn_without_nvidia_vulkan_icd()
+
+        # In auto mode an image configured for the detected GPU is the user
+        # pinning an image for their hardware, so it takes precedence over one
+        # configured for the backend that was resolved from that hardware.
+        override_keys = [detected_gpu_type, gpu_type] if backend == "auto" else [gpu_type]
+        for key in override_keys:
+            if key and (override := config.images.get(key)):
+                return override
+
+        return _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
 
     def _container_image_is_ggml(self, args: argparse.Namespace) -> bool:
         if not args.container or args.dryrun:
@@ -414,6 +483,26 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             ),
             completer=suppressCompleter,
         )
+
+    def _add_api_key_arg(self, parser: "argparse.ArgumentParser", help_text: Optional[str] = None) -> None:
+        """Register --api-key.
+
+        Deliberately not in _add_inference_args: ramalama sandbox borrows that to
+        build its own parsers and already owns a --api-key of its own, which it
+        maps onto server_api_key at run time.
+        """
+        rt_config = self.get_runtime_config(ActiveConfig())
+        parser.add_argument(
+            "--api-key",
+            dest="server_api_key",
+            metavar="KEY",
+            help=help_text or "require this API key on requests to the AI Model server (default: no authentication)",
+            completer=suppressCompleter,
+        )
+        # Apply the configured default out of band: ArgumentParserWithDefaults
+        # renders any default it is handed into the help text, and a key set in
+        # ramalama.conf must not be printed by --help.
+        parser.set_defaults(server_api_key=rt_config.server_api_key)
 
     def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
         """Add llama.cpp-specific inference args to an already-created parser."""
@@ -509,12 +598,54 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         ]
         args.env = openvino_env + getattr(args, "env", [])
 
+    def post_process_args(self, args: argparse.Namespace) -> None:
+        super().post_process_args(args)
+        if not getattr(args, "server_api_key", None):
+            return
+        # llama-stack fronts llama-server on the only published port, and neither
+        # requires a key of its clients nor presents one upstream, so the port the
+        # user reaches would be unauthenticated. --rag is supported: every port it
+        # publishes is keyed, see _set_rag_api_key_env.
+        if getattr(args, "api", None) == "llama-stack":
+            raise ValueError("--api-key is not supported with --api llama-stack: llama-stack cannot present a key.")
+
+    @staticmethod
+    def _set_server_api_key_env(args: argparse.Namespace) -> None:
+        """Hand the server API key to llama-server through LLAMA_API_KEY.
+
+        The key travels in the environment rather than in argv, so it appears in
+        neither llama-server's nor the container engine's command line. A key
+        given as --api-key is still in ramalama's own argv; one read from
+        ramalama.conf is in no process table at all. llama.cpp applies env values
+        before parsing the command line, so this is equivalent to passing
+        --api-key.
+        """
+        key = getattr(args, "server_api_key", None)
+        if not key:
+            return
+
+        os.environ[LLAMA_API_KEY_ENV] = key
+        if getattr(args, "generate", None):
+            # Generated quadlet/kube/compose files are read without ramalama in the
+            # picture, so they need the literal value. It lands there in plaintext.
+            _prepend_key_env(args, f"{LLAMA_API_KEY_ENV}={key}")
+        elif getattr(args, "container", False):
+            # Bare name: podman/docker inherit the value from our own environment,
+            # keeping it off the engine command line.
+            _prepend_key_env(args, LLAMA_API_KEY_ENV)
+
     def handle_subcommand(self, command: str, args: argparse.Namespace) -> list[str]:
         set_accel_env_vars()
         self._set_openvino_env(args)
+        self._set_server_api_key_env(args)
         return super().handle_subcommand(command, args)
 
     def _do_run(self, args: argparse.Namespace, model: Any) -> None:
+        # run chats against the server it just started, so the client has to present
+        # the key the server now demands. chat.add_api_key() reads args.api_key. Set
+        # it before the RAG branch, whose namespace is copied from this one.
+        if getattr(args, "server_api_key", None):
+            args.api_key = args.server_api_key
         if getattr(args, "rag", None):
             if isinstance(model, APITransport):
                 raise ValueError("ramalama run --rag is not supported for hosted API transports.")
@@ -669,12 +800,14 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         """Start the RAG helper servers on a private network, then run ``dispatch``.
 
         The model server, embedding server, and RAG proxy all join a shared
-        private network so they reach each other by container name without
-        publishing the helper servers to the host.
+        private network so they reach each other by container name. Each of the
+        three also publishes a port of its own, so a key has to cover all of
+        them, not just the proxy the user talks to.
         """
         from ramalama.engine import remove_network
         from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers, _setup_rag_network
 
+        self._set_rag_api_key_env(args)
         network_created = _setup_rag_network(args)
         try:
             embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
@@ -685,6 +818,25 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         finally:
             if network_created:
                 remove_network(args, args.network)
+
+    @staticmethod
+    def _set_rag_api_key_env(args: argparse.Namespace) -> None:
+        """Hand the server API key to a RAG container through RAMALAMA_API_KEY.
+
+        ``args`` is the RAG container's own namespace, either the serve proxy's
+        or doc2rag's; the llama.cpp servers it talks to pick the key up from
+        LLAMA_API_KEY instead. The serve proxy also inherits that name, because
+        its namespace is a shallow copy of the model server's, which is harmless
+        since it reads RAMALAMA_API_KEY. As with the model server the name is
+        passed bare, so the engine inherits the value from our environment
+        instead of putting it on its command line.
+        """
+        key = getattr(args, "server_api_key", None)
+        if not key:
+            return
+
+        os.environ[RAG_API_KEY_ENV] = key
+        _prepend_key_env(args, RAG_API_KEY_ENV)
 
     def _start_rag_embedding_server(self, args):
         """Start a llama.cpp embedding server for RAG inference and set embed_url on args."""
@@ -719,6 +871,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_run_subcommand(subparsers)
         self._add_rag_args(parser)
+        self._add_api_key_arg(parser)
         return parser
 
     def _add_model_argument(self, parser: "argparse.ArgumentParser") -> None:
@@ -727,6 +880,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_serve_subcommand(subparsers)
         self._add_rag_args(parser)
+        self._add_api_key_arg(parser)
         parser.add_argument(
             "--models-max",
             dest="models_max",

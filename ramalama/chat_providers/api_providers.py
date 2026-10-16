@@ -1,3 +1,10 @@
+"""Provider registries backing the hosted API transports.
+
+Deprecated: these registries are closed. The hosted API transports they serve are
+scheduled for removal, so no new schemes should be added here. Point users at
+`ramalama chat --url <endpoint> --api-key <key> --model <model>` instead.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable

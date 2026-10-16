@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
 
+import ramalama.common
 from ramalama.cli import (
     default_image,
     default_rag_image,
@@ -20,18 +21,24 @@ from ramalama.common import (
     accel_image,
     check_intel,
     check_nvidia,
+    container_cuda_visible_devices,
     engine_cmd,
     ensure_image,
     find_in_cdi,
     get_accel,
+    get_gpu_devices,
+    has_nvidia_vulkan_icd,
     host_available,
     host_cmd,
     host_path,
     in_toolbox,
+    in_wsl,
+    is_windows_or_wsl,
     load_cdi_config,
     populate_volume_from_image,
     rm_until_substring,
     verify_checksum,
+    version_tagged_image,
 )
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import DEFAULT_IMAGE, load_config
@@ -137,6 +144,9 @@ DEFAULT_IMAGES = {
         ("HIP_VISIBLE_DEVICES", f"{_BASE_IMAGE}:latest", None, None, f"{_BASE_IMAGE}:latest"),
         ("HIP_VISIBLE_DEVICES", None, f"{_BASE_IMAGE}:latest", None, f"{_BASE_IMAGE}:latest"),
         ("HIP_VISIBLE_DEVICES", None, None, f"{_BASE_IMAGE}:latest", f"{_BASE_IMAGE}:latest"),
+        # An --image that happens to match the default is still the user asking
+        # for it, and wins over the image the detected GPU would select.
+        ("CUDA_VISIBLE_DEVICES", None, None, DEFAULT_IMAGE, DEFAULT_IMAGE),
     ],
 )
 def test_accel_image(
@@ -174,6 +184,35 @@ image = "{config_override}"
                 default_tools_image.cache_clear()
                 parse_args_from_cmd(cmdline)
                 assert accel_image(config) == expected_result
+
+
+@pytest.mark.parametrize(
+    "accel_env,backend,expected_result",
+    [
+        # Left on auto, the detected GPU picks the image.
+        ("CUDA_VISIBLE_DEVICES", "auto", version_tagged_image("quay.io/ramalama/cuda")),
+        ("CUDA_VISIBLE_DEVICES", "cuda", version_tagged_image("quay.io/ramalama/cuda")),
+        # A backend the user asked for wins over the detected GPU, even though
+        # --image defaults to the image that GPU resolves to.
+        ("CUDA_VISIBLE_DEVICES", "vulkan", DEFAULT_IMAGE),
+        ("HIP_VISIBLE_DEVICES", "auto", DEFAULT_IMAGE),
+        ("HIP_VISIBLE_DEVICES", "vulkan", DEFAULT_IMAGE),
+        ("HIP_VISIBLE_DEVICES", "rocm", version_tagged_image("quay.io/ramalama/rocm")),
+    ],
+)
+def test_accel_image_follows_backend(accel_env: str, backend: str, expected_result: str, monkeypatch):
+    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+
+    env = {"RAMALAMA_CONFIG": "/dev/null", accel_env: "1"}
+    with patch.dict("os.environ", env, clear=True):
+        config = load_config()
+        with patch("ramalama.cli.ActiveConfig", return_value=config):
+            default_image.cache_clear()
+            default_rag_image.cache_clear()
+            default_tools_image.cache_clear()
+            _, args = parse_args_from_cmd(["run", "--backend", backend, "granite"])
+            assert accel_image(config) == expected_result
+            assert args.image == expected_result
 
 
 @patch("ramalama.common.run_cmd")
@@ -227,6 +266,19 @@ def test_apple_vm_returns_false_when_podman_not_installed(mock_run_cmd):
     result = apple_vm("podman", None)
 
     assert result is False
+
+
+@patch("ramalama.common.logger")
+@patch("ramalama.common.run_cmd", side_effect=FileNotFoundError(2, "No such file or directory", "podman"))
+def test_apple_vm_does_not_warn_when_podman_not_installed(mock_run_cmd, mock_logger):
+    from ramalama.common import apple_vm
+
+    result = apple_vm("podman", None)
+
+    assert result is False
+    # Only "podman --version" runs, "podman machine list" is skipped.
+    mock_run_cmd.assert_called_once()
+    mock_logger.warning.assert_not_called()
 
 
 class TestEnsureImage:
@@ -287,6 +339,14 @@ class TestEnsureImage:
 class TestCheckNvidia:
     def setup_method(self):
         check_nvidia.cache_clear()
+        self.cuda_visible_devices = os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+        ramalama.common.nvidia_selected_devices = []
+
+    def teardown_method(self):
+        os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+        if self.cuda_visible_devices is not None:
+            os.environ["CUDA_VISIBLE_DEVICES"] = self.cuda_visible_devices
+        ramalama.common.nvidia_selected_devices = []
 
     @patch("ramalama.common.find_in_cdi")
     @patch("ramalama.common.run_cmd")
@@ -317,6 +377,51 @@ class TestCheckNvidia:
         assert check_nvidia() is None
         printed = " ".join(str(c.args[0]) for c in mock_perror.call_args_list)
         assert "nvidia-ctk cdi generate" in printed
+
+    @patch("ramalama.common.find_in_cdi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_all_gpus_are_not_a_selection(self, mock_run_cmd, mock_find_in_cdi):
+        mock_find_in_cdi.return_value = (["all"], [])
+        mock_run_cmd.return_value.stdout = "0,GPU-1111\n1,GPU-2222"
+        assert check_nvidia() == "cuda"
+        assert os.environ["CUDA_VISIBLE_DEVICES"] == "0,1"
+        assert ramalama.common.nvidia_selected_devices == []
+
+    @patch("ramalama.common.find_in_cdi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_records_narrowed_selection(self, mock_run_cmd, mock_find_in_cdi):
+        os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+        mock_find_in_cdi.return_value = (["1", "all"], [])
+        mock_run_cmd.return_value.stdout = "0,GPU-1111\n1,GPU-2222"
+        assert check_nvidia() == "cuda"
+        assert os.environ["CUDA_VISIBLE_DEVICES"] == "1"
+        assert ramalama.common.nvidia_selected_devices == ["1"]
+
+    @patch("ramalama.common.find_in_cdi")
+    @patch("ramalama.common.run_cmd")
+    def test_check_nvidia_selection_needs_a_cdi_device(self, mock_run_cmd, mock_find_in_cdi):
+        # Only the "all" device is configured, so the narrowing cannot be
+        # expressed as a device and every GPU stays visible, as before.
+        os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+        mock_find_in_cdi.return_value = (["all"], ["1"])
+        mock_run_cmd.return_value.stdout = "0,GPU-1111\n1,GPU-2222"
+        assert check_nvidia() == "cuda"
+        assert os.environ["CUDA_VISIBLE_DEVICES"] == "0,1"
+        assert ramalama.common.nvidia_selected_devices == []
+
+    @pytest.mark.parametrize(
+        "selected,value,expected",
+        [
+            # Every GPU is in play, so the host's numbering still describes them.
+            ([], "0,1", "0,1"),
+            (["1"], "1", "0"),
+            (["1", "2"], "1,2", "0,1"),
+            (["GPU-2222"], "GPU-2222", "0"),
+        ],
+    )
+    def test_container_cuda_visible_devices(self, selected, value, expected):
+        with patch.object(ramalama.common, "nvidia_selected_devices", selected):
+            assert container_cuda_visible_devices(value) == expected
 
     @patch("ramalama.common.run_cmd")
     def test_check_nvidia_smi_failure(self, mock_run_cmd):
@@ -610,6 +715,9 @@ def test_load_cdi_config_merges_multiple_files():
         (["all"], ["all"], []),
         (["0", "all"], ["0", "all"], []),
         ([CDI_GPU_UUID, "all"], [CDI_GPU_UUID, "all"], []),
+        # An abbreviated uuid resolves to the full CDI device name, which is
+        # what "--device nvidia.com/gpu=<name>" needs.
+        ([CDI_GPU_UUID[:12], "all"], [CDI_GPU_UUID, "all"], []),
         (["1", "all"], ["all"], ["1"]),
         (["dummy", "all"], ["all"], ["dummy"]),
     ],
@@ -858,3 +966,88 @@ class TestHostPath:
             patch("os.path.isdir", return_value=False),
         ):
             assert host_path("/etc/cdi") == "/etc/cdi"
+
+
+class TestHasNvidiaVulkanIcd:
+    @pytest.mark.parametrize("icd_dir", ["/usr/share/vulkan/icd.d", "/etc/vulkan/icd.d"])
+    def test_icd_installed(self, icd_dir):
+        with patch(
+            "ramalama.common.glob.glob",
+            side_effect=lambda p: [f"{icd_dir}/nvidia_icd.json"] if p.startswith(icd_dir) else [],
+        ):
+            assert has_nvidia_vulkan_icd()
+
+    def test_only_other_vendors(self):
+        with patch("ramalama.common.glob.glob", return_value=[]):
+            assert not has_nvidia_vulkan_icd()
+
+
+class TestIsWindowsOrWsl:
+    """is_windows_or_wsl() must catch both native Windows and ramalama running inside a WSL2 distro."""
+
+    @pytest.mark.parametrize(
+        "osrelease,expected",
+        [
+            ("5.15.167.4-microsoft-standard-WSL2\n", True),
+            ("6.6.87.2-microsoft-standard-WSL2+\n", True),
+            ("7.1.13-100.fc43.x86_64\n", False),
+        ],
+    )
+    def test_in_wsl_reads_osrelease(self, osrelease, expected):
+        with patch("builtins.open", mock_open(read_data=osrelease)):
+            assert in_wsl() == expected
+
+    def test_in_wsl_missing_osrelease(self):
+        with patch("builtins.open", side_effect=OSError("no /proc")):
+            assert not in_wsl()
+
+    def test_native_windows(self):
+        # No /proc to read on a native Windows interpreter.
+        with (
+            patch("ramalama.common.platform.system", return_value="Windows"),
+            patch("builtins.open", side_effect=OSError("no /proc")),
+        ):
+            assert is_windows_or_wsl()
+
+    def test_inside_wsl_distro(self):
+        # platform.system() reports "Linux" from inside the distro.
+        with (
+            patch("ramalama.common.platform.system", return_value="Linux"),
+            patch("builtins.open", mock_open(read_data="5.15.167.4-microsoft-standard-WSL2\n")),
+        ):
+            assert is_windows_or_wsl()
+
+    def test_native_linux(self):
+        with (
+            patch("ramalama.common.platform.system", return_value="Linux"),
+            patch("builtins.open", mock_open(read_data="7.1.13-100.fc43.x86_64\n")),
+        ):
+            assert not is_windows_or_wsl()
+
+
+class TestGetGpuDevices:
+    devices = {"/dev/accel": "accel", "/dev/dri": "dri", "/dev/kfd": "kfd"}
+
+    def _get_gpu_devices(self, accel_env_vars, environ=None):
+        with (
+            patch("os.path.exists", lambda path: path in self.devices),
+            patch.dict("os.environ", environ or {}, clear=True),
+        ):
+            return get_gpu_devices(accel_env_vars)
+
+    def test_host_devices(self):
+        assert self._get_gpu_devices({"HIP_VISIBLE_DEVICES": "0"}) == {
+            "accel": "/dev/accel",
+            "dri": "/dev/dri",
+            "kfd": "/dev/kfd",
+        }
+
+    def test_nvidia_gets_none(self):
+        # The container toolkit passes the NVIDIA GPUs in itself. Anything the
+        # host's GPU devices would add on top is a GPU that was not asked for,
+        # an iGPU say, and the vulkan backend would offload onto it.
+        assert self._get_gpu_devices({"CUDA_VISIBLE_DEVICES": "0"}) == {}
+
+    def test_defaults_to_the_environment(self):
+        assert self._get_gpu_devices(None, {"CUDA_VISIBLE_DEVICES": "0"}) == {}
+        assert self._get_gpu_devices(None, {"HIP_VISIBLE_DEVICES": "0"}) != {}

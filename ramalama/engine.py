@@ -3,7 +3,6 @@ from __future__ import annotations
 import glob
 import json
 import os
-import platform
 import subprocess
 import sys
 import time
@@ -15,7 +14,19 @@ from typing import Any, Optional
 # Live reference for checking global vars
 import ramalama.common
 from ramalama.arg_types import BaseEngineArgsType
-from ramalama.common import check_nvidia, engine_cmd, exec_cmd, genname, get_accel_env_vars, host_path, perror, run_cmd
+from ramalama.common import (
+    check_nvidia,
+    container_cuda_visible_devices,
+    engine_cmd,
+    exec_cmd,
+    genname,
+    get_accel_env_vars,
+    get_gpu_devices,
+    host_path,
+    is_windows_or_wsl,
+    perror,
+    run_cmd,
+)
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import ActiveConfig
 from ramalama.host_utils import (
@@ -110,26 +121,46 @@ class BaseEngine(ABC):
         if ramalama.common.podman_machine_accel:
             self.exec_args += ["--device", "/dev/dri"]
 
-        for path in ["/dev/dri", "/dev/kfd", "/dev/accel", "/dev/davinci*", "/dev/devmm_svm", "/dev/hisi_hdc"]:
+        env_vars = get_accel_env_vars()
+        gpu_devices = list(get_gpu_devices(env_vars).values())
+        for path in [*gpu_devices, "/dev/davinci*", "/dev/devmm_svm", "/dev/hisi_hdc"]:
             for dev in glob.glob(path):
                 self.exec_args += ["--device", dev]
 
-        intel_windows_added = False
-        for k, v in get_accel_env_vars().items():
+        wsl_devices_added = False
+        for k, v in env_vars.items():
             # Special case for Cuda
             if k == "CUDA_VISIBLE_DEVICES":
+                # Pass in only the GPUs the user selected rather than all of
+                # them plus CUDA_VISIBLE_DEVICES to filter with: the Vulkan
+                # backend never reads that variable, it indexes Vulkan's own
+                # device enumeration, so a narrowed selection is only honoured
+                # if the container cannot see the other GPUs in the first place.
+                selected = ramalama.common.nvidia_selected_devices
                 if self.use_docker:
-                    self.exec_args += ["--gpus", "all"]
+                    # docker's csv parser needs the quotes to keep a
+                    # comma-separated device list in one field.
+                    self.exec_args += ["--gpus", f'"device={",".join(selected)}"' if selected else "all"]
+                elif selected:
+                    for name in selected:
+                        self.exec_args += ["--device", f"nvidia.com/gpu={name}"]
                 else:
                     # newer Podman versions support --gpus=all, but < 5.0 do not
                     self.exec_args += ["--device", "nvidia.com/gpu=all"]
+                v = container_cuda_visible_devices(v)
             elif k == "MUSA_VISIBLE_DEVICES":
                 self.exec_args += ["--env", "MTHREADS_VISIBLE_DEVICES=all"]
-            elif k == "INTEL_VISIBLE_DEVICES":
-                if platform.system() == "Windows" and not intel_windows_added:
+            elif k in ("HIP_VISIBLE_DEVICES", "INTEL_VISIBLE_DEVICES"):
+                # WSL exposes the GPU as /dev/dxg with its driver libraries in
+                # /usr/lib/wsl, whether ramalama runs on native Windows against
+                # the podman machine or inside the distro itself, where
+                # platform.system() reports "Linux". That is how both the AMD
+                # and the Intel GPU come in, so the rocm backend needs it as
+                # much as sycl does.
+                if is_windows_or_wsl() and not wsl_devices_added:
                     self.exec_args += ["--device", "/dev/dxg"]
                     self.exec_args += ["--mount", "type=bind,src=/usr/lib/wsl,dst=/usr/lib/wsl"]
-                    intel_windows_added = True
+                    wsl_devices_added = True
 
             self.exec_args += ["-e", f"{k}={v}"]
 

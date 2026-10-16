@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEFAULT_LLAMA_CPP_COMMIT="1511ce3bc3f087376c8526b4ad07100bfabb277f" # b10485/v0.1.2
+DEFAULT_LLAMA_CPP_COMMIT="b29c606e28a01b1bc8c1351026a0fa6e616bf6c4" # b10964/v0.4.1
 MESA_VULKAN_VERSION=25.3.6-102.fc44
 
 dnf_install_remoting() {
@@ -142,6 +142,11 @@ dnf_install_runtime_deps() {
     if [ "$uname_m" = "x86_64" ] || [ "$uname_m" = "aarch64" ]; then
       dnf copr enable -y slp/mesa-libkrun-vulkan
       runtime_pkgs+=(vulkan-loader vulkan-tools "mesa-vulkan-drivers-$MESA_VULKAN_VERSION")
+      # NVIDIA's Vulkan ICD (libGLX_nvidia.so.0, injected by the container
+      # toolkit) needs libXext and libEGL.so.1 present to initialize.
+      # libglvnd-egl pulls in mesa-libEGL, so pin it to the copr version to
+      # avoid dragging the rest of mesa off MESA_VULKAN_VERSION.
+      runtime_pkgs+=(libXext libglvnd-egl "mesa-libEGL-$MESA_VULKAN_VERSION")
     else
       runtime_pkgs+=(openblas)
     fi

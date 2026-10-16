@@ -125,6 +125,15 @@ def parse_port_option(option: str) -> str:
 
 
 class OverrideDefaultAction(argparse.Action):
+    # Options whose default is computed while the parser is built, before the
+    # rest of the command line has been seen. Recorded so such a default can be
+    # told apart from a value the user passed.
+    dests: set[str] = set()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        OverrideDefaultAction.dests.add(self.dest)
+
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
         setattr(namespace, self.dest + '_override', True)
@@ -172,6 +181,10 @@ def available_metadata(prefix, parsed_args, **kwargs):
 
 
 class ArgumentParserWithDefaults(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("allow_abbrev", False)
+        super().__init__(*args, **kwargs)
+
     def add_argument(self, *args, help=None, default=None, completer=None, **kwargs):
         if help is not None:
             kwargs['help'] = help
@@ -191,10 +204,10 @@ def get_initial_parser():
     return parser
 
 
-def get_parser():
+def get_parser(subcommand=None):
     description = get_description()
     parser = create_argument_parser(description, add_help=True)
-    configure_subcommands(parser)
+    configure_subcommands(parser, subcommand=subcommand)
     return parser
 
 
@@ -210,22 +223,44 @@ def parse_args_from_cmd(cmd: list[str]) -> tuple[argparse.ArgumentParser, argpar
         config.dryrun = True
     # Phase 1: Parse the initial arguments to set CONFIG.runtime etc... as this can affect the subcommands
     initial_parser = get_initial_parser()
-    initial_args, _ = initial_parser.parse_known_args(cmd)
+    initial_args, remaining = initial_parser.parse_known_args(cmd)
     for arg in initial_args.__dict__.keys() & config._fields:
         if getattr(initial_args, arg) != getattr(config, arg):
             setattr(config, arg, getattr(initial_args, arg))
 
+    # Global options have been consumed. A leading help flag (or no command)
+    # needs the complete parser; command-specific help can use the cheap path.
+    subcommand = remaining[0] if remaining else None
+
     # Phase 2: Re-parse the arguments with the subcommands enabled
-    parser = get_parser()
+    parser = get_parser(subcommand=subcommand)
     args = parser.parse_args(cmd)
     post_parse_setup(args)
 
     for arg in args.__dict__.keys() & config._fields:
+        if arg in OverrideDefaultAction.dests:
+            # These options record whether they were passed, so go by that rather
+            # than by the value. A computed default is not the user's choice and
+            # does not belong in the config: --image defaults to the image the
+            # detected GPU resolves to, worked out before --backend was parsed,
+            # and storing it marks the image as chosen rather than derived. A
+            # value the user did pass belongs there even where it matches the
+            # default, which is how "--image $RAMALAMA_DEFAULT_IMAGE" asks for
+            # that image instead of the one the GPU would select.
+            if getattr(args, f"{arg}_override", False):
+                setattr(config, arg, getattr(args, arg))
+            continue
         if getattr(args, arg) != getattr(config, arg):
             setattr(config, arg, getattr(args, arg))
 
     runtime_plugin = get_runtime(config.runtime)
     runtime_plugin.sync_args_to_runtime_config(args, config)
+
+    # The runtime config now carries --backend, so the image the command will
+    # run can be resolved for real.
+    if hasattr(args, "image") and not getattr(args, "image_override", False):
+        args.image = accel_image(config)
+
     return parser, args
 
 
@@ -332,16 +367,11 @@ The RAMALAMA_IN_CONTAINER environment variable modifies default behaviour.""",
     )
 
 
-def configure_subcommands(parser):
-    """Add subcommand parsers to the main argument parser."""
+def configure_subcommands(parser, subcommand=None):
+    """Register cheap built-ins first, loading runtime commands only when needed."""
     subparsers = parser.add_subparsers(dest="subcommand")
     subparsers.required = False
-    # Register subcommands only for the selected runtime plugin so that help
-    # output only shows subcommands the active runtime actually supports.
-    # get_config().runtime is already set by Phase 1 of parse_args_from_cmd
-    # before configure_subcommands() is called in Phase 2.
-    runtime = ActiveConfig().runtime
-    get_runtime(runtime).register_subcommands(subparsers)
+
     chat_parser(subparsers)
     containers_parser(subparsers)
     help_parser(subparsers)
@@ -354,10 +384,17 @@ def configure_subcommands(parser):
     pull_parser(subparsers)
     push_parser(subparsers)
     rm_parser(subparsers)
-    sandbox_parser(subparsers)
+
     stop_parser(subparsers)
     version_parser(subparsers)
-    daemon_parser(subparsers)
+
+    # Help must describe every command. Unknown names may belong to a runtime
+    # plugin, so do not maintain a hard-coded list of runtime commands here.
+    if subcommand == "help" or subcommand not in subparsers.choices:
+        # Phase 1 has already selected the runtime in ActiveConfig.
+        get_runtime(ActiveConfig().runtime).register_subcommands(subparsers)
+        sandbox_parser(subparsers)
+        daemon_parser(subparsers)
 
 
 def post_parse_setup(args):
@@ -1105,7 +1142,16 @@ def _rag_args(args):
     rag_args.model_port = args.port = compute_serving_port(args, exclude=[rag_args.port])
     args.rag = None
     rag_args.model_args = args
+    # Neither container is written out: --generate is not honoured on the RAG
+    # path, the pipeline is always run. "" keeps the truthiness that decides
+    # whether to emit a file separate from the "is not None" test that resolves
+    # in-container model paths, which both containers still need. Downgrading
+    # the model server too matters for --api-key: the generate branch of
+    # _set_server_api_key_env would otherwise put the key on the engine command
+    # line in plaintext for a container that is run rather than generated.
     rag_args.generate = ""
+    if getattr(args, "generate", None):
+        args.generate = ""
     return rag_args
 
 

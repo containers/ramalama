@@ -37,6 +37,8 @@ class Input:
         mmproj_file_exists: bool = False,
         args: Args = Args(),
         exec_args: list = None,
+        accel_env_vars: dict = None,
+        nvidia_selected_devices: list = None,
     ):
         self.model_name = model_name
         self.model_src_path = model_src_path
@@ -53,6 +55,8 @@ class Input:
         self.mmproj_file_exists = mmproj_file_exists
         self.args = args
         self.exec_args = exec_args if exec_args is not None else []
+        self.accel_env_vars = accel_env_vars if accel_env_vars is not None else {"ACCEL_ENV": "true"}
+        self.nvidia_selected_devices = nvidia_selected_devices or []
 
 
 DATA_PATH = Path(__file__).parent / "data" / "test_compose"
@@ -156,8 +160,48 @@ DATA_PATH = Path(__file__).parent / "data" / "test_compose"
                 model_src_path="/models/gemma.gguf",
                 model_dest_path="/mnt/models/gemma.gguf",
                 args=Args(image="test-image/cuda:latest"),
+                accel_env_vars={"CUDA_VISIBLE_DEVICES": "0"},
             ),
             "with_nvidia_gpu.yaml",
+        ),
+        (
+            # The reservation follows the detected GPU, not the image name, so
+            # an NVIDIA GPU served by the vulkan-capable ramalama image gets one
+            # too.
+            Input(
+                model_name="gemma-vulkan",
+                model_src_path="/models/gemma.gguf",
+                model_dest_path="/mnt/models/gemma.gguf",
+                accel_env_vars={"CUDA_VISIBLE_DEVICES": "0"},
+            ),
+            "with_nvidia_gpu_vulkan_image.yaml",
+        ),
+        (
+            # A narrowed selection reserves just those GPUs, since the Vulkan
+            # backend cannot be filtered with CUDA_VISIBLE_DEVICES. The variable
+            # is renumbered to match what the container ends up seeing.
+            Input(
+                model_name="gemma-cuda",
+                model_src_path="/models/gemma.gguf",
+                model_dest_path="/mnt/models/gemma.gguf",
+                args=Args(image="test-image/cuda:latest"),
+                accel_env_vars={"CUDA_VISIBLE_DEVICES": "1"},
+                nvidia_selected_devices=["1"],
+            ),
+            "with_nvidia_gpu_selection.yaml",
+        ),
+        (
+            # The other direction: "nvidia" is the only driver the reservation
+            # can name, so an AMD GPU must not get one whatever the image is
+            # called.
+            Input(
+                model_name="gemma-rocm",
+                model_src_path="/models/gemma.gguf",
+                model_dest_path="/mnt/models/gemma.gguf",
+                args=Args(image="test-image/rocm:latest"),
+                accel_env_vars={"HIP_VISIBLE_DEVICES": "0"},
+            ),
+            "with_amd_gpu.yaml",
         ),
         (
             Input(
@@ -188,7 +232,8 @@ def test_compose_generate(input_data: Input, expected_file_name: str, monkeypatc
     }
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
 
-    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {"ACCEL_ENV": "true"})
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: dict(input_data.accel_env_vars))
+    monkeypatch.setattr("ramalama.common.nvidia_selected_devices", list(input_data.nvidia_selected_devices))
     monkeypatch.setattr("ramalama.compose.version", lambda: "0.1.0-test")
 
     draft_model_paths = (None, None)

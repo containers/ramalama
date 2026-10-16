@@ -501,7 +501,7 @@ def test_router_requires_discovered_model_ids(monkeypatch):
     runtime = SimpleNamespace(serve_router_nonblocking=lambda args: None)
     monkeypatch.setattr("ramalama.sandbox.get_runtime", lambda runtime_name: runtime)
     monkeypatch.setattr("ramalama.sandbox.wait_for_healthy", lambda args, check: None)
-    monkeypatch.setattr("ramalama.sandbox._query_router_models", lambda port: [])
+    monkeypatch.setattr("ramalama.sandbox._query_router_models", lambda port, api_key=None: [])
     monkeypatch.setattr("ramalama.sandbox.stop_container", lambda *args, **kwargs: None)
     args = SimpleNamespace(dryrun=False, port=8080, name="router")
 

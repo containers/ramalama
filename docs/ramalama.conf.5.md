@@ -195,16 +195,20 @@ Override via `RAMALAMA_TRANSPORT`.
 ## RAMALAMA.PROVIDER TABLE
 The `ramalama.provider` table configures hosted API providers.
 
+Deprecated: the entire `ramalama.provider.<name>` namespace will be removed in a future
+release, together with the hosted API transports it configures. Use
+`ramalama chat --url <endpoint> --api-key <key> --model <model>` instead.
+
 `[[ramalama.provider]]`
 
 **openai:**
-Configuration block for the OpenAI hosted provider.
+Configuration block for the OpenAI hosted provider. Deprecated, see above.
 
 `[[ramalama.provider.openai]]`
 
 **api_key**=""
 
-`ramalama.provider.openai.api_key` overrides `RAMALAMA_API_KEY` when set.
+`ramalama.provider.openai.api_key` overrides `RAMALAMA_API_KEY` when set. Deprecated.
 
 ## RAMALAMA.BENCHMARKS TABLE
 The `ramalama.benchmarks` table contains benchmark settings.
@@ -239,14 +243,14 @@ This setting affects which container image is selected and how GPU resources are
 Valid options: `auto`, `vulkan`, `rocm`, `cuda`, `sycl`, `openvino`, `cann`, `musa`.
 
 - **auto** (default): Automatically selects the preferred backend based on detected GPU:
-  - AMD GPUs: vulkan (Linux/macOS) or rocm (Windows)
-  - NVIDIA GPUs: cuda
-  - Intel GPUs: vulkan (Linux/macOS) or sycl (Windows); openvino available as explicit option
+  - AMD GPUs: vulkan (Linux/macOS) or rocm (WSL2)
+  - NVIDIA GPUs: cuda; vulkan available as explicit option
+  - Intel GPUs: vulkan (Linux/macOS) or sycl (WSL2); openvino available as explicit option
   - Ascend NPUs: cann
   - MUSA GPUs: musa
   - No GPU: vulkan (CPU fallback)
 
-- **vulkan**: Use Vulkan-based inference (compatible with AMD, Intel, and CPU)
+- **vulkan**: Use Vulkan-based inference (compatible with AMD, NVIDIA, Intel, and CPU)
 - **rocm**: Use AMD ROCm backend (AMD GPUs only)
 - **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
 - **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
@@ -254,7 +258,7 @@ Valid options: `auto`, `vulkan`, `rocm`, `cuda`, `sycl`, `openvino`, `cann`, `mu
 - **cann**: Use Huawei CANN backend (Ascend NPUs only); uses `quay.io/ramalama/cann`
 - **musa**: Use Moore Threads MUSA backend (MUSA GPUs only); uses `quay.io/ramalama/musa`
 
-**Platform-specific behavior**: On Windows, vulkan is not supported on WSL2, so vendor-specific backends (rocm for AMD, sycl for Intel) are automatically preferred when using `backend="auto"`.
+**Platform-specific behavior**: vulkan is not supported on WSL2, so vendor-specific backends (rocm for AMD, sycl for Intel) are automatically preferred when using `backend="auto"`. This covers both Windows and ramalama running inside a WSL2 distro, which otherwise looks like Linux.
 
 Example configuration:
 
@@ -269,6 +273,10 @@ Options: `Q2_K`, `Q3_K_S`, `Q3_K_M`, `Q3_K_L`, `Q4_0`, `Q4_K_S`, `Q4_K_M`, `Q5_0
 **ngl**=-1: Number of layers to offload to the GPU. Set to -1 to offload all layers.
 
 **ncmoe**=0: Keep the Mixture of Experts (MoE) weights of the first N layers in the CPU.  
+
+**server_api_key**="": Require clients to present this API key on requests to the AI Model server.
+Empty (the default) means no authentication. Equivalent to passing `--api-key` to `ramalama run` or
+`ramalama serve`. Generate a random key with `openssl rand -hex 32`.
 
 **temp**="0.8": Response sampling temperature.
 - Lower values: more deterministic output

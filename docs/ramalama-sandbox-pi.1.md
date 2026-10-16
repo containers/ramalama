@@ -57,19 +57,22 @@ GPU backend to use for inference (default: auto).
 Available backends depend on the detected GPU hardware.
 
 **auto** (default): Automatically selects the preferred backend based on your GPU:
-- **AMD GPUs**: vulkan (Linux/macOS) or rocm (Windows)
-- **NVIDIA GPUs**: cuda
-- **Intel GPUs**: vulkan (Linux/macOS) or sycl (Windows); openvino available as explicit option
+- **AMD GPUs**: vulkan (Linux/macOS) or rocm (WSL2)
+- **NVIDIA GPUs**: cuda; vulkan available as explicit option
+- **Intel GPUs**: vulkan (Linux/macOS) or sycl (WSL2); openvino available as explicit option
 - **Ascend NPUs**: cann
 - **MUSA GPUs**: musa
 - **No GPU**: vulkan (CPU fallback)
 
 **Platform-specific behavior**:
 - On **Linux/macOS**, Vulkan provides broad compatibility and is preferred for AMD and Intel GPUs
-- On **Windows**, vulkan is not supported on WSL2, so vendor-specific backends (rocm, sycl) are preferred
+- On **WSL2**, Vulkan is a poor default, so vendor-specific backends (rocm, sycl) are preferred. It
+  remains available, and `--backend=vulkan` still selects it. This covers both Windows, where
+  containers run in the WSL2-backed machine, and ramalama running inside a WSL2 distro, which
+  otherwise looks like Linux
 
 **Explicit backend selection**:
-- **vulkan**: Use Vulkan-based inference (compatible with AMD, Intel, and CPU)
+- **vulkan**: Use Vulkan-based inference (compatible with AMD, NVIDIA, Intel, and CPU)
 - **rocm**: Use AMD ROCm backend (AMD GPUs only)
 - **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
 - **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
@@ -176,7 +179,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers and the selected `--backend`.
 For example: `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.24.0 of RamaLama pulls an image with a `:0.24` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.25.0 of RamaLama pulls an image with a `:0.25` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells

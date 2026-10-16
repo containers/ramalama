@@ -138,6 +138,8 @@ ramalama run granite
 
 This is particularly useful in multi-GPU systems where you want to dedicate specific GPUs to different workloads.
 
+Where the CDI configuration has an entry for each GPU, only the selected ones are passed into the container by the NVIDIA container toolkit; where it only defines `all`, every detected GPU is. Either way the host's other GPU devices, such as `/dev/dri` for an integrated GPU, are left out, since the Vulkan backend offloads onto every device it can enumerate and would otherwise use them. Pass `--device /dev/dri` to `ramalama run` or `ramalama serve` to add them back.
+
 If `CUDA_VISIBLE_DEVICES` is set to an empty string, RamaLama treats it as unset and follows the default GPU-selection behavior.
 
 ```bash

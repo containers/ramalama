@@ -31,7 +31,13 @@ multiple model arguments, only the specified models are served.
 | Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)|
 | rlcr          | rlcr://   | [`ramalama.com`](https://registry.ramalama.com) |
 | OCI Container Registries | oci://, docker:// | [`opencontainers.org`](https://opencontainers.org)||||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
-| Hosted API Providers | openai:// | [`api.openai.com`](https://api.openai.com)|
+| Hosted API Providers (deprecated) | openai:// | [`api.openai.com`](https://api.openai.com)|
+
+The hosted API transports are deprecated and will be removed in a future release. Instead of
+`ramalama run openai://<model>`, use `ramalama chat --url https://api.openai.com/v1 --api-key <key> --model <model>`,
+which reaches the same endpoint without a transport. Note that the deprecated transport calls the
+OpenAI Responses API, while `ramalama chat` calls the chat completions API.
+
 Models can be specified using a shortname (e.g. `tiny`) which is resolved via `shortnames.conf`, or with an explicit transport prefix such as `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, or `file://`. Models in the `<org>/<model>` format without a prefix are pulled from Hugging Face.
 
 The default transport can be overridden in the `ramalama.conf` file or via the `RAMALAMA_TRANSPORT` environment variable. For example, `export RAMALAMA_TRANSPORT=huggingface` changes RamaLama to use the Hugging Face transport for unqualified model names.
@@ -71,6 +77,80 @@ The default can be overridden in the `ramalama.conf` file.
 [//]: # (END   included file options/api.md)
 
 
+[//]: # (BEGIN included file options/server-api-key.md)
+#### **--api-key**=*key*
+Require clients to present this API key on requests to the AI Model server.
+Only supported by the llama.cpp runtime. The default is no authentication.
+
+The key is handed to the server through the `LLAMA_API_KEY` environment
+variable rather than on its command line, so it appears in neither the
+`llama-server` nor the container engine arguments. Passing it as `--api-key`
+does put it in ramalama's own arguments, where it is visible in the host
+process table for as long as the command runs.
+
+There are three ways to supply it, with different exposure:
+
+| How | Where the key ends up |
+| --- | --- |
+| `--api-key <key>` | ramalama's own argv, so visible in `ps` output and in shell history |
+| `ramalama.conf` | a file on disk; protect it with file permissions |
+| `RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY` | ramalama's environment, readable through `/proc/<pid>/environ` by the same user and by root, but absent from `ps` output and from disk |
+
+Clients may present it as either an `Authorization: Bearer <key>` or an
+`X-Api-Key: <key>` header; requests without a valid key get a `401`. The
+`/health` and `/v1/health` endpoints and the web UI assets stay
+public so that health checks keep working. Whether the model listing
+(`/models`, `/v1/models`) is public depends on the llama.cpp version in the
+image; do not rely on it being either way.
+
+
+[//]: # (BEGIN included file options/api-key-sources.md)
+Generate a random key on the shell with:
+
+```
+KEY=$(openssl rand -hex 32)
+```
+
+The default can be set per-runtime in `ramalama.conf`:
+
+```
+[ramalama.runtimes.llama_cpp]
+server_api_key = "..."
+```
+
+or through the matching environment variable, which overrides the file:
+
+```
+export RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY="$KEY"
+```
+
+[//]: # (END   included file options/api-key-sources.md)
+
+Caveats:
+
+* With `--generate`, the key is written into the generated Quadlet, Kubernetes
+  or Compose file in plaintext, because those files are read without ramalama
+  in the picture. Treat the generated file as a secret.
+* When the server runs in a container, the key is readable via
+  `podman inspect` / `docker inspect` on the container.
+* With `--webui on`, the web UI itself still loads, because its assets are
+  public, but its API calls are rejected unless the UI is configured with the
+  key.
+* Not supported together with `--api llama-stack`: llama-stack serves the only
+  published port and can neither require a key of its clients nor present one
+  to the model server behind it.
+
+With `--rag`, the single key covers the whole pipeline. It guards all three
+published ports: the RAG proxy the user talks to, and the model and embedding
+`llama-server`s behind it. The proxy also presents the key upstream, so no leg
+of the pipeline is unauthenticated. Its `/health` endpoint stays public. The
+first caveat above does not apply, because `--rag` runs the pipeline rather
+than writing it out; `--generate` is not honoured alongside it, and the key
+stays out of the engine arguments.
+
+[//]: # (END   included file options/server-api-key.md)
+
+
 [//]: # (BEGIN included file options/authfile.md)
 #### **--authfile**=*path*
 Path to the authentication file for OCI registries.
@@ -86,19 +166,22 @@ GPU backend to use for inference (default: auto).
 Available backends depend on the detected GPU hardware.
 
 **auto** (default): Automatically selects the preferred backend based on your GPU:
-- **AMD GPUs**: vulkan (Linux/macOS) or rocm (Windows)
-- **NVIDIA GPUs**: cuda
-- **Intel GPUs**: vulkan (Linux/macOS) or sycl (Windows); openvino available as explicit option
+- **AMD GPUs**: vulkan (Linux/macOS) or rocm (WSL2)
+- **NVIDIA GPUs**: cuda; vulkan available as explicit option
+- **Intel GPUs**: vulkan (Linux/macOS) or sycl (WSL2); openvino available as explicit option
 - **Ascend NPUs**: cann
 - **MUSA GPUs**: musa
 - **No GPU**: vulkan (CPU fallback)
 
 **Platform-specific behavior**:
 - On **Linux/macOS**, Vulkan provides broad compatibility and is preferred for AMD and Intel GPUs
-- On **Windows**, vulkan is not supported on WSL2, so vendor-specific backends (rocm, sycl) are preferred
+- On **WSL2**, Vulkan is a poor default, so vendor-specific backends (rocm, sycl) are preferred. It
+  remains available, and `--backend=vulkan` still selects it. This covers both Windows, where
+  containers run in the WSL2-backed machine, and ramalama running inside a WSL2 distro, which
+  otherwise looks like Linux
 
 **Explicit backend selection**:
-- **vulkan**: Use Vulkan-based inference (compatible with AMD, Intel, and CPU)
+- **vulkan**: Use Vulkan-based inference (compatible with AMD, NVIDIA, Intel, and CPU)
 - **rocm**: Use AMD ROCm backend (AMD GPUs only)
 - **cuda**: Use NVIDIA CUDA backend (NVIDIA GPUs only)
 - **sycl**: Use Intel SYCL/oneAPI backend (Intel GPUs only)
@@ -228,7 +311,7 @@ OCI container image to run with specified AI model. RamaLama defaults to using
 images based on the accelerator it discovers and the selected `--backend`.
 For example: `quay.io/ramalama/ramalama`. See the table below for all default images.
 The default image tag is based on the minor version of the RamaLama package.
-Version 0.24.0 of RamaLama pulls an image with a `:0.24` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
+Version 0.25.0 of RamaLama pulls an image with a `:0.25` tag from the quay.io/ramalama OCI repository. The --image option overrides this default.
 
 The default can be overridden in the `ramalama.conf` file or via the
 RAMALAMA_IMAGE environment variable. `export RAMALAMA_IMAGE=quay.io/ramalama/aiimage:1.2` tells
@@ -530,6 +613,23 @@ $ podman ps
 CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS         PORTS                   NAMES
 09b0e0d26ed2  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  32 seconds ago  Up 32 seconds  0.0.0.0:8080->8080/tcp  ramalama_sTLNkijNNP
 3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8081->8081/tcp  ramalama_YMPQvJxN97
+```
+
+### Require an API key on the served endpoint
+Generate a random key and hand the same value to the server and to clients.
+```
+$ KEY=$(openssl rand -hex 32)
+
+$ ramalama serve -d --api-key "$KEY" granite
+09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
+
+$ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/props
+401
+
+$ curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $KEY" http://localhost:8080/props
+200
+
+$ ramalama chat --api-key "$KEY"
 ```
 
 ### Generate quadlet service off of HuggingFace granite Model

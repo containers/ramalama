@@ -13,6 +13,23 @@ CONTAINER ID  IMAGE                             COMMAND               CREATED   
 3f64927f11a5  quay.io/ramalama/ramalama:latest  /usr/bin/ramalama...  17 seconds ago  Up 17 seconds  0.0.0.0:8081->8081/tcp  ramalama_YMPQvJxN97
 ```
 
+### Require an API key on the served endpoint
+Generate a random key and hand the same value to the server and to clients.
+```
+$ KEY=$(openssl rand -hex 32)
+
+$ ramalama serve -d --api-key "$KEY" granite
+09b0e0d26ed28a8418fb5cd0da641376a08c435063317e89cf8f5336baf35cfa
+
+$ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/props
+401
+
+$ curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $KEY" http://localhost:8080/props
+200
+
+$ ramalama chat --api-key "$KEY"
+```
+
 ### Generate quadlet service off of HuggingFace granite Model
 ```
 $ ramalama serve --name MyGraniteServer --generate=quadlet granite

@@ -10,11 +10,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - ACCEL_ENV=true
-    devices:
-      - "/dev/accel:/dev/accel"
-      - "/dev/dri:/dev/dri"
-      - "/dev/kfd:/dev/kfd"
+      - CUDA_VISIBLE_DEVICES=0
     deploy:
       resources:
         reservations:

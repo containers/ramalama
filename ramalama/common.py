@@ -11,7 +11,7 @@ import shutil
 import string
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -56,6 +56,22 @@ def sanitize_filename(filename: str) -> str:
 
 
 podman_machine_accel = False
+
+# CDI device names of the NVIDIA GPUs the user narrowed CUDA_VISIBLE_DEVICES
+# down to, set by check_nvidia(). Empty when every detected GPU is in play.
+nvidia_selected_devices: list[str] = []
+
+
+def container_cuda_visible_devices(value: str) -> str:
+    """CUDA_VISIBLE_DEVICES as it should read inside the container.
+
+    Where the selection is narrowed, only those GPUs are passed in and the
+    container numbers them from zero, so the host's indices no longer describe
+    them. Returns the value unchanged when every GPU is in play.
+    """
+    if not nvidia_selected_devices:
+        return value
+    return ",".join(str(i) for i in range(len(nvidia_selected_devices)))
 
 
 def confirm_no_gpu(name, provider) -> bool:
@@ -106,7 +122,10 @@ def apple_vm(engine: SUPPORTED_ENGINES, config: Optional[Config] = None) -> bool
         major = int(version.split('.')[0])
         if major < 6:
             podman_machine_list.append("--all-providers")
-    except (subprocess.CalledProcessError, FileNotFoundError, ValueError, AttributeError) as e:
+    except FileNotFoundError:
+        # podman is not installed, so there is no podman machine to look for.
+        return False
+    except (subprocess.CalledProcessError, ValueError, AttributeError) as e:
         logger.warning(f"Failed to parse podman version: {e}")
     try:
         machines_json = run_cmd(podman_machine_list, ignore_stderr=True, encoding="utf-8").stdout.strip()
@@ -122,6 +141,17 @@ def apple_vm(engine: SUPPORTED_ENGINES, config: Optional[Config] = None) -> bool
 
 def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
+
+_DEPRECATION_WARNED: set[str] = set()
+
+
+def warn_deprecated(feature: str, detail: str) -> None:
+    """Emit a deprecation warning to stderr, once per feature per process."""
+    if feature in _DEPRECATION_WARNED:
+        return
+    _DEPRECATION_WARNED.add(feature)
+    perror(f"Warning: {feature} is deprecated and will be removed in a future RamaLama release. {detail}")
 
 
 def available(cmd: str) -> bool:
@@ -438,9 +468,13 @@ def find_in_cdi(devices: list[str]) -> tuple[list[str], list[str]]:
     for device in devices:
         if device in cdi_device_names:
             configured.append(device)
-        # A device can be specified by a prefix of the uuid
-        elif device.startswith("GPU") and any(name.startswith(device) for name in cdi_device_names):
-            configured.append(device)
+        # A device can be specified by a prefix of the uuid. Record the full
+        # name it resolves to: it reaches "--device nvidia.com/gpu=<name>",
+        # which matches the CDI configuration exactly and not by prefix.
+        elif device.startswith("GPU") and (
+            full_name := next((name for name in cdi_device_names if name.startswith(device)), None)
+        ):
+            configured.append(full_name)
         else:
             perror(f"Device {device} does not have a CDI configuration")
             unconfigured.append(device)
@@ -466,6 +500,47 @@ def check_metal(args: ContainerArgType) -> bool:
     if args.container:
         return False
     return platform.system() == "Darwin"
+
+
+@lru_cache(maxsize=1)
+def in_wsl() -> bool:
+    """True when the interpreter itself is running inside a WSL distro.
+
+    False on native Windows, where ramalama drives a podman machine instead.
+    """
+    try:
+        with open("/proc/sys/kernel/osrelease") as f:
+            return "microsoft" in f.read().lower()
+    except OSError:
+        return False
+
+
+def is_windows_or_wsl() -> bool:
+    """True where containers reach GPUs through WSL rather than native devices.
+
+    Covers both a native Windows interpreter, which runs containers in the
+    WSL2-backed podman machine, and ramalama running inside a WSL distro
+    itself, which platform.system() reports as "Linux".
+
+    WSL exposes GPUs through /dev/dxg, so Vulkan there means mesa's dzn driver
+    translating to D3D12 (no cooperative matrix support, no compute tuning) or
+    a silent llvmpipe fallback.
+    """
+    return platform.system() == "Windows" or in_wsl()
+
+
+@lru_cache(maxsize=1)
+def has_nvidia_vulkan_icd() -> bool:
+    """True when NVIDIA's Vulkan ICD manifest is installed on the host.
+
+    The container toolkit injects the ICD from the host driver installation, so
+    when it is missing here the vulkan backend finds only mesa's llvmpipe inside
+    the container and runs on the CPU instead of failing.
+    """
+    return any(
+        glob.glob(os.path.join(host_path(icd_dir), "*nvidia*.json"))
+        for icd_dir in ("/usr/share/vulkan/icd.d", "/etc/vulkan/icd.d")
+    )
 
 
 @lru_cache(maxsize=1)
@@ -514,6 +589,16 @@ def check_nvidia() -> Optional[Literal["cuda"]]:
             configured.remove("all")
             if not configured:
                 configured = indices
+
+        # Record a narrowed selection so the engine can pass just those GPUs
+        # into the container. Not every backend filters on CUDA_VISIBLE_DEVICES
+        # (llama.cpp's Vulkan backend indexes Vulkan's own device enumeration),
+        # so the selection has to happen at the device level to be honoured.
+        # These names came back from find_in_cdi(), so they are known to the CDI
+        # configuration; the fallback above to every index has not been checked
+        # and stays on the "all" device.
+        global nvidia_selected_devices
+        nvidia_selected_devices = configured if set(configured) != set(indices) else []
 
         os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(configured)
         return "cuda"
@@ -678,7 +763,19 @@ GPUEnvVar: TypeAlias = Literal[
 ]
 
 
-def get_gpu_devices():
+def get_gpu_devices(accel_env_vars: Optional[Collection[str]] = None) -> dict[str, str]:
+    """The host GPU devices to hand to the container, given the accelerator in play.
+
+    An NVIDIA GPU does not come in this way: the container toolkit injects the
+    device nodes of the GPUs that were asked for, DRM nodes included. Mapping
+    the host's GPU devices in as well can then only add ones that are not the
+    accelerator in play - an iGPU on a hybrid host, or a GPU left out of a
+    narrowed selection - and llama.cpp's Vulkan backend offloads onto every
+    device it can enumerate. "--device" remains for anyone who wants them.
+    """
+    if "CUDA_VISIBLE_DEVICES" in (get_gpu_type_env_vars() if accel_env_vars is None else accel_env_vars):
+        return {}
+
     devices = {}
     for dev in ["dri", "kfd", "accel"]:
         path = "/dev/" + dev
