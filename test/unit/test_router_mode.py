@@ -183,3 +183,35 @@ class TestRouterModeSubcommandArgs:
         serve_parser = name_map["serve"]
         model_action = next(a for a in serve_parser._actions if "MODEL" in getattr(a, "dest", ""))
         assert model_action.nargs == "*"
+
+
+# ---------------------------------------------------------------------------
+# TLS in router mode
+# ---------------------------------------------------------------------------
+
+
+class TestRouterModeTLS:
+    def setup_method(self):
+        self.plugin = LlamaCppPlugin()
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.set_accel_env_vars")
+    @patch.object(LlamaCppPlugin, "_resolve_specified_models", return_value=[("/store/blob", "mymodel")])
+    def test_tls_files_are_mounted(self, mock_resolve, mock_accel):
+        args = make_ns(container=True, dryrun=True, MODEL=["ollama://mymodel"])
+        args.store = "/fake/store"
+        args.image = "testimage"
+        args.name = "router"
+        args.engine = "podman"
+        args.pull = "never"
+        args.quiet = True
+        args.selinux = False
+        args.detach = False
+        args.tls_cert_file = "/host/certs/tls.crt"
+        args.tls_key_file = "/host/certs/tls.key"
+
+        engine = self.plugin._build_router_engine(args)
+
+        assert "--mount=type=bind,src=/host/certs/tls.crt,destination=/mnt/tls/tls.crt,ro" in engine.exec_args
+        assert "--mount=type=bind,src=/host/certs/tls.key,destination=/mnt/tls/tls.key,ro" in engine.exec_args
+        # The server itself is told about the mounted paths
+        assert "/mnt/tls/tls.crt" in engine.exec_args

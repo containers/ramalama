@@ -343,3 +343,42 @@ def test_kube_no_devices(monkeypatch):
     assert "name: dri" not in content
     assert "name: kfd" not in content
     assert "name: accel" not in content
+
+
+def test_kube_tls_volumes(monkeypatch):
+    """The certificate and key are each mounted from the host into the
+    container at their well known paths."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.kube.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.kube.version", lambda: "test-version")
+
+    args = Args()
+    args.tls_cert_file = "/host/certs/tls.crt"
+    args.tls_key_file = "/host/certs/tls.key"
+
+    content = (
+        Kube("test-model", ("/path/to/model", "model"), None, None, args, ["llama-server"], None, False)
+        .generate()
+        .content
+    )
+
+    for name, host_path, mount_path in (
+        ("tls-cert", "/host/certs/tls.crt", "/mnt/tls/tls.crt"),
+        ("tls-key", "/host/certs/tls.key", "/mnt/tls/tls.key"),
+    ):
+        assert f"- mountPath: {mount_path}\n          name: {name}\n          readOnly: true" in content
+        assert f"- hostPath:\n          path: {host_path}\n        name: {name}" in content
+
+
+def test_kube_no_tls_volumes_without_tls(monkeypatch):
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.kube.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.kube.version", lambda: "test-version")
+
+    content = (
+        Kube("test-model", ("/path/to/model", "model"), None, None, Args(), ["llama-server"], None, False)
+        .generate()
+        .content
+    )
+
+    assert "/mnt/tls" not in content

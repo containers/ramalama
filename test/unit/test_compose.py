@@ -353,3 +353,29 @@ def test_compose_no_devices(monkeypatch):
     result = compose.generate().content
 
     assert "devices:" not in result
+
+
+def test_compose_tls_volumes(monkeypatch):
+    """The TLS material is mounted read-only from its host paths."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    args = Args()
+    args.tls_cert_file = "/host/certs/tls.crt"
+    args.tls_key_file = "/host/certs/tls.key"
+
+    result = Compose("test", ("/a", "/b"), None, None, args, [], None).generate().content
+
+    assert '- "/host/certs/tls.crt:/mnt/tls/tls.crt:ro"' in result
+    assert '- "/host/certs/tls.key:/mnt/tls/tls.key:ro"' in result
+
+
+def test_compose_no_tls_volumes_without_tls(monkeypatch):
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    result = Compose("test", ("/a", "/b"), None, None, Args(), [], None).generate().content
+
+    assert "/mnt/tls" not in result
