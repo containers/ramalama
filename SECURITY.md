@@ -7,6 +7,8 @@ If you discover a security vulnerability in RamaLama, please report it through G
 Please DO NOT report the issue publicly via the GitHub issue tracker,
 mailing list, or IRC.  Please do **not** create a public issue.
 
+For more information, please view the [Incident Policy Report](docs/security/INCIDENT_RESPONSE_POLICY.md).
+
 ### How to Report
 
 1. Go to [our security advisory page](https://github.com/containers/ramalama/security/advisories/new) to privately report the vulnerability.
