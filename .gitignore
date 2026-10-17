@@ -30,3 +30,5 @@ uv.lock
 *~
 *#
 .mypy_cache
+
+.venv/
