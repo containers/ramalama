@@ -124,7 +124,10 @@ class CpuDetector(HardwareDetector):
 
         if system == "Linux":
             try:
-                with open("/proc/cpuinfo", "r") as f:
+                # errors="replace": a UnicodeDecodeError is a ValueError, so
+                # "except OSError" would not catch it, and CpuDetector runs
+                # unguarded in detect_all_hardware().
+                with open("/proc/cpuinfo", "r", errors="replace") as f:
                     for line in f:
                         if line.startswith("model name"):
                             return line.split(":", 1)[1].strip()
@@ -425,13 +428,33 @@ class MthreadsDetector(HardwareDetector):
         except (ValueError, KeyError):
             return []
 
+        # Nothing here can assume a shape: this is whatever mthreads-gmi
+        # printed. get_accel() calls through to here without a guard, so an
+        # unexpected payload must come back empty rather than raise.
+        if not isinstance(data, dict):
+            return []
+
+        # "GPU": null is how a tool with nothing to report may well say so,
+        # and iterating that raises rather than yielding nothing.
+        gpus = data.get("GPU")
+        if not isinstance(gpus, list):
+            return []
+
         devices: list[DeviceInfo] = []
-        for gpu in data.get("GPU", []):
-            name = gpu.get("Product Name", "Moore Threads GPU")
-            total_str = gpu.get("FB Memory Usage", {}).get("Total", "")
-            total_bytes = self._parse_memory_string(total_str)
+        for gpu in gpus:
+            if not isinstance(gpu, dict):
+                continue
+            name = gpu.get("Product Name")
+            fb_usage = gpu.get("FB Memory Usage")
+            total = fb_usage.get("Total") if isinstance(fb_usage, dict) else None
+            total_bytes = self._parse_memory_string(total) if isinstance(total, str) else 0
             if total_bytes > 0:
-                devices.append(DeviceInfo(name=name or "Moore Threads GPU", memory_bytes=total_bytes))
+                devices.append(
+                    DeviceInfo(
+                        name=name if isinstance(name, str) and name else "Moore Threads GPU",
+                        memory_bytes=total_bytes,
+                    )
+                )
 
         return devices
 
@@ -821,12 +844,12 @@ def clear_all_detection_caches() -> None:
 
 @lru_cache(maxsize=1)
 def detect_all_hardware() -> tuple[AcceleratorInfo, ...]:
-    import ramalama.hw_detect as _self
-
     results: list[AcceleratorInfo] = []
     for accel_type, fn_name in _DETECTOR_NAMES:
         try:
-            fn: Callable[[], list[DeviceInfo]] = getattr(_self, fn_name)
+            # Looked up by name, not held as a function object, so that tests
+            # patching ramalama.hw_detect.detect_* are picked up here.
+            fn: Callable[[], list[DeviceInfo]] = globals()[fn_name]
             devices = fn()
             if devices:
                 total = sum(d.memory_bytes for d in devices)
