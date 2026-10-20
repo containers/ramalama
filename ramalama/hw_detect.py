@@ -245,9 +245,16 @@ class NvidiaDetector(HardwareDetector):
                 continue
             try:
                 idx = int(parts[0])
-                memory_mib = int(parts[2])
             except ValueError:
                 continue
+            try:
+                memory_mib = int(parts[2])
+            except ValueError:
+                # nvidia-smi reports "[N/A]" for memory.total on some drivers
+                # and virtualised GPUs. The GPU is still usable and check_nvidia()
+                # only needs the index and uuid, so keep it and report no memory
+                # rather than losing CUDA entirely.
+                memory_mib = 0
             devices.append(DeviceInfo(name=parts[3], memory_bytes=memory_mib * 1024 * 1024, index=idx, uuid=parts[1]))
 
         return devices
@@ -584,7 +591,9 @@ class AppleSiliconDetector(HardwareDetector):
         return "metal"
 
     def detect(self) -> list[DeviceInfo]:
-        if platform.system() != "Darwin":
+        # An Intel Mac has no unified memory, so the system RAM and CPU brand
+        # read below describe the CPU rather than a Metal accelerator.
+        if platform.system() != "Darwin" or platform.machine() not in ("arm64", "aarch64"):
             return []
 
         memsize = _sysctl("hw.memsize")
