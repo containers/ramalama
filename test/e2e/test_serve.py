@@ -924,6 +924,27 @@ def test_router_mode_nocontainer_fails():
 
 @pytest.mark.e2e
 @skip_if_no_container
+def test_router_mode_quadlet_generation(shared_ctx):
+    """ramalama serve (no model) with --generate writes a quadlet instead of starting the server.
+
+    See https://github.com/containers/ramalama/issues/2929
+    """
+    ctx = shared_ctx
+    container_file = Path(ctx.workspace_dir) / "router.container"
+    result = ctx.check_output(
+        ["ramalama", "serve", "--port", "1234", "--pull", "never", "--generate", "quadlet", "--name", "router"],
+        stderr=STDOUT,
+    )
+    assert re.search(r".*Generating quadlet file: router\.container", result)
+    with container_file.open("r") as f:
+        content = f.read()
+        assert re.search(r".*PublishPort=127\.0\.0\.1:1234:1234", content)
+        assert re.search(r".*llama-server --host (::|0\.0\.0\.0) --port 1234 --models-dir /mnt/models", content)
+        assert re.search(r".*Mount=type=bind,.*,target=/mnt/models/.*\.gguf,ro", content)
+
+
+@pytest.mark.e2e
+@skip_if_no_container
 def test_router_mode_models_max_dry_run(shared_ctx, test_model):
     """--models-max flag is passed through to llama-server."""
     ctx = shared_ctx
