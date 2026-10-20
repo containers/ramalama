@@ -148,6 +148,18 @@ class TestCheckNvidia:
         printed = " ".join(str(c.args[0]) for c in mock_perror.call_args_list)
         assert "nvidia-ctk cdi generate" in printed
 
+    @pytest.mark.parametrize("value", ["0, 1", " 0,1 ", "0,1,"])
+    @patch("ramalama.accel.find_in_cdi")
+    @patch("ramalama.hw_detect.detect_nvidia")
+    def test_check_nvidia_tolerates_untidy_visible_devices(self, mock_detect, mock_find_in_cdi, value):
+        # An entry that keeps its spaces matches no index and no uuid, which
+        # reads as "device not found" and turns CUDA off altogether.
+        os.environ["CUDA_VISIBLE_DEVICES"] = value
+        mock_find_in_cdi.return_value = (["0", "1", "all"], [])
+        mock_detect.return_value = self._two_gpus()
+        assert check_nvidia() == "cuda"
+        assert mock_find_in_cdi.call_args.args[0] == ["0", "1", "all"]
+
     @patch("ramalama.accel.find_in_cdi")
     @patch("ramalama.hw_detect.detect_nvidia")
     def test_check_nvidia_all_gpus_are_not_a_selection(self, mock_detect, mock_find_in_cdi):

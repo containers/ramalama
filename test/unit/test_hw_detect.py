@@ -295,6 +295,29 @@ class TestDetectCpu:
         assert result[0].name == "AMD Ryzen 7 5800X"
         assert result[0].memory_bytes == 4096 * 8388608
 
+    def test_linux_model_name_with_undecodable_bytes(self, tmp_path):
+        # A UnicodeDecodeError is a ValueError, so "except OSError" does not
+        # catch it, and CpuDetector runs unguarded in detect_all_hardware().
+        cpuinfo = tmp_path / "cpuinfo"
+        cpuinfo.write_bytes(b"processor\t: 0\nmodel name\t: Weird \xff CPU\n")
+
+        real_open = builtins.open
+
+        def fake_open(path, *args, **kwargs):
+            # Hand the real kwargs through to a real file, so the decoding
+            # behaviour under test is the one that actually runs.
+            return real_open(cpuinfo if path == "/proc/cpuinfo" else path, *args, **kwargs)
+
+        with (
+            patch("ramalama.hw_detect.platform.system", return_value="Linux"),
+            patch("ramalama.hw_detect.os.sysconf", side_effect=[4096, 8388608]),
+            patch("builtins.open", side_effect=fake_open),
+        ):
+            result = CpuDetector().detect()
+
+        assert len(result) == 1
+        assert result[0].name.startswith("Weird")
+
     def test_windows_registry_brand(self):
         mock_key = MagicMock()
         mock_winreg = MagicMock()
@@ -490,6 +513,40 @@ class TestDetectMthreads:
         with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
             result = MthreadsDetector().detect()
         assert result == []
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            pytest.param('["gpu0"]', id="top-level-array"),
+            pytest.param('"a string"', id="top-level-string"),
+            pytest.param("42", id="top-level-number"),
+            pytest.param('{"GPU": ["not-an-object"]}', id="gpu-entry-not-an-object"),
+            pytest.param('{"GPU": null}', id="null-gpu-list"),
+            pytest.param('{"GPU": 5}', id="numeric-gpu-list"),
+            pytest.param('{"GPU": {"0": {}}}', id="gpu-list-is-an-object"),
+            pytest.param('{"GPU": [{"Product Name": "MTT S80", "FB Memory Usage": null}]}', id="null-memory-usage"),
+            pytest.param(
+                '{"GPU": [{"Product Name": "MTT S80", "FB Memory Usage": {"Total": 49152}}]}',
+                id="non-string-total",
+            ),
+        ],
+    )
+    def test_unexpected_json_shape_is_not_fatal(self, payload):
+        # get_accel() -> check_mthreads() reaches the detector with no guard of
+        # its own, so anything other than the expected shape has to come back
+        # empty rather than raise.
+        mock_result = MagicMock()
+        mock_result.stdout = payload
+        with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
+            assert MthreadsDetector().detect() == []
+
+    def test_named_gpu_with_null_name_falls_back(self):
+        mock_result = MagicMock()
+        mock_result.stdout = json.dumps({"GPU": [{"Product Name": None, "FB Memory Usage": {"Total": "16384MiB"}}]})
+        with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
+            result = MthreadsDetector().detect()
+        assert len(result) == 1
+        assert result[0].name == "Moore Threads GPU"
 
 
 class TestParseMemoryString:

@@ -64,7 +64,7 @@ def load_cdi_config(spec_dirs: list[str]) -> Optional[CDI_RETURN_TYPE]:
                 file_path = os.path.join(root, file)
                 config = None
                 try:
-                    with open(file_path, "r") as stream:
+                    with open(file_path, "r", encoding="utf-8") as stream:
                         if ext == ".json":
                             config = json.load(stream)
                         else:
@@ -153,7 +153,10 @@ def check_nvidia() -> Optional[Literal["cuda"]]:
     uuids = [d.uuid for d in devices]
 
     cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "")
-    visible_devices = cuda_visible_devices.split(',') if cuda_visible_devices else []
+    # Tolerate "0, 1" and a trailing comma: an entry that keeps its spaces
+    # matches no index and no uuid, which reads as "device not found" and
+    # turns CUDA off altogether.
+    visible_devices = [stripped for device in cuda_visible_devices.split(',') if (stripped := device.strip())]
     for device in visible_devices:
         if device not in indices and not any(uuid.startswith(device) for uuid in uuids):
             perror(f"{device} not found")
