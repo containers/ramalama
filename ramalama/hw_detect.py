@@ -329,7 +329,7 @@ class IntelDetector(HardwareDetector):
 
             if device_id in INTEL_GPU_SPECS:
                 gpu_name, vram = INTEL_GPU_SPECS[device_id]
-                devices.append(DeviceInfo(name=gpu_name, memory_bytes=vram))
+                devices.append(DeviceInfo(name=gpu_name, memory_bytes=vram, index=len(devices)))
 
         return devices
 
@@ -350,7 +350,7 @@ class IntelDetector(HardwareDetector):
                 if memory is None or memory == 0:
                     memory = gpu.AdapterRAM or 0
                 if memory > 0:
-                    devices.append(DeviceInfo(name=gpu_name, memory_bytes=memory))
+                    devices.append(DeviceInfo(name=gpu_name, memory_bytes=memory, index=len(devices)))
         except Exception as e:
             logger.debug(f"Intel Windows detection failed: {e}")
 

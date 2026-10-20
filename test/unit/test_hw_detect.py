@@ -237,6 +237,36 @@ class TestDetectIntelLinux:
         assert len(result) == 2
         assert result[0].name == "Intel Arc B580"
         assert result[1].name == "Intel Arc A750"
+        # Numbered so check_intel() can name them in INTEL_VISIBLE_DEVICES.
+        assert [d.index for d in result] == [0, 1]
+
+    def test_indices_skip_unrecognised_devices(self):
+        # An unknown card between two known ones must not leave a gap: the
+        # indices name the detected devices, not the PCI slots scanned.
+        def multi_glob(pattern):
+            if "xe" in pattern:
+                return [
+                    "/sys/bus/pci/drivers/xe/0000:03:00.0/device",
+                    "/sys/bus/pci/drivers/xe/0000:04:00.0/device",
+                    "/sys/bus/pci/drivers/xe/0000:05:00.0/device",
+                ]
+            return []
+
+        device_ids = {"0000:03:00.0": "0xe20b\n", "0000:04:00.0": "0x9999\n", "0000:05:00.0": "0x56a1\n"}
+
+        with patch("ramalama.hw_detect.glob.glob", side_effect=multi_glob):
+
+            def fake_open(fp, *a, **kw):
+                slot = fp.split("/")[-2]
+                mock_file = MagicMock()
+                mock_file.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=device_ids[slot])))
+                mock_file.__exit__ = MagicMock(return_value=False)
+                return mock_file
+
+            with patch("builtins.open", side_effect=fake_open):
+                result = IntelDetector()._detect_linux()
+
+        assert [d.index for d in result] == [0, 1]
 
     def test_unknown_device_id(self):
         with patch("ramalama.hw_detect.glob.glob", side_effect=self._xe_glob):
