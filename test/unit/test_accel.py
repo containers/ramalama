@@ -212,11 +212,13 @@ class TestCheckIntel:
 
     @patch("ramalama.hw_detect.detect_intel")
     def test_check_intel_sets_env(self, mock_detect):
-        mock_detect.return_value = [DeviceInfo("Intel Arc B580", 12 * 1024**3)]
+        # A device selector, as every sibling *_VISIBLE_DEVICES holds, not a
+        # count: the one GPU here is index 0.
+        mock_detect.return_value = [DeviceInfo("Intel Arc B580", 12 * 1024**3, index=0)]
         with patch.dict("os.environ", {}, clear=True):
             result = check_intel()
             assert result == "intel"
-            assert os.environ["INTEL_VISIBLE_DEVICES"] == "1"
+            assert os.environ["INTEL_VISIBLE_DEVICES"] == "0"
 
     @patch("ramalama.hw_detect.detect_intel")
     def test_check_intel_no_gpus(self, mock_detect):
@@ -227,13 +229,13 @@ class TestCheckIntel:
     @patch("ramalama.hw_detect.detect_intel")
     def test_check_intel_multiple_gpus(self, mock_detect):
         mock_detect.return_value = [
-            DeviceInfo("Intel Arc B580", 12 * 1024**3),
-            DeviceInfo("Intel Arc A770", 16 * 1024**3),
+            DeviceInfo("Intel Arc B580", 12 * 1024**3, index=0),
+            DeviceInfo("Intel Arc A770", 16 * 1024**3, index=1),
         ]
         with patch.dict("os.environ", {}, clear=True):
             result = check_intel()
             assert result == "intel"
-            assert os.environ["INTEL_VISIBLE_DEVICES"] == "2"
+            assert os.environ["INTEL_VISIBLE_DEVICES"] == "0,1"
 
 
 class TestGetAccel:

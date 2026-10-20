@@ -234,10 +234,14 @@ def check_intel() -> Optional[Literal["intel"]]:
     from ramalama.hw_detect import detect_intel
 
     devices = detect_intel()
-    if devices:
-        os.environ["INTEL_VISIBLE_DEVICES"] = str(len(devices))
-        return "intel"
-    return None
+    if not devices:
+        return None
+
+    # Every sibling *_VISIBLE_DEVICES holds a device selector, so hold the
+    # detected device indices here too rather than a count, which named no
+    # device at all: a single GPU reported "1" when it is index 0.
+    os.environ["INTEL_VISIBLE_DEVICES"] = ",".join(str(d.index) for d in devices)
+    return "intel"
 
 
 def check_mthreads() -> Optional[Literal["musa"]]:
