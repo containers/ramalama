@@ -347,3 +347,134 @@ def test_quadlet_nvidia_selection(monkeypatch):
     # The container sees the two GPUs as 0 and 1, so the host's indices would
     # name a device that is not there.
     assert "Environment=CUDA_VISIBLE_DEVICES=0,1" in content
+
+
+def test_quadlet_quotes_mounts_and_env_with_spaces(monkeypatch):
+    """Quadlet word splits every Mount= and Environment= value, not just the
+    TLS ones: an unquoted space fails the mount and splits the variable."""
+    model = "/my blobs/model.gguf"
+    chat_template = "/my blobs/chat template"
+    mmproj = "/my blobs/mmproj file"
+
+    existence = {model: True, chat_template: True, mmproj: True}
+    monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+    monkeypatch.setattr("ramalama.quadlet.get_accel_env_vars", lambda: {})
+
+    files = Quadlet(
+        "tinyllama",
+        (model, "/mnt/models/model.file"),
+        (chat_template, "/mnt/models/chat_template"),
+        (mmproj, "/mnt/models/model.mmproj"),
+        Args(env=["GREETING=hello world"]),
+        [],
+        False,
+        None,
+        None,
+    ).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert 'Mount="type=bind,src=/my blobs/model.gguf,target=/mnt/models/model.file,ro,Z"' in content
+    assert 'Mount="type=bind,src=/my blobs/chat template,target=/mnt/models/chat_template,ro,Z"' in content
+    assert 'Mount="type=bind,src=/my blobs/mmproj file,target=/mnt/models/model.mmproj,ro,Z"' in content
+    assert 'Environment="GREETING=hello world"' in content
+
+
+def test_quadlet_escapes_newlines_in_values(monkeypatch):
+    """The unit file is line based: a newline written literally would end the
+    assignment and leave the rest of the value on a line of its own."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+    monkeypatch.setattr("ramalama.quadlet.get_accel_env_vars", lambda: {})
+
+    files = Quadlet(
+        "tinyllama",
+        ("/blob", "/mnt/models/model.file"),
+        None,
+        None,
+        Args(env=["MOTD=first\nsecond"]),
+        [],
+        False,
+        None,
+        None,
+    ).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert 'Environment="MOTD=first\\nsecond"' in content
+    assert "\nsecond" not in content
+
+
+def test_quadlet_windows_host_paths(monkeypatch):
+    """On Windows the unit runs against the podman machine, so a mount source
+    has to name the path as the machine sees it, not as Windows does."""
+    model = r"C:\Users\John\store\model.gguf"
+    chat_template = r"C:\Users\John\store\chat_template"
+
+    monkeypatch.setattr("os.path.exists", lambda path: path in (model, chat_template))
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+    monkeypatch.setattr("ramalama.quadlet.get_accel_env_vars", lambda: {})
+    # The real conversion only runs on Windows, where Path() reads the drive.
+    monkeypatch.setattr(
+        "ramalama.quadlet.normalize_host_path_for_container",
+        lambda path: f"/{path[0].lower()}{path[2:]}".replace("\\", "/"),
+    )
+
+    files = Quadlet(
+        "tinyllama",
+        (model, "/mnt/models/model.file"),
+        (chat_template, "/mnt/models/chat_template"),
+        None,
+        Args(),
+        [],
+        False,
+        None,
+        None,
+    ).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert "Mount=type=bind,src=/c/Users/John/store/model.gguf,target=/mnt/models/model.file,ro,Z" in content
+    assert "Mount=type=bind,src=/c/Users/John/store/chat_template,target=/mnt/models/chat_template,ro,Z" in content
+    # Converted, the path holds nothing Quadlet would split on, so it is
+    # written bare rather than quoted.
+    assert "C:" not in content
+
+
+def test_quadlet_doubles_percent_in_values(monkeypatch):
+    """Quadlet copies these values into the service file it generates, where
+    systemd expands a percent as a specifier: an undoubled "100%n" in a mount
+    source resolves to the unit name instead."""
+    model = "/blobs/100%n/model.gguf"
+
+    monkeypatch.setattr("os.path.exists", lambda path: path == model)
+    monkeypatch.setattr("ramalama.quadlet.get_accel", lambda: "cuda")
+    monkeypatch.setattr("ramalama.quadlet.get_accel_env_vars", lambda: {})
+
+    files = Quadlet(
+        "tinyllama",
+        (model, "/mnt/models/model.file"),
+        None,
+        None,
+        Args(env=["BATTERY=50%"]),
+        [],
+        False,
+        None,
+        None,
+    ).generate()
+    with io.StringIO() as sio:
+        for file in files:
+            file._write(sio)
+        content = sio.getvalue()
+
+    assert "Mount=type=bind,src=/blobs/100%%n/model.gguf,target=/mnt/models/model.file,ro,Z" in content
+    assert "Environment=BATTERY=50%%" in content
+    # Doubling alone is enough; neither value holds anything Quadlet splits on.
+    assert 'Mount="' not in content
