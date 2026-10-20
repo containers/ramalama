@@ -1,14 +1,17 @@
+import json
 import sys
 from argparse import Namespace
 from unittest import mock
 
 import pytest
 
+import ramalama.cli as cli
 from ramalama.cli import (
     ParsedGenerateInput,
     _normalize_engine_args,
     daemon_start_cli,
     get_parser,
+    info_cli,
     parse_generate_option,
     post_parse_setup,
 )
@@ -354,3 +357,46 @@ def test_subparsers_inherit_allow_abbrev():
     subparsers = parser._subparsers._group_actions[0].choices  # type: ignore[union-attr]
     assert not parser.allow_abbrev
     assert subparsers and all(not sp.allow_abbrev for sp in subparsers.values())
+
+
+def test_info_devices_flag_parsing():
+    parser = get_parser()
+    assert parser.parse_args(["info", "--devices"]).devices is True
+    assert parser.parse_args(["info"]).devices is False
+
+
+@pytest.mark.parametrize("engine", [None, "podman"])
+def test_info_devices_flag_outputs_only_devices(capsys, engine):
+    devices = [{"name": "Vulkan0", "description": "GPU", "memory_total_mib": 1024, "memory_free_mib": 512}]
+    args = Namespace(shortnames=False, devices=True, engine=engine, runtime="llama.cpp")
+    runtime = mock.Mock()
+    runtime.list_devices.return_value = devices
+    with (
+        mock.patch.object(cli, "get_shortnames"),
+        mock.patch.object(cli, "get_runtime", return_value=runtime) as mock_get_runtime,
+    ):
+        info_cli(args)
+    assert json.loads(capsys.readouterr().out) == devices
+    mock_get_runtime.assert_called_once_with("llama.cpp")
+    runtime.list_devices.assert_called_once_with(args)
+
+
+@pytest.mark.parametrize("engine", [None, "podman"])
+def test_info_without_devices_does_not_probe(capsys, engine):
+    args = Namespace(shortnames=False, devices=False, engine=engine, runtime="llama.cpp", store="/tmp", container=True)
+    shortnames = mock.Mock(paths=[], shortnames={}, config_sources={})
+    with (
+        mock.patch.object(cli, "get_shortnames", return_value=shortnames),
+        mock.patch.object(cli, "get_runtime") as mock_get_runtime,
+        mock.patch.object(cli.engine, "info", return_value={}),
+        mock.patch.object(cli, "get_accel", return_value=""),
+        mock.patch.object(cli, "load_file_config", return_value={}),
+        mock.patch.object(cli, "default_image", return_value="img:latest"),
+        mock.patch.object(cli, "default_rag_image", return_value="rag:latest"),
+        mock.patch.object(cli, "default_tools_image", return_value="tools:latest"),
+    ):
+        info_cli(args)
+    info = json.loads(capsys.readouterr().out)
+    assert "Devices" not in info
+    assert info["Engine"]["Name"] == engine
+    mock_get_runtime.assert_not_called()
