@@ -397,7 +397,7 @@ class IntelDetector(HardwareDetector):
                     # system RAM. Reporting 0 here is indistinguishable from a
                     # failed probe, so report what it can actually draw on.
                     vram = _get_system_memory()
-                devices.append(DeviceInfo(name=gpu_name, memory_bytes=vram))
+                devices.append(DeviceInfo(name=gpu_name, memory_bytes=vram, index=len(devices)))
 
         return devices
 
@@ -440,7 +440,7 @@ class IntelDetector(HardwareDetector):
                     memory = gpu.AdapterRAM or 0
                 if memory <= 0:
                     memory = _get_system_memory()
-                devices.append(DeviceInfo(name=gpu_name, memory_bytes=max(memory, 0)))
+                devices.append(DeviceInfo(name=gpu_name, memory_bytes=max(memory, 0), index=len(devices)))
         except Exception as e:
             logger.debug(f"Intel Windows detection failed: {e}")
 
