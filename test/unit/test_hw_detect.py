@@ -59,6 +59,27 @@ class TestDetectNvidia:
         assert result[1].memory_bytes == 24564 * 1024 * 1024
         assert result[1].index == 1
 
+    @pytest.mark.parametrize("memory_total", ["[N/A]", "[Not Supported]", ""])
+    def test_unavailable_memory_keeps_the_gpu(self, memory_total):
+        # check_nvidia() needs only the index and uuid, so an unreadable
+        # memory.total must not cost us the GPU, and with it CUDA.
+        mock_result = MagicMock()
+        mock_result.stdout = f"0, GPU-abc123, {memory_total}, NVIDIA GeForce RTX 4090\n"
+        with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
+            result = NvidiaDetector().detect()
+        assert len(result) == 1
+        assert result[0].index == 0
+        assert result[0].uuid == "GPU-abc123"
+        assert result[0].memory_bytes == 0
+
+    def test_unparseable_index_drops_the_gpu(self):
+        # The index is what reaches CUDA_VISIBLE_DEVICES, so a line without
+        # one is unusable.
+        mock_result = MagicMock()
+        mock_result.stdout = "[N/A], GPU-abc123, 24564, NVIDIA GeForce RTX 4090\n"
+        with patch("ramalama.hw_detect.subprocess.run", return_value=mock_result):
+            assert NvidiaDetector().detect() == []
+
     def test_nvidia_smi_not_found(self):
         with patch("ramalama.hw_detect.subprocess.run", side_effect=OSError):
             result = NvidiaDetector().detect()
@@ -293,6 +314,7 @@ class TestDetectAppleSilicon:
 
         with (
             patch("ramalama.hw_detect.platform.system", return_value="Darwin"),
+            patch("ramalama.hw_detect.platform.machine", return_value="arm64"),
             patch("ramalama.hw_detect.subprocess.run", side_effect=[mem_result, brand_result]),
         ):
             result = AppleSiliconDetector().detect()
@@ -305,6 +327,16 @@ class TestDetectAppleSilicon:
         with patch("ramalama.hw_detect.platform.system", return_value="Linux"):
             result = AppleSiliconDetector().detect()
         assert result == []
+
+    def test_intel_mac_is_not_metal(self):
+        # Without unified memory the CPU brand and system RAM describe the CPU,
+        # not a Metal accelerator, so "ramalama info" must not list one.
+        with (
+            patch("ramalama.hw_detect.platform.system", return_value="Darwin"),
+            patch("ramalama.hw_detect.platform.machine", return_value="x86_64"),
+            patch("ramalama.hw_detect.subprocess.run", side_effect=AssertionError("must not probe")),
+        ):
+            assert AppleSiliconDetector().detect() == []
 
 
 class TestDetectCpu:
