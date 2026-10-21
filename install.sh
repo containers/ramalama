@@ -175,7 +175,10 @@ main() {
 
     if available brew && brew install ramalama; then
       install_uv
-      uv tool install mlx-lm
+      # MLX is Apple Silicon only; skip on Intel Macs.
+      if [ "$os" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
+        uv tool install mlx-lm
+      fi
       return 0
     fi
   fi

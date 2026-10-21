@@ -2,7 +2,12 @@
 
 # Configure Podman Machine on Mac for GPU Acceleration
 
-Leveraging GPU acceleration on a Mac with Podman requires the configuration of
+**Intel Macs:** GPU acceleration is not supported. Use the default llama.cpp
+runtime with CPU inference in a Podman/Docker container or with
+`--nocontainer` and host `llama.cpp`. See
+[MACOS_INSTALL.md](https://github.com/containers/ramalama/blob/main/docs/MACOS_INSTALL.md#intel-mac-cpu-only).
+
+**Apple Silicon Macs:** Leveraging GPU acceleration on a Mac with Podman requires the configuration of
 the `libkrun` machine provider.
 
 This can be done by either setting an environment variable or modifying the
@@ -13,7 +18,7 @@ Previously created Podman Machines must be recreated to take
 advantage of the `libkrun` provider.
 
 Note that it is also possible to run ramalama without containers on macOS to
-use MLX directly; for details see
+use native llama.cpp with Metal (recommended) or MLX directly; for details see
 [MACOS-INSTALL.md](https://github.com/containers/ramalama/blob/main/docs/MACOS_INSTALL.md).
 
 ## Configuration Methods:
@@ -35,9 +40,10 @@ For example: `export CONTAINERS_MACHINE_PROVIDER=libkrun`
 ### ramalama.conf
 
 RamaLama can also be run in a limited manner without using containers, by
-specifying the `--nocontainer` option. In this case MLX is used for native
-GPU acceleration, which will result in better performance than the podman
-krunkit solution. To do this, open the `ramalama.conf` file, typically
+specifying the `--nocontainer` option. On Apple Silicon, native llama.cpp
+with Metal is the recommended GPU path; MLX is also available but has been
+less actively maintained. Both options generally outperform the podman krunkit
+solution. To do this, open the `ramalama.conf` file, typically
 located at $HOME/.config/ramalama/ramalama.conf.
 
 Add the following line within the `[machine]` section: `container = false`
