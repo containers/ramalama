@@ -15,6 +15,13 @@ from ramalama.config import ActiveConfig
 from ramalama.engine import create_network, remove_network
 from ramalama.plugins.interface import RuntimePlugin
 from ramalama.plugins.loader import assemble_command
+from ramalama.rag import (
+    RAG_ROLE_CAPTIONING,
+    RAG_ROLE_DOCLING,
+    RAG_ROLE_EMBEDDING,
+    rag_stack_base_name,
+    rag_stack_container_name,
+)
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New
@@ -30,6 +37,9 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
 
     if not args.container:
         raise KeyError("rag command requires a container. Cannot be run with --nocontainer option.")
+
+    base_name, generated = rag_stack_base_name(getattr(args, "name", None))
+    args.name = base_name
 
     docling_model = getattr(args, "docling_model", IMAGE_PARSER_MODEL)
     embedding_model = EMBEDDING_MODEL
@@ -66,6 +76,55 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
     if not getattr(args, "network", None):
         args.network = create_network(args)
         network_created = True
+
+    # Build serve args for the VLM and embedding servers
+    vlm_ctx_size = getattr(args, "ctx_size", 8192)
+    embed_ctx_size = getattr(args, "embed_ctx_size", None)
+    docling_serve_args = _build_serve_args(
+        args,
+        docling_model,
+        docling_port,
+        runtime_args=["--special"],
+        ctx_size=vlm_ctx_size,
+        name=rag_stack_container_name(base_name, RAG_ROLE_DOCLING, generated=generated),
+    )
+    embed_serve_args = _build_serve_args(
+        args,
+        embedding_model,
+        embed_port,
+        runtime_args=["--embedding"],
+        ctx_size=embed_ctx_size,
+        cache_reuse=0,
+        name=rag_stack_container_name(base_name, RAG_ROLE_EMBEDDING, generated=generated),
+    )
+
+    caption_serve_args = None
+    if caption_model and caption_port:
+        caption_serve_args = _build_serve_args(
+            args,
+            caption_model,
+            caption_port,
+            ctx_size=vlm_ctx_size,
+            cache_reuse=0,
+            name=rag_stack_container_name(base_name, RAG_ROLE_CAPTIONING, generated=generated),
+        )
+
+    # Pull models
+    docling_transport = New(docling_model, docling_serve_args)
+    docling_transport.ensure_model_exists(docling_serve_args)
+    embed_transport = New(embedding_model, embed_serve_args)
+    embed_transport.ensure_model_exists(embed_serve_args)
+
+    caption_transport = None
+    if caption_model and caption_serve_args:
+        caption_transport = New(caption_model, caption_serve_args)
+        if isinstance(caption_transport, APITransport):
+            raise ValueError(f"caption model {caption_model} resolved to an API transport, which cannot serve locally")
+        caption_transport.ensure_model_exists(caption_serve_args)
+
+    # Start llama.cpp servers
+    docling_cmd = assemble_command(docling_serve_args)
+    embed_cmd = assemble_command(embed_serve_args)
 
     docling_proc = None
     embed_proc = None
@@ -177,7 +236,7 @@ def rag_handler(plugin: RuntimePlugin, args: argparse.Namespace) -> None:
                 remove_network(args, args.network)
 
 
-def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=None, cache_reuse=None):
+def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=None, cache_reuse=None, name=None):
     """Build argparse.Namespace for an internal llama.cpp serve session."""
     from ramalama.plugins.loader import get_runtime
 
@@ -208,7 +267,7 @@ def _build_serve_args(args, model_name, port, runtime_args=None, ctx_size=None, 
         # assemble_command puts it in their environment for us.
         server_api_key=getattr(args, "server_api_key", None),
         detach=True,
-        name=None,
+        name=name,
         dri="on",
         host="127.0.0.1",
         port=str(port),
