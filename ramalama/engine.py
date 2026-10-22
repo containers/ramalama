@@ -3,12 +3,13 @@ from __future__ import annotations
 import glob
 import json
 import os
+import ssl
 import subprocess
 import sys
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
-from http.client import HTTPConnection, HTTPException
+from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from typing import Any, Optional
 
 # Live reference for checking global vars
@@ -35,6 +36,7 @@ from ramalama.host_utils import (
 )
 from ramalama.logger import logger
 from ramalama.path_utils import normalize_host_path_for_container
+from ramalama.tls import probe_ssl_context
 
 
 class BaseEngine(ABC):
@@ -573,9 +575,14 @@ def is_healthy(args, timeout: int = 3, model_name: Optional[str] = None):
 
     bind_host = format_bind_host_for_connection(getattr(args, "host", "127.0.0.1"))
 
-    conn = None
+    ssl_context = probe_ssl_context(args)
+
+    conn: Optional[HTTPConnection] = None
     try:
-        conn = HTTPConnection(bind_host, args.port, timeout=timeout)
+        if ssl_context is not None:
+            conn = HTTPSConnection(bind_host, args.port, timeout=timeout, context=ssl_context)
+        else:
+            conn = HTTPConnection(bind_host, args.port, timeout=timeout)
         if getattr(args, "debug", False):
             conn.set_debuglevel(1)
         return get_runtime(ActiveConfig().runtime).service_ready_check(conn, args, model_name)
@@ -604,7 +611,14 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
                 if display_dots:
                     perror('\r' + n * ' ' + '\r', end='', flush=True)
                 return
-        except (ConnectionError, HTTPException, UnicodeDecodeError, json.JSONDecodeError, TimeoutError) as e:
+        except (
+            ConnectionError,
+            HTTPException,
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+            TimeoutError,
+            ssl.SSLError,
+        ) as e:
             logger.debug(f"Health check of {container_name} failed, retrying... Error: {e}")
             n += 1
         time.sleep(1)
