@@ -982,21 +982,42 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         private network so they reach each other by container name. Each of the
         three also publishes a port of its own, so a key has to cover all of
         them, not just the proxy the user talks to.
+
+        ``dispatch`` blocks for as long as the proxy runs, except under
+        --detach, where it returns as soon as the proxy is backgrounded. A
+        backgrounded proxy is useless without the helpers it talks to and the
+        network it reaches them on, so those are reported rather than torn
+        down; the user stops them with the printed command.
         """
         from ramalama.engine import remove_network
-        from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers, _setup_rag_network
+        from ramalama.plugins.runtimes.inference.rag.handler import (
+            _cleanup_servers,
+            _report_skipped_cleanup,
+            _setup_rag_network,
+        )
 
         self._set_rag_api_key_env(args)
         network_created = _setup_rag_network(args)
+        # Name the proxy up front so the cleanup report can refer to it; the
+        # engine would otherwise generate a name it keeps to itself.
+        args.name = getattr(args, "name", None) or genname()
+        embed_serve_args = None
+        embed_proc = None
+        backgrounded = False
         try:
             embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
-            try:
-                dispatch()
-            finally:
-                _cleanup_servers(args, [embed_serve_args], [embed_proc])
+            dispatch()
+            # Only once dispatch has returned without raising is there anything
+            # running worth keeping; a failed start leaves nothing to detach to.
+            backgrounded = bool(getattr(args, "detach", False))
         finally:
-            if network_created:
-                remove_network(args, args.network)
+            if backgrounded:
+                _report_skipped_cleanup(args, [args, args.model_args, embed_serve_args], network_created, "--detach")
+            else:
+                if embed_serve_args is not None:
+                    _cleanup_servers(args, [embed_serve_args], [embed_proc])
+                if network_created:
+                    remove_network(args, args.network)
 
     @staticmethod
     def _set_rag_api_key_env(args: argparse.Namespace) -> None:
@@ -1019,7 +1040,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     def _start_rag_embedding_server(self, args):
         """Start a llama.cpp embedding server for RAG inference and set embed_url on args."""
-        from ramalama.plugins.runtimes.inference.rag.handler import EMBEDDING_MODEL, _build_serve_args, _wait_for_server
+        from ramalama.plugins.runtimes.inference.rag.handler import (
+            EMBEDDING_MODEL,
+            _build_serve_args,
+            _cleanup_servers,
+            _wait_for_server,
+        )
 
         embedding_model = EMBEDDING_MODEL
         set_accel_env_vars()
@@ -1040,7 +1066,17 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)
 
         if not args.dryrun:
-            _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
+            # The container is up from here on, but the caller only learns its
+            # name from the return value below. Raising past that point would
+            # strand it: _serve_rag_pipeline has nothing to pass to
+            # _cleanup_servers, and remove_network only gets away with tidying
+            # it up on podman, where `network rm -f` takes attached containers
+            # with it. Docker's has no such flag and refuses outright.
+            try:
+                _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
+            except BaseException:
+                _cleanup_servers(args, [embed_serve_args], [embed_proc])
+                raise
 
         # Reach the embedding server by its container name over the shared private
         # network (serve_nonblocking assigned the name above).
