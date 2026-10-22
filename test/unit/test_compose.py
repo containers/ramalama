@@ -398,7 +398,43 @@ def test_compose_host_paths_survive_yaml_quoting(monkeypatch):
     monkeypatch.setattr("ramalama.compose.version", lambda: "test")
 
     model_path = '/home/my "quoted" dir/model\\1.file'
+    cert_path = '/home/my "quoted" dir/tls.crt'
+    key_path = '/home/my "quoted" dir/tls.key'
 
-    content = Compose("test", (model_path, "/mnt/models/model.file"), None, None, Args(), [], None).generate().content
+    args = Args()
+    args.tls_cert_file = cert_path
+    args.tls_key_file = key_path
 
-    assert yaml.safe_load(content)["services"]["test"]["volumes"] == [f"{model_path}:/mnt/models/model.file:ro"]
+    content = Compose("test", (model_path, "/mnt/models/model.file"), None, None, args, [], None).generate().content
+
+    assert yaml.safe_load(content)["services"]["test"]["volumes"] == [
+        f"{model_path}:/mnt/models/model.file:ro",
+        f"{cert_path}:/mnt/tls/tls.crt:ro",
+        f"{key_path}:/mnt/tls/tls.key:ro",
+    ]
+
+
+def test_compose_tls_volumes(monkeypatch):
+    """The TLS material is mounted read-only from its host paths."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    args = Args()
+    args.tls_cert_file = "/host/certs/tls.crt"
+    args.tls_key_file = "/host/certs/tls.key"
+
+    result = Compose("test", ("/a", "/b"), None, None, args, [], None).generate().content
+
+    assert '- "/host/certs/tls.crt:/mnt/tls/tls.crt:ro"' in result
+    assert '- "/host/certs/tls.key:/mnt/tls/tls.key:ro"' in result
+
+
+def test_compose_no_tls_volumes_without_tls(monkeypatch):
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    result = Compose("test", ("/a", "/b"), None, None, Args(), [], None).generate().content
+
+    assert "/mnt/tls" not in result

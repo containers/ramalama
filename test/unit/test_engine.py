@@ -1,3 +1,4 @@
+import ssl
 import unittest
 from argparse import Namespace
 from http.client import HTTPException
@@ -399,6 +400,28 @@ def test_is_healthy_uses_host_arg(mock_conn, host, expected_host):
     mock_conn.assert_called_once_with(expected_host, args.port, timeout=3)
 
 
+@patch("ramalama.engine.HTTPConnection")
+@patch("ramalama.engine.HTTPSConnection")
+def test_is_healthy_over_tls(mock_https_conn, mock_conn):
+    """A server serving HTTPS is probed over HTTPS, without verifying the
+    certificate it was just handed."""
+    args = Namespace(
+        MODEL="themodel",
+        name="thecontainer",
+        port=8080,
+        debug=False,
+        tls_cert_file="/host/certs/tls.crt",
+        tls_key_file="/host/certs/tls.key",
+    )
+    ramalama.engine.is_healthy(args, model_name="themodel")
+
+    mock_conn.assert_not_called()
+    mock_https_conn.assert_called_once()
+    call_args, call_kwargs = mock_https_conn.call_args
+    assert call_args == ("127.0.0.1", args.port)
+    assert call_kwargs["context"].verify_mode == ssl.CERT_NONE
+
+
 @pytest.mark.parametrize(
     "health_status, models_status, models_body, models_msg",
     [
@@ -494,6 +517,8 @@ def test_is_healthy_vllm(mock_conn, status, ok):
         (HTTPException("http")),
         (UnicodeDecodeError("utf-8", b'\xe6', 0, 1, "invalid")),
         (JSONDecodeError("json", "resp", 0)),
+        # A server serving HTTPS is not listening yet.
+        (ssl.SSLError("ssl")),
     ],
 )
 @patch("ramalama.engine.logs", return_value="container logs...")
