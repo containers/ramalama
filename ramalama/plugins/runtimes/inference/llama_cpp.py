@@ -1029,7 +1029,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
     def _start_rag_embedding_server(self, args):
         """Start a llama.cpp embedding server for RAG inference and set embed_url on args."""
-        from ramalama.plugins.runtimes.inference.rag.handler import EMBEDDING_MODEL, _build_serve_args, _wait_for_server
+        from ramalama.plugins.runtimes.inference.rag.handler import (
+            EMBEDDING_MODEL,
+            _build_serve_args,
+            _cleanup_servers,
+            _wait_for_server,
+        )
 
         embedding_model = EMBEDDING_MODEL
         set_accel_env_vars()
@@ -1050,7 +1055,17 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)
 
         if not args.dryrun:
-            _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
+            # The container is up from here on, but the caller only learns its
+            # name from the return value below. Raising past that point would
+            # strand it: _serve_rag_pipeline has nothing to pass to
+            # _cleanup_servers, and remove_network only gets away with tidying
+            # it up on podman, where `network rm -f` takes attached containers
+            # with it. Docker's has no such flag and refuses outright.
+            try:
+                _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
+            except BaseException:
+                _cleanup_servers(args, [embed_serve_args], [embed_proc])
+                raise
 
         # Reach the embedding server by its container name over the shared private
         # network (serve_nonblocking assigned the name above).
