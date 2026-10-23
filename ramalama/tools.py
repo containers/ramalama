@@ -1,6 +1,7 @@
 """Tools container image selection for GGUF conversion."""
 
-from ramalama.common import accel_image, version_tagged_image
+from ramalama.accel import accel_image
+from ramalama.common import version_tagged_image
 from ramalama.config import Config
 
 _DEFAULT_TOOLS_IMAGES: dict[str, str] = {

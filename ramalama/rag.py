@@ -7,9 +7,10 @@ from functools import partial
 from textwrap import dedent
 from typing import Literal
 
+from ramalama.accel import set_accel_env_vars
 from ramalama.arg_types import RagArgsType
 from ramalama.chat import ChatOperationalArgs
-from ramalama.common import ensure_image, perror, set_accel_env_vars
+from ramalama.common import ensure_image, perror
 from ramalama.compat import StrEnum
 from ramalama.config import ActiveConfig, Config
 from ramalama.engine import BuildEngine, Engine, is_healthy, stop_container, wait_for_healthy

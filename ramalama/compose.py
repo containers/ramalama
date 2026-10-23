@@ -7,8 +7,9 @@ import shlex
 from typing import Optional
 
 # Live reference for checking global vars
-import ramalama.common
-from ramalama.common import RAG_DIR, container_cuda_visible_devices, get_accel_env_vars, get_gpu_devices
+import ramalama.accel
+from ramalama.accel import container_cuda_visible_devices, get_accel_env_vars, get_gpu_devices
+from ramalama.common import RAG_DIR
 from ramalama.file import PlainFile
 from ramalama.host_utils import format_bind_host_publish_prefix
 from ramalama.path_utils import normalize_host_path_for_container
@@ -188,7 +189,7 @@ class Compose:
         # Reserve only the GPUs the user selected. CUDA_VISIBLE_DEVICES alone
         # cannot narrow it: the Vulkan backend never reads that variable, so the
         # other GPUs have to be kept out of the container entirely.
-        if selected := ramalama.common.nvidia_selected_devices:
+        if selected := ramalama.accel.nvidia_selected_devices:
             device_ids = ", ".join(f'"{name}"' for name in selected)
             reservation = f"device_ids: [{device_ids}]"
         else:

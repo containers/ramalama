@@ -234,7 +234,7 @@ def test_compose_generate(input_data: Input, expected_file_name: str, monkeypatc
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
 
     monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: dict(input_data.accel_env_vars))
-    monkeypatch.setattr("ramalama.common.nvidia_selected_devices", list(input_data.nvidia_selected_devices))
+    monkeypatch.setattr("ramalama.accel.nvidia_selected_devices", list(input_data.nvidia_selected_devices))
     monkeypatch.setattr("ramalama.compose.version", lambda: "0.1.0-test")
 
     draft_model_paths = (None, None)
