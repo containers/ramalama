@@ -45,6 +45,7 @@ from ramalama.common import (
 )
 from ramalama.logger import logger
 from ramalama.path_utils import get_container_mount_path
+from ramalama.tls import tls_mount_args
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
 
@@ -413,7 +414,16 @@ class Transport(TransportBase):
         self.engine.exec(stdout2null=args.noout)
         return True
 
+    def setup_tls_mounts(self, args):
+        for mount in tls_mount_args(self.engine, args):
+            self.engine.add([mount])
+
     def setup_mounts(self, args):
+        # The TLS files are mounted even on a dry run: the command printed
+        # there passes their container paths to the server, so it has to
+        # carry the mounts that put them there.
+        self.setup_tls_mounts(args)
+
         if args.dryrun:
             return
 
@@ -839,9 +849,15 @@ def get_available_port_if_any(exclude: Optional[list[str]] = None) -> int:
 
 
 def compute_serving_port(args, quiet: bool = False, exclude: Optional[list[str]] = None) -> str:
-    # user probably specified a custom port, don't override the choice
-    if hasattr(args, 'port_override'):
-        target_port = args.port
+    excluded = set() if exclude is None else set(map(int, exclude))
+    override = getattr(args, "port", None) if hasattr(args, 'port_override') else None
+    # user probably specified a custom port, don't override the choice, unless the
+    # caller has already handed that port to another container. The RAG pipeline
+    # allocates ports for its helper servers from the namespace of the proxy the
+    # user asked for, so honouring the override there would hand a helper the very
+    # port the proxy publishes and neither could bind.
+    if override is not None and int(override) not in excluded:
+        target_port = override
     else:
         # otherwise compute a random serving port in the range
         target_port = get_available_port_if_any(exclude=exclude)

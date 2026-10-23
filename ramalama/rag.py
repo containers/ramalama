@@ -204,10 +204,16 @@ class RagTransport(OCI):
                     process.returncode,
                     " ".join(self.model_cmd),
                 )
+        backgrounded = False
         try:
             self.execute_command(cmd, args)
+            # Under --detach execute_command returns as soon as the proxy is
+            # backgrounded. The proxy forwards every request to this model
+            # server, so stopping it here would leave a proxy that answers
+            # nothing; _serve_rag_pipeline reports it instead.
+            backgrounded = bool(getattr(args, "detach", False))
         finally:
-            if getattr(args.model_args, "name", None):
+            if not backgrounded and getattr(args.model_args, "name", None):
                 args.model_args.ignore = True
                 stop_container(args.model_args, args.model_args.name, remove=True)
 

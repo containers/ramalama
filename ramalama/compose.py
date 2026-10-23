@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 # ramalama/generate/compose.py
+import json
 import os
 import shlex
 from typing import Optional
@@ -10,7 +11,27 @@ import ramalama.common
 from ramalama.common import RAG_DIR, container_cuda_visible_devices, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.host_utils import format_bind_host_publish_prefix
+from ramalama.path_utils import normalize_host_path_for_container
+from ramalama.tls import tls_mounts
 from ramalama.version import version
+
+
+def _gen_mount(src_path: str, dest_path: str, options: str = "") -> str:
+    """Serialize a bind mount as an entry in the Compose volumes list.
+
+    The host path is converted for the container engine first, the way
+    "ramalama serve" converts the one it passes to "-v": the Linux side of
+    the mount cannot read a native Windows path.
+
+    The entry is then encoded rather than wrapped in quotes by hand. A
+    backslash is an escape inside a double quoted YAML scalar, so a path the
+    conversion leaves one in, such as a UNC path, stops the whole file
+    parsing; a double quote in a path ends the scalar early. A JSON string is
+    a valid YAML double quoted scalar and escapes both, and leaves a path
+    holding neither exactly as it was written.
+    """
+    entry = f"{normalize_host_path_for_container(src_path)}:{dest_path}{options}"
+    return f"\n      - {json.dumps(entry, ensure_ascii=False)}"
 
 
 class Compose:
@@ -23,8 +44,12 @@ class Compose:
         args,
         exec_args,
         draft_model_paths: Optional[tuple[str, str]],
+        model_parts: Optional[list[tuple[str, str]]] = None,
     ):
         self.src_model_path, self.dest_model_path = model_paths
+        # Router mode serves several models out of one directory, so each one
+        # needs its own bind mount.
+        self.model_parts = model_parts
         self.src_draft_model_path, self.dest_draft_model_path = (
             draft_model_paths if draft_model_paths is not None else ("", "")
         )
@@ -47,7 +72,11 @@ class Compose:
         volumes = "    volumes:"
 
         # Model Volume
-        volumes += self._gen_model_volume(self.src_model_path, self.dest_model_path)
+        if self.model_parts is not None:
+            for src_model_path, dest_model_path in self.model_parts:
+                volumes += self._gen_model_volume(src_model_path, dest_model_path)
+        else:
+            volumes += self._gen_model_volume(self.src_model_path, self.dest_model_path)
         if self.src_draft_model_path and self.dest_draft_model_path:
             volumes += self._gen_model_volume(self.src_draft_model_path, self.dest_draft_model_path)
 
@@ -63,10 +92,16 @@ class Compose:
         if self.src_mmproj_path and os.path.exists(self.src_mmproj_path):
             volumes += self._gen_mmproj_volume()
 
+        # TLS Volumes
+        volumes += self._gen_tls_volumes()
+
         return volumes
 
+    def _gen_tls_volumes(self) -> str:
+        return "".join(_gen_mount(src_path, dest_path, ":ro") for src_path, dest_path in tls_mounts(self.args))
+
     def _gen_model_volume(self, src_model_path: str, dest_model_path: str) -> str:
-        return f'\n      - "{src_model_path}:{dest_model_path}:ro"'
+        return _gen_mount(src_model_path, dest_model_path, ":ro")
 
     def _gen_rag_volume(self) -> str:
         rag_source = self.args.rag
@@ -87,15 +122,15 @@ class Compose:
 
         elif os.path.exists(rag_source):
             # Standard host path mount
-            volume_str = f'\n      - "{rag_source}:{RAG_DIR}:ro"'
+            volume_str = _gen_mount(rag_source, RAG_DIR, ":ro")
 
         return volume_str
 
     def _gen_chat_template_volume(self) -> str:
-        return f'\n      - "{self.src_chat_template_path}:{self.dest_chat_template_path}:ro"'
+        return _gen_mount(self.src_chat_template_path, self.dest_chat_template_path, ":ro")
 
     def _gen_mmproj_volume(self) -> str:
-        return f'\n      - "{self.src_mmproj_path}:{self.dest_mmproj_path}:ro"'
+        return _gen_mount(self.src_mmproj_path, self.dest_mmproj_path, ":ro")
 
     def _gen_devices(self) -> str:
         devices = get_gpu_devices(get_accel_env_vars())

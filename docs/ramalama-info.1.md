@@ -12,6 +12,13 @@ Display configuration information in a json format. Use **--shortnames** to list
 
 ## OPTIONS
 
+#### **--devices**
+Print the detected GPU/accelerator devices as a JSON array and exit. Device probing only runs when this option is specified.
+
+For the llama.cpp runtime, detection runs `llama-server --list-devices` in the configured container image with GPU passthrough. It uses an already-pulled image and never pulls an image. With **--nocontainer**, or when no container engine is available, detection uses the local `llama-server` binary from `PATH`.
+
+Each entry reports the backend device `name` (e.g. `Vulkan0`, `CUDA0`), a human-readable `description`, and the total and free device memory in MiB (`memory_total_mib`, `memory_free_mib`). An empty array is returned if no devices are found, the runtime does not support enumeration, the binary or image is missing, or the probe fails or times out.
+
 #### **--help**, **-h**
 show this help message and exit
 
@@ -131,6 +138,19 @@ List available shortnames
 $ ramalama info --shortnames
 smollm:135m=ollama://smollm:135m (/usr/share/ramalama/shortnames.conf)
 tinyllama:latest=ollama://tinyllama:latest (/home/dwalsh/.config/ramalama/shortnames.conf)
+```
+
+List devices using a local llama-server
+```
+$ ramalama --nocontainer info --devices
+[
+    {
+        "description": "NVIDIA GeForce RTX 3090",
+        "memory_free_mib": 24000,
+        "memory_total_mib": 24576,
+        "name": "CUDA0"
+    }
+]
 ```
 
 Info with Podman engine

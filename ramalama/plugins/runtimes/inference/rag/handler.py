@@ -276,13 +276,17 @@ def _wait_for_server(plugin: RuntimePlugin, args: argparse.Namespace, model_alia
     raise TimeoutError(f"Server {args.name} did not become ready on port {args.port} within {timeout}s")
 
 
-def _report_skipped_cleanup(args, all_serve_args, network_created):
-    """Report the servers and network left running when --skip-cleanup is set."""
+def _report_skipped_cleanup(args, all_serve_args, network_created, reason="--skip-cleanup"):
+    """Report the containers and network deliberately left running.
+
+    ``reason`` names the flag responsible, so a debugging leftover is
+    distinguishable from a server backgrounded by --detach.
+    """
     names = [name for name in (getattr(sa, "name", None) for sa in all_serve_args) if name]
     engine = args.engine
     # Only a network we created is ours to report/clean up.
     network = getattr(args, "network", None) if network_created else None
-    perror("--skip-cleanup: leaving the following running for debugging:")
+    perror(f"{reason}: leaving the following running:")
     for name in names:
         perror(f"  container {name} (inspect with `{engine} logs {name}`)")
     if network:

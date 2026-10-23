@@ -232,6 +232,37 @@ def test_rag_args_clears_port_override():
     assert rag_args.model_port == random_port
 
 
+def test_compute_serving_port_override_yields_to_exclude():
+    """An explicit --port must not be handed out twice.
+
+    The RAG pipeline allocates its helper servers' ports from the namespace of
+    the proxy the user asked for, which carries port_override. Returning the
+    override there put the embedding server on the very port the proxy
+    publishes, and the proxy could not then bind it.
+    """
+    args = Namespace(port="8080", port_override=True, debug=False, api="")
+
+    mock_compute_ports = Mock(return_value=[8082])
+    mock_socket_inst = MagicMock()
+
+    with (
+        patch('ramalama.transports.base.compute_ports', mock_compute_ports),
+        patch('socket.socket', return_value=mock_socket_inst),
+    ):
+        port = compute_serving_port(args, quiet=True, exclude=["8080", "8081"])
+
+    assert port == "8082"
+    mock_compute_ports.assert_called_once_with(exclude=["8080", "8081"])
+
+
+@pytest.mark.parametrize("exclude", [None, [], ["9000"]])
+def test_compute_serving_port_override_wins_when_not_excluded(exclude):
+    """A user-specified port is still honoured for the service they asked for."""
+    args = Namespace(port="8080", port_override=True, debug=False, api="")
+
+    assert compute_serving_port(args, quiet=True, exclude=exclude) == "8080"
+
+
 class TestMLXRuntime:
     """Test MLX runtime functionality"""
 
@@ -367,6 +398,19 @@ class TestOCIModelSetupMountsPodman:
         assert result is None
         mock_podman_engine.add.assert_not_called()
 
+    def test_setup_mounts_tls_dryrun(self, oci_model_podman, mock_podman_engine):
+        """The dry-run command passes the container TLS paths to the server,
+        so it has to carry the mounts that put them there."""
+        mock_podman_engine.relabel = Mock(return_value="")
+        args = Namespace(dryrun=True, tls_cert_file="/host/certs/tls.crt", tls_key_file="/host/certs/tls.key")
+        oci_model_podman.engine = mock_podman_engine
+
+        oci_model_podman.setup_mounts(args)
+
+        added = [call.args[0][0] for call in mock_podman_engine.add.call_args_list]
+        assert "--mount=type=bind,src=/host/certs/tls.crt,destination=/mnt/tls/tls.crt,ro" in added
+        assert "--mount=type=bind,src=/host/certs/tls.key,destination=/mnt/tls/tls.key,ro" in added
+
     def test_setup_mounts_oci_podman(self, oci_model_podman, mock_podman_engine):
         """Test OCI model mounting with Podman (image mount)"""
         args = Namespace(dryrun=False)
@@ -378,6 +422,47 @@ class TestOCIModelSetupMountsPodman:
             f"--mount=type=image,src={oci_model_podman.model},destination={MNT_DIR},subpath=/models,rw=false"
         )
         mock_podman_engine.add.assert_called_once_with([expected_mount])
+
+    def test_setup_mounts_tls(self, oci_model_podman, mock_podman_engine):
+        """TLS material is mounted read-only alongside the model, for OCI
+        models as well as for the model store ones."""
+        mock_podman_engine.relabel = Mock(return_value="")
+        args = Namespace(
+            dryrun=False,
+            tls_cert_file="/host/certs/tls.crt",
+            tls_key_file="/host/certs/tls.key",
+        )
+        oci_model_podman.engine = mock_podman_engine
+
+        oci_model_podman.setup_mounts(args)
+
+        added = [call.args[0][0] for call in mock_podman_engine.add.call_args_list]
+        assert "--mount=type=bind,src=/host/certs/tls.crt,destination=/mnt/tls/tls.crt,ro" in added
+        assert "--mount=type=bind,src=/host/certs/tls.key,destination=/mnt/tls/tls.key,ro" in added
+
+    def test_setup_mounts_no_tls(self, oci_model_podman, mock_podman_engine):
+        args = Namespace(dryrun=False, tls_cert_file=None, tls_key_file=None)
+        oci_model_podman.engine = mock_podman_engine
+
+        oci_model_podman.setup_mounts(args)
+
+        added = [call.args[0][0] for call in mock_podman_engine.add.call_args_list]
+        assert not [mount for mount in added if "/mnt/tls" in mount]
+
+    def test_setup_mounts_tls_relabeled(self, oci_model_podman, mock_podman_engine):
+        """--selinux relabels the TLS material like every other bind mount."""
+        mock_podman_engine.relabel = Mock(return_value=",z")
+        args = Namespace(
+            dryrun=False,
+            tls_cert_file="/host/certs/tls.crt",
+            tls_key_file="/host/certs/tls.key",
+        )
+        oci_model_podman.engine = mock_podman_engine
+
+        oci_model_podman.setup_mounts(args)
+
+        added = [call.args[0][0] for call in mock_podman_engine.add.call_args_list]
+        assert "--mount=type=bind,src=/host/certs/tls.crt,destination=/mnt/tls/tls.crt,ro,z" in added
 
 
 class TestOCIModelSetupMountsDocker:

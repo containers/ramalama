@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from ramalama.compose import Compose, genfile
 
@@ -353,3 +354,87 @@ def test_compose_no_devices(monkeypatch):
     result = compose.generate().content
 
     assert "devices:" not in result
+
+
+def test_compose_windows_host_paths(monkeypatch):
+    """A native Windows host path is converted for the container engine, and
+    the backslashes it holds until then do not break the generated YAML."""
+    monkeypatch.setattr("os.path.exists", lambda path: True)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.get_gpu_devices", lambda env_vars: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+    # The real conversion only runs on Windows, where Path() reads the drive.
+    monkeypatch.setattr(
+        "ramalama.compose.normalize_host_path_for_container",
+        lambda path: f"/{path[0].lower()}{path[2:]}".replace("\\", "/"),
+    )
+
+    content = (
+        Compose(
+            "test",
+            (r"C:\Users\John\models\model.file", "/mnt/models/model.file"),
+            (r"C:\Users\John\models\chat_template", "/mnt/models/chat_template"),
+            None,
+            Args(),
+            [],
+            None,
+        )
+        .generate()
+        .content
+    )
+
+    assert yaml.safe_load(content)["services"]["test"]["volumes"] == [
+        "/c/Users/John/models/model.file:/mnt/models/model.file:ro",
+        "/c/Users/John/models/chat_template:/mnt/models/chat_template:ro",
+    ]
+
+
+def test_compose_host_paths_survive_yaml_quoting(monkeypatch):
+    """A host path a conversion leaves a backslash or a quote in, such as a
+    UNC path, still reaches the container whole."""
+    monkeypatch.setattr("os.path.exists", lambda path: True)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.get_gpu_devices", lambda env_vars: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    model_path = '/home/my "quoted" dir/model\\1.file'
+    cert_path = '/home/my "quoted" dir/tls.crt'
+    key_path = '/home/my "quoted" dir/tls.key'
+
+    args = Args()
+    args.tls_cert_file = cert_path
+    args.tls_key_file = key_path
+
+    content = Compose("test", (model_path, "/mnt/models/model.file"), None, None, args, [], None).generate().content
+
+    assert yaml.safe_load(content)["services"]["test"]["volumes"] == [
+        f"{model_path}:/mnt/models/model.file:ro",
+        f"{cert_path}:/mnt/tls/tls.crt:ro",
+        f"{key_path}:/mnt/tls/tls.key:ro",
+    ]
+
+
+def test_compose_tls_volumes(monkeypatch):
+    """The TLS material is mounted read-only from its host paths."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    args = Args()
+    args.tls_cert_file = "/host/certs/tls.crt"
+    args.tls_key_file = "/host/certs/tls.key"
+
+    result = Compose("test", ("/a", "/b"), None, None, args, [], None).generate().content
+
+    assert '- "/host/certs/tls.crt:/mnt/tls/tls.crt:ro"' in result
+    assert '- "/host/certs/tls.key:/mnt/tls/tls.key:ro"' in result
+
+
+def test_compose_no_tls_volumes_without_tls(monkeypatch):
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    result = Compose("test", ("/a", "/b"), None, None, Args(), [], None).generate().content
+
+    assert "/mnt/tls" not in result

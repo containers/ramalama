@@ -1,13 +1,35 @@
 from __future__ import annotations
 
+import json
 import os
 import platform
+import re
 from typing import Optional, Tuple
 
 from ramalama.common import MNT_DIR, RAG_DIR, ContainerEntryPoint, check_nvidia, get_accel_env_vars, get_gpu_devices
 from ramalama.file import PlainFile
 from ramalama.path_utils import normalize_host_path_for_container
+from ramalama.tls import tls_mounts
 from ramalama.version import version
+
+# A path built only from these characters means the same thing to a YAML
+# parser written plain as it does quoted.
+_PLAIN_YAML_PATH = re.compile(r"\A[A-Za-z0-9/._+=@~-]+\Z")
+
+
+def _yaml_path(path: str) -> str:
+    """Serialize a host path as a YAML scalar.
+
+    A plain scalar ends at a " #" or a ": ", and is stripped of its
+    surrounding whitespace, so a path holding any of those reaches the
+    container truncated, or stops the document parsing at all. Emit such a
+    path double quoted instead; a JSON string is a valid YAML double quoted
+    scalar, and escapes the quote and the backslash that form needs escaped.
+    """
+    if _PLAIN_YAML_PATH.match(path):
+        return path
+
+    return json.dumps(path, ensure_ascii=False)
 
 
 class Kube:
@@ -21,12 +43,21 @@ class Kube:
         exec_args,
         draft_model_paths: Optional[Tuple[str, str]],
         artifact: bool,
+        model_parts: Optional[list[Tuple[str, str]]] = None,
     ):
         self.src_chat_template_path, self.dest_chat_template_path = (
             chat_template_paths if chat_template_paths is not None else ("", "")
         )
         self.src_mmproj_path, self.dest_mmproj_path = mmproj_paths if mmproj_paths is not None else ("", "")
-        self.model_paths = {'model': model_paths}
+        if model_parts is not None:
+            # Router mode serves several models out of one directory, so each one
+            # needs its own volume, mounted read-only as the router engine and
+            # the Compose generation do.
+            self.model_paths = {f'model-{i}': paths for i, paths in enumerate(model_parts)}
+            self.read_only_models = True
+        else:
+            self.model_paths = {'model': model_paths}
+            self.read_only_models = False
         if draft_model_paths is not None:
             self.model_paths['model-draft'] = draft_model_paths
         self.ai_image = model_name
@@ -49,7 +80,9 @@ class Kube:
         for volume_name, (src_model_path, dest_model_path) in self.model_paths.items():
             src_model_path = src_model_path.removeprefix("oci://")
             if os.path.exists(src_model_path):
-                m, v = self._gen_path_volume(volume_name, src_model_path, dest_model_path)
+                m, v = self._gen_path_volume(
+                    volume_name, src_model_path, dest_model_path, read_only=self.read_only_models
+                )
                 mounts += m
                 volumes += v
             else:
@@ -77,9 +110,32 @@ class Kube:
             mounts += m
             volumes += v
 
+        m, v = self._gen_tls_volumes()
+        mounts += m
+        volumes += v
+
         m, v = self._gen_devices()
         mounts += m
         volumes += v
+        return mounts, volumes
+
+    def _gen_tls_volumes(self) -> Tuple[str, str]:
+        mounts = ""
+        volumes = ""
+        # tls_mounts() yields the certificate and then the key
+        for volume_name, (src_path, dest_path) in zip(("tls-cert", "tls-key"), tls_mounts(self.args)):
+            host_path = normalize_host_path_for_container(src_path)
+            if platform.system() == "Windows":
+                #  Workaround https://github.com/containers/podman/issues/16704
+                host_path = '/mnt' + host_path
+            mounts += f"""
+        - mountPath: {dest_path}
+          name: {volume_name}
+          readOnly: true"""
+            volumes += f"""
+      - hostPath:
+          path: {_yaml_path(host_path)}
+        name: {volume_name}"""
         return mounts, volumes
 
     def _gen_devices(self) -> Tuple[str, str]:
@@ -91,11 +147,11 @@ class Kube:
           name: {name}"""
             volumes += f"""
       - hostPath:
-          path: {path}
+          path: {_yaml_path(path)}
         name: {name}"""
         return mounts, volumes
 
-    def _gen_path_volume(self, volume_name, src_model_path, dest_model_path) -> Tuple[str, str]:
+    def _gen_path_volume(self, volume_name, src_model_path, dest_model_path, read_only=False) -> Tuple[str, str]:
         host_model_path = normalize_host_path_for_container(src_model_path)
         if platform.system() == "Windows":
             #  Workaround https://github.com/containers/podman/issues/16704
@@ -103,9 +159,12 @@ class Kube:
         mount = f"""
         - mountPath: {dest_model_path}
           name: {volume_name}"""
+        if read_only:
+            mount += """
+          readOnly: true"""
         volume = f"""
       - hostPath:
-          path: {host_model_path}
+          path: {_yaml_path(host_model_path)}
         name: {volume_name}"""
         return mount, volume
 
@@ -139,7 +198,7 @@ class Kube:
           name: chat-template"""
         volume = f"""
       - hostPath:
-          path: {host_chat_template_path}
+          path: {_yaml_path(host_chat_template_path)}
         name: chat-template"""
         return mount, volume
 
@@ -153,7 +212,7 @@ class Kube:
           name: mmproj"""
         volume = f"""
       - hostPath:
-          path: {host_mmproj_path}
+          path: {_yaml_path(host_mmproj_path)}
         name: mmproj"""
         return mount, volume
 

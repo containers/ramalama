@@ -11,7 +11,7 @@ import sys
 import urllib.error
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Optional, get_args
+from typing import Any, Optional, cast, get_args
 from urllib.parse import urlparse
 
 # if autocomplete doesn't exist, just do nothing, don't break
@@ -119,7 +119,7 @@ def parse_generate_option(option: str) -> ParsedGenerateInput:
 
 def parse_port_option(option: str) -> str:
     port = int(option)
-    if port <= 0 or port >= 65535:
+    if port < 1 or port > 65535:
         raise ValueError(f"Invalid port '{port}'")
     return option
 
@@ -606,6 +606,12 @@ def list_containers(args):
 def info_parser(subparsers):
     parser = subparsers.add_parser("info", help="display information pertaining to setup of RamaLama.")
     parser.add_argument(
+        "--devices",
+        dest="devices",
+        action="store_true",
+        help="display detected GPU/accelerator devices and exit",
+    )
+    parser.add_argument(
         "--shortnames",
         dest="shortnames",
         action="store_true",
@@ -748,6 +754,9 @@ def info_cli(args: DefaultArgsType) -> None:
             message = f"{name}={source} ({config_source})"
             print(message)
         return
+    if getattr(args, 'devices', None):
+        print(json.dumps(get_runtime(args.runtime).list_devices(cast(argparse.Namespace, args)), indent=4))
+        return
     info: dict[str, Any] = {
         "Accelerator": get_accel(),
         "Config": load_file_config(),
@@ -773,8 +782,6 @@ def info_cli(args: DefaultArgsType) -> None:
         "Version": version(),
     }
     if args.engine and len(args.engine) > 0:
-        from ramalama import engine
-
         info["Engine"]["Info"] = engine.info(args)
 
     print(json.dumps(info, sort_keys=True, indent=4))
