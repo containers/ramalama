@@ -1,5 +1,4 @@
 import string
-import sys
 from dataclasses import fields
 from typing import Optional, get_args
 from unittest.mock import MagicMock
@@ -34,18 +33,12 @@ try:
     st.register_type_strategy(str, shell_quoted_string_with_escaping())
 except ImportError:
     HAS_HYPOTHESIS = False
-    hypothesis = MagicMock()
-    sys.modules["hypothesis"] = hypothesis
-    hypothesis.given = lambda *x, **y: lambda *z: z
-    hypothesis.strategies = MagicMock()
-    hypothesis.strategies.sampled_from = lambda *x, **y: x
-    hypothesis.strategies.just = lambda *x, **y: x
-    hypothesis.strategies.text = lambda *x, **y: x
-    hypothesis.strategies.builds = lambda *x, **y: x
-    hypothesis.strategies.register_type_strategy = lambda *x, **y: x
 
-    from hypothesis import given
-    from hypothesis import strategies as st
+    # Stand-ins so the module still imports; the tests themselves are skipped.
+    st = MagicMock()
+
+    def given(*args, **kwargs):
+        return lambda func: func
 
 
 parser = get_parser()
