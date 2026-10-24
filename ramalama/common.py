@@ -443,7 +443,14 @@ def load_cdi_config(spec_dirs: list[str]) -> Optional[CDI_RETURN_TYPE]:
 
 
 def get_podman_machine_cdi_config() -> Optional[CDI_RETURN_TYPE]:
-    cdi_config = run_cmd(["podman", "machine", "ssh", "cat", "/etc/cdi/nvidia.yaml"], encoding="utf-8").stdout.strip()
+    try:
+        cdi_config = run_cmd(
+            ["podman", "machine", "ssh", "cat", "/etc/cdi/nvidia.yaml"], encoding="utf-8"
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError) as e:
+        # podman is not installed, has no running machine, or the machine has no CDI spec.
+        logger.debug(f"Failed to read CDI config from podman machine: {e}")
+        return None
     if cdi_config:
         return yaml.safe_load(cdi_config)
     return None
