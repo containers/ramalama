@@ -27,6 +27,7 @@ from ramalama.common import (
     find_in_cdi,
     get_accel,
     get_gpu_devices,
+    get_podman_machine_cdi_config,
     has_nvidia_vulkan_icd,
     host_available,
     host_cmd,
@@ -746,6 +747,34 @@ def test_find_in_cdi_broken(mock_isdir, mock_walk, visible, conf, unconf):
 
 @patch("ramalama.common.load_cdi_config", return_value=None)
 def test_find_in_cdi_no_config(mock_load_cdi_config):
+    assert find_in_cdi(["all"]) == ([], ["all"])
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        FileNotFoundError(2, "The system cannot find the file specified"),
+        subprocess.CalledProcessError(1, ["podman", "machine", "ssh", "cat", "/etc/cdi/nvidia.yaml"]),
+    ],
+    ids=["podman-not-installed", "no-cdi-spec-in-machine"],
+)
+@patch("ramalama.common.run_cmd")
+def test_get_podman_machine_cdi_config_errors(mock_run_cmd, error):
+    mock_run_cmd.side_effect = error
+    assert get_podman_machine_cdi_config() is None
+
+
+@patch("ramalama.common.run_cmd")
+def test_get_podman_machine_cdi_config_parses_yaml(mock_run_cmd):
+    mock_run_cmd.return_value = Mock(stdout=CDI_YAML_2)
+    cdi = get_podman_machine_cdi_config()
+    assert cdi is not None
+    assert "all" in [device["name"] for device in cdi["devices"]]
+
+
+@patch("ramalama.common.platform.system", return_value="Windows")
+@patch("ramalama.common.run_cmd", side_effect=FileNotFoundError(2, "No such file"))
+def test_find_in_cdi_windows_without_podman(mock_run_cmd, mock_system):
     assert find_in_cdi(["all"]) == ([], ["all"])
 
 
