@@ -1,9 +1,11 @@
 from argparse import Namespace
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from ramalama.plugins.runtimes.inference.llama_cpp import LlamaCppPlugin
+from ramalama.plugins.runtimes.inference.rag.handler import rag_handler
 from ramalama.rag import RagSource, RagTransport
 
 
@@ -87,3 +89,124 @@ class TestRagTransportLocalhostPrefix:
         RagTransport(imodel=MagicMock(), cmd=[], args=args)
 
         assert args.rag == "localhost/myrag:latest"
+
+
+class TestRagEmbeddingServeArgs:
+    """Regression tests for issue #2836: ensure embedding server uses
+    appropriate context and batch sizes (--batch-size, --ubatch-size)
+    so chunks up to 2048 tokens (or user-specified embed_ctx_size) are accepted."""
+
+    @patch("ramalama.plugins.loader.get_runtime", return_value=LlamaCppPlugin())
+    @patch("ramalama.rag.Rag")
+    @patch("ramalama.plugins.runtimes.inference.rag.handler.New")
+    @patch("ramalama.plugins.runtimes.inference.rag.handler.compute_serving_port", side_effect=[8080, 8081])
+    @patch("ramalama.plugins.runtimes.inference.rag.handler.set_accel_env_vars")
+    def test_default_embed_batch_size_2048(
+        self,
+        mock_accel: MagicMock,
+        mock_port: MagicMock,
+        mock_new: MagicMock,
+        mock_rag: MagicMock,
+        mock_runtime: MagicMock,
+    ) -> None:
+        mock_transport = MagicMock()
+        mock_proc = MagicMock()
+        mock_proc.poll.return_value = 0
+        mock_transport.serve_nonblocking.return_value = mock_proc
+        mock_new.return_value = mock_transport
+
+        args = Namespace(
+            container=True,
+            engine="podman",
+            store="/tmp/store",
+            dryrun=True,
+            debug=False,
+            image="rag-image",
+            rag_image="rag-image",
+            DOCUMENTS=["doc.pdf"],
+            DESTINATION="myrag",
+            embed_ctx_size=0,
+            runtime="llama.cpp",
+            subcommand="serve",
+        )
+        plugin = MagicMock()
+        rag_handler(plugin, args)
+
+        assert mock_new.call_count >= 2
+        embed_call = mock_new.call_args_list[1]
+        _, embed_serve_args = embed_call[0]
+
+        assert embed_serve_args.ctx_size == 2048
+        assert "--embedding" in embed_serve_args.runtime_args
+        assert "--batch-size" in embed_serve_args.runtime_args
+        assert "--ubatch-size" in embed_serve_args.runtime_args
+
+        idx_batch = embed_serve_args.runtime_args.index("--batch-size")
+        assert embed_serve_args.runtime_args[idx_batch + 1] == "2048"
+
+        idx_ubatch = embed_serve_args.runtime_args.index("--ubatch-size")
+        assert embed_serve_args.runtime_args[idx_ubatch + 1] == "2048"
+
+        embed_call_serve = mock_transport.serve_nonblocking.call_args_list[1]
+        _, called_cmd = embed_call_serve[0]
+        assert "--ctx-size" in called_cmd
+        assert called_cmd[called_cmd.index("--ctx-size") + 1] == "2048"
+        assert "--batch-size" in called_cmd
+        assert called_cmd[called_cmd.index("--batch-size") + 1] == "2048"
+        assert "--ubatch-size" in called_cmd
+        assert called_cmd[called_cmd.index("--ubatch-size") + 1] == "2048"
+
+    @patch("ramalama.plugins.loader.get_runtime", return_value=LlamaCppPlugin())
+    @patch("ramalama.rag.Rag")
+    @patch("ramalama.plugins.runtimes.inference.rag.handler.New")
+    @patch("ramalama.plugins.runtimes.inference.rag.handler.compute_serving_port", side_effect=[8080, 8081])
+    @patch("ramalama.plugins.runtimes.inference.rag.handler.set_accel_env_vars")
+    def test_custom_embed_ctx_size_propagates(
+        self,
+        mock_accel: MagicMock,
+        mock_port: MagicMock,
+        mock_new: MagicMock,
+        mock_rag: MagicMock,
+        mock_runtime: MagicMock,
+    ) -> None:
+        mock_transport = MagicMock()
+        mock_proc = MagicMock()
+        mock_proc.poll.return_value = 0
+        mock_transport.serve_nonblocking.return_value = mock_proc
+        mock_new.return_value = mock_transport
+
+        args = Namespace(
+            container=True,
+            engine="podman",
+            store="/tmp/store",
+            dryrun=True,
+            debug=False,
+            image="rag-image",
+            rag_image="rag-image",
+            DOCUMENTS=["doc.pdf"],
+            DESTINATION="myrag",
+            embed_ctx_size=4096,
+            runtime="llama.cpp",
+            subcommand="serve",
+        )
+        plugin = MagicMock()
+        rag_handler(plugin, args)
+
+        assert mock_new.call_count >= 2
+        embed_call = mock_new.call_args_list[1]
+        _, embed_serve_args = embed_call[0]
+
+        assert embed_serve_args.ctx_size == 4096
+        idx_batch = embed_serve_args.runtime_args.index("--batch-size")
+        assert embed_serve_args.runtime_args[idx_batch + 1] == "4096"
+        idx_ubatch = embed_serve_args.runtime_args.index("--ubatch-size")
+        assert embed_serve_args.runtime_args[idx_ubatch + 1] == "4096"
+
+        embed_call_serve = mock_transport.serve_nonblocking.call_args_list[1]
+        _, called_cmd = embed_call_serve[0]
+        assert "--ctx-size" in called_cmd
+        assert called_cmd[called_cmd.index("--ctx-size") + 1] == "4096"
+        assert "--batch-size" in called_cmd
+        assert called_cmd[called_cmd.index("--batch-size") + 1] == "4096"
+        assert "--ubatch-size" in called_cmd
+        assert called_cmd[called_cmd.index("--ubatch-size") + 1] == "4096"
