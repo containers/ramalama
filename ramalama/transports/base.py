@@ -61,7 +61,7 @@ RamaLama requires the "%(cmd)s" command to be installed inside of the container.
 RamaLama requires the server application be installed in the container images.
 Either install a package containing the "%(cmd)s" command in the container or run
 with the default RamaLama
-$(error)s"""
+%(error)s"""
 
 
 class NoGGUFModelFileFound(Exception):
