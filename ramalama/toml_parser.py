@@ -12,7 +12,7 @@ class TOMLParser:
     def parse(self, toml_string):
         current_section = self.data
         for line in toml_string.splitlines():
-            line = line.strip()
+            line = self._strip_comment(line).strip()
             if not line or line.startswith("#"):
                 continue
 
@@ -34,11 +34,31 @@ class TOMLParser:
         return self.data
 
     def parse_file(self, file_path):
-        with open(file_path, "r", encoding="utf8") as f:
+        # utf-8-sig drops the BOM that some Windows editors write
+        with open(file_path, "r", encoding="utf-8-sig") as f:
             toml_string = f.read()
         self.parse(toml_string)
 
         return self.data
+
+    @staticmethod
+    def _strip_comment(line):
+        """Remove a trailing ``# comment`` that is not inside a string."""
+        quote = None
+        escaped = False
+        for i, char in enumerate(line):
+            if escaped:
+                escaped = False
+            elif quote == '"' and char == "\\":
+                escaped = True
+            elif quote:
+                if char == quote:
+                    quote = None
+            elif char in ('"', "'"):
+                quote = char
+            elif char == "#":
+                return line[:i]
+        return line
 
     def _create_section(self, section_name):
         keys = section_name.split(".")
@@ -51,7 +71,7 @@ class TOMLParser:
         return section
 
     def _parse_value(self, value):
-        if value.startswith('"') and value.endswith('"'):
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
             return value[1:-1]
         if value.startswith("[") and value.endswith("]"):
             return [self._parse_value(v.strip()) for v in value[1:-1].split(",")]

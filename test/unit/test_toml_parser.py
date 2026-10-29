@@ -193,3 +193,45 @@ def test_toml_parser_wrong_toml_entries(toml_error_string, expected_match):
     toml_parser = ramalama.toml_parser.TOMLParser()
     with pytest.raises(ValueError, match=expected_match):
         toml_parser.parse(toml_error_string)
+
+
+def test_toml_parser_parse_file_with_utf8_bom(tmp_path):
+    """
+    Editors on Windows (Notepad, PowerShell 5.1 Out-File -Encoding utf8) prepend a UTF-8 BOM.
+    """
+    config = tmp_path / "ramalama.conf"
+    config.write_bytes(b'\xef\xbb\xbf[ramalama]\r\nctx_size = 4096\r\n')
+    toml_parser = ramalama.toml_parser.TOMLParser()
+    assert toml_parser.parse_file(str(config)) == {"ramalama": {"ctx_size": 4096}}
+
+
+@pytest.mark.parametrize(
+    "toml, expected",
+    [
+        ('ctx_size = 4096 # tokens', {"ctx_size": 4096}),
+        ('[ramalama] # main section\nengine = "podman"', {"ramalama": {"engine": "podman"}}),
+        ('image = "quay.io/x#y" # comment', {"image": "quay.io/x#y"}),
+        ("image = 'quay.io/x#y' # comment", {"image": "quay.io/x#y"}),
+        ('runtime_args = ["-v", "-x"]  # flags', {"runtime_args": ["-v", "-x"]}),
+    ],
+)
+def test_toml_parser_inline_comments(toml, expected):
+    toml_parser = ramalama.toml_parser.TOMLParser()
+    assert toml_parser.parse(toml) == expected
+
+
+@pytest.mark.parametrize(
+    "toml, expected",
+    [
+        (r"store = 'C:\models'", {"store": r"C:\models"}),
+        ("args = ['--a', '--b']", {"args": ["--a", "--b"]}),
+    ],
+)
+def test_toml_parser_literal_strings(toml, expected):
+    toml_parser = ramalama.toml_parser.TOMLParser()
+    assert toml_parser.parse(toml) == expected
+
+
+def test_toml_parser_inline_comment_ignores_hash_after_escaped_quote():
+    toml_parser = ramalama.toml_parser.TOMLParser()
+    assert "# b" in toml_parser.parse('image = "a \\" # b"')["image"]
