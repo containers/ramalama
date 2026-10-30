@@ -445,59 +445,51 @@ class Transport(TransportBase):
         # carry the mounts that put them there.
         self.setup_tls_mounts(args)
 
+        dry_run = getattr(args, "dryrun", False)
+
         # A dry run can still emit the model mounts when the model is already in
-        # the local store, so the printed command is the one that would run.
-        if self._use_placeholder_paths(getattr(args, "dryrun", False)):
-            return
+        # the local store, so the printed command is the one that would run. The
+        # model and the draft model are decided separately: either can be cached
+        # without the other, and each contributes only its own mounts.
+        if not self._use_placeholder_paths(dry_run):
+            if self.model_type == 'oci':
+                strategy = getattr(self, "strategy", None)
+                mount_cmd_fn = getattr(self, "mount_cmd", None)
+                if strategy is None or mount_cmd_fn is None:
+                    raise NotImplementedError("OCI transport requires strategy and mount_cmd")
+                if self.engine.use_podman or strategy.kind == "artifact":
+                    mount_cmd = mount_cmd_fn()
+                elif self.engine.use_docker:
+                    output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
+                    volume = populate_volume_from_image(self, args, os.path.basename(output_filename))
+                    mount_cmd = mount_cmd_fn(volume, MNT_DIR)
+                else:
+                    raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
+                self.engine.add([mount_cmd])
+                return None
 
-        if self.model_type == 'oci':
-            strategy = getattr(self, "strategy", None)
-            mount_cmd_fn = getattr(self, "mount_cmd", None)
-            if strategy is None or mount_cmd_fn is None:
-                raise NotImplementedError("OCI transport requires strategy and mount_cmd")
-            if self.engine.use_podman or strategy.kind == "artifact":
-                mount_cmd = mount_cmd_fn()
-            elif self.engine.use_docker:
-                output_filename = self._get_entry_model_path(args.container, True, args.dryrun)
-                volume = populate_volume_from_image(self, args, os.path.basename(output_filename))
-                mount_cmd = mount_cmd_fn(volume, MNT_DIR)
-            else:
-                raise NotImplementedError(f"No compatible oci mount method for engine: {self.engine.args.engine}")
-            self.engine.add([mount_cmd])
-            return None
+            self._add_blob_mounts(self)
 
-        ref_file = self.model_store.get_ref_file(self.model_tag)
+        if self.draft_model and not self.draft_model._use_placeholder_paths(dry_run):
+            self._add_blob_mounts(self.draft_model, gguf_only=True)
+
+    def _add_blob_mounts(self, model: "Transport", gguf_only: bool = False) -> None:
+        """Bind mount a model's blobs into the container under their file names."""
+        ref_file = model.model_store.get_ref_file(model.model_tag)
 
         if ref_file is None:
-            raise NoRefFileFound(self.model)
+            raise NoRefFileFound(model.model)
 
-        # mount all files into container with file name instead of hash
         for file in ref_file.files:
-            blob_path = self.model_store.get_blob_file_path(file.hash)
+            if gguf_only and file.type != 'gguf':
+                continue
+            blob_path = model.model_store.get_blob_file_path(file.hash)
             # Convert path to container-friendly format (handles Windows path conversion)
             container_blob_path = get_container_mount_path(blob_path)
             mount_path = f"{MNT_DIR}/{file.name}"
             self.engine.add(
                 [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
             )
-
-        if self.draft_model:
-            ref_file = self.draft_model.model_store.get_ref_file(self.draft_model.model_tag)
-
-            if ref_file is None:
-                raise NoRefFileFound(self.draft_model.model)
-
-            # mount all files into container with file name instead of hash
-            for file in ref_file.files:
-                if file.type != 'gguf':
-                    continue
-                blob_path = self.draft_model.model_store.get_blob_file_path(file.hash)
-                # Convert path to container-friendly format (handles Windows path conversion)
-                container_blob_path = get_container_mount_path(blob_path)
-                mount_path = f"{MNT_DIR}/{file.name}"
-                self.engine.add(
-                    [f"--mount=type=bind,src={container_blob_path},destination={mount_path},ro{self.engine.relabel()}"]
-                )
 
     def serve_nonblocking(self, args, cmd: list[str]) -> Optional[subprocess.Popen]:
         if args.container:

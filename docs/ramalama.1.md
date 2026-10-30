@@ -112,6 +112,8 @@ Show container runtime command without executing it (default: False).
 A dry run never pulls the model. When the model is already in the local store,
 the printed command carries its real mounts and paths; otherwise the model path
 is shown as the `/path/to/model` placeholder and the model mounts are omitted.
+OCI models always use the placeholder, since resolving one means invoking the
+container engine.
 
 #### **--engine**
 Run RamaLama using the specified container engine. Default is Podman if installed, otherwise Docker.

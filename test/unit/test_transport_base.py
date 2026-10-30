@@ -530,11 +530,16 @@ class TestDryRunPathsForCachedModel:
     to be the one that would actually run.
     """
 
+    # The mount paths go through get_container_mount_path, which resolves
+    # symlinks, so the fake store cannot live under /tmp: macOS would resolve
+    # that to /private/tmp. A root that exists on no platform stays verbatim.
+    STORE = "/ramalama-test-store"
+
     @pytest.fixture
     def ref_file(self):
         return RefJSONFile(
             "ref-hash",
-            "/tmp/store/refs/latest",
+            f"{self.STORE}/refs/latest",
             [
                 StoreFile("sha256-model", "granite.gguf", StoreFileType.GGUF_MODEL),
                 StoreFile("sha256-mmproj", "mmproj.gguf", StoreFileType.MMPROJ),
@@ -545,17 +550,17 @@ class TestDryRunPathsForCachedModel:
     @pytest.fixture
     def model(self, ref_file):
         """A Hugging Face model whose store reports it as fully cached."""
-        model = Huggingface("granite:latest", "/tmp/store")
+        model = Huggingface("granite:latest", self.STORE)
         store = MagicMock()
         store.get_ref_file.return_value = ref_file
-        store.get_blob_file_path.side_effect = lambda hash: f"/tmp/store/blobs/{hash}"
+        store.get_blob_file_path.side_effect = lambda hash: f"{self.STORE}/blobs/{hash}"
         model._model_store = store
         return model
 
     def test_entry_model_path_is_resolved(self, model):
         with patch.object(Huggingface, "exists", return_value=True):
             assert model._get_entry_model_path(True, False, True) == f"{MNT_DIR}/granite.gguf"
-            assert model._get_entry_model_path(False, False, True) == "/tmp/store/blobs/sha256-model"
+            assert model._get_entry_model_path(False, False, True) == f"{self.STORE}/blobs/sha256-model"
 
     def test_mmproj_and_chat_template_paths_are_resolved(self, model):
         with patch.object(Huggingface, "exists", return_value=True):
@@ -565,7 +570,7 @@ class TestDryRunPathsForCachedModel:
     def test_all_model_part_paths_are_resolved(self, model):
         with patch.object(Huggingface, "exists", return_value=True):
             assert model._get_all_model_part_paths(False, True, True) == [
-                ("/tmp/store/blobs/sha256-model", f"{MNT_DIR}/granite.gguf")
+                (f"{self.STORE}/blobs/sha256-model", f"{MNT_DIR}/granite.gguf")
             ]
 
     def test_placeholders_remain_when_model_is_not_cached(self, model):
@@ -590,8 +595,9 @@ class TestDryRunPathsForCachedModel:
             model.setup_mounts(Namespace(dryrun=True, tls_cert_file=None, tls_key_file=None))
 
         added = [call.args[0][0] for call in engine.add.call_args_list]
-        assert f"--mount=type=bind,src=/tmp/store/blobs/sha256-model,destination={MNT_DIR}/granite.gguf,ro" in added
-        assert f"--mount=type=bind,src=/tmp/store/blobs/sha256-mmproj,destination={MNT_DIR}/mmproj.gguf,ro" in added
+        blobs = f"{self.STORE}/blobs"
+        assert f"--mount=type=bind,src={blobs}/sha256-model,destination={MNT_DIR}/granite.gguf,ro" in added
+        assert f"--mount=type=bind,src={blobs}/sha256-mmproj,destination={MNT_DIR}/mmproj.gguf,ro" in added
 
     def test_setup_mounts_emits_no_binds_when_model_is_not_cached(self, model):
         engine = Mock()
@@ -603,6 +609,52 @@ class TestDryRunPathsForCachedModel:
             model.setup_mounts(Namespace(dryrun=True, tls_cert_file=None, tls_key_file=None))
 
         engine.add.assert_not_called()
+
+    def _draft(self, name, files):
+        draft = Huggingface(name, self.STORE)
+        store = MagicMock()
+        store.get_ref_file.return_value = RefJSONFile("draft-ref", f"{self.STORE}/refs/draft", files)
+        store.get_blob_file_path.side_effect = lambda hash: f"{self.STORE}/blobs/{hash}"
+        draft._model_store = store
+        return draft
+
+    def test_an_uncached_draft_model_is_skipped_rather_than_failing(self, model):
+        """The draft model is decided on its own: an uncached one must not turn a
+        dry run of a cached primary model into a NoRefFileFound."""
+        draft = self._draft("draft:latest", [])
+        draft._model_store.get_ref_file.return_value = None
+        model.draft_model = draft
+
+        engine = Mock()
+        engine.add = Mock()
+        engine.relabel = Mock(return_value="")
+        model.engine = engine
+
+        with (
+            patch.object(Huggingface, "exists", autospec=True, side_effect=lambda self: self is model),
+        ):
+            model.setup_mounts(Namespace(dryrun=True, tls_cert_file=None, tls_key_file=None))
+
+        added = [call.args[0][0] for call in engine.add.call_args_list]
+        assert any("granite.gguf" in mount for mount in added)
+        assert not any("draft" in mount for mount in added)
+
+    def test_a_cached_draft_model_is_mounted(self, model):
+        draft = self._draft("draft:latest", [StoreFile("sha256-draft", "draft.gguf", StoreFileType.GGUF_MODEL)])
+        model.draft_model = draft
+
+        engine = Mock()
+        engine.add = Mock()
+        engine.relabel = Mock(return_value="")
+        model.engine = engine
+
+        with patch.object(Huggingface, "exists", return_value=True):
+            model.setup_mounts(Namespace(dryrun=True, tls_cert_file=None, tls_key_file=None))
+
+        added = [call.args[0][0] for call in engine.add.call_args_list]
+        blobs = f"{self.STORE}/blobs"
+        assert f"--mount=type=bind,src={blobs}/sha256-model,destination={MNT_DIR}/granite.gguf,ro" in added
+        assert f"--mount=type=bind,src={blobs}/sha256-draft,destination={MNT_DIR}/draft.gguf,ro" in added
 
     def test_oci_models_keep_the_placeholders(self, force_oci_image):
         """Resolving an OCI model means invoking the engine, which a dry run must not do."""
