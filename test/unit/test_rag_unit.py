@@ -1,10 +1,12 @@
+import ntpath
+import os
 from argparse import Namespace
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from ramalama.rag import RagSource, RagTransport
+from ramalama.rag import Rag, RagSource, RagTransport
 
 
 def _build_rag_transport(path: str, store: str, engine: str = "podman") -> RagTransport:
@@ -87,3 +89,38 @@ class TestRagTransportLocalhostPrefix:
         RagTransport(imodel=MagicMock(), cmd=[], args=args)
 
         assert args.rag == "localhost/myrag:latest"
+
+
+class TestRagDestination:
+    """``ramalama rag`` DESTINATION: an image name (optionally ``oci://``) or a
+    local directory (relative, absolute, ``file://``, or a Windows path)."""
+
+    @pytest.mark.parametrize(
+        "destination, oci, target",
+        [
+            ("myrag:latest", True, "myrag:latest"),
+            ("quay.io/myuser/report-rag", True, "quay.io/myuser/report-rag"),
+            ("oci://quay.io/myuser/report-rag", True, "quay.io/myuser/report-rag"),
+            ("./out", False, "./out"),
+            ("/tmp/ragdb", False, "/tmp/ragdb"),
+        ],
+    )
+    def test_destination_forms(self, destination: str, oci: bool, target: str) -> None:
+        rag = Rag(destination)
+        assert (rag.oci, rag.target) == (oci, target)
+
+    def test_file_uri_is_a_local_path(self, tmp_path: Path) -> None:
+        rag = Rag(tmp_path.as_uri())
+        assert rag.oci is False
+        assert rag.target == str(tmp_path)
+
+    @pytest.mark.parametrize("destination", [r"C:\rag\db", r"c:\rag\db", "C:/rag/db", r"\\server\share\db"])
+    def test_windows_paths_are_local(self, destination: str, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(os.path, "isabs", ntpath.isabs)
+        rag = Rag(destination)
+        assert rag.oci is False
+        assert rag.target == destination
+
+    def test_uppercase_image_name_still_rejected(self) -> None:
+        with pytest.raises(ValueError, match="must be lowercase"):
+            Rag("oci://quay.io/MyUser/rag")
