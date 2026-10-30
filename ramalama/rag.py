@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import tempfile
 from functools import partial
@@ -55,11 +56,18 @@ class Rag:
             target = target.removeprefix("oci://")
         elif target.startswith("file://"):
             self.oci = False
+            authority = target[len("file://") :].split("/", 1)[0]
+            if authority not in ("", "localhost") and not re.fullmatch(r"[A-Za-z]:", authority):
+                raise ValueError(f"unsupported file URI host '{authority}': use a local path for the destination")
             target = file_uri_to_path(target)
         else:
-            # Relative or absolute paths (including Windows drive and UNC paths)
+            # Relative or absolute paths (including Windows drive paths)
             # are local directories; anything else names an image.
             self.oci = target[0] not in {".", "/"} and not os.path.isabs(target)
+        if not self.oci and (target.startswith("\\\\") or (os.name == "nt" and target.startswith("//"))):
+            # The volume mount drops the server and share, so a UNC path would
+            # silently write somewhere else.
+            raise ValueError(f"UNC paths are not supported as a destination: '{target}'; map the share to a drive")
         self.target = target
         if self.oci and not self.target.islower():
             raise ValueError(f"invalid reference format: repository name '{self.target}' must be lowercase")

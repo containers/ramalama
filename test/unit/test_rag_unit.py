@@ -114,12 +114,28 @@ class TestRagDestination:
         assert rag.oci is False
         assert rag.target == str(tmp_path)
 
-    @pytest.mark.parametrize("destination", [r"C:\rag\db", r"c:\rag\db", "C:/rag/db", r"\\server\share\db"])
+    @pytest.mark.parametrize("destination", [r"C:\rag\db", r"c:\rag\db", "C:/rag/db"])
     def test_windows_paths_are_local(self, destination: str, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(os.path, "isabs", ntpath.isabs)
         rag = Rag(destination)
         assert rag.oci is False
         assert rag.target == destination
+
+    def test_unc_destination_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # The output mount would drop the server and share and write to /db.
+        monkeypatch.setattr(os.path, "isabs", ntpath.isabs)
+        with pytest.raises(ValueError, match="UNC paths are not supported"):
+            Rag(r"\\server\share\db")
+
+    @pytest.mark.parametrize("destination", ["file://example.com/out", "file://server/share/db"])
+    def test_file_uri_with_remote_host_rejected(self, destination: str) -> None:
+        with pytest.raises(ValueError, match="unsupported file URI host"):
+            Rag(destination)
+
+    def test_file_uri_localhost_is_local(self, tmp_path: Path) -> None:
+        rag = Rag("file://localhost/" + tmp_path.as_posix().lstrip("/"))
+        assert rag.oci is False
+        assert Path(rag.target) == tmp_path
 
     def test_uppercase_image_name_still_rejected(self) -> None:
         with pytest.raises(ValueError, match="must be lowercase"):
