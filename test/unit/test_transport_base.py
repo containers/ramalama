@@ -6,7 +6,13 @@ import pytest
 
 from ramalama.common import MNT_DIR
 from ramalama.config import ActiveConfig
-from ramalama.transports.base import Transport, compute_ports, compute_serving_port
+from ramalama.transports.base import (
+    Transport,
+    compute_ports,
+    compute_serving_port,
+    file_not_found,
+    file_not_found_in_container,
+)
 from ramalama.transports.oci.oci import OCI
 from ramalama.transports.transport_factory import TransportFactory
 
@@ -261,6 +267,15 @@ def test_compute_serving_port_override_wins_when_not_excluded(exclude):
     args = Namespace(port="8080", port_override=True, debug=False, api="")
 
     assert compute_serving_port(args, quiet=True, exclude=exclude) == "8080"
+
+
+@pytest.mark.parametrize("template", [file_not_found, file_not_found_in_container])
+def test_error_placeholder_substituted(template):
+    """test for issue #2976: the underlying error is shown, not the text: $(error)s"""
+    err_str = "something went wrong..."
+    message = template % {"cmd": "/tmp/podman", "error": err_str}
+    assert err_str in message
+    assert "(error)s" not in message
 
 
 class TestMLXRuntime:
