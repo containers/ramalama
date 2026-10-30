@@ -235,3 +235,43 @@ def test_toml_parser_literal_strings(toml, expected):
 def test_toml_parser_inline_comment_ignores_hash_after_escaped_quote():
     toml_parser = ramalama.toml_parser.TOMLParser()
     assert "# b" in toml_parser.parse('image = "a \\" # b"')["image"]
+
+
+@pytest.mark.parametrize(
+    "toml",
+    [
+        'store = """/srv/models"""',
+        "store = '''/srv/models'''",
+    ],
+)
+def test_toml_parser_rejects_multiline_strings(toml):
+    toml_parser = ramalama.toml_parser.TOMLParser()
+    with pytest.raises(ValueError):
+        toml_parser.parse(toml)
+
+
+@pytest.mark.parametrize(
+    "toml, expected",
+    [
+        ('args = ["a,b", "c"]', {"args": ["a,b", "c"]}),
+        ("args = ['x,y', 'z'] # comment", {"args": ["x,y", "z"]}),
+        ('args = ["a", "b",]', {"args": ["a", "b"]}),
+    ],
+)
+def test_toml_parser_array_commas_inside_strings(toml, expected):
+    toml_parser = ramalama.toml_parser.TOMLParser()
+    assert toml_parser.parse(toml) == expected
+
+
+@pytest.mark.parametrize(
+    "toml",
+    [
+        'args = ["a,b", "c"]',
+        "args = ['x,y', 'z'] # comment",
+        "store = 'C:\\models'",
+    ],
+)
+def test_toml_parser_matches_tomllib(toml):
+    tomllib = pytest.importorskip("tomllib")
+    toml_parser = ramalama.toml_parser.TOMLParser()
+    assert toml_parser.parse(toml) == tomllib.loads(toml)

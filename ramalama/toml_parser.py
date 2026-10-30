@@ -70,11 +70,33 @@ class TOMLParser:
 
         return section
 
+    @staticmethod
+    def _split_array(inner):
+        """Split array items on commas that are not inside a string."""
+        items, start, quote, escaped = [], 0, None, False
+        for i, char in enumerate(inner):
+            if escaped:
+                escaped = False
+            elif quote == '"' and char == "\\":
+                escaped = True
+            elif quote:
+                if char == quote:
+                    quote = None
+            elif char in ('"', "'"):
+                quote = char
+            elif char == ",":
+                items.append(inner[start:i])
+                start = i + 1
+        items.append(inner[start:])
+        return [item.strip() for item in items if item.strip()]
+
     def _parse_value(self, value):
+        if value.startswith(('"""', "'''")):
+            raise ValueError(f"Multi-line strings are not supported: {value}")
         if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
             return value[1:-1]
         if value.startswith("[") and value.endswith("]"):
-            return [self._parse_value(v.strip()) for v in value[1:-1].split(",")]
+            return [self._parse_value(v) for v in self._split_array(value[1:-1])]
         if re.match(r'^\d+$', value):
             return int(value)
         if re.match(r'^\d+\.\d+$', value):
