@@ -201,6 +201,27 @@ class Transport(TransportBase):
             self._model_store = ModelStore(GlobalModelStore(self._model_store_path), name, self.model_type, orga)
         return self._model_store
 
+    def _use_placeholder_paths(self, dry_run: bool) -> bool:
+        """
+        Returns whether dry run output has to fall back to placeholder model paths.
+
+        A dry run never pulls, so the real paths are only knowable when the model
+        already happens to be in the local store. When it is, resolve the real
+        paths so the printed command matches the one that would actually run.
+
+        OCI models keep the placeholders either way: probing them means invoking
+        the container engine, and mounting them can require materializing a
+        volume, neither of which a dry run should do.
+        """
+        if not dry_run:
+            return False
+        if self.model_type == 'oci':
+            return True
+        try:
+            return not self.exists()
+        except Exception:
+            return True
+
     def _get_all_model_part_paths(
         self, use_container: bool, should_generate: bool, dry_run: bool
     ) -> list[tuple[str, str]]:
@@ -209,7 +230,7 @@ class Transport(TransportBase):
         For single-file models, returns a list with one tuple.
         For multi-part models, returns a tuple for each part.
         """
-        if dry_run:
+        if self._use_placeholder_paths(dry_run):
             return [("/path/to/model", f"{MNT_DIR}/model.file")]
 
         if self.model_type == 'oci':
@@ -255,7 +276,7 @@ class Transport(TransportBase):
         Returns the path to the model blob on the host if use_container and should_generate are both False.
         Or returns the path to the mounted file inside a container.
         """
-        if dry_run:
+        if self._use_placeholder_paths(dry_run):
             return "/path/to/model"
 
         if is_oci(self):
@@ -294,7 +315,7 @@ class Transport(TransportBase):
         """Return a concrete file path for inspection.
         Prefer the safetensor blob if available; otherwise use the entry path.
         """
-        if dry_run:
+        if self._use_placeholder_paths(dry_run):
             return "/path/to/model"
         if self.model_type == 'oci':
             return self._get_entry_model_path(False, False, dry_run)
@@ -306,7 +327,7 @@ class Transport(TransportBase):
         Returns the path to the mmproj blob on the host if use_container and should_generate are both False.
         Or returns the path to the mounted file inside a container.
         """
-        if dry_run:
+        if self._use_placeholder_paths(dry_run):
             return ""
 
         if self.model_type == 'oci':
@@ -330,7 +351,7 @@ class Transport(TransportBase):
         Returns the path to the chat template blob on the host if use_container and should_generate are both False.
         Or returns the path to the mounted file inside a container.
         """
-        if dry_run:
+        if self._use_placeholder_paths(dry_run):
             return ""
 
         if self.model_type == 'oci':
@@ -424,7 +445,9 @@ class Transport(TransportBase):
         # carry the mounts that put them there.
         self.setup_tls_mounts(args)
 
-        if args.dryrun:
+        # A dry run can still emit the model mounts when the model is already in
+        # the local store, so the printed command is the one that would run.
+        if self._use_placeholder_paths(getattr(args, "dryrun", False)):
             return
 
         if self.model_type == 'oci':

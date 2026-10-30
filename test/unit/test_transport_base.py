@@ -6,6 +6,7 @@ import pytest
 
 from ramalama.common import MNT_DIR
 from ramalama.config import ActiveConfig
+from ramalama.model_store.reffile import RefJSONFile, StoreFile, StoreFileType
 from ramalama.transports.base import (
     Transport,
     compute_ports,
@@ -13,6 +14,7 @@ from ramalama.transports.base import (
     file_not_found,
     file_not_found_in_container,
 )
+from ramalama.transports.huggingface import Huggingface
 from ramalama.transports.oci.oci import OCI
 from ramalama.transports.transport_factory import TransportFactory
 
@@ -518,3 +520,93 @@ class TestOCIModelSetupMountsDocker:
         # Verify mount command was added
         expected_mount = f"--mount=type=volume,src={mock_volume_name},dst={MNT_DIR},readonly"
         mock_docker_engine.add.assert_called_once_with([expected_mount])
+
+
+class TestDryRunPathsForCachedModel:
+    """A dry run prints the real paths and mounts once the model is cached.
+
+    --dry-run never pulls, so the placeholders only stand in for a model that
+    is not in the store yet. When it is already there the printed command has
+    to be the one that would actually run.
+    """
+
+    @pytest.fixture
+    def ref_file(self):
+        return RefJSONFile(
+            "ref-hash",
+            "/tmp/store/refs/latest",
+            [
+                StoreFile("sha256-model", "granite.gguf", StoreFileType.GGUF_MODEL),
+                StoreFile("sha256-mmproj", "mmproj.gguf", StoreFileType.MMPROJ),
+                StoreFile("sha256-chat", "chat_template", StoreFileType.CHAT_TEMPLATE),
+            ],
+        )
+
+    @pytest.fixture
+    def model(self, ref_file):
+        """A Hugging Face model whose store reports it as fully cached."""
+        model = Huggingface("granite:latest", "/tmp/store")
+        store = MagicMock()
+        store.get_ref_file.return_value = ref_file
+        store.get_blob_file_path.side_effect = lambda hash: f"/tmp/store/blobs/{hash}"
+        model._model_store = store
+        return model
+
+    def test_entry_model_path_is_resolved(self, model):
+        with patch.object(Huggingface, "exists", return_value=True):
+            assert model._get_entry_model_path(True, False, True) == f"{MNT_DIR}/granite.gguf"
+            assert model._get_entry_model_path(False, False, True) == "/tmp/store/blobs/sha256-model"
+
+    def test_mmproj_and_chat_template_paths_are_resolved(self, model):
+        with patch.object(Huggingface, "exists", return_value=True):
+            assert model._get_mmproj_path(True, False, True) == f"{MNT_DIR}/mmproj.gguf"
+            assert model._get_chat_template_path(True, False, True) == f"{MNT_DIR}/chat_template"
+
+    def test_all_model_part_paths_are_resolved(self, model):
+        with patch.object(Huggingface, "exists", return_value=True):
+            assert model._get_all_model_part_paths(False, True, True) == [
+                ("/tmp/store/blobs/sha256-model", f"{MNT_DIR}/granite.gguf")
+            ]
+
+    def test_placeholders_remain_when_model_is_not_cached(self, model):
+        with patch.object(Huggingface, "exists", return_value=False):
+            assert model._get_entry_model_path(True, False, True) == "/path/to/model"
+            assert model._get_mmproj_path(True, False, True) == ""
+            assert model._get_chat_template_path(True, False, True) == ""
+            assert model._get_all_model_part_paths(False, True, True) == [("/path/to/model", f"{MNT_DIR}/model.file")]
+
+    def test_placeholders_remain_when_the_store_cannot_be_read(self, model):
+        """A broken store must not turn a dry run into a hard failure."""
+        with patch.object(Huggingface, "exists", side_effect=OSError("store unreadable")):
+            assert model._get_entry_model_path(True, False, True) == "/path/to/model"
+
+    def test_setup_mounts_emits_binds(self, model):
+        engine = Mock()
+        engine.add = Mock()
+        engine.relabel = Mock(return_value="")
+        model.engine = engine
+
+        with patch.object(Huggingface, "exists", return_value=True):
+            model.setup_mounts(Namespace(dryrun=True, tls_cert_file=None, tls_key_file=None))
+
+        added = [call.args[0][0] for call in engine.add.call_args_list]
+        assert f"--mount=type=bind,src=/tmp/store/blobs/sha256-model,destination={MNT_DIR}/granite.gguf,ro" in added
+        assert f"--mount=type=bind,src=/tmp/store/blobs/sha256-mmproj,destination={MNT_DIR}/mmproj.gguf,ro" in added
+
+    def test_setup_mounts_emits_no_binds_when_model_is_not_cached(self, model):
+        engine = Mock()
+        engine.add = Mock()
+        engine.relabel = Mock(return_value="")
+        model.engine = engine
+
+        with patch.object(Huggingface, "exists", return_value=False):
+            model.setup_mounts(Namespace(dryrun=True, tls_cert_file=None, tls_key_file=None))
+
+        engine.add.assert_not_called()
+
+    def test_oci_models_keep_the_placeholders(self, force_oci_image):
+        """Resolving an OCI model means invoking the engine, which a dry run must not do."""
+        oci_model = OCI("test-registry.io/test-model:latest", "/tmp/store", "podman")
+
+        with patch.object(OCI, "exists", side_effect=AssertionError("engine must not be probed")):
+            assert oci_model._get_entry_model_path(True, False, True) == "/path/to/model"
