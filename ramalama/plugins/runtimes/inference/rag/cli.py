@@ -96,6 +96,13 @@ def register_rag_subcommand(plugin, subparsers):
         completer=suppressCompleter,
     )
     parser.add_argument(
+        "-n",
+        "--name",
+        dest="name",
+        help="name of containers in which the rag will be run",
+        completer=suppressCompleter,
+    )
+    parser.add_argument(
         "-t",
         "--threads",
         type=int,
