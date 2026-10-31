@@ -56,3 +56,14 @@ def test__assemble_split_file_list(input: Input, expected: Expected):
     for i in range(file_count):
         assert files[i].url == expected.URLList[i]
         assert files[i].name == expected.Names[i]
+
+
+@pytest.mark.parametrize("scheme", ["http", "https"])
+def test_model_alias_http(scheme: str):
+    model = URL("server1.example.com/models/gemma-3-1b-it-Q4_K_M.gguf", "/store", scheme)
+    assert model.model_alias == f"{model.model_organization}/{model.model_name}"
+
+
+def test_model_alias_file():
+    model = URL("/tmp/models/granite-3b-code-base.Q4_K_M.gguf", "/store", "file")
+    assert model.model_alias == "/tmp/models/granite-3b-code-base.Q4_K_M.gguf"

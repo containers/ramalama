@@ -59,7 +59,7 @@ class URL(Transport):
     def model_alias(self):
         if self.type == "file":
             return self.model
-        return super().model_alias()
+        return super().model_alias
 
     def extract_model_identifiers(self):
         if self.type == "file":
