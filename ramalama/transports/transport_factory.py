@@ -72,7 +72,7 @@ class TransportFactory:
             return RamalamaContainerRegistry, self.create_rlcr
         if self.model.startswith(("http://", "https://", "file:")):
             return URL, self.create_url
-        if self.model.startswith(("openai://")):
+        if self.model.startswith(("openai://", "litellm://")):
             return APITransport, self.create_api_transport
         if self.transport is None and "/" in self.model:
             return Huggingface, self.create_huggingface
