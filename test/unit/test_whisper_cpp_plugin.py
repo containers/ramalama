@@ -621,7 +621,7 @@ class TestTranscribeStdin:
         self._run(monkeypatch, None, execute)
 
         assert seen["data"] == b"RIFFfake"
-        assert os.path.dirname(seen["path"]) == str(spool_dir)
+        assert os.path.dirname(os.path.dirname(seen["path"])) == str(spool_dir)
         assert seen["cmd"][seen["cmd"].index("-f") + 1] == "/mnt/audio/input.wav"
         if sys.platform != "win32":
             assert seen["mode"] == 0o644
@@ -638,6 +638,32 @@ class TestTranscribeStdin:
         self._run(monkeypatch, None, execute, container=container)
 
         assert seen["mode"] == expected
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX file modes")
+    def test_spool_directory_is_private(self, monkeypatch, spool_dir):
+        seen: dict[str, Any] = {}
+
+        def execute(cmd, args):
+            seen["mode"] = stat.S_IMODE(os.stat(os.path.dirname(args.AUDIO)).st_mode)
+
+        self._run(monkeypatch, None, execute, container=True)
+
+        assert seen["mode"] == 0o700
+
+    def test_spool_is_removed_when_chmod_fails(self, monkeypatch, spool_dir):
+        def broken_chmod(*_):
+            raise PermissionError("chmod denied")
+
+        monkeypatch.setattr(os, "chmod", broken_chmod)
+        monkeypatch.setattr(sys, "stdin", _FakeStdin(b"RIFFfake", tty=False))
+        args = make_transcribe_ns(AUDIO=None, dryrun=True, container=True)
+
+        with patch("ramalama.plugins.runtimes.inference.whisper_cpp.New") as mock_new:
+            with pytest.raises(PermissionError):
+                self.plugin._transcribe_handler(args)
+
+        mock_new.assert_not_called()
+        assert not list(spool_dir.glob("ramalama-transcribe-*"))
 
     def test_dash_reads_audio_from_stdin(self, monkeypatch, spool_dir):
         seen: dict[str, Any] = {}

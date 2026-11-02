@@ -242,21 +242,21 @@ class WhisperCppPlugin(BaseInferenceRuntime):
 
     def _spool_stdin(self, world_readable: bool) -> str:
         ensure_tmpdir(ActiveConfig())
-        with tempfile.NamedTemporaryFile(prefix="ramalama-transcribe-", suffix=".wav", delete=False) as spool:
-            try:
+        # A private (0700) directory keeps other host users out even when the file
+        # itself must be world-readable for the container user.
+        spool_dir = tempfile.mkdtemp(prefix="ramalama-transcribe-")
+        path = os.path.join(spool_dir, "input.wav")
+        try:
+            with open(path, "wb") as spool:
                 shutil.copyfileobj(sys.stdin.buffer, spool)
-            except BaseException:
-                # The caller never learns the name if the copy fails, so remove it here.
-                spool.close()
-                try:
-                    os.unlink(spool.name)
-                except OSError:
-                    logger.debug(f"could not remove temporary audio file {spool.name}")
-                raise
-        if world_readable:
-            # The container user must be able to read the bind-mounted file.
-            os.chmod(spool.name, 0o644)
-        return spool.name
+            if world_readable:
+                # The container user must be able to read the bind-mounted file.
+                os.chmod(path, 0o644)
+        except BaseException:
+            # The caller never learns the name if this fails, so remove it here.
+            shutil.rmtree(spool_dir, ignore_errors=True)
+            raise
+        return path
 
     def _audio_mount(self, audio: str, args: TranscribeArgsType) -> str:
         mount_src = get_container_mount_path(audio)
@@ -298,7 +298,4 @@ class WhisperCppPlugin(BaseInferenceRuntime):
             if spooled is not None:
                 # Best effort: exec_cmd ends in sys.exit() and Windows can keep
                 # the file locked while the child process is still shutting down.
-                try:
-                    os.unlink(spooled)
-                except OSError:
-                    logger.debug(f"could not remove temporary audio file {spooled}")
+                shutil.rmtree(os.path.dirname(spooled), ignore_errors=True)
