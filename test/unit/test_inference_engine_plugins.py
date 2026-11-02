@@ -1128,6 +1128,13 @@ class TestMlxPlugin:
         assert isinstance(self.plugin, InferenceRuntimePlugin)
         assert not isinstance(self.plugin, ContainerizedInferenceRuntimePlugin)
 
+    @pytest.mark.parametrize("status, ready", [(200, True), (404, True), (503, False)])
+    def test_health_status_decides_readiness(self, status, ready):
+        conn = MagicMock()
+        conn.getresponse.return_value.status = status
+
+        assert self.plugin.service_ready_check(conn, make_ns()) is ready
+
 
 class TestPluginClassHierarchy:
     """Verify the class hierarchy for all runtime plugins."""

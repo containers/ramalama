@@ -545,6 +545,20 @@ def test_wait_for_healthy_timeout(mock_logs):
     mock_logs.assert_called_once()
 
 
+@patch("ramalama.engine.logs")
+def test_wait_for_healthy_timeout_without_container_name(mock_logs):
+    """A --nocontainer server has no container name, so there are no logs to report."""
+
+    def healthy_func(args):
+        return False
+
+    args = Namespace(name=None, container=False, debug=False, engine="podman")
+    with pytest.raises(TimeoutExpired) as exc_info:
+        ramalama.engine.wait_for_healthy(args, healthy_func, timeout=0)
+    assert exc_info.value.output is None
+    mock_logs.assert_not_called()
+
+
 def test_wait_for_healthy_success():
 
     def healthy_func(args):

@@ -94,7 +94,9 @@ class MlxPlugin(BaseInferenceRuntime):
     def service_ready_check(self, conn: HTTPConnection, args: Any, model_name: Optional[str] = None) -> bool:
         conn.request("GET", "/health")
         resp = conn.getresponse()
-        if resp.status != 200:
+        # An older mlx-lm without /health answers 404 once the port is open;
+        # llama.cpp treats that the same way.
+        if resp.status not in (200, 404):
             logger.debug(f"{self.name} server /health status code: {resp.status}: {resp.reason}")
             return False
         logger.debug(f"{self.name} server is ready")
