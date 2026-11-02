@@ -1,35 +1,10 @@
 import re
-import socket
-import wave
 
 import pytest
 
 from test.conftest import skip_if_no_container
 from test.e2e.utils import RamalamaExecWorkspace, check_output
-
-MODEL = "huggingface://ggerganov/whisper.cpp/ggml-base.en.bin"
-WHISPER_IMAGE = "ghcr.io/ggml-org/whisper.cpp"
-
-
-def _network_available() -> bool:
-    try:
-        with socket.create_connection(("huggingface.co", 443), timeout=3):
-            return True
-    except OSError:
-        return False
-
-
-def _require_network() -> None:
-    if not _network_available():
-        pytest.skip("no network access to resolve the whisper.cpp model")
-
-
-def _write_silence(path, seconds: float = 1.0) -> None:
-    with wave.open(str(path), "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(16000)
-        wav.writeframes(b"\x00\x00" * int(16000 * seconds))
+from test.e2e.whisper_utils import MODEL, WHISPER_IMAGE, _require_network, _write_silence, require_model
 
 
 @pytest.mark.e2e
@@ -68,6 +43,7 @@ def test_transcribe_dryrun_nocontainer_command(tmp_path):
 @skip_if_no_container
 def test_transcribe_wav_to_stdout(tmp_path):
     _require_network()
+    require_model(MODEL)
 
     audio = tmp_path / "silence.wav"
     _write_silence(audio)
