@@ -7,7 +7,7 @@ import pytest
 
 from ramalama.transports.huggingface import huggingface_endpoint, huggingface_token
 
-MODEL = "huggingface://ggerganov/whisper.cpp/ggml-base.en.bin"
+MODEL = "huggingface://ggerganov/whisper.cpp/ggml-tiny.en.bin"
 WHISPER_IMAGE = "ghcr.io/ggml-org/whisper.cpp"
 
 _MODEL_MISSING_CODES = (401, 403, 404)
