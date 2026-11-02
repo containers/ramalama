@@ -4,24 +4,20 @@ from __future__ import annotations
 import _thread
 import cmd
 import copy
-import http.client
 import itertools
 import json
 import os
 import signal
-import ssl
 import subprocess
 import sys
 import threading
 import time
 import urllib.error
-import urllib.parse
 import urllib.request
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
-from enum import Enum, auto
-from typing import NoReturn, Optional
+from typing import Optional
 
 from ramalama.arg_types import ChatArgsType
 from ramalama.chat_providers import ChatProvider, ChatRequestOptions
@@ -146,19 +142,6 @@ class Spinner:
                 break
             perror(f"\r{frame}", end="", flush=True)
             self._stop_event.wait(self.wait_time)
-
-
-def _stop_server_process(server_process) -> None:
-    try:
-        if server_process.poll() is None:
-            server_process.terminate()
-            server_process.wait(timeout=5)
-    except (subprocess.TimeoutExpired, KeyboardInterrupt):
-        # A second Ctrl+C must not leave the server running: kill below.
-        pass
-    finally:
-        if server_process.poll() is None:
-            server_process.kill()
 
 
 class RamaLamaShell(cmd.Cmd):
@@ -606,7 +589,11 @@ class RamaLamaShell(cmd.Cmd):
 
         server_process = getattr(self.args, "server_process", None)
         if server_process:
-            _stop_server_process(server_process)
+            server_process.terminate()
+            try:
+                server_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                server_process.kill()
         elif getattr(self.args, "name", None):
             args = copy.copy(self.args)
             args.ignore = True
@@ -840,184 +827,6 @@ def _report_server_exit(monitor):
         perror("Check server logs for more details about why the service exited.")
 
 
-# A plain `chat --url` keeps the same short connect budget as RamaLamaShell._req so a
-# dead port still fails fast. `run --nocontainer` knows a server is starting and gets
-# the full readiness timeout instead.
-SERVER_CONNECT_BUDGET = 16.0
-# Mirrors RuntimePlugin.service_ready_check_timeout (ramalama/plugins/interface.py).
-SERVER_READY_TIMEOUT = 180.0
-_PROBE_TIMEOUT = 5.0
-_POLL_INTERVAL = 1.0
-
-
-class _ModelsVerdict(Enum):
-    LLAMACPP = auto()
-    RETRY = auto()
-    PROCEED = auto()
-
-
-def _probe(url: str, headers: dict[str, str], remaining: float) -> bytes:
-    request = urllib.request.Request(url, headers=headers, method="GET")
-    with urllib.request.urlopen(request, timeout=min(_PROBE_TIMEOUT, remaining)) as response:
-        return response.read()
-
-
-def _classify_models_body(body: bytes) -> _ModelsVerdict:
-    if not body.strip():
-        # Same as LlamaCppPlugin.service_ready_check: an empty body means not ready yet.
-        return _ModelsVerdict.RETRY
-    try:
-        payload = json.loads(body.decode("utf-8"))
-    except ValueError:
-        return _ModelsVerdict.PROCEED
-    data = payload.get("data") if isinstance(payload, Mapping) else None
-    if not isinstance(data, list):
-        return _ModelsVerdict.PROCEED
-    if not data:
-        # A server with no models listed (e.g. Ollama) is up; llama.cpp answers 503, not an empty list, while loading.
-        return _ModelsVerdict.PROCEED
-    if any(isinstance(entry, Mapping) and entry.get("owned_by") == "llamacpp" for entry in data):
-        return _ModelsVerdict.LLAMACPP
-    return _ModelsVerdict.PROCEED
-
-
-def _extend_deadline(deadline: float, budget: float, timeout: float) -> tuple[float, float]:
-    """Any HTTP response proves the server is up, so allow the full readiness budget."""
-    if budget >= timeout:
-        return deadline, budget
-    return max(deadline, time.monotonic() + timeout), timeout
-
-
-def _root_health_url(url: str) -> str:
-    parts = urllib.parse.urlsplit(url)
-    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, "/health", "", ""))
-
-
-def _exit_not_ready(url: str, seconds: float) -> NoReturn:
-    perror(f"server at {url} not ready after {seconds:g}s")
-    raise SystemExit(1)
-
-
-class _WaitNotice:
-    """Print the one-line wait notice after the first probe that has to retry."""
-
-    def __init__(self) -> None:
-        self.shown = False
-
-    def show(self, url: str) -> None:
-        if not self.shown:
-            perror(f"waiting for {url}")
-            self.shown = True
-
-
-def _wait_for_models(
-    provider: ChatProvider,
-    headers: dict[str, str],
-    deadline: float,
-    connect_budget: float,
-    timeout: float,
-    notice: _WaitNotice,
-) -> bool:
-    """Return True once /models identifies llama.cpp, False when chat should proceed as before."""
-    models_url = provider.build_url("/models")
-    budget = connect_budget
-    while True:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            _exit_not_ready(provider.base_url, budget)
-        try:
-            body = _probe(models_url, headers, remaining)
-        except urllib.error.HTTPError as exc:
-            if exc.code != 503:
-                # Auth failures and unexpected statuses are inconclusive, not a
-                # loading server: leave reporting to the existing request path.
-                return False
-            logger.debug("%s: retrying, server answered 503", models_url)
-            deadline, budget = _extend_deadline(deadline, budget, timeout)
-            notice.show(models_url)
-        except urllib.error.URLError as exc:
-            if isinstance(exc.reason, ssl.SSLError):
-                return False
-            logger.debug("%s: retrying, %s", models_url, exc)
-            notice.show(models_url)
-        except http.client.RemoteDisconnected as exc:
-            logger.debug("%s: retrying, remote disconnect: %s", models_url, exc)
-            notice.show(models_url)
-        except (ssl.SSLError, http.client.HTTPException):
-            return False
-        except OSError as exc:
-            logger.debug("%s: retrying, %s", models_url, exc)
-            notice.show(models_url)
-        else:
-            deadline, budget = _extend_deadline(deadline, budget, timeout)
-            verdict = _classify_models_body(body)
-            if verdict is _ModelsVerdict.LLAMACPP:
-                return True
-            if verdict is _ModelsVerdict.PROCEED:
-                return False
-            logger.debug("%s: retrying, empty response body", models_url)
-            notice.show(models_url)
-        time.sleep(min(_POLL_INTERVAL, remaining))
-
-
-def _wait_for_health(provider: ChatProvider, headers: dict[str, str], timeout: float, notice: _WaitNotice) -> None:
-    deadline = time.monotonic() + timeout
-    health_url = provider.build_url("/health")
-    while True:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            _exit_not_ready(provider.base_url, timeout)
-        try:
-            _probe(health_url, headers, remaining)
-            return
-        except urllib.error.HTTPError as exc:
-            if exc.code == 503:
-                notice.show(health_url)
-            elif exc.code == 500:
-                perror(exc.read().decode("utf-8", "ignore").strip())
-                raise SystemExit(1)
-            elif exc.code == 404:
-                # Older builds and proxy prefixes may only serve the root route.
-                root_health_url = _root_health_url(health_url)
-                if root_health_url == health_url:
-                    return
-                health_url = root_health_url
-            else:
-                return
-        except urllib.error.URLError as exc:
-            if isinstance(exc.reason, ssl.SSLError):
-                return
-            notice.show(health_url)
-        except http.client.RemoteDisconnected:
-            notice.show(health_url)
-        except (ssl.SSLError, http.client.HTTPException):
-            return
-        except OSError:
-            notice.show(health_url)
-        time.sleep(min(_POLL_INTERVAL, remaining))
-
-
-def wait_for_server_ready(
-    provider: ChatProvider,
-    *,
-    connect_budget: float = SERVER_CONNECT_BUDGET,
-    timeout: float = SERVER_READY_TIMEOUT,
-) -> None:
-    """Wait until a loading llama.cpp server can answer chat requests.
-
-    Detection is best effort: only a ``/models`` payload advertising
-    ``owned_by == "llamacpp"`` turns this into a real wait. Hosted APIs, vLLM,
-    auth failures and unexpected payloads return at once, so chat behaves as it
-    did before.
-    """
-    headers = provider.prepare_headers(include_auth=True)
-    notice = _WaitNotice()
-    with Spinner():
-        deadline = time.monotonic() + connect_budget
-        if _wait_for_models(provider, headers, deadline, connect_budget, timeout, notice):
-            _wait_for_health(provider, headers, timeout, notice)
-
-
 def chat(
     args: ChatArgsType,
     operational_args: Optional[ChatOperationalArgs] = None,
@@ -1029,12 +838,13 @@ def chat(
         print(f"\nramalama chat --color {args.color} --prefix  \"{args.prefix}\" --url {args.url} {prompt}")
         return
 
-    # A container `run` already waited for health. An explicit provider means a
-    # hosted API, which never exposes llama.cpp's /health.
-    wait_for_ready = provider is None and not getattr(args, "name", None)
-
     if provider is None:
         provider = OpenAICompletionsChatProvider(args.url, getattr(args, "api_key", None))
+
+    # SIGALRM is Unix-only, skip keepalive timeout handling on Windows
+    if getattr(args, "keepalive", False) and hasattr(signal, 'SIGALRM'):
+        signal.signal(signal.SIGALRM, alarm_handler)
+        signal.alarm(convert_to_seconds(args.keepalive))  # type: ignore
 
     # Start server process or container monitoring
     server_process = getattr(args, "server_process", None)
@@ -1053,61 +863,25 @@ def chat(
         # No monitoring needed - chat is being used directly without a service
         monitor = ServerMonitor()
 
-    # Only llama.cpp can answer /models while still loading; other `run --nocontainer`
-    # runtimes (e.g. mlx) are not probed. A plain `chat --url` has no runtime to trust.
-    if server_process and getattr(args, "runtime", None) != "llama.cpp":
-        wait_for_ready = False
-
     monitor.start()
+    list_models = getattr(args, "list", False)
+    if list_models:
+        for model_id in provider.list_models():
+            print(model_id)
+        monitor.stop()
+        if hasattr(signal, 'alarm'):
+            signal.alarm(0)
+        return
 
-    shell: Optional[RamaLamaShell] = None
+    # Ensure operational_args is initialized
+    if operational_args is None:
+        operational_args = ChatOperationalArgs()
+
+    # Assign monitor to operational_args
+    operational_args.monitor = monitor
+
     successful_exit = True
     try:
-        if wait_for_ready:
-            # `run --nocontainer` knows a server is starting; a plain `chat --url` does not.
-            connect_budget = SERVER_READY_TIMEOUT if server_process else SERVER_CONNECT_BUDGET
-            try:
-                wait_for_server_ready(provider, connect_budget=connect_budget, timeout=SERVER_READY_TIMEOUT)
-            except SystemExit:
-                # No shell exists yet to clean up, so stop the server `run --nocontainer` started.
-                if server_process:
-                    monitor.stop()  # else it reports the terminated server as a crash
-                    _stop_server_process(server_process)
-                raise
-            except KeyboardInterrupt:
-                if monitor.is_exited():
-                    # The monitor interrupts main when the server dies; the outer handler reports the crash.
-                    raise
-                # The user pressed Ctrl+C while waiting: stop the server we started and exit cleanly.
-                try:
-                    monitor.stop()
-                finally:
-                    if server_process:
-                        _stop_server_process(server_process)
-                return
-
-        # SIGALRM is Unix-only, skip keepalive timeout handling on Windows.
-        # Arm it after the readiness wait so keepalive counts from readiness.
-        if getattr(args, "keepalive", False) and hasattr(signal, 'SIGALRM'):
-            signal.signal(signal.SIGALRM, alarm_handler)
-            signal.alarm(convert_to_seconds(args.keepalive))  # type: ignore
-
-        list_models = getattr(args, "list", False)
-        if list_models:
-            for model_id in provider.list_models():
-                print(model_id)
-            monitor.stop()
-            if hasattr(signal, 'alarm'):
-                signal.alarm(0)
-            return
-
-        # Ensure operational_args is initialized
-        if operational_args is None:
-            operational_args = ChatOperationalArgs()
-
-        # Assign monitor to operational_args
-        operational_args.monitor = monitor
-
         shell = RamaLamaShell(args, operational_args, provider=provider)
         if shell.handle_args(monitor):
             return
@@ -1144,7 +918,7 @@ def chat(
 
     # Only clean up resources on successful exit
     # If server/container crashed, leave it for log inspection
-    if successful_exit and shell is not None:
+    if successful_exit:
         try:
             shell.kills()
         except Exception as e:

@@ -15,9 +15,6 @@ positional arguments:
 Chat with an OpenAI REST API. By default, if arguments or stdin are provided,
 the response is displayed and the command exits. Use **--interactive** to
 continue to an interactive chat session after processing the initial prompt.
-When the endpoint identifies itself as a llama.cpp server that is still loading
-its model, chat waits (up to 180 seconds) for it to become ready before sending
-the request.
 
 ## OPTIONS
 
