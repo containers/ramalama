@@ -247,7 +247,10 @@ class WhisperCppPlugin(BaseInferenceRuntime):
         spool_dir = tempfile.mkdtemp(prefix="ramalama-transcribe-")
         path = os.path.join(spool_dir, "input.wav")
         try:
-            with open(path, "wb") as spool:
+            # open() follows the umask, so create the spool file privately instead;
+            # the chmod below widens it only for container runs.
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "wb") as spool:
                 shutil.copyfileobj(sys.stdin.buffer, spool)
             if world_readable:
                 # The container user must be able to read the bind-mounted file.
