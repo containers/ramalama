@@ -1,3 +1,4 @@
+import io
 import socket
 import urllib.error
 from unittest.mock import MagicMock, patch
@@ -16,7 +17,7 @@ def _isolated_hf_env(monkeypatch):
 
 
 def _http_error(code: int) -> urllib.error.HTTPError:
-    return urllib.error.HTTPError("http://hf.invalid/x", code, "err", {}, None)  # type: ignore[arg-type]
+    return urllib.error.HTTPError("http://hf.invalid/x", code, "err", {}, io.BytesIO(b""))  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
