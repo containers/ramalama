@@ -21,6 +21,7 @@ from ramalama.common import (
     accel_image,
     check_intel,
     check_nvidia,
+    check_rocm_amd,
     container_cuda_visible_devices,
     engine_cmd,
     ensure_image,
@@ -1080,3 +1081,48 @@ class TestGetGpuDevices:
     def test_defaults_to_the_environment(self):
         assert self._get_gpu_devices(None, {"CUDA_VISIBLE_DEVICES": "0"}) == {}
         assert self._get_gpu_devices(None, {"HIP_VISIBLE_DEVICES": "0"}) != {}
+
+
+class TestCheckRocmAmd:
+    """Unit tests for ramalama.common.check_rocm_amd."""
+
+    # Two ROCm-capable GPUs: index 0 has 8GiB VRAM, index 1 has 16GiB VRAM.
+    @staticmethod
+    def _two_gpus():
+        def gpus():
+            yield "node0", {"gfx_target_version": 90000, "mem_banks_count": 1}
+            yield "node1", {"gfx_target_version": 90000, "mem_banks_count": 1}
+
+        def parse_props(path):
+            size = 16 * 1024**3 if "node1" in path else 8 * 1024**3
+            return {
+                "heap_type": ramalama.amdkfd.HEAP_TYPE_FB_PUBLIC,
+                "size_in_bytes": size,
+            }
+
+        return gpus, parse_props
+
+    def test_respects_user_hip_visible_devices(self, monkeypatch):
+        gpus, parse_props = self._two_gpus()
+        monkeypatch.setattr(ramalama.amdkfd, "gpus", gpus)
+        monkeypatch.setattr(ramalama.amdkfd, "parse_props", parse_props)
+        monkeypatch.setattr(ramalama.common, "is_arm", lambda: False)
+        monkeypatch.setenv("HIP_VISIBLE_DEVICES", "0,1")
+
+        assert check_rocm_amd() == "hip"
+        # The user's explicit multi-GPU mapping must not be overridden.
+        assert os.environ["HIP_VISIBLE_DEVICES"] == "0,1"
+
+    def test_defaults_to_largest_device_when_unset(self, monkeypatch):
+        gpus, parse_props = self._two_gpus()
+        monkeypatch.setattr(ramalama.amdkfd, "gpus", gpus)
+        monkeypatch.setattr(ramalama.amdkfd, "parse_props", parse_props)
+        monkeypatch.setattr(ramalama.common, "is_arm", lambda: False)
+        # Set a placeholder first so monkeypatch records the original state and
+        # restores it on teardown even when the variable is initially absent.
+        monkeypatch.setenv("HIP_VISIBLE_DEVICES", "0")
+        monkeypatch.delenv("HIP_VISIBLE_DEVICES", raising=False)
+
+        assert check_rocm_amd() == "hip"
+        # With no user choice, keep the existing single-largest-device default.
+        assert os.environ["HIP_VISIBLE_DEVICES"] == "1"

@@ -654,7 +654,8 @@ def check_rocm_amd() -> Optional[Literal["hip"]]:
             gpu_num = i
 
     if gpu_bytes:
-        os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
+        if "HIP_VISIBLE_DEVICES" not in os.environ:
+            os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
         return "hip"
 
     return None
