@@ -118,6 +118,15 @@ docsite-docs:
 .PHONY: lint
 lint:
 	! git grep -n -- '#!/usr/bin/python3' -- ':!Makefile'
+	@# Everything under ramalama/ is installed into site-packages as
+	@# non-executable, and is imported rather than run directly. A shebang
+	@# there makes rpmlint fail the Fedora build with non-executable-script,
+	@# which is only reported by dist-git CI after a release is proposed
+	@# downstream. Use "python3 -m ramalama.some.module" to run one.
+	@if git grep -n -- '^#!' -- ramalama; then \
+		echo "ERROR: shebang in an installed module (rpmlint: non-executable-script); remove it."; \
+		exit 1; \
+	fi
 	ruff check $(RUFF_TARGETS)
 	shellcheck *.sh */*.sh */*/*.sh
 
