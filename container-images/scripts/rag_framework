@@ -197,18 +197,31 @@ class RagService:
         for doc_id, chunk_idx in expanded:
             by_doc[doc_id].add(chunk_idx)
 
-        # Fetch all needed chunks in one query
+        # Fetch all needed chunks in one query. `chunk_index` is assigned per
+        # document by `doc2rag` (it restarts at 0 for each document), so a
+        # `chunk_index`-only filter also matches the same index in every other
+        # document and, with `limit=len(expanded)`, those unrelated points crowd
+        # out the chunks we actually want. Match each (doc_id, chunk_index) pair
+        # exactly instead.
         from qdrant_client import models
 
-        all_indices = [idx for indices in by_doc.values() for idx in indices]
         neighbor_results = await self.qclient.scroll(
             collection_name=COLLECTION_NAME,
             scroll_filter=models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="chunk_index",
-                        match=models.MatchAny(any=all_indices),
+                should=[
+                    models.Filter(
+                        must=[
+                            models.FieldCondition(
+                                key="doc_id",
+                                match=models.MatchValue(value=doc_id),
+                            ),
+                            models.FieldCondition(
+                                key="chunk_index",
+                                match=models.MatchValue(value=chunk_idx),
+                            ),
+                        ]
                     )
+                    for doc_id, chunk_idx in expanded
                 ]
             ),
             with_payload=True,
