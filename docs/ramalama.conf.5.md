@@ -229,6 +229,7 @@ The `ramalama.user` table contains user preferences.
 
 When `no_missing_gpu_prompt = true`, RamaLama suppresses the interactive prompt on macOS Podman VMs without GPU acceleration (for example, `applehv`).
 This value can also be set via `RAMALAMA_USER__NO_MISSING_GPU_PROMPT`.
+The prompt is asked at most once per command. When no terminal is attached (scripts, CI), RamaLama does not prompt: it proceeds without GPU and logs a warning.
 
 ## RAMALAMA.RUNTIMES TABLE
 Runtime-specific configuration. Each runtime plugin defines its own config section
