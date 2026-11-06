@@ -654,7 +654,11 @@ def check_rocm_amd() -> Optional[Literal["hip"]]:
             gpu_num = i
 
     if gpu_bytes:
-        os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
+        # Respect a user-provided HIP_VISIBLE_DEVICES. Only default to the
+        # single largest device when the user has not chosen their own device
+        # mapping, otherwise we silently override an explicit multi-GPU setup.
+        if "HIP_VISIBLE_DEVICES" not in os.environ:
+            os.environ["HIP_VISIBLE_DEVICES"] = str(gpu_num)
         return "hip"
 
     return None
