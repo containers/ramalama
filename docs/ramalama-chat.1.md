@@ -65,7 +65,7 @@ Temperature of the response from the AI Model.
 Lower numbers are more deterministic, higher numbers are more creative.
 
 #### **--url**=URL
-The host to send requests to (default: http://127.0.0.1:8080)
+The host to send requests to (default: http://127.0.0.1:8080/v1)
 
 
 ## INTERACTIVE COMMANDS
@@ -93,7 +93,7 @@ Exit the chat session (EOF signal).
 
 ## EXAMPLES
 
-Communicate with the default local OpenAI REST API. (http://127.0.0.1:8080)
+Communicate with the default local OpenAI REST API. (http://127.0.0.1:8080/v1)
 With Podman containers.
 ```
 $ ramalama chat

@@ -528,11 +528,37 @@ class Transport(TransportBase):
 
         if args.container:
             return self._handle_container_chat(chat_args, server_process)
-        else:
-            # Store the Popen object for monitoring
-            chat_args.server_process = server_process
-            chat.chat(chat_args)
-            return 0
+
+        # Store the Popen object for monitoring
+        chat_args.server_process = server_process
+        if not args.dryrun:
+            self._wait_for_nocontainer_server(chat_args, server_process)
+        chat.chat(chat_args)
+        return 0
+
+    def _wait_for_nocontainer_server(self, args: Any, server_process: subprocess.Popen) -> None:
+        """Wait for the server spawned by run --nocontainer, stopping it if the wait fails.
+
+        The probe uses loopback: run starts the server on its default loopback
+        whatever host ramalama.conf names, and chat dials 127.0.0.1 too (see the
+        URL built in _connect_and_chat).
+        """
+        probe_args = copy.copy(args)
+        probe_args.host = "127.0.0.1"
+
+        def health(probe: Any) -> bool:
+            exit_code = server_process.poll()
+            if exit_code is not None:
+                raise ValueError(f"Failed to serve model {self.model_name}: server exited with code {exit_code}")
+            return is_healthy(probe, model_name=self.model_alias)
+
+        try:
+            wait_for_healthy(probe_args, health)
+        except BaseException:
+            # Timeout, server exit and Ctrl+C alike: no chat session owns this
+            # process yet, so nothing else would stop it.
+            self._cleanup_server_process(server_process)
+            raise
 
     def chat_operational_args(self, args) -> "Optional[ChatOperationalArgs]":
         return None
@@ -577,16 +603,21 @@ class Transport(TransportBase):
         except (socket.error, ValueError):
             return False
 
-    def _cleanup_server_process(self, process):
-        """Clean up the server process."""
+    def _cleanup_server_process(self, process: Optional[subprocess.Popen]) -> None:
+        """Stop the server process, killing it if it is still running afterwards."""
         if not process:
             return
 
-        process.terminate()
         try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=5)
+        except (subprocess.TimeoutExpired, KeyboardInterrupt):
+            # A second Ctrl+C must not leave the server running: kill below.
+            pass
+        finally:
+            if process.poll() is None:
+                process.kill()
 
     def exists(self) -> bool:
         _, _, all = self.model_store.get_cached_files(self.model_tag)

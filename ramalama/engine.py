@@ -611,6 +611,7 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
                 if display_dots:
                     perror('\r' + n * ' ' + '\r', end='', flush=True)
                 return
+            n += 1
         except (
             ConnectionError,
             HTTPException,
@@ -623,6 +624,8 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
             n += 1
         time.sleep(1)
 
-    raise subprocess.TimeoutExpired(
-        f"health check of {container_name}", timeout, output=logs(args, args.name, ignore_stderr=not args.debug)
-    )
+    # A --nocontainer server has no container name to read logs from.
+    output = None
+    if getattr(args, "name", None):
+        output = logs(args, args.name, ignore_stderr=not getattr(args, "debug", False))
+    raise subprocess.TimeoutExpired(f"health check of {container_name}", timeout, output=output)
