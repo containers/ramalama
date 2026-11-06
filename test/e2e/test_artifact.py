@@ -124,7 +124,7 @@ def test_info_command_output():
     info = json.loads(result)
 
     # Check that basic sections exist
-    assert "Accelerator" in info
+    assert "Accelerators" in info
     assert "Config" in info
     assert "Engine" in info
 

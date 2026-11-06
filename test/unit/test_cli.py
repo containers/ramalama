@@ -421,7 +421,7 @@ def test_info_without_devices_does_not_probe(capsys, engine):
         mock.patch.object(cli, "get_shortnames", return_value=shortnames),
         mock.patch.object(cli, "get_runtime") as mock_get_runtime,
         mock.patch.object(cli.engine, "info", return_value={}),
-        mock.patch.object(cli, "get_accel", return_value=""),
+        mock.patch.object(cli, "_accelerator_info", return_value={}),
         mock.patch.object(cli, "load_file_config", return_value={}),
         mock.patch.object(cli, "default_image", return_value="img:latest"),
         mock.patch.object(cli, "default_rag_image", return_value="rag:latest"),

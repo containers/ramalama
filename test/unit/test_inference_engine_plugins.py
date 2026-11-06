@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from ramalama.accel import accel_image
 from ramalama.cli import (
     configure_subcommands,
     create_argument_parser,
@@ -14,7 +15,7 @@ from ramalama.cli import (
     default_rag_image,
     default_tools_image,
 )
-from ramalama.common import ContainerEntryPoint, accel_image, version_tagged_image
+from ramalama.common import ContainerEntryPoint, version_tagged_image
 from ramalama.compat import NamedTemporaryFile
 from ramalama.config import DEFAULT_IMAGE, load_config
 from ramalama.plugins.interface import InferenceRuntimePlugin
@@ -1445,7 +1446,7 @@ class TestConfigureSubcommandsFiltering:
 )
 def test_backend_selection(backend: str, gpu_env: str, expected_result: str, monkeypatch):
     """Test that GPUs use the correct image based on backend config."""
-    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.accel.get_accel", lambda: "none")
 
     with NamedTemporaryFile('w', delete_on_close=False) as f:
         f.write(f"""\
@@ -1489,7 +1490,7 @@ backend = "{backend}"
 )
 def test_backend_selection_wsl(backend: str, gpu_env: str, expected_result: str, monkeypatch):
     """Test that WSL2 defaults to vendor-specific backends for AMD and Intel."""
-    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.accel.get_accel", lambda: "none")
     monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.is_windows_or_wsl", lambda: True)
 
     with NamedTemporaryFile('w', delete_on_close=False) as f:
@@ -1533,7 +1534,7 @@ backend = "{backend}"
 )
 def test_vllm_backend_image_selection(gpu_env: str, backend: str, expected_image: str, monkeypatch):
     """Test that vLLM uses correct images based on detected GPU, not backend selection."""
-    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.accel.get_accel", lambda: "none")
 
     with NamedTemporaryFile('w', delete_on_close=False) as f:
         f.write(f"""\
@@ -1563,7 +1564,7 @@ backend = "{backend}"
 
 def test_backend_incompatibility_warning(monkeypatch):
     """Test that warnings are issued for incompatible backend selections."""
-    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.accel.get_accel", lambda: "none")
 
     with NamedTemporaryFile('w', delete_on_close=False) as f:
         f.write("""\
@@ -1609,7 +1610,7 @@ backend = "cuda"
 )
 def test_get_available_backends(gpu_env: Optional[str], expected_backends: list[str], monkeypatch):
     """Test that available backends are correctly returned based on detected GPU."""
-    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.accel.get_accel", lambda: "none")
 
     env = {}
     if gpu_env:
@@ -1630,7 +1631,7 @@ def test_get_available_backends(gpu_env: Optional[str], expected_backends: list[
 )
 def test_get_available_backends_wsl(gpu_env: Optional[str], expected_backends: list[str], monkeypatch):
     """Test that available backends on WSL2 prefer vendor-specific backends."""
-    monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
+    monkeypatch.setattr("ramalama.accel.get_accel", lambda: "none")
     monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.is_windows_or_wsl", lambda: True)
 
     env = {}
