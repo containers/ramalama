@@ -140,6 +140,7 @@ Show the program version and exit.
 
 | Command                                           | Description                                                |
 | ------------------------------------------------- | ---------------------------------------------------------- |
+| [ramalama-agent(1)](ramalama-agent.1.md)          |build, push, pull, and list AI agent OCI artifacts|
 | [ramalama-bench(1)](ramalama-bench.1.md)          |benchmark specified AI Model|
 | [ramalama-benchmarks(1)](ramalama-benchmarks.1.md)|view and interact with historical benchmark results|
 | [ramalama-chat(1)](ramalama-chat.1.md)            |OpenAI chat with the specified REST API URL|
@@ -153,6 +154,7 @@ Show the program version and exit.
 | [ramalama-logout(1)](ramalama-logout.1.md)        |logout from remote registry|
 | [ramalama-models(1)](ramalama-models.1.md)        |list models served by a running inference server|
 | [ramalama-perplexity(1)](ramalama-perplexity.1.md)|calculate the perplexity value of an AI Model|
+| [ramalama-plugin(1)](ramalama-plugin.1.md)        |build, push, pull, and list AI plugin OCI artifacts|
 | [ramalama-pull(1)](ramalama-pull.1.md)            |pull AI Models from Model registries to local storage|
 | [ramalama-push(1)](ramalama-push.1.md)            |push AI Models from local storage to remote registries|
 | [ramalama-rag(1)](ramalama-rag.1.md)              |convert documents to a RAG vector database and package as a container image|
@@ -160,6 +162,7 @@ Show the program version and exit.
 | [ramalama-run(1)](ramalama-run.1.md)              |run specified AI Model as a chatbot|
 | [ramalama-sandbox(1)](ramalama-sandbox.1.md)      |run an AI agent in a sandbox, backed by a local AI Model|
 | [ramalama-serve(1)](ramalama-serve.1.md)          |serve REST API on specified AI Model|
+| [ramalama-skill(1)](ramalama-skill.1.md)          |build, push, pull, and list AI skill OCI artifacts|
 | [ramalama-stop(1)](ramalama-stop.1.md)            |stop named container that is running AI Model|
 | [ramalama-version(1)](ramalama-version.1.md)      |display version of RamaLama|
 
