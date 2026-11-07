@@ -507,7 +507,8 @@ class TestNocontainerChatWait:
         server_process.poll.return_value = None
         server_process.wait.side_effect = KeyboardInterrupt
 
-        self._model()._cleanup_server_process(server_process)
+        with pytest.raises(KeyboardInterrupt):
+            self._model()._cleanup_server_process(server_process)
 
         server_process.terminate.assert_called_once_with()
         server_process.kill.assert_called_once_with()

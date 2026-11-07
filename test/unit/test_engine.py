@@ -527,7 +527,7 @@ def test_wait_for_healthy_error(mock_logs, exc):
     def healthy_func(args):
         raise exc
 
-    args = Namespace(name="thecontainer", debug=True, engine="podman")
+    args = Namespace(name="thecontainer", container=True, debug=True, engine="podman")
     with pytest.raises(TimeoutExpired):
         ramalama.engine.wait_for_healthy(args, healthy_func, timeout=1)
     mock_logs.assert_called_once()
@@ -539,7 +539,7 @@ def test_wait_for_healthy_timeout(mock_logs):
     def healthy_func(args):
         return True
 
-    args = Namespace(name="thecontainer", debug=True, engine="podman")
+    args = Namespace(name="thecontainer", container=True, debug=True, engine="podman")
     with pytest.raises(TimeoutExpired, match="timed out after 0 seconds"):
         ramalama.engine.wait_for_healthy(args, healthy_func, timeout=0)
     mock_logs.assert_called_once()
@@ -553,6 +553,20 @@ def test_wait_for_healthy_timeout_without_container_name(mock_logs):
         return False
 
     args = Namespace(name=None, container=False, debug=False, engine="podman")
+    with pytest.raises(TimeoutExpired) as exc_info:
+        ramalama.engine.wait_for_healthy(args, healthy_func, timeout=0)
+    assert exc_info.value.output is None
+    mock_logs.assert_not_called()
+
+
+@patch("ramalama.engine.logs")
+def test_wait_for_healthy_timeout_nocontainer_ignores_name(mock_logs):
+    """A --nocontainer run with a --name still has no container to read logs from."""
+
+    def healthy_func(args):
+        return False
+
+    args = Namespace(name="named", container=False, debug=False, engine="podman")
     with pytest.raises(TimeoutExpired) as exc_info:
         ramalama.engine.wait_for_healthy(args, healthy_func, timeout=0)
     assert exc_info.value.output is None

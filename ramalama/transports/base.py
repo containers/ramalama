@@ -612,10 +612,10 @@ class Transport(TransportBase):
             if process.poll() is None:
                 process.terminate()
                 process.wait(timeout=5)
-        except (subprocess.TimeoutExpired, KeyboardInterrupt):
-            # A second Ctrl+C must not leave the server running: kill below.
+        except subprocess.TimeoutExpired:
             pass
         finally:
+            # Also runs on a second Ctrl+C, which then propagates to the caller.
             if process.poll() is None:
                 process.kill()
 
