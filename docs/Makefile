@@ -3,7 +3,7 @@ DATADIR := ${PREFIX}/share
 MANDIR := $(DATADIR)/man
 GO ?= go
 GOMD2MAN ?= go-md2man
-ROOTDIR := $(abspath ..)
+ROOTDIR := ..
 ifeq ($(shell uname -s),FreeBSD)
 SED=gsed
 else

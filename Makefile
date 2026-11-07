@@ -9,10 +9,8 @@ DESTDIR ?= /
 PATH := $(PATH):$(HOME)/.local/bin
 MYPIP ?= pip
 IMAGE ?= ramalama
-PROJECT_DIR ?= $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+PROJECT_DIR ?= $(shell dirname "$(realpath $(lastword $(MAKEFILE_LIST)))")
 EXCLUDE_DIRS ?= .venv venv .tox build
-EXCLUDE_OPTS ?= $(addprefix --exclude-dir=,$(EXCLUDE_DIRS))
-PYTHON_SCRIPTS ?= $(shell grep -lEr "^\#\!\s*/usr/bin/(env +)?python(3)?(\s|$$)" $(EXCLUDE_OPTS) $(PROJECT_DIR) || true)
 RUFF_TARGETS ?= ramalama scripts test bin/ramalama
 E2E_IMAGE ?= localhost/e2e:latest
 
@@ -127,17 +125,17 @@ lint:
 check-format:
 	ruff check --select I $(RUFF_TARGETS)
 	ruff format --check $(RUFF_TARGETS)
-	$(PYTHON) ramalama/shortnames.py --check shortnames/shortnames.conf
+	"$(PYTHON)" ramalama/shortnames.py --check shortnames/shortnames.conf
 
 .PHONY: format
 format:
 	ruff check --select I --fix $(RUFF_TARGETS)
 	ruff format $(RUFF_TARGETS)
-	$(PYTHON) ramalama/shortnames.py shortnames/shortnames.conf
+	"$(PYTHON)" ramalama/shortnames.py shortnames/shortnames.conf
 
 .PHONY: codespell
 codespell:
-	codespell $(PROJECT_DIR) $(PYTHON_SCRIPTS)
+	codespell "$(PROJECT_DIR)"
 
 .PHONY: man-check
 man-check: docs-manpages-md
@@ -156,7 +154,7 @@ endif
 
 .PHONY: type-check
 type-check:
-	mypy --check-untyped-defs $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test $(PROJECT_DIR)
+	mypy --check-untyped-defs $(addprefix --exclude=,$(EXCLUDE_DIRS)) --exclude test "$(PROJECT_DIR)"
 
 .PHONY: validate
 validate: codespell lint check-format man-check type-check
@@ -185,7 +183,7 @@ e2e-tests-in-container slow-tests-in-container: extra-opts = --security-opt unma
 		--security-opt=mask=/sys/bus/pci/drivers/i915 \
 		$(extra-opts) \
 		-v /tmp \
-		-v $(CURDIR):/src \
+		-v "$(CURDIR)":/src \
 		$(E2E_IMAGE) make $*
 
 .PHONY: ci

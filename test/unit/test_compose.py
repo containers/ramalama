@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from ramalama.compose import Compose, genfile
 
@@ -37,6 +38,8 @@ class Input:
         mmproj_file_exists: bool = False,
         args: Args = Args(),
         exec_args: list = None,
+        accel_env_vars: dict = None,
+        nvidia_selected_devices: list = None,
     ):
         self.model_name = model_name
         self.model_src_path = model_src_path
@@ -53,6 +56,8 @@ class Input:
         self.mmproj_file_exists = mmproj_file_exists
         self.args = args
         self.exec_args = exec_args if exec_args is not None else []
+        self.accel_env_vars = accel_env_vars if accel_env_vars is not None else {"ACCEL_ENV": "true"}
+        self.nvidia_selected_devices = nvidia_selected_devices or []
 
 
 DATA_PATH = Path(__file__).parent / "data" / "test_compose"
@@ -156,8 +161,48 @@ DATA_PATH = Path(__file__).parent / "data" / "test_compose"
                 model_src_path="/models/gemma.gguf",
                 model_dest_path="/mnt/models/gemma.gguf",
                 args=Args(image="test-image/cuda:latest"),
+                accel_env_vars={"CUDA_VISIBLE_DEVICES": "0"},
             ),
             "with_nvidia_gpu.yaml",
+        ),
+        (
+            # The reservation follows the detected GPU, not the image name, so
+            # an NVIDIA GPU served by the vulkan-capable ramalama image gets one
+            # too.
+            Input(
+                model_name="gemma-vulkan",
+                model_src_path="/models/gemma.gguf",
+                model_dest_path="/mnt/models/gemma.gguf",
+                accel_env_vars={"CUDA_VISIBLE_DEVICES": "0"},
+            ),
+            "with_nvidia_gpu_vulkan_image.yaml",
+        ),
+        (
+            # A narrowed selection reserves just those GPUs, since the Vulkan
+            # backend cannot be filtered with CUDA_VISIBLE_DEVICES. The variable
+            # is renumbered to match what the container ends up seeing.
+            Input(
+                model_name="gemma-cuda",
+                model_src_path="/models/gemma.gguf",
+                model_dest_path="/mnt/models/gemma.gguf",
+                args=Args(image="test-image/cuda:latest"),
+                accel_env_vars={"CUDA_VISIBLE_DEVICES": "1"},
+                nvidia_selected_devices=["1"],
+            ),
+            "with_nvidia_gpu_selection.yaml",
+        ),
+        (
+            # The other direction: "nvidia" is the only driver the reservation
+            # can name, so an AMD GPU must not get one whatever the image is
+            # called.
+            Input(
+                model_name="gemma-rocm",
+                model_src_path="/models/gemma.gguf",
+                model_dest_path="/mnt/models/gemma.gguf",
+                args=Args(image="test-image/rocm:latest"),
+                accel_env_vars={"HIP_VISIBLE_DEVICES": "0"},
+            ),
+            "with_amd_gpu.yaml",
         ),
         (
             Input(
@@ -188,7 +233,8 @@ def test_compose_generate(input_data: Input, expected_file_name: str, monkeypatc
     }
     monkeypatch.setattr("os.path.exists", lambda path: existence.get(path, False))
 
-    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {"ACCEL_ENV": "true"})
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: dict(input_data.accel_env_vars))
+    monkeypatch.setattr("ramalama.common.nvidia_selected_devices", list(input_data.nvidia_selected_devices))
     monkeypatch.setattr("ramalama.compose.version", lambda: "0.1.0-test")
 
     draft_model_paths = (None, None)
@@ -308,3 +354,87 @@ def test_compose_no_devices(monkeypatch):
     result = compose.generate().content
 
     assert "devices:" not in result
+
+
+def test_compose_windows_host_paths(monkeypatch):
+    """A native Windows host path is converted for the container engine, and
+    the backslashes it holds until then do not break the generated YAML."""
+    monkeypatch.setattr("os.path.exists", lambda path: True)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.get_gpu_devices", lambda env_vars: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+    # The real conversion only runs on Windows, where Path() reads the drive.
+    monkeypatch.setattr(
+        "ramalama.compose.normalize_host_path_for_container",
+        lambda path: f"/{path[0].lower()}{path[2:]}".replace("\\", "/"),
+    )
+
+    content = (
+        Compose(
+            "test",
+            (r"C:\Users\John\models\model.file", "/mnt/models/model.file"),
+            (r"C:\Users\John\models\chat_template", "/mnt/models/chat_template"),
+            None,
+            Args(),
+            [],
+            None,
+        )
+        .generate()
+        .content
+    )
+
+    assert yaml.safe_load(content)["services"]["test"]["volumes"] == [
+        "/c/Users/John/models/model.file:/mnt/models/model.file:ro",
+        "/c/Users/John/models/chat_template:/mnt/models/chat_template:ro",
+    ]
+
+
+def test_compose_host_paths_survive_yaml_quoting(monkeypatch):
+    """A host path a conversion leaves a backslash or a quote in, such as a
+    UNC path, still reaches the container whole."""
+    monkeypatch.setattr("os.path.exists", lambda path: True)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.get_gpu_devices", lambda env_vars: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    model_path = '/home/my "quoted" dir/model\\1.file'
+    cert_path = '/home/my "quoted" dir/tls.crt'
+    key_path = '/home/my "quoted" dir/tls.key'
+
+    args = Args()
+    args.tls_cert_file = cert_path
+    args.tls_key_file = key_path
+
+    content = Compose("test", (model_path, "/mnt/models/model.file"), None, None, args, [], None).generate().content
+
+    assert yaml.safe_load(content)["services"]["test"]["volumes"] == [
+        f"{model_path}:/mnt/models/model.file:ro",
+        f"{cert_path}:/mnt/tls/tls.crt:ro",
+        f"{key_path}:/mnt/tls/tls.key:ro",
+    ]
+
+
+def test_compose_tls_volumes(monkeypatch):
+    """The TLS material is mounted read-only from its host paths."""
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    args = Args()
+    args.tls_cert_file = "/host/certs/tls.crt"
+    args.tls_key_file = "/host/certs/tls.key"
+
+    result = Compose("test", ("/a", "/b"), None, None, args, [], None).generate().content
+
+    assert '- "/host/certs/tls.crt:/mnt/tls/tls.crt:ro"' in result
+    assert '- "/host/certs/tls.key:/mnt/tls/tls.key:ro"' in result
+
+
+def test_compose_no_tls_volumes_without_tls(monkeypatch):
+    monkeypatch.setattr("os.path.exists", lambda path: False)
+    monkeypatch.setattr("ramalama.compose.get_accel_env_vars", lambda: {})
+    monkeypatch.setattr("ramalama.compose.version", lambda: "test")
+
+    result = Compose("test", ("/a", "/b"), None, None, Args(), [], None).generate().content
+
+    assert "/mnt/tls" not in result

@@ -4,6 +4,7 @@ import argparse
 import os
 
 from ramalama.console import should_colorize
+from ramalama.tls import tls_paths
 from ramalama.transports.transport_factory import New
 
 
@@ -63,6 +64,10 @@ class LlamaCppCommands:
         logfile = getattr(args, 'logfile', None)
         if logfile:
             cmd += ["--log-file", str(logfile)]
+
+        tls = tls_paths(args, is_container or should_generate)
+        if tls:
+            cmd += ["--ssl-cert-file", tls.cert, "--ssl-key-file", tls.key]
 
         if router_mode:
             cmd += ["--models-dir", "/mnt/models"]

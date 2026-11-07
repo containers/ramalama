@@ -4,7 +4,7 @@ import argparse
 import copy
 import json
 import os
-import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -12,6 +12,7 @@ import tempfile
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from http.client import HTTPConnection
 from typing import Any, Literal, Optional, get_args
 from urllib.parse import urlparse
@@ -36,17 +37,23 @@ from ramalama.cli import (
     suppressCompleter,
 )
 from ramalama.common import (
+    MNT_DIR,
     accel_image,
+    engine_cmd,
     ensure_image,
     genname,
     get_gpu_type_env_vars,
+    has_nvidia_vulkan_icd,
+    is_windows_or_wsl,
     run_cmd,
     set_accel_env_vars,
     set_gpu_type_env_vars,
     version_tagged_image,
 )
+from ramalama.compose import Compose
 from ramalama.config import ActiveConfig, DefaultConfig, coerce_to_bool
 from ramalama.engine import Engine, dry_run, image_inspect
+from ramalama.kube import Kube
 from ramalama.logger import logger
 from ramalama.model_store.constants import DIRECTORY_NAME_BLOBS, DIRECTORY_NAME_REFS, DIRECTORY_NAME_SNAPSHOTS
 from ramalama.model_store.global_store import GlobalModelStore
@@ -58,7 +65,10 @@ from ramalama.plugins.runtimes.inference.llama_cpp_commands import (
     LlamaCppCommands,
     _default_threads,
 )
+from ramalama.quadlet import Quadlet
+from ramalama.quadlet import kube as quadlet_kube_unit
 from ramalama.rag import RagTransport
+from ramalama.tls import add_tls_args, tls_enabled, tls_mount_args
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New, TransportFactory
@@ -79,6 +89,38 @@ GGUF_QUANTIZATION_MODES = Literal[
 ]
 DEFAULT_GGUF_QUANTIZATION_MODE: GGUF_QUANTIZATION_MODES = "Q4_K_M"  # type: ignore[assignment]
 
+# llama-server reads its API key from this variable when --api-key is not given.
+LLAMA_API_KEY_ENV = "LLAMA_API_KEY"
+
+# ramalama's own RAG container scripts read the same key from this variable:
+# rag_framework guards its port with it and presents it to the llama-servers
+# behind it, doc2rag only presents it.
+RAG_API_KEY_ENV = "RAMALAMA_API_KEY"
+
+# Name used for generated router-mode configuration when --name is not given.
+ROUTER_NAME = "ramalama-router"
+
+
+def api_key_headers(args: Any) -> dict[str, str]:
+    """Authorization header for a keyed llama-server, empty when no key is set."""
+    key = getattr(args, "server_api_key", None) or getattr(args, "api_key", None)
+    return {"Authorization": f"Bearer {key}"} if key else {}
+
+
+def _prepend_key_env(args: argparse.Namespace, entry: str) -> None:
+    """Prepend an env entry to ``args.env``.
+
+    Rebinds rather than mutating in place: _rag_args shallow-copies the model
+    server's namespace to build the RAG proxy's, so the two share one list and
+    appending to it would give each container the other's entries.
+    """
+    args.env = [entry, *(getattr(args, "env", None) or [])]
+
+
+def router_mount_path(container_name: str) -> str:
+    """Path a router-mode model is mounted at inside the container."""
+    return f"{MNT_DIR}/{container_name}"
+
 
 @dataclass
 class LlamaCppConfig:
@@ -87,6 +129,7 @@ class LlamaCppConfig:
     gguf_quantization_mode: GGUF_QUANTIZATION_MODES = DEFAULT_GGUF_QUANTIZATION_MODE  # type: ignore[assignment]
     ngl: Optional[str] = None
     ncmoe: Optional[int] = None
+    server_api_key: Optional[str] = None
     spec_type: Optional[str] = None
     spec_draft_n_max: Optional[int] = None
     spec_draft_n_min: Optional[int] = None
@@ -102,6 +145,8 @@ class LlamaCppConfig:
             self.ngl = str(self.ngl)
         if self.ncmoe is not None:
             self.ncmoe = int(self.ncmoe)
+        if self.server_api_key is not None:
+            self.server_api_key = str(self.server_api_key)
         if self.spec_type is not None:
             self.spec_type = str(self.spec_type)
         if self.spec_draft_n_max is not None:
@@ -139,12 +184,10 @@ class AddPathOrUrl(argparse.Action):
 
 def get_gpu_backend_preferences(gpu_type: str) -> list[str]:
     """Returns preferred backends for a given GPU type in order of preference.
-    On Windows, vulkan is not supported on WSL2, so vendor backends are preferred."""
-    is_windows = platform.system() == "Windows"
-
+    Vulkan is a poor default on WSL2, so vendor backends are preferred there."""
     preferences = {
         "HIP_VISIBLE_DEVICES": ["vulkan", "rocm"],  # AMD: Vulkan preferred
-        "CUDA_VISIBLE_DEVICES": ["cuda"],  # NVIDIA: CUDA only
+        "CUDA_VISIBLE_DEVICES": ["cuda", "vulkan"],  # NVIDIA: CUDA preferred
         "INTEL_VISIBLE_DEVICES": ["vulkan", "sycl", "openvino"],  # Intel: Vulkan preferred
         "ASAHI_VISIBLE_DEVICES": ["vulkan"],  # Asahi: Vulkan only
         "ASCEND_VISIBLE_DEVICES": ["cann"],  # Ascend: CANN only
@@ -152,11 +195,27 @@ def get_gpu_backend_preferences(gpu_type: str) -> list[str]:
         "GGML_VK_VISIBLE_DEVICES": ["vulkan"],  # Vulkan: Vulkan only
     }
 
-    if is_windows:
+    if is_windows_or_wsl():
         preferences["HIP_VISIBLE_DEVICES"] = ["rocm", "vulkan"]
         preferences["INTEL_VISIBLE_DEVICES"] = ["sycl", "vulkan", "openvino"]
 
     return preferences.get(gpu_type, [])
+
+
+@lru_cache(maxsize=1)
+def warn_without_nvidia_vulkan_icd() -> None:
+    """Warn once when vulkan is picked for an NVIDIA GPU the host cannot drive.
+
+    Vulkan is only usable on NVIDIA because the container toolkit injects the
+    vendor ICD. Without it llama.cpp silently serves from the CPU, which is far
+    slower but never fails, so say so up front."""
+    if has_nvidia_vulkan_icd():
+        return
+    logger.warning(
+        "No NVIDIA Vulkan ICD found in /usr/share/vulkan/icd.d or /etc/vulkan/icd.d. "
+        "Inference may fall back to the CPU. Install the nvidia-container-toolkit, which "
+        "provides the ICD for the container, or select the cuda backend with --backend cuda."
+    )
 
 
 def backend_to_gpu_env(backend: str) -> str:
@@ -188,11 +247,13 @@ def get_available_backends() -> list[str]:
     return ["auto", "vulkan"]
 
 
+# GGML_VK_VISIBLE_DEVICES, the vulkan backend, is deliberately absent: it runs
+# in the default image, and hardcoding the published tag here would ignore
+# default_image / RAMALAMA_DEFAULT_IMAGE whenever a GPU is detected.
 _LLAMA_CPP_IMAGES: dict[str, str] = {
     "ASAHI_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/asahi"),
     "ASCEND_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/cann"),
     "CUDA_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/cuda"),
-    "GGML_VK_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/ramalama"),
     "HIP_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/rocm"),
     "INTEL_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/intel-gpu"),
     "OPENVINO_VISIBLE_DEVICES": version_tagged_image("quay.io/ramalama/openvino"),
@@ -222,6 +283,46 @@ def parse_models_payload(payload: Any) -> list[str]:
         return models
 
     raise ValueError("Invalid model list payload")
+
+
+# Upper bound (seconds) on each command made while probing for devices,
+# so `ramalama info --devices` cannot hang on a stalled probe.
+_DEVICE_PROBE_TIMEOUT = 60
+
+# llama.cpp has no JSON output for its device listing, so we parse the lines
+# printed by common_print_available_devices():
+#   "  <name>: <description> (<total> MiB, <free> MiB free)"
+# The description itself can contain parentheses (e.g. "Virtio-GPU Venus
+# (Apple M4 Pro)"), so the memory group is anchored to the end of the line
+# rather than matching the first "(".
+_DEVICE_LINE_RE = re.compile(
+    r"^\s*(?P<name>[^:]+):\s*(?P<description>.*?)\s*"
+    r"\((?P<total>\d+)\s*MiB,\s*(?P<free>\d+)\s*MiB\s+free\)\s*$"
+)
+
+
+def _parse_list_devices(output: str) -> list[dict[str, Any]]:
+    """Parse the output of `llama-server --list-devices` into structured entries."""
+    devices: list[dict[str, Any]] = []
+    collecting = False
+    for line in output.splitlines():
+        if line.startswith("Available devices:"):
+            collecting = True
+            continue
+        if not collecting:
+            continue
+        match = _DEVICE_LINE_RE.match(line)
+        if not match:
+            continue
+        devices.append(
+            {
+                "name": match.group("name").strip(),
+                "description": match.group("description").strip(),
+                "memory_total_mib": int(match.group("total")),
+                "memory_free_mib": int(match.group("free")),
+            }
+        )
+    return devices
 
 
 class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
@@ -296,7 +397,21 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             logger.debug(f"{self.name} {container_name} /health {health_resp.status}: {health_resp.reason}")
             return False
 
-        conn.request("GET", "/models")
+        # /health is always public, but current llama.cpp gates /models behind the
+        # API key, so a keyed server needs the header here or readiness never
+        # succeeds. Older builds leave /models public; the header is harmless there.
+        headers = api_key_headers(args)
+        debuglevel = conn.debuglevel
+        if headers:
+            # http.client's raw debug output prints request headers to stdout
+            # verbatim, and is_healthy turns it on for --debug, so this would echo
+            # the key on every readiness poll. Mute it for the send; the response
+            # trace carries no key.
+            conn.set_debuglevel(0)
+        try:
+            conn.request("GET", "/models", headers=headers)
+        finally:
+            conn.set_debuglevel(debuglevel)
         models_resp = conn.getresponse()
         if models_resp.status != 200:
             logger.debug(f"{self.name} {container_name} /models status code {models_resp.status}: {models_resp.reason}")
@@ -353,8 +468,18 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                         f"Recommended backends for {gpu_name}: {', '.join(preferences)}"
                     )
 
-        override = config.images.get(gpu_type) if gpu_type else None
-        return override if override else _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
+        if gpu_type == "GGML_VK_VISIBLE_DEVICES" and detected_gpu_type == "CUDA_VISIBLE_DEVICES":
+            warn_without_nvidia_vulkan_icd()
+
+        # In auto mode an image configured for the detected GPU is the user
+        # pinning an image for their hardware, so it takes precedence over one
+        # configured for the backend that was resolved from that hardware.
+        override_keys = [detected_gpu_type, gpu_type] if backend == "auto" else [gpu_type]
+        for key in override_keys:
+            if key and (override := config.images.get(key)):
+                return override
+
+        return _LLAMA_CPP_IMAGES.get(gpu_type, config.default_image)
 
     def _container_image_is_ggml(self, args: argparse.Namespace) -> bool:
         if not args.container or args.dryrun:
@@ -364,12 +489,84 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         if image == default_image:
             return False
         try:
-            image_entrypoint = image_inspect(args, image, format="{{ .Config.Entrypoint }}")
+            # Bound the inspect: it runs before list_devices' own timed probe, so
+            # without this a stalled engine would hang `ramalama info` here.
+            image_entrypoint = image_inspect(
+                args, image, format="{{ .Config.Entrypoint }}", timeout=_DEVICE_PROBE_TIMEOUT
+            )
         except Exception as e:
             logger.debug(f"Error inspecting image {image}: {e}")
             return False  # Assume default image (non-ggml)
         # Upstream llama.cpp full image uses a wrapper script as the entrypoint
         return "tools.sh" in image_entrypoint
+
+    def list_devices(self, args: argparse.Namespace) -> list[dict[str, Any]]:
+        """Enumerate GPU/accelerator devices via llama.cpp's --list-devices.
+
+        Uses the local ``llama-server`` when containers are disabled or no engine
+        is available. Otherwise, runs inside the llama.cpp container image using
+        its entrypoint: ``llama-server`` for ramalama images or ``--server`` for
+        upstream wrapper images. A missing binary or image, probe error, or
+        timeout yields an empty list.
+        """
+        cmd = ["llama-server", "--list-devices"]
+        probe_name = None
+        if args.container and getattr(args, "engine", None):
+            # Use a throwaway copy for a no-pull, auto-removed run with the same
+            # GPU passthrough as a real containerized run.
+            probe_args = copy.copy(args)
+            probe_args.dryrun = False
+            probe_args.pull = "never"
+            probe_args.subcommand = "info"
+            probe_args.port = ""
+            probe_args.detach = False
+            # `info` does not register --keep-groups, so carry it from config;
+            # otherwise the probe can miss group-gated devices.
+            probe_args.podman_keep_groups = getattr(args, "podman_keep_groups", None) or ActiveConfig().keep_groups
+
+            if self._container_image_is_ggml(probe_args):
+                cmd = ["--server", "--list-devices"]
+
+            # A timeout must remove the container: killing the engine client
+            # does not stop the container it launched.
+            probe_name = genname("ramalama-list-devices-")
+            engine = Engine(probe_args)
+            engine.add_name(probe_name)
+            engine.add_container_image(accel_image(ActiveConfig()), cmd)
+            cmd = engine.exec_args
+        logger.debug("list_devices: %s", " ".join(cmd))
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=_DEVICE_PROBE_TIMEOUT)
+        except subprocess.TimeoutExpired as e:
+            logger.debug("list_devices probe timed out: %s", e)
+            if probe_name is not None:
+                self._remove_probe_container(args.engine, probe_name)
+            return []
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.debug("list_devices probe failed: %s", e)
+            return []
+
+        if result.returncode != 0:
+            logger.debug("list_devices probe returned %d: %s", result.returncode, result.stderr.strip())
+            return []
+
+        return _parse_list_devices(result.stdout)
+
+    @staticmethod
+    def _remove_probe_container(engine: str, name: str) -> None:
+        """Best-effort force-removal of a timed-out device-probe container.
+
+        ``subprocess.run``'s timeout kills the engine client (SIGKILL on POSIX),
+        which Podman does not proxy to the container, so ``--rm`` may never fire.
+        Remove the named container explicitly, itself bounded so cleanup cannot
+        hang either.
+        """
+        cleanup = [*engine_cmd(engine), "rm", "--force", name]
+        try:
+            subprocess.run(cleanup, capture_output=True, text=True, check=False, timeout=_DEVICE_PROBE_TIMEOUT)
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.debug("list_devices cleanup of %s failed: %s", name, e)
 
     # --- subcommand registration ---
 
@@ -415,9 +612,29 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             completer=suppressCompleter,
         )
 
-    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
+    def _add_api_key_arg(self, parser: "argparse.ArgumentParser", help_text: Optional[str] = None) -> None:
+        """Register --api-key.
+
+        Deliberately not in _add_inference_args: ramalama sandbox borrows that to
+        build its own parsers and already owns a --api-key of its own, which it
+        maps onto server_api_key at run time.
+        """
+        rt_config = self.get_runtime_config(ActiveConfig())
+        parser.add_argument(
+            "--api-key",
+            dest="server_api_key",
+            metavar="KEY",
+            help=help_text or "require this API key on requests to the AI Model server (default: no authentication)",
+            completer=suppressCompleter,
+        )
+        # Apply the configured default out of band: ArgumentParserWithDefaults
+        # renders any default it is handed into the help text, and a key set in
+        # ramalama.conf must not be printed by --help.
+        parser.set_defaults(server_api_key=rt_config.server_api_key)
+
+    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str, *, tls: bool = True) -> None:
         """Add llama.cpp-specific inference args to an already-created parser."""
-        super()._add_inference_args(parser, command)
+        super()._add_inference_args(parser, command, tls=tls)
         rt_config = self.get_runtime_config(ActiveConfig())
         parser.add_argument(
             "--temp",
@@ -487,6 +704,9 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             )
         self._add_threads_arg(parser)
         if command == "serve":
+            if tls:
+                # llama-server terminates TLS itself
+                add_tls_args(parser)
             parser.add_argument(
                 "--webui",
                 dest="webui",
@@ -509,12 +729,58 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         ]
         args.env = openvino_env + getattr(args, "env", [])
 
+    def post_process_args(self, args: argparse.Namespace) -> None:
+        super().post_process_args(args)
+        if tls_enabled(args) and getattr(args, "rag", None):
+            # The RAG framework proxies the model server over plain HTTP, so
+            # only its own listener could be wrapped in TLS, not the model's.
+            raise ValueError("ramalama serve --rag does not support serving over TLS.")
+        if not getattr(args, "server_api_key", None):
+            return
+        # llama-stack fronts llama-server on the only published port, and neither
+        # requires a key of its clients nor presents one upstream, so the port the
+        # user reaches would be unauthenticated. --rag is supported: every port it
+        # publishes is keyed, see _set_rag_api_key_env.
+        if getattr(args, "api", None) == "llama-stack":
+            raise ValueError("--api-key is not supported with --api llama-stack: llama-stack cannot present a key.")
+
+    @staticmethod
+    def _set_server_api_key_env(args: argparse.Namespace) -> None:
+        """Hand the server API key to llama-server through LLAMA_API_KEY.
+
+        The key travels in the environment rather than in argv, so it appears in
+        neither llama-server's nor the container engine's command line. A key
+        given as --api-key is still in ramalama's own argv; one read from
+        ramalama.conf is in no process table at all. llama.cpp applies env values
+        before parsing the command line, so this is equivalent to passing
+        --api-key.
+        """
+        key = getattr(args, "server_api_key", None)
+        if not key:
+            return
+
+        os.environ[LLAMA_API_KEY_ENV] = key
+        if getattr(args, "generate", None):
+            # Generated quadlet/kube/compose files are read without ramalama in the
+            # picture, so they need the literal value. It lands there in plaintext.
+            _prepend_key_env(args, f"{LLAMA_API_KEY_ENV}={key}")
+        elif getattr(args, "container", False):
+            # Bare name: podman/docker inherit the value from our own environment,
+            # keeping it off the engine command line.
+            _prepend_key_env(args, LLAMA_API_KEY_ENV)
+
     def handle_subcommand(self, command: str, args: argparse.Namespace) -> list[str]:
         set_accel_env_vars()
         self._set_openvino_env(args)
+        self._set_server_api_key_env(args)
         return super().handle_subcommand(command, args)
 
     def _do_run(self, args: argparse.Namespace, model: Any) -> None:
+        # run chats against the server it just started, so the client has to present
+        # the key the server now demands. chat.add_api_key() reads args.api_key. Set
+        # it before the RAG branch, whose namespace is copied from this one.
+        if getattr(args, "server_api_key", None):
+            args.api_key = args.server_api_key
         if getattr(args, "rag", None):
             if isinstance(model, APITransport):
                 raise ValueError("ramalama run --rag is not supported for hosted API transports.")
@@ -541,8 +807,8 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         super()._serve_handler(args)
 
-    def _build_router_engine(self, args: argparse.Namespace) -> Engine:
-        """Resolve models and build an Engine with bind mounts for router mode."""
+    def _prepare_router(self, args: argparse.Namespace) -> tuple[list[tuple[str, str]], list[str]]:
+        """Resolve the models to serve and build the llama-server command for router mode."""
         if not args.container:
             sys.exit("Error: multi-model router mode requires a container runtime.")
 
@@ -566,26 +832,70 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
 
         if not args.dryrun and not getattr(args, "image", None):
             config = ActiveConfig()
-            should_pull = config.pull in ["always", "missing", "newer"]
+            should_pull = False if getattr(args, "generate", None) else config.pull in ["always", "missing", "newer"]
             args.image = ensure_image(config.engine, accel_image(config), should_pull=should_pull)
 
-        cmd = self.handle_subcommand("serve", args)
+        return models, self.handle_subcommand("serve", args)
+
+    def _build_router_engine(self, args: argparse.Namespace) -> Engine:
+        """Resolve models and build an Engine with bind mounts for router mode."""
+        models, cmd = self._prepare_router(args)
+
         engine = Engine(args)
         name = getattr(args, "name", None) or genname()
         args.name = name
         engine.add(["--label", "ai.ramalama", "--name", name, "--env=HOME=/tmp", "--init"])
 
         for host_path, container_name in models:
-            mount_path = f"/mnt/models/{container_name}"
             container_host_path = get_container_mount_path(host_path)
-            engine.add([f"--mount=type=bind,src={container_host_path},destination={mount_path},ro{engine.relabel()}"])
+            engine.add(
+                [
+                    f"--mount=type=bind,src={container_host_path},"
+                    f"destination={router_mount_path(container_name)},ro{engine.relabel()}"
+                ]
+            )
+
+        for mount in tls_mount_args(engine, args):
+            engine.add([mount])
 
         engine.add([args.image] + cmd)
         return engine
 
+    @staticmethod
+    def _generate_router_config(args: argparse.Namespace, models: list[tuple[str, str]], cmd: list[str]) -> None:
+        """Write the quadlet/kube/compose files for a router-mode server."""
+        # Router mode has no single model to name the output after, so fall back
+        # to a fixed name when --name was not given.
+        name = getattr(args, "name", None) or ROUTER_NAME
+        args.name = name
+        # The models are plain bind mounts of store blobs, so they map onto the
+        # multi-part model support the generators already have.
+        model_parts = [(host_path, router_mount_path(container_name)) for host_path, container_name in models]
+        gen_type = args.generate.gen_type
+
+        files: list[Any] = []
+        if gen_type == "quadlet":
+            files = Quadlet(name, ("", ""), None, None, args, cmd, False, model_parts, None).generate()
+        elif gen_type in ("kube", "quadlet/kube"):
+            kube = Kube(name, ("", ""), None, None, args, cmd, None, False, model_parts=model_parts)
+            files = [kube.generate()]
+            if gen_type == "quadlet/kube":
+                files.append(quadlet_kube_unit(name, f"RamaLama {name} Kubernetes YAML - AI Model Service"))
+        elif gen_type == "compose":
+            files = [Compose(name, ("", ""), None, None, args, cmd, None, model_parts=model_parts).generate()]
+
+        for generated_file in files:
+            generated_file.write(args.generate.output_dir)
+
     def _serve_router(self, args: argparse.Namespace) -> None:
         """Serve multiple models using llama.cpp router mode (container-only)."""
         args.port = compute_serving_port(args)
+
+        if getattr(args, "generate", None):
+            models, cmd = self._prepare_router(args)
+            self._generate_router_config(args, models, cmd)
+            return
+
         engine = self._build_router_engine(args)
 
         if args.dryrun:
@@ -669,26 +979,73 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         """Start the RAG helper servers on a private network, then run ``dispatch``.
 
         The model server, embedding server, and RAG proxy all join a shared
-        private network so they reach each other by container name without
-        publishing the helper servers to the host.
+        private network so they reach each other by container name. Each of the
+        three also publishes a port of its own, so a key has to cover all of
+        them, not just the proxy the user talks to.
+
+        ``dispatch`` blocks for as long as the proxy runs, except under
+        --detach, where it returns as soon as the proxy is backgrounded. A
+        backgrounded proxy is useless without the helpers it talks to and the
+        network it reaches them on, so those are reported rather than torn
+        down; the user stops them with the printed command.
         """
         from ramalama.engine import remove_network
-        from ramalama.plugins.runtimes.inference.rag.handler import _cleanup_servers, _setup_rag_network
+        from ramalama.plugins.runtimes.inference.rag.handler import (
+            _cleanup_servers,
+            _report_skipped_cleanup,
+            _setup_rag_network,
+        )
 
+        self._set_rag_api_key_env(args)
         network_created = _setup_rag_network(args)
+        # Name the proxy up front so the cleanup report can refer to it; the
+        # engine would otherwise generate a name it keeps to itself.
+        args.name = getattr(args, "name", None) or genname()
+        embed_serve_args = None
+        embed_proc = None
+        backgrounded = False
         try:
             embed_serve_args, embed_proc = self._start_rag_embedding_server(args)
-            try:
-                dispatch()
-            finally:
-                _cleanup_servers(args, [embed_serve_args], [embed_proc])
+            dispatch()
+            # Only once dispatch has returned without raising is there anything
+            # running worth keeping; a failed start leaves nothing to detach to.
+            backgrounded = bool(getattr(args, "detach", False))
         finally:
-            if network_created:
-                remove_network(args, args.network)
+            if backgrounded:
+                _report_skipped_cleanup(args, [args, args.model_args, embed_serve_args], network_created, "--detach")
+            else:
+                if embed_serve_args is not None:
+                    _cleanup_servers(args, [embed_serve_args], [embed_proc])
+                if network_created:
+                    remove_network(args, args.network)
+
+    @staticmethod
+    def _set_rag_api_key_env(args: argparse.Namespace) -> None:
+        """Hand the server API key to a RAG container through RAMALAMA_API_KEY.
+
+        ``args`` is the RAG container's own namespace, either the serve proxy's
+        or doc2rag's; the llama.cpp servers it talks to pick the key up from
+        LLAMA_API_KEY instead. The serve proxy also inherits that name, because
+        its namespace is a shallow copy of the model server's, which is harmless
+        since it reads RAMALAMA_API_KEY. As with the model server the name is
+        passed bare, so the engine inherits the value from our environment
+        instead of putting it on its command line.
+        """
+        key = getattr(args, "server_api_key", None)
+        if not key:
+            return
+
+        os.environ[RAG_API_KEY_ENV] = key
+        _prepend_key_env(args, RAG_API_KEY_ENV)
 
     def _start_rag_embedding_server(self, args):
         """Start a llama.cpp embedding server for RAG inference and set embed_url on args."""
-        from ramalama.plugins.runtimes.inference.rag.handler import EMBEDDING_MODEL, _build_serve_args, _wait_for_server
+        from ramalama.plugins.runtimes.inference.rag.handler import (
+            EMBEDDING_MODEL,
+            _build_serve_args,
+            _cleanup_servers,
+            _wait_for_server,
+        )
 
         embedding_model = EMBEDDING_MODEL
         set_accel_env_vars()
@@ -709,7 +1066,17 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         embed_proc = embed_transport.serve_nonblocking(embed_serve_args, embed_cmd)
 
         if not args.dryrun:
-            _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
+            # The container is up from here on, but the caller only learns its
+            # name from the return value below. Raising past that point would
+            # strand it: _serve_rag_pipeline has nothing to pass to
+            # _cleanup_servers, and remove_network only gets away with tidying
+            # it up on podman, where `network rm -f` takes attached containers
+            # with it. Docker's has no such flag and refuses outright.
+            try:
+                _wait_for_server(self, embed_serve_args, embed_transport.model_alias)
+            except BaseException:
+                _cleanup_servers(args, [embed_serve_args], [embed_proc])
+                raise
 
         # Reach the embedding server by its container name over the shared private
         # network (serve_nonblocking assigned the name above).
@@ -719,6 +1086,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _register_run_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_run_subcommand(subparsers)
         self._add_rag_args(parser)
+        self._add_api_key_arg(parser)
         return parser
 
     def _add_model_argument(self, parser: "argparse.ArgumentParser") -> None:
@@ -727,6 +1095,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
     def _register_serve_subcommand(self, subparsers: "argparse._SubParsersAction") -> "argparse.ArgumentParser":
         parser = super()._register_serve_subcommand(subparsers)
         self._add_rag_args(parser)
+        self._add_api_key_arg(parser)
         parser.add_argument(
             "--models-max",
             dest="models_max",

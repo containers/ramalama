@@ -21,6 +21,7 @@ RUN_DRY_RUN = ["ramalama", "--dryrun", "run"]
 HTTP_FILE = "https://github.com/containers/ramalama/blob/main/README.md"
 RAG_MODEL = "quay.io/ramalama/myrag:1.2"
 OLLAMA_MODEL = "ollama://smollm:135m"
+CAPTION_MODEL = "hf://unsloth/gemma-4-E2B-it-GGUF"
 WSL_TMP_DIR = r'\\wsl.localhost\podman-machine-default\var\tmp'
 
 
@@ -366,3 +367,38 @@ def test_rag_with_unc_uri(container_engine_cmd):
         file_uri = file_path.as_uri()
         ctx.check_call(["ramalama", "rag", file_uri, RAG_MODEL])
         ctx.check_call([*container_engine_cmd, "rmi", RAG_MODEL])
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_rag_api_key_keys_every_published_port():
+    """Each llama.cpp server ramalama rag starts publishes a port, so all are keyed."""
+    with RamalamaExecWorkspace() as ctx:
+        file_path = Path(ctx.workspace_dir) / "README.md"
+        file_path.touch()
+        result = ctx.check_output(
+            RAG_DRY_RUN
+            + ["--api-key", "sekret", "--caption-images=" + CAPTION_MODEL, str(file_path), RAG_MODEL]
+        )
+        containers = [line for line in result.splitlines() if " run " in line]
+        # three llama.cpp servers (docling, embedding, captioning) plus doc2rag
+        assert len(containers) == 4
+        for line in containers:
+            if "doc2rag" in line:
+                # doc2rag listens on nothing; it only presents the key upstream
+                assert "-p " not in line
+                assert re.search(r"--env RAMALAMA_API_KEY(\s|$)", line)
+            else:
+                assert re.search(r"-p \S+", line)
+                assert len(re.findall(r"--env LLAMA_API_KEY(?=\s|$)", line)) == 1, line
+        assert "sekret" not in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_rag_without_api_key_is_unchanged():
+    with RamalamaExecWorkspace() as ctx:
+        file_path = Path(ctx.workspace_dir) / "README.md"
+        file_path.touch()
+        result = ctx.check_output(RAG_DRY_RUN + [str(file_path), RAG_MODEL])
+        assert "API_KEY" not in result

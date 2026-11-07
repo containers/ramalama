@@ -1,8 +1,9 @@
 """Unit tests for runtime plugins (llama.cpp, vllm, mlx)."""
 
 import argparse
+from subprocess import TimeoutExpired
 from typing import Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -21,12 +22,20 @@ from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRun
 from ramalama.plugins.runtimes.inference.llama_cpp import (
     LlamaCppConfig,
     LlamaCppPlugin,
+    _parse_list_devices,
     backend_to_gpu_env,
     get_available_backends,
     get_gpu_backend_preferences,
 )
 from ramalama.plugins.runtimes.inference.mlx import MlxConfig, MlxPlugin
 from ramalama.plugins.runtimes.inference.vllm import VllmPlugin
+
+
+@pytest.fixture(autouse=True)
+def not_windows_or_wsl(monkeypatch):
+    """Backend defaults differ on Windows and WSL, so pin the native path by
+    default. Tests covering that behaviour override this."""
+    monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.is_windows_or_wsl", lambda: False)
 
 
 def make_ns(
@@ -291,6 +300,86 @@ class TestLlamaCppPlugin:
 
         assert "--host" in cmd
         assert cmd[cmd.index("--host") + 1] == "127.0.0.1"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_without_tls(self, mock_colorize):
+        cmd = self.plugin.handle_subcommand("serve", make_ns(container=False))
+
+        assert "--ssl-cert-file" not in cmd
+        assert "--ssl-key-file" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_tls_in_container(self, mock_colorize, mock_new):
+        """In a container llama-server is given the bind mount paths, not the
+        host ones."""
+        mock_new.return_value = make_transport_model()
+
+        ns = make_ns(container=True, MODEL="ollama://mymodel")
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-cert-file") + 1] == "/mnt/tls/tls.crt"
+        assert cmd[cmd.index("--ssl-key-file") + 1] == "/mnt/tls/tls.key"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_tls_nocontainer(self, mock_colorize):
+        ns = make_ns(container=False)
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-cert-file") + 1] == "/host/certs/tls.crt"
+        assert cmd[cmd.index("--ssl-key-file") + 1] == "/host/certs/tls.key"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
+    def test_serve_tls_generate_uses_container_paths(self, mock_colorize, mock_new):
+        """A generated configuration runs the server in a container even when
+        the generating command did not."""
+        mock_new.return_value = make_transport_model()
+
+        ns = make_ns(container=False, generate="quadlet", MODEL="ollama://mymodel")
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-cert-file") + 1] == "/mnt/tls/tls.crt"
+
+    def test_post_process_args_validates_tls(self):
+        ns = make_ns()
+        ns.tls_cert_file = "/host/certs/tls.crt"
+
+        with pytest.raises(ValueError, match="must be specified together"):
+            self.plugin.post_process_args(ns)
+
+    def test_serve_rag_rejects_tls(self, tmp_path):
+        """The RAG proxy reaches the model server over plain HTTP, so only its
+        own listener could be wrapped in TLS. Rejected up front, before the
+        model is resolved and pulled."""
+        cert = tmp_path / "tls.crt"
+        cert.write_text("cert")
+        key = tmp_path / "tls.key"
+        key.write_text("key")
+
+        ns = make_ns(container=True)
+        ns.rag = "mydb"
+        ns.tls_cert_file = str(cert)
+        ns.tls_key_file = str(key)
+
+        with pytest.raises(ValueError, match="--rag does not support serving over TLS"):
+            self.plugin.post_process_args(ns)
+
+    def test_serve_llama_stack_rejects_tls(self):
+        ns = make_ns(container=True, MODEL=["ollama://mymodel"])
+        ns.api = "llama-stack"
+        ns.detach = False
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+
+        with pytest.raises(ValueError, match="llama-stack command does not support serving over TLS"):
+            self.plugin._serve_handler(ns)
 
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.New")
     @patch("ramalama.plugins.runtimes.inference.llama_cpp_commands.should_colorize", return_value=False)
@@ -701,6 +790,40 @@ class TestLlamaCppPlugin:
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
         assert image == version_tagged_image("quay.io/ramalama/cuda")
 
+    @pytest.mark.parametrize("has_icd,warned", [(True, False), (False, True)])
+    def test_get_container_image_vulkan_on_nvidia_warns_without_icd(self, has_icd, warned, monkeypatch):
+        monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.has_nvidia_vulkan_icd", lambda: has_icd)
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "vulkan"}}
+        config.images.get.return_value = None
+        config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
+        with patch("ramalama.plugins.runtimes.inference.llama_cpp.logger.warning") as mock_warning:
+            self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
+        assert mock_warning.called == warned
+        if warned:
+            assert "Vulkan ICD" in mock_warning.call_args.args[0]
+
+    def test_get_container_image_cuda_backend_does_not_warn(self, monkeypatch):
+        # Asking for cuda gets the cuda image, where the ICD is irrelevant.
+        monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.has_nvidia_vulkan_icd", lambda: False)
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "cuda"}}
+        config.images.get.return_value = None
+        with patch("ramalama.plugins.runtimes.inference.llama_cpp.logger.warning") as mock_warning:
+            self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
+        mock_warning.assert_not_called()
+
+    def test_get_container_image_vulkan_on_amd_does_not_warn(self, monkeypatch):
+        # The ICD probe is NVIDIA-specific, so it must not fire for other vendors.
+        monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.has_nvidia_vulkan_icd", lambda: False)
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
+        config.images.get.return_value = None
+        config.default_image = version_tagged_image("quay.io/ramalama/ramalama")
+        with patch("ramalama.plugins.runtimes.inference.llama_cpp.logger.warning") as mock_warning:
+            self.plugin.get_container_image(config, "HIP_VISIBLE_DEVICES")
+        mock_warning.assert_not_called()
+
     def test_get_container_image_no_gpu(self):
         config = MagicMock()
         config.runtimes = {"llama_cpp": {"backend": "auto"}}
@@ -717,6 +840,36 @@ class TestLlamaCppPlugin:
         }.get(key, default)
         image = self.plugin.get_container_image(config, "CUDA_VISIBLE_DEVICES")
         assert image == "custom/cuda:v1.0"
+
+    def test_get_container_image_vulkan_follows_default_image(self):
+        # AMD resolves to the vulkan backend, which runs in the default image,
+        # so RAMALAMA_DEFAULT_IMAGE has to be honoured here too.
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
+        config.images.get.return_value = None
+        config.default_image = "my-registry.example/ramalama:snapshot"
+        image = self.plugin.get_container_image(config, "HIP_VISIBLE_DEVICES")
+        assert image == "my-registry.example/ramalama:snapshot"
+
+    def test_get_container_image_user_override_for_detected_gpu(self):
+        # The override is keyed by the detected GPU, while auto resolves to the
+        # vulkan backend; the image the user pinned for their hardware wins.
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
+        config.images.get.side_effect = lambda key, default=None: {
+            "HIP_VISIBLE_DEVICES": "custom/rocm:v1.0",
+        }.get(key, default)
+        image = self.plugin.get_container_image(config, "HIP_VISIBLE_DEVICES")
+        assert image == "custom/rocm:v1.0"
+
+    def test_get_container_image_user_override_for_resolved_backend(self):
+        config = MagicMock()
+        config.runtimes = {"llama_cpp": {"backend": "auto"}}
+        config.images.get.side_effect = lambda key, default=None: {
+            "GGML_VK_VISIBLE_DEVICES": "custom/vulkan:v1.0",
+        }.get(key, default)
+        image = self.plugin.get_container_image(config, "HIP_VISIBLE_DEVICES")
+        assert image == "custom/vulkan:v1.0"
 
     @patch.dict("os.environ", clear=True, INTEL_VISIBLE_DEVICES="1")
     def test_intel_no_openvino(self):
@@ -809,6 +962,33 @@ class TestVllmPlugin:
 
         assert "--tensor-parallel-size" in cmd
         assert "2" in cmd
+
+    def test_serve_without_tls(self):
+        cmd = self.plugin.handle_subcommand("serve", make_ns(container=False))
+
+        assert "--ssl-certfile" not in cmd
+        assert "--ssl-keyfile" not in cmd
+
+    @patch("ramalama.plugins.runtimes.inference.vllm.New")
+    def test_serve_tls_in_container(self, mock_new):
+        mock_new.return_value = make_transport_model()
+
+        ns = make_ns(container=True, MODEL="ollama://mymodel")
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-certfile") + 1] == "/mnt/tls/tls.crt"
+        assert cmd[cmd.index("--ssl-keyfile") + 1] == "/mnt/tls/tls.key"
+
+    def test_serve_tls_nocontainer(self):
+        ns = make_ns(container=False)
+        ns.tls_cert_file = "/host/certs/tls.crt"
+        ns.tls_key_file = "/host/certs/tls.key"
+        cmd = self.plugin.handle_subcommand("serve", ns)
+
+        assert cmd[cmd.index("--ssl-certfile") + 1] == "/host/certs/tls.crt"
+        assert cmd[cmd.index("--ssl-keyfile") + 1] == "/host/certs/tls.key"
 
     def test_run_same_as_serve(self):
         ns = make_ns()
@@ -1158,6 +1338,37 @@ class TestConfigureSubcommandsFiltering:
             opts = self._subparser_option_strings(parser, "serve")
             assert "--temp" in opts, f"--temp missing for runtime {runtime}"
 
+    def test_tls_options_per_runtime(self, monkeypatch):
+        """The mlx server has no TLS support, the other two serve HTTPS."""
+        from ramalama.cli import configure_subcommands
+        from ramalama.config import ActiveConfig
+
+        expected = {
+            "llama.cpp": ({"--tls-cert-file", "--tls-key-file"}, set()),
+            "vllm": ({"--tls-cert-file", "--tls-key-file"}, set()),
+            "mlx": (set(), {"--tls-cert-file", "--tls-key-file"}),
+        }
+        for runtime, (present, absent) in expected.items():
+            monkeypatch.setattr(ActiveConfig(), "runtime", runtime)
+            monkeypatch.setattr(ActiveConfig(), "container", True)
+            parser = self._make_parser()
+            configure_subcommands(parser)
+            opts = set(self._subparser_option_strings(parser, "serve"))
+            assert present <= opts, f"TLS options missing for runtime {runtime}"
+            assert not absent & opts, f"unsupported TLS options offered by runtime {runtime}"
+
+    def test_tls_options_not_offered_by_run(self, monkeypatch):
+        """Only the served REST API can be wrapped in TLS."""
+        from ramalama.cli import configure_subcommands
+        from ramalama.config import ActiveConfig
+
+        monkeypatch.setattr(ActiveConfig(), "runtime", "llama.cpp")
+        monkeypatch.setattr(ActiveConfig(), "container", True)
+        parser = self._make_parser()
+        configure_subcommands(parser)
+
+        assert "--tls-cert-file" not in self._subparser_option_strings(parser, "run")
+
     def test_vllm_serve_has_api(self, monkeypatch):
         from ramalama.cli import configure_subcommands
         from ramalama.config import ActiveConfig
@@ -1229,7 +1440,7 @@ class TestConfigureSubcommandsFiltering:
         # Force backend even with different GPU (warns but allows)
         ("rocm", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
         ("cuda", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
-        ("vulkan", "CUDA_VISIBLE_DEVICES", DEFAULT_IMAGE),  # Vulkan on NVIDIA (not in preferences, warns)
+        ("vulkan", "CUDA_VISIBLE_DEVICES", DEFAULT_IMAGE),  # Explicit Vulkan on NVIDIA
     ],
 )
 def test_backend_selection(backend: str, gpu_env: str, expected_result: str, monkeypatch):
@@ -1262,22 +1473,24 @@ backend = "{backend}"
 @pytest.mark.parametrize(
     "backend,gpu_env,expected_result",
     [
-        # Auto mode on Windows: ROCm for AMD, CUDA for NVIDIA, sycl for Intel
-        ("auto", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),  # AMD -> ROCm on Windows
+        # Auto mode on WSL2: ROCm for AMD, CUDA for NVIDIA, sycl for Intel
+        ("auto", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),  # AMD -> ROCm on WSL2
         ("auto", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),  # NVIDIA -> CUDA
         ("auto", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),  # Intel -> sycl
-        # Explicit backends still work
+        # Explicit backends still work, vulkan included
         ("vulkan", "HIP_VISIBLE_DEVICES", DEFAULT_IMAGE),
         ("rocm", "HIP_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/rocm")),
+        ("vulkan", "CUDA_VISIBLE_DEVICES", DEFAULT_IMAGE),
+        ("cuda", "CUDA_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/cuda")),
         ("vulkan", "INTEL_VISIBLE_DEVICES", DEFAULT_IMAGE),
         ("sycl", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/intel-gpu")),
         ("openvino", "INTEL_VISIBLE_DEVICES", version_tagged_image("quay.io/ramalama/openvino")),
     ],
 )
-def test_backend_selection_windows(backend: str, gpu_env: str, expected_result: str, monkeypatch):
-    """Test that Windows defaults to vendor-specific backends for AMD and Intel."""
+def test_backend_selection_wsl(backend: str, gpu_env: str, expected_result: str, monkeypatch):
+    """Test that WSL2 defaults to vendor-specific backends for AMD and Intel."""
     monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
-    monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.platform.system", lambda: "Windows")
+    monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.is_windows_or_wsl", lambda: True)
 
     with NamedTemporaryFile('w', delete_on_close=False) as f:
         f.write(f"""\
@@ -1386,7 +1599,7 @@ backend = "cuda"
     "gpu_env,expected_backends",
     [
         ("HIP_VISIBLE_DEVICES", ["auto", "vulkan", "rocm"]),  # AMD
-        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda"]),  # NVIDIA
+        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda", "vulkan"]),  # NVIDIA (CUDA preferred)
         ("INTEL_VISIBLE_DEVICES", ["auto", "vulkan", "sycl", "openvino"]),  # Intel (Vulkan preferred)
         ("ASAHI_VISIBLE_DEVICES", ["auto", "vulkan"]),  # Asahi
         ("ASCEND_VISIBLE_DEVICES", ["auto", "cann"]),  # Ascend
@@ -1409,16 +1622,16 @@ def test_get_available_backends(gpu_env: Optional[str], expected_backends: list[
 @pytest.mark.parametrize(
     "gpu_env,expected_backends",
     [
-        ("HIP_VISIBLE_DEVICES", ["auto", "rocm", "vulkan"]),  # AMD: ROCm preferred on Windows
-        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda"]),  # NVIDIA: same on all platforms
-        ("INTEL_VISIBLE_DEVICES", ["auto", "sycl", "vulkan", "openvino"]),  # Intel: sycl preferred on Windows
+        ("HIP_VISIBLE_DEVICES", ["auto", "rocm", "vulkan"]),  # AMD: ROCm preferred on WSL2
+        ("CUDA_VISIBLE_DEVICES", ["auto", "cuda", "vulkan"]),  # NVIDIA: same on all platforms
+        ("INTEL_VISIBLE_DEVICES", ["auto", "sycl", "vulkan", "openvino"]),  # Intel: sycl preferred on WSL2
         (None, ["auto", "vulkan"]),  # No GPU: same on all platforms
     ],
 )
-def test_get_available_backends_windows(gpu_env: Optional[str], expected_backends: list[str], monkeypatch):
-    """Test that available backends on Windows prefer vendor-specific backends."""
+def test_get_available_backends_wsl(gpu_env: Optional[str], expected_backends: list[str], monkeypatch):
+    """Test that available backends on WSL2 prefer vendor-specific backends."""
     monkeypatch.setattr("ramalama.common.get_accel", lambda: "none")
-    monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.platform.system", lambda: "Windows")
+    monkeypatch.setattr("ramalama.plugins.runtimes.inference.llama_cpp.is_windows_or_wsl", lambda: True)
 
     env = {}
     if gpu_env:
@@ -1453,7 +1666,7 @@ class TestBackendHelpers:
 
     def test_gpu_backend_preferences_nvidia(self):
         prefs = get_gpu_backend_preferences("CUDA_VISIBLE_DEVICES")
-        assert prefs == ["cuda"]
+        assert prefs == ["cuda", "vulkan"]
 
     def test_gpu_backend_preferences_amd(self):
         prefs = get_gpu_backend_preferences("HIP_VISIBLE_DEVICES")
@@ -1463,3 +1676,169 @@ class TestBackendHelpers:
     def test_gpu_backend_preferences_unknown(self):
         prefs = get_gpu_backend_preferences("UNKNOWN_DEVICES")
         assert prefs == []
+
+
+class TestListDevices:
+    """Tests for llama.cpp device enumeration (parsing, native and container probes)."""
+
+    def test_parse_description_with_parentheses(self):
+        # llama.cpp descriptions can contain parentheses (e.g. the Apple GPU
+        # name), so only the trailing memory group must be split off.
+        output = (
+            "could not connect vdrm\n"
+            "Available devices:\n"
+            "  Vulkan0: Virtio-GPU Venus (Apple M4 Pro) (49152 MiB, 49152 MiB free)\n"
+        )
+        assert _parse_list_devices(output) == [
+            {
+                "name": "Vulkan0",
+                "description": "Virtio-GPU Venus (Apple M4 Pro)",
+                "memory_total_mib": 49152,
+                "memory_free_mib": 49152,
+            }
+        ]
+
+    def test_parse_multiple(self):
+        output = (
+            "Available devices:\n"
+            "  CUDA0: NVIDIA GeForce RTX 3090 (24576 MiB, 24000 MiB free)\n"
+            "  Vulkan0: AMD Radeon RX 7900 XTX (24560 MiB, 23000 MiB free)\n"
+        )
+        assert _parse_list_devices(output) == [
+            {
+                "name": "CUDA0",
+                "description": "NVIDIA GeForce RTX 3090",
+                "memory_total_mib": 24576,
+                "memory_free_mib": 24000,
+            },
+            {
+                "name": "Vulkan0",
+                "description": "AMD Radeon RX 7900 XTX",
+                "memory_total_mib": 24560,
+                "memory_free_mib": 23000,
+            },
+        ]
+
+    def test_parse_none(self):
+        assert _parse_list_devices("Available devices:\n  (none)\n") == []
+
+    @pytest.mark.parametrize("container,engine", [(False, None), (False, "podman"), (True, None)])
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_list_devices_local_binary(self, mock_engine, mock_run, container, engine):
+        mock_run.return_value = Mock(
+            returncode=0,
+            stdout="Available devices:\n  Metal0: Apple M4 Pro (49152 MiB, 40000 MiB free)\n",
+            stderr="",
+        )
+        args = argparse.Namespace(container=container, engine=engine)
+        result = LlamaCppPlugin().list_devices(args)
+
+        assert result == [
+            {"name": "Metal0", "description": "Apple M4 Pro", "memory_total_mib": 49152, "memory_free_mib": 40000}
+        ]
+        mock_run.assert_called_once_with(
+            ["llama-server", "--list-devices"], capture_output=True, text=True, check=False, timeout=60
+        )
+        mock_engine.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "error", [FileNotFoundError("llama-server"), TimeoutExpired(cmd="llama-server", timeout=60)]
+    )
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    def test_list_devices_local_binary_failure(self, mock_run, error):
+        mock_run.side_effect = error
+        args = argparse.Namespace(container=False, engine="podman")
+        with patch.object(LlamaCppPlugin, "_remove_probe_container") as mock_cleanup:
+            assert LlamaCppPlugin().list_devices(args) == []
+        mock_run.assert_called_once()
+        mock_cleanup.assert_not_called()
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    def test_list_devices_local_binary_nonzero_returncode(self, mock_run):
+        mock_run.return_value = Mock(returncode=1, stdout="", stderr="unsupported option")
+        assert LlamaCppPlugin().list_devices(argparse.Namespace(container=False, engine=None)) == []
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_list_devices_parses_probe_output(self, mock_engine, mock_accel, mock_run):
+        mock_engine.return_value.exec_args = ["podman", "run", "--rm", "img:latest", "llama-server", "--list-devices"]
+        mock_run.return_value = Mock(
+            returncode=0,
+            stdout="Available devices:\n  Vulkan0: GPU (1024 MiB, 512 MiB free)\n",
+            stderr="",
+        )
+        args = make_ns()
+        args.engine = "podman"
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=False):
+            result = LlamaCppPlugin().list_devices(args)
+
+        assert result == [{"name": "Vulkan0", "description": "GPU", "memory_total_mib": 1024, "memory_free_mib": 512}]
+        # The ramalama image exposes llama-server directly.
+        image, cmd = mock_engine.return_value.add_container_image.call_args.args
+        assert image == "img:latest"
+        assert cmd == ["llama-server", "--list-devices"]
+        # The probe must not pull a missing image during `info`.
+        assert mock_engine.call_args.args[0].pull == "never"
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_list_devices_ggml_image_uses_server_entrypoint(self, mock_engine, mock_accel, mock_run):
+        mock_engine.return_value.exec_args = ["podman", "run", "--rm", "img:latest", "--server", "--list-devices"]
+        mock_run.return_value = Mock(returncode=0, stdout="Available devices:\n", stderr="")
+        args = make_ns()
+        args.engine = "podman"
+        # The upstream llama.cpp image uses a wrapper entrypoint invoked with --server.
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=True):
+            LlamaCppPlugin().list_devices(args)
+
+        _, cmd = mock_engine.return_value.add_container_image.call_args.args
+        assert cmd == ["--server", "--list-devices"]
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_list_devices_nonzero_returncode(self, mock_engine, mock_accel, mock_run):
+        mock_engine.return_value.exec_args = ["podman", "run"]
+        mock_run.return_value = Mock(returncode=125, stdout="", stderr="image not known")
+        args = make_ns()
+        args.engine = "podman"
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=False):
+            assert LlamaCppPlugin().list_devices(args) == []
+
+    @patch(
+        "ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run",
+        side_effect=TimeoutExpired(cmd="podman", timeout=60),
+    )
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    def test_list_devices_timeout(self, mock_engine, mock_accel, mock_run):
+        mock_engine.return_value.exec_args = ["podman", "run"]
+        args = make_ns()
+        args.engine = "podman"
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=False):
+            assert LlamaCppPlugin().list_devices(args) == []
+
+        # A timed-out probe must force-remove the named container it launched,
+        # since killing the engine client does not stop the container.
+        probe_name = mock_engine.return_value.add_name.call_args.args[0]
+        cleanup_cmd = mock_run.call_args.args[0]
+        assert cleanup_cmd[-3:] == ["rm", "--force", probe_name]
+
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.subprocess.run")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.accel_image", return_value="img:latest")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.Engine")
+    @patch("ramalama.plugins.runtimes.inference.llama_cpp.ActiveConfig")
+    def test_list_devices_propagates_keep_groups(self, mock_cfg, mock_engine, mock_accel, mock_run):
+        mock_cfg.return_value.keep_groups = True
+        mock_engine.return_value.exec_args = ["podman", "run"]
+        mock_run.return_value = Mock(returncode=0, stdout="Available devices:\n", stderr="")
+        args = make_ns()
+        args.engine = "podman"
+        with patch.object(LlamaCppPlugin, "_container_image_is_ggml", return_value=False):
+            LlamaCppPlugin().list_devices(args)
+
+        # `info` does not register --keep-groups, so the probe must pick it up from config.
+        assert mock_engine.call_args.args[0].podman_keep_groups is True

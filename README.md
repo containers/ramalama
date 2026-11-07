@@ -133,10 +133,10 @@ After uninstalling RamaLama using any method above, you may want to remove downl
 
 ```bash
 # Remove downloaded models and data (can be large)
-rm -rf -- "${XDG_DATA_HOME:-~/.local/share}/ramalama"
+rm -rf -- "${XDG_DATA_HOME:-$HOME/.local/share}/ramalama"
 
 # Remove configuration files
-rm -rf -- "${XDG_CONFIG_HOME:-~/.config}/ramalama"
+rm -rf -- "${XDG_CONFIG_HOME:-$HOME/.config}/ramalama"
 
 # If you ran RamaLama as root, also remove:
 sudo rm -rf /var/lib/ramalama

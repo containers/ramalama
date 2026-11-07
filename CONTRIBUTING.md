@@ -245,7 +245,7 @@ When your PR fixes an issue, please note that by including `Fixes: #00000` in th
 More details on this are below, in the "Describe your changes in Commit Messages" section.
 
 The RamaLama repo follows a one-ack policy for merges.
-PRs will be approved by an [approver][owners] listed in [`OWNERS`](OWNERS).
+PRs will be approved by a maintainer listed in [`MAINTAINERS.md`](MAINTAINERS.md).
 They will then be merged by a repo owner.
 Two reviews are required for a pull request to merge, including SourceAI
 

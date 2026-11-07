@@ -188,7 +188,7 @@ class ChatProvider(ABC):
                 message = (
                     f"Could not authenticate with {self.provider}."
                     " The provided API key was either missing or invalid.\n"
-                    f"Set RAMALAMA_API_KEY or ramalama.provider.<provider_name>.api_key."
+                    "Set RAMALAMA_API_KEY, api_key in ramalama.conf, or pass --api-key."
                 )
                 try:
                     payload = self.parse_response_body(exc.read())

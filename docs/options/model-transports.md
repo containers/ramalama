@@ -8,7 +8,13 @@
 | Ollama        | ollama:// | [`ollama.com`](https://www.ollama.com)|
 | rlcr          | rlcr://   | [`ramalama.com`](https://registry.ramalama.com) |
 | OCI Container Registries | oci://, docker:// | [`opencontainers.org`](https://opencontainers.org)||||Examples: [`quay.io`](https://quay.io),  [`Docker Hub`](https://docker.io),[`Artifactory`](https://artifactory.com)|
-| Hosted API Providers | openai:// | [`api.openai.com`](https://api.openai.com)|
+| Hosted API Providers (deprecated) | openai:// | [`api.openai.com`](https://api.openai.com)|
+
+The hosted API transports are deprecated and will be removed in a future release. Instead of
+`ramalama run openai://<model>`, use `ramalama chat --url https://api.openai.com/v1 --api-key <key> --model <model>`,
+which reaches the same endpoint without a transport. Note that the deprecated transport calls the
+OpenAI Responses API, while `ramalama chat` calls the chat completions API.
+
 Models can be specified using a shortname (e.g. `tiny`) which is resolved via `shortnames.conf`, or with an explicit transport prefix such as `huggingface://`, `oci://`, `ollama://`, `https://`, `http://`, or `file://`. Models in the `<org>/<model>` format without a prefix are pulled from Hugging Face.
 
 The default transport can be overridden in the `ramalama.conf` file or via the `RAMALAMA_TRANSPORT` environment variable. For example, `export RAMALAMA_TRANSPORT=huggingface` changes RamaLama to use the Hugging Face transport for unqualified model names.

@@ -5,11 +5,27 @@ import pytest
 import ramalama.plugins.runtimes.inference.rag.handler as handler
 
 
-def _capture_report(args, all_serve_args, network_created, monkeypatch):
+def _capture_report(args, all_serve_args, network_created, monkeypatch, *reason):
     lines: list[str] = []
     monkeypatch.setattr(handler, "perror", lambda *a, **k: lines.append(" ".join(str(x) for x in a)))
-    handler._report_skipped_cleanup(args, all_serve_args, network_created)
+    handler._report_skipped_cleanup(args, all_serve_args, network_created, *reason)
     return lines
+
+
+@pytest.mark.parametrize(
+    "reason,expected",
+    [
+        # the flag responsible is named, so a debugging leftover is
+        # distinguishable from a server backgrounded by --detach
+        ((), "--skip-cleanup:"),
+        (("--detach",), "--detach:"),
+    ],
+)
+def test_report_skipped_cleanup_names_the_reason(reason, expected, monkeypatch):
+    args = Namespace(engine="podman", network="ramalama-net-abc")
+    lines = _capture_report(args, [Namespace(name="rag-embed")], True, monkeypatch, *reason)
+
+    assert lines[0].startswith(expected)
 
 
 @pytest.mark.parametrize(

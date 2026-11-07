@@ -1,0 +1,52 @@
+####> This option file is used in:
+####>   ramalama run, ramalama serve
+####> If this file is edited, make sure the changes
+####> are applicable to all of those.
+#### **--api-key**=*key*
+Require clients to present this API key on requests to the AI Model server.
+Only supported by the llama.cpp runtime. The default is no authentication.
+
+The key is handed to the server through the `LLAMA_API_KEY` environment
+variable rather than on its command line, so it appears in neither the
+`llama-server` nor the container engine arguments. Passing it as `--api-key`
+does put it in ramalama's own arguments, where it is visible in the host
+process table for as long as the command runs.
+
+There are three ways to supply it, with different exposure:
+
+| How | Where the key ends up |
+| --- | --- |
+| `--api-key <key>` | ramalama's own argv, so visible in `ps` output and in shell history |
+| `ramalama.conf` | a file on disk; protect it with file permissions |
+| `RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY` | ramalama's environment, readable through `/proc/<pid>/environ` by the same user and by root, but absent from `ps` output and from disk |
+
+Clients may present it as either an `Authorization: Bearer <key>` or an
+`X-Api-Key: <key>` header; requests without a valid key get a `401`. The
+`/health` and `/v1/health` endpoints and the web UI assets stay
+public so that health checks keep working. Whether the model listing
+(`/models`, `/v1/models`) is public depends on the llama.cpp version in the
+image; do not rely on it being either way.
+
+@@include options/api-key-sources.md
+
+Caveats:
+
+* With `--generate`, the key is written into the generated Quadlet, Kubernetes
+  or Compose file in plaintext, because those files are read without ramalama
+  in the picture. Treat the generated file as a secret.
+* When the server runs in a container, the key is readable via
+  `podman inspect` / `docker inspect` on the container.
+* With `--webui on`, the web UI itself still loads, because its assets are
+  public, but its API calls are rejected unless the UI is configured with the
+  key.
+* Not supported together with `--api llama-stack`: llama-stack serves the only
+  published port and can neither require a key of its clients nor present one
+  to the model server behind it.
+
+With `--rag`, the single key covers the whole pipeline. It guards all three
+published ports: the RAG proxy the user talks to, and the model and embedding
+`llama-server`s behind it. The proxy also presents the key upstream, so no leg
+of the pipeline is unauthenticated. Its `/health` endpoint stays public. The
+first caveat above does not apply, because `--rag` runs the pipeline rather
+than writing it out; `--generate` is not honoured alongside it, and the key
+stays out of the engine arguments.

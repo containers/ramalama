@@ -29,6 +29,7 @@ from ramalama.model_store.reffile import StoreFileType
 from ramalama.plugins.interface import InferenceRuntimePlugin
 from ramalama.plugins.loader import assemble_command
 from ramalama.stack import Stack
+from ramalama.tls import tls_enabled, validate_tls_args
 from ramalama.transports.api import APITransport
 from ramalama.transports.base import compute_serving_port
 from ramalama.transports.transport_factory import New, TransportFactory
@@ -50,6 +51,10 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
     def _cmd_serve(self, args: argparse.Namespace) -> list[str]:
         """Build the command list for the 'serve' subcommand."""
 
+    def post_process_args(self, args: argparse.Namespace) -> None:
+        super().post_process_args(args)
+        validate_tls_args(args)
+
     def handle_subcommand(self, command: str, args: argparse.Namespace) -> list[str]:
         """Dispatch to the appropriate _cmd_<command> method.
 
@@ -64,8 +69,13 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
             raise NotImplementedError(f"{self.name} plugin does not implement command '{command}'")
         return method(args)
 
-    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
-        """Add inference-specific args shared across all runtimes for run/serve/perplexity."""
+    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str, *, tls: bool = True) -> None:
+        """Add inference-specific args shared across all runtimes for run/serve/perplexity.
+
+        Callers that borrow the serve options for a server they reach over
+        plain HTTP, such as "ramalama sandbox", pass tls=False to leave the
+        TLS options out.
+        """
         config = ActiveConfig()
         parser.add_argument(
             "-c",
@@ -231,6 +241,8 @@ class BaseInferenceRuntime(InferenceRuntimePlugin):
                 raise ValueError(
                     "ramalama serve --api llama-stack command cannot be run with the --nocontainer option."
                 )
+            if tls_enabled(args):
+                raise ValueError("ramalama serve --api llama-stack command does not support serving over TLS.")
 
             stack = Stack(args)
             return stack.serve()

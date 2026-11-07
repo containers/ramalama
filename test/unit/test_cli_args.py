@@ -25,10 +25,9 @@ try:
         base = st.text(min_size=1)
 
         def quote(s):
-            if "'" not in s:
-                return f"'{s}'"
-            else:
-                return s.replace('"', '\\"')
+            # Always wrap in single quotes, escaping any embedded ones. Leaving a
+            # value unquoted lets argparse mistake one starting with '-' for a flag.
+            return "'" + s.replace("'", "'\\''") + "'"
 
         return base.map(quote)
 

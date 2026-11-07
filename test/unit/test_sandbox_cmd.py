@@ -116,6 +116,15 @@ def test_sandbox_requires_container_engine(agent):
 
 
 @pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
+def test_sandbox_has_no_tls_options(agent):
+    """The sandbox borrows the serve options, but the agent reaches the model
+    server over plain HTTP and cannot be told to trust a certificate."""
+    parser, _ = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["sandbox", agent, TEST_MODEL, "--tls-cert-file", "tls.crt"])
+
+
+@pytest.mark.parametrize("agent", ["goose", "opencode", "pi"])
 def test_sandbox_subcommand(agent):
     """CLI should handle sandbox subcommand"""
     _, args = parse_args_from_cmd(["sandbox", agent, TEST_MODEL])
@@ -501,7 +510,7 @@ def test_router_requires_discovered_model_ids(monkeypatch):
     runtime = SimpleNamespace(serve_router_nonblocking=lambda args: None)
     monkeypatch.setattr("ramalama.sandbox.get_runtime", lambda runtime_name: runtime)
     monkeypatch.setattr("ramalama.sandbox.wait_for_healthy", lambda args, check: None)
-    monkeypatch.setattr("ramalama.sandbox._query_router_models", lambda port: [])
+    monkeypatch.setattr("ramalama.sandbox._query_router_models", lambda port, api_key=None: [])
     monkeypatch.setattr("ramalama.sandbox.stop_container", lambda *args, **kwargs: None)
     args = SimpleNamespace(dryrun=False, port=8080, name="router")
 

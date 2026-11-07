@@ -3,9 +3,6 @@ Description=RamaLama oci-model-port AI Model Service
 After=local-fs.target
 
 [Container]
-AddDevice=-/dev/accel
-AddDevice=-/dev/dri
-AddDevice=-/dev/kfd
 AddDevice=nvidia.com/gpu=all
 Image=testimage
 RunInit=true

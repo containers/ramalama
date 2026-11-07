@@ -100,7 +100,7 @@ def validate_snapshot_files(snapshot_files: Sequence[SnapshotFile]):
         if file.type == SnapshotFileType.SafetensorModel:
             safetensor_files.append(file)
 
-    if len(gguf_files) > 1 and len(safetensor_files) > 1:
+    if len(gguf_files) > 0 and len(safetensor_files) > 0:
         raise ValueError("Snapshot must contain only .gguf or .safetensors model files. Found both.")
     if len(chat_template_files) > 1:
         raise ValueError(f"Only one chat template supported, got {len(chat_template_files)}: {chat_template_files}")

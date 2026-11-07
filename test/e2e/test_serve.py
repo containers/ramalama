@@ -5,12 +5,13 @@ import os
 import platform
 import random
 import re
+import shutil
 import string
 import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from subprocess import STDOUT, CalledProcessError
+from subprocess import DEVNULL, STDOUT, CalledProcessError
 
 import pytest
 import yaml
@@ -451,7 +452,9 @@ def test_quadlet_generation(shared_ctx, test_model):
         content = f.read()
         assert re.search(r".*PublishPort=127\.0\.0\.1:1234:1234", content)
         assert re.search(r".*llama-server --host (::|0\.0\.0\.0) --port 1234 --model .*", content)
-        assert re.search(f".*Mount=type=bind,.*{test_model_full_name}", content)
+        # Mount= is quoted when the value holds a character Quadlet would
+        # otherwise split on, as the backslashes of a Windows path do.
+        assert re.search(f'.*Mount="?type=bind,.*{test_model_full_name}', content)
         assert re.search(r".*Environment=HIP_VISIBLE_DEVICES=99", content)
 
 
@@ -924,6 +927,29 @@ def test_router_mode_nocontainer_fails():
 
 @pytest.mark.e2e
 @skip_if_no_container
+def test_router_mode_quadlet_generation(shared_ctx):
+    """ramalama serve (no model) with --generate writes a quadlet instead of starting the server.
+
+    See https://github.com/containers/ramalama/issues/2929
+    """
+    ctx = shared_ctx
+    container_file = Path(ctx.workspace_dir) / "router.container"
+    result = ctx.check_output(
+        ["ramalama", "serve", "--port", "1234", "--pull", "never", "--generate", "quadlet", "--name", "router"],
+        stderr=STDOUT,
+    )
+    assert re.search(r".*Generating quadlet file: router\.container", result)
+    with container_file.open("r") as f:
+        content = f.read()
+        assert re.search(r".*PublishPort=127\.0\.0\.1:1234:1234", content)
+        assert re.search(r".*llama-server --host (::|0\.0\.0\.0) --port 1234 --models-dir /mnt/models", content)
+        # Mount= is quoted when the value holds a character Quadlet would
+        # otherwise split on, as the backslashes of a Windows path do.
+        assert re.search(r'.*Mount="?type=bind,.*,target=/mnt/models/.*\.gguf,ro', content)
+
+
+@pytest.mark.e2e
+@skip_if_no_container
 def test_router_mode_models_max_dry_run(shared_ctx, test_model):
     """--models-max flag is passed through to llama-server."""
     ctx = shared_ctx
@@ -974,3 +1000,217 @@ def test_serve_with_rag():
             ]
         )
         assert re.search(r".*quay.io/ramalama/ramalama-rag:1.0", result_c)
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_serve_api_key_env_passthrough():
+    """The key reaches the container by name only, never on the engine command line."""
+    with RamalamaExecWorkspace() as ctx:
+        result = ctx.check_output(RAMALAMA_DRY_RUN + ["--api-key", "sekret", "tiny"])
+        assert re.search(r"--env LLAMA_API_KEY(\s|$)", result)
+        assert "sekret" not in result
+
+        without = ctx.check_output(RAMALAMA_DRY_RUN + ["tiny"])
+        assert "LLAMA_API_KEY" not in without
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_serve_api_key_rag_keys_every_published_port():
+    """--rag publishes three ports: the proxy plus two llama-servers. All are keyed."""
+    with RamalamaExecWorkspace() as ctx:
+        result = ctx.check_output(
+            RAMALAMA_DRY_RUN + ["--api-key", "sekret", "--rag", "quay.io/ramalama/rag", "tiny"]
+        )
+        containers = [line for line in result.splitlines() if " run " in line]
+        assert len(containers) == 3
+        for line in containers:
+            published = re.search(r"-p \S+", line)
+            assert published, line
+            # rag_framework reads RAMALAMA_API_KEY, llama-server reads LLAMA_API_KEY
+            key_env = "RAMALAMA_API_KEY" if "rag_framework" in line else "LLAMA_API_KEY"
+            assert len(re.findall(rf"--env {key_env}(?=\s|$)", line)) == 1, line
+        assert "sekret" not in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_serve_api_key_rag_with_generate_keeps_the_key_off_the_command_line():
+    """--generate is ignored on the RAG path, so no container may take the plaintext form."""
+    with RamalamaExecWorkspace() as ctx:
+        result = ctx.check_output(
+            RAMALAMA_DRY_RUN
+            + ["--api-key", "sekret", "--generate", "quadlet", "--rag", "quay.io/ramalama/rag", "tiny"]
+        )
+        assert "sekret" not in result
+        assert len([line for line in result.splitlines() if " run " in line]) == 3
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_serve_rag_without_api_key_is_unchanged():
+    """The default RAG pipeline stays unauthenticated."""
+    with RamalamaExecWorkspace() as ctx:
+        result = ctx.check_output(RAMALAMA_DRY_RUN + ["--rag", "quay.io/ramalama/rag", "tiny"])
+        assert "API_KEY" not in result
+
+
+@pytest.mark.e2e
+@skip_if_no_container
+def test_serve_api_key_rejects_llama_stack():
+    with RamalamaExecWorkspace() as ctx:
+        with pytest.raises(CalledProcessError) as exc:
+            ctx.check_output(RAMALAMA_DRY_RUN + ["--api-key", "sekret", "--api", "llama-stack", "tiny"], stderr=STDOUT)
+        assert "--api-key is not supported with --api llama-stack" in exc.value.output.decode()
+
+
+@pytest.mark.e2e
+@skip_if_container
+def test_serve_api_is_not_an_abbreviation_of_api_key():
+    """--api is container-only, so it must not prefix-match onto --api-key."""
+    with RamalamaExecWorkspace() as ctx:
+        with pytest.raises(CalledProcessError) as exc:
+            ctx.check_output(RAMALAMA_DRY_RUN + ["--api", "llama-stack", "tiny"], stderr=STDOUT)
+        assert "unrecognized arguments: --api" in exc.value.output.decode()
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_no_container
+def test_serve_api_key_enforced(shared_ctx, test_model):
+    """A keyed server 401s unauthenticated requests and serves authenticated ones."""
+    import urllib.error
+    import urllib.request
+
+    ctx = shared_ctx
+    key = "e2e-" + "".join(random.choices(string.ascii_letters + string.digits, k=32))
+    name = f"serve_api_key_{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
+    port = random.randint(64000, 65000)
+
+    ctx.check_call(["ramalama", "serve", "--name", name, "--port", str(port), "--api-key", key, "-d", test_model])
+    try:
+        # wait_for_healthy already ran inside serve, but -d returns before the
+        # model finishes loading on slower machines.
+        time.sleep(10)
+        # /props rather than /v1/models: older llama.cpp builds leave the model
+        # listing public, but /props is gated in every version that has --api-key.
+        url = f"http://127.0.0.1:{port}/props"
+
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            urllib.request.urlopen(url, timeout=30)
+        assert exc.value.code == 401
+
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            urllib.request.urlopen(
+                urllib.request.Request(url, headers={"Authorization": "Bearer wrong-key"}), timeout=30
+            )
+        assert exc.value.code == 401
+
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            assert resp.status == 200
+
+        # /health stays public so readiness polling keeps working
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=30) as resp:
+            assert resp.status == 200
+
+        assert ctx.check_output(["ramalama", "chat", "--ls", "--api-key", key, "--url", f"http://127.0.0.1:{port}/v1"])
+    finally:
+        ctx.check_call(["ramalama", "stop", name])
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@skip_if_no_container
+def test_serve_tls(shared_ctx, test_model):
+    """A TLS server answers HTTPS with the certificate it was given, and does
+    not answer plain HTTP on the same port."""
+    import http.client
+    import ssl
+
+    if shutil.which("openssl") is None:
+        pytest.skip("openssl is needed to generate a certificate")
+
+    ctx = shared_ctx
+    cert = ctx.workspace_path / "tls.crt"
+    key = ctx.workspace_path / "tls.key"
+    ctx.check_call(
+        [
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-nodes",
+            "-days",
+            "1",
+            "-subj",
+            "/CN=localhost",
+            "-addext",
+            "subjectAltName=DNS:localhost,IP:127.0.0.1",
+            "-keyout",
+            str(key),
+            "-out",
+            str(cert),
+        ],
+        stdout=DEVNULL,
+        stderr=DEVNULL,
+    )
+
+    name = f"serve_tls_{''.join(random.choices(string.ascii_letters + string.digits, k=5))}"
+    port = random.randint(64000, 65000)
+
+    # serve -d only returns once its own readiness probe has spoken HTTPS to
+    # the server, so reaching this point already exercises the probe.
+    ctx.check_call(
+        [
+            "ramalama",
+            "serve",
+            "--name",
+            name,
+            "--port",
+            str(port),
+            "--tls-cert-file",
+            str(cert),
+            "--tls-key-file",
+            str(key),
+            "-d",
+            test_model,
+        ]
+    )
+    try:
+        time.sleep(10)
+
+        # The certificate is verified, hostname included, against itself: it
+        # is self-signed and issued for localhost.
+        context = ssl.create_default_context(cafile=str(cert))
+        conn = http.client.HTTPSConnection("localhost", port, timeout=30, context=context)
+        try:
+            conn.request("GET", "/health")
+            assert conn.getresponse().status == 200
+        finally:
+            conn.close()
+
+        # The documented way to point a client at a self-signed certificate.
+        assert ctx.check_output(
+            ["ramalama", "chat", "--ls", "--url", f"https://localhost:{port}/v1"],
+            env={"SSL_CERT_FILE": str(cert)},
+        )
+
+        # A plain HTTP request is not answered: the server expects a handshake.
+        plain = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+        try:
+            # llama-server drops the connection on the failed handshake, which
+            # surfaces as RemoteDisconnected. Another server, or a slower one,
+            # could answer with a TLS alert or nothing at all, so accept any
+            # HTTP or socket level failure, only not a clean response.
+            with pytest.raises((http.client.HTTPException, OSError)) as exc:
+                plain.request("GET", "/health")
+                plain.getresponse()
+            # ...but not the failure of nothing listening on the port at all.
+            assert not isinstance(exc.value, ConnectionRefusedError)
+        finally:
+            plain.close()
+    finally:
+        ctx.check_call(["ramalama", "stop", name])

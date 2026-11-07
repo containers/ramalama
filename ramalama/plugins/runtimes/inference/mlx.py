@@ -28,8 +28,8 @@ class MlxPlugin(BaseInferenceRuntime):
     def name(self) -> str:
         return "mlx"
 
-    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str) -> None:
-        super()._add_inference_args(parser, command)
+    def _add_inference_args(self, parser: "argparse.ArgumentParser", command: str, *, tls: bool = True) -> None:
+        super()._add_inference_args(parser, command, tls=tls)
         rt_config = self.get_runtime_config(ActiveConfig())
         parser.add_argument(
             "--temp",
@@ -83,6 +83,7 @@ class MlxPlugin(BaseInferenceRuntime):
     _cmd_serve = _cmd_run
 
     def post_process_args(self, args: argparse.Namespace) -> None:
+        super().post_process_args(args)
         is_apple_silicon = platform.system() == "Darwin" and platform.machine() == "arm64"
         if not is_apple_silicon:
             raise ValueError("MLX runtime is only supported on macOS with Apple Silicon.")

@@ -1,0 +1,18 @@
+# Save this output to a 'docker-compose.yaml' file and run 'docker compose up'.
+#
+# Created with ramalama-0.1.0-test
+services:
+  gemma-rocm:
+    container_name: ramalama-gemma-rocm
+    image: test-image/rocm:latest
+    volumes:
+      - "/models/gemma.gguf:/mnt/models/gemma.gguf:ro"
+    ports:
+      - "8080:8080"
+    environment:
+      - HIP_VISIBLE_DEVICES=0
+    devices:
+      - "/dev/accel:/dev/accel"
+      - "/dev/dri:/dev/dri"
+      - "/dev/kfd:/dev/kfd"
+    restart: unless-stopped
