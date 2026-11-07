@@ -108,6 +108,21 @@ RAMALAMA_IMAGE environment variable overrides this field.
 
 User-override entries for runtime-specific container images.
 
+The whisper.cpp runtime selects its image from the detected GPU. Override the
+image for every GPU with the `WHISPER` key, or for one GPU with the
+`WHISPER_<GPU>` key, where `<GPU>` is a GPU environment variable name such as
+`CUDA_VISIBLE_DEVICES` or `GGML_VK_VISIBLE_DEVICES`:
+
+| GPU | Default image |
+| --- | --- |
+| CUDA | ghcr.io/ggml-org/whisper.cpp:main-cuda |
+| Intel | ghcr.io/ggml-org/whisper.cpp:main-intel |
+| MUSA | ghcr.io/ggml-org/whisper.cpp:main-musa |
+| Vulkan, AMD (no ROCm image is published) | ghcr.io/ggml-org/whisper.cpp:main-vulkan |
+| arm64 host | ghcr.io/ggml-org/whisper.cpp:main-arm64 |
+| arm64 host with Vulkan | ghcr.io/ggml-org/whisper.cpp:main-vulkan-arm64 |
+| No GPU | ghcr.io/ggml-org/whisper.cpp:main |
+
 **keep_groups**=false: Pass `--group-add keep-groups` when using podman.
 Useful in some rootless GPU access setups.
 
@@ -167,7 +182,7 @@ Can also be overridden with the `--tools-image` flag on the command line or the
 RAMALAMA_TOOLS_IMAGE environment variable.
 
 **runtime**="llama.cpp": Inference runtime.
-Options: `llama.cpp`, `vllm`, `mlx`.
+Options: `llama.cpp`, `vllm`, `mlx`, `whisper.cpp`.
 
 **selinux**=false: Enable SELinux container separation enforcement.
 
@@ -292,3 +307,11 @@ Default is half the available CPU cores (minimum 4).
 **temp**="0.8": Response sampling temperature.
 - Lower values: more deterministic output
 - Higher values: more creative output (higher hallucination risk)
+
+`[[ramalama.runtimes.whisper_cpp]]`
+
+**language**="auto": Spoken language of the audio for `transcribe`.
+Use `auto` to let whisper.cpp detect the language.
+
+**threads**=unset: Number of CPU threads to use for transcription.
+When unset, whisper.cpp chooses the number of threads.

@@ -47,12 +47,29 @@ URL support means if a model is on a web site or even on your local system, you 
 [//]: # (END   included file options/model-transports.md)
 
 ## REST API ENDPOINTS
-Under the hood, `ramalama-serve` uses the `llama.cpp` HTTP server by default. When using `--runtime=vllm`, it uses the vLLM server. When using `--runtime=mlx`, it uses the MLX LM server.
+Under the hood, `ramalama-serve` uses the `llama.cpp` HTTP server by default. When using `--runtime=vllm`, it uses the vLLM server. When using `--runtime=mlx`, it uses the MLX LM server. When using `--runtime=whisper.cpp`, it uses whisper.cpp's own `whisper-server`, which does not speak the OpenAI API (see below).
 
 For REST API endpoint documentation, see:
 - llama.cpp: [https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints)
 - vLLM: [https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
 - MLX LM: [https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md)
+- whisper.cpp: [https://github.com/ggml-org/whisper.cpp/blob/master/examples/server/README.md](https://github.com/ggml-org/whisper.cpp/blob/master/examples/server/README.md)
+
+### whisper.cpp
+
+With **--runtime=whisper.cpp** the server transcribes audio rather than
+serving an OpenAI-compatible chat API. It exposes `/inference` for
+speech-to-text requests, `/load` to change the loaded model, and `/health`,
+which returns 200 once the model has finished loading and 503 before that.
+RamaLama waits for `/health` to succeed before a detached **serve** returns.
+`ramalama chat` and other OpenAI-compatible clients cannot use this server.
+
+```
+$ ramalama --runtime=whisper.cpp serve -d huggingface://ggerganov/whisper.cpp/ggml-base.en.bin
+$ curl -F file=@recording.wav http://127.0.0.1:8080/inference
+```
+
+The whisper.cpp runtime has no `--api` or `--generate` options.
 
 ## OPTIONS
 

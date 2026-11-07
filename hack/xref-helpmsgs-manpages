@@ -86,6 +86,7 @@ my %Skip_Subcommand = map { $_ => 1 } (
     "help",                     # has no man page
     "completion",               # internal (hidden) subcommand
     "compose",                  # external tool, outside of our control
+    "transcribe",               # runtime-specific; needs --runtime whisper.cpp to look up
 );
 
 # END   user-customizable section

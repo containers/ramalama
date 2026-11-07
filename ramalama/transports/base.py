@@ -64,6 +64,18 @@ with the default RamaLama
 %(error)s"""
 
 
+def split_container_entrypoint(cmd_args: list[str]) -> tuple[Optional[str], list[str]]:
+    """Remove a leading ContainerEntryPoint placeholder from command arguments.
+
+    Returns the entrypoint to pass to the engine, or None when the image's own
+    entrypoint should run, and the remaining arguments. A bare
+    ContainerEntryPoint() only marks the placeholder for removal.
+    """
+    if len(cmd_args) > 0 and isinstance(cmd_args[0], ContainerEntryPoint):
+        return cmd_args[0].entrypoint, cmd_args[1:]
+    return None, cmd_args
+
+
 class NoGGUFModelFileFound(Exception):
     pass
 
@@ -396,12 +408,12 @@ class Transport(TransportBase):
         if not args.container:
             return False
 
-        if len(cmd_args) > 0 and isinstance(cmd_args[0], ContainerEntryPoint):
-            # Ignore entrypoint
-            cmd_args = cmd_args[1:]
+        entrypoint, cmd_args = split_container_entrypoint(cmd_args)
 
         self.setup_container(args)
         self.setup_mounts(args)
+        if entrypoint:
+            self.engine.add([f"--entrypoint={entrypoint}"])
         self.engine.add_container_image(args.image, cmd_args)
 
         if args.dryrun:
@@ -490,8 +502,11 @@ class Transport(TransportBase):
 
         if args.container:
             # For container mode, set up the container and start it with subprocess
+            entrypoint, cmd = split_container_entrypoint(cmd)
             self.setup_container(args)
             self.setup_mounts(args)
+            if entrypoint:
+                self.engine.add([f"--entrypoint={entrypoint}"])
             self.engine.add_container_image(args.image, cmd)
 
             if args.dryrun:
