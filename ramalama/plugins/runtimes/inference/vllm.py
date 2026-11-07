@@ -12,7 +12,7 @@ from ramalama.plugins.runtimes.inference.common import ContainerizedInferenceRun
 from ramalama.tls import add_tls_args, tls_paths
 from ramalama.transports.transport_factory import New
 
-_VLLM_DEFAULT_IMAGE = "docker.io/vllm/vllm-openai:latest"
+_VLLM_DEFAULT_IMAGE = "docker.io/vllm/vllm-openai-cpu:latest"
 
 _VLLM_IMAGES: dict[str, str] = {
     "CUDA_VISIBLE_DEVICES": "docker.io/vllm/vllm-openai",
