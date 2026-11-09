@@ -56,8 +56,8 @@ def sanitize_filename(filename: str) -> str:
 
 
 podman_machine_accel = False
-# applehv "proceed without GPU?" decisions, by machine name, for this process.
-_no_gpu_decisions: dict[str, bool] = {}
+# applehv machines already warned about (or silenced) in this process.
+_applehv_warned: set[str] = set()
 
 # CDI device names of the NVIDIA GPUs the user narrowed CUDA_VISIBLE_DEVICES
 # down to, set by check_nvidia(). Empty when every detected GPU is in play.
@@ -76,34 +76,13 @@ def container_cuda_visible_devices(value: str) -> str:
     return ",".join(str(i) for i in range(len(nvidia_selected_devices)))
 
 
-def confirm_no_gpu(name, provider) -> bool:
-    warning = (
-        f"Warning! Your VM {name} is using {provider}, which does not support GPU. "
-        "Only the provider libkrun has GPU support. "
-        "See `man ramalama-macos` for more information."
-    )
-    # Without a terminal (scripts, CI, agents) nobody can answer: input() would
-    # raise EOFError. Proceed as no_missing_gpu_prompt does, and say so.
-    no_answer = (
-        f"{warning} No terminal to ask on, so proceeding without GPU. "
+def warn_no_gpu(name, provider) -> None:
+    logger.warning(
+        f"Your VM {name} is using {provider}, which does not support GPU, so models will run on the CPU. "
+        "Only the provider libkrun has GPU support. See `man ramalama-macos` for more information. "
         "Set no_missing_gpu_prompt = true in ramalama.conf (or RAMALAMA_USER__NO_MISSING_GPU_PROMPT=true) "
-        "to silence this."
+        "to silence this warning."
     )
-    if not sys.stdin.isatty():
-        logger.warning(no_answer)
-        return True
-    while True:
-        try:
-            user_input = input(f"{warning} Do you want to proceed without GPU? (yes/no): ").strip().lower()
-        except EOFError:
-            print()
-            logger.warning(no_answer)
-            return True
-        if user_input in ["yes", "y"]:
-            return True
-        if user_input in ["no", "n"]:
-            return False
-        print("Invalid input. Please enter 'yes' or 'no'.")
 
 
 def handle_provider(machine, config: Optional[Config] = None) -> Optional[bool]:
@@ -113,15 +92,14 @@ def handle_provider(machine, config: Optional[Config] = None) -> Optional[bool]:
     running = machine.get("Running")
     if running:
         if provider == "applehv":
-            # One decision per machine per process. A Config built later without
-            # the file/env layers (DefaultConfig) reads no_missing_gpu_prompt as
-            # False and would otherwise ask again, despite the user's setting.
-            if name not in _no_gpu_decisions:
-                if config is not None and config.user.no_missing_gpu_prompt:
-                    _no_gpu_decisions[name] = True
-                else:
-                    _no_gpu_decisions[name] = confirm_no_gpu(name, provider)
-            return _no_gpu_decisions[name]
+            # Warn once per machine per process. A Config built later without the
+            # file/env layers (DefaultConfig) reads no_missing_gpu_prompt as False,
+            # so remember that the user silenced it too.
+            if name not in _applehv_warned:
+                _applehv_warned.add(name)
+                if config is None or not config.user.no_missing_gpu_prompt:
+                    warn_no_gpu(name, provider)
+            return True
         if "krun" in provider:
             podman_machine_accel = True
             return True
