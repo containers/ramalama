@@ -275,3 +275,19 @@ def test_toml_parser_matches_tomllib(toml):
     tomllib = pytest.importorskip("tomllib")
     toml_parser = ramalama.toml_parser.TOMLParser()
     assert toml_parser.parse(toml) == tomllib.loads(toml)
+
+
+@pytest.mark.parametrize(
+    "toml",
+    [
+        "store = 'a' 'b'",
+        "args = ['a' 'b']",
+    ],
+)
+def test_toml_parser_rejects_tokens_after_literal_string(toml):
+    tomllib = pytest.importorskip("tomllib")
+    with pytest.raises(tomllib.TOMLDecodeError):
+        tomllib.loads(toml)
+    toml_parser = ramalama.toml_parser.TOMLParser()
+    with pytest.raises(ValueError, match="Invalid literal string"):
+        toml_parser.parse(toml)

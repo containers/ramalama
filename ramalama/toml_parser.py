@@ -94,6 +94,8 @@ class TOMLParser:
         if value.startswith(('"""', "'''")):
             raise ValueError(f"Multi-line strings are not supported: {value}")
         if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+            if value[0] == "'" and "'" in value[1:-1]:
+                raise ValueError(f"Invalid literal string: {value}")
             return value[1:-1]
         if value.startswith("[") and value.endswith("]"):
             return [self._parse_value(v) for v in self._split_array(value[1:-1])]
