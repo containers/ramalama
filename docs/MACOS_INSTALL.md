@@ -2,15 +2,101 @@
 
 This guide covers the different ways to install RamaLama on macOS.
 
-## GPU acceleration options
+## Platform support
+
+RamaLama runs on both **Intel** and **Apple Silicon** Macs. What differs is
+which runtimes and accelerators are available:
+
+| Platform | Default runtime | GPU acceleration |
+| :------- | :-------------- | :--------------- |
+| Apple Silicon (M1/M2/M3+) | llama.cpp (container, native Metal, or MLX) | Native llama.cpp Metal (`--nocontainer`), libkrun GPU passthrough in Podman, or MLX |
+| Intel Mac | llama.cpp (container or `--nocontainer`) | Not supported (CPU only) |
+
+On Intel Macs, do **not** use `--runtime=mlx` or install `mlx-lm`; MLX requires
+Apple Silicon hardware.
+
+## Intel Mac (CPU only)
+
+Intel Macs use the default **llama.cpp** runtime with CPU inference only.
+There is no GPU passthrough or MLX support on this hardware.
+
+### Option A: Containers (recommended)
+
+Install Podman or Docker Desktop, then use RamaLama normally.
+
+**Podman:**
+
+```bash
+brew install podman
+podman machine init && podman machine start
+```
+
+**Docker Desktop** (alternative; `brew install docker` installs only the CLI and is
+not sufficient—you need the Desktop app):
+
+```bash
+brew install --cask docker
+open -a Docker   # wait until Docker Desktop is running
+```
+
+Then pull and run a model:
+
+```bash
+ramalama pull tinyllama
+ramalama run tinyllama
+```
+
+RamaLama pulls the standard CPU container image (`quay.io/ramalama/ramalama`).
+
+### Option B: Native (no container)
+
+Install llama.cpp on the host and run with `--nocontainer`:
+
+```bash
+brew install llama.cpp
+ramalama --nocontainer run tinyllama
+```
+
+You can persist this in `$HOME/.config/ramalama/ramalama.conf`:
+
+```
+[machine]
+container = false
+```
+
+## Apple Silicon GPU acceleration options
 
 GPU passthrough from a container has unique challenges on macOS, and
 it is not yet as fast as running outside of a container (at the time
-of writing, performance from a container is around 75-80% of native). We
-therefore offer two different options for running ramalama on macOS:
+of writing, performance from a container is around 75-80% of native). On
+**Apple Silicon** Macs there are three options for GPU acceleration:
 
-- Within a podman container, using krunkit for GPU passthrough
-- Without a container, using MLX directly
+- **Native llama.cpp with Metal (recommended):** install `llama.cpp` via
+  Homebrew and run with `--nocontainer`. This uses Apple's Metal backend
+  directly and is generally the best-performing and most actively maintained
+  option on macOS.
+- **Podman with libkrun:** GPU passthrough inside a container (see below).
+- **MLX:** run with `--runtime=mlx` and `--nocontainer` (alternative; the
+  `mlx-lm` project has been less active recently).
+
+### Native llama.cpp Metal (recommended)
+
+Install llama.cpp on the host and run RamaLama without containers:
+
+```bash
+brew install llama.cpp
+ramalama --nocontainer run tinyllama
+```
+
+You can persist this in `$HOME/.config/ramalama/ramalama.conf`:
+
+```
+[machine]
+container = false
+```
+
+Homebrew's `llama.cpp` build uses the Metal backend automatically on Apple
+Silicon, so no separate GPU runtime flag is required.
 
 ### Podman & krunkit Prerequisites
 
@@ -37,7 +123,11 @@ podman machine start
 
 For more details, see [ramalama-macos(7)](ramalama-macos.7.md).
 
-### Native MLX Prerequisites
+### Native MLX (alternative)
+
+MLX is an optional runtime for Apple Silicon Macs. The `mlx-lm` project has
+been less active recently; native llama.cpp with Metal is usually the better
+choice unless you specifically need MLX.
 
 If podman is not used, MLX needs to be installed on the host:
 
@@ -54,8 +144,8 @@ runtime = "mlx"
 ```
 
 If podman is installed, ramalama will default to using it, so if
-you would rather use MLX, either pass the `--nocontainer` flag to
-ramalama or set it in `$HOME/.config/ramalama/ramalama.conf`:
+you would rather use MLX or native llama.cpp Metal, either pass the
+`--nocontainer` flag to ramalama or set it in `$HOME/.config/ramalama/ramalama.conf`:
 
 ```
 [machine]
@@ -240,5 +330,5 @@ ramalama --help
 - Intel or Apple Silicon (M1/M2/M3) processor
 - 4GB RAM minimum (8GB+ recommended for running models)
 - 10GB free disk space
-- Podman or Docker
+- Podman or Docker Desktop
 
