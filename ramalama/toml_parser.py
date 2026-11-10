@@ -44,14 +44,10 @@ class TOMLParser:
     @staticmethod
     def _strip_comment(line):
         """Remove a trailing ``# comment`` that is not inside a string."""
+        # Strings are read raw (no escapes), so a quote always closes its string.
         quote = None
-        escaped = False
         for i, char in enumerate(line):
-            if escaped:
-                escaped = False
-            elif quote == '"' and char == "\\":
-                escaped = True
-            elif quote:
+            if quote:
                 if char == quote:
                     quote = None
             elif char in ('"', "'"):
@@ -73,13 +69,9 @@ class TOMLParser:
     @staticmethod
     def _split_array(inner):
         """Split array items on commas that are not inside a string."""
-        items, start, quote, escaped = [], 0, None, False
+        items, start, quote = [], 0, None
         for i, char in enumerate(inner):
-            if escaped:
-                escaped = False
-            elif quote == '"' and char == "\\":
-                escaped = True
-            elif quote:
+            if quote:
                 if char == quote:
                     quote = None
             elif char in ('"', "'"):

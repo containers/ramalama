@@ -232,9 +232,18 @@ def test_toml_parser_literal_strings(toml, expected):
     assert toml_parser.parse(toml) == expected
 
 
-def test_toml_parser_inline_comment_ignores_hash_after_escaped_quote():
+@pytest.mark.parametrize(
+    "toml, expected",
+    [
+        (r'env = ["PATH=C:\models\", "MODE=a#b"]', {"env": ["PATH=C:\\models\\", "MODE=a#b"]}),
+        (r'store = "C:\models\"', {"store": "C:\\models\\"}),
+        (r'store = "C:\models\" # local', {"store": "C:\\models\\"}),
+    ],
+)
+def test_toml_parser_basic_strings_are_raw(toml, expected):
+    """Basic strings are read raw, so a trailing backslash does not escape the closing quote."""
     toml_parser = ramalama.toml_parser.TOMLParser()
-    assert "# b" in toml_parser.parse('image = "a \\" # b"')["image"]
+    assert toml_parser.parse(toml) == expected
 
 
 @pytest.mark.parametrize(
