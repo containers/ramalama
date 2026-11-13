@@ -620,9 +620,11 @@ def wait_for_healthy(args, health_func: Callable[[Any], bool], timeout=None):
             ssl.SSLError,
         ) as e:
             logger.debug(f"Health check of {container_name} failed, retrying... Error: {e}")
-            n += 1
+        n += 1
         time.sleep(1)
 
-    raise subprocess.TimeoutExpired(
-        f"health check of {container_name}", timeout, output=logs(args, args.name, ignore_stderr=not args.debug)
-    )
+    # Only a container has logs to read; a --nocontainer server does not.
+    output = None
+    if getattr(args, "container", False) and getattr(args, "name", None):
+        output = logs(args, args.name, ignore_stderr=not getattr(args, "debug", False))
+    raise subprocess.TimeoutExpired(f"health check of {container_name}", timeout, output=output)

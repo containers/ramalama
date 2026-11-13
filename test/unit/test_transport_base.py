@@ -385,6 +385,135 @@ class TestMLXRuntime:
         assert args.url == "http://127.0.0.1:8080/v1"
 
 
+def _nocontainer_run_args(host: str = "127.0.0.1") -> Namespace:
+    return Namespace(container=False, dryrun=False, port="8080", host=host, debug=False)
+
+
+class TestNocontainerChatWait:
+    """run --nocontainer waits for the server it spawned before chatting."""
+
+    def _model(self) -> Transport:
+        return Transport("org/test-model", "/tmp/store")
+
+    def test_waits_before_chat(self):
+        server_process = MagicMock()
+        server_process.poll.return_value = None
+        calls: list[str] = []
+
+        with (
+            patch('ramalama.transports.base.wait_for_healthy', side_effect=lambda *args: calls.append("wait")),
+            patch('ramalama.transports.base.chat.chat', side_effect=lambda *args: calls.append("chat")),
+        ):
+            self._model()._connect_and_chat(_nocontainer_run_args(), server_process)
+
+        assert calls == ["wait", "chat"]
+
+    def test_dryrun_skips_the_wait(self):
+        args = _nocontainer_run_args()
+        args.dryrun = True
+
+        with (
+            patch('ramalama.transports.base.wait_for_healthy') as mock_wait,
+            patch('ramalama.transports.base.chat.chat') as mock_chat,
+        ):
+            self._model()._connect_and_chat(args, MagicMock())
+
+        mock_wait.assert_not_called()
+        mock_chat.assert_called_once()
+
+    def test_container_run_keeps_its_own_wait(self):
+        server_process = MagicMock()
+        server_process.wait.return_value = 0
+        args = _nocontainer_run_args()
+        args.container = True
+        model = self._model()
+
+        with (
+            patch.object(model, 'wait_for_healthy') as mock_wait,
+            patch.object(model, '_wait_for_nocontainer_server') as mock_nocontainer_wait,
+            patch('ramalama.transports.base.chat.chat') as mock_chat,
+        ):
+            model._connect_and_chat(args, server_process)
+
+        mock_wait.assert_called_once()
+        mock_nocontainer_wait.assert_not_called()
+        mock_chat.assert_called_once()
+
+    def test_probes_loopback_not_the_configured_host(self):
+        server_process = MagicMock()
+        server_process.poll.return_value = None
+        args = _nocontainer_run_args(host="192.0.2.10")
+
+        def run_health(probe_args, health):
+            assert health(probe_args)
+
+        with (
+            patch('ramalama.transports.base.wait_for_healthy', side_effect=run_health) as mock_wait,
+            patch('ramalama.transports.base.is_healthy', return_value=True) as mock_is_healthy,
+            patch('ramalama.transports.base.chat.chat'),
+        ):
+            self._model()._connect_and_chat(args, server_process)
+
+        probe_args = mock_wait.call_args.args[0]
+        assert probe_args.host == "127.0.0.1"
+        assert mock_is_healthy.call_args.kwargs == {"model_name": "org/test-model"}
+        assert args.host == "192.0.2.10"
+
+    def test_server_exit_during_the_wait_fails_and_stops_the_server(self):
+        server_process = MagicMock()
+        server_process.poll.return_value = 3
+        model = self._model()
+
+        def run_health(probe_args, health):
+            health(probe_args)
+
+        with (
+            patch('ramalama.transports.base.wait_for_healthy', side_effect=run_health),
+            patch.object(model, '_cleanup_server_process') as mock_cleanup,
+            patch('ramalama.transports.base.chat.chat') as mock_chat,
+        ):
+            with pytest.raises(ValueError, match="server exited with code 3"):
+                model._connect_and_chat(_nocontainer_run_args(), server_process)
+
+        mock_cleanup.assert_called_once_with(server_process)
+        mock_chat.assert_not_called()
+
+    def test_interrupt_during_the_wait_still_stops_the_server(self):
+        server_process = MagicMock()
+        model = self._model()
+
+        with (
+            patch('ramalama.transports.base.wait_for_healthy', side_effect=KeyboardInterrupt),
+            patch.object(model, '_cleanup_server_process') as mock_cleanup,
+            patch('ramalama.transports.base.chat.chat') as mock_chat,
+        ):
+            with pytest.raises(KeyboardInterrupt):
+                model._connect_and_chat(_nocontainer_run_args(), server_process)
+
+        mock_cleanup.assert_called_once_with(server_process)
+        mock_chat.assert_not_called()
+
+    def test_cleanup_skips_an_exited_server(self):
+        server_process = MagicMock()
+        server_process.poll.return_value = 0
+
+        self._model()._cleanup_server_process(server_process)
+
+        server_process.terminate.assert_not_called()
+        server_process.kill.assert_not_called()
+
+    def test_cleanup_kills_after_a_second_interrupt(self):
+        server_process = MagicMock()
+        server_process.poll.return_value = None
+        server_process.wait.side_effect = KeyboardInterrupt
+
+        with pytest.raises(KeyboardInterrupt):
+            self._model()._cleanup_server_process(server_process)
+
+        server_process.terminate.assert_called_once_with()
+        server_process.kill.assert_called_once_with()
+
+
 class TestOCIModelSetupMountsPodman:
     """Test OCI model setup_mounts for Podman"""
 
