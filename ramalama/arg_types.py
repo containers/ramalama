@@ -63,6 +63,19 @@ class BaseEngineArgsType(Protocol):
 BaseEngineArgs = protocol_to_dataclass(BaseEngineArgsType)
 
 
+class TranscribeArgsType(BaseEngineArgsType, Protocol):
+    """Arguments for the whisper.cpp transcribe subcommand."""
+
+    MODEL: str
+    AUDIO: Optional[str]
+    container: bool
+    engine_args: Optional[List[str]]
+    language: Optional[str]
+    runtime_args: Optional[List[str]]
+    threads: Optional[int]
+    translate: bool
+
+
 class DefaultArgsType(Protocol):
     container: bool
     runtime: SUPPORTED_RUNTIMES

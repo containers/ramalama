@@ -52,6 +52,9 @@ MODELS = [
         "model.safetensors",
         "config.json",
     ]),
+    ("ggerganov/whisper.cpp", [
+        "ggml-tiny.en.bin",
+    ]),
 ]
 
 

@@ -106,6 +106,7 @@ ramalama = "ramalama.cli:main"
 "llama.cpp" = "ramalama.plugins.runtimes.inference.llama_cpp:LlamaCppPlugin"
 "vllm" = "ramalama.plugins.runtimes.inference.vllm:VllmPlugin"
 "mlx" = "ramalama.plugins.runtimes.inference.mlx:MlxPlugin"
+"whisper.cpp" = "ramalama.plugins.runtimes.inference.whisper_cpp:WhisperCppPlugin"
 
 [tool.setuptools]
 include-package-data = true

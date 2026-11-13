@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from ramalama.common import MNT_DIR
+from ramalama.common import MNT_DIR, ContainerEntryPoint
 from ramalama.config import ActiveConfig
 from ramalama.transports.base import (
     Transport,
@@ -518,3 +518,57 @@ class TestOCIModelSetupMountsDocker:
         # Verify mount command was added
         expected_mount = f"--mount=type=volume,src={mock_volume_name},dst={MNT_DIR},readonly"
         mock_docker_engine.add.assert_called_once_with([expected_mount])
+
+
+class _RecordingEngine:
+    """Minimal engine that records the argv it would execute."""
+
+    def __init__(self):
+        self.exec_args = ["podman", "run", "--rm"]
+        self.use_podman = True
+        self.use_docker = False
+
+    def add(self, newargs):
+        self.exec_args.extend(newargs)
+
+    def add_container_image(self, image, cmd=()):
+        self.exec_args.extend([image, *cmd])
+
+    def dryrun(self):
+        pass
+
+    def relabel(self):
+        return ""
+
+
+class TestContainerEntryPoint:
+    def _model(self):
+        model = MagicMock()
+        model.engine = _RecordingEngine()
+        model.setup_container = Mock()
+        model.setup_mounts = Mock()
+        return model
+
+    def test_entrypoint_with_value_is_passed_to_the_engine(self):
+        model = self._model()
+        args = Namespace(container=True, dryrun=True, image="image:tag", noout=False)
+
+        Transport.exec_model_in_container(model, [ContainerEntryPoint("whisper-cli"), "-m", "model.bin"], args)
+
+        assert model.engine.exec_args == [
+            "podman",
+            "run",
+            "--rm",
+            "--entrypoint=whisper-cli",
+            "image:tag",
+            "-m",
+            "model.bin",
+        ]
+
+    def test_bare_entrypoint_is_dropped_without_options(self):
+        model = self._model()
+        args = Namespace(container=True, dryrun=True, image="image:tag", noout=False)
+
+        Transport.exec_model_in_container(model, [ContainerEntryPoint(), "--perplexity"], args)
+
+        assert model.engine.exec_args == ["podman", "run", "--rm", "image:tag", "--perplexity"]
