@@ -126,9 +126,27 @@ is_python3_at_least_310() {
 }
 
 install_uv() {
-  local host="raw.githubusercontent.com"
-  local install_uv_url="https://$host/containers/ramalama/s/install-uv.sh"
-  curl -fsSL "$install_uv_url" | bash
+  # With -l, prefer the install-uv.sh next to this script, so a checkout (and
+  # CI) exercises the copy it actually ships. Gated on the flag rather than on
+  # the file merely existing: an unguarded sibling lookup would execute a
+  # planted install-uv.sh when install.sh is run from a world-writable
+  # directory such as /tmp. BASH_SOURCE is unset when this script is piped
+  # straight into bash; both cases fall back to fetching over TLS.
+  local use_local="${1:-false}"
+  local script_dir=""
+  if [ "$use_local" = "true" ] && [ -f "${BASH_SOURCE[0]:-}" ]; then
+    script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  fi
+
+  if [ -n "$script_dir" ] && [ -f "$script_dir/install-uv.sh" ]; then
+    echo "Installing uv from $script_dir/install-uv.sh"
+    bash "$script_dir/install-uv.sh"
+  else
+    local host="raw.githubusercontent.com"
+    local install_uv_url="https://$host/containers/ramalama/main/install-uv.sh"
+    echo "Installing uv from $install_uv_url"
+    curl -fsSL "$install_uv_url" | bash
+  fi
   echo
 
   # Add uv bin dir to PATH if not present
@@ -180,7 +198,7 @@ main() {
     fi
   fi
 
-  install_uv
+  install_uv "$local_install"
   uv tool install --force --python python3.11 ramalama
   print_success_info
 }
