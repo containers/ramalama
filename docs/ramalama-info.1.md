@@ -27,7 +27,7 @@ Print the available shortnames and exit. Each entry includes the source of the c
 
 ## FIELDS
 
-The `Accelerator` field indicates the accelerator type for the machine.
+The `Accelerators` field maps each detected accelerator type (for example `cpu`, `cuda`, `hip`, `intel`, `vulkan`) to the devices found for it. Each entry lists its `devices`, where every device reports a `name` and its memory in bytes (`memory`) and in human-readable form (`memory_human`), along with the `total_memory` and `total_memory_human` summed over those devices.
 
 The `Config` field shows the list of paths to RamaLama configuration files used. 
 
@@ -61,7 +61,30 @@ Info with no container engine
 ```
 $ ramalama info
 {
-    "Accelerator": "cuda",
+    "Accelerators": {
+        "cpu": {
+            "devices": [
+                {
+                    "memory": 67430301696,
+                    "memory_human": "62.8 GB",
+                    "name": "AMD Ryzen 9 7950X 16-Core Processor"
+                }
+            ],
+            "total_memory": 67430301696,
+            "total_memory_human": "62.8 GB"
+        },
+        "cuda": {
+            "devices": [
+                {
+                    "memory": 25757220864,
+                    "memory_human": "23.99 GB",
+                    "name": "NVIDIA GeForce RTX 4090"
+                }
+            ],
+            "total_memory": 25757220864,
+            "total_memory_human": "23.99 GB"
+        }
+    },
     "Config": {},
     "Engine": {
         "Name": ""
@@ -157,7 +180,30 @@ Info with Podman engine
 ```
 $ ramalama info
 {
-    "Accelerator": "cuda",
+    "Accelerators": {
+        "cpu": {
+            "devices": [
+                {
+                    "memory": 67430301696,
+                    "memory_human": "62.8 GB",
+                    "name": "AMD Ryzen 9 7950X 16-Core Processor"
+                }
+            ],
+            "total_memory": 67430301696,
+            "total_memory_human": "62.8 GB"
+        },
+        "cuda": {
+            "devices": [
+                {
+                    "memory": 25757220864,
+                    "memory_human": "23.99 GB",
+                    "name": "NVIDIA GeForce RTX 4090"
+                }
+            ],
+            "total_memory": 25757220864,
+            "total_memory_human": "23.99 GB"
+        }
+    },
     "Engine": {
         "Info": {
             "host": {

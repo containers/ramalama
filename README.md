@@ -430,7 +430,30 @@ $ cat /usr/share/ramalama/shortnames.conf
     Returns for example:
     ```
     {
-        "Accelerator": "cuda",
+        "Accelerators": {
+            "cpu": {
+                "devices": [
+                    {
+                        "memory": 67430301696,
+                        "memory_human": "62.8 GB",
+                        "name": "AMD Ryzen 9 7950X 16-Core Processor"
+                    }
+                ],
+                "total_memory": 67430301696,
+                "total_memory_human": "62.8 GB"
+            },
+            "cuda": {
+                "devices": [
+                    {
+                        "memory": 25757220864,
+                        "memory_human": "23.99 GB",
+                        "name": "NVIDIA GeForce RTX 4090"
+                    }
+                ],
+                "total_memory": 25757220864,
+                "total_memory_human": "23.99 GB"
+            }
+        },
         "Engine": {
         "Name": ""
         },
@@ -515,7 +538,30 @@ $ cat /usr/share/ramalama/shortnames.conf
     Returns for example:
     ```
     {
-        "Accelerator": "cuda",
+        "Accelerators": {
+            "cpu": {
+                "devices": [
+                    {
+                        "memory": 67430301696,
+                        "memory_human": "62.8 GB",
+                        "name": "AMD Ryzen 9 7950X 16-Core Processor"
+                    }
+                ],
+                "total_memory": 67430301696,
+                "total_memory_human": "62.8 GB"
+            },
+            "cuda": {
+                "devices": [
+                    {
+                        "memory": 25757220864,
+                        "memory_human": "23.99 GB",
+                        "name": "NVIDIA GeForce RTX 4090"
+                    }
+                ],
+                "total_memory": 25757220864,
+                "total_memory_human": "23.99 GB"
+            }
+        },
         "Engine": {
         "Info": {
             "host": {
