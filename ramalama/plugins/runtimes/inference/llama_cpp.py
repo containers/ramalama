@@ -858,7 +858,7 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
         for mount in tls_mount_args(engine, args):
             engine.add([mount])
 
-        engine.add([args.image] + cmd)
+        engine.add_container_image(args.image, cmd)
         return engine
 
     @staticmethod
