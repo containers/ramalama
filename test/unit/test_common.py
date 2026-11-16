@@ -1080,3 +1080,66 @@ class TestGetGpuDevices:
     def test_defaults_to_the_environment(self):
         assert self._get_gpu_devices(None, {"CUDA_VISIBLE_DEVICES": "0"}) == {}
         assert self._get_gpu_devices(None, {"HIP_VISIBLE_DEVICES": "0"}) != {}
+
+
+class TestAppleHvGpuWarning:
+    """applehv podman machines have no GPU: RamaLama warns, once, and never prompts."""
+
+    MACHINE = {"Name": "podman-machine-default", "VMType": "applehv", "Running": True}
+
+    @pytest.fixture(autouse=True)
+    def _fresh_state(self, monkeypatch):
+        # The warning is remembered per process; each test starts with none.
+        monkeypatch.setattr("ramalama.common._applehv_warned", set())
+        monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("prompted")))
+        self.warn = Mock()
+        monkeypatch.setattr("ramalama.common.logger.warning", self.warn)
+
+    @staticmethod
+    def _config(no_missing_gpu_prompt: bool):
+        return MagicMock(**{"user.no_missing_gpu_prompt": no_missing_gpu_prompt})
+
+    def test_warns_and_proceeds_without_prompting(self):
+        from ramalama.common import handle_provider
+
+        assert handle_provider(self.MACHINE, self._config(False)) is True
+        self.warn.assert_called_once()
+        message = self.warn.call_args.args[0]
+        assert "podman-machine-default" in message
+        assert "no_missing_gpu_prompt" in message
+
+    def test_warns_once_per_process(self):
+        from ramalama.common import handle_provider
+
+        assert handle_provider(self.MACHINE, self._config(False)) is True
+        assert handle_provider(self.MACHINE, None) is True
+        assert self.warn.call_count == 1
+
+    def test_setting_silences_it_and_holds_for_a_later_config_without_it(self):
+        from ramalama.common import handle_provider
+
+        assert handle_provider(self.MACHINE, self._config(True)) is True
+        # e.g. DefaultConfig(): no file or env layers, so the setting reads False.
+        assert handle_provider(self.MACHINE, self._config(False)) is True
+        self.warn.assert_not_called()
+
+    def test_layerless_config_after_active_config_stays_silent(self, monkeypatch):
+        """The reported path: ActiveConfig honours the env var, then DefaultConfig asked again."""
+        import json as _json
+
+        from ramalama import config as config_mod
+
+        monkeypatch.setattr(config_mod.sys, "platform", "darwin")
+        monkeypatch.setattr(config_mod, "get_default_engine", lambda: "podman")
+
+        def fake_run_cmd(cmd, *args, **kwargs):
+            out = "podman version 6.1.3" if "--version" in cmd else _json.dumps([self.MACHINE])
+            return Mock(stdout=out)
+
+        monkeypatch.setattr("ramalama.common.run_cmd", fake_run_cmd)
+
+        active = config_mod.load_config(env={"RAMALAMA_USER__NO_MISSING_GPU_PROMPT": "true"})
+        default = config_mod.Config()
+        assert active.engine == "podman"
+        assert default.engine == "podman"
+        self.warn.assert_not_called()

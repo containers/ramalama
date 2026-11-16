@@ -56,6 +56,8 @@ def sanitize_filename(filename: str) -> str:
 
 
 podman_machine_accel = False
+# applehv machines already warned about (or silenced) in this process.
+_applehv_warned: set[str] = set()
 
 # CDI device names of the NVIDIA GPUs the user narrowed CUDA_VISIBLE_DEVICES
 # down to, set by check_nvidia(). Empty when every detected GPU is in play.
@@ -74,23 +76,13 @@ def container_cuda_visible_devices(value: str) -> str:
     return ",".join(str(i) for i in range(len(nvidia_selected_devices)))
 
 
-def confirm_no_gpu(name, provider) -> bool:
-    while True:
-        user_input = (
-            input(
-                f"Warning! Your VM {name} is using {provider}, which does not support GPU. "
-                "Only the provider libkrun has GPU support. "
-                "See `man ramalama-macos` for more information. "
-                "Do you want to proceed without GPU? (yes/no): "
-            )
-            .strip()
-            .lower()
-        )
-        if user_input in ["yes", "y"]:
-            return True
-        if user_input in ["no", "n"]:
-            return False
-        print("Invalid input. Please enter 'yes' or 'no'.")
+def warn_no_gpu(name, provider) -> None:
+    logger.warning(
+        f"Your VM {name} is using {provider}, which does not support GPU, so models will run on the CPU. "
+        "Only the provider libkrun has GPU support. See `man ramalama-macos` for more information. "
+        "Set no_missing_gpu_prompt = true in ramalama.conf (or RAMALAMA_USER__NO_MISSING_GPU_PROMPT=true) "
+        "to silence this warning."
+    )
 
 
 def handle_provider(machine, config: Optional[Config] = None) -> Optional[bool]:
@@ -100,10 +92,14 @@ def handle_provider(machine, config: Optional[Config] = None) -> Optional[bool]:
     running = machine.get("Running")
     if running:
         if provider == "applehv":
-            if config is not None and config.user.no_missing_gpu_prompt:
-                return True
-            else:
-                return confirm_no_gpu(name, provider)
+            # Warn once per machine per process. A Config built later without the
+            # file/env layers (DefaultConfig) reads no_missing_gpu_prompt as False,
+            # so remember that the user silenced it too.
+            if name not in _applehv_warned:
+                _applehv_warned.add(name)
+                if config is None or not config.user.no_missing_gpu_prompt:
+                    warn_no_gpu(name, provider)
+            return True
         if "krun" in provider:
             podman_machine_accel = True
             return True
