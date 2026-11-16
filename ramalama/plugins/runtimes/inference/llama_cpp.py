@@ -1046,12 +1046,20 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
             _cleanup_servers,
             _wait_for_server,
         )
+        from ramalama.rag import RAG_ROLE_EMBEDDING, rag_stack_container_name
 
         embedding_model = EMBEDDING_MODEL
         set_accel_env_vars()
 
         embed_port = compute_serving_port(args, quiet=True, exclude=[args.port, args.model_args.port])
-        embed_serve_args = _build_serve_args(args.model_args, embedding_model, embed_port, runtime_args=["--embedding"])
+        # args.name is the shared stack base from _rag_args (proxy name), not the
+        # model container's role-qualified name on args.model_args.
+        embed_name = rag_stack_container_name(
+            args.name, RAG_ROLE_EMBEDDING, generated=getattr(args, "rag_stack_generated", False)
+        )
+        embed_serve_args = _build_serve_args(
+            args.model_args, embedding_model, embed_port, runtime_args=["--embedding"], name=embed_name
+        )
         # Internal models should always be pullable regardless of the user's --pull flag
         embed_serve_args.pull = ActiveConfig().pull
 

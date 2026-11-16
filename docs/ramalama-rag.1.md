@@ -131,6 +131,14 @@ Show this help message and exit
 OCI container image to use for the llama.cpp inference servers.
 Defaults to the accelerator-appropriate ramalama image.
 
+#### **--name**, **-n**=*name*
+Name used for the RAG processing container. Helper containers in the same
+stack are named `{name}-docling`, `{name}-embedding`, and `{name}-captioning`
+(when image captioning is enabled). When omitted, RamaLama generates one
+random id and names the processing container `ramalama-{id}` and helpers
+`ramalama-docling-{id}`, `ramalama-embedding-{id}`, and
+`ramalama-captioning-{id}` so the stack can be identified together.
+
 #### **--network**, **--net**=*network*
 Join the pipeline containers to an existing container network instead of
 creating a temporary private one.  Use this to reuse a pre-existing network;
@@ -186,6 +194,12 @@ $ ramalama rag --ngl all ./docs/ my-rag-image
 $ KEY=$(openssl rand -hex 32)
 $ RAMALAMA_RUNTIMES__LLAMA_CPP__SERVER_API_KEY="$KEY" ramalama rag ./docs/ myrag:latest
 ```
+
+### Name the RAG container stack
+```
+$ ramalama rag --name ragtest ./docs/ myrag:latest
+```
+Helper containers are named `ragtest-docling` and `ragtest-embedding`.
 
 ## SEE ALSO
 **[ramalama(1)](ramalama.1.md)**, **[ramalama-serve(1)](ramalama-serve.1.md)**

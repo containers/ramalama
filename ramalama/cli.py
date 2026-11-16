@@ -45,7 +45,7 @@ from ramalama.model_inspect.error import ParseError
 from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.plugins.loader import get_all_runtimes, get_runtime
 from ramalama.prompt_utils import default_prefix
-from ramalama.rag import rag_image
+from ramalama.rag import RAG_ROLE_MODEL, rag_image, rag_stack_base_name, rag_stack_container_name
 from ramalama.shortnames import Shortnames
 from ramalama.stack import stack_image
 from ramalama.transports.base import (
@@ -1137,8 +1137,13 @@ def _rag_args(args):
     # model_host is set later by _setup_rag_network to the model server's container
     # name once the shared private network is created.
     rag_args.model_host = None
-    # If --name was specified, use it for the RAG proxy
-    args.name = None
+    # Share one stack base across the RAG proxy, model, and embedding containers.
+    # Keep the base on the proxy; role-suffix the model. Embedding uses the same
+    # base via rag_stack_generated rather than the model container's name.
+    base_name, generated = rag_stack_base_name(getattr(args, "name", None))
+    rag_args.name = base_name
+    rag_args.rag_stack_generated = generated
+    args.name = rag_stack_container_name(base_name, RAG_ROLE_MODEL, generated=generated)
     # If --port was specified, use it for the RAG proxy, and
     # select a random port for the model
     args.port = None
