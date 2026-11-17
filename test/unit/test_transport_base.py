@@ -518,3 +518,71 @@ class TestOCIModelSetupMountsDocker:
         # Verify mount command was added
         expected_mount = f"--mount=type=volume,src={mock_volume_name},dst={MNT_DIR},readonly"
         mock_docker_engine.add.assert_called_once_with([expected_mount])
+
+
+class TestContainerChatCleanup:
+    """`ramalama run` stops its container when the run is interrupted (#2994)."""
+
+    @staticmethod
+    def _run(monkeypatch, *, healthy=None, chat=None, operational_name=None):
+        import ramalama.transports.base as base
+
+        stopped = []
+        monkeypatch.setattr(base, "stop_container", lambda a, name, remove=False: stopped.append((name, remove)))
+        monkeypatch.setattr(base.chat, "chat", chat or (lambda *a, **k: None))
+        model = Transport("test-model", "/tmp/store")
+        monkeypatch.setattr(model, "wait_for_healthy", healthy or (lambda a: None))
+        monkeypatch.setattr(model, "chat_operational_args", lambda a: Namespace(name=operational_name))
+        args = Namespace(dryrun=False, name="ramalama-abc", engine="podman", ignore=False)
+        process = Mock()
+        process.wait.return_value = 0
+        return model, args, process, stopped
+
+    def test_ctrl_c_while_server_starts_stops_container(self, monkeypatch):
+        def interrupted(_):
+            raise KeyboardInterrupt
+
+        model, args, process, stopped = self._run(monkeypatch, healthy=interrupted)
+        with pytest.raises(KeyboardInterrupt):
+            model._handle_container_chat(args, process)
+        assert stopped == [("ramalama-abc", True)]
+
+    def test_ctrl_c_during_chat_stops_server_and_helper_containers(self, monkeypatch):
+        def interrupted(*_a, **_k):
+            raise KeyboardInterrupt
+
+        model, args, process, stopped = self._run(monkeypatch, chat=interrupted, operational_name="ramalama-rag")
+        with pytest.raises(KeyboardInterrupt):
+            model._handle_container_chat(args, process)
+        assert stopped == [("ramalama-abc", True), ("ramalama-rag", True)]
+
+    def test_sigterm_stops_container_and_exits_143(self, monkeypatch):
+        import os
+        import signal
+        import time
+
+        def terminated(*_a, **_k):
+            os.kill(os.getpid(), signal.SIGTERM)
+            time.sleep(5)  # the handler interrupts this
+
+        before = signal.getsignal(signal.SIGTERM)
+        model, args, process, stopped = self._run(monkeypatch, chat=terminated)
+        with pytest.raises(SystemExit) as exc:
+            model._handle_container_chat(args, process)
+        assert exc.value.code == 128 + signal.SIGTERM
+        assert stopped == [("ramalama-abc", True)]
+        assert signal.getsignal(signal.SIGTERM) is before
+
+    def test_crashed_server_container_is_kept_for_logs(self, monkeypatch):
+        def crashed(*_a, **_k):
+            raise SystemExit(1)  # what chat() raises when the monitor sees the server exit
+
+        model, args, process, stopped = self._run(monkeypatch, chat=crashed)
+        with pytest.raises(SystemExit):
+            model._handle_container_chat(args, process)
+        assert stopped == []
+
+    def test_normal_exit_leaves_cleanup_to_chat(self, monkeypatch):
+        model, args, process, stopped = self._run(monkeypatch)
+        assert model._handle_container_chat(args, process) == 0
+        assert stopped == []

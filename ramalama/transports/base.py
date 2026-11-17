@@ -3,11 +3,15 @@ from __future__ import annotations
 import copy
 import os
 import random
+import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
+from contextlib import contextmanager
 from functools import partial
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -18,7 +22,7 @@ from ramalama import chat
 from ramalama.common import ContainerEntryPoint
 from ramalama.compose import Compose
 from ramalama.config import ActiveConfig
-from ramalama.engine import Engine, dry_run, is_healthy, wait_for_healthy
+from ramalama.engine import Engine, dry_run, is_healthy, stop_container, wait_for_healthy
 from ramalama.kube import Kube
 from ramalama.model_inspect.base_info import ModelInfoBase
 from ramalama.model_inspect.gguf_info import GGUFModelInfo
@@ -48,6 +52,31 @@ from ramalama.path_utils import get_container_mount_path
 from ramalama.tls import tls_mount_args
 
 MODEL_TYPES = ["file", "https", "http", "oci", "huggingface", "hf", "modelscope", "ms", "ollama", "rlcr"]
+
+
+class _Terminated(BaseException):
+    """SIGTERM, raised in the main thread so `ramalama run` can stop its containers.
+
+    Not a KeyboardInterrupt: the interactive chat loop catches those and keeps going,
+    and not an Exception: the chat retry loop would retry it.
+    """
+
+
+@contextmanager
+def _sigterm_raises_terminated() -> Iterator[None]:
+    """Turn SIGTERM into `_Terminated` for the duration of the block."""
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def handler(signum, frame):
+        raise _Terminated(signum)
+
+    previous = signal.signal(signal.SIGTERM, handler)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
 
 
 file_not_found = """\
@@ -541,8 +570,34 @@ class Transport(TransportBase):
         wait_for_healthy(args, partial(is_healthy, model_name=self.model_alias))
 
     def _handle_container_chat(self, args, server_process):
-        """Handle chat for container-based execution."""
+        """Handle chat for container-based execution.
 
+        A normal exit is cleaned up by chat itself, and a crashed server's container is kept
+        for its logs. An interruption (Ctrl-C or SIGTERM) stops and removes the containers here.
+        """
+        with _sigterm_raises_terminated():
+            try:
+                return self._wait_and_chat(args, server_process)
+            except (KeyboardInterrupt, _Terminated) as e:
+                if not getattr(args, "dryrun", False):
+                    self._stop_run_containers(args)
+                if isinstance(e, _Terminated):
+                    raise SystemExit(128 + signal.SIGTERM) from None
+                raise
+
+    def _stop_run_containers(self, args):
+        stop_args = copy.copy(args)
+        stop_args.ignore = True
+        operational_args = self.chat_operational_args(args)
+        for name in (getattr(args, "name", None), getattr(operational_args, "name", None)):
+            if not name:
+                continue
+            try:
+                stop_container(stop_args, name, remove=True)
+            except Exception as e:
+                logger.warning(f"Failed to stop container {name}: {e}")
+
+    def _wait_and_chat(self, args, server_process):
         # Wait for the server process to complete (blocking)
         exit_code = server_process.wait()
         if exit_code != 0:
