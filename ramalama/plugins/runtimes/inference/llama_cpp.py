@@ -438,7 +438,8 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 logger.debug(f"{self.name} {container_name} is ready (router mode)")
                 return True
 
-        if model_name not in model_names:
+        model_id = getattr(args, 'alias', None) or model_name
+        if model_id not in model_names:
             logger.debug(
                 f'{self.name} {container_name} /models does not include "{model_name}" in the model list: {model_names}'
             )
@@ -713,6 +714,12 @@ class LlamaCppPlugin(LlamaCppCommands, ContainerizedInferenceRuntimePlugin):
                 choices=["on", "off"],
                 default="on",
                 help="enable or disable the web UI (default: on)",
+            )
+            parser.add_argument(
+                "--alias",
+                dest="alias",
+                help="model name alias (referenced in the requests and responses of the API)",
+                completer=suppressCompleter,
             )
 
     @staticmethod

@@ -91,7 +91,9 @@ class LlamaCppCommands:
         if thinking is not None:
             cmd += ["--reasoning", "on" if thinking else "off"]
 
-        if not router_mode and model is not None:
+        if getattr(args, 'alias', None):
+            cmd += ["--alias", args.alias]
+        elif not router_mode and model is not None:
             cmd += ["--alias", model.model_alias]
 
         ctx_size = getattr(args, 'ctx_size', None)
