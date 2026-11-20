@@ -172,7 +172,7 @@ class ChatProvider(ABC):
             return None
         return json.loads(body.decode("utf-8"))
 
-    def list_models(self) -> list[str]:
+    def list_models(self, opener: Optional[urllib_request.OpenerDirector] = None) -> list[str]:
         """Return available model identifiers exposed by the provider."""
 
         request = urllib_request.Request(
@@ -181,7 +181,8 @@ class ChatProvider(ABC):
             method="GET",
         )
         try:
-            with urllib_request.urlopen(request) as response:
+            open_request = opener.open if opener is not None else urllib_request.urlopen
+            with open_request(request) as response:
                 payload = self.parse_response_body(response.read())
         except urllib_error.HTTPError as exc:
             if exc.code in (401, 403):
