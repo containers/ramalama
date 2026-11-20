@@ -75,10 +75,12 @@ class BaseImageStrategy(BaseOCIStrategy[Literal['image']]):
         self.engine = engine
         self.model_store = model_store
 
-    def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> None:
+    def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None, target: Optional[str] = None) -> None:
         if cmd_args is None:
             cmd_args = []
         run_cmd([*engine_cmd(self.engine), "pull", *cmd_args, str(ref)])
+        if target and target != str(ref):
+            run_cmd([*engine_cmd(self.engine), "tag", str(ref), target])
 
     def exists(self, ref: OciRef) -> bool:
         try:
@@ -116,13 +118,13 @@ class HttpArtifactStrategy(BaseArtifactStrategy):
     def __init__(self, engine: str = "podman", *, model_store: ModelStore):
         super().__init__(engine=engine, model_store=model_store)
 
-    def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> None:
+    def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None, target: Optional[str] = None) -> None:
         if cmd_args is None:
             cmd_args = []
         if not self.model_store:
             raise ValueError("HTTP artifact strategy requires a model store")
 
-        model_tag = ref.specifier
+        model_tag = target or ref.specifier
         download_oci_artifact(
             reference=str(ref),
             model_store=self.model_store,
@@ -177,10 +179,12 @@ class PodmanArtifactStrategy(BaseArtifactStrategy):
     def __init__(self, engine: str = "podman", *, model_store: ModelStore):
         super().__init__(engine=engine, model_store=model_store)
 
-    def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None) -> None:
+    def pull(self, ref: OciRef, cmd_args: Optional[list[str]] = None, target: Optional[str] = None) -> None:
         if cmd_args is None:
             cmd_args = []
         run_cmd([*engine_cmd(self.engine), "artifact", "pull", *cmd_args, str(ref)])
+        if target and target != str(ref):
+            run_cmd([*engine_cmd(self.engine), "artifact", "tag", str(ref), target])
 
     def exists(self, ref: OciRef) -> bool:
         try:
