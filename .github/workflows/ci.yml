@@ -151,7 +151,8 @@ jobs:
            # the canonical Ubuntu archive instead.
            sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
            sudo apt-get update
-           sudo apt-get install podman bash codespell
+           sudo apt-get purge firefox
+           sudo apt-get install bash codespell
            uv tool install tox --with tox-uv
            uv pip install ".[dev]"
 
@@ -166,9 +167,8 @@ jobs:
            sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
-           sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade -y podman crun
+           sudo apt-get install -y podman crun
 
       - name: Start HF mirror
         if: steps.hf.outputs.has_token != 'true'
@@ -224,7 +224,8 @@ jobs:
           # the canonical Ubuntu archive instead.
           sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
           sudo apt-get update
-          sudo apt-get install podman bash codespell git cmake libcurl4-openssl-dev
+          sudo apt-get purge firefox
+          sudo apt-get install bash codespell git cmake libcurl4-openssl-dev
           sudo ./container-images/scripts/build_llama.sh
           sudo cp -a /tmp/install/bin/ /usr/
           sudo cp -a /tmp/install/lib/*.so* /usr/lib/
@@ -242,9 +243,8 @@ jobs:
            sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
-           sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade -y podman crun
+           sudo apt-get install -y podman crun
 
       - name: Start HF mirror
         if: steps.hf.outputs.has_token != 'true'
@@ -299,6 +299,7 @@ jobs:
            # the canonical Ubuntu archive instead.
            sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
            sudo apt-get update
+           sudo apt-get purge firefox
            sudo apt-get install bash codespell
            uv tool install tox --with tox-uv
            uv pip install ".[dev]"
@@ -314,9 +315,8 @@ jobs:
            sudo add-apt-repository "deb http://old-releases.ubuntu.com/ubuntu oracular universe"
            # Update package lists
            sudo apt-get update
-           sudo apt-get purge firefox
            # Install specific podman version
-           sudo apt-get upgrade -y podman crun
+           sudo apt-get install -y podman crun
 
       - name: Free Disk Space Linux
         shell: bash
