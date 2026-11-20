@@ -164,6 +164,7 @@ class RamaLamaShell(cmd.Cmd):
         self.url = self.provider.build_url()
 
         self.prep_rag_message()
+        self.rag_prefix_len = len(self.conversation_history)
         self.mcp_agent: Optional[LLMAgent] = None
         self.initialize_mcp()
 
@@ -192,14 +193,10 @@ class RamaLamaShell(cmd.Cmd):
 
     def _summarize_conversation(self):
         """Summarize the conversation history to prevent context growth."""
-        if len(self.conversation_history) < 10:
-            # Need at least a few messages to summarize
-            return
-
-        # Keep the first message (system/RAG context) and last 2 messages
+        # Keep the RAG prefix conversation (system/RAG context) and last 2 messages
         # Summarize everything in between
-        first_msg = self.conversation_history[0]
-        messages_to_summarize = self.conversation_history[1:-2]
+        rag_prefix = self.conversation_history[: self.rag_prefix_len]
+        messages_to_summarize = self.conversation_history[self.rag_prefix_len : -2]
         recent_msgs = self.conversation_history[-2:]
 
         if not messages_to_summarize:
@@ -227,8 +224,8 @@ class RamaLamaShell(cmd.Cmd):
 
                 # Rebuild conversation history with summary
                 new_history: list[ChatMessageType] = []
-                if first_msg:
-                    new_history.append(first_msg)
+                if len(rag_prefix):
+                    new_history.extend(rag_prefix)
 
                 # Add summary as a system message
                 new_history.append(SystemMessage(text=f"Previous conversation summary: {summary}"))
@@ -481,6 +478,7 @@ class RamaLamaShell(cmd.Cmd):
         if cmd == "/clear":
             self.conversation_history = []
             self.content = []
+            self.rag_prefix_len = 0
             print("Conversation history cleared.")
             return False
 
