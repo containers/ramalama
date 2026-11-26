@@ -125,3 +125,16 @@ def test_engine_supports_manifest_attributes_uses_semver(monkeypatch):
 
     monkeypatch.setattr(oci_tools, "engine_version", lambda engine: SemVer(4, 9, 9))
     assert oci_tools.engine_supports_manifest_attributes("podman") is False
+
+
+def test_parse_datetime():
+    utc_dt = oci_tools.parse_datetime("2026-01-01 00:00:00 +0000 UTC")
+    assert utc_dt is not None and utc_dt.utcoffset() == timedelta(0)
+
+    offset_dt = oci_tools.parse_datetime("2026-01-01 00:00:00 -0500 EST")
+    assert offset_dt is not None and offset_dt.utcoffset() == timedelta(hours=-5)
+
+    iso_dt = oci_tools.parse_datetime("2026-01-01T00:00:00+00:00")
+    assert iso_dt is not None and iso_dt.utcoffset() == timedelta(0)
+
+    assert oci_tools.parse_datetime("invalid") is None

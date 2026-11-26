@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
@@ -34,8 +35,10 @@ def convert_from_human_readable_size(input) -> int:
 
 
 def parse_datetime(date_str: str) -> Optional[datetime]:
+    cleaned = date_str.strip().removesuffix(" UTC")
+    cleaned = re.sub(r"\s*([+-]\d{2}):?(\d{2})(?:\s+\S+)?$", r"\1:\2", cleaned)
     try:
-        parsed_date = datetime.fromisoformat(date_str.replace(" UTC", "").replace("+0000", "+00:00").replace(" ", "T"))
+        parsed_date = datetime.fromisoformat(cleaned.replace(" ", "T", 1))
     except ValueError:
         parsed_date = None
 
